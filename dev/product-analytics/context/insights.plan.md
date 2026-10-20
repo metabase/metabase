@@ -438,7 +438,7 @@ The as-of rule is the population's: a funnel takes the first value seen by the p
 - **Who:** visits, not people. A person with several visits counts once per visit.
 - **Attributes as of landing:** the value on the visit's first step's event. A value from later in the visit would leak the outcome, and the funnel's per-person rule would give every visit the person's first-ever UTM tags.
 - **Bounce** means the visit had one step, after merging repeats and with the event kinds the paths count. A visit that viewed one page and then fired an event that isn't counted as a step still bounced.
-- In the generated data with the last 30 days, viewers bounce more from every app page and admins less. Nothing is planted for bounces, so there's no ground truth to check against yet.
+- **Expected finding: viewers bounce more and admins less, from every app page.** Nothing about browsing depends on role in the generator, but role is drawn by persona (power users are 50% admin and 5% viewer), and persona sets how long a visit is (1–3 events a day for casual users, 4–12 for power users). Persona never reaches the data, so it's a hidden confounder. Grouped by each person's number of visits, a stand-in for persona, the role gap disappears: 44–45% for every role at 1–3 visits, 30% at 4–10. It's a real association, not chance or leakage, and the reason the panel avoids causal language.
 
 ## Implementation
 
@@ -496,6 +496,7 @@ A fix needs both: some way to test a pair against an explanation with a third co
 - The other analyses.
 - `event_data` map keys as candidate columns. Real Track data keeps sparse properties there.
 - Binning numeric columns.
+- **New vs. returning visitor** as a bounce attribute: the visit's number for that person, known at landing, so it can't leak. With it, the "explained by" rule could fold "viewers bounce more" into "first visits bounce more", the engagement behind it (see [Bounces](#bounces)).
 - When two one-factor insights are mostly the same people (≥ 80% overlap, known from pass 2), show the stronger one and mention the other.
 - **Leave out columns that nearly determine conversion.** A column that almost perfectly separates who converted is recorded as part of converting, not something that predicts it. Measure the whole column, since every value of a leaky column is an artifact (`plan = free` at 2% as much as `plan = pro` at 98%). Normalized mutual information does this at any base rate: the share of the uncertainty in `converted` that knowing the column removes. Leave the column out above roughly 0.8 and say so ("Left out *Plan*: it almost determines who converted"). This is a backstop: leaks are often far from perfect (with a 7-day window, many buyers count as drop-offs), so the as-of rule stays the main defense.
   - **Not for one-sided groups.** "Person Plan is not set" at 37× has a normalized mutual information of 0.06: the identified fifth almost never converts, but the anonymous majority only converts at 12%, so the column predicts little overall. Numbers alone can't separate a structural 0% from a real one. A browser with a broken checkout would look the same, and that's the most useful insight there is. So don't leave groups out by ratio or rate.
