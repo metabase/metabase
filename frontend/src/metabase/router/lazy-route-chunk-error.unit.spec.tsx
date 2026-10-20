@@ -24,6 +24,16 @@ function chunkLoadError() {
   return error;
 }
 
+// The bundler names a request that ran out of time, which the recovery reads to
+// tell it apart from one that failed at once.
+function chunkLoadTimeout() {
+  const error = new Error(
+    "Loading chunk 42 failed.\n(timeout: /app/dist/x.js)",
+  );
+  error.name = "ChunkLoadError";
+  return Object.assign(error, { type: "timeout" });
+}
+
 function Fallback({ hasUnsavedChanges }: { hasUnsavedChanges: boolean }) {
   return (
     <span data-testid="chunk-error">
@@ -114,6 +124,22 @@ describe("a route whose chunk fails to load", () => {
       timeout: 5000,
     });
     expect(load).toHaveBeenCalledTimes(5);
+  });
+
+  // A timed-out request has already spent `output.chunkLoadTimeout`, two
+  // minutes by default. Four more of those is a quarter of an hour of nothing.
+  it("recovers without retrying when the request ran out of time", async () => {
+    const load = jest.fn().mockRejectedValue(chunkLoadTimeout());
+
+    renderRoutesWithFallback(homeAndSplit(load), "/");
+    expect(await screen.findByTestId("home")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/split");
+    });
+
+    await waitFor(() => expect(redirect).toHaveBeenCalledWith("/split"));
+    expect(load).toHaveBeenCalledTimes(1);
   });
 
   it("shows the error page instead of loading again within the interval", async () => {

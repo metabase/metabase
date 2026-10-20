@@ -59,6 +59,30 @@ export function isChunkLoadError(error: unknown): boolean {
   );
 }
 
+/**
+ * Whether the request ran out of time rather than failing outright.
+ *
+ * The chunk loading runtime gives up on a request after
+ * `output.chunkLoadTimeout`, two minutes by default, and names that failure
+ * `timeout`. Every other failure comes back in milliseconds.
+ */
+function isChunkLoadTimeout(error: unknown): boolean {
+  return error instanceof Error && "type" in error && error.type === "timeout";
+}
+
+/**
+ * Whether asking for the chunk again is worth the wait.
+ *
+ * A retry is cheap against a request that failed at once, and it is a fresh
+ * pick of instance, so it can land on one that still has the file. A request
+ * that timed out has already spent two minutes against a connection that is
+ * still there, so asking again costs another two before anything changes on
+ * screen. Recover from it instead.
+ */
+function isWorthRetrying(error: unknown): boolean {
+  return isChunkLoadError(error) && !isChunkLoadTimeout(error);
+}
+
 function canReloadNow(): boolean {
   try {
     const last = Number(window.sessionStorage.getItem(RELOAD_STAMP_KEY));
@@ -122,7 +146,7 @@ function guardLazyRoute(load: LazyRouteFn, Fallback: ChunkErrorFallback) {
     try {
       return await retry(() => load(...args), {
         maxRetries: MAX_RETRIES,
-        shouldRetry: isChunkLoadError,
+        shouldRetry: isWorthRetrying,
         // Jittered, so that every tab that a deploy breaks at once does not ask
         // again in step.
         delayMs: () => RETRY_DELAY_MS + Math.random() * RETRY_JITTER_MS,
