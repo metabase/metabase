@@ -9,7 +9,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.xrays.core :as xrays]))
@@ -92,12 +91,10 @@
                            :available-queries (keys queries-state)})))
         (when-not (and (:database query) (or (:lib/type query) (:type query)))
           (incomplete-query! {:query-id query_id}))
-        (tools/with-entity {:kind :query :id query_id}
-          (api/check-403 (query-perms/check-data-perms query (query-perms/required-perms-for-query query)
-                                                       :throw-exceptions? false)))
         ;; For queries, we create a transient card-like structure
-        {:entity {:dataset_query query}
-         :path (str "/auto/dashboard/adhoc/" (xrays/encode-base64-json query))}))))
+        {:entity (tools/with-entity {:kind :query :id query_id}
+                   (xrays/adhoc-query-read-check {:dataset_query query}))
+         :path   (str "/auto/dashboard/adhoc/" (xrays/encode-base64-json query))}))))
 
 ;;; Response Messages
 

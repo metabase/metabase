@@ -102,7 +102,9 @@
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
-(defn- adhoc-query-read-check
+(defn adhoc-query-read-check
+  "Return `query`, a map holding a `:dataset_query`, if the current user may run that query, or throw a 403.
+  The X-ray page makes this check before it analyzes an ad hoc query."
   [query]
   (api/check-403
    (query-perms/check-data-perms (:dataset_query query)
