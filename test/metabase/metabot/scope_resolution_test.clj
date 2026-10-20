@@ -47,7 +47,6 @@
                    :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:search"))
       (is (contains? scopes "agent:resource:*"))
-      (is (contains? scopes "agent:todo:*"))
       (is (contains? scopes "agent:metadata:*")))))
 
 (deftest user-metabot-perms-all-yes-scopes-test

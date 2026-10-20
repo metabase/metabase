@@ -124,11 +124,6 @@
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
 
-(defn set-todos
-  "Set the todo list (a vector of todo item maps)."
-  [memory todos]
-  (record memory [:todos] (vec todos)))
-
 (defn add-client-ids
   "Mark `ids` as the queries and charts the client supplied this turn.
   Each is persisted, with the ids earlier turns recorded, once a query or chart is stored under it."

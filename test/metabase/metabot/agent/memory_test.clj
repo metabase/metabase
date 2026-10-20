@@ -83,12 +83,12 @@
     (let [mem  (memory/initialize [] {:queries {"q1" {:id "q1"}}})
           mem' (-> mem
                    (memory/set-query "q2" {:id "q2"})
-                   (memory/set-todos [{:id "b"}]))]
+                   (memory/set-chart "c1" {:id "c1"}))]
       (testing "working state carries the seeded baseline plus this turn's writes"
-        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :todos [{:id "b"}]}
+        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
                (memory/get-state mem'))))
       (testing "turn delta carries only this turn's writes — not the seeded baseline"
-        (is (= {:queries {"q2" {:id "q2"}} :todos [{:id "b"}]}
+        (is (= {:queries {"q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
                (memory/turn-state mem'))))))
   (testing "turn-state is nil until this turn writes something"
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]

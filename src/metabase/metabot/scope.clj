@@ -161,12 +161,6 @@
 (api-scope/defscope agent-resource-read "agent:resource:read"
   (deferred-tru "Read MCP resources"))
 
-;; Todo
-(api-scope/defscope agent-todo-read "agent:todo:read"
-  (deferred-tru "View todos"))
-(api-scope/defscope agent-todo-write "agent:todo:write"
-  (deferred-tru "Create and edit todos"))
-
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
 ;;; ──────────────────────────────────────────────────────────────────
@@ -259,7 +253,7 @@
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
-  #{"agent:search" "agent:resource:*" "agent:todo:*" "agent:metadata:*"})
+  #{"agent:search" "agent:resource:*" "agent:metadata:*"})
 
 (def all-yes-permissions
   "Permissions map granting all permissions. Used for superuser context."
