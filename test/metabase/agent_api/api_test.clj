@@ -318,13 +318,18 @@
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
 
 (deftest construct-query-metadata-lookup-failure-test
-  (let [query (orders-query :fields [(orders-field-ref "ID")])]
-    (doseq [failure [(SQLException. "Connection unavailable")
-                     (ex-info "SELECT private_metadata failed" {:toucan2/context-trace []})
-                     (ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable"))]]
-      (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
-        (is (= {:message "Something went wrong"}
-               (mt/user-http-request :rasta :post 500 "agent/v2/construct-query" {:query query})))))))
+  (mt/with-prometheus-system! [_ system]
+    (let [query (orders-query :fields [(orders-field-ref "ID")])]
+      (doseq [[failure delta] [[(SQLException. "Connection unavailable") 1]
+                               [(ex-info "SELECT private_metadata failed" {:toucan2/context-trace []}) 1]
+                               [(ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable")) 1]
+                               [(ex-info "SELECT private_metadata failed"
+                                         {:toucan2/context-trace [] :status-code 500}) 0]]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+            (is (= {:message "Something went wrong"}
+                   (mt/user-http-request :rasta :post 500 "agent/v2/construct-query" {:query query})))
+            (is (= (+ initial delta) (mt/metric-value system :metabase-api/unhandled-errors)))))))))
 
 (deftest construct-query-declared-errors-in-toucan-scopes-test
   (let [query (orders-query :fields [(orders-field-ref "ID")])]

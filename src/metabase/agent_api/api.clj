@@ -8,6 +8,7 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -1835,6 +1836,8 @@
     (let [raise (fn [e]
                   (if (metabot-construct/database-error? e)
                     (do
+                      (when (nil? (:status-code (ex-data e)))
+                        (analytics/inc! :metabase-api/unhandled-errors))
                       (log/error e "Database failure in Agent API")
                       (respond {:status 500 :body {:message (tru "Something went wrong")}}))
                     (raise e)))]

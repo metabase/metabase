@@ -1593,6 +1593,7 @@
               metabase.agent-api.schema
               metabase.agent-api.settings}
    :uses    #{ai-tracing
+              analytics.interface
               api
               channel
               collections
