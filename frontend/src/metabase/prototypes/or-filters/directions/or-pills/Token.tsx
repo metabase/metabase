@@ -1,4 +1,4 @@
-import { type ReactNode, forwardRef } from "react";
+import { type MouseEvent, type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
 import { Icon, UnstyledButton } from "metabase/ui";
@@ -7,7 +7,7 @@ import S from "./Token.module.css";
 
 type TokenProps = {
   children: ReactNode;
-  onClick: () => void;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   onRemove: () => void;
 };
 

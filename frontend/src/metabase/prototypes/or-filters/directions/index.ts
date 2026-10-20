@@ -17,6 +17,7 @@ import {
   ExpressionBarPrototype,
 } from "./expression-bar/ExpressionBarPrototype";
 import { OrPillsPrototype } from "./or-pills/OrPillsPrototype";
+import { QbeGridPrototype } from "./qbe-grid/QbeGridPrototype";
 import { RailroadPrototype } from "./railroad/RailroadPrototype";
 
 export const FILTER_DIRECTIONS: FilterDirection[] = [
@@ -102,5 +103,15 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
       return t`Today's pills, joined by one unshown operator. The segmented control on the right switches between matching all filters (AND) and any filter (OR).`;
     },
     Component: AndOrTogglePrototype,
+  },
+  {
+    id: "qbe-grid",
+    get name() {
+      return t`OR filters D: Query-by-example grid`;
+    },
+    get description() {
+      return t`Columns are data columns, rows are segments joined by or, cells on a row are and-ed. Duplicate a row to build the next segment.`;
+    },
+    Component: QbeGridPrototype,
   },
 ];
