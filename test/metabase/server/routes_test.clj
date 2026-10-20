@@ -59,7 +59,7 @@
   (mt/when-ee-evailable
    (mt/with-premium-features #{:data-apps :embedding-simple}
      (mt/with-temporary-setting-values [enable-embedding-modular true
-                                        embedding-app-origins-sdk "https://customer.example"]
+                                        embedding-app-origins-sdk ""]
        (binding [client/*url-prefix* ""]
          (let [access-checks (atom [])]
            (mt/with-dynamic-fn-redefs [index/data-app-shell (fn [_ respond _] (respond {:status 200 :body "SHELL"}))
@@ -80,7 +80,7 @@
                    policy (get-in response [:headers "Content-Security-Policy"])]
                (is (str/includes? policy "default-src 'none'"))
                (is (str/includes? policy "script-src 'unsafe-eval'"))
-               (is (str/includes? policy "https://customer.example"))
+               (is (str/includes? policy "frame-ancestors *;"))
                (is (nil? (get-in response [:headers "X-Frame-Options"])))))))))))
 
 (deftest data-app-entrypoint-is-gated-by-the-data-apps-feature-test

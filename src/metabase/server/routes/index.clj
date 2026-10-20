@@ -13,7 +13,6 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.server.middleware.security :as security]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -194,7 +193,6 @@
              {:status 403 :body "Data app embedding is disabled."}
              {:status 200
               :headers {"Content-Type" "text/html; charset=utf-8"
-                        "Content-Security-Policy" (str "default-src 'none'; script-src 'unsafe-eval'; form-action 'none'; frame-ancestors "
-                                                       (security/modular-embedding-frame-ancestors) ";")
+                        "Content-Security-Policy" "default-src 'none'; script-src 'unsafe-eval'; form-action 'none'; frame-ancestors *;"
                         "Referrer-Policy" "no-referrer"}
               :body "<!doctype html><html><head></head><body></body></html>"})))

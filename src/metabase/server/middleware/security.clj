@@ -381,26 +381,14 @@
        (valid-embedding-origins
         (setting/get-value-of-type :string :embedding-app-origins-interactive))))
 
-(defn modular-embedding-frame-ancestors
-  "Allowed ancestors for modular data app runtime and evaluator documents."
-  []
-  (if (embedding.settings/enable-embedding-modular)
-    (str/join " " (remove str/blank?
-                          ["'self'"
-                           (when-not (server.settings/disable-cors-on-localhost)
-                             "http://localhost:* https://localhost:* http://127.0.0.1:* https://127.0.0.1:*")
-                           (valid-embedding-origins (embedding.settings/embedding-app-origins-sdk))]))
-    "'none'"))
-
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:
    `:any` (open embedding), `:self` (same-origin only, e.g. the internal data-app
-   iframe), `:modular` (configured SDK origins), or `:none` (interactive embedding policy)."
+   iframe), or `:none` (interactive embedding policy)."
   [mode]
   (case mode
     :any  "*"
     :self "'self'"
-    :modular (modular-embedding-frame-ancestors)
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -432,7 +420,6 @@
   [mode]
   (case mode
     :any  nil
-    :modular nil
     :self {"X-Frame-Options" "SAMEORIGIN"}
     {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
@@ -535,7 +522,7 @@
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options.
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
-   `:self` (same-origin only), `:modular` (configured SDK origins), or `:none` (default — no framing unless interactive
+   `:self` (same-origin only), or `:none` (default — no framing unless interactive
    embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
    [[script-nonce-response-key]]."
   [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
@@ -666,9 +653,9 @@
                  :nonce                       (:nonce request)
                  :script-nonce?               (boolean (get response script-nonce-response-key))
                  ;; Data apps choose their ancestor policy before the generic embed routes:
-                 ;; configured SDK origins for modular embeds, same-origin for internal views.
+                 ;; Open framing for modular embeds, same-origin for internal views.
                  :frame-ancestors             (cond
-                                                (request/embedded-data-app? request)               :modular
+                                                (request/embedded-data-app? request)               :any
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
