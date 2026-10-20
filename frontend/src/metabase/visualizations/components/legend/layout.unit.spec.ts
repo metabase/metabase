@@ -49,6 +49,11 @@ const MOSTLY_TRUNCATED_NAMES = [
   "d".repeat(10),
 ];
 
+// 26px items, narrower than the column's "+ N more" label
+const TWO_DIGIT_NAMES = Array.from({ length: 20 }, (_, i) =>
+  `${i}`.padStart(2, "0"),
+);
+
 const SHORT_CARD = { width: 300, height: 60 };
 
 interface LayoutOpts {
@@ -358,9 +363,8 @@ describe("getLegendLayout auto", () => {
   });
 
   it("should widen the column to fit the '+ N more' label", () => {
-    const names = Array.from({ length: 20 }, (_, i) => `${i}`.padStart(2, "0"));
     // item = 8 + 6 + 12 = 26 < "+ 13 more" = 9 * 6 = 54
-    expect(layout(names, { width: 420, height: 200 })).toEqual({
+    expect(layout(TWO_DIGIT_NAMES, { width: 420, height: 200 })).toEqual({
       type: "vertical",
       isBeforeChart: false,
       width: 58,
@@ -467,6 +471,25 @@ describe("getLegendLayout with an explicit position", () => {
       });
     },
   );
+
+  it("should leave the plot the room beside a column widened to fit the '+ N more' label", () => {
+    // the 58px column leaves 420 - 58 - 24 = 338px, not 420 - 30 - 24 = 366px
+    const card: LayoutOpts = { width: 420, height: 200, position: "right" };
+    const insetWidth = 338 - MIN_PLOT_WIDTH;
+
+    expect(
+      layout(TWO_DIGIT_NAMES, {
+        ...card,
+        plotInset: { width: insetWidth, height: 0 },
+      }),
+    ).toMatchObject({ type: "vertical", width: 58 });
+    expect(
+      layout(TWO_DIGIT_NAMES, {
+        ...card,
+        plotInset: { width: insetWidth + 1, height: 0 },
+      }),
+    ).toEqual(HIDDEN);
+  });
 
   it("should keep a row instead of switching to a column when the items overflow", () => {
     // item = 62, 4 items + 3 gaps = 284, + 12 gap + "+ 6 more" 48 = 344 <= 384

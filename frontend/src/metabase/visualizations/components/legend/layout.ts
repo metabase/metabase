@@ -179,7 +179,10 @@ export interface LegendMetrics {
   labelWidths: number[];
   itemWidths: number[];
   availableWidth: number;
-  availableHeight: number;
+  // 0 when no item fits, while a column always shows columnVisibleCount
+  columnFitCount: number;
+  columnVisibleCount: number;
+  columnWidth: number;
   measureOverflowLabel: (overflowCount: number) => number;
 }
 
@@ -353,10 +356,17 @@ export function measureLegend({
     height: height - config.verticalPadding,
   };
   const itemWidths = labelWidths.map((labelWidth) => dotWidth + labelWidth);
-  const columnSpace =
-    getColumnItemWidth({ itemWidths, config, availableWidth }) +
-    LEGEND_PADDING * 2 +
-    config.verticalGap;
+  const measureOverflowLabel = (overflowCount: number) =>
+    measureText(getOverflowLabel(overflowCount), font);
+  const columnFitCount = getColumnFitCount(
+    { itemWidths, config },
+    chartRoom.height - LEGEND_PADDING * 2,
+  );
+  const columnVisibleCount = Math.max(columnFitCount, MIN_VISIBLE_COUNT);
+  const columnWidth = getColumnWidth(
+    { itemWidths, config, availableWidth, measureOverflowLabel },
+    columnVisibleCount,
+  );
 
   return {
     config,
@@ -369,16 +379,17 @@ export function measureLegend({
         height: Math.max(chartRoom.height - getRowHeight(config), 0),
       },
       column: {
-        width: Math.max(chartRoom.width - columnSpace, 0),
+        width: Math.max(chartRoom.width - columnWidth - config.verticalGap, 0),
         height: chartRoom.height,
       },
     },
     labelWidths,
     itemWidths,
     availableWidth,
-    availableHeight: chartRoom.height - LEGEND_PADDING * 2,
-    measureOverflowLabel: (overflowCount) =>
-      measureText(getOverflowLabel(overflowCount), font),
+    columnFitCount,
+    columnVisibleCount,
+    columnWidth,
+    measureOverflowLabel,
   };
 }
 
@@ -424,16 +435,33 @@ const getColumnItemWidth = ({
     ),
   );
 
-function getColumnVisibleCount(
-  { itemWidths, config, availableHeight }: LegendMetrics,
-  minVisibleCount: number,
+function getColumnFitCount(
+  { itemWidths, config }: Pick<LegendMetrics, "itemWidths" | "config">,
+  columnHeight: number,
 ): number {
   const rowPitch = config.fontSize * config.lineHeight + config.rowGap;
-  const maxRows = Math.floor((availableHeight + config.rowGap) / rowPitch);
+  const maxRows = Math.floor((columnHeight + config.rowGap) / rowPitch);
   // the last row is reserved for the "+ N more" label when items overflow
   return itemWidths.length <= maxRows
     ? itemWidths.length
-    : Math.max(maxRows - 1, minVisibleCount);
+    : Math.max(maxRows - 1, 0);
+}
+
+function getColumnWidth(
+  metrics: Pick<
+    LegendMetrics,
+    "itemWidths" | "config" | "availableWidth" | "measureOverflowLabel"
+  >,
+  visibleCount: number,
+): number {
+  const overflowCount = metrics.itemWidths.length - visibleCount;
+  const overflowLabelWidth =
+    overflowCount > 0 ? metrics.measureOverflowLabel(overflowCount) : 0;
+  const contentWidth = Math.max(
+    getColumnItemWidth(metrics),
+    Math.min(overflowLabelWidth, metrics.config.maxVerticalWidth),
+  );
+  return Math.ceil(contentWidth) + LEGEND_PADDING * 2;
 }
 
 function getColumnLayout(
@@ -446,9 +474,17 @@ function getColumnLayout(
     allowMostlyTruncated,
   }: LegendFit & { allowMostlyTruncated: boolean },
 ): LegendLayoutResult {
-  const { height, config } = metrics;
+  const {
+    height,
+    itemWidths,
+    columnFitCount,
+    columnVisibleCount,
+    columnWidth,
+  } = metrics;
   const hasRoom =
-    plot.width >= MIN_PLOT_WIDTH && height >= MIN_COLUMN_CARD_HEIGHT;
+    plot.width >= MIN_PLOT_WIDTH &&
+    height >= MIN_COLUMN_CARD_HEIGHT &&
+    columnFitCount >= Math.min(minVisibleCount, itemWidths.length);
   if (!alwaysVisible && !hasRoom) {
     return HIDDEN_LEGEND_LAYOUT;
   }
@@ -456,24 +492,10 @@ function getColumnLayout(
     return HIDDEN_LEGEND_LAYOUT;
   }
 
-  const visibleCount = getColumnVisibleCount(metrics, alwaysVisible ? 1 : 0);
-  if (visibleCount < Math.min(minVisibleCount, metrics.itemWidths.length)) {
-    return HIDDEN_LEGEND_LAYOUT;
-  }
-
-  const { itemWidths, measureOverflowLabel } = metrics;
-  const overflowCount = itemWidths.length - visibleCount;
-  const overflowLabelWidth =
-    overflowCount > 0 ? measureOverflowLabel(overflowCount) : 0;
-  const columnWidth = Math.max(
-    getColumnItemWidth(metrics),
-    Math.min(overflowLabelWidth, config.maxVerticalWidth),
-  );
-
   return {
     type: "vertical",
     isBeforeChart,
-    width: Math.ceil(columnWidth) + LEGEND_PADDING * 2,
-    visibleCount,
+    width: columnWidth,
+    visibleCount: columnVisibleCount,
   };
 }
