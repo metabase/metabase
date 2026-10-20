@@ -738,6 +738,14 @@
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
         (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
                (take-notification! queue)))))
+    (testing "notifications with the same ID and different queue keys both stay in the queue (GDGT-3400)"
+      (let [queue (#'notification.send/create-dedup-priority-queue)]
+        (#'notification.send/put-notification! queue (with-meta {:id 1 :payload_type :notification/testing :test-value "A"}
+                                                                {:notification/queue-key [1 11]}))
+        (#'notification.send/put-notification! queue (with-meta {:id 1 :payload_type :notification/testing :test-value "B"}
+                                                                {:notification/queue-key [1 12]}))
+        (is (= #{"A" "B"}
+               (set (map :test-value [(take-notification! queue) (take-notification! queue)]))))))
     (testing "multiple notifications are processed in order"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})

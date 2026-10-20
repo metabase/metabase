@@ -371,7 +371,7 @@
 
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
-  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
+  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same queue key is already in the queue, replace it. The queue key is `:notification/queue-key` in the notification's metadata, else its `:id`.")
   (take-notification-with-timeout! [this timeout-ms] "Take the next notification from the queue, returning nil if timeout is reached.")
   (queue-size [this] "Get the current size of the queue."))
 
@@ -383,7 +383,7 @@
           ^java.util.concurrent.locks.Condition     not-empty-cond]
   NotificationQueueProtocol
   (put-notification! [_ notification]
-    (let [id   (or (:id notification) (str (random-uuid)))
+    (let [id   (or (:notification/queue-key (meta notification)) (:id notification) (str (random-uuid)))
           item (NotificationQueueEntry. id (subscription->deadline (:triggering_subscription notification)))]
       (.lock queue-lock)
       (try
@@ -449,7 +449,9 @@
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
-  There can only be one notification with the same id in the queue.
+  There can only be one notification with the same id in the queue. A notification can set a different queue key as
+  `:notification/queue-key` in its metadata, for example each channel of a dashboard subscription, which all have the
+  pulse id as `:id`.
   - if a notification of the same id is already in the queue, then replace it
   (we keep the latest version because it likely contains the most up-to-date information
   such as: creator_id, active status, handlers info etc.)
@@ -576,7 +578,7 @@
                                         (assoc :auto-complete sync?))
       (log/with-context {:notification_id (:id notification)
                          :payload_type    (:payload_type notification)}
-        (let [notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+        (let [notification (vary-meta notification assoc :notification/triggered-at-ns (u/start-timer))]
           (log/debugf "Will be send %s" (if sync? "synchronously" "asynchronously"))
           (if sync?
             (send-notification-sync! notification)
