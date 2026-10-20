@@ -58,14 +58,17 @@
   "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
    the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
    dialect on. A structural failure gains the offending paths ([[with-schema-detail]]), and an
-   agent error gains v2's recovery message ([[with-recovery-hint]])."
-  [external-query]
-  (binding [serdes.resolve/*numeric-ids-allowed?* true]
-    (try
-      (metabot.construct/execute-representations-query external-query)
-      (catch clojure.lang.ExceptionInfo e
-        (throw (cond-> (with-schema-detail e)
-                 (:agent-error? (ex-data e)) with-recovery-hint))))))
+   agent error gains v2's recovery message ([[with-recovery-hint]]). `opts` go to
+   [[metabot.construct/execute-representations-query]]."
+  ([external-query]
+   (execute-representations-query external-query nil))
+  ([external-query opts]
+   (binding [serdes.resolve/*numeric-ids-allowed?* true]
+     (try
+       (metabot.construct/execute-representations-query external-query opts)
+       (catch clojure.lang.ExceptionInfo e
+         (throw (cond-> (with-schema-detail e)
+                  (:agent-error? (ex-data e)) with-recovery-hint)))))))
 
 ;;; ------------------------------------------------ Portable queries ----------------------------------------------
 

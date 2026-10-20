@@ -51,9 +51,10 @@
   "Resolve `visualize_query`'s mutually exclusive inputs to the handle the iframe will render.
 
    A fresh `query` runs the representations pipeline (validate → repair → resolve, permission
-   checked) and mints a handle, so the iframe renders exactly what was resolved. A supplied
-   `query_handle` is reused as-is rather than re-minted — the stored query is unchanged, and a
-   duplicate handle would only add a row for the GC to collect.
+   checked, then the query processor's preprocessing check) and mints a handle, so the iframe
+   renders exactly what was resolved. A supplied `query_handle` is reused as-is rather than
+   re-minted — the stored query is unchanged, and a duplicate handle would only add a row for the
+   GC to collect.
 
    Native is allowed through the handle path but not the fresh path: `execute_sql` mints handles
    whose SQL is visualizable by design, while inline `query` is MBQL 5 only, matching
@@ -74,7 +75,7 @@
         (v2.queries/mint-query-handle!
          session-id
          api/*current-user-id*
-         (-> (v2.queries/execute-representations-query query)
+         (-> (v2.queries/execute-representations-query query {:preprocess-check? true})
              (get-in [:structured-output :query])
              lib/prepare-for-serialization
              v2.queries/encode-serialized-query)
