@@ -3956,9 +3956,9 @@
         (is (empty? (t2/select :data_app_group_assignment)))))))
 
 (deftest remote-sync-object-user-settings-test
-  (testing "v65.2026-10-16T00:00:00-02: the RemoteSyncObject rows of Tables and Fields with user settings become their
+  (testing "v65.szv50u, v65.2026-10-16T00:00:01-02: the RemoteSyncObject rows of Tables and Fields with user settings become their
            user settings' rows, keeping their status, unless those are already tracked, and the rest are deleted"
-    (impl/test-migrations ["v65.2026-10-16T00:00:00" "v65.2026-10-16T00:00:02"] [migrate!]
+    (impl/test-migrations ["v65.szv50u" "v65.2026-10-16T00:00:02"] [migrate!]
       (let [db-id       (t2/insert-returning-pk! :metabase_database {:name       "Remote Sync User Settings Test DB"
                                                                      :engine     "h2"
                                                                      :created_at :%now
