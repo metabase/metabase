@@ -1740,6 +1740,35 @@
                       {:uris [(str "metabase://database/" db-id "/tables?page=999")]})]
           (is (=? {:resources [{:error string?}]} result)))))))
 
+(deftest pagination-copied-xml-uri-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Paging" :location "/"}]
+      (t2/insert! :model/Collection
+                  (for [i (range 60)]
+                    {:name     (format "Child-%02d" i)
+                     :location (str "/" parent-id "/")}))
+      (let [read-page     (fn [uri] (test-util/call-tool read-resource/read-resource-tool {:uris [uri]}))
+            page-1        (read-page "metabase://collections?tree=true")
+            next-page-uri (second (re-find #"Fetch (\S+) for the next page" (:output page-1)))
+            page-2        (read-page next-page-uri)
+            resource-uri  (second (re-find #"<resource uri=\"([^\"]+)\">" (:output page-2)))
+            copied-page-2 (read-page resource-uri)
+            structured-1 (first (:structured-output page-1))
+            structured-2 (first (:structured-output page-2))]
+        (is (> (:total structured-1) 25))
+        (is (= 25 (count (:items structured-1))))
+        (is (= "metabase://collections?tree=true&amp;page=2" next-page-uri))
+        (testing "the URI copied from the note reads the next page"
+          (is (= 2 (:page structured-2)))
+          (is (= 25 (count (:items structured-2))))
+          (is (= "metabase://collections?tree=true&page=3" (:next-page-uri structured-2)))
+          (is (str/includes? (:output page-2) "Fetch metabase://collections?tree=true&amp;page=3"))
+          (is (empty? (set/intersection (set (map :id (:items structured-1)))
+                                        (set (map :id (:items structured-2)))))))
+        (testing "the escaped resource attribute can also be copied as-is"
+          (is (= "metabase://collections?tree=true&amp;page=2" resource-uri))
+          (is (= structured-2 (first (:structured-output copied-page-2)))))))))
+
 (deftest pagination-xml-output-test
   (testing "truncated list XML includes page/pages attrs and a truncation note with next-page URI hint"
     (mt/with-current-user (mt/user->id :crowberto)
