@@ -76,12 +76,13 @@ export const LegendLayout = ({
   isReversed,
 }: LegendLayoutProps) => {
   const hasDimensions = width > 0 && height > 0;
+  const canShowLegend = hasDimensions && hasLegend && legendPosition !== "off";
   const size = getLegendSize({ width, height, isQueryBuilder, isFullscreen });
   const { rootRef, chartAreaRef, chartRoom } = useChartRoom(width, height);
 
   const metrics = useMemo(
     () =>
-      hasDimensions && hasLegend
+      canShowLegend
         ? measureLegend({
             items,
             width,
@@ -94,8 +95,7 @@ export const LegendLayout = ({
           })
         : null,
     [
-      hasDimensions,
-      hasLegend,
+      canShowLegend,
       items,
       width,
       height,

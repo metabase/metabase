@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen, within } from "__support__/ui";
+import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
@@ -21,6 +22,7 @@ interface SetupOpts {
   height?: number;
   isQueryBuilder?: boolean;
   actionButtons?: React.ReactNode;
+  measureLabel?: TextWidthMeasurer;
 }
 
 const setup = ({
@@ -30,6 +32,7 @@ const setup = ({
   height = 300,
   isQueryBuilder,
   actionButtons,
+  measureLabel = measureText,
 }: SetupOpts) => {
   render(
     <LegendLayout
@@ -41,7 +44,7 @@ const setup = ({
       isQueryBuilder={isQueryBuilder}
       actionButtons={actionButtons}
       fontFamily="Lato"
-      measureText={measureText}
+      measureText={measureLabel}
     >
       <div data-testid="chart" />
     </LegendLayout>,
@@ -144,6 +147,13 @@ describe("LegendLayout with an explicit position", () => {
     setup({ names: ["first", "second"], legendPosition: "off" });
 
     expectNoLegend();
+  });
+
+  it("should not measure the legend labels when the position is off", () => {
+    const measureLabel = jest.fn(measureText);
+    setup({ names: ["first", "second"], legendPosition: "off", measureLabel });
+
+    expect(measureLabel).not.toHaveBeenCalled();
   });
 
   it("should render a bottom legend on a short card", () => {
