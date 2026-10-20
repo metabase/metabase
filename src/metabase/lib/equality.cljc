@@ -218,11 +218,19 @@ are known to be the same."
   [[_ref-kind {:keys [join-alias source-field source-field-name
                       source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
-  (if source-field
+  (cond
+    source-field
     (and (clojure.core/= source-field (:fk-field-id column))
          ;; `source-field-name` is not available on old refs
          (or (nil? source-field-name) (clojure.core/= source-field-name (:fk-field-name column)))
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))
+
+    source-field-name
+    (and (some? (:fk-field-id column))
+         (clojure.core/= source-field-name (:fk-field-name column))
+         (clojure.core/= source-field-join-alias (:fk-join-alias column)))
+
+    :else
     (clojure.core/= (column-join-alias column) join-alias)))
 
 (defn- plausible-matches-for-name-no-join-alias [ref-name columns]
@@ -289,14 +297,16 @@ are known to be the same."
       (plausible-matches columns-from-join))))
 
 (mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [[_ref-kind opts ref-name :as _a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
-  (or (when-let [join-alias (:join-alias opts)]
-        (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
-            ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
-            (do (log/warn "Failed to find match for column with its join alias, looking for match without join alias...")
-                nil)))
-      (plausible-matches-for-name-no-join-alias ref-name columns)))
+  (if (lib.util/implicit-join-options? opts)
+    (plausible-matches-for-name-no-join-alias ref-name (filter #(matching-join? a-ref %) columns))
+    (or (when-let [join-alias (:join-alias opts)]
+          (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
+              ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
+              (do (log/warn "Failed to find match for column with its join alias, looking for match without join alias...")
+                  nil)))
+        (plausible-matches-for-name-no-join-alias ref-name columns))))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
@@ -540,13 +550,15 @@ are known to be the same."
                       ;; same stage match, use SOURCE COLUMN ALIAS!!!! IF YOU ARE NOT CLEAR ON WHY, TALK TO YOUR BOY
                       ;; CAM!!!!
                       (let [col-join-alias      (lib.join.util/current-join-alias column)
-                            col-source-field    (:fk-field-id column)
                             source-column-alias ((some-fn :lib/source-column-alias :name) column)]
                         (filter (fn [a-ref]
-                                  (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
-                                       (clojure.core/= (:source-field (lib.options/options a-ref)) col-source-field)
-                                       (some #(clojure.core/= (ref-id-or-name a-ref) %)
-                                             [(:id column) source-column-alias])))
+                                  (let [opts (lib.options/options a-ref)]
+                                    (and (clojure.core/= (:join-alias opts) col-join-alias)
+                                         (if (lib.util/implicit-join-options? opts)
+                                           (matching-join? a-ref column)
+                                           (nil? (:fk-field-id column)))
+                                         (some #(clojure.core/= (ref-id-or-name a-ref) %)
+                                               [(:id column) source-column-alias]))))
                                 refs))
                       [])]
     (case (count matches)

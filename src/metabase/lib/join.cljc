@@ -372,7 +372,7 @@
                         ;;
                         ;; TODO (Cam 8/29/25) -- investigate how this is happening and consider whether Join `:fields`
                         ;; should disallow refs with `:source-field`/remove it automatically.
-                        :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
+                        :let      [field-ref (lib.options/update-options field-ref #(apply dissoc % lib.util/implicit-join-option-keys))
                                    match (or (lib.equality/find-matching-column field-ref cols)
                                              (when-let [resolved (lib.metadata.calculation/metadata (-> (assoc query :stages (:stages join))
                                                                                                         lib.stage.util/append-stage)
@@ -536,7 +536,7 @@
     (into []
           (remove (fn [a-ref]
                     (lib.equality/find-matching-column
-                     (lib.options/update-options a-ref dissoc :join-alias :source-field) cols)))
+                     (lib.options/update-options a-ref #(apply dissoc % :join-alias lib.util/implicit-join-option-keys)) cols)))
           (concat field-refs cond-refs))))
 
 (mu/defn with-join-source-fields :- ::lib.join.util/partial-join

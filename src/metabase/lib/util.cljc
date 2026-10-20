@@ -86,6 +86,16 @@
   [clause]
   (clause-of-type? clause :field))
 
+(defn implicit-join-options?
+  "Whether `opts` of a `:field` ref refer to a column of an implicit join, which names its FK column with
+  `:source-field-name` (or with a Field ID in legacy `:source-field`)."
+  [opts]
+  (boolean (or (:source-field opts) (:source-field-name opts))))
+
+(def implicit-join-option-keys
+  "The keys of `:field` ref options that identify the FK column of an implicit join."
+  [:source-field :source-field-name :source-field-join-alias])
+
 (defn ref-clause?
   "Returns true if this is any sort of reference clause"
   [clause]

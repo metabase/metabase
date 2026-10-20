@@ -742,7 +742,7 @@
   (let [fields (:fields (lib.util/query-stage query stage-number))]
     (and fields
          ;; Quick first check: if there are any implicitly-joined fields, it's not the default list.
-         (not (some (comp :source-field lib.options/options) fields))
+         (not (some (comp lib.util/implicit-join-options? lib.options/options) fields))
          (lib.equality/matching-column-sets? query stage-number fields
                                              (lib.metadata.calculation/default-columns-for-stage query stage-number)))))
 

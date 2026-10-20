@@ -22,9 +22,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.source-swap.core :as source-swap]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.match :as match]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,15 +34,6 @@
       lib.schema.util/remove-lib-uuids
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)
       json/encode))
-
-(defn- canonicalize-clause-for-storage
-  "Like [[canonicalize-for-storage]], but first regenerates every `:field` ref in `clause` from the column it resolves to
-  in stage `stage-number` of `query`, so refs written in different styles (by Field ID or by name) to the same column
-  are stored the same way."
-  [query stage-number clause]
-  (canonicalize-for-storage
-   (match/replace clause
-     [:field & _] (lib/ref (lib/metadata query stage-number &match)))))
 
 (defn query-source-table-or-card
   "Returns the source of a query (table or card ID), or `nil` if none."
@@ -116,7 +107,7 @@
   (let [root-owner (query-source-table-or-card query)
         field-refs (field-participants-of-clause query stage-number root-owner clause)
         owners     (set (map :owner field-refs))
-        predicate  (canonicalize-clause-for-storage query stage-number clause)]
+        predicate  (canonicalize-for-storage clause)]
     (cond
       (empty? field-refs)
       []
@@ -187,8 +178,8 @@
     (when (>= atom-count 2)
       (let [root-owner       (query-source-table-or-card query)
             synthetic-and    (apply lib/and atoms)
-            canonical-clause (canonicalize-clause-for-storage query stage-number synthetic-and)
-            canonical-atoms  (vec (sort (map (partial canonicalize-clause-for-storage query stage-number) atoms)))
+            canonical-clause (canonicalize-for-storage synthetic-and)
+            canonical-atoms  (vec (sort (map canonicalize-for-storage atoms)))
             field-refs       (into []
                                    (comp (mapcat (partial field-participants-of-clause query stage-number root-owner))
                                          (distinct))
@@ -298,16 +289,18 @@
           (or (lib/breakouts query stage-number) []))))
 
 (defn extract-usage-facts
-  "Extract fact-level usage tuples from a normalized MBQL query."
+  "Extract fact-level usage tuples from a normalized MBQL query. Field refs are upgraded first, so the same column
+  referenced in different ref styles yields the same facts."
   [query]
-  (reduce
-   (fn [{:keys [segments composites metrics dimensions]} stage-number]
-     {:segments   (into segments (segment-facts-for-stage query stage-number))
-      :composites (into composites (composite-facts-for-stage query stage-number))
-      :metrics    (into metrics (metric-facts-for-stage query stage-number))
-      :dimensions (into dimensions (dimension-facts-for-stage query stage-number))})
-   {:segments   []
-    :composites []
-    :metrics    []
-    :dimensions []}
-   (range (lib/stage-count query))))
+  (let [query (source-swap/upgrade-field-refs-in-query query)]
+    (reduce
+     (fn [{:keys [segments composites metrics dimensions]} stage-number]
+       {:segments   (into segments (segment-facts-for-stage query stage-number))
+        :composites (into composites (composite-facts-for-stage query stage-number))
+        :metrics    (into metrics (metric-facts-for-stage query stage-number))
+        :dimensions (into dimensions (dimension-facts-for-stage query stage-number))})
+     {:segments   []
+      :composites []
+      :metrics    []
+      :dimensions []}
+     (range (lib/stage-count query)))))
