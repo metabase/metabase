@@ -668,7 +668,7 @@
   ;; Connection details are never exported. Import is unconditional.
   (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
-    {:copy      [:auto_run_queries :caveats :dbms_version
+    {:copy      [:auto_run_queries :caveats
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
                  :default_schema :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
@@ -678,13 +678,16 @@
                  :initial_sync_error
                  ;; randomized per instance, unless connection details we never export let the user schedule syncs
                  :cache_field_values_schedule
-                 :metadata_sync_schedule]
+                 :metadata_sync_schedule
+                 ;; detected by sync, and set again by the importing instance's sync
+                 :dbms_version]
      :transform {:details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
-                 :initial_sync_status {:export identity :import (constantly "complete")}
+                 :initial_sync_status {:export-with-context (fn [_current _ _status] ::serdes/skip)
+                                       :import              (constantly "complete")}
                  ;; Never trust an archive's `is_sample`: the real Sample Database is excluded from export
                  ;; ([[warehouses.db/databases-for-serdes-reducible]]), so any incoming `is_sample true` is forged --
                  ;; and marking an imported row as the sample DB would let it ride sample-only code paths. Import false.

@@ -1014,6 +1014,20 @@
       (testing "the owner is exported by email, not by local id"
         (is (= "owner@example.com" (:owner_user_id (ts/extract-one "Table" table-id))))))))
 
+(deftest sync-state-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id :id}    {:name                        "My Database"
+                                                       :dbms_version                {:version "14.0"}
+                                                       :initial_sync_status         "incomplete"
+                                                       :metadata_sync_schedule      "0 10 * * * ? *"
+                                                       :cache_field_values_schedule "0 0 16 * * ? *"}
+                       :model/Table    {table-id :id} {:name "My Table" :db_id db-id :initial_sync_status "incomplete"}]
+      (testing "what sync detects or schedules on the exporting instance is not exported"
+        (is (= #{} (set (keys (select-keys (ts/extract-one "Database" db-id)
+                                           [:dbms_version :initial_sync_status :metadata_sync_schedule
+                                            :cache_field_values_schedule])))))
+        (is (not (contains? (ts/extract-one "Table" table-id) :initial_sync_status)))))))
+
 (deftest setting-from-env-var-test
   (let [exported-site-name #(some (fn [{k :key v :value}] (when (= :site-name k) [v]))
                                   (serdes/extract-all "Setting" {}))]

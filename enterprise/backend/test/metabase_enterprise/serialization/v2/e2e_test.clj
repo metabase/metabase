@@ -297,7 +297,7 @@
                              clean-entity)))))
               (testing "for Databases"
                 (doseq [{:keys [name] :as db} (get @entities "Database")]
-                  (is (= (assoc (clean-entity db) :initial_sync_status "complete")
+                  (is (= (clean-entity db)
                          (-> (ts/extract-one "Database" [:= :name name])
                              clean-entity)))))
               (testing "for Tables"
