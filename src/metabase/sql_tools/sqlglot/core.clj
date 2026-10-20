@@ -10,6 +10,7 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -51,6 +52,28 @@
     ;; Default: try using the driver name as dialect
     (name driver)))
 
+(def ^:private shadow-backends
+  "Each shadow backend, as the backend that answers and the backend compared with it in the background."
+  {:sqlglot-shadow      [:sqlglot :sqlglot-java]
+   :sqlglot-java-shadow [:sqlglot-java :sqlglot]})
+
+(defn- sample?
+  [_method]
+  (< (rand) (sql-tools.settings/sql-tools-parser-shadow-sample-rate)))
+
+(def ^:private shadow-parsers
+  "One parser per shadow backend for the life of the process: each owns the thread pool its comparisons run on."
+  (update-vals shadow-backends
+               (fn [[primary shadow]]
+                 (delay (sql-parsing/shadow-parser primary shadow sample?)))))
+
+(defn parser
+  "The [[metabase.sql-parsing.core/parser]] for sqlglot `backend`, including the shadow backends."
+  [backend]
+  (if-let [shadow-parser (shadow-parsers backend)]
+    @shadow-parser
+    (sql-parsing/parser backend)))
+
 ;;;; Tables
 
 (defn- referenced-tables
@@ -58,7 +81,7 @@
   (try
     (let [sql (lib/raw-native-query query)
           default-schema (:default-schema (lib.metadata/database query))
-          query-tables (sql-parsing/referenced-tables (sql-parsing/parser backend) (driver->dialect driver) sql)
+          query-tables (sql-parsing/referenced-tables (parser backend) (driver->dialect driver) sql)
           specs (map (fn [[_catalog table-schema table]]
                        (sql-tools.common/normalize-table-spec
                         driver {:table table
@@ -114,7 +137,7 @@
 
 (defmethod sql-tools/field-references-impl :sqlglot
   [backend driver sql-string]
-  (let [result (sql-parsing/field-references (sql-parsing/parser backend) (driver->dialect driver) sql-string)]
+  (let [result (sql-parsing/field-references (parser backend) (driver->dialect driver) sql-string)]
     (-> result
         (update :used-fields #(set (map (partial normalize-field driver) %)))
         (update :returned-fields #(mapv (partial normalize-field driver) %))
@@ -151,7 +174,7 @@
           ;; via normalize-table-spec would incorrectly lowercase Snowflake identifiers, breaking
           ;; AppDB lookups where identifiers are stored in their native case.
           ;; This matches the Macaw implementation which also returns raw identifiers.
-          table-tuples (sql-parsing/referenced-tables (sql-parsing/parser backend) dialect sql-str)]
+          table-tuples (sql-parsing/referenced-tables (parser backend) dialect sql-str)]
       (mapv (fn [[_catalog schema table]]
               {:schema schema :table table})
             table-tuples))
@@ -165,14 +188,14 @@
   [backend sql-string]
   (try
     ;; No dialect available from caller, use nil for SQLGlot's default dialect
-    (sql-parsing/simple-query? (sql-parsing/parser backend) nil sql-string)
+    (sql-parsing/simple-query? (parser backend) nil sql-string)
     (catch Exception e
       (log/debugf "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
 (defmethod sql-tools/add-into-clause-impl :sqlglot
   [backend driver sql table-name]
-  (sql-parsing/add-into-clause (sql-parsing/parser backend) (driver->dialect driver) sql table-name))
+  (sql-parsing/add-into-clause (parser backend) (driver->dialect driver) sql table-name))
 
 (defmethod sql-tools/replace-names-impl :sqlglot
   [backend driver sql-string replacements _opts]
@@ -181,8 +204,8 @@
   (let [replacements' (-> replacements
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
-    (sql-parsing/replace-names (sql-parsing/parser backend) (driver->dialect driver) sql-string replacements')))
+    (sql-parsing/replace-names (parser backend) (driver->dialect driver) sql-string replacements')))
 
 (defmethod sql-tools/transpile-sql-impl :sqlglot
   [backend sql from-dialect to-dialect]
-  (sql-parsing/transpile-sql (sql-parsing/parser backend) sql from-dialect to-dialect))
+  (sql-parsing/transpile-sql (parser backend) sql from-dialect to-dialect))

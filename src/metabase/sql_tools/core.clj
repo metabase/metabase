@@ -237,7 +237,7 @@
   they use GraalPy."
   []
   (let [backend (sql-tools.settings/current-parser-backend)]
-    (sql-parsing/parser (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot))))
+    (sqlglot/parser (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot))))
 
 (defn is-single-stmt-of-type?
   "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
