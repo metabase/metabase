@@ -164,6 +164,8 @@ export type SeriesSettings = {
   "line.hidden"?: boolean;
   /** Prototype: draw the bars of this series half-transparent, behind the bars of other series. */
   "bar.behind"?: boolean;
+  /** Prototype: leave this series out of the legend. */
+  "legend.hidden"?: boolean;
   show_series_trendline?: boolean;
   "trendline.color"?: string;
   "trendline.style"?: LineStyle;

@@ -628,15 +628,62 @@ const DIFFERENCE_DISPLAYS: Partial<Record<string, CardDisplayType>> = {
   line: "area",
 };
 
-const INCREASE_COLUMN = "onion_skin_increase";
-const DECREASE_COLUMN = "onion_skin_decrease";
+interface ChangeColumn {
+  name: string;
+  isIncrease: boolean;
+  // When the value changes sign, the change has a part on each side of zero.
+  isOtherSide: boolean;
+}
+
+const CHANGE_COLUMNS: readonly ChangeColumn[] = [
+  { name: "onion_skin_increase", isIncrease: true, isOtherSide: false },
+  { name: "onion_skin_decrease", isIncrease: false, isOtherSide: false },
+  { name: "onion_skin_increase_other", isIncrease: true, isOtherSide: true },
+  { name: "onion_skin_decrease_other", isIncrease: false, isOtherSide: true },
+];
+
+/**
+ * The values of the stacked parts for one dimension value: the part that both
+ * values share, then one value for each of CHANGE_COLUMNS. Positive and
+ * negative values stack separately from zero, so the parts have the sign of
+ * the side of zero they are on.
+ */
+function getDifferenceParts(
+  currentValue: number,
+  previewValue: number,
+): number[] {
+  const isIncrease = previewValue > currentValue;
+  const isSameSide = currentValue * previewValue >= 0;
+  const sharedValue = !isSameSide
+    ? 0
+    : Math.abs(currentValue) < Math.abs(previewValue)
+      ? currentValue
+      : previewValue;
+  const otherValue = sharedValue === currentValue ? previewValue : currentValue;
+  // If the sign changes, nothing is shared: the change goes from zero to the
+  // preview value on one side, and from zero to the current value on the other.
+  const change = isSameSide ? otherValue - sharedValue : previewValue;
+  const otherSideChange = isSameSide ? 0 : currentValue;
+
+  return [
+    sharedValue,
+    ...CHANGE_COLUMNS.map((column) =>
+      column.isIncrease !== isIncrease
+        ? 0
+        : column.isOtherSide
+          ? otherSideChange
+          : change,
+    ),
+  ];
+}
 
 /**
  * Shows `series` and `currentSeries` as one stacked chart: for each dimension
- * value, the lower of the two values, and on top of it the increase (green) or
- * the decrease (red) from the current value to the preview value. A dimension
- * value that only one of the results has counts as 0 in the other. Only for bar,
- * row and line charts with one dimension and one metric.
+ * value, the part that both values share, and next to it the change from the
+ * current value to the preview value, green for an increase and red for a
+ * decrease. A dimension value that only one of the results has counts as 0 in
+ * the other. Only for bar, row and line charts with one dimension and one
+ * metric.
  */
 function withDifference(
   series: RawSeries,
@@ -692,13 +739,17 @@ function withDifference(
   }
 
   const rows = dimensionValues.map((value) => {
-    const currentValue = currentValues.get(value) ?? 0;
-    const previewValue = previewValues.get(value) ?? 0;
+    const parts = getDifferenceParts(
+      currentValues.get(value) ?? 0,
+      previewValues.get(value) ?? 0,
+    );
+    // Bars have a minimum height, so an empty part must be null, not 0, or it
+    // shows as a thin line. Stacked areas need 0 to stay continuous.
     return [
       value,
-      Math.min(currentValue, previewValue),
-      Math.max(previewValue - currentValue, 0),
-      Math.max(currentValue - previewValue, 0),
+      ...(display === "area"
+        ? parts
+        : parts.map((part) => (part === 0 ? null : part))),
     ];
   });
 
@@ -715,26 +766,26 @@ function withDifference(
           "graph.dimensions": [dimensionColumn.name],
           "graph.metrics": [
             metricColumn.name,
-            INCREASE_COLUMN,
-            DECREASE_COLUMN,
+            ...CHANGE_COLUMNS.map((column) => column.name),
           ],
           "stackable.stack_type": "stacked",
           series_settings: {
             ...settings.series_settings,
-            [INCREASE_COLUMN]: {
-              title: t`Increase`,
-              color: colors["feedback-positive"],
-              // A zero increase or decrease would draw its line over the
-              // line of the lower value.
-              "line.hidden": true,
-            },
-            [DECREASE_COLUMN]: {
-              title: t`Decrease`,
-              color: colors["feedback-negative"],
-              // A zero increase or decrease would draw its line over the
-              // line of the lower value.
-              "line.hidden": true,
-            },
+            ...Object.fromEntries(
+              CHANGE_COLUMNS.map((column) => [
+                column.name,
+                {
+                  title: getChangeTitle(column),
+                  color: column.isIncrease
+                    ? colors["feedback-positive"]
+                    : colors["feedback-negative"],
+                  // A zero change would draw its line over the line of the
+                  // shared part.
+                  "line.hidden": true,
+                  "legend.hidden": column.isOtherSide,
+                },
+              ]),
+            ),
           },
         },
       },
@@ -743,21 +794,20 @@ function withDifference(
         cols: [
           dimensionColumn,
           metricColumn,
-          {
+          ...CHANGE_COLUMNS.map((column) => ({
             ...metricColumnWithoutRef,
-            name: INCREASE_COLUMN,
-            display_name: t`Increase`,
-          },
-          {
-            ...metricColumnWithoutRef,
-            name: DECREASE_COLUMN,
-            display_name: t`Decrease`,
-          },
+            name: column.name,
+            display_name: getChangeTitle(column),
+          })),
         ],
         rows,
       },
     },
   ];
+}
+
+function getChangeTitle(column: ChangeColumn): string {
+  return column.isIncrease ? t`Increase` : t`Decrease`;
 }
 
 function getMetricValues(
