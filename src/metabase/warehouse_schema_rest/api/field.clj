@@ -211,7 +211,7 @@
     (let [updated (warehouse-schema-rest.db/field id)]
       (u/prog1 (-> updated
                    (t2/hydrate :dimensions :has_field_values)
-                   (field/hydrate-target-with-write-perms))
+                   (schema.field/hydrate-target-with-data-model-perms))
         (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})

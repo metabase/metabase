@@ -139,7 +139,7 @@
   :- [:map {:closed false}
       [:data_authority ::data-authority-read]]
   (let [api-perm-check-fn (if include_editable_data_model
-                            api/write-check
+                            schema.table/check-data-model-perms
                             api/read-check)]
     (-> (api/check-404 (warehouse-schema-rest.db/table id))
         api-perm-check-fn
@@ -320,8 +320,9 @@
    Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
    Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
-   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
-   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+   Passing `include_editable_data_model=true` will check that the current user has data model editing permissions for
+   the table, even if the table is read-only right now, while `false` checks that they have data access perms for the
+   table. Defaults to `false`.
 
    These options are provided for use in the Admin Edit Metadata page."
   {:scope api-scope/data-app}

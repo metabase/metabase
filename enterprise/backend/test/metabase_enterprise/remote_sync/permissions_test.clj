@@ -434,6 +434,36 @@
                                 {:is_published false
                                  :collection_id nil})))))))))))
 
+(deftest table-data-model-read-only-test
+  (testing "admins can read the data model of published tables in remote-synced collections when remote-sync-type is read-only"
+    (doseq [features [#{} #{:advanced-permissions}]]
+      (testing (str "features: " features)
+        (mt/with-premium-features features
+          (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+            (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}]
+              (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id coll-id}
+                (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:visibility_type :sensitive}
+                  (is (false? (mi/can-write? (t2/select-one :model/Table (mt/id :venues)))))
+                  (is (= (mt/id :venues)
+                         (:id (mt/user-http-request :crowberto :get 200 (str "table/" (mt/id :venues))
+                                                    :include_editable_data_model true))))
+                  (is (contains? (into #{} (map :id)
+                                       (:fields (mt/user-http-request :crowberto :get 200
+                                                                      (str "table/" (mt/id :venues) "/query_metadata")
+                                                                      :include_sensitive_fields true
+                                                                      :include_editable_data_model true)))
+                                 (mt/id :venues :name)))
+                  (is (= (mt/id :venues :name)
+                         (:id (mt/user-http-request :crowberto :get 200 (str "field/" (mt/id :venues :name))
+                                                    :include_editable_data_model true))))
+                  (is (= (mt/id :venues :id)
+                         (get-in (mt/user-http-request :crowberto :get 200 (str "field/" (mt/id :checkins :venue_id))
+                                                       :include_editable_data_model true)
+                                 [:target :id])))
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 (str "table/" (mt/id :venues))
+                                               :include_editable_data_model true))))))))))))
+
 ;;; ------------------------------------------------ Field Remote Sync Tests ------------------------------------------------
 
 (deftest field-remote-synced-permissions-read-only-test
