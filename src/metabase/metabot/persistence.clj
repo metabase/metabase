@@ -113,6 +113,17 @@
                                        {:type (:type part)})
                              nil))))))))
 
+(def ^:private context-part-type
+  "The type of the data part, first in an assistant row, that holds the `<context>` block the agent sent before the
+  turn's user message. Its data is `{:block <the block> :full <whether it holds all of the context>}`. History puts
+  the block back before the message, and the chat UI does not show it."
+  "data-context")
+
+(defn- stored-context
+  "The data of the `<context>` part stored in the assistant `row`, or nil."
+  [row]
+  (some #(when (= context-part-type (:type %)) (:data %)) (:data row)))
+
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to the v2 at-rest format.
   Stream metadata (`:usage`/`:finish`/`:error`), `:reasoning`, and `state` data parts
@@ -422,9 +433,15 @@
      at completion (Slack response posts mid-stream).
   - `:context-window-tokens` — window of the model the turn ran on. When the turn
      stopped at `length` with its context at or past it, `context_window_full` is
-     set, so the turn reads as full later whatever model is configured then."
+     set, so the turn reads as full later whatever model is configured then.
+  - `:context-block` — the `<context>` block the agent sent before the user's message.
+     It is stored as the row's first part, so that [[history]] replays the message
+     with the same bytes and the provider can read it from its prompt cache.
+  - `:full-context?` — whether `:context-block` holds all of the context, not only what
+     the user is viewing (see [[replays-full-context?]])."
   [assistant-msg-id parts
-   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens]
+   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens context-block
+             full-context?]
       :or   {finished? true}}]
   (let [turn-state     (not-empty turn-state)
         usage          (extract-usage parts)
@@ -435,7 +452,9 @@
         kept-parts     (->> parts
                             (remove #(#{:start :usage :finish :error} (:type %)))
                             (filter streaming/persistable-data-part?))
-        content        (parts->storable-content parts)]
+        content        (cond->> (parts->storable-content parts)
+                         context-block (into [{:type context-part-type
+                                               :data {:block context-block :full (boolean full-context?)}}]))]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
@@ -527,9 +546,10 @@
        str/join))
 
 (defn- user-row->llm-message
-  [message]
+  "The user's message as the agent sent it: the `<context>` block stored with the `reply`, if any, then the text."
+  [message reply]
   {:role    :user
-   :content (message-text message)})
+   :content (str (:block (stored-context reply)) (message-text message))})
 
 (defn- assistant-row->llm-messages
   [{:keys [data]}]
@@ -582,8 +602,19 @@
   [turn-rows]
   (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
     (let [user-row (u/seek user-row? rows)]
-      (concat (when user-row [(user-row->llm-message user-row)])
+      (concat (when user-row [(user-row->llm-message user-row reply)])
               (assistant-row->llm-messages reply)))))
+
+(defn replays-full-context?
+  "Whether the [[history]] of `messages` replays a full `<context>` block, one that holds all of the context. The
+  agent sends that block in the first turn of a conversation. Later turns send only what the user is viewing (see
+  `metabase.metabot.agent.messages/render-context-block`). A history has no full block when the conversation is new,
+  when its first turn failed, or when its earlier turns were stored before the agent stored their blocks: then the
+  next turn sends one."
+  [messages]
+  (boolean (some (fn [turn-rows]
+                   (some-> (replayable-turn turn-rows) :reply stored-context :full))
+                 (rows->turns messages))))
 
 (mu/defn history :- ::metabot.schema/messages
   "Reconstruct a conversation's LLM message history from its live
@@ -644,6 +675,10 @@
       ;; pre-v2 chat shape the FE renders
       (= "output-error" (:state part))
       (assoc :result nil :is_error true))
+
+    ;; the `<context>` block is what the model read, not part of the chat
+    (= context-part-type (:type part))
+    nil
 
     (schema.v2/data-part? part)
     {:id   (str (random-uuid))

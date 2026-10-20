@@ -151,17 +151,33 @@
   [steps]
   (into [] (mapcat step->parts) steps))
 
+(defn render-context-block
+  "The `<context>` block for the most recent input message, rendered from `context`, or nil when that message is not
+  the user's or the context has nothing to show. This reads the app DB: the agent renders it once per turn and keeps
+  it in memory (see [[memory/set-context-block]]).
+
+  A `full?` block holds all of the context: the current time, the user and the glossary, what the user is viewing,
+  and the recent views. The first turn of a conversation sends it. A later turn sends only what the user is viewing,
+  because the history replays the first block and the rest of the context does not change materially from turn to
+  turn."
+  ([context memory]
+   (render-context-block context memory true))
+  ([context memory full?]
+   (when (= :user (:role (last (memory/get-input-messages memory))))
+     (prompts/context-injection (if full?
+                                  (user-context/enrich-context-for-template context)
+                                  {:viewing_context (user-context/format-viewing-context context)})))))
+
 (defn- messages-with-injected-context
-  "Returns messages from memory and injects context into the most recent one."
+  "Returns messages from memory with the turn's `<context>` block put before the most recent one. The block is the
+  one memory keeps, or one rendered from `context` when memory keeps none."
   [context memory]
-  (let [all-messages (memory/get-input-messages memory)
-        [input-messages [most-recent-message]] (split-at (dec (count all-messages))  all-messages)]
-    (if-not (and (= :user (-> most-recent-message :role))
-                 (< 0 (count all-messages)))
-      all-messages
-      (let [enriched-context (user-context/enrich-context-for-template context)]
-        (conj (vec input-messages)
-              (update most-recent-message :content (partial prompts/inject-context enriched-context)))))))
+  (let [all-messages (vec (memory/get-input-messages memory))
+        block        (if (memory/context-block-rendered? memory)
+                       (memory/context-block memory)
+                       (render-context-block context memory))]
+    (cond-> all-messages
+      block (update (dec (count all-messages)) update :content #(str block %)))))
 
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
