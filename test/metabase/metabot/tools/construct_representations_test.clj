@@ -2389,6 +2389,37 @@
   [table-key field-key]
   (lib.metadata/field (mt/metadata-provider) (mt/id table-key field-key)))
 
+(deftest metric-on-a-model-over-the-model-base-table-test
+  (testing "a metric defined on a model and aggregated over the model's base table"
+    (mt/with-temp [:model/Card {model-id :id, model-eid :entity_id} {:name          "Orders model"
+                                                                     :type          :model
+                                                                     :dataset_query (table-query :orders)}
+                   :model/Card {metric-id :id, metric-eid :entity_id} {:name          "Order count"
+                                                                       :type          :metric
+                                                                       :dataset_query (card-count-query model-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "fails in the query processor"
+          (let [mp (mt/metadata-provider)]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Incompatible metric"
+                                  (qp/process-query (lib/aggregate (table-query :orders)
+                                                                   (lib.metadata/metric mp metric-id)))))))
+        (testing "so the tool refuses it with an error the model can act on"
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.recoverable.pipeline/incompatible-metric
+                   :text  (str "These metrics cannot be used on this stage's source: \"Order count\" (needs "
+                               "source-card: \"" model-eid "\"). A metric only works on the source it was "
+                               "defined on, so the stage must use that source. Either change the stage's "
+                               "source-table:/source-card: to the one shown for each metric, or drop the metric "
+                               "and express the aggregation directly.")}
+                  (test-util/tool-failure construct/construct-notebook-query-tool
+                                          {:query (metric-query-data {"source-table" (orders-source-table-fk)}
+                                                                     metric-eid)}))))
+        (testing "and the query built on the model, as the error says, runs"
+          (let [query (-> (construct/execute-representations-query
+                           (metric-query-data {"source-card" model-eid} metric-eid))
+                          (get-in [:structured-output :query]))]
+            (is (= [[18760]] (mt/rows (qp/process-query query))))))))))
+
 (deftest metric-with-unreadable-definition-is-rejected-on-any-source-test
   (testing (str "A metric whose stored definition is blank -- what MBQL 4->5 conversion failures ship -- splices into\n"
                 "no source, so the QP fails on all of them. The gate rejects it with a retryable agent error that\n"
