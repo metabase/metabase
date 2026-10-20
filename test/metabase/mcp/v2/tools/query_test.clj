@@ -926,20 +926,25 @@
 
 (deftest ^:parallel malformed-clauses-name-the-offending-path-test
   (mt/with-current-user (mt/user->id :rasta)
-    (let [post-agg {:aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]]}]
-      (doseq [[label k stage] [["a number as `aggregation`" "aggregation" {:aggregation 42}]
-                               ["an empty aggregation clause, sorted by an empty clause" "aggregation"
-                                {:aggregation [[]] :order-by [["desc" {} []]]}]
-                               ["a number as `joins`" "joins" {:joins 42}]
-                               ["a number as `order-by`, beside a post-aggregation filter" "order-by"
-                                (assoc post-agg :order-by 42)]
-                               ["a number as `fields`, beside a post-aggregation filter" "fields"
-                                (assoc post-agg :fields 42)]]]
+    (let [orders   (first (:stages (numeric-orders-query)))
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label path stages] [["a number as `aggregation`" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation 42)]]
+                                   ["an empty aggregation clause, sorted by an empty clause" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]]
+                                   ["a number as `joins`" "[0] \"joins\":"
+                                    [(assoc orders :joins 42)]]
+                                   ["a number as `order-by`, beside a post-aggregation filter" "[0] \"order-by\":"
+                                    [(assoc post-agg :order-by 42)]]
+                                   ["a number as `fields`, beside a post-aggregation filter" "[0] \"fields\":"
+                                    [(assoc post-agg :fields 42)]]
+                                   ["a number as a later stage" "[1]" [orders 42]]
+                                   ["an aggregation list as a later stage" "[1]" [orders [["count" {}]]]]]]
         (testing label
           (is (str/starts-with? (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
-                                                                {:query (numeric-orders-query stage)}))
+                                                                {:query {:lib/type "mbql/query" :stages stages}}))
                                 (str "\"Representations query has an invalid structure.\" "
-                                     "Invalid at \"stages\": [0] \"" k "\": "))))))))
+                                     "Invalid at \"stages\": " path " "))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest repair-forgiven-shortcuts-still-execute-test

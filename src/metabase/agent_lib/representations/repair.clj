@@ -1762,6 +1762,10 @@
   [stage]
   (let [aggs (get stage "aggregation")]
     (cond
+      ;; Not a stage map - left for validation to report.
+      (not (map? stage))
+      stage
+
       ;; No integer refs anywhere in the stage - nothing to do.
       (not (stage-has-integer-agg-ref? stage))
       stage
@@ -2768,7 +2772,8 @@
              q query]
         (if (>= i n)
           q
-          (let [cols (mini-resolved-columns mp q i content-store)
+          (let [cols (when (map? (get-in q ["stages" i]))
+                       (mini-resolved-columns mp q i content-store))
                 q'   (if cols
                        (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols)
                        q)]

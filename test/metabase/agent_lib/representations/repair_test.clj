@@ -3005,28 +3005,33 @@
                        ["stages" 1 "filters"])))))))
 
 (deftest ^:parallel malformed-clauses-reach-validation-test
-  (testing "a stage key that does not hold its list of clauses gets through repair, so validation can name it"
-    (doseq [[label stage] {"a number as `aggregation`"
-                           {"aggregation" 42}
-                           "an empty aggregation clause, sorted by an empty clause"
-                           {"aggregation" [[]] "order-by" [["desc" {} []]]}
-                           "a number as `joins`"
-                           {"joins" 42}
-                           "a number as `joins`, beside a join-alias reference"
-                           {"joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]]}
-                           "a number as `order-by`, beside a post-aggregation filter"
-                           {"aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]] "order-by" 42}
-                           "a number as `fields`, beside a post-aggregation filter"
-                           {"aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]] "fields" 42}}]
-      (testing label
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Representations query has an invalid structure"
-                              (repr/validate-query
-                               (repair/repair trivial-mp
-                                              {"lib/type" "mbql/query"
-                                               "database" "Sample"
-                                               "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
-                                                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]}
-                                                                  stage)]}))))))))
+  (testing "a malformed stage or stage key gets through repair, so validation can name it"
+    ;; ORDERS has to resolve for the cross-stage pass to reach a later stage
+    (let [orders   {"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders "aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label stages] {"a number as `aggregation`"
+                              [(assoc orders "aggregation" 42)]
+                              "an empty aggregation clause, sorted by an empty clause"
+                              [(assoc orders "aggregation" [[]] "order-by" [["desc" {} []]])]
+                              "a number as `joins`"
+                              [(assoc orders "joins" 42)]
+                              "a number as `joins`, beside a join-alias reference"
+                              [(assoc orders "joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]])]
+                              "a number as `order-by`, beside a post-aggregation filter"
+                              [(assoc post-agg "order-by" 42)]
+                              "a number as `fields`, beside a post-aggregation filter"
+                              [(assoc post-agg "fields" 42)]
+                              "a number as a later stage"            [orders 42]
+                              "a string as a later stage"            [orders "ORDERS"]
+                              "true as a later stage"                [orders true]
+                              "an empty list as a later stage"       [orders []]
+                              "an aggregation list as a later stage" [orders [["count" {}]]]}]
+        (testing label
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Representations query has an invalid structure"
+                                (repr/validate-query
+                                 (repair/repair mp-fks {"lib/type" "mbql/query"
+                                                        "database" "Sample"
+                                                        "stages"   stages})))))))))
 
 ;;; ============================================================
 ;;; Pass 6 - friendly error messages (E1..E6)

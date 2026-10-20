@@ -282,25 +282,29 @@
                (construct-tool-failure-for-thrown e)))))))
 
 (deftest construct-notebook-query-tool-malformed-clauses-test
-  (testing "a stage key that does not hold its list of clauses is an error the model can fix, not the end of the turn"
-    (let [source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]
-          post-agg     {:aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]]}]
+  (testing "a malformed stage or stage key is an error the model can fix, not the end of the turn"
+    (let [orders   {:lib/type     "mbql.stage/mbql"
+                    :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
       (mt/with-current-user (mt/user->id :rasta)
-        (doseq [[label stage] {"a number as `aggregation`"                               {:aggregation 42}
-                               "an empty aggregation clause, sorted by an empty clause"  {:aggregation [[]]
-                                                                                          :order-by    [["desc" {} []]]}
-                               "a number as `joins`"                                     {:joins 42}
-                               "a number as `order-by`, beside a post-aggregation filter" (assoc post-agg :order-by 42)
-                               "a number as `fields`, beside a post-aggregation filter"   (assoc post-agg :fields 42)}]
+        (doseq [[label stages] {"a number as `aggregation`"
+                                [(assoc orders :aggregation 42)]
+                                "an empty aggregation clause, sorted by an empty clause"
+                                [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]
+                                "a number as `joins`"
+                                [(assoc orders :joins 42)]
+                                "a number as `order-by`, beside a post-aggregation filter"
+                                [(assoc post-agg :order-by 42)]
+                                "a number as `fields`, beside a post-aggregation filter"
+                                [(assoc post-agg :fields 42)]
+                                "a number as a later stage"            [orders 42]
+                                "an aggregation list as a later stage" [orders [["count" {}]]]}]
           (testing label
             (is (=? {:class :recoverable
                      :code  :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
                      :text  #"^Representations query has an invalid structure\."}
                     (test-util/tool-failure agent-tools/construct-notebook-query-tool
-                                            {:query       {:lib/type "mbql/query"
-                                                           :stages   [(merge {:lib/type     "mbql.stage/mbql"
-                                                                              :source-table source-table}
-                                                                             stage)]}
+                                            {:query       {:lib/type "mbql/query" :stages stages}
                                              :title       "Orders"
                                              :description "Orders by count."})))))))))
 

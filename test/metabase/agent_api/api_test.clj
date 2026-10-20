@@ -375,7 +375,7 @@
         (is (re-find #"aggregation" (:message response)))))))
 
 (deftest construct-query-rejects-malformed-clauses-test
-  (testing "a stage key that does not hold its list of clauses is a 400 naming the invalid structure, not a 500"
+  (testing "a malformed stage or stage key is a 400 naming the invalid structure, not a 500"
     (doseq [[label query] (let [post-agg (orders-query :aggregation [["count" {}]]
                                                        :filters     [[">" {} ["aggregation" {} 0] 1]])]
                             {"a number as `aggregation`"
@@ -387,7 +387,11 @@
                              "a number as `order-by`, beside a post-aggregation filter"
                              (assoc-in post-agg [:stages 0 :order-by] 42)
                              "a number as `fields`, beside a post-aggregation filter"
-                             (assoc-in post-agg [:stages 0 :fields] 42)})
+                             (assoc-in post-agg [:stages 0 :fields] 42)
+                             "a number as a later stage"
+                             (update (orders-query) :stages conj 42)
+                             "an aggregation list as a later stage"
+                             (update (orders-query) :stages conj [["count" {}]])})
             endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
       (testing (str endpoint ", " label)
         (is (=? {:error "invalid-representations-query"}
