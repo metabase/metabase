@@ -52,6 +52,9 @@
     :model/CardBookmark
     :model/ChannelTemplate
     :model/CollectionBookmark
+    ;; Content Diagnostics findings are scan-snapshot runtime data (its `entity_id` column is a
+    ;; polymorphic reference to the flagged entity, not a serdes NanoID) -- not portable content.
+    :model/ContentDiagnosticsFinding
     :model/ContentTranslation
     :model/DashboardBookmark
     :model/DataAppGroupAssignment
@@ -61,6 +64,7 @@
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/EmbeddingSdkReact18Host
     :model/Exploration
     :model/ExplorationBookmark
     :model/ExplorationQuery
@@ -75,6 +79,7 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/McpFeedback
+    :model/McpGroupPermission
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog

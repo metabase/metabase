@@ -38,6 +38,11 @@
       (is (str/includes? output "Chart Analysis"))
       (is (str/includes? output "Categorical")))))
 
+(deftest ^:parallel analyze-chart-tool-saved-question-test
+  (testing "a saved question's chart config, which carries its description, produces a chart analysis"
+    (let [configs (assoc-in (numeric-series-config) ["c1" :description] "Order counts per product category")]
+      (is (str/includes? (:output (analyze "c1" configs)) "Chart Analysis")))))
+
 (deftest ^:parallel analyze-chart-tool-empty-series-test
   (testing "a chart config with no series is rejected"
     (is (= {:output "This chart has no series data to analyze."}

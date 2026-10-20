@@ -3338,6 +3338,34 @@
           (migrate! :down 62)
           (is (not (column?))))))))
 
+(deftest resolve-pending-custom-viz-plugins-test
+  (testing "v63.m2tnuz, v63.18voz9: custom_viz_plugin rows left in 'pending' by older serialization imports are resolved"
+    (impl/test-migrations ["v63.m2tnuz" "v63.18voz9"] [migrate!]
+      (let [new-plugin! (fn [identifier status & {:as extra}]
+                          (t2/insert-returning-pk! :custom_viz_plugin (merge {:identifier   identifier
+                                                                              :display_name identifier
+                                                                              :status       status
+                                                                              :created_at   :%now
+                                                                              :updated_at   :%now}
+                                                                             extra)))
+            bundle      (.getBytes "pretend tgz bytes" "UTF-8")
+            pending-id  (new-plugin! "pending-viz" "pending" :bundle bundle :bundle_hash "abc")
+            dev-id      (new-plugin! "pending-dev-viz" "pending")
+            active-id   (new-plugin! "active-viz" "active" :bundle bundle :bundle_hash "abc")
+            error-id    (new-plugin! "error-viz" "error" :error_message "stale")]
+        (migrate!)
+        (testing "a pending row with a bundle becomes active"
+          (is (=? {:status "active" :error_message nil}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id pending-id))))
+        (testing "a pending row without a bundle (dev-only plugin) becomes an error"
+          (is (=? {:status "error" :error_message "Bundle is empty"}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id dev-id))))
+        (testing "already resolved rows are untouched"
+          (is (=? {:status "active" :error_message nil}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id active-id)))
+          (is (=? {:status "error" :error_message "stale"}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id error-id))))))))
+
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
     (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
@@ -3729,6 +3757,36 @@
             (is (= 3 (count entity-ids)))
             (is (= 3 (count (set entity-ids))))
             (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))))))))
+
+(deftest timeline-event-timestamp-kept-on-update-test
+  (testing "v65.m2xncr: updating a timeline event keeps its date"
+    (impl/test-migrations ["v65.m2xncr"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-cranes@example.com"
+                                                             :password    "password"
+                                                             :date_joined :%now
+                                                             :entity_id   (u/generate-nano-id)})
+            timeline-id (t2/insert-returning-pk! :timeline {:name       "Crane seasons"
+                                                            :icon       "star"
+                                                            :creator_id user-id
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :entity_id  (u/generate-nano-id)})
+            event-id    (t2/insert-returning-pk! :timeline_event {:name         "Cranes arrive"
+                                                                  :archived     false
+                                                                  :icon         "star"
+                                                                  :timeline_id  timeline-id
+                                                                  :creator_id   user-id
+                                                                  :created_at   :%now
+                                                                  :updated_at   :%now
+                                                                  :timestamp    #t "2027-03-10T00:00:00Z"
+                                                                  :time_matters false
+                                                                  :timezone     "UTC"
+                                                                  :entity_id    (u/generate-nano-id)})
+            event-date  #(t2/select-one-fn :timestamp :timeline_event :id event-id)
+            before      (event-date)]
+        (migrate!)
+        (t2/update! :timeline_event event-id {:archived true})
+        (is (= before (event-date)))))))
 
 (deftest add-library-dashboards-section-test
   (testing "v65.2026-10-06T16:00:00 through v65.2026-10-06T16:00:02: an existing Library gets a Dashboards section with its permissions"

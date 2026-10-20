@@ -44,42 +44,56 @@
     :table (lib.metadata/table metadata-providerable spec-id)
     :card  (lib.metadata/card metadata-providerable spec-id)))
 
-(mu/defn- matches-column? :- :boolean
-  [{:keys [name field-id join-alias source-field-id source-field-join-alias]}
-   :- ::lib.schema.test-spec/test-order-by-spec
-   column :- ::lib.schema.metadata/column]
-  (and (if field-id
-         (= field-id (:id column))
-         (= name ((some-fn :lib/deduplicated-name :name) column)))
-       (= join-alias (lib.join.util/current-join-alias column))
+(defn- deduplicated-name [column]
+  ((some-fn :lib/deduplicated-name :name) column))
+
+(defn- original-name [column]
+  ((some-fn :lib/original-name :name) column))
+
+(mu/defn- matches-join-and-fk? :- :boolean
+  [{:keys [join-alias source-field-id source-field-join-alias]} :- ::lib.schema.test-spec/test-order-by-spec
+   column                                                        :- ::lib.schema.metadata/column]
+  (and (= join-alias (lib.join.util/current-join-alias column))
        (= source-field-id (:fk-field-id column))
        (= source-field-join-alias (:fk-join-alias column))))
 
-(mu/defn- matches-bucketing? :- :boolean
-  [{:keys [unit binning]} :- ::lib.schema.test-spec/test-order-by-spec
-   column                 :- ::lib.schema.metadata/column]
-  (let [{:keys [strategy] :as column-binning} (lib.binning/binning column)]
-    (and (= unit (lib.temporal-bucket/raw-temporal-bucket column))
-         (= (:strategy binning) strategy)
-         (or (nil? binning)
-             (= strategy :default)
-             (== (strategy binning) (strategy column-binning))))))
+(mu/defn- matches-column? :- :boolean
+  [{:keys [name field-id] :as column-spec} :- ::lib.schema.test-spec/test-order-by-spec
+   column                                  :- ::lib.schema.metadata/column]
+  (and (if field-id
+         (= field-id (:id column))
+         (= name (deduplicated-name column)))
+       (matches-join-and-fk? column-spec column)))
+
+(mu/defn- check-unambiguous-name :- :nil
+  "Throws when `column` shares its original name with another of `available-columns` that only a deduplication
+  suffix tells apart from it."
+  [available-columns :- [:sequential ::lib.schema.metadata/column]
+   column-spec       :- ::lib.schema.test-spec/test-order-by-spec
+   column            :- ::lib.schema.metadata/column]
+  (when-let [others (seq (filter #(and (= (original-name column) (original-name %))
+                                       (not= (deduplicated-name column) (deduplicated-name %))
+                                       (matches-join-and-fk? column-spec %))
+                                 available-columns))]
+    (throw (ex-info (str "Ambiguous column: " (count others) " other column(s) are also named "
+                         (pr-str (original-name column)))
+                    {:column-spec column-spec, :columns (cons column others)}))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
-  "Finds the column a spec names. A column already bucketed more than one way, like a breakout by month and by year,
-  is told apart by the spec's `:unit` or `:binning`."
+  "Finds the one column a spec names, by field ID or else by deduplicated name. A name is refused when its column
+  shares its original name with another column that only a deduplication suffix tells apart, like a previous stage's
+  `ID` and `ID_2`; a field broken out twice is named apart instead."
   [_query            :- ::lib.schema/query
    _stage-number     :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
    column-spec       :- ::lib.schema.test-spec/test-order-by-spec]
-  (let [matching (filterv (partial matches-column? column-spec) available-columns)
-        columns  (if (and (> (count matching) 1)
-                          ((some-fn :unit :binning) column-spec))
-                   (filterv (partial matches-bucketing? column-spec) matching)
-                   matching)]
+  (let [columns (filterv (partial matches-column? column-spec) available-columns)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
-      1 (first columns)
+      1 (let [column (first columns)]
+          (when-not (:field-id column-spec)
+            (check-unambiguous-name available-columns column-spec column))
+          column)
       (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
 
 (mu/defn- append-fields :- ::lib.schema/query
@@ -157,9 +171,14 @@
    stage-number        :- :int
    columns             :- [:sequential ::lib.schema.metadata/column]
    breakout-spec       :- ::lib.schema.test-spec/test-breakout-spec]
-  (->> (find-column query stage-number columns breakout-spec)
-       (apply-binning query stage-number breakout-spec)
-       (lib.breakout/breakout query stage-number)))
+  (let [named?      (= :breakout (keyword (:type breakout-spec)))
+        column-spec (if named? (:column breakout-spec) breakout-spec)
+        column      (->> (find-column query stage-number columns column-spec)
+                         (apply-binning query stage-number column-spec))]
+    (lib.breakout/breakout query stage-number
+                           (cond-> column
+                             named? (-> lib.ref/ref
+                                        (lib.options/update-options assoc :name (:name breakout-spec)))))))
 
 (mu/defn- append-breakouts :- ::lib.schema/query
   [query          :- ::lib.schema/query
@@ -310,16 +329,19 @@
   [query            :- ::lib.schema/query
    stage-number     :- :int
    aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
-  (if (saved-aggregation-spec? aggregation-spec)
-    (if-let [aggregation (saved-aggregation query aggregation-spec)]
-      (lib.aggregation/aggregate query stage-number aggregation)
-      (throw (ex-info "No saved aggregation found" {:aggregation-spec aggregation-spec})))
-    (let [clause (->> (lib.aggregation/aggregable-columns query stage-number)
-                      (expression-spec->expression-clause query stage-number aggregation-spec))]
-      (lib.aggregation/aggregate query stage-number
-                                 (cond-> clause
-                                   ;; Only the name a later stage refers to; the display name stays derived.
-                                   (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec)))))))
+  (let [saved-spec (cond
+                     (saved-aggregation-spec? aggregation-spec)                aggregation-spec
+                     (some-> (:value aggregation-spec) saved-aggregation-spec?) (:value aggregation-spec))
+        clause     (if saved-spec
+                     (if-let [aggregation (saved-aggregation query saved-spec)]
+                       (lib.ref/ref aggregation)
+                       (throw (ex-info "No saved aggregation found" {:aggregation-spec saved-spec})))
+                     (->> (lib.aggregation/aggregable-columns query stage-number nil)
+                          (expression-spec->expression-clause query stage-number aggregation-spec)))]
+    (lib.aggregation/aggregate query stage-number
+                               (cond-> clause
+                                 ;; Only the name a later stage refers to; the display name stays derived.
+                                 (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec))))))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query

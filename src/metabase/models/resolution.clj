@@ -34,6 +34,7 @@
     :model/Comment                           metabase.comments.models.comment
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
+    :model/ContentDiagnosticsFinding         metabase-enterprise.content-diagnostics.models.finding
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/DataApp                           metabase-enterprise.data-apps.models.data-app
@@ -51,6 +52,7 @@
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
+    :model/EmbeddingSdkReact18Host           metabase.embedding.models.sdk-react-18-host
     :model/EmbeddingTheme                    metabase.embedding.models.theme
     :model/Exploration                       metabase.explorations.models.exploration
     :model/ExplorationBlock                  metabase.explorations.models.exploration-block
@@ -69,6 +71,7 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
+    :model/McpGroupPermission                metabase.mcp.models.mcp-group-permission
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
     :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
     :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
@@ -128,7 +131,7 @@
     :model/Secret                            metabase.secrets.models.secret
     :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
-    :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
+    :model/SemanticSearchTokenTracking       metabase-enterprise.search.semantic.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state

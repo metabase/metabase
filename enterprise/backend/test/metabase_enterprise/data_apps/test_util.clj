@@ -4,6 +4,7 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.actions.core :as actions]
+   [metabase.collections.core :as collections]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -186,3 +187,18 @@
           :model-id        model-id
           :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
                                              :model_id model-id})}))))
+
+(defn do-with-library!
+  "Call `f` with the IDs of the root data library (`:data-id`) and metrics library (`:metrics-id`) collections, creating the
+  library for the call when the instance has none."
+  [f]
+  (let [existing (collections/library-collection)
+        library  (or existing (collections/create-library-collection!))
+        children (t2/select :model/Collection :location (str "/" (:id library) "/"))
+        id-of    (fn [collection-type] (:id (first (filter #(= collection-type (:type %)) children))))]
+    (try
+      (f {:data-id    (id-of collections/library-data-collection-type)
+          :metrics-id (id-of collections/library-metrics-collection-type)})
+      (finally
+        (when-not existing
+          (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))

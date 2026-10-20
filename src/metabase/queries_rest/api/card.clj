@@ -7,7 +7,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -136,7 +135,8 @@
   and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
+  ;; Not gated on `enable-embedding-modular`: an admin who turned guest embeds off still needs to see what is already
+  ;; published. Publishing itself stays gated.
   (queries-rest.db/embeddable-cards))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -673,7 +673,6 @@
   (let [card    (api/write-check :model/Card id)
         ;; the database deletes the card's actions through the foreign key, with no events of their own
         actions (queries-rest.db/actions-for-model id)]
-    (queries/check-allowed-to-delete-card! card)
     (queries-rest.db/delete-card! id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*})
     (doseq [action actions]

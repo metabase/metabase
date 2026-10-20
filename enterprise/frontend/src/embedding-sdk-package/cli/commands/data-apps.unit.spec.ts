@@ -14,6 +14,9 @@ import {
 import { addDataAppsCommands } from "./data-apps";
 
 const QUESTION = "questionEntityId00010";
+const ACTION_COPY = "actionCopyEntityId001";
+const QUESTION_PATH =
+  "collections/data_apps/data_app/orders_questionEntityId00010.yaml";
 
 async function run(...args: string[]) {
   const program = new Command();
@@ -42,46 +45,48 @@ describe("data app commands", () => {
   const printed = () =>
     stdout.mock.calls.map(([chunk]) => String(chunk)).join("");
 
-  it("prints the serialization of one file's definitions, relative to the app root", async () => {
+  it("regenerates the collection's files for the definitions in the app root", async () => {
     const appRoot = appWithQuery();
     writeAction(
       appRoot,
-      `export const Create = defineAction({ action: { id: 51, parameters: [] } });`,
+      `export const Create = defineAction({ copiedActionEntityId: "${ACTION_COPY}", action: { id: 51, parameters: [] } });`,
     );
     fs.writeFileSync(
       path.join(appRoot, ".env.local"),
       "DATA_APP_MB_URL=http://metabase.test\nDATA_APP_MB_API_KEY=mb_test_key\n",
     );
-    jest.spyOn(global, "fetch").mockResolvedValue(
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          queries: [{ export: "Orders", entity: {}, metrics: [] }],
-          actions: [],
+          queries: [
+            {
+              file: "orders_questionEntityId00010.yaml",
+              yaml: "name: Orders\n",
+            },
+          ],
+          actions: [{ file: "create.yaml", yaml: "name: Create\n" }],
           metrics: [],
         }),
       ),
     );
 
-    await run(
-      "print-resources",
-      "queries/orders.query.ts",
-      "--app-root",
-      appRoot,
-    );
+    await run("write-resources", "--app-root", appRoot);
 
-    expect(JSON.parse(printed())).toEqual({
-      queries: [
+    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body)).actions).toEqual(
+      [
         {
-          export: "Orders",
-          file: "queries/orders.query.ts",
-          savedQuestionEntityId: QUESTION,
-          entity: {},
-          metrics: [],
+          action_id: 51,
+          entity_id: ACTION_COPY,
+          collection_id: "appCollectionEntity01",
         },
       ],
-      actions: [],
-      metrics: [],
-    });
+    );
+    expect(fs.readFileSync(path.join(appRoot, QUESTION_PATH), "utf8")).toBe(
+      "name: Orders\n",
+    );
+    expect(printed()).toBe(
+      `Wrote ${QUESTION_PATH}\nWrote collections/data_apps/data_app/create.yaml\n`,
+    );
   });
 
   it("confirms resources that back every definition", async () => {

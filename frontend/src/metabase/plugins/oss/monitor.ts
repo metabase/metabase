@@ -3,6 +3,8 @@ import type { ComponentType, ReactNode } from "react";
 import { definePluginSlot } from "../slot";
 
 type MonitorPlugin = {
+  isContentDiagnosticsEnabled: boolean;
+  getContentDiagnosticsRoutes: () => ReactNode;
   isDependencyDiagnosticsEnabled: boolean;
   getDependencyDiagnosticsRoutes: () => ReactNode;
   isSessionManagementEnabled: boolean;
@@ -12,6 +14,8 @@ type MonitorPlugin = {
 };
 
 const getDefaultPluginMonitor = (): MonitorPlugin => ({
+  isContentDiagnosticsEnabled: false,
+  getContentDiagnosticsRoutes: () => null,
   isDependencyDiagnosticsEnabled: false,
   getDependencyDiagnosticsRoutes: () => null,
   isSessionManagementEnabled: false,

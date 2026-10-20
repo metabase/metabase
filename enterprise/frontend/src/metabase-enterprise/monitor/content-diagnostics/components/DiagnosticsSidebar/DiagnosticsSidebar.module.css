@@ -1,0 +1,24 @@
+.sidebar {
+  flex: 1 1 auto;
+  overflow: auto;
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.section:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.titleLink {
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+    text-decoration: none;
+  }
+}

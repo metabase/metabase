@@ -10,6 +10,7 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
+  clearCardData,
   fetchCardDataAction,
   fetchDashboard,
   markTimelineEventsShown,
@@ -439,6 +440,26 @@ describe("dashboard reducers", () => {
       });
       expect(result.dashcardData).toEqual({ 5: { 2: { data: [] } } });
     });
+
+    it("keeps every dashcard's results readable as more results arrive and clear", () => {
+      const fulfilled = (dashcard_id: number, card_id: number) => ({
+        type: fetchCardDataAction.fulfilled.type,
+        payload: { dashcard_id, card_id, result: { data: [card_id] } },
+      });
+      const state = [
+        fulfilled(1, 10),
+        fulfilled(2, 20),
+        fulfilled(3, 30),
+        clearCardData(30, 3),
+        fulfilled(1, 11),
+      ].reduce(reducer, initState);
+
+      expect(state.dashcardData).toEqual({
+        1: { 10: { data: [10] }, 11: { data: [11] } },
+        2: { 20: { data: [20] } },
+        3: {},
+      });
+    });
   });
 
   describe("timelineEvents selection", () => {
@@ -474,17 +495,23 @@ describe("dashboard reducers", () => {
 
     const overriddenState = () =>
       reducer(
-        selectedState(),
-        setDashCardTimelineEventsVisibility({
-          1: { "timeline.selected_timeline_ids": [10] },
-        }),
+        reducer(
+          selectedState(),
+          setDashCardTimelineEventsVisibility({
+            1: { "timeline.selected_timeline_ids": [10] },
+          }),
+        ),
+        setDashCardTimelineEventsEnabled({ dashcardId: 1, isEnabled: false }),
       );
 
-    it("resets when dashboard editing starts", () => {
-      const state = reducer(overriddenState(), {
-        type: SET_EDITING_DASHBOARD,
-        payload: TEST_DASHBOARD,
-      });
+    it.each([
+      {
+        name: "dashboard editing starts",
+        action: { type: SET_EDITING_DASHBOARD, payload: TEST_DASHBOARD },
+      },
+      { name: "another dashboard is opened", action: { type: INITIALIZE } },
+    ])("resets when $name", ({ action }) => {
+      const state = reducer(overriddenState(), action);
       expect(state.timelineEvents).toEqual({
         overrides: {},
         enabledByDashCard: {},
@@ -493,17 +520,16 @@ describe("dashboard reducers", () => {
       });
     });
 
-    it("drops the session overrides when the dashboard is refetched", () => {
-      const overridden = reducer(
-        overriddenState(),
-        setDashCardTimelineEventsEnabled({ dashcardId: 1, isEnabled: false }),
-      );
-      const state = timelineEvents(overridden.timelineEvents, {
+    it("keeps the session overrides when the dashboard is refetched", () => {
+      const state = timelineEvents(overriddenState().timelineEvents, {
         type: fetchDashboard.fulfilled.type,
       });
-      expect(state.overrides).toEqual({});
-      expect(state.enabledByDashCard).toEqual({});
-      expect(state.selection).toEqual({ dashcardId: 1, eventIds: [100] });
+      expect(state).toEqual({
+        overrides: { 1: { "timeline.selected_timeline_ids": [10] } },
+        enabledByDashCard: { 1: false },
+        selection: { dashcardId: 1, eventIds: [100] },
+        hasTrackedEventsShown: false,
+      });
     });
   });
 

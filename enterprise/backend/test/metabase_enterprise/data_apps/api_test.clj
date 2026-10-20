@@ -118,8 +118,7 @@
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
-    (mt/user-http-request :crowberto :post 402 "apps/serialize-resources"
-                          {:collection "goodAppCollection0000" :queries [] :actions []})))
+    (mt/user-http-request :crowberto :post 402 "apps/generate/resources" {:queries [] :actions []})))
 
 (deftest assigned-group-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
@@ -179,7 +178,8 @@
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"
             (doseq [url ["apps" "apps?available=true"]]
-              (is (= [{:name "current" :display_name "Current"}]
+              (is (= [{:name "current" :display_name "Current"
+                       :resource_collection_id (t2/select-one-fn :resource_collection_id :model/DataApp :name "current")}]
                      (mt/user-http-request :rasta :get 200 url)))))
           (testing "for a regular user, opening an outdated app is a 409 that says what to do"
             (doseq [url ["apps/old" "apps/old/bundle"]]
@@ -187,7 +187,8 @@
                        :message    #"This app was built for version 1 of data apps.*"}
                       (mt/user-http-request :rasta :get 409 url)))))
           (testing "the current app still opens"
-            (is (= {:name "current" :display_name "Current"}
+            (is (= {:name "current" :display_name "Current"
+                    :resource_collection_id (t2/select-one-fn :resource_collection_id :model/DataApp :name "current")}
                    (mt/user-http-request :rasta :get 200 "apps/current")))
             (is (str/includes?
                  (str (mt/user-real-request :crowberto :get 200 "apps/current/bundle"))
@@ -220,24 +221,10 @@
                   :allowed_hosts ["https://api.example.com"])
       ;; publish the app so its bundle is served (crowberto, as a superuser, can read the collection)
       (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-      (testing "the bundle response normalizes the configured product analytics origin"
-        (mt/with-temporary-setting-values
-          [metaplow-url "HTTPS://product-analytics-ingestion.metabase.com/api/send"]
-          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
-            (is (= (json/encode ["https://api.example.com"
-                                 "https://product-analytics-ingestion.metabase.com"])
-                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))
-      (testing "the configured staging origin replaces the production origin"
-        (mt/with-temporary-setting-values [metaplow-url "https://product-analytics-ingestion.staging.metabase.com/api/send"]
-          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
-            (is (= (json/encode ["https://api.example.com"
-                                 "https://product-analytics-ingestion.staging.metabase.com"])
-                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))
-      (testing "an unset product analytics URL leaves the app's allowlist unchanged"
-        (mt/with-temporary-setting-values [metaplow-url nil]
-          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
-            (is (= (json/encode ["https://api.example.com"])
-                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))))))
+      (testing "the bundle response includes only the app's configured allowed hosts"
+        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
+          (is (= (json/encode ["https://api.example.com"])
+                 (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps}

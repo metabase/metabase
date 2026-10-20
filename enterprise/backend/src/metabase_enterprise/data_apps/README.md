@@ -71,7 +71,8 @@ An author deletes an app by deleting its directory and its collection's files un
 `collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
 hook deletes the collection with what it holds. A commit that deletes the directory but keeps the
 collection's files still deletes the app and its collection; the next export removes the files,
-and until then a full pull loads them back as a collection no app owns.
+and until then a full pull loads them back as a collection no app owns. That collection is read-only
+like an app's, so only deleting its files from the repository removes it.
 
 ## Serving
 
@@ -89,9 +90,16 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
-- `POST /api/apps/serialize-resources` — what the files of an app's collection are written from: the query Metabase builds
-  from each `defineQuery` definition, and the actions and metrics it copies, all as serialization writes
-  them (`resource_serialization.clj`). An action must belong to no model (superuser).
+- `POST /api/apps/generate/app` — an app's `data_app.yaml` and its collection's file, each at its path
+  from the repository root, with new entity IDs, or with the `entity_id` and `collection_id` an existing
+  app passes (`generate/app.clj`; superuser).
+- `GET /api/apps/generate/schemas` — the TypeScript module an app's definitions are written against: the
+  root libraries' tables and metrics, and the query actions that belong to no model
+  (`generate/schemas.clj`; superuser).
+- `POST /api/apps/generate/resources` — the files of an app's collection, each a file name and the YAML a
+  remote-sync export writes: a saved question per `defineQuery` definition, a copy of each action, and a
+  copy of each metric the queries aggregate (`generate/resources.clj`). An action must belong to no model
+  (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
 `display_name` only. The bundle blob is never serialized into JSON, and metadata reads go through
@@ -117,6 +125,10 @@ Collection access alone does not grant app access.
 
 Every app owns a collection from insertion. If its collection is deleted separately, resource reconciliation recreates it.
 
+Nobody can write a collection of the `data-apps` namespace, or what it holds, administrators included, with or
+without remote sync: the collection's `can-write?` refuses it, the write permissions of everything that takes them
+from its collection are a path no user holds, and a pull is what changes them.
+
 Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
 collection and assignments, but preserves the assigned groups.
@@ -140,7 +152,11 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | `api.clj`                              | The `/api/apps` endpoints, bundle serving, ETag handling.                                       |
 | `resources.clj`                        | Lifecycle of the app-owned collection and derived collection permissions.                       |
 | `models/data_app.clj`                  | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.           |
-| `resource_serialization.clj`           | The serialization an app's resource files are written from: built queries, actions, metrics.    |
+| `generate.clj`                         | The facade over what Metabase generates for an app's author: its files, its schema, its collection's files. |
+| `generate/app.clj`                     | An app's `data_app.yaml` and collection file, each at its path with its YAML.                   |
+| `generate/resources.clj`               | The files of an app's collection: built queries, action copies, metric copies, each with its YAML. |
+| `generate/schemas.clj`                 | The TypeScript schema of the root libraries' tables and metrics and the model-less query actions. |
+| `generate/schemas/`                    | The schema's stages: data access (`source`), entities (`table`, `metric`, `action`, `common`), rendering (`render`, `javascript`). |
 | `query_definition.clj`                 | The closed schema of a `defineQuery` definition the serialization accepts.                      |
 | `resource_validation.clj`              | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
 | `resource_tables.clj`                  | The tables an app's resources read, recorded on the app after an import.                        |

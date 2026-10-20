@@ -1,9 +1,15 @@
 import Color from "color";
 
+import type { ColorSettingsAccentKey } from "metabase-types/api";
+
 import { getAutoChartColors, getDefaultChartColors } from "./utils";
 
 describe("getDefaultChartColors", () => {
-  const groups = [["accent1"], ["accent2"], ["accent3"]];
+  const groups: ColorSettingsAccentKey[][] = [
+    ["accent1"],
+    ["accent2"],
+    ["accent3"],
+  ];
 
   it("should remove custom accent colors", () => {
     const values = {
@@ -21,8 +27,12 @@ describe("getDefaultChartColors", () => {
 });
 
 describe("getAutoChartColors", () => {
-  const groups = [["accent1"], ["accent2"], ["accent3"]];
-  const palette = { brand: "blue" };
+  const groups: ColorSettingsAccentKey[][] = [
+    ["accent1"],
+    ["accent2"],
+    ["accent3"],
+  ];
+  const palette = { "core-brand": "blue" };
 
   it("should use the brand color for the first chart color when there are no custom colors", () => {
     const values = {

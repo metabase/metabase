@@ -491,10 +491,13 @@
   never does. This is for dashboards on a schedule — use alert_write for a
   question that fires on a condition. Requires read permission on the dashboard; only its creator (or an admin) can
   update it."
-  {:name         "subscription_write"
-   :scope        metabot.scope/agent-delivery-write
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         subscription-write-args-schema}
+  {:name           "subscription_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-delivery-write
+   ;; `destructiveHint`: `archived: true` trashes the subscription, and an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
+   :args           subscription-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write subscription-write-entry args)
         id       (case op

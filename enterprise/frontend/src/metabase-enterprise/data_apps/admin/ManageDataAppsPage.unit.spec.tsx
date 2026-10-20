@@ -1,7 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupUserAcknowledgementEndpoints } from "__support__/server-mocks";
+import {
+  setupDataAppRepoStatusEndpoint,
+  setupDataAppRepoStatusEndpointWithError,
+  setupDeleteDataAppEndpoint,
+  setupListDataAppsEndpoint,
+  setupListDataAppsEndpointWithError,
+  setupUpdateDataAppEndpoint,
+  setupUserAcknowledgementEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
@@ -14,15 +22,36 @@ type SetupOpts = {
   configured?: boolean;
   url?: string | null;
   apps?: DataApp[];
+  updatedApp?: DataApp;
+  appsError?: boolean;
+  statusError?: boolean;
 };
 
 const setup = ({
   configured = true,
   url = null,
   apps = [],
+  updatedApp,
+  appsError = false,
+  statusError = false,
 }: SetupOpts = {}) => {
-  fetchMock.get("path:/api/apps/repo-status", { configured, url });
-  fetchMock.get("path:/api/apps", apps);
+  apps.forEach((app) => setupDeleteDataAppEndpoint(app.name));
+
+  if (updatedApp) {
+    setupUpdateDataAppEndpoint(updatedApp);
+  }
+
+  if (statusError) {
+    setupDataAppRepoStatusEndpointWithError("Repo status failed to load");
+  } else {
+    setupDataAppRepoStatusEndpoint({ configured, url });
+  }
+
+  if (appsError) {
+    setupListDataAppsEndpointWithError("Apps failed to load");
+  } else {
+    setupListDataAppsEndpoint(apps);
+  }
 
   setupUserAcknowledgementEndpoints({
     key: "data-apps-admin-settings-banner",
@@ -79,15 +108,36 @@ describe("ManageDataAppsPage", () => {
         screen.getByRole("link", { name: "Go to Git sync settings" }),
       ).toHaveAttribute("href", "/admin/settings/remote-sync");
       expect(
-        screen.getByText(/npx skills add metabase\/metabase/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/--skill metabase-data-app-setup/),
+        screen.getByText(
+          /npx skills add metabase\/agent-skills\/skills\/metabase-data-apps\/v1/,
+        ),
       ).toBeInTheDocument();
     });
   });
 
   describe("the app list", () => {
+    it("shows an error instead of the list when the apps request fails", async () => {
+      setup({ appsError: true });
+
+      expect(
+        await screen.findByText("Apps failed to load"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Your data apps will appear here"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows an error instead of the list when the repo status request fails", async () => {
+      setup({ statusError: true });
+
+      expect(
+        await screen.findByText("Repo status failed to load"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Your data apps will appear here"),
+      ).not.toBeInTheDocument();
+    });
+
     it("links an enabled app to its route and shows its path", async () => {
       setup({ apps: [createMockDataApp({ name: "sales" })] });
 
@@ -164,11 +214,10 @@ describe("ManageDataAppsPage", () => {
 
   describe("actions", () => {
     it("disables an app", async () => {
-      setup({ apps: [createMockDataApp({ name: "sales" })] });
-      fetchMock.put(
-        "path:/api/apps/sales",
-        createMockDataApp({ enabled: false }),
-      );
+      setup({
+        apps: [createMockDataApp({ name: "sales" })],
+        updatedApp: createMockDataApp({ name: "sales", enabled: false }),
+      });
 
       await openActionsMenu("Sales");
       await userEvent.click(
@@ -180,8 +229,10 @@ describe("ManageDataAppsPage", () => {
     });
 
     it("re-enables a disabled app", async () => {
-      setup({ apps: [createMockDataApp({ name: "sales", enabled: false })] });
-      fetchMock.put("path:/api/apps/sales", createMockDataApp());
+      setup({
+        apps: [createMockDataApp({ name: "sales", enabled: false })],
+        updatedApp: createMockDataApp({ name: "sales" }),
+      });
 
       await openActionsMenu("Sales");
       await userEvent.click(
@@ -214,7 +265,6 @@ describe("ManageDataAppsPage", () => {
         configured: false,
         apps: [createMockDataApp({ name: "sales" })],
       });
-      fetchMock.delete("path:/api/apps/sales", 204);
 
       await openActionsMenu("Sales");
       await userEvent.click(

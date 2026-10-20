@@ -144,7 +144,7 @@
 
       ;; the validator names a file, whose path may hold any word the matches below look for
       (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
-      (str "Failed to reload from git repository: " message)
+      (str "Failed to reload from git repository. " message)
 
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
@@ -580,8 +580,8 @@
       (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
 (defn- record-data-app-tables!
-  "Record the tables each data app's resources read, after a load or an export, logging a failure: the load's
-  transaction has committed and the export's commit is pushed by then, so a failure must not undo their record."
+  "Record the tables each data app's resources read, after a load, logging a failure: the load's transaction has
+  committed by then, so a failure must not undo its record."
   []
   (try
     (data-apps/record-table-dependencies!)
@@ -964,7 +964,7 @@
                                       (catch Exception _ nil)))}))
 
 (defn- dependency->incremental-export-plan [snapshot opts [row entity]]
-  (let [path (source/entity->path opts entity)]
+  (let [path (serialization/entity-file-path opts entity)]
     (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
       {:writes [(assoc row :file_path path)]}
       :remote-sync/incremental-not-possible)))
@@ -1080,7 +1080,7 @@
       :remote-sync/incremental-not-possible ; extract-chunk omits gone entities; some row is unsyncable
       (->> found
            (map (fn [[row entity]]
-                  (row->incremental-export-plan row (entity-path-info snapshot (source/entity->path opts entity) (:entity_id entity)))))
+                  (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
 (defn- incremental-export-plan
@@ -1123,7 +1123,7 @@
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write [commit opts [row entity]]
-  (let [path  (or (:file_path row) (source/entity->path opts entity))
+  (let [path  (or (:file_path row) (serialization/entity-file-path opts entity))
         fspec (source/entity->file-spec-at path entity)]
     (run! #(source.p/stage-upsert! commit %) (source/file-specs fspec))
     (when (:id row)
@@ -1225,7 +1225,6 @@
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (remote-sync.db/delete-rsos! removed-ids))
           (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
-        (record-data-app-tables!)
         (if (= version :remote-sync/empty-commit)
           (do
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
@@ -1259,7 +1258,6 @@
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (remote-sync.db/delete-rsos! removed-ids))
         (mark-rows-synced! (map :id synced) synced sync-timestamp))
-      (record-data-app-tables!)
       (if (= version :remote-sync/empty-commit)
         (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
@@ -1470,6 +1468,12 @@
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 
+(defn- outcome-on-branch
+  "Names `branch`, the branch the task ran on, in an `outcome` that names one, since the setting the outcome was built from switches to it only after the task."
+  [outcome branch]
+  (cond-> outcome
+    (and branch (contains? outcome :branch)) (assoc :branch branch)))
+
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
@@ -1506,7 +1510,7 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id (:outcome result)))
+                             (remote-sync.task/complete-sync-task! task-id (outcome-on-branch (:outcome result) branch)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:outcome result)))
@@ -1645,7 +1649,8 @@
                        :conflicts true
                        ;; The un-pushed local changes a switch would discard, so the client can name exactly
                        ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
+                       :dirty_objects (remote-sync.object/dirty-objects)
+                       :response/keys #{:conflicts :dirty_objects}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

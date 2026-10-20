@@ -420,38 +420,57 @@ const resourceCard = ({
 });
 
 /**
+ * What `POST /api/apps/generate/resources` answers for the actions `copies` name: the
+ * file of each copy, by position, for the app collection `collection`.
+ */
+export function serializeDataAppActions(
+  copies: Array<{ sourceActionId: number; entityId: string }>,
+  collection: string,
+) {
+  return cy
+    .request<{
+      actions: Array<{ file: string; yaml: string } | { error: string }>;
+    }>("POST", "/api/apps/generate/resources", {
+      actions: copies.map(({ sourceActionId, entityId }) => ({
+        action_id: sourceActionId,
+        entity_id: entityId,
+        collection_id: collection,
+      })),
+    })
+    .then(({ body }) =>
+      body.actions.map((answer) => {
+        if ("error" in answer) {
+          throw new Error(answer.error);
+        }
+
+        return answer;
+      }),
+    );
+}
+
+/**
  * The copies of the actions `copies` name, as an author writes them into the
  * app's collection: what Metabase serializes for each source action, with the
- * copy's entity ID and in the app's `collection`.
+ * copy's entity ID, in the app's `collection`.
  */
 export function serializeDataAppActionCopies(
   copies: Array<{ sourceActionId: number; entityId: string }>,
   collection: string,
 ) {
-  return cy
-    .request<{ actions: Array<{ entity: ResourceEntity }> }>(
-      "POST",
-      "/api/apps/serialize-resources",
-      {
-        collection,
-        actions: copies.map(({ sourceActionId }) => sourceActionId),
-      },
-    )
-    .then(({ body }) =>
-      cy.wrap(
-        copies.map(({ entityId }, index): ResourceEntity => {
-          const { entity } = body.actions[index];
+  return serializeDataAppActions(copies, collection).then((files) =>
+    cy.wrap(
+      files.map(({ yaml: text }): ResourceEntity => {
+        const entity = yaml.load(text);
 
-          return {
-            ...entity,
-            entity_id: entityId,
-            collection_id: collection,
-            "serdes/meta": serdesMeta("Action", entityId, String(entity.name)),
-          };
-        }),
-        { log: false },
-      ),
-    );
+        if (!isObject(entity)) {
+          throw new Error(`Generated an action copy that isn't a map: ${text}`);
+        }
+
+        return entity;
+      }),
+      { log: false },
+    ),
+  );
 }
 
 /**
@@ -559,7 +578,7 @@ export function declareDataAppQueries(
 
 /**
  * Runs the data app CLI the host app has installed, the one an author runs:
- * `embedding-sdk-react data-apps <command>`. `check-resources` never calls Metabase; `print-resources`
+ * `embedding-sdk-react data-apps <command>`. `check-resources` never calls Metabase; `write-resources`
  * reaches it through `env` (see `dataAppCliEnv`).
  */
 export function runDataAppCli(command: string, env?: Record<string, string>) {

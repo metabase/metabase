@@ -1,6 +1,6 @@
 import { Flex, Repeat, Skeleton } from "metabase/ui";
 
-import { SidebarSection } from "./MainNavbar.styled";
+import { SidebarSection } from "./Sidebar";
 
 const NavLinkSkeleton = () => (
   <Flex my="1rem" gap="sm" px="1rem">

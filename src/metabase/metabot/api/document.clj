@@ -93,20 +93,20 @@
   [_route-params
    _query-params
    {:keys [instructions references]} :- generate-content-body-schema]
-  (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
-    (metabot.config/check-metabot-enabled! metabot-id)
+  (let [metabot (metabot.config/resolve-metabot nil)]
+    (metabot.config/check-metabot-enabled! metabot)
     (metabot.usage/check-metabase-managed-free-limit!)
     (let [context      (assoc
                         ;; a request, not a grant: `enforce-permissions` drops it unless the user
                         ;; really can write native queries
                         (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}}
-                                                        {:metabot-id metabot-id
+                                                        {:metabot    metabot
                                                          :profile-id :document-generate-content})
                         :references references)
           parts        (into [] (metabot.agent/run-agent-loop
                                  {:messages      [{:role    :user
                                                    :content instructions}]
-                                  :metabot-id    metabot-id
+                                  :metabot       metabot
                                   :profile-id    :document-generate-content
                                   :state         {}
                                   :context       context

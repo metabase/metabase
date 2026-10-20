@@ -14,6 +14,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -67,7 +68,6 @@
    "anthropic/claude-opus-4.7"       {:display-name "Claude Opus 4.7"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.6"       {:display-name "Claude Opus 4.6"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.5"       {:display-name "Claude Opus 4.5"         :context-window  200000 :reasoning :budget-only}
-   "anthropic/claude-opus-4.1"       {:display-name "Claude Opus 4.1"         :context-window  200000 :reasoning :budget-only}
    "anthropic/claude-sonnet-5"       {:display-name "Claude Sonnet 5"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-sonnet-4.6"     {:display-name "Claude Sonnet 4.6"       :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-sonnet-4.5"     {:display-name "Claude Sonnet 4.5"       :context-window 1000000 :reasoning :budget-only}
@@ -78,6 +78,13 @@
    ;; Gemma 4 (`google/gemma-4-31b-it`, `google/gemma-4-26b-a4b-it`) is deliberately not listed:
    ;; through OpenRouter both 31B and 26B failed Metabot smoke tests with results changing between backing hosts.
    ;; See https://linear.app/metabase/issue/BOT-1932 for details
+   ;; Probed 2026-10-06. The listing passes. A chat turn passes. A title-shaped forced tool call
+   ;; completes at the floored budget. A 4-round Metabot tool turn passes. OpenRouter rejects the
+   ;; disable with a 400. Plain chat streams `reasoning.text`. Tool-call steps carry only
+   ;; `reasoning.encrypted`. The adapter does not replay `reasoning.encrypted`, and the 4-round
+   ;; tool turn worked without it on 2026-10-06.
+   ;; Max output: 65,536 tokens (`max_completion_tokens`, https://openrouter.ai/api/v1/models).
+   "google/gemini-3.8-flash"         {:display-name "Gemini 3.8 Flash"        :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
    "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144 :reasoning :renderable}
    ;; probed 2026-09-08: OpenRouter honors `reasoning {:enabled false}` for kimi-k3 even though the
    ;; native Moonshot API cannot turn k3's thinking off — a title-shaped forced tool call under the
@@ -103,6 +110,10 @@
    ;; disable is rejected with a 400 (thinking-only upstream, as on native z.ai), and a forced
    ;; tool call at the floored budget completes
    "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
+   ;; Probed 2026-10-06. The enable streams reasoning. OpenRouter rejects the disable with a 400.
+   ;; It honors tool_choice "required". A title-shaped forced tool call completes at the floored
+   ;; budget.
+   "z-ai/glm-5.3-flash"              {:display-name "GLM-5.3-Flash"           :context-window 1048575 :reasoning :renderable :reasoning-mandatory? true}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576 :reasoning :renderable}})
 
 (mu/defn context-window-tokens :- [:maybe :int]
@@ -178,27 +189,16 @@
   [model]
   (str/starts-with? (str model) "anthropic/"))
 
-(defn- anthropic-current-gen?
-  "Current-generation Claude on OpenRouter: Fable, Opus >= 4.7, Sonnet >= 5."
-  [model]
-  (or (str/starts-with? model "anthropic/claude-fable")
-      (when-let [[_ family major minor] (re-find #"^anthropic/claude-(opus|sonnet)-(\d+)(?:\.(\d+))?" model)]
-        (let [major (parse-long major)
-              minor (or (some-> minor parse-long) 0)]
-          (case family
-            "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
-            "sonnet" (>= major 5))))))
-
 (defn- model-supports-temperature?
   "Whether an OpenRouter model id accepts an explicit `temperature`. Two families reject it: OpenAI's
-  GPT-5 and o-series, and current-generation Claude. Neither `openai.clj`'s nor `claude.clj`'s
-  predicate can be reused — both are keyed to their own provider's id shape, and would silently
-  return true for OpenRouter's `vendor/model` ids with dotted versions."
+  GPT-5 and o-series, and current-generation Claude ([[claude/model-current-gen?]] once the `anthropic/`
+  prefix is off)."
   [model]
   (let [model (str model)]
     (not (or (str/starts-with? model "openai/gpt-5")
              (re-find #"^openai/o\d" model)
-             (anthropic-current-gen? model)))))
+             (and (anthropic-model? model)
+                  (claude/model-current-gen? (subs model (count "anthropic/"))))))))
 
 (defn- supports-required-tool-choice?
   "Whether `model` accepts `:tool_choice \"required\"`: true unless its [[supported-models]] row says otherwise."
@@ -217,12 +217,16 @@
   A safety net: in theory the un-disableable reasoning bills against the same `max_tokens` budget as the tool call
   (\"max_tokens must be strictly higher than the reasoning budget\" —
   https://openrouter.ai/docs/use-cases/reasoning-tokens), so a small caller cap (the conversation-title path sends
-  512) could hit `length` before the mandatory tool call is emitted. In practice this has not been observed: probed
-  2026-09-03, qwen3.8-max reasons only ~150 tokens on title-shaped structured calls and fits the 512 cap, and
-  claude-fable-5 emits zero reasoning under a forced tool choice; probed 2026-09-08, gpt-5.4-pro and gpt-5.5-pro
-  finish the same calls at the 512 cap with the tool call (242–375 and 22 completion tokens across runs). The floor
-  guards against a model update or a longer-thinking mandatory model changing that. Matches vLLM's probe-proven
-  floor."
+  512) could hit `length` before the mandatory tool call is emitted. Earlier models did not need the floor. Probed
+  2026-09-03, qwen3.8-max reasons only ~150 tokens on title-shaped structured calls and fits the 512 cap. Probed
+  2026-09-03, claude-fable-5 emits zero reasoning under a forced tool choice. Probed 2026-09-08, gpt-5.4-pro and
+  gpt-5.5-pro finish the same calls at the 512 cap with the tool call. They used 242–375 and 22 completion tokens
+  across runs.
+
+  gemini-3.8-flash has little headroom at a 512 cap. Probed 2026-10-06, a title call capped at 512 completed with 478
+  completion tokens (454 reasoning). With the floor (sent as 2048), the same call used 638 completion tokens (615
+  reasoning). The floor also guards against a model update or a longer-thinking mandatory model. Matches vLLM's
+  probe-proven floor."
   2048)
 
 (defn- with-reasoning-directive
@@ -262,6 +266,34 @@
           (reasoning-mandatory? model) body
           :else                        (assoc body :reasoning {:enabled false}))))))
 
+(defn- estimated-prompt-tokens
+  "The estimated prompt tokens of the Chat Completions `body`: its JSON `messages` and `tools` in characters,
+  divided by 4 and rounded up. For example, 700,000 characters of JSON give 175,000.
+
+  OpenRouter's own admission check estimates tokens as characters ÷ 4 (probed in
+  https://github.com/metabase/metabase/pull/82436), and it rejects a request whose prompt plus `max_tokens` exceeds
+  the context length (https://openrouter.ai/docs/api-reference/parameters)."
+  [body]
+  (quot (+ (count (json/encode (select-keys body [:messages :tools]))) 3)
+        4))
+
+(defn- without-unfitting-default-cap
+  "Remove the default `:max_tokens` from `body` when it does not fit the context window of `model`.
+
+  For example, on Claude Haiku 4.5, a prompt estimated at 175,000 tokens plus the 32,000 default exceeds the
+  200,000 window, so the body gets no cap.
+
+  Only the default cap is removed: a caller's `max-tokens` is always sent. A model with no known window keeps the
+  default. The bound is inclusive: an estimate plus cap equal to the window keeps the cap."
+  [body max-tokens model]
+  (let [window (context-window-tokens model)]
+    (cond-> body
+      (and (nil? max-tokens)
+           window
+           (> (+ (estimated-prompt-tokens body) (:max_tokens body 0)) window))
+      ;; With no cap, OpenRouter uses its own per-endpoint default (64000 measured on claude-haiku-4.5).
+      (dissoc :max_tokens))))
+
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
 
@@ -276,13 +308,15 @@
   builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
   whose model names are customer-chosen free text.
 
-  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]], but only when it fits the context
+  window with the prompt (see [[without-unfitting-default-cap]])."
   [{:keys [model system max-tokens] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   ;; `openai/*` models get the default too: the rate-limit metering that keeps
   ;; [[metabase.metabot.self.openai/openai-request-body]] from sending one is OpenAI's and Azure's, and uncapped,
   ;; OpenRouter substitutes a per-endpoint default (probed 2026-09-17 on deepseek/deepseek-v4-pro: 16384 on one
-  ;; endpoint, 32768 on another).
+  ;; endpoint, 32768 on another). The fit check runs last, on the final body: the forced-call floor in
+  ;; [[with-reasoning-directive]] needs a `:max_tokens` to raise.
   (-> (cond-> (chat-completions/request-body
                (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens)))
         (and system (anthropic-model? model))
@@ -293,7 +327,8 @@
 
         (not (supports-required-tool-choice? model))
         required-tool-choice->auto)
-      (with-reasoning-directive (assoc opts :model model))))
+      (with-reasoning-directive (assoc opts :model model))
+      (without-unfitting-default-cap max-tokens model)))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
@@ -314,4 +349,4 @@
   "Call OpenRouter Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply openrouter-raw args)]
-    (eduction (openrouter->aisdk-chunks-xf) raw)))
+    (eduction (openrouter->aisdk-chunks-xf) (chat-completions/usage-once raw))))

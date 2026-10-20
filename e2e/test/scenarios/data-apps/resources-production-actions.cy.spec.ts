@@ -1,3 +1,5 @@
+import yaml from "js-yaml";
+
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
@@ -87,16 +89,22 @@ describe(
           },
         });
 
-        cy.request("POST", "/api/apps/serialize-resources", {
-          collection: COLLECTION,
-          actions: [source.id],
-        }).then(({ body }) => {
-          expect(body.actions[0].entity).to.deep.include({
-            entity_id: source.entity_id,
+        const copy = H.newEntityId();
+
+        H.serializeDataAppActions(
+          [{ sourceActionId: source.id, entityId: copy }],
+          COLLECTION,
+        ).then(([file]) => {
+          expect(file.file).to.eq("add_team.yaml");
+
+          const entity = yaml.load(file.yaml);
+          expect(entity).to.deep.include({
+            entity_id: copy,
+            collection_id: COLLECTION,
             type: "query",
           });
-          expect(body.actions[0].entity).not.to.have.property("model_id");
-          expect(body.actions[0].entity)
+          expect(entity).not.to.have.property("model_id");
+          expect(entity)
             .to.have.nested.property("visualization_settings.fields.score")
             .that.deep.include({ hidden: true, defaultValue: 0 });
         });
