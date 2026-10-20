@@ -79,9 +79,9 @@ If your Metabase has a [Library](../data-modeling/semantic-layer/library.md), AI
 - Move metrics into the **Library > Metrics** collection.
 - Add descriptions to everything you publish.
 
-The Library only holds tables, metrics, and SQL snippets. You can't add models or questions to it.
+The Library only holds tables, metrics, dashboards, and SQL snippets.
 
-AI exploration can still look at tables outside the Library, but it starts with what's in the Library. If nothing in the Library matches a question well, Metabot asks the person to clarify instead of guessing.
+AI exploration can still look at tables outside the Library, but it starts with what's in the Library. If nothing in the Library matches a question well, Metabot may ask the person to clarify instead of guessing.
 
 ## Without a Library, point AI exploration at a collection
 
