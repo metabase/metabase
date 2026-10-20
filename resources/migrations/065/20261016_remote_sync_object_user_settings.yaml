@@ -6,7 +6,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.szv50u
+      id: v65.2026-10-20T00:00:02
       author: ranquild
       comment: Turn the RemoteSyncObject rows of Tables with user settings into TableUserSettings rows
       changes:
