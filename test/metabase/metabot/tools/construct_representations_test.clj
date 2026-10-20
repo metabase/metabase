@@ -23,7 +23,9 @@
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
@@ -832,6 +834,44 @@
 ;;; ============================================================
 ;;; Step-10 contract: aggregation references via 0-based integer index
 ;;; ============================================================
+
+(deftest bare-aggregation-clause-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [ordered? [false true]]
+        (testing (str "bare count aggregation, ordered? " ordered?)
+          (let [stage  (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  ["count" {}]}
+                         ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
+                result (construct/execute-representations-query
+                        (query-data {"lib/type" "mbql/query", "stages" [stage]}))
+                query  (get-in result [:structured-output :query])
+                aggs   (get-in query [:stages 0 :aggregation])]
+            (is (mr/validate :metabase.lib.schema/query query))
+            (is (= [:count] (mapv first aggs)))
+            (when ordered?
+              (is (= (get-in aggs [0 1 :lib/uuid])
+                     (get-in query [:stages 0 :order-by 0 2 2]))))))))))
+
+(deftest invalid-aggregation-entry-surfaces-agent-error-test
+  (with-mp-and-stubs!
+    (fn []
+      (try
+        (tools/handle construct/construct-notebook-query-tool
+                      {:query (query-data {"lib/type" "mbql/query"
+                                           "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}] 42]
+                                                      "order-by"     [["desc" {} ["aggregation" {} 0]]]}]})}
+                      {})
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= 400 (:status-code (ex-data e))))
+          (is (= {:class    :recoverable
+                  :code     :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                  :message  "Representations query has an invalid structure."
+                  :recovery []}
+                 (select-keys (tools.error/classify e) [:class :code :message :recovery]))))))))
 
 (deftest aggregation-ref-integer-index-in-order-by-end-to-end-test
   (testing (str "`[aggregation, {}, <index>]` in order-by is resolved to the canonical\n"
