@@ -265,7 +265,7 @@
 
 (defn- group-policy-permits-derive?
   "Whether the group policy of the current user permits storing `derived-query`, derived from `base-query`, as a new
-   handle. Returns true when it does."
+   handle. A placeholder: always true until the group tool policy (#82718) defines a rule for derives."
   [_base-query _derived-query]
   true)
 
