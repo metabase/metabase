@@ -39,7 +39,7 @@ These catalogs accompany `construct_notebook_query`. The clause shape and field 
 ## Filters
 
 Boolean:
-- `["and", {}, <pred>, <pred>, ...]` — min 2 args. Only inside a single filter entry (e.g. nested in `or`); for plain "A and B" write two separate `filters:` entries.
+- `["and", {}, <pred>, <pred>, ...]` – min 2 args. In `filters:`, write plain "A and B" as two entries; nest `and` under `or` or `not`.
 - `["or", {}, <pred>, <pred>, ...]` — min 2 args.
 - `["not", {}, <pred>]`
 
