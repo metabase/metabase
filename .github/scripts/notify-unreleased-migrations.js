@@ -33,7 +33,7 @@ function findOverdueChangesets({
 
 function formatMessage({ changesets, runUrl }) {
   return [
-    ":warning: *Master has migrations that no release has yet. Cross-version tests start to fail 3 days after a migration is added to master.*",
+    ":warning: *Master has migrations that are not released yet which will cause cross-version tests to fail soon.*",
     ...changesets.map(({ id, file }) => `• \`${id}\` (${file})`),
     `Please backport and release these changes. <${runUrl}|Run>`,
   ].join("\n");

@@ -120,7 +120,8 @@ jobs:
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          # engineering-ci
+          SLACK_CHANNEL: 'tbd'
         with:
           script: | # js
             const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -132,7 +133,7 @@ jobs:
                 target: '${{ matrix.target }}',
                 currentVersion: Number(process.env.CURRENT_VERSION),
               }),
-              channelName: process.env.SLACK_RELEASE_CHANNEL,
+              channelName: process.env.SLACK_CHANNEL,
               findSlackMessage,
               sendSlackMessage,
             });
