@@ -1024,6 +1024,49 @@
         (is (= "too_many_requests"
                (:error (token-request! (params) :authorization authorization :expected-status 429))))))))
 
+(deftest token-retry-after-covers-the-blocking-windows-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (doseq [[client-age-minutes ip-age-minutes expected-wait]
+              [[40 nil 1200] [nil 40 1200] [40 20 2400] [20 40 2400]]]
+        (testing (str "client attempts aged " client-age-minutes ", IP attempts aged " ip-age-minutes)
+          (mt/user-http-request :crowberto :get 200 "api/user/current")
+          (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+                ip-address "198.51.100.4"
+                params     {:grant_type   "authorization_code"
+                            :code         (authorize-and-get-code! client-id)
+                            :redirect_uri "https://example.com/callback"}
+                authorization (basic-auth-header client-id client-secret)
+                client-throttler @#'api.oauth/token-client-throttler
+                ip-throttler     @#'api.oauth/token-ip-throttler
+                now              (System/currentTimeMillis)
+                attempts         (fn [throttler throttle-key age-minutes]
+                                   (when age-minutes
+                                     (concat (repeat (- (:attempts-threshold throttler) 2)
+                                                     [throttle-key (- now (* 10 60 1000))])
+                                             (repeat 4 [throttle-key (- now (* age-minutes 60 1000))]))))]
+            (reset! (:attempts client-throttler)
+                    (attempts client-throttler [client-id ip-address] client-age-minutes))
+            (reset! (:attempts ip-throttler) (attempts ip-throttler ip-address ip-age-minutes))
+            (let [response (token-request! params :authorization authorization :ip-address ip-address
+                                           :expected-status 429 :full-response? true)
+                  wait     (some-> (get-in response [:headers "Retry-After"]) parse-long)]
+              (is (pos-int? wait))
+              (when (pos-int? wait)
+                (is (<= (- expected-wait 60) wait expected-wait))
+                (let [second-response (token-request! params :authorization authorization :ip-address ip-address
+                                                      :expected-status 429 :full-response? true)
+                      second-wait     (some-> (get-in second-response [:headers "Retry-After"]) parse-long)]
+                  (is (pos-int? second-wait))
+                  (when (pos-int? second-wait)
+                    (doseq [throttler [client-throttler ip-throttler]]
+                      (swap! (:attempts throttler)
+                             (fn [recorded]
+                               (doall (for [[throttle-key timestamp] recorded]
+                                        [throttle-key (- timestamp (* 1000 second-wait))])))))
+                    (is (string? (:access_token (token-request! params :authorization authorization
+                                                                :ip-address ip-address))))))))))))))
+
 (deftest successful-token-requests-do-not-count-toward-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]

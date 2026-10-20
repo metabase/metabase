@@ -292,14 +292,31 @@
                                            :error_description (ex-message e#)})
          (throw e#)))))
 
+(defn- retry-after-seconds
+  "Return the seconds until `throttle-key` has room for another attempt."
+  [{:keys [attempts attempts-threshold attempt-ttl-ms]} throttle-key]
+  (if-let [[_ blocking-attempt-ms] (nth (filter (fn [[attempt-key]] (= throttle-key attempt-key)) @attempts)
+                                        (dec attempts-threshold) nil)]
+    (quot (+ 999 (max 0 (- (+ blocking-attempt-ms attempt-ttl-ms) (System/currentTimeMillis)))) 1000)
+    0))
+
 (defn- do-with-token-throttling
   [ip-address client-id f]
-  (if client-id
-    (with-throttling-429 [token-client-throttler [client-id ip-address]
-                          token-ip-throttler     ip-address]
-      (f))
-    (with-throttling-429 [token-ip-throttler ip-address]
-      (f))))
+  (let [client-key (when client-id [client-id ip-address])
+        response   (if client-id
+                     (with-throttling-429 [token-client-throttler client-key
+                                           token-ip-throttler     ip-address]
+                       (f))
+                     (with-throttling-429 [token-ip-throttler ip-address]
+                       (f)))]
+    (if (= 429 (:status response))
+      (let [retry-after (max (retry-after-seconds token-ip-throttler ip-address)
+                             (if client-id (retry-after-seconds token-client-throttler client-key) 0))]
+        (-> response
+            (assoc-in [:headers "Retry-After"] (str retry-after))
+            (assoc-in [:body :error_description]
+                      (format "Too many attempts! You must wait %d seconds before trying again." retry-after))))
+      response)))
 
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------
 
