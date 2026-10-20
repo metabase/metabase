@@ -260,14 +260,12 @@ migrate_down_step() {
   fi
 }
 
-fetch_master_history() {
-  local git_=(git -C "$REPO_ROOT")
-  if [[ "$("${git_[@]}" rev-parse --is-shallow-repository)" == "true" ]]; then
-    "${git_[@]}" fetch -q --no-tags --shallow-since="${GRACE_PERIOD} days ago" origin "+refs/heads/master:refs/cross-version/master" &&
-      "${git_[@]}" fetch -q --no-tags --deepen=1 origin "+refs/heads/master:refs/cross-version/master"
-  else
-    "${git_[@]}" fetch -q --no-tags origin "+refs/heads/master:refs/cross-version/master"
-  fi
+fetch_history() {
+  local git_=(git -C "$REPO_ROOT") head
+  [[ "$("${git_[@]}" rev-parse --is-shallow-repository)" == "true" ]] || return 0
+  head=$("${git_[@]}" rev-parse HEAD)
+  "${git_[@]}" fetch -q --no-tags --shallow-since="${GRACE_PERIOD} days ago" origin "$head" &&
+    "${git_[@]}" fetch -q --no-tags --deepen=1 origin "$head"
 }
 
 changesets_in_grace_period() {
@@ -279,8 +277,8 @@ changesets_in_grace_period() {
     return 1
   fi
 
-  if ! fetch_master_history; then
-    warn "Could not fetch the master history"
+  if ! fetch_history; then
+    warn "Could not fetch the git history"
     return 1
   fi
 
@@ -288,13 +286,13 @@ changesets_in_grace_period() {
   for id in $ids; do
     commit="" added=""
     read -r commit added < <(git -C "$REPO_ROOT" -c log.showRoot=false log --since="${GRACE_PERIOD} days ago" \
-      -S "$id" --format='%H %ct' refs/cross-version/master -- resources/migrations | tail -1) || true
+      -S "$id" --format='%H %ct' HEAD -- resources/migrations | tail -1) || true
     if [[ -z "${commit:-}" ]]; then
-      warn "$id was not added to master in the last ${GRACE_PERIOD} day(s)"
+      warn "$id was not added in the last ${GRACE_PERIOD} day(s)"
       return 1
     fi
     age_hours=$(( (now - added) / 3600 ))
-    warn "$id was added to master ${age_hours}h ago in ${commit:0:11}, which is in the grace period of ${GRACE_PERIOD} day(s)"
+    warn "$id was added ${age_hours}h ago in ${commit:0:11}, which is in the grace period of ${GRACE_PERIOD} day(s)"
     json+="${json:+,}{\"id\":\"$id\",\"commit\":\"$commit\",\"age_hours\":$age_hours}"
   done
 
