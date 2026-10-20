@@ -100,7 +100,8 @@
                                                   :user_id (mt/user->id :crowberto)}]}
                                  {:channel_type :channel/slack
                                   :recipients   [{:type    :notification-recipient/raw-value
-                                                  :details {:value "#general"}}]}])]
+                                                  :details {:value "#general"}}]}])
+                  release      (promise)]
               ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: the worker thread does not get the test's bindings
               (with-redefs [;; no card query: the query processor saves its `query` row later, on another thread, and
                             ;; other tests insert the same query
@@ -108,21 +109,23 @@
                                                                    {:type   :card
                                                                     :card   (t2/select-one :model/Card card-id)
                                                                     :result {:status :completed :row_count 1 :data {:rows [[1]]}}})
-                            channel/render-notification          (fn [& _] [{:stub-message true}])
+                            channel/render-notification          (fn [& _]
+                                                                   ;; the worker waits until the test checked the run
+                                                                   (deref release 5000 nil)
+                                                                   [{:stub-message true}])
                             channel/send!                        (fn [channel _]
                                                                    (when (and slack-fails? (= :channel/slack (:type channel)))
                                                                      (throw (ex-info "Slack is down" {}))))
                             notification.send/should-skip-retry? (constantly true)]
                 (#'task.notification/send-notification* (t2/select-one-pk :model/NotificationSubscription
                                                                           :notification_id (:id notification)))
-                ;; the job can end before the worker starts, so wait for the worker's `notification-send` row to end
-                (let [run-id    (t2/select-one-pk :model/TaskRun :notification_id (:id notification))
-                      run-ended (fn []
-                                  (when (#{:success :failed} (t2/select-one-fn :status :model/TaskHistory
-                                                                               :run_id run-id :task "notification-send"))
-                                    (t2/select-one-fn :status :model/TaskRun run-id)))]
-                  (is (= expected (u/poll {:thunk       run-ended
-                                           :done?       #{expected}
+                (let [run-id     (t2/select-one-pk :model/TaskRun :notification_id (:id notification))
+                      run-status #(t2/select-one-fn :status :model/TaskRun run-id)]
+                  (is (= :started (run-status))
+                      "the job has ended, and the run stays started while the worker sends")
+                  (deliver release true)
+                  (is (= expected (u/poll {:thunk       run-status
+                                           :done?       #{:success :failed}
                                            :timeout-ms  5000
                                            :interval-ms 50})))
                   (is (= 2 (t2/count :model/TaskHistory :run_id run-id :task "channel-send"))))))))))))

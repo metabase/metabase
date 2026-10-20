@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.db :as task-history.db]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -74,19 +75,32 @@
   []
   (:id *run*))
 
-(defn with-run-id-meta
-  "Given a map, returns the map with the current run ID attached to metadata.
-   Used for propagation of run context across threads (e.g., async notification dispatch)."
-  [m]
-  (vary-meta m assoc ::run-id (current-run-id)))
+(defonce ^:private run-id->pending-work
+  ;; The number of pieces of work of each run with `:auto-complete false` that have not ended yet: the body of
+  ;; [[with-task-run]], and each map tagged with [[track-run-work!]]. A run is in this map only while it has such work.
+  ;; The queue that holds the work is in this process too, so the count does not need to be in the app DB.
+  (atom {}))
 
-(defmacro with-restored-run-id
-  "Given a map presumably containing metadata from [[with-run-id-meta]], restores the current run and executes body.
-  The restored run is not completed by a [[with-task-run]] on this thread, so [[task-run-work-done!]] completes it."
-  [m & body]
-  `(binding [*run* (when-let [run-id# (::run-id (meta ~m))]
-                     {:id run-id# :auto-complete? false})]
-     ~@body))
+(defn add-pending-work!
+  "Count one more piece of work of the run `run-id` that has not ended. Public for [[with-task-run]]; other code tags
+  its work with [[with-run-id-meta]]."
+  [run-id]
+  (swap! run-id->pending-work update run-id (fnil inc 0)))
+
+(defn- end-pending-work!
+  "Count one piece of work of the run `run-id` as ended. Returns `:last` when it was the last one, `:more` when the run
+  has other work that has not ended, and `:unknown` when the run has no count."
+  [run-id]
+  (let [[before after] (swap-vals! run-id->pending-work
+                                   (fn [counts]
+                                     (let [n (dec (get counts run-id 0))]
+                                       (if (pos? n)
+                                         (assoc counts run-id n)
+                                         (dissoc counts run-id)))))]
+    (cond
+      (not (contains? before run-id)) :unknown
+      (contains? after run-id)        :more
+      :else                           :last)))
 
 (mr/def ::TaskRunInfo
   [:map {:closed true}
@@ -111,7 +125,7 @@
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks. [[with-task-run]] calls it after its body; for
-  `:auto-complete false` runs use [[task-run-work-done!]].
+  `:auto-complete false` runs, [[task-run-work-done!]] calls it after the last piece of work.
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
   (let [task-statuses (task-history.db/task-statuses-for-run run-id)
@@ -120,41 +134,55 @@
                         :failed)]
     (task-history.db/finish-started-task-run! run-id status (t/instant))))
 
-(defn- run-status-from-tasks
-  "The status of a run whose tasks have `task-statuses`: started while any task runs, success when every task
-  succeeded, else failed."
-  [task-statuses]
-  (cond
-    (contains? task-statuses :started) :started
-    (= #{:success} task-statuses)      :success
-    :else                              :failed))
-
-(mu/defn- recompute-task-run-status!
-  "Set the status of the run `run-id` from its tasks as they are now. An abandoned run keeps its status.
-
-  The run row stays locked while its tasks are read, so when two pieces of work end at the same time, the second one
-  reads the tasks after the first one wrote, and its status is the one that stays."
-  [run-id :- ms/PositiveInt]
-  (t2/with-transaction [_conn]
-    (let [current (task-history.db/lock-task-run-status run-id)]
-      (when-not (contains? #{nil :abandoned} current)
-        (let [status (run-status-from-tasks (task-history.db/task-statuses-for-run run-id))]
-          (when (not= status current)
-            (task-history.db/set-task-run-status! run-id status (when-not (= :started status) (t/instant)))))))))
-
 (mu/defn task-run-work-done!
-  "Call when one piece of work in the run `run-id` ends, for example one notification send.
-
-  Inside a [[with-task-run]] with `:auto-complete`, that macro completes the run after all of its work, so this does
-  nothing. A completion here would fix the run status before the rest of the work ran.
-
-  Otherwise (`:auto-complete false`) the work runs on other threads, and no single place sees it all end. So every
-  piece of work calls this, and [[with-task-run]] calls it after its body, and each call sets the run status from the
-  tasks as they are now. The run is started while any task runs; the last call sees every task and sets the final
-  status."
+  "Call when one piece of work of the `:auto-complete false` run `run-id` ends: [[with-task-run]] after its body, and
+  [[end-run-work!]] for a map from [[track-run-work!]]. The run stays started while it has work that has not
+  ended, and the call for its last piece of work completes it with [[complete-task-run!]]. At that point every task of
+  the run has ended."
   [run-id :- ms/PositiveInt]
-  (when-not (and (= run-id (:id *run*)) (:auto-complete? *run*))
-    (recompute-task-run-status! run-id)))
+  (case (end-pending-work! run-id)
+    :more    nil
+    :last    (complete-task-run! run-id)
+    :unknown (do
+               (log/warnf "Task run %d: a piece of work ended that was not counted, or that ended twice" run-id)
+               (complete-task-run! run-id))))
+
+(defn track-run-work!
+  "Returns the map `m` with the current run attached to its metadata, so that the run can be restored on another thread
+  with [[with-restored-run-id]] (e.g., async notification dispatch).
+
+  When the current run has `:auto-complete false`, the map is also one more piece of work of that run: the run stays
+  started until [[end-run-work!]] is called for the map, exactly once. [[with-restored-run-id]] calls it after the
+  work."
+  [m]
+  (let [{:keys [id auto-complete?]} *run*
+        pending-work?               (boolean (and id (not auto-complete?)))]
+    (when pending-work?
+      (add-pending-work! id))
+    (vary-meta m assoc ::run-id id ::pending-work? pending-work?)))
+
+(defn end-run-work!
+  "Call once for the map `m` from [[track-run-work!]]: after its work ran, or when it will never run, for example
+  because a newer map replaced it in a queue. Does nothing when `m` is not a piece of work of its run."
+  [m]
+  (let [{::keys [run-id pending-work?]} (meta m)]
+    (when pending-work?
+      (task-run-work-done! run-id))))
+
+(defmacro with-restored-run-id
+  "Given a map presumably containing metadata from [[track-run-work!]], restores the current run and executes body,
+  then calls [[end-run-work!]] for the map. The restored run counts the work that the body tags with
+  [[track-run-work!]] only when the run counted the map itself."
+  [m & body]
+  `(let [m#                         ~m
+         {run-id#        ::run-id
+          pending-work?# ::pending-work?} (meta m#)]
+     (binding [*run* (when run-id#
+                       {:id run-id# :auto-complete? (not pending-work?#)})]
+       (try
+         ~@body
+         (finally
+           (end-run-work! m#))))))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.
@@ -164,8 +192,8 @@
    creating a new task run (prevents nesting).
 
    After the body, it completes the run with [[complete-task-run!]]. For async flows (e.g., async notifications), use
-   :auto-complete false: then it calls [[task-run-work-done!]] after the body instead, and each piece of async work
-   must call [[task-run-work-done!]] when it is done."
+   :auto-complete false: then the body is one piece of work of the run, and each map that carries the run to another
+   thread with [[track-run-work!]] is one more. The run completes after the last of them ends."
   {:style/indent 1}
   [run-info & body]
   `(if (or *run* (nil? ~run-info))
@@ -173,6 +201,8 @@
      (let [info#          ~run-info
            auto-complete# (boolean (get info# :auto-complete true))
            run-id#        (create-task-run! info#)]
+       (when-not auto-complete#
+         (add-pending-work! run-id#))
        (binding [*run* {:id run-id# :auto-complete? auto-complete#}]
          (try
            ~@body

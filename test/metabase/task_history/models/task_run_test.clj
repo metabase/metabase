@@ -2,7 +2,6 @@
   "Tests for TaskRun model and with-task-run macro."
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
@@ -11,12 +10,9 @@
    [metabase.pulse.test-util :as pulse.tu]
    [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
-   [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent CountDownLatch TimeUnit)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -73,134 +69,52 @@
 
 (deftest with-task-run-auto-complete-false-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
-    (testing "with :auto-complete false, with-task-run sets the status from the tasks that exist after its body, and async work sets it again when it ends"
-      (let [run-id (atom nil)]
-        (task-history/with-task-run {:run_type      :subscription
-                                     :entity_type   :dashboard
-                                     :entity_id     1
-                                     :auto-complete false}
-          (reset! run-id (task-history/current-run-id))
-          (task-history/with-task-history {:task "test-task"}
-            :done))
-        (let [run (t2/select-one :model/TaskRun :id @run-id)]
-          (is (= :success (:status run)) "the only task succeeded")
-          (is (some? (:ended_at run))))
-        ;; async work that ends later, on another thread, and fails
-        (t2/insert! :model/TaskHistory {:task       "async-work"
-                                        :run_id     @run-id
-                                        :status     :failed
-                                        :started_at (t/instant)
-                                        :ended_at   (t/instant)})
-        (task-history/task-run-work-done! @run-id)
-        (is (= :failed (t2/select-one-fn :status :model/TaskRun :id @run-id)))))))
+    (testing "with :auto-complete false and no work for other threads, with-task-run completes the run after its body"
+      (let [run-id (task-history/with-task-run {:run_type      :subscription
+                                                :entity_type   :dashboard
+                                                :entity_id     1
+                                                :auto-complete false}
+                     (task-history/with-task-history {:task "test-task"}
+                       :done)
+                     (task-history/current-run-id))
+            run    (t2/select-one :model/TaskRun :id run-id)]
+        (is (= :success (:status run)))
+        (is (some? (:ended_at run)))))
+    (testing "work on another thread that fails makes the run failed when it ends"
+      (let [[run-id send] (task-history/with-task-run {:run_type      :subscription
+                                                       :entity_type   :dashboard
+                                                       :entity_id     1
+                                                       :auto-complete false}
+                            [(task-history/current-run-id)
+                             (task-history/track-run-work! {:send 1})])]
+        (is (= :started (t2/select-one-fn :status :model/TaskRun :id run-id)))
+        (task-history/with-restored-run-id send
+          (try
+            (task-history/with-task-history {:task "send"}
+              (throw (Exception. "fail")))
+            (catch Exception _)))
+        (is (= :failed (t2/select-one-fn :status :model/TaskRun :id run-id)))))))
 
-(deftest task-run-work-done-test
-  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
-    (testing "inside a with-task-run that auto-completes, task-run-work-done! leaves the completion to the macro"
-      (let [run-id (atom nil)]
-        (try
-          (task-history/with-task-run {:run_type    :subscription
-                                       :entity_type :dashboard
-                                       :entity_id   1}
-            (reset! run-id (task-history/current-run-id))
-            (task-history/with-task-history {:task "first-send"}
-              :done)
-            (task-history/task-run-work-done! @run-id)
-            (is (= :started (t2/select-one-fn :status :model/TaskRun :id @run-id))
-                "the first piece of work does not fix the run status")
-            (task-history/with-task-history {:task "second-send"}
-              (throw (Exception. "fail"))))
-          (catch Exception _))
-        (is (= :failed (t2/select-one-fn :status :model/TaskRun :id @run-id))
-            "the macro completes the run from all of its tasks")))
-    (testing "with :auto-complete false, task-run-work-done! completes the run"
-      (let [run-id (atom nil)]
-        (task-history/with-task-run {:run_type      :subscription
-                                     :entity_type   :dashboard
-                                     :entity_id     1
-                                     :auto-complete false}
-          (reset! run-id (task-history/current-run-id))
+(deftest task-run-pending-work-test
+  (testing "an :auto-complete false run stays started until its body and all work tagged with its run id have ended (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [[run-id send-1 send-2] (task-history/with-task-run {:run_type      :subscription
+                                                                :entity_type   :dashboard
+                                                                :entity_id     1
+                                                                :auto-complete false}
+                                     [(task-history/current-run-id)
+                                      (task-history/track-run-work! {:send 1})
+                                      (task-history/track-run-work! {:send 2})])
+            run-status             #(t2/select-one-fn :status :model/TaskRun :id run-id)]
+        (is (= :started (run-status)) "the body has ended, two sends have not")
+        ;; as the queue does when a newer notification replaces `send-1`
+        (task-history/end-run-work! send-1)
+        (is (= :started (run-status)) "one send has not ended")
+        ;; as the notification worker does
+        (task-history/with-restored-run-id send-2
           (task-history/with-task-history {:task "send"}
             :done))
-        ;; called outside the macro, as the notification worker does on its own thread
-        (task-history/task-run-work-done! @run-id)
-        (is (= :success (t2/select-one-fn :status :model/TaskRun :id @run-id)))))))
-
-(deftest task-run-work-done-recomputes-async-run-test
-  (testing "for an :auto-complete false run, each task-run-work-done! sets the run status from the tasks as they are now (GDGT-3331)"
-    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
-      (let [run-id   (task-run/create-task-run! {:run_type    :subscription
-                                                 :entity_type :dashboard
-                                                 :entity_id   1})
-            run      #(t2/select-one [:model/TaskRun :status :ended_at] :id run-id)
-            start!   #(t2/insert-returning-pk! :model/TaskHistory {:task       "notification-send"
-                                                                   :run_id     run-id
-                                                                   :status     :started
-                                                                   :started_at (t/instant)})
-            finish!  (fn [task-id status]
-                       (t2/update! :model/TaskHistory task-id {:status status :ended_at (t/instant)}))
-            email    (start!)
-            slack    (start!)]
-        (testing "the first send ends while the second one still runs: the run stays started"
-          (finish! email :success)
-          (task-history/task-run-work-done! run-id)
-          (is (=? {:status :started :ended_at nil} (run))))
-        (testing "the last send ends: the run gets the status of all its tasks"
-          (finish! slack :success)
-          (task-history/task-run-work-done! run-id)
-          (is (=? {:status :success :ended_at some?} (run))))
-        (testing "a send that fails after the run succeeded turns the run failed"
-          (finish! (start!) :failed)
-          (task-history/task-run-work-done! run-id)
-          (is (= :failed (:status (run)))))
-        (testing "an abandoned run keeps its status"
-          (t2/update! :model/TaskRun run-id {:status :abandoned})
-          (finish! (start!) :success)
-          (task-history/task-run-work-done! run-id)
-          (is (= :abandoned (:status (run)))))))))
-
-(deftest task-run-work-done-two-threads-test
-  (testing "a call that read the tasks before the last send ended does not overwrite the status the last send sets (GDGT-3331)"
-    ;; The run is success for a moment, and one more send is still started. On one thread, a call reads the tasks, gets
-    ;; started, and waits up to 500 ms before it writes. On a second thread, the last send ends and calls
-    ;; task-run-work-done!. The run row lock makes the last send wait until the first call has written started, so it
-    ;; then writes success. Without the lock, the last send reads the run as success, writes nothing, and the first
-    ;; call then writes its older started: the run stays started.
-    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
-      (let [run-id         (task-run/create-task-run! {:run_type    :subscription
-                                                       :entity_type :dashboard
-                                                       :entity_id   1})
-            task!          (fn [status]
-                             (t2/insert-returning-pk! :model/TaskHistory {:task       "notification-send"
-                                                                          :run_id     run-id
-                                                                          :status     status
-                                                                          :started_at (t/instant)}))
-            _              (task! :success)
-            last-send      (task! :started)
-            _              (t2/update! :model/TaskRun run-id {:status :success :ended_at (t/instant)})
-            first-read     (CountDownLatch. 1)
-            last-done      (CountDownLatch. 1)
-            first-statuses (atom nil)
-            original       (mt/original-fn #'task-history.db/task-statuses-for-run)]
-        ;; `future` conveys the dynamic redef to both threads
-        (mt/with-dynamic-fn-redefs [task-history.db/task-statuses-for-run
-                                    (fn [id]
-                                      (let [statuses (original id)]
-                                        (when (compare-and-set! first-statuses nil statuses)
-                                          (.countDown first-read)
-                                          (.await last-done 500 TimeUnit/MILLISECONDS))
-                                        statuses))]
-          (let [first-call (future (task-history/task-run-work-done! run-id))
-                last-call  (future
-                             (.await first-read 10 TimeUnit/SECONDS)
-                             (t2/update! :model/TaskHistory last-send {:status :success :ended_at (t/instant)})
-                             (task-history/task-run-work-done! run-id)
-                             (.countDown last-done))]
-            @first-call
-            @last-call))
-        (is (= #{:started :success} @first-statuses)
-            "the first call read the tasks while the last send was still started")
-        (is (= :success (t2/select-one-fn :status :model/TaskRun :id run-id)))))))
+        (is (= :success (run-status)) "the last send sets the run status")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Nesting prevention tests                                            |
@@ -242,7 +156,7 @@
         (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok)
           (task-history/with-task-history {:task "t2"} :ok))
-        (task-history/complete-task-run! run-id)
+        (#'task-run/complete-task-run! run-id)
         (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))))
     (testing "complete-task-run! derives :failed when any child failed"
       (let [run-id (task-run/create-task-run! {:run_type    :sync
@@ -254,7 +168,7 @@
             (task-history/with-task-history {:task "t2"}
               (throw (Exception. "fail")))
             (catch Exception _)))
-        (task-history/complete-task-run! run-id)
+        (#'task-run/complete-task-run! run-id)
         (is (= :failed (:status (t2/select-one :model/TaskRun :id run-id))))))))
 
 (deftest complete-task-run-idempotent-test
@@ -266,7 +180,7 @@
         (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok))
         ;; First completion
-        (task-history/complete-task-run! run-id)
+        (#'task-run/complete-task-run! run-id)
         (let [first-ended-at (:ended_at (t2/select-one :model/TaskRun :id run-id))]
           (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))
           ;; Add a failing task and try to complete again
@@ -276,7 +190,7 @@
                 (throw (Exception. "fail")))
               (catch Exception _)))
           ;; Second completion should be no-op
-          (task-history/complete-task-run! run-id)
+          (#'task-run/complete-task-run! run-id)
           (let [run (t2/select-one :model/TaskRun :id run-id)]
             (is (= :success (:status run)) "status unchanged")
             (is (= first-ended-at (:ended_at run)) "ended_at unchanged")))))))
@@ -287,20 +201,35 @@
 
 (deftest run-id-meta-propagation-test
   (mt/with-model-cleanup [:model/TaskRun]
-    (testing "with-run-id-meta and with-restored-run-id propagate run-id via metadata"
+    (testing "track-run-work! and with-restored-run-id propagate run-id via metadata"
       (let [restored-run (atom nil)]
         (task-history/with-task-run {:run_type    :sync
                                      :entity_type :database
                                      :entity_id   1}
-          (let [data            (task-history/with-run-id-meta {:some "data"})
+          (let [data            (task-history/track-run-work! {:some "data"})
                 original-run-id (task-history/current-run-id)]
             (is (some? original-run-id) "run-id is set")
             (is (true? (:auto-complete? task-run/*run*)) "with-task-run completes this run itself")
-            ;; restore inside a run that auto-completes: the restored run must still not auto-complete
             (task-history/with-restored-run-id data
               (reset! restored-run task-run/*run*))
-            (is (= {:id original-run-id :auto-complete? false} @restored-run)
-                "the restored run has the id from the metadata, and task-run-work-done! recomputes it")))))))
+            (is (= {:id original-run-id :auto-complete? true} @restored-run)
+                "the restored run has the id from the metadata, and it completes itself, as the original run does")
+            (is (= :started (t2/select-one-fn :status :model/TaskRun :id original-run-id))
+                "the map was not counted, so the restore does not complete the run (GDGT-3331)")))))))
+
+(deftest restored-run-counts-like-its-run-test
+  (testing "work queued on a worker for a run that completes itself is not counted, so it cannot complete that run early (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (task-history/with-task-run {:run_type    :subscription
+                                   :entity_type :dashboard
+                                   :entity_id   1}
+        (let [run-id (task-history/current-run-id)
+              queued (task-history/track-run-work! {:send 1})]
+          ;; as a worker that sends `queued`, and queues one more notification while it sends
+          (task-history/with-restored-run-id queued
+            (task-history/end-run-work! (task-history/track-run-work! {:send 2})))
+          (is (= :started (t2/select-one-fn :status :model/TaskRun :id run-id))
+              "with-task-run completes the run after its body"))))))
 
 (deftest run-id-meta-nil-propagation-test
   (testing "with-restored-run-id handles nil metadata gracefully"
