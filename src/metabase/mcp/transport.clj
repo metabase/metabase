@@ -766,7 +766,7 @@
            (respond @invalid-token)
 
            session-auth
-           ;; filter out ::unrestricted sentinel; it should have been filtered before, but just in case, do it again
+           ;; filter out ::unrestricted sentinel
            (dispatch session-auth (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware

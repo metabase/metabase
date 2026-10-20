@@ -485,17 +485,17 @@
 
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
-   then narrowed to the `resource` indicator it names. Throws `ex-info` carrying `:oauth-error` and
-   `:error-description` when the request names no scope, when none of its scopes are registered, or when none of
-   them survive narrowing.
+  then narrowed to the `resource` indicator it names (none means REST). Throws `ex-info` carrying `:oauth-error` and
+  `:error-description` when the request names no scope, when none of its scopes are registered, when none of them
+  survive narrowing, or when incompatible resources are requested.
 
-   Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
-   form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
-   can re-sign anything. The endpoint that issues the code has to apply these rules itself.
+  Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the form
+  was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user can
+  re-sign anything. The endpoint that issues the code has to apply these rules itself.
 
-   Never returns a blank scope. The decision endpoint leans on that: it answers a nil grant with 403
-   `params_tampered`, which is only the right status while the sole way to reach it is a choice naming an unoffered
-   scope. A blank offer would make an honest approval look like tampering."
+  Never returns a blank scope. The decision endpoint leans on that: it answers a nil grant with 403 `params_tampered`,
+  which is only the right status while the sole way to reach it is a choice naming an unoffered scope. A blank offer
+  would make an honest approval look like tampering."
   [parsed]
   {:post [(not (str/blank? %))]}
   ;; A scope-less request would otherwise mint a token with no scopes.
@@ -503,11 +503,11 @@
     (throw (ex-info "no scope was requested"
                     {:oauth-error       "invalid_scope"
                      :error-description (missing-scope-description)})))
-  (let [;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?`
-        ;; would honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than
-        ;; refusing (RFC 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to
-        ;; re-authorize, and the refusal would reach a browser tab rather than the client program. Filtered
-        ;; before narrowing, so a request is treated the same with and without `resource`.
+  (let [;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?` would
+        ;; honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than refusing (RFC
+        ;; 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to re-authorize, and the
+        ;; refusal would reach a browser tab rather than the client program. Filtered before narrowing, so this filter
+        ;; does not depend on `resource`.
         registered (or (oauth-server/registered-scopes-only (:scope parsed))
                        (throw (ex-info "no requested scope is a registered scope"
                                        {:oauth-error       "invalid_scope"
