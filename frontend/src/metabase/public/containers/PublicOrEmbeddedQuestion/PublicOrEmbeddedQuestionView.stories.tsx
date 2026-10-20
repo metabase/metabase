@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
@@ -466,4 +466,7 @@ const downloadQuestionAsPng = async (canvasElement: HTMLElement) => {
     await documentElement.findByTestId("download-results-button"),
   );
   await canvas.findByTestId("image-downloaded");
+  await waitFor(() =>
+    expect(documentElement.queryByRole("tooltip")).toBeNull(),
+  );
 };
