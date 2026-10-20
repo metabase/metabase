@@ -974,7 +974,7 @@
 ;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
 ;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
 ;;; query builder writes it.
-;;; Pass 2.96 expands day/default dates into ranges outside these stage keys.
+;;; Pass 2.96 expands day/default dates into ranges in conditional aggregations.
 ;;;
 ;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
 ;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
@@ -1297,7 +1297,7 @@
    form))
 
 ;;; ============================================================
-;;; Pass 2.96 -- expand whole-day comparisons outside filters and expressions.
+;;; Pass 2.96 -- expand whole-day comparisons outside filters, expressions and join conditions.
 ;;;
 ;;; Date-only day/default bounds become ranges on the raw ref, with an exclusive next-day
 ;;; upper bound. This counts whole days and lets the expression editor re-save the result:
@@ -1343,13 +1343,15 @@
     node))
 
 (defn- repair-day-and-default-comparisons*
-  "Expand day/default dates into ranges and unwrap default timestamps outside Pass 2.95's scope."
+  "Repair temporal comparisons outside filters, expressions and join conditions."
   [form]
   (if (and (map? form) (vector? (get form "stages")))
     (letfn [(rewrite [node]
               (if (map? node)
                 (reduce-kv (fn [result k v]
-                             (assoc result k (if (some #{k} bucket-hoist-stage-keys) v (rewrite v))))
+                             (assoc result k (if (or (= k "conditions") (some #{k} bucket-hoist-stage-keys))
+                                               v
+                                               (rewrite v))))
                            (empty node) node)
                 (walk/walk rewrite repair-day-and-default-comparison node)))]
       (rewrite form))
@@ -3076,7 +3078,8 @@
   `clean-stage-schema-errors` deletes the clause outright and the question silently answers something
   else. In `aggregation:` the legacy schema is permissive enough that nothing throws even in dev: the
   clause is deleted silently in both. Pass 2.95 repairs comparisons in filters and expressions;
-  Pass 2.96 expands day/default dates into ranges and unwraps default timestamps elsewhere.
+  Pass 2.96 expands day/default dates into ranges and unwraps default timestamps outside filters,
+  expressions and join conditions.
   Anything still standing here cannot survive the hop.
 
   `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
@@ -3189,7 +3192,7 @@
     2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
        `absolute-datetime` literal and onto the ref it is compared to, for the same reason
        (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
-    2.96. outside `filters` and `expressions`, expand date-only `day` / `default` comparisons into
+    2.96. outside `filters`, `expressions` and join `conditions`, expand date-only `day` / `default` comparisons into
        whole-day ranges on the raw ref; leave date negations for E7; unwrap `default` timestamps;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the

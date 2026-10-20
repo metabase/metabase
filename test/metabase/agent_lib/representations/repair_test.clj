@@ -1096,18 +1096,32 @@
         (is (= [["count-where" {} expected]] (get stage "aggregation")))
         (is (= stage (repair-in-stage stage)))))))
 
-(deftest ^:parallel whole-day-ranges-in-order-by-and-joins-test
+(deftest ^:parallel whole-day-ranges-in-order-by-and-joined-aggregations-test
   (let [predicate ["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "default")]
         expected ["and" {} [">=" {} created-at "2017-01-01"] ["<" {} created-at "2017-02-01"]]]
     (testing "an inline order-by aggregation"
       (let [stage (repair-in-stage {"order-by" [["desc" {} ["count-where" {} predicate]]]})]
         (is (= ["count-where" {} expected] (get-in stage ["order-by" 0 2])))))
-    (testing "a join condition"
+    (testing "an aggregation in a join's source query"
       (let [stage (repair-in-stage
                    {"joins" [{"lib/type" "mbql/join" "alias" "O2"
-                              "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
-                              "conditions" [predicate]}]})]
-        (is (= [expected] (get-in stage ["joins" 0 "conditions"])))))))
+                              "stages" [{"lib/type" "mbql.stage/mbql"
+                                         "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                         "aggregation" [["count-where" {} predicate]]}]}]})]
+        (is (= [["count-where" {} expected]] (get-in stage ["joins" 0 "stages" 0 "aggregation"])))))))
+
+(deftest ^:parallel join-conditions-with-temporal-literals-stay-refused-test
+  (doseq [operator ["in" "=" "between"]
+          [start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]]
+    (testing (str operator " with " start-unit "/" end-unit)
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"does not survive the round trip"
+           (repair-in-stage
+            {"joins" [{"lib/type" "mbql/join" "alias" "O2"
+                       "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                       "conditions" [[operator {} created-at
+                                      (abs-dt "2017-01-30" start-unit)
+                                      (abs-dt "2017-01-31" end-unit)]]}]}))))))
 
 (deftest ^:parallel default-timestamps-keep-their-time-test
   (let [input ["between" {} created-at (abs-dt "2026-01-01T12:30:00" "default")
