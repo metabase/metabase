@@ -1,75 +1,90 @@
 ---
 title: Research
-summary: Research automatically creates and ranks many charts using your metrics and dimensions, so you can use prompts to explore broad questions about your data.
+summary: Research automatically creates and ranks charts using your metrics and dimensions, so you can use prompts to explore broad questions about your data.
 ---
 
 # Research
 
-Research lets you write prompts that automatically create many charts using your metrics and dimensions. Describe what you want to investigate, and Metabase assembles the relevant chart breakdowns, scores them for interestingness, and presents them in a single grouped view. Use Research to ask broad questions about your data without building charts one at a time.
+![A Research showing generated charts in the sidebar and a selected bar chart](./images/research-results.png)
 
-## Before you start
+Use Research to ask broad questions about your data without building charts one at a time. Research is available from the [AI exploration](./metabot.md) page. Describe what you want to investigate, and Metabase assembles the relevant chart breakdowns, scores them for interestingness, and presents them in a single grouped view. Metabase saves each Research as its own entity, like a question or dashboard, so you can move it to a collection and share it.
 
-Before you use Research, an admin must configure an AI provider in [AI settings](./settings.md).
+Research works best for open-ended questions, like "what drove revenue last quarter?" If you already know the chart you want, create a [question](../questions/query-builder/editor.md) instead. To ask one question at a time, use [AI exploration](./metabot.md).
 
-Without a connected provider, you can still use Research to build a data set manually, but you can't use AI to rank charts.
-
-If an admin turns on [**Disable all AI features**](./settings.md#disable-all-ai-features), Research isn't available.
+Research requires an [AI provider](./settings.md) and at least one [metric](../data-modeling/semantic-layer/metrics.md). If an admin turns on [**Disable all AI features**](./settings.md#disable-all-ai-features), Research isn't available.
 
 ## Create and run a Research plan
 
-To create a Research plan, you can use a prompt or manually build the plan.
+To open Research, click **+ New > AI exploration**, then click **Research**. Or press `Cmd+K` to open the command palette and select **New research**.
+
+You can use a prompt or manually build the plan.
 
 ### Start from a prompt
 
-1. Click **+ New > Research**, or press `Cmd+K` to open the command palette and select **New Research**.
-2. Write a prompt, like "help me understand revenue, orders, and product ratings."
-3. Click **Create plan**.
-4. Review your **Research plan**. Metabase adds relevant metrics with their related dimensions, and pulls in any relevant timelines.
-5. To refine your plan, send another prompt. To edit the plan yourself, use **+ Metrics** to add metrics, or **+ Events** to add timelines.
-6. Enable the **Use AI to analyze and order results** toggle to rank charts, which consumes tokens. Disable the toggle to use a deterministic score.
-7. Click **Start research**. Metabase generates the charts in the background, so you can browse the ones that are ready while the rest generate.
+1. Write a prompt, like "help me understand revenue, orders, and product ratings."
+2. Click **Create plan**.
+3. Review your **Research plan**. Metabase adds relevant metrics with their related dimensions and pulls in any relevant timelines. Metabase uses your prompt to name the Research.
+
+   ![A Research plan created from a prompt, with three metrics, their dimensions, and a timeline](./images/research-plan.png)
+
+4. To refine your plan, send another prompt. To edit the plan yourself, use **+ Metrics** to add metrics, or **+ Events** to add timelines. To change which dimensions a metric uses, click the dimensions under the metric.
+5. To use AI to rank the charts, turn on **Use AI to analyze and order results**. AI ranking consumes tokens. Turn it off to use a deterministic score.
+6. Click **Start research**. Metabase generates the charts in the background, so you can browse the ones that are ready while the rest generate. After you start a Research, you can't add metrics, dimensions, or timelines, or change the prompt.
 
 ### Build the plan yourself
 
 1. Click **Manual setup**.
-2. Click **+ Metrics** to add metrics.
+2. Click **+ Metrics** to add metrics. To change which dimensions a metric uses, click the dimensions under the metric.
 3. Click **+ Events** to add timelines.
-4. Click **Start research**.
+
+   ![A manually built Research plan with two metrics and a timeline](./images/research-manual-setup.png)
+
+4. Click **Start research**. After you start, you can't add more metrics, dimensions, or timelines.
 
 ## Explore the results
 
-In the sidebar, use the **All**, **Stars**, and **Discussions** tabs to view all charts, starred charts, and charts with comments.
+Metabase generates charts for each metric in your plan, broken out by its dimensions. The sidebar lists charts grouped by metric. Charts appear as they finish, with the most interesting ones first.
 
-From the filter menu, sort the charts by **Interestingness** or **Alphabetical**. Choose **Show hidden items** to reveal your hidden charts.
+To view a chart, click it in the sidebar, or use the left and right arrows to move between charts.
 
-Act on the selected chart using the toolbar or your keyboard:
+### Find charts
 
-- **Star** (`S`)
-- **Comment** (`C`)
-- **Add to Summary**
-- **Copy link**, from the **...** menu
-- **Hide**, from the **...** menu
+In the sidebar, the **All** tab lists every chart. The star tab lists charts you've starred, and the comment tab lists charts with comments.
 
-Use the left and right arrows to move between charts.
+To sort the list, click the filter icon and choose **Interestingness** or **Alphabetical**. Interestingness is the AI's ranking, or a deterministic score if you turned off AI ranking. To reveal hidden charts, choose **Show hidden items**.
+
+### Mark up charts
+
+Use the toolbar under the selected chart, or the keyboard shortcut, to:
+
+- **Star** (`S`) a chart to find it later in the star tab.
+- **Comment** (`C`) on a chart.
+- **Hide** (`H`) a chart you don't need, from the **...** menu.
+- **Copy link** to a chart, from the **...** menu.
 
 ### Add charts to the Summary
 
-Use the **Summary** to collect the most important charts in a single document at the top of the sidebar. To add the selected chart, click **Add to Summary** in the toolbar. The chart keeps the timeline you have selected. Comments are shared between the Research and the Summary.
+The **Summary** is a document at the top of the sidebar where you collect the most important charts. It starts empty, and Metabase doesn't write it for you. To add the selected chart, click **Add to Summary** in the toolbar.
+
+The chart keeps the timeline you have selected, and the Research and the Summary share comments.
 
 ### Explore a data point
 
 Select a data point on a chart to open its menu:
 
-- Click **Explore further** to investigate the value. Metabase creates a chart filtered to that value and adds it to your Research.
+- Click **Explore further** to investigate the value. Metabase creates a chart filtered to that value and adds it to your Research. **Explore further** isn't available on the **Other** bar of a top-values chart, because it groups many values.
 - Click **Add comment** to comment on the data point.
 
 ## Save and share your Research
 
-Metabase saves each Research as an entity in your personal collection. Pin, bookmark, and move the Research like any other entity. To share a Research, move it into a collection that others can access.
+Metabase saves each Research to your personal collection. To share a Research, move it to a collection that others can access:
 
-Data permissions are enforced on the cached results. A viewer who lacks access to the underlying data source can't see those results, and a viewer with row-level security sees only the rows they're allowed to.
+1. Open the collection that contains the Research.
+2. Click the **...** on the Research's row.
+3. Click **Move** and select a collection.
 
-## Limitations
+You can also pin, bookmark, or move a Research to the trash from the same menu.
 
-- After you start a Research, you can't add metrics, dimensions, or timelines to it, or change the prompt.
-- You can't use metrics from a database that has [database routing](../permissions/database-routing.md) enabled.
+Data permissions apply to the cached results. A viewer without access to the underlying data source can't see those results, and a viewer with row-level security sees only the rows they're allowed to.
+
+You can't use metrics from a database with [database routing](../permissions/database-routing.md) enabled, because Research caches results and routing can't resolve them at read time.
