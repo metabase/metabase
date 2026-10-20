@@ -33,11 +33,6 @@ import {
   dataAppLogColumnKeys,
 } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
 
@@ -161,8 +156,8 @@ function useDataAppNames(): DataAppNames {
 type LogRow = { id: string } & Partial<Record<DataAppLogColumn, RowValue>>;
 
 type DataAppLogTableProps = {
-  provider: MetadataProvider | null;
-  table: TableMetadata | CardMetadata | null;
+  provider: Lib.MetadataProvider | null;
+  table: Lib.TableMetadata | Lib.CardMetadata | null;
   filters: DataAppLogFilters;
   hasPii: boolean;
   page: number;
@@ -175,8 +170,8 @@ type DataAppLogTableProps = {
 };
 
 type DataAppLogTableInnerProps = DataAppLogTableProps & {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
+  provider: Lib.MetadataProvider;
+  table: Lib.TableMetadata | Lib.CardMetadata;
 };
 
 export function DataAppLogTable({

@@ -7,11 +7,6 @@ import { Select } from "metabase/ui";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 import { buildLoggedDataAppsQuery } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
 import { FILTER_WIDTH } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DataApp, RowValue } from "metabase-types/api";
 
@@ -50,8 +45,8 @@ type DataAppFilterSelectProps = {
   /** The selected data app's slug. */
   value: string | null;
   onChange: (value: string | null) => void;
-  provider: MetadataProvider | null;
-  table: TableMetadata | CardMetadata | null;
+  provider: Lib.MetadataProvider | null;
+  table: Lib.TableMetadata | Lib.CardMetadata | null;
   dateFilter: DateFilterValue;
 };
 
