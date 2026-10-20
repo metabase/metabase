@@ -639,29 +639,29 @@
         ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
         ;; HTTP Basic auth) to avoid pooling unrelated clients into a shared throttle bucket.
         client-id  (or (:client_id body) ip-address)]
-    (with-throttling-429 [token-client-throttler client-id
-                          token-ip-throttler     ip-address]
-      (or (when-let [provider (oauth-server/get-provider)]
-            (let [authorization-header (get-in request [:headers "authorization"])]
-              (try
+    (try
+      (with-throttling-429 [token-client-throttler client-id
+                            token-ip-throttler     ip-address]
+        (or (when-let [provider (oauth-server/get-provider)]
+              (let [authorization-header (get-in request [:headers "authorization"])]
                 (check-resource-indicators! (:resource body))
                 (let [response (oidc/token-request provider body authorization-header)]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"
                              "Pragma"        "no-cache"}
-                   :body    response})
-                (catch ExceptionInfo e
-                  (log/warnf "OAuth token request failed: %s" (ex-message e))
-                  (let [data  (ex-data e)
-                        error (token-error-code data)]
-                    {:status  (if (= error "invalid_client") 401 400)
-                     :headers {"Content-Type"  "application/json"
-                               "Cache-Control" "no-store"
-                               "Pragma"        "no-cache"}
-                     :body    {:error             error
-                               :error_description (error-description data invalid-token-request-description)}})))))
-          {:status 404 :body {:error "not_found"}}))))
+                   :body    response})))
+            {:status 404 :body {:error "not_found"}}))
+      (catch ExceptionInfo e
+        (log/warnf "OAuth token request failed: %s" (ex-message e))
+        (let [data  (ex-data e)
+              error (token-error-code data)]
+          {:status  (if (= error "invalid_client") 401 400)
+           :headers {"Content-Type"  "application/json"
+                     "Cache-Control" "no-store"
+                     "Pragma"        "no-cache"}
+           :body    {:error             error
+                     :error_description (error-description data invalid-token-request-description)}})))))
 
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]

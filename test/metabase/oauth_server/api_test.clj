@@ -18,9 +18,15 @@
 ;; reset-provider! is safe here — it resets a local atom, no global side effects.
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
-                      (binding [client/*url-prefix* ""]
-                        (thunk))
-                      (oauth-server/reset-provider!)))
+                      (doseq [throttler [@#'api.oauth/token-client-throttler @#'api.oauth/token-ip-throttler]]
+                        (reset! (:attempts throttler) '()))
+                      (try
+                        (binding [client/*url-prefix* ""]
+                          (thunk))
+                        (finally
+                          (doseq [throttler [@#'api.oauth/token-client-throttler @#'api.oauth/token-ip-throttler]]
+                            (reset! (:attempts throttler) '()))
+                          (oauth-server/reset-provider!)))))
 
 (deftest discovery-endpoint-test
   (testing "Discovery endpoint returns valid OAuth metadata"
@@ -932,6 +938,56 @@
                              :expected-status 400
                              :authorization (basic-auth-header client-id client-secret))]
           (is (=? {:error "invalid_grant"} response)))))))
+
+(deftest token-refusals-throttled-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+            params        {:grant_type   "authorization_code"
+                           :code         "bogus-code"
+                           :redirect_uri "https://example.com/callback"}
+            authorization (basic-auth-header client-id client-secret)]
+        (dotimes [_ 10]
+          (is (= "invalid_grant"
+                 (:error (token-request! params :expected-status 400 :authorization authorization)))))
+        (let [response (client/client-full-response
+                        :post 429 "oauth/token"
+                        {:request-options {:headers {"content-type"  "application/x-www-form-urlencoded"
+                                                     "authorization" authorization}}}
+                        params)]
+          (is (= "too_many_requests" (get-in response [:body :error])))
+          (is (some-> (get-in response [:headers "Retry-After"]) parse-long pos-int?)))))))
+
+(deftest token-ip-refusals-throttled-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (dotimes [_ 50]
+      (is (string? (:error (token-request! {:grant_type "authorization_code"
+                                          :client_id  (str (random-uuid))
+                                          :code       "bogus-code"}
+                                         :expected-status 400)))))
+    (is (= "too_many_requests"
+           (:error (token-request! {:grant_type "authorization_code"
+                                    :client_id  (str (random-uuid))
+                                    :code       "bogus-code"}
+                                   :expected-status 429))))))
+
+(deftest successful-token-requests-do-not-count-toward-throttle-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+            authorization (basic-auth-header client-id client-secret)
+            code          (authorize-and-get-code! client-id)
+            tokens        (token-request! {:grant_type   "authorization_code"
+                                           :code         code
+                                           :redirect_uri "https://example.com/callback"}
+                                          :authorization authorization)]
+        (loop [refresh-token (:refresh_token tokens), remaining 51]
+          (when (pos? remaining)
+            (let [response (token-request! {:grant_type    "refresh_token"
+                                           :refresh_token refresh-token}
+                                          :authorization authorization)]
+              (is (string? (:access_token response)))
+              (recur (:refresh_token response) (dec remaining)))))))))
 
 (deftest token-auth-code-wrong-client-test
   (testing "GHY-4491: Authorization code grant -- a code issued to another client is an invalid grant"
