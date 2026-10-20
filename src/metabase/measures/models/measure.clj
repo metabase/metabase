@@ -235,8 +235,7 @@
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
           :table_id]
-   :transform {:created_at (serdes/date)
-               :creator_id (serdes/fk :model/User)
+   :transform {:creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}
    :defaults {:archived false}})
 

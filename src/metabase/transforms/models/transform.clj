@@ -476,8 +476,7 @@
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
    :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
-   :transform {:created_at         (serdes/date)
-               :creator_id         (serdes/fk :model/User)
+   :transform {:creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database)
@@ -524,7 +523,7 @@
                                             (update-checkpoint-field import-maybe-int-field-fk))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :entity_id)} opts))
                :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
 (defmethod serdes/deserialization-dependencies "Transform"
