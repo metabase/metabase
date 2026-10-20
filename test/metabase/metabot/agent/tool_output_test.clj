@@ -198,10 +198,10 @@
     (mt/test-driver :h2
       (search/init-index! {:force-reset? false :re-populate? true})
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (search-tools/search-tool
-                      {:semantic_queries ["orders"]
-                       :keyword_queries  ["orders"]
-                       :entity_types     ["table"]})]
+        (let [result (test-util/call-tool search-tools/search-tool
+                                          {:semantic_queries ["orders"]
+                                           :keyword_queries  ["orders"]
+                                           :entity_types     ["table"]})]
           (assert-formatted-structured result "search: tables" #"<search-results\b"))))))
 
 (deftest search-tool-with-models-structured-output-test
@@ -218,10 +218,10 @@
                                                       :name          "Searchable Test Model"
                                                       :type          :model}]
             (search/init-index! {:force-reset? false :re-populate? true})
-            (let [result (search-tools/search-tool
-                          {:semantic_queries ["Searchable Test Model"]
-                           :keyword_queries  ["Searchable Test Model"]
-                           :entity_types     ["model"]})]
+            (let [result (test-util/call-tool search-tools/search-tool
+                                              {:semantic_queries ["Searchable Test Model"]
+                                               :keyword_queries  ["Searchable Test Model"]
+                                               :entity_types     ["model"]})]
               (assert-formatted-structured
                result "search: model" #"<search-results\b"))))))))
 
