@@ -12,13 +12,14 @@ import * as Lib from "metabase-lib";
 import { getFilterLabel } from "../../harness/clauses";
 import type { FilterUiProps, FilterUiVariant } from "../../types";
 
-import { GroupEditor } from "./GroupEditor";
+import { GroupEditor, getOperatorLabel } from "./GroupEditor";
 import { Token } from "./Token";
 import {
-  type PillRows,
-  expandPillRows,
-  readPillRows,
-  writePillRows,
+  type PillTree,
+  expandPillTree,
+  flattenPillTree,
+  readPillTree,
+  writePillTree,
 } from "./orPills";
 
 /**
@@ -39,11 +40,11 @@ export function OrPillsPrototype({
       query={query}
       stageIndex={stageIndex}
       filter={filter}
-      onUpdate={(rows) =>
-        onChange(writePillRows(query, stageIndex, filter, rows))
+      onUpdate={(tree) =>
+        onChange(writePillTree(query, stageIndex, filter, tree))
       }
-      onExpand={(rows) =>
-        onChange(expandPillRows(query, stageIndex, filter, rows))
+      onExpand={(tree) =>
+        onChange(expandPillTree(query, stageIndex, filter, tree))
       }
       onRemove={() => onChange(Lib.removeClause(query, stageIndex, filter))}
     />
@@ -82,8 +83,8 @@ type PillProps = {
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause;
-  onUpdate: (rows: PillRows) => void;
-  onExpand: (rows: PillRows) => void;
+  onUpdate: (tree: PillTree) => void;
+  onExpand: (tree: PillTree) => void;
   onRemove: () => void;
 };
 
@@ -96,7 +97,7 @@ function Pill({
   onRemove,
 }: PillProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const rows = readPillRows(query, stageIndex, filter);
+  const tree = readPillTree(query, stageIndex, filter);
 
   return (
     <Popover
@@ -110,7 +111,7 @@ function Pill({
           onClick={() => setIsOpened((opened) => !opened)}
           onRemove={onRemove}
         >
-          <PillLabel query={query} stageIndex={stageIndex} rows={rows} />
+          <PillLabel query={query} stageIndex={stageIndex} tree={tree} />
         </Token>
       </Popover.Target>
       {/* The editor's own pickers render inside this dropdown, so it must not clip them. */}
@@ -118,13 +119,13 @@ function Pill({
         <GroupEditor
           query={query}
           stageIndex={stageIndex}
-          rows={rows}
-          onUpdate={(nextRows) => {
-            onUpdate(nextRows);
+          tree={tree}
+          onUpdate={(nextTree) => {
+            onUpdate(nextTree);
             setIsOpened(false);
           }}
-          onExpand={(nextRows) => {
-            onExpand(nextRows);
+          onExpand={(nextTree) => {
+            onExpand(nextTree);
             setIsOpened(false);
           }}
         />
@@ -136,7 +137,7 @@ function Pill({
 type PillLabelProps = {
   query: Lib.Query;
   stageIndex: number;
-  rows: PillRows;
+  tree: PillTree;
 };
 
 const MAX_FULL_LABEL_CLAUSES = 2;
@@ -145,18 +146,11 @@ const MAX_FULL_LABEL_CLAUSES = 2;
  * Figma "Group token (collapsed)": up to two conditions are spelled out;
  * three or more collapse to the first condition and `and|or N more`.
  */
-function PillLabel({ query, stageIndex, rows }: PillLabelProps) {
-  // Each clause is paired with the connector that precedes it.
-  const parts = rows.flatMap((row) =>
-    row.flatMap((item, itemIndex) => {
-      const itemConnector = itemIndex > 0 ? t`and` : t`or`;
-      const clauses = item.type === "clause" ? [item.clause] : item.clauses;
-      return clauses.map((clause, clauseIndex) => ({
-        connector: clauseIndex > 0 ? t`or` : itemConnector,
-        label: getFilterLabel(query, stageIndex, clause),
-      }));
-    }),
-  );
+function PillLabel({ query, stageIndex, tree }: PillLabelProps) {
+  const parts = flattenPillTree(tree).map(({ connector, clause }) => ({
+    connector: getOperatorLabel(connector),
+    label: getFilterLabel(query, stageIndex, clause),
+  }));
   const [first, ...rest] = parts;
   if (!first) {
     return null;
