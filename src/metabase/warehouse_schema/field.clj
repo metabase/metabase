@@ -34,7 +34,8 @@
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
-    (if include-editable-data-model?
+    (if (or include-editable-data-model?
+            (= :sensitive (keyword (:visibility_type field))))
       (schema.table/check-data-model-perms (:table field))
       (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
