@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -1326,6 +1327,35 @@
               (is (str/includes? output (str "uri=\"" uri "\"")))
               (is (=? {:resources [{:content {:structured-output map?}}]}
                       (read-uris {:uris (mapv :uri items)}))))))))))
+
+(deftest ^:parallel read-user-recents-pagination-test
+  (let [recents (mapv (fn [id]
+                        {:id id
+                         :name (str "Recent item " id)
+                         :model (if (odd? id) :card :dashboard)
+                         :timestamp "2026-10-20T12:00:00Z"})
+                      (range 1 31))]
+    (mt/with-dynamic-fn-redefs [activity-feed/get-recents (constantly {:recents recents})]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [first-result (read-uris {:uris ["metabase://user/recent-items"]})
+              first-page (get-in first-result [:resources 0 :content :structured-output])
+              next-uri (:next-page-uri first-page)]
+          (testing "the first page gives the model 25 items and a link to the rest"
+            (is (=? {:page 1 :pages 2 :total 30
+                     :next-page-uri "metabase://user/recent-items?page=2"}
+                    first-page))
+            (is (= (range 1 26) (map :id (:items first-page))))
+            (is (= 25 (count (re-seq #"<item " (:output first-result)))))
+            (is (str/includes? (:output first-result) "truncated=\"true\""))
+            (is (str/includes? (:output first-result) next-uri)))
+          (testing "following that link returns the remaining five items"
+            (let [{:keys [output resources]} (read-uris {:uris [next-uri]})
+                  second-page (get-in resources [0 :content :structured-output])]
+              (is (=? {:page 2 :pages 2 :total 30} second-page))
+              (is (= (range 26 31) (map :id (:items second-page))))
+              (is (= 5 (count (re-seq #"<item " output))))
+              (is (str/includes? output "truncated=\"false\""))
+              (is (nil? (:next-page-uri second-page))))))))))
 
 (deftest read-list-shape-test
   (testing "list responses carry total/page/pages/showing/truncated attrs in the rendered XML"
