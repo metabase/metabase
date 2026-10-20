@@ -4,6 +4,8 @@ import type { User } from "metabase-types/api";
 
 import { AccountHeader } from "../AccountHeader";
 
+import S from "./AccountLayout.module.css";
+
 interface AccountLayoutProps {
   user: User | null;
   path?: string;
@@ -20,7 +22,7 @@ const AccountLayout = ({
   }
 
   return (
-    <div>
+    <div className={S.root}>
       <AccountHeader
         user={user}
         path={path}
