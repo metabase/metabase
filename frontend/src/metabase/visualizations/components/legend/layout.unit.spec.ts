@@ -362,6 +362,17 @@ describe("getLegendLayout auto", () => {
     });
   });
 
+  it("should not reserve outline room below the '+ N more' label", () => {
+    // (169 - 2 + 8) / (13.8 + 8) = 8 rows, 7 items + "+ 13 more"
+    expect(
+      layout(createSeriesNames(20), {
+        width: 420,
+        height: 300,
+        chartAreaHeight: 169,
+      }),
+    ).toMatchObject({ type: "vertical", visibleCount: 7 });
+  });
+
   it("should widen the column to fit the '+ N more' label", () => {
     // item = 8 + 6 + 12 = 26 < "+ 13 more" = 9 * 6 = 54
     expect(layout(TWO_DIGIT_NAMES, { width: 420, height: 200 })).toEqual({
