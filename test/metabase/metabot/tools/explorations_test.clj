@@ -3,38 +3,52 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.explorations.core :as explorations]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as metabot.self]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
-(def ^:private exploration-tool-vars
-  [#'tools.explorations/list-research-metrics-tool
-   #'tools.explorations/get-research-candidates-tool
-   #'tools.explorations/add-research-groups-tool
-   #'tools.explorations/remove-from-research-plan-tool
-   #'tools.explorations/set-exploration-name-tool
-   #'tools.explorations/select-exploration-timelines-tool])
+(def ^:private research-scopes
+  "The scopes of a user granted Metabot and NLQ, the users the Research profile is offered to."
+  (scope/user-metabot-perms->scopes {:permission/metabot     :yes
+                                     :permission/metabot-nlq :yes}))
 
 (deftest tools-declare-registered-scopes-granted-to-nlq-users-test
   (testing "every exploration tool declares a registered :scope, so the per-tool scope check applies
             (a tool with no :scope skips wrap-with-scope-check entirely), AND an NLQ-yes user is
             granted that scope — so adding the gate does not filter the tools away from the
             NLQ-gated :explorations profile that offers them"
-    (let [nlq-scopes (scope/user-metabot-perms->scopes {:permission/metabot     :yes
-                                                        :permission/metabot-nlq :yes})]
-      (doseq [tool-var exploration-tool-vars]
-        (let [{tool-name :tool-name required-scope :scope} (meta tool-var)]
-          (testing tool-name
-            (is (some? required-scope) "declares a :scope")
-            (when required-scope
-              (is (api-scope/registered-scope? required-scope) "scope is registered")
-              (is (api-scope/scope-matches? nlq-scopes required-scope)
-                  "scope is granted to an NLQ-yes user"))))))))
+    (doseq [tool [tools.explorations/list-research-metrics-tool
+                  tools.explorations/get-research-candidates-tool
+                  tools.explorations/add-research-groups-tool
+                  tools.explorations/remove-from-research-plan-tool
+                  tools.explorations/set-exploration-name-tool
+                  tools.explorations/select-exploration-timelines-tool]]
+      (let [{tool-name :name required-scope :scope} (tools.core/declaration tool)]
+        (testing tool-name
+          (is (some? required-scope) "declares a :scope")
+          (when required-scope
+            (is (api-scope/registered-scope? required-scope) "scope is registered")
+            (is (api-scope/scope-matches? research-scopes required-scope)
+                "scope is granted to an NLQ-yes user")))))))
+
+(defn- research-call
+  "Call `tool-name` the way the Research profile's agent does, as a user holding `research-scopes`,
+  and return the outcome: the `:output` the model reads, plus `:error` when the call failed."
+  [tool-name args]
+  (binding [scope/*current-user-scope* research-scopes]
+    (let [entries (metabot.tools/->entries (:tools (profiles/get-profile :explorations))
+                                           (atom {}) nil :explorations)]
+      ((:fn (get entries tool-name)) args))))
 
 (defn- decoded-output
   "The exploration tools return `{:output <json-string>}` (only `:output` survives onto the
@@ -43,21 +57,36 @@
   (json/decode+kw (:output result)))
 
 (deftest ^:parallel get-research-candidates-requires-a-filter-test
-  (testing "an argument-less call is rejected with an instructive error (the unfiltered catalog is
-            the unbounded payload this tool's contract exists to prevent)"
+  (testing "a call with neither metric_ids nor q is the model's to fix (the unfiltered catalog is the
+            unbounded payload this tool's contract exists to prevent), and says where ids come from"
     (doseq [args [{} {:q nil} {:q ""} {:metric_ids nil} {:metric_ids []} {:q "  " :metric_ids []}]]
       (testing (pr-str args)
-        (let [{:keys [output]} (tools.explorations/get-research-candidates-tool args)]
-          (is (str/starts-with? output "Error:"))
-          (is (str/includes? output "list_research_metrics")))))))
+        (is (= {:output (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate"
+                             " dimensions of metrics you have already chosen.\n"
+                             "Call `list_research_metrics` to choose metric ids.\n"
+                             "Call `search` with `entity_types` [\"metric\"] to find metrics by topic.")
+                :error  {:class :recoverable :code ::tools.explorations/needs-metric-ids-or-q}}
+               (research-call "get_research_candidates" args)))))))
 
 (deftest ^:parallel get-research-candidates-caps-metric-ids-test
-  (testing "more than the per-call cap of metric_ids is rejected, naming the cap and the count"
-    (let [{:keys [output]} (tools.explorations/get-research-candidates-tool
-                            {:metric_ids (vec (range 21))})]
-      (is (str/starts-with? output "Error:"))
-      (is (str/includes? output "at most 20"))
-      (is (str/includes? output "got 21")))))
+  (testing "more metric_ids than one call details is an argument error"
+    (is (= {:output (str "Invalid tool arguments: `metric_ids` should have at most 20 elements;"
+                         " received an array.")
+            :error  {:class :validation :code :invalid-arguments}}
+           (research-call "get_research_candidates" {:metric_ids (vec (range 1 22))})))))
+
+(deftest ^:parallel empty-plan-edits-are-argument-errors-test
+  (testing "a call that would change nothing, or blank the plan's name, is rejected"
+    (doseq [[tool-name args expected] [["add_research_groups" {:groups []}
+                                        "`groups` must list at least one group; received an array."]
+                                       ["select_research_timelines" {:timeline_ids []}
+                                        "`timeline_ids` must list at least one timeline id; received an array."]
+                                       ["set_research_name" {:name ""}
+                                        "`name` should be at least 1 character; received a string."]]]
+      (testing tool-name
+        (is (= {:output (str "Invalid tool arguments: " expected)
+                :error  {:class :validation :code :invalid-arguments}}
+               (research-call tool-name args)))))))
 
 ;;; ------------------------------------ add_research_groups ------------------------------------
 
@@ -86,8 +115,8 @@
                                   {:metric_id 1 :dimension_ids ["d1"] :replace_default_dimensions true}
                                   {:metric_id 2}])]
       (mt/with-dynamic-fn-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
-        (let [{:keys [output data-parts]} (tools.explorations/add-research-groups-tool
-                                           {:groups (:groups payload)})]
+        (let [{:keys [output data-parts]} (research-call "add_research_groups"
+                                                         {:groups (:groups payload)})]
           (testing "the payload is on the data part, not in :output"
             (is (= [{:type :data :data-type "research_plan_update" :data payload}] data-parts)))
           (testing ":output is prose naming what the user got, not the payload"
@@ -107,8 +136,7 @@
       (mt/with-dynamic-fn-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
         (is (= (str "Added 1 group(s) to the research plan:\n"
                     "- Metric 0, by: Orders - Region, plus the automatic selection")
-               (:output (tools.explorations/add-research-groups-tool
-                         {:groups (:groups payload)}))))))))
+               (:output (research-call "add_research_groups" {:groups (:groups payload)}))))))))
 
 (deftest add-research-groups-summary-is-bounded-test
   (testing "a metric can be sliced by a long dimension list, so the summary counts the tail
@@ -116,38 +144,130 @@
     (let [summary-for (fn [n-dims]
                         (let [payload (wide-metric-payload n-dims)]
                           (mt/with-dynamic-fn-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
-                            (:output (tools.explorations/add-research-groups-tool
-                                      {:groups (:groups payload)})))))
+                            (:output (research-call "add_research_groups"
+                                                    {:groups (:groups payload)})))))
           fifty       (summary-for 50)]
       (testing "the tail past the first `summary-max-names` members is counted, not listed"
         (is (str/includes? fifty "and 35 more")))
       (testing "so a 10x longer dimension list costs only the extra digits in that count"
         (is (> 5 (- (count (summary-for 500)) (count fifty))))))))
 
+(defn- add-groups-rejected-with
+  "What the model reads when `research-groups` rejects an `add_research_groups` call with
+  `problems` as its ex-data."
+  [problems]
+  (mt/with-dynamic-fn-redefs [explorations/research-groups
+                              (fn [_] (throw (ex-info "Invalid research groups" problems)))]
+    (research-call "add_research_groups" {:groups [{:metric_id 1}]})))
+
+(deftest add-research-groups-names-every-bad-id-test
+  (testing "unknown metrics"
+    (is (= {:output (str "Metrics 999, 1000 were not found. They may not exist, or you may not have"
+                         " access to them.\n"
+                         "Call `list_research_metrics` to find metrics available for research, and"
+                         " take their ids from `get_research_candidates`.")
+            :error  {:class :recoverable :code ::tools.explorations/unknown-metric}}
+           (add-groups-rejected-with {:unknown-metric-ids [999 1000]}))))
+  (testing "a replacement of the automatic dimensions with none"
+    (is (= {:output (str "`replace_default_dimensions` replaces the automatically-selected dimensions"
+                         " with the group's `dimension_ids`, but the group for metric 1 has none.\n"
+                         "Pass the dimension ids to slice by, or drop `replace_default_dimensions` to"
+                         " keep the automatic selection.")
+            :error  {:class :recoverable :code ::tools.explorations/replace-needs-dimensions}}
+           (add-groups-rejected-with {:replace-without-dimensions [1]}))))
+  (testing "dimensions that aren't candidates of their group's metric, with each metric's own"
+    (is (= {:output (str "These dimension ids are not candidate dimensions of their group's metric:\n"
+                         "- Metric 1 (Revenue): \"region-2\", \"nope\". Its candidates are"
+                         " \"region-1\" (Region), \"plan-1\" (Plan).\n"
+                         "- Metric 2 (Churn): \"plan-1\". It has no candidate dimensions.\n"
+                         "A dimension id belongs to one metric, so the same dimension has a different"
+                         " id under each metric. Take each group's ids from its own metric's"
+                         " candidates.\n"
+                         "Call `get_research_candidates` with `metric_ids` [1, 2] to see every"
+                         " candidate.")
+            :error  {:class :recoverable :code ::tools.explorations/not-a-candidate-dimension}}
+           (add-groups-rejected-with
+            {:invalid-dimensions [{:metric-id     1
+                                   :metric-name   "Revenue"
+                                   :dimension-ids ["region-2" "nope"]
+                                   :candidates    [{:id "region-1" :name "Region"}
+                                                   {:id "plan-1" :name "Plan"}]}
+                                  {:metric-id     2
+                                   :metric-name   "Churn"
+                                   :dimension-ids ["plan-1"]
+                                   :candidates    []}]}))))
+  (testing "a long candidate list is counted rather than spelled out"
+    (is (str/includes? (:output (add-groups-rejected-with
+                                 {:invalid-dimensions
+                                  [{:metric-id     1
+                                    :metric-name   "Revenue"
+                                    :dimension-ids ["nope"]
+                                    :candidates    (vec (for [i (range 20)]
+                                                          {:id (str "d" i) :name (str "D" i)}))}]}))
+                       "\"d14\" (D14) and 5 more.")))
+  (testing "anything else that fails in validation still ends the turn"
+    (is (= {:class :unrecoverable :code :internal}
+           (:error (add-groups-rejected-with {:something "else"}))))))
+
+(defn- orders-count
+  "The query of a minimal metric: a count of orders."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/aggregate (lib/count)))))
+
+(deftest research-workflow-against-the-real-catalog-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Card {metric-id :id} {:name          "Order count"
+                                                :type          :metric
+                                                :dataset_query (orders-count)}]
+      (let [listed     (:metrics (decoded-output (research-call "list_research_metrics"
+                                                                {:q "Order count"})))
+            candidates (-> (research-call "get_research_candidates" {:metric_ids [metric-id]})
+                           decoded-output :metrics first :dimensions)]
+        (testing "the metric is listed, with candidate dimensions"
+          (is (some #(= metric-id (:id %)) listed))
+          (is (seq candidates)))
+        (testing "every dimension get_research_candidates offers is accepted"
+          (let [outcome (research-call "add_research_groups"
+                                       {:groups [{:metric_id     metric-id
+                                                  :dimension_ids (mapv :id candidates)}]})]
+            (is (nil? (:error outcome)))
+            (is (str/starts-with? (:output outcome)
+                                  "Added 1 group(s) to the research plan:\n- Order count, by: "))))
+        (testing "a bad metric or dimension id is the model's to fix, not the end of the turn"
+          (is (= {:class :recoverable :code ::tools.explorations/unknown-metric}
+                 (:error (research-call "add_research_groups"
+                                        {:groups [{:metric_id Integer/MAX_VALUE}]}))))
+          (is (= {:class :recoverable :code ::tools.explorations/not-a-candidate-dimension}
+                 (:error (research-call "add_research_groups"
+                                        {:groups [{:metric_id     metric-id
+                                                   :dimension_ids ["not-a-dimension"]}]})))))))))
+
+;;; ------------------------------------ plan edits the client applies ------------------------------------
+
 (deftest ^:parallel remove-from-research-plan-tool-test
   (testing "echoes the block ids the agent asked to remove (pure-echo; the FE applies them)"
     (is (= {:block_ids ["metric:42" "metric:43"] :members nil :timeline_ids nil}
            (decoded-output
-            (tools.explorations/remove-from-research-plan-tool
-             {:block_ids ["metric:42" "metric:43"]})))))
+            (research-call "remove_from_research_plan" {:block_ids ["metric:42" "metric:43"]})))))
   (testing "echoes member-level removals (deselect dimensions within a group)"
     (is (= {:block_ids    nil
             :members      [{:block_id "metric:42" :dimension_ids ["d1"]}
                            {:block_id "metric:43" :dimension_ids ["d2" "d3"]}]
             :timeline_ids nil}
            (decoded-output
-            (tools.explorations/remove-from-research-plan-tool
-             {:members [{:block_id "metric:42" :dimension_ids ["d1"]}
-                        {:block_id "metric:43" :dimension_ids ["d2" "d3"]}]})))))
+            (research-call "remove_from_research_plan"
+                           {:members [{:block_id "metric:42" :dimension_ids ["d1"]}
+                                      {:block_id "metric:43" :dimension_ids ["d2" "d3"]}]})))))
   (testing "echoes timeline removals"
     (is (= {:block_ids nil :members nil :timeline_ids [7 9]}
            (decoded-output
-            (tools.explorations/remove-from-research-plan-tool
-             {:timeline_ids [7 9]})))))
+            (research-call "remove_from_research_plan" {:timeline_ids [7 9]})))))
   (testing "an empty list is valid (a no-op removal)"
     (is (= {:block_ids [] :members nil :timeline_ids nil}
            (decoded-output
-            (tools.explorations/remove-from-research-plan-tool {:block_ids []}))))))
+            (research-call "remove_from_research_plan" {:block_ids []}))))))
 
 (defn- streamed-tool-output
   "Run a tool `result` through the SSE serializer and return the decoded payload the FE would
@@ -186,15 +306,15 @@
     (testing "set_research_name"
       (is (= {:name "Quarterly revenue"}
              (streamed-tool-output
-              (tools.explorations/set-exploration-name-tool {:name "Quarterly revenue"})))))
+              (research-call "set_research_name" {:name "Quarterly revenue"})))))
     (testing "select_research_timelines"
       (is (= {:timeline_ids [3 5]}
              (streamed-tool-output
-              (tools.explorations/select-exploration-timelines-tool {:timeline_ids [3 5]})))))
+              (research-call "select_research_timelines" {:timeline_ids [3 5]})))))
     (testing "remove_from_research_plan"
       (is (= {:block_ids ["metric:42"] :members nil :timeline_ids nil}
              (streamed-tool-output
-              (tools.explorations/remove-from-research-plan-tool {:block_ids ["metric:42"]})))))))
+              (research-call "remove_from_research_plan" {:block_ids ["metric:42"]})))))))
 
 ;;; ----------------------------------------- Research plan → system prompt -----------------------------------------
 

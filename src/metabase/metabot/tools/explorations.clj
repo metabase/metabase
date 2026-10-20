@@ -15,8 +15,8 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
-   [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.metabot.tools.core :as tools]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,56 +70,73 @@
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]])
 
-(mu/defn ^{:tool-name "list_research_metrics"
-           :scope     scope/agent-explorations-read}
-  list-research-metrics-tool
-  "List the metrics available for research: one slim row per metric (id, name, description,
-   in_library — a quality signal), best first. Dimensions are not included; pass metric ids from
-   this index to `get_research_candidates` to see their candidate dimensions. Pass `q` to filter
-   by a case-insensitive substring of a metric or dimension name — e.g. `q: \"region\"` returns
-   the metrics that have a Region-like dimension. More than 500 matches are truncated to the top
-   500 with `truncated: true` — narrow with `q`."
-  [{:keys [q]} :- list-research-metrics-schema]
-  {:output (json/encode (explorations/research-metric-index {:q q}))})
+(defrecord ListResearchMetricsTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "list_research_metrics"
+     :description (str "List the metrics available for research: one slim row per metric (id, name,"
+                       " description, in_library – a quality signal), best first. Dimensions are not"
+                       " included; pass metric ids from this index to `get_research_candidates` to see"
+                       " their candidate dimensions. Pass `q` to filter by a case-insensitive substring"
+                       " of a metric or dimension name – e.g. `q: \"region\"` returns the metrics that"
+                       " have a Region-like dimension. More than "
+                       explorations/research-metric-index-max-metrics " matches are truncated to the top "
+                       explorations/research-metric-index-max-metrics " with `truncated: true` – narrow"
+                       " with `q`.")
+     :scope       scope/agent-explorations-read
+     :args        list-research-metrics-schema})
+
+  (handle [_ {:keys [q]} _ctx]
+    {:output (json/encode (explorations/research-metric-index {:q q}))}))
+
+(def list-research-metrics-tool
+  "The `list_research_metrics` tool."
+  (->ListResearchMetricsTool))
 
 (def ^:private get-research-candidates-schema
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]
-   [:metric_ids {:optional true} [:maybe [:sequential :int]]]])
+   [:metric_ids {:optional true}
+    [:maybe [:sequential {:max explorations/research-candidates-max-metrics} :int]]]])
 
-(mu/defn ^{:tool-name "get_research_candidates"
-           :scope     scope/agent-explorations-read}
-  get-research-candidates-tool
-  "Get the candidate dimensions for chosen research metrics. Pass `metric_ids` (up to 20, from
-   `list_research_metrics`) and/or `q` (a case-insensitive substring of a metric or dimension
-   name) — at least one is required. Each metric lists the `dimensions` it can be sliced by: the
-   `id` to pass to `add_research_groups`, the `group` it belongs to, and a `name` only when this
-   metric calls it something other than the group name. Each entry in `dimension_groups` states
-   that group's types and interestingness once, plus the `metric_ids` it can slice. Every metric
-   and dimension id you pass to `add_research_groups` must come from this tool. Requested ids you
-   can't see come back as `missing_metric_ids`; a too-broad `q` returns the top matches with
-   `truncated: true` — narrow the search or pass explicit `metric_ids`."
-  [{:keys [q metric_ids]} :- get-research-candidates-schema]
-  (cond
-    (and (str/blank? q) (empty? metric_ids))
-    {:output (str "Error: pass metric_ids (up to " explorations/research-candidates-max-metrics
-                  ", from list_research_metrics) and/or q (a search term). This tool reports"
-                  " dimensions for metrics you have already chosen; use list_research_metrics or"
-                  " search to choose them.")}
+(tools/defrecoverable needs-metric-ids-or-q!
+  "`get_research_candidates` was called with neither `metric_ids` nor `q`."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate dimensions of"
+                  " metrics you have already chosen.")
+   :recovery [{:uses #{"list_research_metrics"}
+               :text "Call `list_research_metrics` to choose metric ids."}
+              {:uses #{"search"}
+               :text "Call `search` with `entity_types` [\"metric\"] to find metrics by topic."}]})
 
-    (> (count metric_ids) explorations/research-candidates-max-metrics)
-    {:output (str "Error: pass at most " explorations/research-candidates-max-metrics
-                  " metric_ids per call (got " (count metric_ids)
-                  "). Split the request into multiple calls.")}
+(defrecord GetResearchCandidatesTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "get_research_candidates"
+     :description (str "Get the candidate dimensions for chosen research metrics. Pass `metric_ids` (up to "
+                       explorations/research-candidates-max-metrics ", from `list_research_metrics`)"
+                       " and/or `q` (a case-insensitive substring of a metric or dimension name) – at"
+                       " least one is required. Each metric lists the `dimensions` it can be sliced by:"
+                       " the `id` to pass to `add_research_groups`, the `group` it belongs to, and a"
+                       " `name` only when this metric calls it something other than the group name."
+                       " Each entry in `dimension_groups` states that group's types and interestingness"
+                       " once, plus the `metric_ids` it can slice. Every metric and dimension id you"
+                       " pass to `add_research_groups` must come from this tool. Requested ids you"
+                       " can't see come back as `missing_metric_ids`; a too-broad `q` returns the top"
+                       " matches with `truncated: true` – narrow the search or pass explicit"
+                       " `metric_ids`.")
+     :scope       scope/agent-explorations-read
+     :args        get-research-candidates-schema})
 
-    :else
+  (handle [_ {:keys [q metric_ids]} _ctx]
+    (when (and (str/blank? q) (empty? metric_ids))
+      (needs-metric-ids-or-q! {}))
     {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))}))
 
-(defn- research-groups-payload
-  "Validate `groups` and hydrate the FE picker payload for them, in the snake_case shape the
-   client consumes."
-  [groups]
-  (explorations/exploration-data->api (explorations/research-groups {:groups groups})))
+(def get-research-candidates-tool
+  "The `get_research_candidates` tool."
+  (->GetResearchCandidatesTool))
 
 (def ^:private summary-max-names
   "How many dimension names one summary line spells out before falling back to a count. A metric
@@ -132,6 +149,83 @@
     (if (pos? extra)
       (str (str/join ", " (take summary-max-names names)) " and " extra " more")
       (str/join ", " names))))
+
+(defn- not-found-sentence
+  "That the `noun`s with `ids` were not found, without saying whether they exist."
+  [noun ids]
+  (if (next ids)
+    (str noun "s " (str/join ", " ids) " were not found. They may not exist, or you may not have"
+         " access to them.")
+    (str noun " " (first ids) " was not found. It may not exist, or you may not have access to it.")))
+
+(tools/defrecoverable unknown-metric!
+  "Metric ids in `add_research_groups` that are not metrics the user can research."
+  {:payload [:map {:closed true}
+             [:metric-ids [:sequential {:min 1} :int]]]}
+  [{:keys [metric-ids]}]
+  {:message  (not-found-sentence "Metric" metric-ids)
+   :recovery [{:uses #{"list_research_metrics" "get_research_candidates"}
+               :text (str "Call `list_research_metrics` to find metrics available for research, and"
+                          " take their ids from `get_research_candidates`.")}]})
+
+(tools/defrecoverable replace-needs-dimensions!
+  "Groups in `add_research_groups` that set `replace_default_dimensions` with no `dimension_ids`."
+  {:payload [:map {:closed true}
+             [:metric-ids [:sequential {:min 1} :int]]]}
+  [{:keys [metric-ids]}]
+  {:message  (str "`replace_default_dimensions` replaces the automatically-selected dimensions with the"
+                  " group's `dimension_ids`, but "
+                  (if (next metric-ids)
+                    (str "the groups for metrics " (str/join ", " metric-ids) " have none.")
+                    (str "the group for metric " (first metric-ids) " has none.")))
+   :recovery [{:uses #{}
+               :text (str "Pass the dimension ids to slice by, or drop `replace_default_dimensions` to"
+                          " keep the automatic selection.")}]})
+
+(tools/defrecoverable not-a-candidate-dimension!
+  "Dimension ids in `add_research_groups` that are not candidate dimensions of their group's metric."
+  {:payload [:map {:closed true}
+             [:metrics [:sequential {:min 1}
+                        [:map {:closed true}
+                         [:metric-id     :int]
+                         [:metric-name   :string]
+                         [:dimension-ids [:sequential {:min 1} :string]]
+                         [:candidates    [:sequential [:map {:closed true}
+                                                       [:id   :string]
+                                                       [:name :string]]]]]]]]}
+  [{:keys [metrics]}]
+  {:message  (te/lines
+              "These dimension ids are not candidate dimensions of their group's metric:"
+              (for [{:keys [metric-id metric-name dimension-ids candidates]} metrics]
+                (str "- Metric " metric-id " (" metric-name "): "
+                     (str/join ", " (map pr-str dimension-ids)) ". "
+                     (if (seq candidates)
+                       (str "Its candidates are "
+                            (summarize-names (map #(str (pr-str (:id %)) " (" (:name %) ")") candidates))
+                            ".")
+                       "It has no candidate dimensions."))))
+   :recovery [{:uses #{}
+               :text (str "A dimension id belongs to one metric, so the same dimension has a different id"
+                          " under each metric. Take each group's ids from its own metric's candidates.")}
+              {:uses #{"get_research_candidates"}
+               :text (str "Call `get_research_candidates` with `metric_ids` ["
+                          (str/join ", " (map :metric-id metrics)) "] to see every candidate.")}]})
+
+(defn- research-groups-payload
+  "Validate `groups` and hydrate the FE picker payload for them, with the snake_case keys the
+   client reads. Invalid groups raise the declared error for their kind of problem, naming every
+   bad id of that kind."
+  [groups]
+  (explorations/exploration-data->api
+   (try
+     (explorations/research-groups {:groups groups})
+     (catch clojure.lang.ExceptionInfo e
+       (let [{:keys [unknown-metric-ids replace-without-dimensions invalid-dimensions]} (ex-data e)]
+         (cond
+           unknown-metric-ids         (unknown-metric! {:metric-ids unknown-metric-ids})
+           replace-without-dimensions (replace-needs-dimensions! {:metric-ids replace-without-dimensions})
+           invalid-dimensions         (not-a-candidate-dimension! {:metrics invalid-dimensions})
+           :else                      (throw e)))))))
 
 (defn- format-added-groups
   "Plain-text summary of the groups `add_research_groups` just applied — the whole of what the
@@ -163,25 +257,34 @@
 (def ^:private add-research-groups-schema
   [:map {:closed true}
    [:groups
-    [:sequential
+    [:sequential {:min 1 :error/message "must list at least one group"}
      [:map {:closed true}
       [:metric_id :int]
       [:dimension_ids {:optional true} [:sequential :string]]
       [:replace_default_dimensions {:optional true} :boolean]]]]])
 
-(mu/defn ^{:tool-name "add_research_groups"
-           :scope     scope/agent-explorations-write}
-  add-research-groups-tool
-  "Add one or more groups to the research artifact. Each group is a metric sliced by chosen
-   dimensions: `{\"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`. By default
-   `dimension_ids` are added on top of the automatically-selected interesting dimensions; omit
-   it to use only the automatic selection. To pin the metric to exactly the dimensions you
-   list (no automatic ones), also pass `\"replace_default_dimensions\": true` - then
-   `dimension_ids` must be non-empty."
-  [{:keys [groups]} :- add-research-groups-schema]
-  (let [payload (research-groups-payload groups)]
-    {:output     (format-added-groups payload)
-     :data-parts [(streaming/research-plan-update-part payload)]}))
+(defrecord AddResearchGroupsTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "add_research_groups"
+     :description (str "Add one or more groups to the research artifact. Each group is a metric sliced"
+                       " by chosen dimensions: `{\"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`."
+                       " By default `dimension_ids` are added on top of the automatically-selected"
+                       " interesting dimensions; omit it to use only the automatic selection. To pin the"
+                       " metric to exactly the dimensions you list (no automatic ones), also pass"
+                       " `\"replace_default_dimensions\": true` - then `dimension_ids` must be"
+                       " non-empty.")
+     :scope       scope/agent-explorations-write
+     :args        add-research-groups-schema})
+
+  (handle [_ {:keys [groups]} _ctx]
+    (let [payload (research-groups-payload groups)]
+      {:output     (format-added-groups payload)
+       :data-parts [(streaming/research-plan-update-part payload)]})))
+
+(def add-research-groups-tool
+  "The `add_research_groups` tool."
+  (->AddResearchGroupsTool))
 
 (def ^:private remove-from-research-plan-schema
   [:map {:closed true}
@@ -193,46 +296,74 @@
       [:dimension_ids [:sequential :string]]]]]
    [:timeline_ids {:optional true} [:sequential :int]]])
 
-(mu/defn ^{:tool-name "remove_from_research_plan"
-           :scope     scope/agent-explorations-write}
-  remove-from-research-plan-tool
-  "Remove groups, individual dimensions within a group, or timelines from the research plan.
-   Address groups by the `block_id` shown in brackets for each group in the current research
-   plan (e.g. `metric:42`).
+(defrecord RemoveFromResearchPlanTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "remove_from_research_plan"
+     :description (te/lines
+                   (str "Remove groups, individual dimensions within a group, or timelines from the"
+                        " research plan. Address groups by the `block_id` shown in brackets for each"
+                        " group in the current research plan (e.g. `metric:42`).")
+                   ""
+                   (str "- To drop whole groups, pass `block_ids`: `{\"block_ids\": [\"metric:42\"]}`."
+                        " Use this when the user no longer wants a metric at all (e.g. \"actually I"
+                        " don't care about revenue\").")
+                   (str "- To prune within a group, pass `members` with the `dimension_ids` to stop"
+                        " slicing that group's metric by: `{\"members\": [{\"block_id\": \"metric:42\","
+                        " \"dimension_ids\": [\"d1\"]}]}`.")
+                   (str "- To drop timelines, pass `timeline_ids` (the ids shown in the current plan's"
+                        " selected timelines): `{\"timeline_ids\": [7]}`.")
+                   ""
+                   (str "If removing members would leave a group with nothing in it, the whole group is"
+                        " dropped – so to remove an entire group prefer `block_ids` directly. Removing"
+                        " a block, member, or id that isn't in the plan is a no-op."))
+     :scope       scope/agent-explorations-write
+     :args        remove-from-research-plan-schema})
 
-   - To drop whole groups, pass `block_ids`: `{\"block_ids\": [\"metric:42\"]}`. Use this when the
-     user no longer wants a metric at all (e.g. \"actually I don't care about revenue\").
-   - To prune within a group, pass `members` with the `dimension_ids` to stop slicing that
-     group's metric by: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
-   - To drop timelines, pass `timeline_ids` (the ids shown in the current plan's selected
-     timelines): `{\"timeline_ids\": [7]}`.
+  (handle [_ {:keys [block_ids members timeline_ids]} _ctx]
+    {:output (json/encode {:block_ids    block_ids
+                           :members      members
+                           :timeline_ids timeline_ids})}))
 
-   If removing members would leave a group with nothing in it, the whole group is dropped — so to
-   remove an entire group prefer `block_ids` directly. Removing a block, member, or id that isn't
-   in the plan is a no-op."
-  [{:keys [block_ids members timeline_ids]} :- remove-from-research-plan-schema]
-  {:output (json/encode {:block_ids    block_ids
-                         :members      members
-                         :timeline_ids timeline_ids})})
+(def remove-from-research-plan-tool
+  "The `remove_from_research_plan` tool."
+  (->RemoveFromResearchPlanTool))
 
 (def ^:private set-exploration-name-schema
   [:map {:closed true}
-   [:name :string]])
+   [:name [:string {:min 1}]]])
 
-(mu/defn ^{:tool-name "set_research_name"
-           :scope     scope/agent-explorations-write}
-  set-exploration-name-tool
-  "Set the name of the research artifact."
-  [{:keys [name]} :- set-exploration-name-schema]
-  {:output (json/encode {:name name})})
+(defrecord SetResearchNameTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "set_research_name"
+     :description "Set the name of the research artifact."
+     :scope       scope/agent-explorations-write
+     :args        set-exploration-name-schema})
+
+  (handle [_ {:keys [name]} _ctx]
+    {:output (json/encode {:name name})}))
+
+(def set-exploration-name-tool
+  "The `set_research_name` tool."
+  (->SetResearchNameTool))
 
 (def ^:private select-exploration-timelines-schema
   [:map {:closed true}
-   [:timeline_ids [:sequential :int]]])
+   [:timeline_ids [:sequential {:min 1 :error/message "must list at least one timeline id"} :int]]])
 
-(mu/defn ^{:tool-name "select_research_timelines"
-           :scope     scope/agent-explorations-write}
-  select-exploration-timelines-tool
-  "Select the timelines to include in the research. Populates the research artifact with the chosen timelines."
-  [{:keys [timeline_ids]} :- select-exploration-timelines-schema]
-  {:output (json/encode {:timeline_ids timeline_ids})})
+(defrecord SelectResearchTimelinesTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "select_research_timelines"
+     :description (str "Select the timelines to include in the research. Populates the research"
+                       " artifact with the chosen timelines.")
+     :scope       scope/agent-explorations-write
+     :args        select-exploration-timelines-schema})
+
+  (handle [_ {:keys [timeline_ids]} _ctx]
+    {:output (json/encode {:timeline_ids timeline_ids})}))
+
+(def select-exploration-timelines-tool
+  "The `select_research_timelines` tool."
+  (->SelectResearchTimelinesTool))
