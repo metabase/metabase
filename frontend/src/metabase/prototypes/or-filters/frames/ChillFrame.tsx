@@ -6,6 +6,8 @@ import { Box, Flex, Group, Paper, Text, Title } from "metabase/ui";
 type ChillFrameProps = {
   filterButton?: ReactNode;
   isHidden?: boolean;
+  /** Rendered under the filter strip, where the question's results would be. */
+  results?: ReactNode;
   children: ReactNode;
 };
 
@@ -13,6 +15,7 @@ type ChillFrameProps = {
 export function ChillFrame({
   filterButton,
   isHidden = false,
+  results,
   children,
 }: ChillFrameProps) {
   return (
@@ -22,7 +25,7 @@ export function ChillFrame({
         px="lg"
         py="md"
         style={
-          isHidden
+          isHidden && !results
             ? undefined
             : { borderBottom: "1px solid var(--mb-color-border-neutral)" }
         }
@@ -36,10 +39,22 @@ export function ChillFrame({
         {filterButton}
       </Group>
       {!isHidden && (
-        <Flex direction="column" justify="center" px="lg" py="sm" mih={48}>
+        <Flex
+          direction="column"
+          justify="center"
+          px="lg"
+          py="sm"
+          mih={48}
+          style={
+            results
+              ? { borderBottom: "1px solid var(--mb-color-border-neutral)" }
+              : undefined
+          }
+        >
           {children}
         </Flex>
       )}
+      {results && <Box p="lg">{results}</Box>}
     </Paper>
   );
 }

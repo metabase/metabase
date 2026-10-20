@@ -8,7 +8,6 @@ import {
   Icon,
   Loader,
   Paper,
-  SimpleGrid,
   Stack,
   Text,
   Title,
@@ -165,6 +164,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
               )
             )
           }
+          results={<QueryResults query={query} stageIndex={STAGE_INDEX} />}
         >
           <direction.Component
             query={query}
@@ -188,15 +188,10 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
       </Stack>
 
       <Stack gap="sm">
-        <Title order={3}>{t`Preview`}</Title>
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-          <Paper withBorder radius="md" p="lg" miw={0}>
-            <QueryResults query={query} stageIndex={STAGE_INDEX} />
-          </Paper>
-          <Paper withBorder radius="md" p="lg" miw={0}>
-            <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
-          </Paper>
-        </SimpleGrid>
+        <Title order={3}>{t`Preview query`}</Title>
+        <Paper withBorder radius="md" p="lg">
+          <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
+        </Paper>
       </Stack>
     </Stack>
   );
