@@ -4,14 +4,7 @@ import {
   applyIdFilter,
   breakoutByColumn,
   findColumn,
-} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils";
-import type {
-  CardMetadata,
-  ColumnMetadata,
-  MetadataProvider,
-  Query,
-  TableMetadata,
-} from "metabase-lib";
+} from "metabase-enterprise/monitor/query-utils";
 import * as Lib from "metabase-lib";
 import type { SortDirection, SortingOptions } from "metabase-types/api";
 
@@ -95,8 +88,8 @@ export type DataAppLogFilters = {
 };
 
 type DataAppLogSource = {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
+  provider: Lib.MetadataProvider;
+  table: Lib.TableMetadata | Lib.CardMetadata;
 };
 
 const DATA_APP_LOG_FILTER_COLUMNS = [
@@ -118,7 +111,10 @@ export function getMissingDataAppLogColumns({
 }
 
 // Throws instead of skipping the filter: without it the log would show records it should leave out.
-function findFilterColumn(query: Query, columnName: string): ColumnMetadata {
+function findFilterColumn(
+  query: Lib.Query,
+  columnName: string,
+): Lib.ColumnMetadata {
   const column = findColumn(query, columnName, Lib.filterableColumns);
   if (column === undefined) {
     throw new Error(`The query log has no ${columnName} column`);
@@ -127,10 +123,10 @@ function findFilterColumn(query: Query, columnName: string): ColumnMetadata {
 }
 
 function applyStringFilter(
-  query: Query,
+  query: Lib.Query,
   columnName: string,
   values: string[],
-): Query {
+): Lib.Query {
   const column = findFilterColumn(query, columnName);
   return Lib.filter(
     query,
@@ -140,9 +136,9 @@ function applyStringFilter(
 }
 
 function applyEntityTypeFilter(
-  query: Query,
+  query: Lib.Query,
   entityType: DataAppEntityType | undefined,
-): Query {
+): Lib.Query {
   if (entityType === undefined) {
     return query;
   }
@@ -158,10 +154,10 @@ function applyEntityTypeFilter(
 }
 
 function orderByColumn(
-  query: Query,
+  query: Lib.Query,
   columnName: string,
   direction: SortDirection,
-): Query {
+): Lib.Query {
   const column = findColumn(query, columnName, Lib.orderableColumns);
   return column ? Lib.orderBy(query, 0, column, direction) : query;
 }
@@ -173,7 +169,7 @@ function buildBaseQuery({
   userId,
   dataAppName,
   entityType,
-}: DataAppLogSource & DataAppLogFilters): Query {
+}: DataAppLogSource & DataAppLogFilters): Lib.Query {
   let query = Lib.queryFromTableOrCardMetadata(provider, table);
   query = applyStringFilter(query, "embedding_client", [
     DATA_APP_EMBEDDING_CLIENT,
@@ -196,7 +192,7 @@ export function buildLoggedDataAppsQuery({
   provider,
   table,
   dateFilter,
-}: DataAppLogSource & Pick<DataAppLogFilters, "dateFilter">): Query {
+}: DataAppLogSource & Pick<DataAppLogFilters, "dateFilter">): Lib.Query {
   return breakoutByColumn(
     buildBaseQuery({ provider, table, dateFilter }),
     "embedding_client_identifier",
@@ -205,7 +201,7 @@ export function buildLoggedDataAppsQuery({
 
 export function buildDataAppLogCountQuery(
   opts: DataAppLogSource & DataAppLogFilters,
-): Query {
+): Lib.Query {
   return Lib.aggregateByCount(buildBaseQuery(opts), 0);
 }
 
@@ -220,12 +216,12 @@ export function buildDataAppLogRowsQuery({
   sorting,
   hasPii,
   ...opts
-}: RowsQueryOpts): Query {
+}: RowsQueryOpts): Lib.Query {
   let query = buildBaseQuery(opts);
   query = orderByColumn(query, sorting.sort_column, sorting.sort_direction);
   query = orderByColumn(query, DATA_APP_LOG_ID_COLUMN, "desc");
   const fields = [...dataAppLogColumnKeys(hasPii), DATA_APP_LOG_ID_COLUMN]
     .map((name) => findColumn(query, name, Lib.fieldableColumns))
-    .filter((column): column is ColumnMetadata => column !== undefined);
+    .filter((column): column is Lib.ColumnMetadata => column !== undefined);
   return Lib.withFields(query, 0, fields);
 }

@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
+import type { DateFilterValue } from "metabase/querying/common/types";
 import { checkNotNull } from "metabase/utils/types";
-import { DEFAULT_DATE_FILTER } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import {
@@ -16,6 +16,13 @@ import {
 
 const DATABASE_ID = 13371337;
 const TABLE_ID = 3001;
+
+const DATE_FILTER: DateFilterValue = {
+  type: "relative",
+  value: -30,
+  unit: "day",
+  options: { includeCurrent: true },
+};
 
 const ALL_COLUMNS = [
   { name: "embedding_client", type: "type/Text" },
@@ -86,7 +93,7 @@ describe("buildDataAppLogCountQuery", () => {
     );
 
     expect(() =>
-      buildDataAppLogCountQuery({ ...source, dateFilter: DEFAULT_DATE_FILTER }),
+      buildDataAppLogCountQuery({ ...source, dateFilter: DATE_FILTER }),
     ).toThrow("embedding_client");
   });
 
@@ -98,7 +105,7 @@ describe("buildDataAppLogCountQuery", () => {
     expect(() =>
       buildDataAppLogCountQuery({
         ...source,
-        dateFilter: DEFAULT_DATE_FILTER,
+        dateFilter: DATE_FILTER,
         entityType: "action",
       }),
     ).toThrow("action_id");
