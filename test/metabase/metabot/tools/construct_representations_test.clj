@@ -841,7 +841,7 @@
       (doseq [ordered? [false true]]
         (testing (str "bare count aggregation, ordered? " ordered?)
           (let [stage  (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
-                               "aggregation"  ["count" {}]}
+                                "aggregation"  ["count" {}]}
                          ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
                 result (construct/execute-representations-query
                         (query-data {"lib/type" "mbql/query", "stages" [stage]}))

@@ -1350,7 +1350,7 @@
    form))
 
 ;;; ============================================================
-;;; Pass 1.55 -- normalise `fields:` on a stage / join when the LLM wrote a single clause
+;;; Pass 1.55 -- normalise `fields:` and `aggregation:` when the LLM wrote a single clause
 ;;; instead of a sequential of clauses.
 ;;;
 ;;; The repr schema for both stage and join requires
@@ -1786,6 +1786,7 @@
                       {:agent-error? true
                        :error        :aggregation-ref-no-aggregations}))
 
+      ;; Let query validation report malformed aggregation entries.
       (not-every? clause-like? aggs)
       stage
 

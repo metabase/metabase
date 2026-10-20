@@ -2565,7 +2565,7 @@
           ordered? [false true]]
     (testing (str "aggregation " (pr-str aggregation) ", ordered? " ordered?)
       (let [stage    (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
-                             "aggregation"  aggregation}
+                              "aggregation"  aggregation}
                        ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
             repaired (repair/repair trivial-mp {"lib/type" "mbql/query", "stages" [stage]})
             aggs     (get-in repaired ["stages" 0 "aggregation"])
@@ -2579,7 +2579,7 @@
           (is (= [["count" {}]] aggs)))
         (is (= repaired (repair/repair trivial-mp repaired)))))))
 
-(deftest ^:parallel aggregation-expression-name-test
+(deftest ^:parallel bare-aggregation-repair-keeps-expression-named-aggregation-test
   (let [q        {"lib/type" "mbql/query"
                   "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
                              "expressions"  {"aggregation" ["+" {} 1 2]}}]}
@@ -2593,8 +2593,8 @@
     (testing (pr-str aggs)
       (let [q        {"lib/type" "mbql/query"
                       "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                "aggregation"  aggs
-                                "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}
+                                 "aggregation"  aggs
+                                 "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}
             repaired (repair/repair trivial-mp q)]
         (is (= aggs (get-in repaired ["stages" 0 "aggregation"])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid structure"
