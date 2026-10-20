@@ -307,14 +307,30 @@
       (is (= {:name "Quarterly revenue"}
              (streamed-tool-output
               (research-call "set_research_name" {:name "Quarterly revenue"})))))
-    (testing "select_research_timelines"
-      (is (= {:timeline_ids [3 5]}
-             (streamed-tool-output
-              (research-call "select_research_timelines" {:timeline_ids [3 5]})))))
     (testing "remove_from_research_plan"
       (is (= {:block_ids ["metric:42"] :members nil :timeline_ids nil}
              (streamed-tool-output
               (research-call "remove_from_research_plan" {:block_ids ["metric:42"]})))))))
+
+(deftest select-research-timelines-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Collection {coll-id :id}  {:name "Research timelines"}
+                   :model/Timeline   {releases :id} {:name "Releases" :collection_id coll-id}
+                   :model/Timeline   {launches :id} {:name "Launches" :collection_id coll-id}
+                   :model/Timeline   {archived :id} {:name          "Old launches"
+                                                     :collection_id coll-id
+                                                     :archived      true}]
+      (testing "streams the ids for the FE to add, the same way as the other plan edits"
+        (is (= {:timeline_ids [releases launches]}
+               (streamed-tool-output
+                (research-call "select_research_timelines" {:timeline_ids [releases launches]})))))
+      (testing "names every id that isn't a timeline the user can list, which the FE would skip"
+        (is (= {:output (str "Timelines " archived ", " Integer/MAX_VALUE " were not found. They may"
+                             " not exist, or you may not have access to them.\n"
+                             "Call `list_timelines` and use ids from its result.")
+                :error  {:class :recoverable :code ::tools.explorations/unknown-timeline}}
+               (research-call "select_research_timelines"
+                              {:timeline_ids [releases archived Integer/MAX_VALUE archived]})))))))
 
 ;;; ----------------------------------------- Research plan → system prompt -----------------------------------------
 

@@ -16,6 +16,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
+   [metabase.timeline.core :as timeline]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -352,16 +353,30 @@
   [:map {:closed true}
    [:timeline_ids [:sequential {:min 1 :error/message "must list at least one timeline id"} :int]]])
 
+(tools/defrecoverable unknown-timeline!
+  "Timeline ids in `select_research_timelines` that are not timelines the user can see."
+  {:payload [:map {:closed true}
+             [:timeline-ids [:sequential {:min 1} :int]]]}
+  [{:keys [timeline-ids]}]
+  {:message  (not-found-sentence "Timeline" timeline-ids)
+   :recovery [{:uses #{"list_timelines"}
+               :text "Call `list_timelines` and use ids from its result."}]})
+
 (defrecord SelectResearchTimelinesTool []
   tools/Tool
   (declaration [_]
     {:name        "select_research_timelines"
-     :description (str "Select the timelines to include in the research. Populates the research"
-                       " artifact with the chosen timelines.")
+     :description (str "Add timelines to the research plan, by the ids `list_timelines` returns."
+                       " Timelines already in the plan stay; to drop one, use"
+                       " `remove_from_research_plan`.")
      :scope       scope/agent-explorations-write
      :args        select-exploration-timelines-schema})
 
   (handle [_ {:keys [timeline_ids]} _ctx]
+    ;; The client silently drops an id it can't list, so an unchecked one would read as added.
+    (let [visible (into #{} (map :id) (timeline/list-timelines))]
+      (when-let [unknown (not-empty (into [] (comp (remove visible) (distinct)) timeline_ids))]
+        (unknown-timeline! {:timeline-ids unknown})))
     {:output (json/encode {:timeline_ids timeline_ids})}))
 
 (def select-exploration-timelines-tool
