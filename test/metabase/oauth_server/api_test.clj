@@ -1,4 +1,4 @@
-(ns metabase.oauth-server.api-test
+(ns ^:synchronized metabase.oauth-server.api-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
@@ -6,6 +6,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [oidc-provider.util :as oidc-util]
@@ -18,14 +19,12 @@
 ;; reset-provider! is safe here — it resets a local atom, no global side effects.
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
-                      (doseq [throttler [@#'api.oauth/token-client-throttler @#'api.oauth/token-ip-throttler]]
-                        (reset! (:attempts throttler) '()))
+                      (oauth-server.tu/reset-token-throttlers!)
                       (try
                         (binding [client/*url-prefix* ""]
                           (thunk))
                         (finally
-                          (doseq [throttler [@#'api.oauth/token-client-throttler @#'api.oauth/token-ip-throttler]]
-                            (reset! (:attempts throttler) '()))
+                          (oauth-server.tu/reset-token-throttlers!)
                           (oauth-server/reset-provider!)))))
 
 (deftest discovery-endpoint-test
