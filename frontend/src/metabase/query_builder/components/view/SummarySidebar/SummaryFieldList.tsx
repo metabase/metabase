@@ -107,6 +107,7 @@ export function SummaryFieldList({ base }: SummaryFieldListProps) {
           {isSearching ? (
             <TextInput
               className={S.fieldListSearch}
+              classNames={{ input: S.fieldListSearchInput }}
               size="xs"
               autoFocus
               placeholder={t`Search columns and metrics…`}

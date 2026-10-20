@@ -37,9 +37,23 @@
   flex: 1;
 }
 
+/* the xs input keeps the header at 32px, but its 11px text is smaller than the 14px results */
+.fieldListSearch .fieldListSearchInput {
+  font-size: var(--mantine-font-size-md);
+}
+
 /* one button for both modes: its search and close icons cross-fade in place */
 .searchToggle {
   flex-shrink: 0;
+  overflow: visible;
+
+  /* a 40px target around the 32px button (inset from inside its 1px border); the 8px header gap
+     keeps it clear of the tabs and the field */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+  }
 }
 
 .searchToggleSearch,
@@ -293,7 +307,8 @@
   gap: 0.25rem;
   max-width: 100%;
   padding: 0.25rem 0.25rem 0.25rem 0.5rem;
-  border-radius: 6px;
+  /* concentric with the well card: its 16px corner minus the 12px padding */
+  border-radius: var(--mantine-radius-xxs);
   font-weight: bold;
   color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-core-summarize);
