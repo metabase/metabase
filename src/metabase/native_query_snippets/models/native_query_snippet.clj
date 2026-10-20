@@ -200,8 +200,7 @@
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :description :entity_id :name]
    :skip      []
-   :transform {:created_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
+   :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
                :content       {:export identity
                                :import-with-context

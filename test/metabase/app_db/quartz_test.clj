@@ -176,6 +176,7 @@
     "metabase_enterprise.data_complexity_score.task.complexity_score_trimmer.DataComplexityScoreTrimmer"
     "metabase_enterprise.dependencies.task.backfill.BackfillDependencies"
     "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
+    "metabase_enterprise.dependencies.task.result_metadata.UpdateResultMetadata"
     "metabase_enterprise.entity_retrieval.task.sync.OsiAiContextSync"
     "metabase_enterprise.mcp.task.mcp_usage_trimmer.McpUsageTrimmer"
     "metabase_enterprise.metabot.task.ai_usage_trimmer.AiUsageTrimmer"

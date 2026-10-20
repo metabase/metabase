@@ -378,6 +378,11 @@
                            (.getConnection conn-data-source)
                            (catch Throwable e
                              (let [timed-out? (connection-checkout-timeout? e)]
+                               (when-not timed-out?
+                                 (try
+                                   (sql-jdbc.conn/invalidate-empty-pool! conn-data-source)
+                                   (catch Exception e2
+                                     (log/warnf e2 "Error closing the connection pool for database %s" (u/id db-or-id-or-spec)))))
                                (throw (ex-info (if timed-out?
                                                  (tru "Too many queries are running. Please try again in a moment.")
                                                  (tru "Unable to connect to the database: {0}" (ex-message e)))

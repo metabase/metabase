@@ -8,6 +8,11 @@ import {
 
 const { H } = cy;
 
+const ORDERS_DASHBOARD_ELEMENT = {
+  component: "metabase-dashboard",
+  attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+} as const;
+
 describe("scenarios > embedding > sdk iframe embedding > authentication", () => {
   describe("jwtProviderUri", () => {
     beforeEach(() => {
@@ -25,40 +30,8 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       );
     });
 
-    it("should not skip the first auth request if jwtProviderUri is not given", () => {
-      H.visitCustomHtmlPage(`
-        <!DOCTYPE html>
-          <html>
-          <body>
-            <script src="http://localhost:4000/app/embed.js" ></script>
-            <script>
-              function defineMetabaseConfig(settings) {
-                window.metabaseConfig = settings;
-              }
-            </script>
-            <script>
-              defineMetabaseConfig({
-                "instanceUrl": "http://localhost:4000",
-              });
-            </script>
-            <metabase-dashboard dashboard-id='${ORDERS_DASHBOARD_ID}' />
-          </body>
-          </html>
-            `);
-
-      cy.wait("@sso");
-      cy.wait("@ssoProvider");
-      cy.wait("@tokenInSessionOut");
-
-      cy.wait("@getDashboard");
-
-      H.getSimpleEmbedIframeContent().should(
-        "contain",
-        "Orders in a dashboard",
-      );
-    });
-
-    it("should skip the first auth request if jwtProviderUri is given", () => {
+    it("skips the first auth request only if jwtProviderUri is given", () => {
+      cy.log("jwtProviderUri is given");
       H.visitCustomHtmlPage(`
         <!DOCTYPE html>
           <html>
@@ -91,65 +64,58 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         "contain",
         "Orders in a dashboard",
       );
+
+      cy.log("jwtProviderUri is not given");
+      H.visitCustomHtmlPage(`
+        <!DOCTYPE html>
+          <html>
+          <body>
+            <script src="http://localhost:4000/app/embed.js" ></script>
+            <script>
+              function defineMetabaseConfig(settings) {
+                window.metabaseConfig = settings;
+              }
+            </script>
+            <script>
+              defineMetabaseConfig({
+                "instanceUrl": "http://localhost:4000",
+              });
+            </script>
+            <metabase-dashboard dashboard-id='${ORDERS_DASHBOARD_ID}' />
+          </body>
+          </html>
+            `);
+
+      cy.wait("@sso");
+      cy.wait("@ssoProvider");
+      cy.wait("@tokenInSessionOut");
+
+      cy.wait("@getDashboard");
+
+      H.getSimpleEmbedIframeContent().should(
+        "contain",
+        "Orders in a dashboard",
+      );
     });
   });
 
-  it("cannot login if no auth methods are enabled", () => {
+  it("shows auth errors when no auth methods are enabled and there is no session", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-    });
-
-    frame.within(() => {
+    cy.log("no auth method is available");
+    H.loadSdkIframeEmbedTestPage({
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+    }).within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
         .and("contain", "SSO has not been enabled and/or configured");
     });
-  });
 
-  it("can use existing user session when useExistingUserSession is true", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-      metabaseConfig: {
-        useExistingUserSession: true,
-      },
-    });
-
-    assertDashboardLoaded(frame);
-  });
-
-  it("cannot use existing user session when there is no session", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: { dashboardId: ORDERS_DASHBOARD_ID },
-        },
-      ],
-
+    cy.log("useExistingUserSession is true but there is no session");
+    H.loadSdkIframeEmbedTestPage({
+      elements: [ORDERS_DASHBOARD_ELEMENT],
       metabaseConfig: { useExistingUserSession: true },
-    });
-
-    frame.within(() => {
+    }).within(() => {
       cy.findByTestId("sdk-error-container")
         .findByText(
           "Failed to authenticate using an existing Metabase user session.",
@@ -162,197 +128,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
           "include",
           "https://www.metabase.com/docs/latest/embedding/authentication#configure-session-cookies-when-testing-locally",
         );
-
-      cy.findByTestId("sdk-error-container").should("be.visible");
     });
-  });
-
-  it("cannot use existing user session when useExistingUserSession is false", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-      metabaseConfig: {
-        useExistingUserSession: false,
-      },
-    });
-
-    cy.log(
-      "when no auth methods are enabled and the existing user session is not used, it should fail to login",
-    );
-
-    frame.within(() => {
-      cy.findByTestId("sdk-error-container")
-        .should("be.visible")
-        .and("contain", "SSO has not been enabled and/or configured");
-    });
-  });
-
-  it("can login via JWT", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-    });
-
-    assertDashboardLoaded(frame);
-  });
-
-  it("can login via JWT and a custom fetch request token function", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      onVisitPage: (win) => {
-        // Unjustified type cast. FIXME
-        (win as any).metabaseConfig = {
-          // Unjustified type cast. FIXME
-          ...(win as any).metabaseConfig,
-          fetchRequestToken: async () => {
-            const jwt = await getSignedJwtForUser({ user: USERS.admin });
-
-            return { jwt };
-          },
-        };
-      },
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-    });
-
-    assertDashboardLoaded(frame);
-  });
-
-  it("shows error message if login via JWT and a custom fetch request token is failing", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      onVisitPage: (win) => {
-        // Unjustified type cast. FIXME
-        (win as any).metabaseConfig = {
-          // Unjustified type cast. FIXME
-          ...(win as any).metabaseConfig,
-          fetchRequestToken: async () => {
-            return { jwt: "" };
-          },
-        };
-      },
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-    });
-
-    frame.within(() => {
-      cy.findByTestId("sdk-error-container")
-        .findByText(/Failed to fetch JWT token/)
-        .should("exist");
-    });
-  });
-
-  it("can login via SAML", () => {
-    mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-      onVisitPage: () => stubWindowOpenForSamlPopup(),
-    });
-
-    assertDashboardLoaded(frame);
-  });
-
-  it("shows an error if the SAML login results in an invalid user", () => {
-    mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-      onVisitPage: () => stubWindowOpenForSamlPopup({ isUserValid: false }),
-    });
-
-    frame.within(() => {
-      cy.findByTestId("sdk-error-container")
-        .should("be.visible")
-        .and(
-          "contain",
-          "Failed to fetch the user, the session might be invalid.",
-        );
-    });
-  });
-
-  it("shows an error if we are using an API key in production", () => {
-    H.prepareSdkIframeEmbedTest({
-      enabledAuthMethods: ["api-key"],
-      signOut: true,
-    });
-
-    cy.log("restore the current page's domain");
-    cy.visit("http://localhost:4000");
-
-    cy.log("visit a test page with an origin of example.com using api keys");
-    cy.get<string>("@apiKey").then((apiKey) => {
-      const frame = H.loadSdkIframeEmbedTestPage({
-        elements: [
-          {
-            component: "metabase-dashboard",
-            attributes: {
-              dashboardId: ORDERS_DASHBOARD_ID,
-            },
-          },
-        ],
-        origin: "http://example.com",
-        metabaseConfig: {
-          apiKey,
-        },
-      });
-
-      frame
-        .findByText("Using an API key in production is not allowed.")
-        .should("exist");
-
-      cy.findByText("Orders in a dashboard").should("not.exist");
-    });
-  });
-
-  it("shows an error if we are using the existing user session in production", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     cy.log("restore the current page's domain");
     cy.visit("http://localhost:4000");
@@ -361,14 +137,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       "visit a test page with an origin of example.com using the existing user session",
     );
     const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
+      elements: [ORDERS_DASHBOARD_ELEMENT],
       origin: "http://example.com",
       metabaseConfig: {
         useExistingUserSession: true,
@@ -384,78 +153,155 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     frame.findByText("Orders in a dashboard").should("not.exist");
   });
 
-  it("does not show an error if we are using an API key in development", () => {
+  it("uses the existing user session only when useExistingUserSession is true", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
+
+    cy.log(
+      "when no auth methods are enabled and the existing user session is not used, it should fail to login",
+    );
+    H.loadSdkIframeEmbedTestPage({
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+      metabaseConfig: {
+        useExistingUserSession: false,
+      },
+    }).within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and("contain", "SSO has not been enabled and/or configured");
+    });
+
+    cy.log("useExistingUserSession is true");
+    const frame = H.loadSdkIframeEmbedTestPage({
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+      metabaseConfig: {
+        useExistingUserSession: true,
+      },
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("can login via JWT with a custom fetch request token function, and shows an error if it fails", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
+
+    cy.log("fetchRequestToken returns an empty token");
+    H.loadSdkIframeEmbedTestPage({
+      onVisitPage: (win) => {
+        // Unjustified type cast. FIXME
+        (win as any).metabaseConfig = {
+          // Unjustified type cast. FIXME
+          ...(win as any).metabaseConfig,
+          fetchRequestToken: async () => {
+            return { jwt: "" };
+          },
+        };
+      },
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+    }).within(() => {
+      cy.findByTestId("sdk-error-container")
+        .findByText(/Failed to fetch JWT token/)
+        .should("exist");
+    });
+
+    cy.log("fetchRequestToken returns a valid token");
+    const frame = H.loadSdkIframeEmbedTestPage({
+      onVisitPage: (win) => {
+        // Unjustified type cast. FIXME
+        (win as any).metabaseConfig = {
+          // Unjustified type cast. FIXME
+          ...(win as any).metabaseConfig,
+          fetchRequestToken: async () => {
+            const jwt = await getSignedJwtForUser({ user: USERS.admin });
+
+            return { jwt };
+          },
+        };
+      },
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("can login via SAML, and shows an error if the SAML login results in an invalid user", () => {
+    mockAuthSsoEndpointForSamlAuthProvider();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
+
+    cy.log("SAML login results in an invalid user");
+    H.loadSdkIframeEmbedTestPage({
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+      onVisitPage: () => stubWindowOpenForSamlPopup({ isUserValid: false }),
+    }).within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and(
+          "contain",
+          "Failed to fetch the user, the session might be invalid.",
+        );
+    });
+
+    cy.log("SAML login results in a valid user");
+    const frame = H.loadSdkIframeEmbedTestPage({
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+      onVisitPage: () => stubWindowOpenForSamlPopup(),
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("allows an API key in development but not in production", () => {
     H.prepareSdkIframeEmbedTest({
       enabledAuthMethods: ["api-key"],
       signOut: true,
     });
 
     cy.get<string>("@apiKey").then((apiKey) => {
-      const frame = H.loadSdkIframeEmbedTestPage({
-        elements: [
-          {
-            component: "metabase-dashboard",
-            attributes: {
-              dashboardId: ORDERS_DASHBOARD_ID,
-            },
-          },
-        ],
+      cy.log("development");
+      const developmentFrame = H.loadSdkIframeEmbedTestPage({
+        elements: [ORDERS_DASHBOARD_ELEMENT],
         metabaseConfig: {
           apiKey,
         },
       });
 
-      assertDashboardLoaded(frame);
+      assertDashboardLoaded(developmentFrame);
 
-      frame
+      developmentFrame
         .findByText("Using an API key in production is not allowed.")
         .should("not.exist");
-    });
-  });
 
-  it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
-    cy.intercept("GET", "/auth/sso?preferred_method=jwt").as("authSso");
+      cy.log("restore the current page's domain");
+      cy.visit("http://localhost:4000");
 
-    H.prepareSdkIframeEmbedTest({
-      enabledAuthMethods: ["jwt", "saml"],
-      signOut: true,
-    });
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
+      cy.log("visit a test page with an origin of example.com using api keys");
+      const productionFrame = H.loadSdkIframeEmbedTestPage({
+        elements: [ORDERS_DASHBOARD_ELEMENT],
+        origin: "http://example.com",
+        metabaseConfig: {
+          apiKey,
         },
-      ],
-      metabaseConfig: {
-        preferredAuthMethod: "jwt",
-      },
-    });
+      });
 
-    cy.wait("@authSso").its("response.body.method").should("eq", "jwt");
-    assertDashboardLoaded(frame);
+      productionFrame
+        .findByText("Using an API key in production is not allowed.")
+        .should("exist");
+
+      productionFrame.findByText("Orders in a dashboard").should("not.exist");
+    });
   });
 
-  it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
-    cy.intercept("GET", "/auth/sso?preferred_method=saml").as("authSso");
+  it("uses the auth method set in preferredAuthMethod when both SAML and JWT are enabled", () => {
+    cy.intercept("GET", "/auth/sso?preferred_method=saml").as("samlAuthSso");
+    cy.intercept("GET", "/auth/sso?preferred_method=jwt").as("jwtAuthSso");
 
     H.prepareSdkIframeEmbedTest({
       enabledAuthMethods: ["jwt", "saml"],
       signOut: true,
     });
 
+    cy.log("preferredAuthMethod is saml");
     H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
+      elements: [ORDERS_DASHBOARD_ELEMENT],
       metabaseConfig: {
         preferredAuthMethod: "saml",
       },
@@ -472,10 +318,21 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     // preferredAuthMethod: "saml" must route to the SAML initiate endpoint. It now
     // returns a 200 with the AuthnRequest redirect (the RelayState is stored
     // server-side and only a short key is sent to the IdP).
-    cy.wait("@authSso").then(({ response }) => {
+    cy.wait("@samlAuthSso").then(({ response }) => {
       expect(response?.statusCode).to.eq(200);
       expect(response?.body?.method).to.eq("saml");
     });
+
+    cy.log("preferredAuthMethod is jwt");
+    const frame = H.loadSdkIframeEmbedTestPage({
+      elements: [ORDERS_DASHBOARD_ELEMENT],
+      metabaseConfig: {
+        preferredAuthMethod: "jwt",
+      },
+    });
+
+    cy.wait("@jwtAuthSso").its("response.body.method").should("eq", "jwt");
+    assertDashboardLoaded(frame);
   });
 });
 

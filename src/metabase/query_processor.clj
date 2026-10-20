@@ -17,6 +17,7 @@
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
+   [metabase.query-processor.middleware.reject-sensitive-field-refs :as qp.reject-sensitive-field-refs]
    [metabase.query-processor.postprocess :as qp.postprocess]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -42,6 +43,7 @@
   ;;
   ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
+   #'qp.reject-sensitive-field-refs/reject-sensitive-field-refs
    #'qp.process-userland-query/process-userland-query-middleware
    ;; userland queries only: catch Exceptions and return a special error response
    #'qp.catch-exceptions/catch-exceptions])

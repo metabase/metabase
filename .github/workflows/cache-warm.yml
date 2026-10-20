@@ -42,6 +42,9 @@ jobs:
     if: ${{ github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: write # prune older dependency caches
     steps:
       - uses: actions/checkout@v7
 
@@ -183,6 +186,30 @@ jobs:
         with:
           path: ${{ steps.cache-spec.outputs.bun-store-path }}
           key: ${{ steps.cache-spec.outputs.bun-store-key }}
+
+      # Each M2 and bun store entry is built on top of the previous one restored by prefix, so the newest
+      # is a superset of the older ones on this ref. A pull request whose exact key is gone falls back to the
+      # newest. Without this, every dependency change leaves an entry behind. Entries read in the last 30
+      # minutes are left for a later run, so a job mid-restore never loses its download.
+      - name: Prune older dependency caches
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREFIXES: |
+            ${{ steps.cache-spec.outputs.m2-restore-key }}
+            ${{ steps.cache-spec.outputs.bun-store-restore-key }}
+        run: |
+          set -euo pipefail
+          for prefix in $PREFIXES; do
+            gh cache list --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF" --key "$prefix" \
+              --sort created_at --order desc --limit 100 --json id,key,lastAccessedAt \
+              --jq '.[1:][] | select(now - (.lastAccessedAt | sub("\\.[0-9]+Z$"; "Z") | fromdate) > 1800) | "\(.id) \(.key)"' |
+              while read -r id key; do
+                echo "Deleting $key ($id)"
+                gh cache delete --repo "$GITHUB_REPOSITORY" "$id"
+              done
+          done
 
       - name: Ensure that Cypress executable is ready
         if: steps.cypress-lookup.outputs.cache-hit != 'true'
