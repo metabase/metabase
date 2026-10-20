@@ -91,6 +91,7 @@ describe("Remote Sync first-time setup", () => {
     H.createBranchViaSettings("first-branch");
 
     H.publishTables({ table_ids: [SAMPLE_DATABASE.PRODUCTS_ID] });
+    cy.visit("/collection/root");
     H.clickPushOption();
     H.modal()
       .button(/Push changes/)
