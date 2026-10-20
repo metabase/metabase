@@ -164,8 +164,8 @@
 
 (deftest non-oauth-auth-is-unaffected-by-oauth-fail-closed-test
   (testing "GHY-4542: session and API-key requests carry nil `:token-scopes` and must keep passing the scope
-            middleware. A stray bearer header does not make a session request OAuth-authenticated: the session
-            takes precedence and the bearer is never resolved."
+            middleware. Off the bearer-only paths, a stray bearer header does not make a session request
+            OAuth-authenticated: the session takes precedence and the bearer is never resolved."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [user-info {:metabase-user-id (mt/user->id :rasta) :is-superuser? false}]
         (testing "a session request"
@@ -335,7 +335,7 @@
                                                             :headers {"x-metabase-mcp-ui-auth" "credential"}}))))))))
 
 (deftest bearer-bridge-precedence-test
-  (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"
+  (testing "off the bearer-only paths, session/api-key auth takes precedence — bearer resolution is not even attempted"
     (let [called? (atom false)]
       (mt/with-dynamic-fn-redefs [oauth-server/resolve-access-token (fn [_] (reset! called? true) nil)
                                   ;; pretend an API key authenticated the request

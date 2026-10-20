@@ -2,9 +2,8 @@
   "MCP (Model Context Protocol) Streamable HTTP transport.
 
   Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
-  session issuance, origin validation (DNS-rebinding protection), OAuth bearer auth resolution, per-user throttling,
-  SSE responses and the GET keepalive stream, OAuth discovery hints on 401s, and
-  `insufficient_scope` challenges on 403s."
+  session issuance, origin validation (DNS-rebinding protection), OAuth bearer auth checks, per-user throttling, SSE
+  responses and the GET keepalive stream, OAuth discovery hints on 401s, and `insufficient_scope` challenges on 403s."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -249,8 +248,7 @@
 
   Compares domain AND port: an origin is a (scheme, domain, port) triple, so matching on the domain alone treats
   every other app on the same hostname as same-origin. On a developer machine that is the whole threat model —
-  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server
-  with the user's cookies.
+  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server.
 
   Two deliberate loosenesses:
 
@@ -784,7 +782,7 @@
            bearer-token
            (respond @invalid-token)
 
-           ;; No auth at all — return 401 with discovery
+           ;; No OAuth — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Authentication required"]))
                                    {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path

@@ -878,7 +878,7 @@
   (testing "GHY-4941: MCP authenticates only with an OAuth bearer token. A session cookie or an API key gets the same
             401 OAuth discovery challenge as a request with no credential, so the client goes through OAuth."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (mt/with-model-cleanup [:model/ApiKey]
+      (mt/with-model-cleanup [:model/ApiKey :model/User]
         (let [{api-key :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
                                                             {:group_id (:id (perms-group/admin))
                                                              :name     (str (random-uuid))})]
@@ -1505,7 +1505,7 @@
          (is (= -32600 (get-in response [:body :error :code]))))))))
 
 (deftest sessions-without-mcp-scopes-reach-no-mcp-tool-test
-  (testing "GHY-4942: MCP tools match only the named scopes a session holds. An `mb:full` bearer token holds only
+  (testing "GHY-4942: MCP tools match only the named scopes a token holds. An `mb:full` bearer token holds only
             the unrestricted sentinel, so it reaches no scoped tool. (A cookie session cannot reach MCP at all; see
             `session-and-api-key-cannot-authenticate-mcp-test`.)"
     (v2.tu/do-with-temp-tool!

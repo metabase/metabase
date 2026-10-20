@@ -455,7 +455,7 @@
          (is (= 200 (:status (mcp-request auth (jsonrpc-request "initialize")
                                           {"host" "anything.example" "origin" "http://127.0.0.1:6274"})))))
        (testing "a page on another port of the same host is a different origin — the local-MCP threat model, where
-              some other tool on 127.0.0.1 drives this server with the user's cookies"
+              some other tool on 127.0.0.1 drives this server"
          (let [response (mcp-request auth (jsonrpc-request "initialize")
                                      {"host" "127.0.0.1:6274" "origin" "http://127.0.0.1:9999"})]
            (is (= 403 (:status response)))
