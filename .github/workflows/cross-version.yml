@@ -132,6 +132,7 @@ jobs:
         env:
           UNRELEASED_MIGRATIONS: ${{ steps.run-test.outputs.unreleased_migrations }}
           NOTIFY_AFTER_HOURS: 24
+          REPEAT_AFTER_HOURS: 24
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: 'engineering-ci'
         with:
@@ -143,6 +144,7 @@ jobs:
               context,
               migrations: JSON.parse(process.env.UNRELEASED_MIGRATIONS),
               notifyAfterHours: Number(process.env.NOTIFY_AFTER_HOURS),
+              repeatAfterHours: Number(process.env.REPEAT_AFTER_HOURS),
               gracePeriodDays: Number(process.env.GRACE_PERIOD),
               channelName: process.env.SLACK_CHANNEL,
               getRecentSlackMessages,

@@ -36,6 +36,7 @@ async function notifyOverdueChangesets({
   context,
   migrations,
   notifyAfterHours,
+  repeatAfterHours,
   gracePeriodDays,
   channelName,
   getRecentSlackMessages,
@@ -48,7 +49,10 @@ async function notifyOverdueChangesets({
     return;
   }
 
-  const recentMessages = await getRecentSlackMessages({ channelName });
+  const recentMessages = await getRecentSlackMessages({
+    channelName,
+    sinceHours: repeatAfterHours,
+  });
   const allNotified = overdue.every(({ commit }) =>
     recentMessages.some((text) =>
       text.includes(commitUrl({ owner, repo, commit })),
@@ -66,6 +70,16 @@ async function notifyOverdueChangesets({
         runUrl,
       }),
     });
+  } else {
+    console.log(
+      [
+        "All commits with migrations that need to be backported/released already have a recent Slack notification:",
+        ...overdue.map(
+          ({ commit, age_hours, ids }) =>
+            `  ${commitUrl({ owner, repo, commit })} added: ${ids.join(", ")} (${age_hours}h ago)`,
+        ),
+      ].join("\n"),
+    );
   }
 }
 

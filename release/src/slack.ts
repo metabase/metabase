@@ -229,9 +229,11 @@ export async function findSlackMessage({ channelName, text, limit = 100 }: {
 
 export async function getRecentSlackMessages({
   channelName,
+  sinceHours,
   limit = 100,
 }: {
   channelName: string;
+  sinceHours?: number;
   limit?: number;
 }): Promise<string[]> {
   const channelId = await getSlackChannelId(channelName);
@@ -239,8 +241,13 @@ export async function getRecentSlackMessages({
     throw new Error(`Could not find channel ${channelName}`);
   }
 
+  const oldest =
+    sinceHours === undefined
+      ? undefined
+      : String(Math.floor(Date.now() / 1000) - sinceHours * 3600);
   const response = await slack.conversations.history({
     channel: channelId,
+    oldest,
     limit,
   });
 

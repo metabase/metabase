@@ -75,6 +75,7 @@ describe("notifyOverdueChangesets", () => {
       context,
       migrations,
       notifyAfterHours: 48,
+      repeatAfterHours: 24,
       gracePeriodDays: 3,
       channelName: "release",
       getRecentSlackMessages,
@@ -90,7 +91,10 @@ describe("notifyOverdueChangesets", () => {
       ],
       sendSlackMessage,
     });
-    expect(getRecentSlackMessages).toHaveBeenCalledTimes(1);
+    expect(getRecentSlackMessages).toHaveBeenCalledWith({
+      channelName: "release",
+      sinceHours: 24,
+    });
     expect(sendSlackMessage).toHaveBeenCalledTimes(1);
     const { message } = sendSlackMessage.mock.calls[0][0];
     expect(message).toContain("v64.a");
