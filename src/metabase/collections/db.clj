@@ -235,15 +235,15 @@
   [pattern :- :string]
   (t2/select-pks-set :model/Collection :location [:like pattern] :archived [:not= true]))
 
-(mu/defn archived-collection-ids-in-operation-with-location-like
+(mu/defn archived-collection-ids-in-operation-with-location-like :- [:set ::lib.schema.id/collection]
   "The IDs of the archived Collections of the archive operation with `archive-operation-id` whose location matches
   the SQL `pattern`."
   [pattern              :- :string
    archive-operation-id :- :string]
-  (t2/select-pks-set :model/Collection
-                     :location [:like pattern]
-                     :archive_operation_id [:= archive-operation-id]
-                     :archived [:= true]))
+  (set (t2/select-pks-set :model/Collection
+                          :location [:like pattern]
+                          :archive_operation_id [:= archive-operation-id]
+                          :archived [:= true])))
 
 (mu/defn archived-collections-without-operation-with-location-like :- [:sequential [:map
                                                                                     [:id ::lib.schema.id/collection]
