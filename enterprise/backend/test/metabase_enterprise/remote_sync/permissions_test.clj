@@ -7,8 +7,11 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (defn- text->prose-mirror-ast
   "Convert text to a simple ProseMirror AST for document content."
