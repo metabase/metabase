@@ -201,6 +201,8 @@
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
+      (run! (comp api/write-check data-studio.db/collection)
+            (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update)))
       (data-studio.db/unpublish-tables! table-ids-to-update)
       ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids-to-update)]
