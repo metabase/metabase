@@ -23,7 +23,7 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "or-baseline",
     get name() {
-      return t`OR filters: Baseline`;
+      return t`Baseline`;
     },
     get description() {
       return t`Today's UI. An OR only exists as a custom expression and shows up as one pill.`;
@@ -33,7 +33,7 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "or-pills",
     get name() {
-      return t`OR filters A: OR inside pills`;
+      return t`OR inside pills`;
     },
     get description() {
       return t`Pills stay AND-ed at the top level. Click a pill to edit its OR rows in a dropdown.`;
@@ -54,7 +54,7 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "expression-bar",
     get name() {
-      return t`OR filters B: Expression bar`;
+      return t`Expression bar`;
     },
     get description() {
       return t`One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them.`;
@@ -86,7 +86,7 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "railroad",
     get name() {
-      return t`OR filters C: Railroad tracks`;
+      return t`Railroad tracks`;
     },
     get description() {
       return t`Filters drawn as tracks. Series = and, parallel tracks = or; any left-to-right path through the diagram is a matching row.`;
