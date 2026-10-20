@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.create-alert
-  "`create_alert`, which sets up an alert on a saved question that posts to the Slack conversation that the request
-  came from, and the Slack checks that it shares with the dashboard subscription tools."
+  "`create_alert`, and the Slack checks that it shares with the dashboard subscription tools.
+
+  The alert watches a saved question and posts to the Slack conversation that the request came from."
   (:require
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
@@ -30,12 +31,11 @@
      {:user-message (tru "Slack isn''t connected to Metabase. An admin can connect it in Admin settings.")})))
 
 (defn current-slack-channel
-  "The display name of the Slack conversation that the call in `ctx` came from, which is how alerts and
-  subscriptions name their channel.
+  "The display name of the Slack conversation that the call in `ctx` came from.
 
-  Throws an unrecoverable error when the call didn't come from Slack, when Slack isn't connected, or when the
-  conversation isn't in Metabase's cached list of channels. Slack posts each error's user message in the
-  conversation, so none of them names a channel."
+  Alerts and subscriptions name their channel this way. Throws an unrecoverable error when the call didn't come
+  from Slack, when Slack isn't connected, or when the conversation isn't in Metabase's cached list of channels.
+  Slack posts each error's user message in the conversation, so none of them names a channel."
   [ctx]
   (let [channel-id (or (some-> (:memory-atom ctx) deref :context :slack_channel_id)
                        (tools/unrecoverable!
@@ -49,8 +49,9 @@
           :data         {:channel-id channel-id}}))))
 
 (defn do-with-refusal
-  "Call `thunk`, and turn a 403 from it into the unrecoverable error `code` with `user-message`. Anything else it
-  throws passes through."
+  "Call `thunk`, and turn a 403 that it throws into the unrecoverable error `code` with `user-message`.
+
+  Anything else that it throws passes through."
   [code user-message thunk]
   (try
     (thunk)

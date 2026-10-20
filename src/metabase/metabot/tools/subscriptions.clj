@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.subscriptions
-  "`create_dashboard_subscription` for the Chat profile, which subscribes a Slack channel that the model names, and
-  the subscription code that it shares with the Slack profile's variant."
+  "`create_dashboard_subscription` for the Chat profile, and the subscription code that both variants use.
+
+  The Chat profile's variant subscribes a Slack channel that the model names."
   (:require
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
@@ -25,8 +26,9 @@
          (metabot.tools.u/schedule->schedule-map schedule)))
 
 (defn- pulse-card
-  "The question on a dashcard of the dashboard with `dashboard-id`, in the form that
-  [[pulse.api/create-pulse-with-perm-checks!]] takes."
+  "The question on one dashcard, as a pulse card for the dashboard with `dashboard-id`.
+
+  This is the form that [[pulse.api/create-pulse-with-perm-checks!]] takes."
   [dashboard-id {:keys [id card]}]
   (-> card
       (select-keys [:id :name :collection_id :description :display :parameter_mappings])
@@ -36,8 +38,9 @@
              :include_xls       false)))
 
 (defn- create-pulse!
-  "Create the pulse that sends the questions on `dashcards` of `dashboard` to the Slack `channel` on `schedule`, and
-  return it."
+  "Create the pulse that sends the questions on `dashcards` to the Slack `channel`, and return it.
+
+  The pulse subscribes to `dashboard` and sends on `schedule`."
   [{dashboard-id :id :as dashboard} dashcards channel schedule]
   (tools.create-alert/do-with-refusal
    ::no-subscription-permission
@@ -52,11 +55,11 @@
                 :skip_if_empty false)))))
 
 (defn create-dashboard-subscription!
-  "Subscribe the Slack `channel`, named the way Metabase's cached list of channels names it, to the dashboard with
-  `dashboard-id` on `schedule`, and return the tool result that reports it.
+  "Subscribe the Slack `channel` to the dashboard with `dashboard-id`, and return the tool result that reports it.
 
-  Throws the declared not-found error when the dashboard is missing or unreadable, and an unrecoverable error when
-  the user can read it but may not subscribe to it."
+  `channel` is the name that Metabase's cached list of Slack channels gives it, and the subscription sends on
+  `schedule`. Throws the declared not-found error when the dashboard is missing or unreadable, and an
+  unrecoverable error when the user can read it but may not subscribe to it."
   [{:keys [dashboard-id channel schedule]}]
   (let [dashboard (tools/with-entity {:kind :dashboard :id dashboard-id}
                     (-> (metabot.db/dashboard dashboard-id)

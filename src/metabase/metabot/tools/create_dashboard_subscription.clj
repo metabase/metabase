@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.create-dashboard-subscription
-  "`create_dashboard_subscription` for the Slack profile, which subscribes the conversation that the request came
-  from."
+  "`create_dashboard_subscription` for the Slack profile.
+
+  It subscribes the conversation that the request came from."
   (:require
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
