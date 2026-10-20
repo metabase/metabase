@@ -252,6 +252,28 @@
                 (derive! query {:operations [{:type    "drill-thru" :drill "quick-filter" :operator "<"
                                               :context {:column "QUANTITY" :value 2 :row row}}]})))))))
 
+(deftest drill-on-row-with-a-large-integer-cell-test
+  (testing "the run route sends an integer past 2^53 as a string; a drill on another cell of that row still applies"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp    (mt/metadata-provider)
+            query (lib/limit (lib/query mp (lib.metadata/table mp (mt/id :orders))) 1)
+            row   [{:column "ID" :value "9007199254740993"} {:column "QUANTITY" :value 2}]
+            {:keys [status body] :as response} (derive! query {:operations [{:type     "drill-thru"
+                                                                             :drill    "quick-filter"
+                                                                             :operator "<"
+                                                                             :context  {:column "QUANTITY" :value 2
+                                                                                        :row    row}}]})]
+        (is (= 200 status) (pr-str (select-keys response [:status :body])))
+        (is (=? [[:< {} [:field {} (mt/id :orders :quantity)] 2]]
+                (some->> (:handle body) (stored-query :rasta) lib/filters)))
+        (testing "and a drill on a large integer itself filters on its number"
+          (is (=? [[:= {} [:field {} (mt/id :orders :quantity)] 9007199254740993]]
+                  (lib/filters (derived-query! query [{:type     "drill-thru"
+                                                       :drill    "quick-filter"
+                                                       :operator "="
+                                                       :context  {:column "QUANTITY" :value "9007199254740993"
+                                                                  :row    row}}])))))))))
+
 (deftest drill-on-point-with-a-null-dimension-test
   (testing "a chart point whose breakout value is NULL still drills"
     (mt/with-model-cleanup [:model/McpQueryHandle]

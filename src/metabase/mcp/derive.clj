@@ -177,20 +177,24 @@
         resolve (fn [column-name]
                   (or (some-> (get columns column-name) binned)
                       (throw (bad-request (tru "The query returns no column named {0}." (pr-str column-name))))))
-        ;; Lib fails on a string for a number with a ClassCastException, which would answer a 500.
+        ;; The run route sends a number past 2^53 as a string. Lib fails on a string for a number with a
+        ;; ClassCastException, which would answer a 500.
         checked (fn [col v]
-                  (when (and (string? v) (isa? (:effective-type col) :type/Number))
-                    (throw (bad-request (tru "{0} is not a number." (pr-str v)))))
-                  v)
+                  (if (and (string? v) (isa? (:effective-type col) :type/Number))
+                    (or (parse-long v)
+                        (try (bigdec v) (catch NumberFormatException _ nil))
+                        (throw (bad-request (tru "{0} is not a number." (pr-str v)))))
+                    v))
         ;; A SQL NULL is `:null` only as the clicked value; in row and dimension cells it stays nil.
         cell    (fn [{column-name :column v :value}]
                   (let [col (resolve column-name)]
                     {:column col :column-ref (lib/ref col) :value (checked col v)}))]
     (cond-> {:value (when (contains? context :value)
                       (if (nil? (:value context)) :null (:value context)))}
-      column           (merge (let [col (resolve column)]
-                                (checked col (:value context))
-                                {:column col :column-ref (lib/ref col)}))
+      column           (merge (let [col (resolve column)
+                                    v   (:value context)]
+                                (cond-> {:column col :column-ref (lib/ref col)}
+                                  (some? v) (assoc :value (checked col v)))))
       ;; Row cells are context only, and a row carries display columns the query does not return, such as an FK
       ;; remapping's, so cells naming no returned column are dropped.
       (seq row)        (assoc :row (into [] (keep #(when (contains? columns (:column %)) (cell %))) row))
