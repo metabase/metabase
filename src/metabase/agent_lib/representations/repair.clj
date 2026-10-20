@@ -1963,7 +1963,8 @@
   NOT move `order-by` / `limit` / `fields` — those frequently reference pre-aggregation
   columns that don't survive the split, and silently relocating them produces either a
   hard-to-diagnose 'no matching field' error or, worse, a different-row-count query. When
-  any of those keys is present we refuse and ask the LLM to author two stages explicitly."
+  any of those keys is present we refuse and ask the LLM to author two stages explicitly. An
+  `order-by` or `fields` that is not a list is left for validation to report."
   [stage]
   (let [aggs              (get stage "aggregation")
         same-stage-uuids  (when (and (vector? aggs) (every? clause-like? aggs))
@@ -1975,6 +1976,9 @@
             offending-filters   (when (vector? filters) (filterv offending-filter? filters))]
         (cond
           (empty? offending-filters)
+          [stage]
+
+          (some #(and (contains? stage %) (not (sequential? (get stage %)))) ["order-by" "fields"])
           [stage]
 
           (or (seq (get stage "order-by"))
@@ -2393,7 +2397,8 @@
 ;;; ============================================================
 
 (defn- stage-join-aliases [stage]
-  (into #{} (keep #(when (map? %) (get % "alias"))) (get stage "joins")))
+  (let [joins (get stage "joins")]
+    (into #{} (keep #(when (map? %) (get % "alias"))) (when (sequential? joins) joins))))
 
 (defn- string-cross-stage-field-clause?
   "True if `v` is a string-named field ref to a previous-stage column of a stage whose joins are
@@ -2688,7 +2693,8 @@
   problem per join that has refs naming columns it doesn't return."
   [query mp content-store import-resolver idx stage]
   (let [{:keys [named path]} (join-alias-refs stage)
-        checks               (vec (for [join  (when (or (seq named) (seq path)) (get stage "joins"))
+        joins                (get stage "joins")
+        checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
                                         :let  [alias      (when (map? join) (get join "alias"))
                                                named-refs (get named alias)
                                                path-refs  (when-not (plain-table-join? join) (get path alias))]

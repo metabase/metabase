@@ -3004,12 +3004,20 @@
                                       (build ["count-where" {} ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]))
                        ["stages" 1 "filters"])))))))
 
-(deftest ^:parallel malformed-aggregation-reaches-validation-test
-  (testing "an `aggregation:` that is not a list of clauses gets through repair, so validation can name it"
-    (doseq [[label stage] {"a number"
+(deftest ^:parallel malformed-clauses-reach-validation-test
+  (testing "a stage key that does not hold its list of clauses gets through repair, so validation can name it"
+    (doseq [[label stage] {"a number as `aggregation`"
                            {"aggregation" 42}
-                           "an empty clause, sorted by an empty clause"
-                           {"aggregation" [[]] "order-by" [["desc" {} []]]}}]
+                           "an empty aggregation clause, sorted by an empty clause"
+                           {"aggregation" [[]] "order-by" [["desc" {} []]]}
+                           "a number as `joins`"
+                           {"joins" 42}
+                           "a number as `joins`, beside a join-alias reference"
+                           {"joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]]}
+                           "a number as `order-by`, beside a post-aggregation filter"
+                           {"aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]] "order-by" 42}
+                           "a number as `fields`, beside a post-aggregation filter"
+                           {"aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]] "fields" 42}}]
       (testing label
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Representations query has an invalid structure"
                               (repr/validate-query

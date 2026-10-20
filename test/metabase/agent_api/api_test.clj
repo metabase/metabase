@@ -374,12 +374,20 @@
         (is (=? {:error "unknown-stage-key"} response))
         (is (re-find #"aggregation" (:message response)))))))
 
-(deftest construct-query-rejects-malformed-aggregation-test
-  (testing "an `aggregation:` that is not a list of clauses is a 400 naming the invalid structure, not a 500"
-    (doseq [[label query] {"a number"
-                           (assoc-in (orders-query) [:stages 0 :aggregation] 42)
-                           "an empty clause, sorted by an empty clause"
-                           (orders-query :aggregation [[]] :order-by [["desc" {} []]])}
+(deftest construct-query-rejects-malformed-clauses-test
+  (testing "a stage key that does not hold its list of clauses is a 400 naming the invalid structure, not a 500"
+    (doseq [[label query] (let [post-agg (orders-query :aggregation [["count" {}]]
+                                                       :filters     [[">" {} ["aggregation" {} 0] 1]])]
+                            {"a number as `aggregation`"
+                             (assoc-in (orders-query) [:stages 0 :aggregation] 42)
+                             "an empty aggregation clause, sorted by an empty clause"
+                             (orders-query :aggregation [[]] :order-by [["desc" {} []]])
+                             "a number as `joins`"
+                             (assoc-in (orders-query) [:stages 0 :joins] 42)
+                             "a number as `order-by`, beside a post-aggregation filter"
+                             (assoc-in post-agg [:stages 0 :order-by] 42)
+                             "a number as `fields`, beside a post-aggregation filter"
+                             (assoc-in post-agg [:stages 0 :fields] 42)})
             endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
       (testing (str endpoint ", " label)
         (is (=? {:error "invalid-representations-query"}
