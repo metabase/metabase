@@ -126,8 +126,17 @@ function CartesianChartInner(props: VisualizationProps) {
   const description = settings["card.description"];
 
   const legendItems = useMemo(
-    () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
-    [chartModel, showAllLegendItems],
+    () =>
+      getLegendItems(
+        chartModel.seriesModels.filter(
+          (seriesModel) =>
+            !settings.series_settings?.[seriesModel.vizSettingsKey]?.[
+              "legend.hidden"
+            ],
+        ),
+        showAllLegendItems,
+      ),
+    [chartModel, showAllLegendItems, settings],
   );
   const hasLegend = !hideLegend && legendItems.length > 0;
 
