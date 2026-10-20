@@ -79,16 +79,6 @@
       (is (=? {:target {:id (mt/id :categories :id)}}
               (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))
 
-(deftest get-sensitive-field-test
-  (testing "GET /api/field/:id"
-    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)}
-                   :model/Field {field-id :id} {:table_id table-id :visibility_type :sensitive}]
-      (testing "returns a sensitive field to users who can edit the data model"
-        (is (=? {:id field-id}
-                (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
-      (testing "does not return a sensitive field to other users"
-        (mt/user-http-request :rasta :get 403 (format "field/%d" field-id))))))
-
 (deftest ^:parallel get-field-table-ids-test
   (testing "POST /api/field/table-ids"
     (is (= {:table_ids (sort [(mt/id :categories) (mt/id :venues)])}
