@@ -789,7 +789,7 @@
    :name                "PRICE"
    :fingerprint-version 5
    :has-field-values    :list
-   :settings            {:is_priceless true}
+   :settings            {:decimals 2}
    :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
@@ -3997,7 +3997,8 @@
    :name                        "test-data"
    :settings                    {:breakout-bin-width 10.0
                                  :breakout-bins-num  8
-                                 :enable-xrays       true}
+                                 :enable-xrays       true
+                                 :start-of-week      :sunday}
    :caveats                     nil
    :tables                      [(table-metadata-method :categories)
                                  (table-metadata-method :checkins)

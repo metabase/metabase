@@ -19,6 +19,8 @@ type UseAuditTableResult = {
   provider: MetadataProvider | null;
   table: TableMetadata | CardMetadata | null;
   isLoading: boolean;
+  /** A failed metadata request. Without it, a failure looks the same as a view that doesn't exist. */
+  error: unknown;
 };
 
 /**
@@ -29,8 +31,11 @@ type UseAuditTableResult = {
  * (case-insensitive to handle H2 uppercasing).
  */
 export function useAuditTable(viewName: string): UseAuditTableResult {
-  const { data: database, isLoading: isLoadingTables } =
-    useGetDatabaseMetadataQuery({ id: AUDIT_DB_ID, skip_fields: true });
+  const {
+    data: database,
+    isLoading: isLoadingTables,
+    error: databaseError,
+  } = useGetDatabaseMetadataQuery({ id: AUDIT_DB_ID, skip_fields: true });
 
   const tableId = useMemo(() => {
     const lowerName = viewName.toLowerCase();
@@ -55,9 +60,8 @@ export function useAuditTable(viewName: string): UseAuditTableResult {
     [provider, table],
   );
 
-  const { data: queryMetadata } = useGetAdhocQueryMetadataQuery(
-    datasetQuery ?? skipToken,
-  );
+  const { data: queryMetadata, error: queryMetadataError } =
+    useGetAdhocQueryMetadataQuery(datasetQuery ?? skipToken);
 
   const isLoadingFields = table != null && queryMetadata == null;
 
@@ -65,5 +69,6 @@ export function useAuditTable(viewName: string): UseAuditTableResult {
     provider,
     table: isLoadingFields ? null : table,
     isLoading: isLoadingTables || isLoadingFields,
+    error: databaseError ?? queryMetadataError,
   };
 }

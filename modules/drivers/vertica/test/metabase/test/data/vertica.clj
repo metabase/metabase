@@ -20,6 +20,7 @@
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
@@ -88,6 +89,12 @@
 (defmethod sql.tx/drop-table-if-exists-sql :vertica
   [& args]
   (apply sql.tx/drop-table-if-exists-cascade-sql args))
+
+(defmethod spec/dbdef->spec :vertica
+  [driver context dbdef]
+  ;; the driver always disables `COPY ... FROM LOCAL`; the test loader needs it
+  (assoc (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver context dbdef))
+         :disablecopylocal "false"))
 
 (defn- dbspec []
   (sql-jdbc.conn/connection-details->spec :vertica @db-connection-details))
@@ -284,7 +291,6 @@
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *override-describe-database-to-filter-by-db-name?*
   "Whether to override the production implementation for `describe-database` with a special one that only syncs
   the tables qualified by the database name. This is `true` by default during tests to fake database isolation.

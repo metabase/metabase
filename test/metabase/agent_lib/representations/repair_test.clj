@@ -7,7 +7,13 @@
    [clojure.test.check.properties :as prop]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repair]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.models.serialization.resolve :as serdes.resolve]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,6 +27,15 @@
   the source-table."
   (lib.tu/mock-metadata-provider
    {:database {:id 1 :name "Sample"}}))
+
+(def ^:private mp-temporal
+  "ORDERS with a datetime column, for the hoist test whose prefix stage has to resolve."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 102 :name "USER_ID"    :table-id 10 :base-type :type/Integer}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}]}))
 
 (def ^:private mp-fks
   "3-table MP: ORDERS → PRODUCTS, ORDERS → USERS."
@@ -662,78 +677,501 @@
       (is (= ["not" {} inner] (repair/repair trivial-mp input))))))
 
 ;;; ============================================================
-;;; Pass 1.86 - wrap bare ISO-date strings as absolute-datetime in between
+;;; Bare ISO-date `between` bounds
 ;;; ============================================================
 
-(deftest ^:parallel wrap-iso-date-bounds-both-bare-test
-  (testing "both bounds are bare yyyy-mm-dd strings: both get wrapped"
+(deftest ^:parallel iso-date-bounds-left-bare-test
+  (testing "both bounds bare yyyy-mm-dd: left exactly as the model wrote them"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-01-01" "2024-12-31"]]
-      (is (= ["between" {}
-              field
-              ["absolute-datetime" {} "2024-01-01" "day"]
-              ["absolute-datetime" {} "2024-12-31" "day"]]
-             (repair/repair trivial-mp input))))))
+      (is (= input (repair/repair trivial-mp input))))))
 
-(deftest ^:parallel wrap-iso-date-bounds-mixed-test
-  (testing "one bound already absolute-datetime, the other a bare string: bare side
-           gets wrapped"
-    (let [field   ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
-          wrapped ["absolute-datetime" {} "2024-01-01" "day"]
-          input   ["between" {} field wrapped "2024-12-31"]]
-      (is (= ["between" {}
-              field
-              wrapped
-              ["absolute-datetime" {} "2024-12-31" "day"]]
-             (repair/repair trivial-mp input)))))
-  (testing "one bound a relative-datetime, the other a bare ISO string: bare side gets
-           wrapped (presence of temporal sibling triggers the rule)"
+(deftest ^:parallel iso-datetime-bounds-keep-their-time-test
+  (testing "bounds carrying a time portion keep it"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-06-15T09:00:00" "2024-06-15T18:00:00"]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest ^:parallel iso-date-bound-beside-temporal-clause-test
+  (testing "a temporal sibling does not pull a bare bound into a wrapper"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           rel   ["relative-datetime" {} -7 "day"]
           input ["between" {} field rel "2024-12-31"]]
-      (is (= ["between" {} field rel
-              ["absolute-datetime" {} "2024-12-31" "day"]]
-             (repair/repair trivial-mp input))))))
-
-(deftest ^:parallel wrap-iso-date-bounds-numeric-untouched-test
-  (testing "both bounds numeric: not wrapped (between also works for numbers)"
-    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
-          input ["between" {} field 10 100]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest ^:parallel wrap-iso-date-bounds-with-time-portion-test
-  (testing "yyyy-mm-ddThh:mm:ss bounds also get wrapped"
-    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
-          input ["between" {} field "2024-06-15T09:00:00" "2024-06-15T18:00:00"]]
-      (is (= ["between" {}
-              field
-              ["absolute-datetime" {} "2024-06-15T09:00:00" "day"]
-              ["absolute-datetime" {} "2024-06-15T18:00:00" "day"]]
-             (repair/repair trivial-mp input))))))
-
-(deftest ^:parallel wrap-iso-date-bounds-idempotent-test
-  (testing "wrapping is idempotent: two wraps == one wrap"
-    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
-          input ["between" {} field "2024-01-01" "2024-12-31"]
-          once  (repair/repair trivial-mp input)
-          twice (repair/repair trivial-mp once)]
-      (is (= once twice)))))
-
-(deftest ^:parallel wrap-iso-date-bounds-then-swap-test
-  (testing "wrap + swap compose: out-of-order bare ISO strings wrap then swap"
-    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
-          input ["between" {} field "2024-12-31" "2024-01-01"]]
-      (is (= ["between" {}
-              field
-              ["absolute-datetime" {} "2024-01-01" "day"]
-              ["absolute-datetime" {} "2024-12-31" "day"]]
-             (repair/repair trivial-mp input))))))
-
-(deftest ^:parallel wrap-iso-date-bounds-non-iso-untouched-test
-  (testing "random strings (not yyyy-mm-dd shaped) are left alone"
-    (let [field ["field" {} ["Sample" "PUBLIC" "X"]]
-          input ["between" {} field "hello" "world"]]
+(deftest ^:parallel non-temporal-between-bounds-untouched-test
+  (testing "numeric and non-ISO string bounds are untouched"
+    (doseq [input [["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 10 100]
+                   ["between" {} ["field" {} ["Sample" "PUBLIC" "X"]] "hello" "world"]]]
       (is (= input (repair/repair trivial-mp input))))))
+
+(deftest ^:parallel iso-date-bound-is-a-temporal-sibling-test
+  (testing "a bare ISO date counts as a temporal sibling, so bare 'now' is canonicalised"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]
+      (is (= ["between" {} field "2024-01-01" ["now" {}]]
+             (repair/repair trivial-mp ["between" {} field "2024-01-01" "now"])))
+      (is (= ["between" {} field ["now" {}] "2024-12-31"]
+             (repair/repair trivial-mp ["between" {} field "now" "2024-12-31"]))))))
+
+;;; ============================================================
+;;; Pass 2.95 - hoist a temporal bucket from an absolute-datetime literal onto the ref
+;;; ============================================================
+
+(def ^:private created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]])
+
+(defn- created-at-bucketed [unit]
+  ["field" {"temporal-unit" unit} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]])
+
+(defn- abs-dt [literal unit]
+  ["absolute-datetime" {} literal unit])
+
+(defn- week-start
+  "`literal` truncated to the start of its week - what the hoist aligns a `week`-bucketed literal to.
+
+  Computed rather than written out: `u.date/truncate` reads the site `start-of-week` setting, other
+  namespaces mutate it, and the tests below are `^:parallel`. Under the default Sunday `2025-01-01`
+  gives `2024-12-29`."
+  [literal]
+  (str (u.date/truncate (lib-be/time-config) (u.date/parse literal) :week)))
+
+(defn- repair-in-stage
+  "Run `repair` on a query carrying `stage-kvs`, returning the repaired first stage. The hoist pass
+  is scoped to a stage's `filters` and `expressions`, so its inputs have to be given in one of those
+  positions."
+  [stage-kvs]
+  (-> (repair/repair trivial-mp
+                     {"lib/type" "mbql/query"
+                      "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                                          "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                         stage-kvs)]})
+      (get "stages")
+      first))
+
+(defn- repair-filter [filter-clause]
+  (first (get (repair-in-stage {"filters" [filter-clause]}) "filters")))
+
+(defn- hoist-filter
+  "Run only Pass 2.95 over a stage carrying `filter-clause`, returning the rewritten clause.
+
+  Unlike [[repair-filter]] this skips Pass 6, so it can show what the pass itself declines - Pass 6's
+  `unencodable-temporal-clause-error!` throws on most of those shapes."
+  [filter-clause]
+  (-> (#'repair/hoist-temporal-buckets*
+       {"lib/type" "mbql/query"
+        "stages"   [{"lib/type" "mbql.stage/mbql" "filters" [filter-clause]}]})
+      (get-in ["stages" 0 "filters"])
+      first))
+
+(deftest ^:parallel hoist-temporal-bucket-comparison-test
+  (testing "a bucketed absolute-datetime literal moves its unit onto the field ref"
+    (doseq [op ["=" "!=" "<" "<=" ">" ">="]]
+      (is (= [op {} (created-at-bucketed "month") "2025-01-01"]
+             (repair-filter [op {} created-at (abs-dt "2025-01-01" "month")]))
+          op))))
+
+(deftest ^:parallel hoist-temporal-bucket-units-test
+  (testing "every date unit moves onto the field ref, and the literal aligns to the unit it gave up"
+    ;; `week` is the only date unit `2025-01-01` is not already aligned to - it is a Wednesday
+    (doseq [[unit literal] {"default" "2025-01-01"
+                            "day"     "2025-01-01"
+                            "week"    (week-start "2025-01-01")
+                            "month"   "2025-01-01"
+                            "quarter" "2025-01-01"
+                            "year"    "2025-01-01"}]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
+             (repair-filter ["=" {} created-at (abs-dt "2025-01-01" unit)]))
+          unit)))
+  (testing "a datetime literal also takes the sub-day units"
+    (doseq [[unit literal] {"default" "2025-01-01T10:30:00"
+                            "second"  "2025-01-01T10:30:00"
+                            "minute"  "2025-01-01T10:30:00"
+                            "hour"    "2025-01-01T10:00"
+                            "day"     "2025-01-01T00:00"
+                            "month"   "2025-01-01T00:00"}]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
+             (repair-filter ["=" {} created-at (abs-dt "2025-01-01T10:30:00" unit)]))
+          unit))))
+
+(deftest ^:parallel hoist-temporal-bucket-partial-date-test
+  (testing "`yyyy-MM` and `yyyy` literals are widened to the first day they name"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-03-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-03" "month")])))
+    (is (= ["=" {} (created-at-bucketed "year") "2025-01-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025" "year")])))))
+
+(deftest ^:parallel hoist-temporal-bucket-multi-value-test
+  (testing "variadic `=` / `!=` and `in` / `not-in`: every literal carries the same bucket"
+    (doseq [op ["=" "!=" "in" "not-in"]]
+      (is (= [op {} (created-at-bucketed "month") "2025-01-01" "2025-03-01"]
+             (repair-filter [op {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-03-01" "month")]))
+          op)))
+  (testing "literals bucketed by different units are left alone"
+    (let [input ["in" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-03-01" "year")]]
+      (is (= input (hoist-filter input)))))
+  (testing "a mix of bucketed and bare literals is left alone"
+    (let [input ["in" {} created-at (abs-dt "2025-01-01" "month") "2025-03-01"]]
+      (is (= input (hoist-filter input))))))
+
+(deftest ^:parallel hoist-temporal-bucket-expression-ref-test
+  (testing "a custom-column ref takes the bucket the same way a field ref does"
+    (is (= ["=" {} ["expression" {"temporal-unit" "month"} "Ship Date"] "2025-01-01"]
+           (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "month")])))))
+
+;; The hoisted clause truncates the column, so the literal has to be truncated too or the clause
+;; asks a different question - `date_trunc(month, col) = "2025-06-15"` is never true, and the
+;; ordered heads land up to one bucket out. `optimize-temporal-filters` does this for a `field` ref
+;; and never for an `expression` ref, so the pass does it itself. These are shape assertions; the
+;; row-level proof that alignment reproduces the field-ref answer lives next to that middleware, in
+;; `expression-ref-hoisted-bucket-needs-an-aligned-literal-test`.
+(deftest ^:parallel hoist-temporal-bucket-aligns-literal-test
+  (testing "the hoisted literal is truncated to the unit it gave up"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15" "month")])))
+    (is (= ["=" {} (created-at-bucketed "quarter") "2025-04-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15" "quarter")])))
+    (is (= ["=" {} ["expression" {"temporal-unit" "month"} "Ship Date"] "2025-06-01"]
+           (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-15" "month")]))))
+  (testing "`during` names the unit containing its literal, so this is its mainline case"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-01"]
+           (repair-filter ["during" {} created-at "2025-06-15" "month"]))))
+  (testing "both `between` bounds align"
+    (is (= ["between" {} (created-at-bucketed "month") "2025-06-01" "2025-09-01"]
+           (repair-filter ["between" {} created-at (abs-dt "2025-06-15" "month") (abs-dt "2025-09-20" "month")]))))
+  (testing "so does every literal of a variadic comparison"
+    (is (= ["in" {} (created-at-bucketed "month") "2025-06-01" "2025-09-01"]
+           (repair-filter ["in" {} created-at (abs-dt "2025-06-15" "month") (abs-dt "2025-09-20" "month")]))))
+  (testing "a literal already aligned comes back as written, not reformatted"
+    (doseq [[literal unit] [["2025-06-01" "month"] ["2025-06-15" "day"]
+                            ["2025-01-01T10:30:00" "minute"] ["2025-01-01T10:30:00" "second"]]]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
+             (repair-filter ["=" {} created-at (abs-dt literal unit)]))
+          (str literal " " unit))))
+  (testing "`default` names no unit, so its literal is never truncated"
+    (is (= ["=" {} (created-at-bucketed "default") "2025-06-15"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15" "default")]))))
+  (testing "a `Z`-suffixed literal truncates to `2025-06-01T00:00Z[UTC]`, which is not ISO, so it is kept as written"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-15T10:00:00Z"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15T10:00:00Z" "month")]))))
+  (testing "an offset literal does truncate to an ISO string, so it aligns"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-01T00:00+02:00"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15T10:00:00+02:00" "month")])))))
+
+(deftest ^:parallel hoist-temporal-bucket-year-on-expression-ref-test
+  (testing "`year` is left on the literal when the ref is an `expression`"
+    ;; `year` is both a truncation and an extraction unit, so `lib/type-of` calls a `year`-bucketed
+    ;; ref with no type `:type/Integer` - which is exactly an `expression` ref - and the QP fails
+    ;; trying to read the date literal as an integer. Declining leaves it to Pass 6.
+    (doseq [input [["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")]
+                   ["between" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "year") (abs-dt "2026-01-01" "year")]
+                   ["during" {} ["expression" {} "Ship Date"] "2025-06-01" "year"]]]
+      (is (= input (hoist-filter input)) (pr-str input))))
+  (testing "a `field` ref carries a type, so the same bucket still moves onto it"
+    (is (= ["=" {} (created-at-bucketed "year") "2025-01-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-01" "year")])))
+    (is (= ["=" {} (created-at-bucketed "year") "2025-01-01"]
+           (repair-filter ["during" {} created-at "2025-06-01" "year"]))))
+  (testing "every other unit still moves onto an `expression` ref"
+    (doseq [[unit literal] {"day"     "2025-06-15"
+                            "week"    (week-start "2025-06-15")
+                            "month"   "2025-06-01"
+                            "quarter" "2025-04-01"}]
+      (is (= ["=" {} ["expression" {"temporal-unit" unit} "Ship Date"] literal]
+             (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-15" unit)]))
+          unit))))
+
+(deftest ^:parallel hoist-temporal-bucket-between-test
+  (testing "both bounds bucketed by the same unit: hoisted, bounds become plain strings"
+    (is (= ["between" {} (created-at-bucketed "month") "2025-01-01" "2025-06-01"]
+           (repair-filter ["between" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-06-01" "month")]))))
+  (testing "hoisting composes with the swap pass for out-of-order bounds"
+    (is (= ["between" {} (created-at-bucketed "month") "2025-01-01" "2025-06-01"]
+           (repair-filter ["between" {} created-at (abs-dt "2025-06-01" "month") (abs-dt "2025-01-01" "month")]))))
+  (testing "bounds bucketed by different units are left alone"
+    (let [input ["between" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-06-01" "year")]]
+      (is (= input (hoist-filter input)))))
+  (testing "one bound bucketed by a unit that changes it (`month`): left alone"
+    (let [input ["between" {} created-at (abs-dt "2025-01-01" "month") "2025-06-01"]]
+      (is (= input (hoist-filter input)))))
+  (testing "one bound bucketed by `day` or `default`: the wrapper goes and the bound stays a plain date"
+    (is (= ["between" {} created-at "2025-01-01" ["now" {}]]
+           (repair-filter ["between" {} created-at (abs-dt "2025-01-01" "day") "now"])))
+    (is (= ["between" {} created-at "2025-01-01" "2025-06-30"]
+           (repair-filter ["between" {} created-at (abs-dt "2025-01-01" "default") "2025-06-30"])))))
+
+(deftest ^:parallel hoist-temporal-bucket-during-test
+  (testing "`during` becomes `=` against the bucketed field - what the clause already means"
+    (doseq [[unit literal] {"day"     "2025-01-01"
+                            "week"    (week-start "2025-01-01")
+                            "month"   "2025-01-01"
+                            "quarter" "2025-01-01"
+                            "year"    "2025-01-01"}]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
+             (repair-filter ["during" {} created-at "2025-01-01" unit]))
+          unit)))
+  (testing "a datetime literal with a sub-day unit is rewritten the same way"
+    (is (= ["=" {} (created-at-bucketed "hour") "2025-01-01T10:00"]
+           (repair-filter ["during" {} created-at "2025-01-01T10:30:00" "hour"]))))
+  (testing "a sub-day unit on a date-only literal is left alone, like the comparison arm"
+    (doseq [[literal unit] [["2025-01-01" "hour"] ["2025-01-01" "minute"] ["2025-01-01" "second"]
+                            ["2025-03" "hour"] ["2025" "hour"]]]
+      (let [input ["during" {} created-at literal unit]]
+        (is (= input (hoist-filter input)) (str literal " " unit)))))
+  (testing "the `default` unit is left alone: `during` does not accept it, so Pass 6 reports it"
+    (let [input ["during" {} created-at "2025-01-01" "default"]]
+      (is (= input (hoist-filter input)))))
+  (testing "a field that already carries a temporal-unit is never clobbered"
+    (let [input ["during" {} (created-at-bucketed "day") "2025-01-01" "month"]]
+      (is (= input (hoist-filter input))))))
+
+(deftest ^:parallel hoist-temporal-bucket-only-comparison-heads-test
+  (testing "a non-comparison clause of the same arity is not a comparison and is left alone"
+    (doseq [head ["coalesce" "datetime-add" "concat"]]
+      (let [input [head {} created-at (abs-dt "2025-01-01" "month")]]
+        (is (= input (hoist-filter input)) head)))))
+
+(deftest ^:parallel hoist-temporal-bucket-scope-test
+  (testing "a stage's filters and expressions are rewritten; the same comparison elsewhere is not"
+    ;; Pass 2.95 alone, not `repair`: Pass 6 rejects the shapes this pass declines.
+    (let [cmp   [">" {} created-at (abs-dt "2025-01-01" "month")]
+          cmp'  [">" {} (created-at-bucketed "month") "2025-01-01"]
+          agg   ["count-where" {} cmp]
+          expr  ["case" {"lib/expression-name" "E"} [[cmp 1]] 0]
+          ob    ["asc" {} ["sum-where" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] cmp]]
+          brk   ["case" {} [[cmp 1]] 0]
+          fld   ["case" {} [[cmp 2]] 0]
+          stage (-> (#'repair/hoist-temporal-buckets*
+                     {"lib/type" "mbql/query"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                   "filters"      [cmp]
+                                   "aggregation"  [agg]
+                                   "expressions"  [expr]
+                                   "order-by"     [ob]
+                                   "breakout"     [brk]
+                                   "fields"       [fld]}]})
+                    (get "stages")
+                    first)]
+      (is (= [cmp'] (get stage "filters")))
+      (is (= [agg] (get stage "aggregation")))
+      (is (= [["case" {"lib/expression-name" "E"} [[cmp' 1]] 0]] (get stage "expressions")))
+      (is (= [ob] (get stage "order-by")))
+      (is (= [brk] (get stage "breakout")))
+      (is (= [fld] (get stage "fields"))))))
+
+(deftest ^:parallel hoist-temporal-bucket-join-scope-test
+  ;; Pass 2.95 alone, not `repair`: Pass 6 rejects the conditions shape.
+  (let [cmp   [">" {} created-at (abs-dt "2025-01-01" "month")]
+        cmp'  [">" {} (created-at-bucketed "month") "2025-01-01"]
+        stage (-> (#'repair/hoist-temporal-buckets*
+                   {"lib/type" "mbql/query"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "joins"        [{"lib/type"   "mbql/join"
+                                                  "alias"      "J"
+                                                  "conditions" [cmp]
+                                                  "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                                 "filters"      [cmp]}]}]}]})
+                  (get "stages")
+                  first)]
+    (testing "a join's own `conditions:` are not a stage key the optimizer rewrites: left as written"
+      (is (= [cmp] (get-in stage ["joins" 0 "conditions"]))))
+    (testing "a join's inner stage is a stage, and the optimizer covers it: hoisted"
+      (is (= [cmp'] (get-in stage ["joins" 0 "stages" 0 "filters"]))))))
+
+(deftest ^:parallel hoist-temporal-bucket-stage-marker-drift-test
+  ;; The gate is `stage-like-map?` and not a `lib/type` match on purpose: Pass 2 only fills a
+  ;; *missing* marker, so a stage the model mis-marked would drop out of a marker gate entirely.
+  (testing "a stage the model mis-marked is still recognised structurally, so the marker complaint
+           reaches the model instead of a misleading temporal one"
+    (doseq [marker ["mbql/stage" "mbql.stage/mbql5"]]
+      (let [stage (-> (#'repair/hoist-temporal-buckets*
+                       {"lib/type" "mbql/query"
+                        "stages"   [{"lib/type"     marker
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "filters"      [[">" {} created-at (abs-dt "2025-01-01" "month")]]}]})
+                      (get "stages")
+                      first)]
+        (is (= [[">" {} (created-at-bucketed "month") "2025-01-01"]] (get stage "filters")) marker)))))
+
+(deftest ^:parallel hoist-temporal-bucket-nested-in-filter-test
+  (testing "hoisting reaches comparisons nested under boolean combinators"
+    (is (= ["and" {} ["=" {} (created-at-bucketed "month") "2025-01-01"]
+            ["not" {} ["=" {} (created-at-bucketed "year") "2024-01-01"]]]
+           (repair-filter ["and" {}
+                           ["=" {} created-at (abs-dt "2025-01-01" "month")]
+                           ["not" {} ["=" {} created-at (abs-dt "2024-01-01" "year")]]])))))
+
+(deftest ^:parallel hoist-temporal-bucket-inside-case-test
+  (testing "a comparison nested in a `case` inside a filter is hoisted - the QP optimizer walks
+           filters to the same depth, so the two forms compile alike"
+    (is (= [">" {} ["case" {} [[[">" {} (created-at-bucketed "month") "2025-01-01"] 1]] 0] 0]
+           (repair-filter [">" {} ["case" {} [[[">" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0] 0])))))
+
+(deftest ^:parallel hoist-temporal-bucket-cross-stage-ref-test
+  (testing "a cross-stage string-named ref is bucketed the same way as a portable-FK ref"
+    (is (= ["=" {} ["field" {"temporal-unit" "month"} "CREATED_AT"] "2025-01-01"]
+           (repair-filter ["=" {} ["field" {} "CREATED_AT"] (abs-dt "2025-01-01" "month")])))))
+
+(deftest ^:parallel hoist-temporal-bucket-after-post-agg-split-test
+  (testing "a post-aggregation filter that Pass 2.9 moves into a new stage is hoisted there"
+    (let [stages (-> (repair/repair mp-temporal
+                                    {"lib/type" "mbql/query"
+                                     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                  "aggregation"  [["max" {} created-at]]
+                                                  "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
+                                                  "filters"      [["<" {} ["aggregation" {} 0]
+                                                                   (abs-dt "2025-01-01" "month")]]}]})
+                     (get "stages"))
+          [_ _ ref literal] (first (get (second stages) "filters"))]
+      (is (= 2 (count stages)))
+      (is (= "month" (get-in ref [1 "temporal-unit"])))
+      (is (= "2025-01-01" literal)))))
+
+(deftest ^:parallel hoist-temporal-bucket-guards-test
+  (testing "a sub-day unit on a date-only literal is not valid MBQL 5: the pass declines it, Pass 6 reports it"
+    (doseq [unit ["hour" "minute" "second" "millisecond"]]
+      (let [input ["=" {} created-at (abs-dt "2025-01-01" unit)]]
+        (is (= input (hoist-filter input)) unit))))
+  (testing "extraction units are a different operation on a field ref: the pass declines them, Pass 6 reports them"
+    (let [input ["=" {} created-at (abs-dt "2025-01-01" "month-of-year")]]
+      (is (= input (hoist-filter input)))))
+  ;; the one shape Pass 6 deliberately stays quiet about, so `repair-filter` (the full pipeline) is
+  ;; what this block has to exercise
+  (testing "a literal that does not parse is left alone, so the resolve-time check still reports it"
+    (let [input ["=" {} created-at (abs-dt "2024-13-45" "month")]]
+      (is (= input (repair-filter input)))))
+  (testing "a field that already carries a temporal-unit is never clobbered"
+    (let [input ["=" {} (created-at-bucketed "day") (abs-dt "2025-01-01" "month")]]
+      (is (= input (hoist-filter input)))))
+  (testing "a non-empty options map is never rewritten (it would annihilate an expression name; Pass 6 reports the clause)"
+    (let [input ["=" {} created-at ["absolute-datetime" {"lib/expression-name" "Cutoff"} "2025-01-01" "day"]]]
+      (is (= input (hoist-filter input))))))
+
+(deftest ^:parallel hoist-temporal-bucket-normalisation-test
+  (testing "the unit is matched case-insensitively, as lib normalises it"
+    (is (= ["=" {} (created-at-bucketed "default") "2025-01-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-01-01" "DEFAULT")]))))
+  (testing "a `nil` temporal-unit counts as none - lib drops it"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-01-01"]
+           (repair-filter ["=" {} ["field" {"temporal-unit" nil} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                           (abs-dt "2025-01-01" "month")]))))
+  (testing "a type hint on the literal does not block the rewrite"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-01-01"]
+           (repair-filter ["=" {} created-at ["absolute-datetime" {"base-type" "type/Date"} "2025-01-01" "month"]])))))
+
+(deftest ^:parallel hoist-temporal-bucket-idempotent-test
+  (testing "hoisting is idempotent"
+    (let [once (repair-filter ["between" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-06-01" "month")])]
+      (is (= once (repair-filter once))))))
+
+(deftest ^:parallel unencodable-temporal-clause-error-test
+  (testing "a temporal clause the hoist pass could not move becomes a retryable agent error"
+    (doseq [[label stage-kvs]
+            {"in `aggregation:`"
+             {"aggregation" [["count-where" {} [">" {} created-at (abs-dt "2025-01-01" "month")]]]}
+             "with the literal on the left"
+             {"filters" [["=" {} (abs-dt "2025-01-01" "month") created-at]]}
+             "compared to an already-bucketed ref"
+             {"filters" [["=" {} (created-at-bucketed "day") (abs-dt "2025-01-01" "month")]]}
+             "with an extraction unit"
+             {"filters" [["=" {} created-at (abs-dt "2025-01-01" "month-of-year")]]}
+             "`between` bounds bucketed by different units"
+             {"filters" [["between" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-06-01" "year")]]}
+             "`during` against an already-bucketed ref"
+             {"filters" [["during" {} (created-at-bucketed "day") "2025-01-01" "month"]]}
+             "`during` with a sub-day unit on a date-only literal"
+             {"filters" [["during" {} created-at "2025-01-01" "hour"]]}
+             ;; `millisecond` is a legal datetime bucket, but not one the QP turns into a range, so Pass
+             ;; 2.95 declines it even on a datetime literal
+             "`millisecond` on a datetime literal"
+             {"filters" [["=" {} created-at (abs-dt "2025-01-01T10:00:00.123" "millisecond")]]}
+             "`during` with `millisecond` on a datetime literal"
+             {"filters" [["during" {} created-at "2025-01-01T10:00:00.123" "millisecond"]]}
+             ;; a `value` clause keeps its raw string keys and still passes validation (BOT-2095)
+             "a `value` clause carrying a unit"
+             {"filters" [["=" {} created-at ["value" {"base-type" "type/DateTime" "unit" "day"} "2025-01-01"]]]}
+             ;; E7 still reaches `expressions:` - Pass 2.95 declines an extraction unit everywhere
+             "with an extraction unit in a `case` under `expressions:`"
+             {"expressions" [["case" {"lib/expression-name" "E"}
+                              [[[">" {} created-at (abs-dt "2025-01-01" "month-of-year")] 1]] 0]]}}]
+      (testing label
+        (try
+          (repair-in-stage stage-kvs)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unencodable-temporal-clause (:error d)))))))))
+  (testing "shapes that round-trip intact are never flagged"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-01-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-01-01" "month")])))
+    (testing "a `value` clause with no unit, or a nil unit, survives the hop"
+      (doseq [opts [{"base-type" "type/DateTime"}
+                    {"base-type" "type/DateTime" "unit" nil}]]
+        (let [input ["=" {} created-at ["value" opts "2025-01-01"]]]
+          (is (= input (repair-filter input)) (pr-str opts)))))
+    (testing "a hoistable bucket in a `case` under `expressions:` is rewritten, not flagged"
+      (is (= [["case" {"lib/expression-name" "E"}
+               [[[">" {} (created-at-bucketed "month") "2025-01-01"] 1]] 0]]
+             (get (repair-in-stage
+                   {"expressions" [["case" {"lib/expression-name" "E"}
+                                    [[[">" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0]]})
+                  "expressions")))))
+  (testing "an unparseable literal is left for resolve's `:invalid-temporal-literal` to name"
+    (let [input ["=" {} created-at (abs-dt "2024-13-45" "month")]]
+      (is (= input (repair-filter input))))))
+
+(deftest ^:parallel unencodable-temporal-clause-message-test
+  (testing "the message steers to a half-open range, and names `year` on an `expression` ref as needing it"
+    ;; `year` is also an extraction unit, so on an untyped `expression` ref the QP reads the bucketed
+    ;; column as an integer and fails on the date literal; and `between` compiles to SQL BETWEEN wherever
+    ;; `optimize-temporal-filters` does not run - every `expression` ref, all of `aggregation:` - so a
+    ;; plain upper date keeps only midnight of the last day
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"`>=` its first day and `<` the first day after it.*not `between`.*`year` on an `expression` reference"
+         (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")])))))
+
+;;; ============================================================
+;;; Pass 1.867 - rewrite temporal-extract to its get-* equivalent
+;;; ============================================================
+
+(deftest ^:parallel rewrite-temporal-extract-test
+  (testing "each extraction unit becomes its get-* clause, week modes passed on"
+    (doseq [[unit expected] {"year-of-era"           ["get-year" {} created-at]
+                             "quarter-of-year"       ["get-quarter" {} created-at]
+                             "month-of-year"         ["get-month" {} created-at]
+                             "day-of-month"          ["get-day" {} created-at]
+                             "day-of-week"           ["get-day-of-week" {} created-at]
+                             "day-of-week-iso"       ["get-day-of-week" {} created-at "iso"]
+                             "hour-of-day"           ["get-hour" {} created-at]
+                             "minute-of-hour"        ["get-minute" {} created-at]
+                             "second-of-minute"      ["get-second" {} created-at]
+                             "week-of-year-iso"      ["get-week" {} created-at "iso"]
+                             "week-of-year-us"       ["get-week" {} created-at "us"]
+                             "week-of-year-instance" ["get-week" {} created-at "instance"]}]
+      (is (= ["=" {} expected 2]
+             (repair/repair trivial-mp ["=" {} ["temporal-extract" {} created-at unit] 2]))
+          unit))))
+
+(deftest ^:parallel rewrite-temporal-extract-preserves-options-test
+  (testing "the clause's options survive the rewrite"
+    (is (= ["get-month" {"lib/expression-name" "Mo"} created-at]
+           (repair/repair trivial-mp ["temporal-extract" {"lib/expression-name" "Mo"} created-at "month-of-year"])))))
+
+(deftest ^:parallel rewrite-temporal-extract-idempotent-test
+  (testing "rewriting is idempotent"
+    (let [once (repair/repair trivial-mp ["=" {} ["temporal-extract" {} created-at "day-of-week"] 2])]
+      (is (= once (repair/repair trivial-mp once))))))
+
+(deftest ^:parallel rewrite-temporal-extract-week-mode-slot-test
+  (testing "the optional week-mode slot is dropped: the unit alone decides, as in SQL compilation"
+    (is (= ["=" {} ["get-day-of-week" {} created-at "iso"] 2]
+           (repair/repair trivial-mp ["=" {} ["temporal-extract" {} created-at "day-of-week-iso" "us"] 2])))
+    (is (= ["=" {} ["get-month" {} created-at] 2]
+           (repair/repair trivial-mp ["=" {} ["temporal-extract" {} created-at "month-of-year" "iso"] 2])))))
 
 ;;; ============================================================
 ;;; Pass 1.865 - wrap bare "now" literals in temporal-comparison contexts
@@ -771,11 +1209,8 @@
     (let [field-with-unit ["field" {"temporal-unit" "day"}
                            ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input  ["between" {} field-with-unit "2024-01-01" "now"]]
-      ;; ISO date wrapped (Pass 1.86), bare 'now' wrapped (Pass 1.865).
-      (is (= ["between" {}
-              field-with-unit
-              ["absolute-datetime" {} "2024-01-01" "day"]
-              ["now" {}]]
+      ;; the ISO bound stays exactly as written; only the bare 'now' is canonicalised
+      (is (= ["between" {} field-with-unit "2024-01-01" ["now" {}]]
              (repair/repair trivial-mp input)))))
   (testing "between(<numeric-field>, 'now', 'now'): no temporal sibling, leave alone"
     ;; The expression's column is non-temporal and bare 'now' is the only thing in sight;
@@ -810,47 +1245,37 @@
       (is (= once twice)))))
 
 (deftest ^:parallel swap-between-bounds-iso-string-test
-  ;; Note: bare ISO strings are wrapped by Pass 1.86 ("wrap-iso-date-bounds*") *before*
-  ;; this swap pass runs, so the canonical post-repair form has \"[absolute-datetime ...]\"
-  ;; bounds. The swap still proceeds because \"swap-between-bounds*\" knows how to extract
-  ;; the inner ISO string for comparison.
-  (testing "ISO-8601 date strings ordered chronologically: wrapped + swapped"
+  ;; Bare ISO strings now reach this pass unchanged; `swap-between-bounds*` compares them
+  ;; directly via its `string?` arm (ISO-8601 lex order is chronological order).
+  (testing "ISO-8601 date strings out of order: swapped, still bare"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-12-31" "2024-01-01"]]
-      (is (= ["between" {}
-              field
-              ["absolute-datetime" {} "2024-01-01" "day"]
-              ["absolute-datetime" {} "2024-12-31" "day"]]
+      (is (= ["between" {} field "2024-01-01" "2024-12-31"]
              (repair/repair trivial-mp input)))))
-  (testing "ISO-8601 datetime strings: wrapped + swapped"
+  (testing "ISO-8601 datetime strings out of order: swapped, time portion preserved"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-06-15T18:00:00" "2024-06-15T09:00:00"]]
-      (is (= ["between" {}
-              field
-              ["absolute-datetime" {} "2024-06-15T09:00:00" "day"]
-              ["absolute-datetime" {} "2024-06-15T18:00:00" "day"]]
+      (is (= ["between" {} field "2024-06-15T09:00:00" "2024-06-15T18:00:00"]
              (repair/repair trivial-mp input)))))
-  (testing "in-order ISO strings: wrapped, no swap"
+  (testing "in-order ISO strings: untouched"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-01-01" "2024-12-31"]]
-      (is (= ["between" {}
-              field
-              ["absolute-datetime" {} "2024-01-01" "day"]
-              ["absolute-datetime" {} "2024-12-31" "day"]]
-             (repair/repair trivial-mp input))))))
+      (is (= input (repair/repair trivial-mp input))))))
 
 (deftest ^:parallel swap-between-bounds-absolute-datetime-test
+  ;; A bare clause outside a stage, so Pass 2.95 does not apply and the bounds stay
+  ;; wrapped - the subject here is `between-bound-comparable`'s absolute-datetime arm, not hoisting.
   (testing "out-of-order absolute-datetime clauses: swap by inner ISO string"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
-          hi    ["absolute-datetime" {} "2024-12-31" "day"]
-          lo    ["absolute-datetime" {} "2024-01-01" "day"]
+          hi    ["absolute-datetime" {} "2024-12-31T10:00:00" "hour"]
+          lo    ["absolute-datetime" {} "2024-01-01T10:00:00" "hour"]
           input ["between" {} field hi lo]]
       (is (= ["between" {} field lo hi]
              (repair/repair trivial-mp input)))))
   (testing "in-order absolute-datetime clauses are left alone"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
-          lo    ["absolute-datetime" {} "2024-01-01" "day"]
-          hi    ["absolute-datetime" {} "2024-12-31" "day"]
+          lo    ["absolute-datetime" {} "2024-01-01T10:00:00" "hour"]
+          hi    ["absolute-datetime" {} "2024-12-31T10:00:00" "hour"]
           input ["between" {} field lo hi]]
       (is (= input (repair/repair trivial-mp input))))))
 
@@ -1411,11 +1836,33 @@
     ;; deliberately wrap values in a vector to trigger Pass 1.82
     (gen/fmap (fn [[f vs]] ["in" {} f vs])
               (gen/tuple gen-field-clause (gen/vector gen/string-alphanumeric 1 4)))
-    ;; between with maybe-out-of-order ISO date strings (Pass 1.86 + 1.87)
+    ;; between with maybe-out-of-order ISO date strings (Pass 1.87 swap)
     (gen/fmap (fn [[f a b]] ["between" {} f a b])
               (gen/tuple gen-field-clause-with-temporal
                          (gen/elements ["2024-01-01" "2024-06-30" "2024-12-31"])
                          (gen/elements ["2023-01-01" "2024-12-31" "now"])))
+    ;; comparison against a bucketed absolute-datetime literal, hoistable and not (Pass 2.95)
+    (gen/fmap (fn [[op f d unit]] [op {} f ["absolute-datetime" {} d unit]])
+              (gen/tuple (gen/elements ["=" "!=" "<" "<=" ">" ">="])
+                         gen-field-clause
+                         (gen/elements ["2024-01-01" "2024-06-30" "2024-01-01T10:30:00"])
+                         (gen/elements ["default" "day" "month" "year" "hour" "month-of-year"])))
+    ;; between with absolute-datetime bounds whose units may disagree (Pass 2.95)
+    (gen/fmap (fn [[f a b ua ub]]
+                ["between" {} f ["absolute-datetime" {} a ua] ["absolute-datetime" {} b ub]])
+              (gen/tuple gen-field-clause
+                         (gen/elements ["2024-01-01" "2024-06-30"])
+                         (gen/elements ["2024-12-31" "2023-01-01"])
+                         (gen/elements ["day" "month" "year"])
+                         (gen/elements ["day" "month" "year"])))
+    ;; temporal-extract, including the week-mode and unmapped units (Pass 1.867)
+    (gen/fmap (fn [[f unit mode n]]
+                ["=" {} (cond-> ["temporal-extract" {} f unit] mode (conj mode)) n])
+              (gen/tuple gen-field-clause
+                         (gen/elements ["day-of-week" "month-of-year" "week-of-year-iso"
+                                        "day-of-week-iso" "day-of-year"])
+                         (gen/elements [nil "iso" "us"])
+                         gen/small-integer))
     ;; post-aggregation filter that triggers Pass 2.9 split
     (gen/fmap (fn [n] [">" {} ["aggregation" {} 0] n])
               gen/small-integer)]))
@@ -1576,7 +2023,11 @@
         (let [d (ex-data e)]
           (is (= :no-fk-path (:error d)))
           (is (true? (:agent-error? d)))
-          (is (re-find #"no foreign key" (ex-message e))))))))
+          (is (= (str "Field [\"Sample\" \"PUBLIC\" \"PRODUCTS\" \"CATEGORY\"] is on table \"PRODUCTS\", which has no foreign key "
+                      "from the source table \"ORDERS\", so it cannot be reached implicitly. "
+                      "To group or filter by a column from that table, add an explicit `joins:` entry "
+                      "and reference the field using the join alias. Otherwise use a field from the source table.")
+                 (ex-message e))))))))
 
 (deftest ^:parallel implicit-join-ambiguous-fk-test
   (testing (str "throws :ambiguous-fk when multiple FKs exist, and does NOT enumerate the "
@@ -2555,6 +3006,9 @@
 
 ;;; ============================================================
 ;;; Pass 6 - friendly error messages (E1..E6)
+;;;
+;;; E7 (`unencodable-temporal-clause-error!`) is tested with Pass 2.95 above, in
+;;; `unencodable-temporal-clause-error-test` - it only fires on what that pass declines.
 ;;; ============================================================
 
 ;;; ----- E1: [field, ...] in aggregation block ---------------------------------------
@@ -3045,3 +3499,273 @@
     (let [bug  ["contains" {} ["field" {} ["S" "P" "T" "C"]] "x" {"case-sensitive" false}]
           once (repair/repair trivial-mp bug)]
       (is (= once (repair/repair trivial-mp once))))))
+
+;;; ============================================================
+;;; Pass 4.7 - join-alias field refs (BOT-2222)
+;;; ============================================================
+
+(def ^:private first-orders-card-eid "aBc123_456DefGhI789_K")
+(def ^:private native-orders-card-eid "nAt123_456DefGhI789_K")
+
+(def ^:private mp-orders-with-cards
+  "ORDERS, PEOPLE (whose `ID` shares its name with ORDERS'), an MBQL card returning each user's first
+  order date (`USER_ID`, `min`), and a native card returning `USER_ID` and `CREATED_AT` without field
+  ids."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PEOPLE" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+               {:id 102 :name "USER_ID"    :table-id 10 :base-type :type/Integer}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/Date}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}]
+    :cards    [{:id              500
+                :name            "First orders"
+                :database-id     1
+                :type            :question
+                :entity-id       first-orders-card-eid
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 10}]}
+                :result-metadata [{:name "USER_ID" :id 102 :base-type :type/Integer}
+                                  {:name "min" :base-type :type/Date}]}
+               {:id              501
+                :name            "Native first orders"
+                :database-id     1
+                :type            :question
+                :entity-id       native-orders-card-eid
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+                :result-metadata [{:name "USER_ID" :base-type :type/Integer}
+                                  {:name "CREATED_AT" :base-type :type/Date}]}]}))
+
+(def ^:private card-content-store
+  (let [cards [{:id 500 :database_id 1 :entity_id first-orders-card-eid}
+               {:id 501 :database_id 1 :entity_id native-orders-card-eid}]]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ eid] (some #(when (= eid (:entity_id %)) %) cards))
+      (measure-by-entity-id [_ _] nil)
+      (segment-by-entity-id [_ _] nil)
+      (card-by-id           [_ id] (some #(when (= id (:id %)) %) cards))
+      (measure-by-id        [_ _] nil)
+      (segment-by-id        [_ _] nil))))
+
+(def ^:private orders ["Sample" "PUBLIC" "ORDERS"])
+
+(defn- orders-col [column] ["field" {} (conj orders column)])
+
+(defn- join-ref [alias target] ["field" {"join-alias" alias} target])
+
+(defn- typed [field-ref type-name] (assoc-in field-ref [1 "base-type"] type-name))
+
+(defn- stage [m] (merge {"lib/type" "mbql.stage/mbql"} m))
+
+(defn- orders-stage [m] (stage (merge {"source-table" orders} m)))
+
+(def ^:private first-orders-stage
+  "Each user's first order date: returns `USER_ID` and `min`."
+  (orders-stage {"aggregation" [["min" {} (orders-col "CREATED_AT")]]
+                 "breakout"    [(orders-col "USER_ID")]}))
+
+(defn- join
+  "A left join over `stages`, on `lhs` (default ORDERS.USER_ID) = the join's `USER_ID` by path."
+  [alias stages & {:keys [lhs] :or {lhs (orders-col "USER_ID")}}]
+  {"alias"      alias
+   "strategy"   "left-join"
+   "stages"     stages
+   "conditions" [["=" {} lhs (join-ref alias (conj orders "USER_ID"))]]})
+
+(defn- query [& stages] {"lib/type" "mbql/query" "database" "Sample" "stages" (vec stages)})
+
+(defn- repair* [q] (repair/repair mp-orders-with-cards q card-content-store))
+
+(defn- repair-error
+  "The ex-data of the error `q`'s repair raises, plus its `:message`; nil when repair succeeds."
+  [q]
+  (try (repair* q) nil
+       (catch clojure.lang.ExceptionInfo e (assoc (ex-data e) :message (ex-message e)))))
+
+(defn- join-problems
+  "`[stage join-alias columns]` per problem in the join-alias error `q`'s repair raises, or nil."
+  [q]
+  (let [e (repair-error q)]
+    (when (= :unresolved-join-alias-field (:error e))
+      (mapv (juxt :stage :join-alias :columns) (:problems e)))))
+
+(defn- base-type [field-ref] (get-in field-ref [1 "base-type"]))
+
+(def ^:private first-order-query
+  "Refs `First`'s `min` by name from every clause that can carry one."
+  (let [min-ref (join-ref "First" "min")]
+    (query (orders-stage {"joins"       [(join "First" [first-orders-stage])]
+                          "expressions" [["=" {"lib/expression-name" "First order?"} (orders-col "CREATED_AT") min-ref]]
+                          "breakout"    [min-ref]
+                          "aggregation" [["max" {} min-ref]]
+                          "filters"     [["not-null" {} min-ref]]
+                          "order-by"    [["asc" {} min-ref]]}))))
+
+(deftest ^:parallel join-alias-field-type-happy-path-test
+  (let [decoy-stages [(orders-stage {"filters" [["not-null" {} (join-ref "First" "min")]]})]
+        q            (-> first-order-query
+                         (assoc-in ["stages" 0 "joins" 0 "conditions" 0 3] (join-ref "First" "USER_ID"))
+                         (update-in ["stages" 0 "joins"] conj (join "Decoy" decoy-stages)))
+        out          (get-in (repair* q) ["stages" 0])]
+    (doseq [path [["expressions" 0 3] ["breakout" 0] ["aggregation" 0 2] ["filters" 0 2] ["order-by" 0 2]]]
+      (testing (str "the ref in " (first path) " is typed from the join")
+        (is (= ["field" {"join-alias" "First" "base-type" "type/Date" "effective-type" "type/Date"} "min"]
+               (get-in out path)))))
+    (testing "a by-name ref in the join's conditions is typed"
+      (is (= "type/Integer" (base-type (get-in out ["joins" 0 "conditions" 0 3])))))
+    (testing "a ref with the same alias inside a join's own stages is left alone"
+      (is (= decoy-stages (get-in out ["joins" 1 "stages"]))))))
+
+(deftest ^:parallel join-alias-field-type-recovers-display-name-test
+  (let [q (query (orders-stage {"joins"   [(join "First" [first-orders-stage])]
+                                "filters" [["not-null" {} (join-ref "First" "Min of Created At")]]}))]
+    (is (= ["field" {"join-alias" "First" "base-type" "type/Date" "effective-type" "type/Date"} "min"]
+           (get-in (repair* q) ["stages" 0 "filters" 0 2])))))
+
+(deftest ^:parallel join-alias-field-type-source-card-join-test
+  (let [q (query (orders-stage {"joins"   [(join "Card" [(stage {"source-card" first-orders-card-eid})])]
+                                "filters" [["not-null" {} (join-ref "Card" "min")]]}))]
+    (is (= "type/Date" (base-type (get-in (repair* q) ["stages" 0 "filters" 0 2]))))))
+
+(def ^:private min-total-by-user-stage
+  "Returns `USER_ID` and a Float `min`, which a Date `min` from a join must not be confused with."
+  (orders-stage {"aggregation" [["min" {} (orders-col "TOTAL")]]
+                 "breakout"    [(orders-col "USER_ID")]}))
+
+(def ^:private user-id-by-name (typed ["field" {} "USER_ID"] "type/Integer"))
+
+(deftest ^:parallel join-alias-field-type-scoped-to-the-stage-with-the-join-test
+  (let [joined-here (query min-total-by-user-stage
+                           (stage {"joins"   [(join "First" [first-orders-stage] :lhs user-id-by-name)]
+                                   "filters" [["not-null" {} (join-ref "First" "min")]]}))
+        joined-before (fn [column]
+                        (query (orders-stage {"joins" [(assoc (join "First" [first-orders-stage]) "fields" "all")]})
+                               (stage {"filters" [["not-null" {} (join-ref "First" column)]]})))]
+    (testing "a ref through a join on its own stage is typed from that join, not the previous stage's same-named column"
+      (is (= "type/Date" (base-type (get-in (repair* joined-here) ["stages" 1 "filters" 0 2])))))
+    (testing "a ref through an alias no join on its stage has is typed from the previous stage"
+      (is (= "type/Date" (base-type (get-in (repair* (joined-before "min")) ["stages" 1 "filters" 0 2])))))
+    (testing "a bad name through an alias no join on its stage has raises the cross-stage error, not the join error"
+      (is (= :unresolved-cross-stage-field (:error (repair-error (joined-before "nope"))))))))
+
+(deftest ^:parallel join-alias-field-type-unresolvable-join-is-skipped-test
+  (let [min-ref (join-ref "Broken" "min")
+        q       (query min-total-by-user-stage
+                       (stage {"joins"   [(join "Broken" [(stage {"source-table" ["Sample" "PUBLIC" "NOPE"]})]
+                                                :lhs user-id-by-name)]
+                               "filters" [["not-null" {} min-ref]]}))]
+    (testing "the ref isn't typed from the previous stage's same-named column, and nothing is raised"
+      (is (= min-ref (get-in (repair* q) ["stages" 1 "filters" 0 2]))))))
+
+(deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
+  (testing "a stage carrying a join-alias ref still resolves as the next stage's prefix"
+    (let [out (repair* (query (orders-stage {"joins"       [(join "First" [first-orders-stage])]
+                                             "aggregation" [["count" {}]]
+                                             "breakout"    [(join-ref "First" "min")]})
+                              (stage {"filters" [[">" {} ["field" {} "count"] 1]]})))]
+      (is (= "type/Date" (base-type (get-in out ["stages" 0 "breakout" 0]))))
+      (is (= "type/Integer" (base-type (get-in out ["stages" 1 "filters" 0 2])))))))
+
+(deftest join-alias-field-type-resolves-each-join-at-most-once-test
+  (let [resolutions (fn [join-stages q]
+                      (let [calls   (atom 0)
+                            resolve (mt/original-fn #'repr.resolve/resolve-query)]
+                        (mt/with-dynamic-fn-redefs [repr.resolve/resolve-query (fn [mp query store]
+                                                                                 (when (= join-stages (get query "stages"))
+                                                                                   (swap! calls inc))
+                                                                                 (resolve mp query store))]
+                          (repair* q))
+                        @calls))]
+    (testing "a join named only by already-typed by-name refs is resolved once, to check them"
+      (is (= 1 (resolutions [first-orders-stage]
+                            (query (orders-stage {"joins"   [(-> (join "First" [first-orders-stage])
+                                                                 (assoc-in ["conditions" 0 3] (typed (join-ref "First" "USER_ID") "type/Integer")))]
+                                                  "filters" [["not-null" {} (typed (join-ref "First" "min") "type/Date")]]}))))))
+    (testing "a grouped join named by both by-name and path refs is resolved once"
+      (is (= 1 (resolutions [first-orders-stage] first-order-query))))
+    (testing "a path ref into a plain table join doesn't resolve it"
+      (is (zero? (resolutions [(orders-stage {})]
+                              (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
+                                                    "filters" [["not-null" {} (join-ref "Plain" (conj orders "TOTAL"))]]}))))))))
+
+(deftest ^:parallel join-alias-field-type-idempotent-test
+  (let [once (repair* first-order-query)]
+    (is (= once (repair* once)))))
+
+(defn- first-orders-filtering [& refs]
+  (query (orders-stage {"joins"   [(join "First" [first-orders-stage])]
+                        "filters" (mapv #(vector "not-null" {} %) refs)})))
+
+(deftest ^:parallel join-alias-field-type-unknown-column-raises-test
+  (testing "a source column the grouped join doesn't return, referenced by name, raises"
+    (let [total-ref (join-ref "First" "TOTAL")
+          e         (repair-error (first-orders-filtering total-ref))]
+      (is (=? {:agent-error? true
+               :error        :unresolved-join-alias-field
+               :problems     [{:stage 0 :join-alias "First" :clauses [total-ref] :columns ["TOTAL"] :available ["USER_ID" "min"]}]}
+              e))
+      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: USER_ID, min\)" (:message e)))))
+  (testing "every bad ref is reported in one error, across refs, joins, and stages"
+    (is (= [[0 "First" ["nope" "ORDERS.TOTAL"]] [0 "Second" ["nada"]] [1 "First" ["zilch"]]]
+           (join-problems
+            (query (orders-stage {"joins"   [(join "First" [first-orders-stage]) (join "Second" [first-orders-stage])]
+                                  "filters" [["not-null" {} (join-ref "First" "nope")]
+                                             ["not-null" {} (join-ref "First" (conj orders "TOTAL"))]
+                                             ["not-null" {} (join-ref "Second" "nada")]]})
+                   (stage {"joins"   [(join "First" [first-orders-stage] :lhs user-id-by-name)]
+                           "filters" [["not-null" {} (join-ref "First" "zilch")]]}))))))
+  (testing "a bad ref repeated in several clauses is listed once"
+    (is (= [[0 "First" ["nope"]]]
+           (join-problems (first-orders-filtering (join-ref "First" "nope") (join-ref "First" "nope"))))))
+  (testing "a by-name ref the LLM typed itself is checked too"
+    (is (= [[0 "First" ["nope"]]]
+           (join-problems (first-orders-filtering (typed (join-ref "First" "nope") "type/Text"))))))
+  (testing "a by-name ref the LLM typed itself keeps its type when the join returns the column"
+    (is (= "type/Text"
+           (base-type (get-in (repair* (first-orders-filtering (typed (join-ref "First" "min") "type/Text")))
+                              ["stages" 0 "filters" 0 2]))))))
+
+(defn- filtering-through [alias stages column]
+  (query (orders-stage {"joins"   [(join alias stages)]
+                        "filters" [["not-null" {} (join-ref alias (conj orders column))]]})))
+
+(deftest ^:parallel join-alias-path-ref-must-be-returned-by-the-join-test
+  (testing "a path ref to a column the grouped join drops raises"
+    (is (= [[0 "First" ["ORDERS.TOTAL"]]] (join-problems (filtering-through "First" [first-orders-stage] "TOTAL")))))
+  (testing "a path ref to the grouped join's breakout column is accepted"
+    (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "USER_ID")))))
+  (testing "a join narrowed with `fields:` is checked"
+    (is (= [[0 "Narrow" ["ORDERS.TOTAL"]]]
+           (join-problems (filtering-through "Narrow" [(orders-stage {"fields" [(orders-col "USER_ID")]})] "TOTAL")))))
+  (testing "a two-stage join is checked"
+    (is (= [[0 "Two" ["ORDERS.TOTAL"]]]
+           (join-problems (filtering-through "Two" [(orders-stage {}) (stage {"fields" [user-id-by-name]})] "TOTAL")))))
+  (testing "through a native card, whose columns carry no field ids, a path ref matches by name"
+    (let [native [(stage {"source-card" native-orders-card-eid})]]
+      (is (nil? (repair-error (filtering-through "Native" native "CREATED_AT"))))
+      (is (= [[0 "Native" ["ORDERS.TOTAL"]]] (join-problems (filtering-through "Native" native "TOTAL"))))))
+  (testing "a path ref doesn't match a returned column of another table by name, and is reported with its table"
+    (let [e (repair-error (query (orders-stage {"joins"   [(join "Narrow" [(orders-stage {"fields" [(orders-col "ID") (orders-col "USER_ID")]})])]
+                                                "filters" [["not-null" {} (join-ref "Narrow" ["Sample" "PUBLIC" "PEOPLE" "ID"])]]})))]
+      (is (=? {:error :unresolved-join-alias-field :problems [{:columns ["PEOPLE.ID"] :available ["ID" "USER_ID"]}]} e))
+      (is (re-find #"join \"Narrow\" doesn't return \"PEOPLE.ID\" \(available: ID, USER_ID\)" (:message e)))))
+  (testing "a numeric field id target is reported by its table and field names"
+    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+      (is (= [[0 "First" ["ORDERS.TOTAL"]]] (join-problems (first-orders-filtering (join-ref "First" 101))))))))
+
+(deftest ^:parallel join-alias-path-ref-with-source-field-is-skipped-test
+  (testing "a path ref with source-field (an implicit hop from the joined table) isn't checked"
+    (is (nil? (repair-error (first-orders-filtering
+                             (assoc-in (join-ref "First" (conj orders "TOTAL")) [1 "source-field"] (conj orders "USER_ID"))))))))
+
+(deftest ^:parallel join-alias-path-ref-unresolvable-field-is-skipped-test
+  (testing "a path to no real field is left for the resolver to report"
+    (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "NOPE")))))
+  (testing "a numeric id of no real field is left for the resolver to report"
+    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+      (is (nil? (repair-error (first-orders-filtering (join-ref "First" 999))))))))

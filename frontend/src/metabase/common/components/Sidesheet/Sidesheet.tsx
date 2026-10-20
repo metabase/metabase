@@ -11,6 +11,8 @@ import Styles from "./sidesheet.module.css";
 
 export type SidesheetSize = "xs" | "sm" | "md" | "lg" | "xl" | "auto";
 
+export const SIDESHEET_HORIZONTAL_PADDING = "xl";
+
 interface SidesheetProps {
   title?: React.ReactNode;
   isOpen: boolean;
@@ -22,6 +24,7 @@ interface SidesheetProps {
   withOverlay?: boolean;
   overlayProps?: ModalOverlayProps;
   closeOnEscape?: boolean;
+  offset?: boolean;
 }
 
 const sizes: Record<SidesheetSize, string> = {
@@ -43,6 +46,7 @@ export function Sidesheet({
   withOverlay = true,
   overlayProps,
   closeOnEscape = true,
+  offset,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
   return (
@@ -51,29 +55,51 @@ export function Sidesheet({
       opened={isOpen}
       onClose={onClose}
       closeOnEscape={closeOnEscape}
+      shadow="xs_outline"
       h="100dvh"
     >
       {withOverlay && (
-        <Modal.Overlay {...overlayProps} data-testid="modal-overlay" />
+        <Modal.Overlay
+          bg="modal-overlay"
+          {...overlayProps}
+          data-testid="modal-overlay"
+        />
       )}
       <Modal.Content
         transitionProps={{ duration: 0 }}
         px={0}
         w={sizes[size]}
-        bg="background_page-secondary"
+        pos="fixed"
+        bd={0}
+        display="flex"
+        flex={1}
+        bg="background_surface-primary"
         data-testid="sidesheet"
+        data-offset={offset || undefined}
         classNames={{
           content: cx(Styles.SidesheetContent, Animation.slideLeft),
         }}
         aria-labelledby={titleId}
       >
-        <Modal.Header bg="background_page-secondary" px="xxl">
+        <Modal.Header
+          className={Styles.SidesheetHeader}
+          bg="background_surface-primary"
+          px={SIDESHEET_HORIZONTAL_PADDING}
+          pt="xl"
+          pb="lg"
+        >
           {title && (
-            <Modal.Title py="lg" pr="sm" id={titleId}>
+            <Modal.Title pr="sm" id={titleId} fz="h4" lh="h4">
               {title}
             </Modal.Title>
           )}
-          <Modal.CloseButton aria-label={t`Close`} />
+          <Modal.CloseButton
+            aria-label={t`Close`}
+            w="2rem"
+            h="2rem"
+            bdrs="xs"
+            className={Styles.SidesheetCloseButton}
+          />
         </Modal.Header>
         <Modal.Body
           p={0}
@@ -86,8 +112,8 @@ export function Sidesheet({
         >
           <Stack
             gap="xl"
-            px={removeBodyPadding ? 0 : "xxl"}
-            pb={removeBodyPadding ? 0 : "xxl"}
+            px={removeBodyPadding ? 0 : SIDESHEET_HORIZONTAL_PADDING}
+            pb={removeBodyPadding ? 0 : "xl"}
             mt={title ? 0 : "lg"}
             h="100%"
             className={Styles.OverflowAuto}

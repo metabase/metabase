@@ -24,6 +24,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
+  (derive :hook/dependencies)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 
@@ -139,7 +140,12 @@
           dashcard-id->series (when (seq dashcard-ids)
                                 (as-> (dashboards.db/series-cards-for-dashcards dashcard-ids) series
                                   (group-by :dashboardcard_id series)
-                                  (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
+                                  ;; :result_metadata, :dimensions and :dimension_mappings are selected only so the
+                                  ;; Card schema upgrade can run; they are not part of the series payload.
+                                  (update-vals series #(map (fn [card]
+                                                              (dissoc card :dashboardcard_id :result_metadata
+                                                                      :dimensions :dimension_mappings))
+                                                            %))))]
       (map (fn [dashcard]
              (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
            dashcards))))
@@ -349,8 +355,7 @@
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
    :skip      []
-   :transform {:created_at             (serdes/date)
-               :dashboard_id           (serdes/parent-ref)
+   :transform {:dashboard_id           (serdes/parent-ref)
                :card_id                (serdes/fk :model/Card)
                :action_id              (serdes/fk :model/Action)
                :dashboard_tab_id       (serdes/fk :model/DashboardTab)

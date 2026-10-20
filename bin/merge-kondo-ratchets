@@ -11,6 +11,7 @@ cd -- "$(git rev-parse --show-toplevel)"
 
 ratchet_files=(
   .clj-kondo/ratchets.edn
+  .clj-kondo/ratchets-test.edn
   .clj-kondo/config/modules/ratchets.edn
 )
 conflicted_files=()
@@ -28,7 +29,7 @@ for ratchets_file in "${ratchet_files[@]}"; do
 done
 
 if [ "${#conflicted_files[@]}" -eq 0 ]; then
-  echo "neither ratchet file is conflicted" >&2
+  echo "no ratchet file is conflicted" >&2
   exit 1
 fi
 
@@ -47,11 +48,11 @@ for i in "${!conflicted_files[@]}"; do
     printf '{}\n' > "$tmp_dir/base-$i"
   fi
 
-  if [ "$ratchets_file" = .clj-kondo/ratchets.edn ]; then
-    kind=kondo
-  else
-    kind=modules
-  fi
+  case $ratchets_file in
+    .clj-kondo/config/modules/ratchets.edn) kind=modules ;;
+    .clj-kondo/ratchets-test.edn) kind=test ;;
+    *) kind=kondo ;;
+  esac
   "$bin_dir/mage" -ratchets-merge "$kind" \
     "$tmp_dir/base-$i" \
     "$tmp_dir/ours-$i" \

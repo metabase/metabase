@@ -6,11 +6,53 @@ title: Driver interface changelog
 
 ## Metabase 0.65.0
 
+- `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
+  connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
+  details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
+  Names match case-insensitively and as substrings. Extend the parent's list rather than replacing it:
+
+  ```clj
+  (defmethod driver/disallowed-connection-parameters :my-driver
+    [driver]
+    (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
+  ```
+
 - `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.
 
+- `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
+  delete their `defmethod`, which no longer compiles.
+
+- `driver/native-query-deps` can now return `{:unresolved-table {:schema ... :table ...}}` for a table the query names
+  that matches no synced table or transform target. Dependency tracking recomputes such a query once sync finds the
+  table. Drivers built on `:sql` get this from `metabase.sql-tools.core/referenced-tables`.
+
 ## Metabase 0.64.0
+
+- Date and time functions that depended on the `start-of-week` setting now take a `time-config` map as their first
+  argument. Drivers should call the `driver-api` versions instead, which take the old arguments and fill in the
+  instance's time config:
+
+  - `metabase.util.date-2/extract` → `driver-api/date-extract`
+  - `metabase.util.date-2/truncate` → `driver-api/date-truncate`
+  - `metabase.util.date-2/bucket` → `driver-api/date-bucket`
+  - `metabase.util.date-2/range` → `driver-api/date-range`
+  - `metabase.util.date-2/comparison-range` → `driver-api/date-comparison-range`
+  - `metabase.lib.core/desugar-filter-clause` → `driver-api/desugar-filter-clause`
+  - `metabase.lib.core/negate-boolean-expression` → `driver-api/negate-boolean-expression`
+
+  Drivers that call the `driver-api` versions will not need to change if the time config gains more options, or these
+  functions gain more arguments.
+
+  The `metabase.util.date-2` arities without `t`, which used the current time, have been removed.
+  With a config argument in front, a call written for the old signature, such as `(truncate t :day)`, would have
+  quietly matched one of them and used the current time instead of `t`.
+  Without them it fails with an arity error, and so will calls that miss any argument added later.
+  Callers of those arities should pass the current time as `t`, e.g. `(t/zoned-date-time)`.
+
+  The `:first-day-of-week`, `:first-week-of-year`, and `:week-of-year` methods of `metabase.util.date-2/adjuster` now
+  take the start of the week as their last argument, e.g. `(driver-api/start-of-week)`.
 
 - `metabase.driver.sql.normalize/default-schema` now takes the database as well as the driver:
   `[driver database]`. The schema an unqualified table reference resolves to is a property of the connection for a
@@ -58,6 +100,18 @@ title: Driver interface changelog
 - `metabase.driver.sql-mbql5.pivot/pivot-grouping-hsql` `[driver exprs]` -- produces the HoneySQL
   form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
   multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
+
+- `metabase.driver.sql.pivot/null-pad-breakout-hsql` `[driver breakout breakout-expr]` -- produces the HoneySQL form
+  used to null-pad a dropped-breakout column in a `UNION ALL` branch of the pivot compiler's UNION ALL path (the
+  fallback used when the driver lacks `:native-pivot-tables` or the query has window-function
+  aggregations). `breakout` is the MBQL breakout clause (with `:base-type` in its options); `breakout-expr` is its
+  compiled HoneySQL form. Default is bare `NULL`, which most dialects infer from sibling `UNION ALL` branches.
+  Dialects that don't coerce untyped `NULL` across branches override to emit `CAST(NULL AS <type>)`, typically by
+  mapping the breakout `:base-type` to a driver-specific SQL type name.
+
+- `metabase.driver.sql.query-processor/apply-cte-hoist?` `[driver]` -- whether a `UNION ALL` pivot compiled for `driver`
+  should hoist the shared pre-pivot subquery into a `WITH` binding that every branch references by alias, rather
+  than inlining it once per branch. Defaults to `true`.
 
 - `:native-pivot-tables` is now enabled for `:hive-like` drivers.
   Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.

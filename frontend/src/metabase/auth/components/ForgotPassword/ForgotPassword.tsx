@@ -1,22 +1,17 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useDispatch } from "metabase/redux";
 import { forgotPassword } from "metabase/redux/auth";
 import type { Location } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { Button } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 
 import { AuthLayout } from "../AuthLayout";
 import { ForgotPasswordForm } from "../ForgotPasswordForm";
 
-import {
-  InfoBody,
-  InfoIcon,
-  InfoIconContainer,
-  InfoLink,
-  InfoMessage,
-} from "./ForgotPassword.styled";
+import S from "./ForgotPassword.module.css";
 
 type ViewType = "form" | "disabled" | "success";
 
@@ -62,29 +57,29 @@ export const ForgotPassword = ({
 
 const ForgotPasswordSuccess = (): JSX.Element => {
   return (
-    <InfoBody>
-      <InfoIconContainer>
-        <InfoIcon name="check" />
-      </InfoIconContainer>
-      <InfoMessage>
+    <Flex direction="column" align="center">
+      <Box className={S.infoIconContainer}>
+        <Icon name="check" display="block" c="core-brand" size={24} />
+      </Box>
+      <Box c="text-primary" ta="center" mb="lg">
         {t` If the email exists, we'll send instructions on how to reset your password.`}
-      </InfoMessage>
+      </Box>
       <Button
         variant="filled"
         component="a"
         href="/auth/login"
       >{t`Back to sign in`}</Button>
-    </InfoBody>
+    </Flex>
   );
 };
 
 const ForgotPasswordDisabled = (): JSX.Element => {
   return (
-    <InfoBody>
-      <InfoMessage>
+    <Flex direction="column" align="center">
+      <Box c="text-primary" ta="center" mb="lg">
         {t`Please contact an administrator to have them reset your password.`}
-      </InfoMessage>
-      <InfoLink to="/auth/login">{t`Back to sign in`}</InfoLink>
-    </InfoBody>
+      </Box>
+      <Link className={S.infoLink} to="/auth/login">{t`Back to sign in`}</Link>
+    </Flex>
   );
 };

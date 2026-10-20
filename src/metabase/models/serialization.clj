@@ -58,6 +58,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -279,8 +280,8 @@
   "Return specification for serialization, should be a map of:
 
   - `:copy`: a vector of field names, to directly copy from db into output and ingest back with no changes.
-  - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
-    are always skipped, no need to mention them).
+  - `:skip`: a vector of field names, used in tests to check if all fields were specified (`:id`, `:created_at` and
+    `:updated_at` are always skipped, no need to mention them).
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
     on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
@@ -441,33 +442,23 @@
             reducible))
 
 (def stable-storage-order
-  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get
-  reproducible filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) across exports — otherwise re-exports swap which
-  entity lands in which file and produce large phantom git-sync diffs (GHY-3754).
-
-  Orders by `created_at` first so the *oldest* sibling keeps the unsuffixed file: adding a new same-named entity
-  appends a `_2` rather than displacing the existing file. `entity_id` (random NanoID) would not have this property —
-  a newcomer with a smaller id would steal the base file. `entity_id` is then a deterministic tiebreaker for entities
-  created in the same instant. Assumes the model serializes both columns; use [[stable-storage-order-by]] to gate on a
-  spec."
-  [[:created_at :asc] [:entity_id :asc]])
-
-(defn stable-storage-order-by
-  "[[stable-storage-order]] restricted to the columns `spec` actually serializes (via `:copy` or `:transform`).
-  Returns nil when the model serializes neither column."
-  [spec]
-  (let [serialized? (into (set (:copy spec)) (keys (:transform spec)))]
-    (not-empty (filterv (comp serialized? first) stable-storage-order))))
+  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get the same
+  filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) on every export and on every instance, by `entity_id` alone
+  since `created_at` is local to each instance; the `entity_id` columns compare byte by byte on every app DB."
+  [[:entity_id :asc]])
 
 (defn extract-order-columns
-  "The ascending order columns for `model-name`'s extract query: [[stable-storage-order]] restricted to the columns the
-  model's spec actually serializes.
+  "The ascending order columns for `model-name`'s extract query: [[stable-storage-order]] when the model's spec
+  serializes `entity_id`, else its primary key.
 
   Empty for a nested fetch (e.g. a Dashboard's DashboardCards): those are embedded as lists inside the parent's file
   rather than written to their own files, so they keep their natural order and are left untouched."
   [model-name opts]
   (when-not (::nested-fetch opts)
-    (mapv first (stable-storage-order-by (*make-spec* model-name opts)))))
+    (let [spec (*make-spec* model-name opts)]
+      (if (some #{:entity_id} (concat (:copy spec) (keys (:transform spec))))
+        (mapv first stable-storage-order)
+        [(primary-key model-name)]))))
 
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
@@ -587,6 +578,36 @@
   [entity]
   (:serdes/meta entity))
 
+(defmulti ingested-path
+  "The abstract path of `ingested`, an entity read from a file, computed from its own keys."
+  {:arglists '([model-name ingested])}
+  (fn [model-name _ingested] model-name))
+
+(defmethod ingested-path :default [model-name ingested]
+  [(infer-self-path model-name ingested)])
+
+(defn restore-path
+  "`ingested` with its `:serdes/meta` path computed by [[ingested-path]] when its file stores only the model."
+  [ingested]
+  (let [{:keys [model] :as self} (last (:serdes/meta ingested))]
+    (cond-> ingested
+      (and self (not (contains? self :id))) (assoc :serdes/meta (ingested-path model ingested)))))
+
+(defn storable
+  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities."
+  [entity]
+  (let [model (-> entity :serdes/meta last :model)]
+    (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
+        (assoc :serdes/meta [{:model model}]))))
+
+(defmulti resource-paths
+  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
+  {:arglists '([ingested])}
+  ingested-model)
+
+(defmethod resource-paths :default [_]
+  nil)
+
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.
 
@@ -623,7 +644,8 @@
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
   NOTE: This is called during **LOAD**. Its export-time counterpart is [[serialization-dependencies]], which runs on a
-  raw entity and additionally reports tables/fields (which import synthesizes on the fly, so they aren't load deps).
+  raw entity and additionally reports databases/tables/fields (which import synthesizes on the fly, so they aren't load
+  deps).
 
   Keyed on the model name for this entity.
   Default implementation returns `nil`, so only models that have dependencies need to implement this."
@@ -752,20 +774,34 @@
   [id-str]
   (resolve/entity-id? id-str))
 
+(defn collection-namespace-folder
+  "The folder under `collections/` that holds the collections of `collection-namespace`, `main` for the default one.
+  The `data-apps` namespace is the `data_apps` folder, spelled like the top-level directory of the apps themselves."
+  [collection-namespace]
+  (case (some-> collection-namespace keyword)
+    :snippets     "snippets"
+    :transforms   "transforms"
+    :data-actions "data-actions"
+    :data-apps    "data_apps"
+    "main"))
+
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
   Returns a vector of maps with `:label` and `:key` for each path segment.
-  Result: `[{:label \"collections\"} {:label ns-folder} <collection-hierarchy> {:label entity-name :key entity_id}]`"
+  Result: `[{:label \"collections\"} {:label ns-folder} <collection-hierarchy> {:label entity-name :key entity_id}]`.
+  The folder is the one of the entity's collection's namespace when it has a collection, `ns-folder` otherwise."
   ([entity ctx]
    (storage-default-collection-path entity ctx "main"))
-  ([entity {:keys [collections]} ns-folder]
-   (into [{:label "collections"} {:label ns-folder}]
+  ([entity {:keys [collections collection-namespace-folders]} ns-folder]
+   (into [{:label "collections"} {:label (get collection-namespace-folders (:collection_id entity) ns-folder)}]
          cat [(get collections (:collection_id entity))
               [{:label (:name entity) :key (:entity_id entity)}]])))
 
 (defmulti storage-path
-  "Returns a vector of maps with `:label` and optional `:key` for each path segment.
-  `:label` is the human-readable name; `:key` is a deduplication identity (entity_id, name, or nil).
+  "Returns a vector of maps with `:label` and optional `:key`, `:style` and `:suffix` for each path segment.
+  `:label` is the human-readable name; `:key` is a deduplication identity (entity_id, name, or nil); `:style` is
+  `:name` (the default) for a label that is slugified into a file name, or `:slug` for a label that is already a slug
+  safe to use as a file name as is; `:suffix` is appended to the file name after the label is slugified and truncated.
   Dispatches on model name."
   {:arglists '([entity ctx])}
   (fn [entity _] (ingested-model entity)))
@@ -779,6 +815,8 @@
     the collection hierarchy.
   - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
+  - `:collection-namespace-folders` maps collection entity_id to the folder under `collections/` its namespace
+    is written to (see [[collection-namespace-folder]]).
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
@@ -800,6 +838,9 @@
                          (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
+     :collection-namespace-folders (into {}
+                                         (for [{:keys [entity_id namespace]} colls]
+                                           [entity_id (collection-namespace-folder namespace)]))
      :dashboards  dashboards
      :documents   documents
      :unique-name-fns (atom {})}))
@@ -831,7 +872,7 @@
   (resolve/export-fk (export-resolver) id model))
 
 (defmacro ^:private fk-elide
-  "If a call to `*export-fk*` inside of this fails, do not export the whole data structure"
+  "Returns nil when an FK target no longer exists; rethrows other failures."
   [& body]
   `(try
      ~@body
@@ -914,7 +955,8 @@
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
   [db-name]
-  (*import-fk-keyed* db-name :model/Database :name))
+  (when db-name
+    (resolve/import-database-fk (import-resolver) db-name)))
 
 ;;; ## Tables
 
@@ -997,13 +1039,25 @@
   (resolve/import-field-fk (import-resolver) field-id))
 
 (defn field->path
-  "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
+  "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field, with one
+  Field segment per name for a nested Field.
   This is useful for writing [[deserialization-dependencies]] implementations."
-  [[db-name schema table-name field-name]]
-  (filterv some? [{:model "Database" :id db-name}
-                  (when schema {:model "Schema" :id schema})
-                  {:model "Table" :id table-name}
-                  {:model "Field" :id field-name}]))
+  [[db-name schema table-name & field-names]]
+  (into (table->path [db-name schema table-name])
+        (map (fn [field-name] {:model "Field" :id field-name}))
+        field-names))
+
+(defn table-path->table-ref
+  "The `[db-name schema table-name]` reference of the Table at `table-path`, with a nil schema for a schemaless Table."
+  [table-path]
+  (let [id-of (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
+    [(id-of "Database") (id-of "Schema") (id-of "Table")]))
+
+(defn field-path->field-ref
+  "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."
+  [field-path]
+  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)]
+    (into (table-path->table-ref table-path) (map :id) fields)))
 
 ;;; ## MBQL Fields
 
@@ -1260,7 +1314,7 @@
       import-mbql-update-refs
       import-mbql-update-maps))
 
-(defn- stale-card-tag-rename
+(defn card-template-tag-rename
   "New name for a card template tag whose `#<id>-slug` name embeds a different id than its (already
   remapped) `:card-id`: the id is swapped, the slug is kept verbatim. Nil when they already agree or
   the name doesn't embed an id."
@@ -1280,7 +1334,7 @@
      x
      (into {}
            (keep (fn [{tag-name :name, :as tag}]
-                   (when-let [new-name (stale-card-tag-rename tag)]
+                   (when-let [new-name (card-template-tag-rename tag)]
                      [tag-name new-name])))
            (lib/all-template-tags x)))
     x))
@@ -1324,16 +1378,6 @@
   [allow-int-ids? x]
   (and allow-int-ids? (pos-int? x)))
 
-(defn- ref->db-dep
-  "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with
-  its Database dependency, or nil. Table and Field references are intentionally *not* dependencies — missing ones
-  are synthesized as inactive rows on import — but their Database is, since it can't be synthesized. We can't rely
-  on the query's top-level `:database` for this because some references (e.g. dashboard parameter mappings) are
-  bare field refs with no surrounding query."
-  [ref]
-  (when-let [db-name (first ref)]
-    #{[{:model "Database" :id db-name}]}))
-
 (def ^:private mbql-ref-tag->model
   "The serdes model that a `:metric`/`:segment`/`:measure` MBQL reference clause depends on."
   {:metric "Card",    "metric"  "Card"
@@ -1343,11 +1387,10 @@
 (defn- mbql-deps-vector [allow-int-ids? entity]
   (match/match-one entity
     ;; --- serialized (portable) refs, walked at load time ---
-    ;; A serialized `:field` clause's only dependency is the Database of its referenced field; the Field/Table
-    ;; themselves are synthesized on import, and a field clause never nests metric/segment/card refs, so we don't
-    ;; descend.
-    [#{:field "field"} (_opts :guard map?) (ref :guard vector?)]
-    (ref->db-dep ref)
+    ;; A serialized `:field` clause has no dependencies: its Database, Table and Field are synthesized on import, and
+    ;; a field clause never nests metric/segment/card refs, so we don't descend.
+    [#{:field "field"} (_opts :guard map?) (_ref :guard vector?)]
+    nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
      (opts :guard map?)
@@ -1356,8 +1399,8 @@
           (mbql-deps-map allow-int-ids? opts))
 
     ;; legacy (MBQL 4) serialized refs
-    [#{:field "field" :field-id "field-id"} (ref :guard vector?) _opts]
-    (ref->db-dep ref)
+    [#{:field "field" :field-id "field-id"} (_ref :guard vector?) _opts]
+    nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
     #{[{:model (mbql-ref-tag->model tag) :id field}]}
@@ -1391,17 +1434,15 @@
   (into #{}
         (mapcat (fn [[k v]]
                   (cond
-                    ;; --- serialized (portable) refs. Table/Field references contribute only their Database as a
-                    ;; dependency (see `ref->db-dep`); the referenced Table/Field are synthesized on import. ---
-                    (and (= k :database)
-                         (string? v)
-                         (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
-                    (and (= k :source-table) (vector? v))      (ref->db-dep v)
+                    ;; --- serialized (portable) refs. Database/Table/Field references are not dependencies; they are
+                    ;; synthesized on import. ---
+                    (and (= k :database) (string? v))          nil
+                    (and (= k :source-table) (vector? v))      nil
                     (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
-                    (and (= k :source-field) (vector? v))      (ref->db-dep v)
+                    (and (= k :source-field) (vector? v))      nil
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
-                    (and (= k :table-id)     (vector? v))      (ref->db-dep v)
+                    (and (= k :table-id)     (vector? v))      nil
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
                     ;; --- raw (numeric) refs, walked at export time: the referenced Table/Field are real appdb ids to
                     ;; existence-check. `allow-int-ids?` gates these (see `raw-ref-id?`). ---
@@ -1670,6 +1711,20 @@
                                   :else cols)]
                [k updated-cols]))))))
 
+(defn- timeline-setting-ids
+  "The ids stored under a `:timeline.*` visualization setting. Settings saved before these keys were validated can
+  hold anything, so a non-sequential value counts as no ids rather than throwing mid-export."
+  [ids]
+  (when (sequential? ids) ids))
+
+(defn- export-fks [ids model]
+  (u/keepv #(when (pos-int? %) (fk-elide (*export-fk* % model))) (timeline-setting-ids ids)))
+
+(defn- export-timeline-events [settings]
+  (-> settings
+      (m/update-existing :timeline.selected_timeline_ids export-fks :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids export-fks :model/TimelineEvent)))
+
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
   [settings]
@@ -1680,7 +1735,8 @@
         export-viz-click-behavior
         export-visualizer-settings
         export-pivot-table
-        (update :column_settings export-column-settings))))
+        export-timeline-events
+        (m/update-existing :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
   [settings]
@@ -1760,6 +1816,25 @@
   (binding [resolve/*import-resolver* resolve.default/lenient-import-resolver]
     (import-visualizer-settings settings)))
 
+(defn- timeline-event-ref? [event-ref]
+  (and (vector? event-ref) (= 2 (count event-ref)) (every? entity-id? event-ref)))
+
+(defn- import-fks [refs ref? model]
+  (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) (timeline-setting-ids refs)))
+
+(defn- import-timeline-events [settings]
+  (-> settings
+      ;; Keep explicit empty selections: removing the key would restore collection defaults.
+      (m/update-existing :timeline.selected_timeline_ids import-fks entity-id? :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids import-fks timeline-event-ref? :model/TimelineEvent)))
+
+(defn- import-viz-column-settings
+  "Import `:column_settings`, dropping the `nil` that older exports wrote for settings without any."
+  [settings]
+  (if (some? (:column_settings settings))
+    (update settings :column_settings import-column-settings)
+    (dissoc settings :column_settings)))
+
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
@@ -1771,17 +1846,17 @@
         import-viz-click-behavior
         import-visualizer-settings
         import-pivot-table
-        (update :column_settings import-column-settings))))
+        import-timeline-events
+        import-viz-column-settings)))
 
 (defn- viz-link-card-deps
   [allow-int-ids? settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
-    (if (= model "table")
-      ;; Serialized: a linked Table is not a dependency (synthesized on import), but its Database is. Raw (export
-      ;; time): the numeric table id is a real Table to existence-check.
-      (cond
-        (vector? id)          #{[{:model "Database" :id (first id)}]}
-        (raw-ref-id? allow-int-ids? id) #{[{:model "Table" :id id}]})
+    (if (#{"table" "database"} model)
+      ;; Serialized: a linked Table or Database is not a dependency (synthesized on import). Raw (export time): the
+      ;; numeric id is a real row to existence-check.
+      (when (raw-ref-id? allow-int-ids? id)
+        #{[{:model (name (link-card-model->toucan-model model)) :id id}]})
       #{[{:model (name (link-card-model->toucan-model model))
           :id    id}]})))
 
@@ -1796,6 +1871,18 @@
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
+
+(defn- timeline-events-deps
+  [allow-int-ids? settings]
+  (let [selected-ids (timeline-setting-ids (:timeline.selected_timeline_ids settings))
+        excluded-ids (timeline-setting-ids (:timeline.excluded_timeline_event_ids settings))
+        timeline-ids (concat
+                      (filter #(or (raw-ref-id? allow-int-ids? %) (entity-id? %)) selected-ids)
+                      (if allow-int-ids?
+                        (mapcat models.db/timeline-ids-of-events
+                                (partition-all query-batch-size (filter pos-int? excluded-ids)))
+                        (map first (filter timeline-event-ref? excluded-ids))))]
+    (into #{} (map (fn [id] [{:model "Timeline" :id id}])) timeline-ids)))
 
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
@@ -1813,7 +1900,8 @@
         click-behavior-deps       (viz-click-behavior-deps viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps
+                  (timeline-events-deps allow-int-ids? viz)])
          (filter some?)
          (reduce set/union #{}))))
 
@@ -1862,7 +1950,7 @@
   "Nested entities; `opts` may give `:sort-by`, `:key-field` and `:delete-children!`, a fn of the parent id."
   [model backward-fk opts]
   (let [model-name       (name model)
-        sorter           (:sort-by opts :created_at)
+        sorter           (:sort-by opts :entity_id)
         key-field        (:key-field opts :entity_id)
         delete-children! (:delete-children! opts #(models.db/delete-children! model backward-fk %))]
     {::nested             true
@@ -1956,3 +2044,9 @@
   `(binding [resolve/*export-resolver* (resolve.default/cached-export-resolver)
              resolve/*import-resolver* (resolve.default/cached-import-resolver)]
      ~@body))
+
+(defn reset-import-cache!
+  "Drop the memoized lookups of the bound import resolver, if it caches any."
+  []
+  (when (satisfies? resolve/ResettableCache resolve/*import-resolver*)
+    (resolve/reset-cache! resolve/*import-resolver*)))

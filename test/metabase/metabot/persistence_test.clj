@@ -971,6 +971,58 @@
       (is (= {:type "errored" :error {:message "boom"}} (:status message)))
       (is (not-any? annotated? (:parts message))))))
 
+(deftest ^:parallel message->client-message-error-code-test
+  (testing "a stored error code is also the client's `error.type`, as on the live stream"
+    (is (= {:type "errored"
+            :error {:error-code "ai_provider_context_full" :message "m" :type "ai_provider_context_full"}}
+           (:status (client-message
+                     {:role :assistant :finished true :data []
+                      :error (json/encode {:error-code "ai_provider_context_full" :message "m"})})))))
+  (testing "an error without a code keeps its stored type"
+    (is (= {:type "errored" :error {:message "boom" :type "java.lang.RuntimeException"}}
+           (:status (client-message
+                     {:role :assistant :finished true :data []
+                      :error (json/encode {:message "boom" :type "java.lang.RuntimeException"})}))))))
+
+(deftest ^:parallel message->client-message-incomplete-status-test
+  (testing "a turn that stopped early reloads as incomplete, carrying the reason"
+    (doseq [reason ["length" "content-filter" "tool-calls"]]
+      (testing reason
+        (let [status (:status (client-message {:role :assistant :finished true :finish_reason reason
+                                               :data [{:type "text" :text "partial"}]}))]
+          (is (= {:type "incomplete" :finishReason reason} status))
+          (is (not (contains? status :contextWindowFull))
+              "a row without `context_window_full` is not a full-window stop")))))
+  (testing "a length stop whose row records a full window carries the flag the client alerts on"
+    (is (= {:type "incomplete" :finishReason "length" :contextWindowFull true}
+           (:status (client-message {:role :assistant :finished true :finish_reason "length"
+                                     :context_window_full true :data []})))))
+  (testing "the flag is ignored on any other reason"
+    (is (= {:type "incomplete" :finishReason "content-filter"}
+           (:status (client-message {:role :assistant :finished true :finish_reason "content-filter"
+                                     :context_window_full true :data []})))))
+  (testing "a content-filtered turn with no text still carries the status the FE alerts on"
+    (let [message (client-message {:role :assistant :finished true :finish_reason "content-filter"
+                                   :data []})]
+      (is (= [] (:parts message)))
+      (is (= {:type "incomplete" :finishReason "content-filter"} (:status message)))))
+  (testing "an aborted row that also stored a reason still reads aborted — aborted outranks incomplete"
+    (is (= {:type "aborted"}
+           (:status (client-message {:role :assistant :finished false :finish_reason "length"
+                                     :data []})))))
+  (testing "a reason written by a newer build reads as done rather than failing the read"
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+      (is (= {:type "done"}
+             (:status (client-message {:role :assistant :finished true :finish_reason "quantum-foam"
+                                       :data []}))))
+      (is (some #(re-find #"Unknown metabot_message.finish_reason" (:message %)) (logs)))))
+  (testing "an unknown reason on an aborted row does not warn: the reason is unused there"
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+      (is (= {:type "aborted"}
+             (:status (client-message {:role :assistant :finished false :finish_reason "quantum-foam"
+                                       :data []}))))
+      (is (not-any? #(re-find #"Unknown metabot_message.finish_reason" (:message %)) (logs))))))
+
 (deftest messages->client-messages-errored-pairs-test
   (testing "by default, errored assistant rows and the preceding user prompt are dropped"
     (is (= ["first" "first reply" "third" "third reply"]
@@ -995,7 +1047,25 @@
               {:type "errored" :error {:message "boom"}}
               {:type "done"}
               {:type "done"}]
-             (mapv :status result))))))
+             (mapv :status result)))))
+  (testing "a context-full turn stays, so a reloaded conversation still reads as full"
+    (let [result (metabot-persistence/messages->client-messages
+                  [{:id 1 :role :user      :data [{:type "text" :text "first"}]}
+                   {:id 2 :role :assistant :data [{:type "text" :text "first reply"}]}
+                   {:id 3 :role :user      :data [{:type "text" :text "too long"}]}
+                   {:id 4 :role :assistant :finished true :data []
+                    :error (json/encode {:error-code "ai_provider_context_full" :message "full"})}])]
+      (is (= ["1" "2" "3" "4"] (mapv :id result)))
+      (is (=? {:type "errored" :error {:type "ai_provider_context_full" :message "full"}}
+              (:status (peek result))))))
+  (testing "an errored turn with another code is still dropped"
+    (is (= ["1" "2"]
+           (mapv :id (metabot-persistence/messages->client-messages
+                      [{:id 1 :role :user      :data [{:type "text" :text "first"}]}
+                       {:id 2 :role :assistant :data [{:type "text" :text "first reply"}]}
+                       {:id 3 :role :user      :data [{:type "text" :text "broken"}]}
+                       {:id 4 :role :assistant :finished true :data []
+                        :error (json/encode {:error-code "ai_provider_unavailable" :message "m"})}]))))))
 
 (defn- start-and-finalize!
   "Run start-turn! then finalize-assistant-turn! with a one-text-part body (as :rasta).
@@ -1116,6 +1186,95 @@
               "the streamed errorText is persisted into the error column as a {:message ...} map")
           (is (true? (:finished row))
               "an errored turn still finalizes as finished"))))))
+
+(defn- usage-part
+  "A `:usage` part carrying `finish-reason`, or none when it is nil."
+  [finish-reason]
+  (cond-> {:type :usage :model "claude" :usage {:promptTokens 10 :completionTokens 5}}
+    finish-reason (assoc :finish-reason finish-reason)))
+
+(defn- finalize-parts!
+  "Run start-turn! then finalize-assistant-turn! over `parts` (as :rasta).
+  Returns the assistant row."
+  [parts & finalize-opts]
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                      (str (random-uuid)) "metabot-1"
+                                      {:role "user" :content "go"})]
+      (apply metabot-persistence/finalize-assistant-turn! assistant-msg-id parts finalize-opts)
+      (t2/select-one :model/MetabotMessage assistant-msg-id))))
+
+(deftest finalize-assistant-turn-persists-finish-reason-test
+  (testing "finalize-assistant-turn! records why a turn stopped early"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (testing "a provider truncation"
+        (is (=? {:finish_reason "length" :finished true}
+                (finalize-parts! [{:type :text :text "cut o"} (usage-part "length")]))))
+      (testing "a content filter"
+        (is (=? {:finish_reason "content-filter" :finished true}
+                (finalize-parts! [(usage-part "content-filter")]))))
+      (testing "the agent loop stopping at its step limit"
+        (is (=? {:finish_reason "tool-calls" :finished true}
+                (finalize-parts! [{:type :text :text "partial"}
+                                  {:type :finish :finish-reason :max-iterations}]))))
+      (testing "the last usage part carrying a reason decides"
+        (is (=? {:finish_reason "length"}
+                (finalize-parts! [(usage-part "length") (usage-part nil)]))))
+      (testing "an aborted turn keeps the reason for diagnostics, and still finalizes as not finished"
+        (is (=? {:finish_reason "length" :finished false}
+                (finalize-parts! [(usage-part "length")] :finished? false)))))))
+
+(deftest finalize-assistant-turn-persists-context-window-full-test
+  (testing "finalize-assistant-turn! records whether a length stop filled the window of the model that ran it"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      ;; `usage-part` puts 10 prompt + 5 completion = 15 tokens in the context
+      (let [truncated [{:type :text :text "cut o"} (usage-part "length")]]
+        (testing "context at the window"
+          (is (=? {:finish_reason "length" :context_tokens 15 :context_window_full true}
+                  (finalize-parts! truncated :context-window-tokens 15))))
+        (testing "context past the window"
+          (is (true? (:context_window_full (finalize-parts! truncated :context-window-tokens 10)))))
+        (testing "room left in the window: a plain output-cap stop, and the column stays NULL"
+          (is (nil? (:context_window_full (finalize-parts! truncated :context-window-tokens 16)))))
+        (testing "no known window: nothing to judge"
+          (is (nil? (:context_window_full (finalize-parts! truncated)))))
+        (testing "no usage observed: nothing to judge"
+          (is (nil? (:context_window_full (finalize-parts! [{:type :text :text "cut o"}]
+                                                           :context-window-tokens 15))))))
+      (testing "only a length stop can fill the window"
+        (doseq [parts [[(usage-part "content-filter")]
+                       [(usage-part nil)]]]
+          (is (nil? (:context_window_full (finalize-parts! parts :context-window-tokens 10)))))))))
+
+(deftest finalize-assistant-turn-persists-error-and-finish-reason-test
+  (testing "a turn with both an error and an incomplete reason persists both, and still reloads as errored"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [error-data {:message "boom" :type "java.lang.RuntimeException"}
+            row        (finalize-parts! [{:type :text :text "partial"} (usage-part "length")]
+                                        :error error-data)]
+        (is (= "length" (:finish_reason row)))
+        (is (= error-data (json/decode+kw (:error row))))
+        (is (= {:type "errored" :error error-data}
+               (:status (first (metabot-persistence/messages->client-messages
+                                [row] {:include-errored? true}))))
+            "errored outranks incomplete on reload")))))
+
+(deftest finalize-stores-no-reason-for-complete-outcomes-test
+  (testing "a turn that ran to a normal end stores no reason"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (doseq [[label parts]
+              [["a provider stop"
+                [{:type :text :text "done"} (usage-part "stop")]]
+               ["a provider reason that maps to `other`"
+                [(usage-part "other")]]
+               ["a terminal tool call"
+                [(usage-part "tool-calls") {:type :finish :finish-reason :terminal-tool}]]
+               ["an empty response"
+                [{:type :finish :finish-reason :empty-response}]]
+               ["a content filter superseded by a later stop"
+                [(usage-part "content-filter") (usage-part "stop")]]]]
+        (testing label
+          (is (nil? (:finish_reason (finalize-parts! parts)))))))))
 
 (deftest messages-client-messages-in-flight-placeholders-test
   (testing "in-flight placeholders (assistant role, finished=nil, recent created_at)
@@ -1316,10 +1475,40 @@
           (is (= ""
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
                                 {:type :tool-output :id "c1" :result nil}]))))
-        (testing "errored tool output uses the error text"
-          (is (= "kaboom"
+        (testing (str "a failed tool output replays the model-facing text from its result. The "
+                      "error lives in `:result`, not on the part, and `:errorText` is what the "
+                      "model reads again on replay — so it is the authored failure text, not the "
+                      "sentence the live UI channel shows.")
+          (is (= "Table 7 was not found. Call `search` for a table id."
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
-                                {:type :tool-output :id "c1" :error {:message "kaboom"}}]))))))))
+                                {:type   :tool-output :id "c1"
+                                 :result {:output "Table 7 was not found. Call `search` for a table id."
+                                          :error  {:class :recoverable
+                                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}}]))))))))
+
+(deftest history-hides-query-results-while-query-execution-is-off-test
+  (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            _               (seed-turn! conversation-id "how many?"
+                                        [{:type :tool-input :id "c1" :function "run_query" :arguments {:query_id "q"}}
+                                         {:type :tool-output :id "c1" :result {:output "<query_results>42</query_results>"}}
+                                         {:type :tool-input :id "c2" :function "search" :arguments {:q "x"}}
+                                         {:type :tool-output :id "c2" :result {:output "found"}}
+                                         {:type :text :text "There are 42."}])
+            tool-contents   (fn []
+                              (->> (metabot-persistence/history (metabot-persistence/live-messages conversation-id))
+                                   (filter #(= :tool (:role %)))
+                                   (mapv :content)))]
+        (is (= {:on       ["<query_results>42</query_results>" "found"]
+                :off      ["Results hidden: query execution is turned off." "found"]
+                :on-again ["<query_results>42</query_results>" "found"]}
+               {:on       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                            (tool-contents))
+                :off      (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+                            (tool-contents))
+                :on-again (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                            (tool-contents))}))))))
 
 (deftest history-drops-errored-turn-test
   (testing "a turn whose reply errored is dropped whole; surrounding turns survive"

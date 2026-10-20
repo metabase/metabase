@@ -30,11 +30,11 @@ export const getDownloadUrl = (version: string) => {
   }${dotXVersion}/metabase.jar`;
 };
 
-export const getChangelogUrl = (version: string ) => {
+export const getChangelogUrl = (version: string) => {
   const majorVersion = getMajorVersion(version);
   const minorVersion = getMinorVersion(version);
-  return `https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}`
-}
+  return `https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}`;
+};
 
 export const getReleaseTitle = (version: string) => {
   return `Metabase ${getGenericVersion(version)}`;

@@ -3,7 +3,9 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.core :as warehouse-schema]
@@ -61,20 +63,16 @@
    name->display-name :- [:map-of :string :string]]
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
         name->display-name (apply dissoc name->display-name user-edited)]
-    (when (seq name->display-name)
-      ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of PostgreSQL:
-      ;; SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND must be type boolean).
-      (t2/query {:update (t2/table-name :model/Field)
-                 :set    {:display_name (into [:case]
-                                              (mapcat identity)
-                                              (for [[n display-name] name->display-name]
-                                                [[:= [:lower :name] n]
-                                                 [:case
-                                                  [:= :display_name (humanization/name->human-readable-name n)] display-name
-                                                  :else                                                       :display_name]]))}
-                 :where  [:and
-                          [:= :table_id table-id]
-                          [:in [:lower :name] (keys name->display-name)]]}))))
+    (doseq [{:keys [id name display_name]} (when (seq name->display-name)
+                                             (t2/select [:model/Field :id :name :display_name]
+                                                        {:from  [(warehouse-schema-overlay/field-query
+                                                                  {:user-settings? false})]
+                                                         :where [:and
+                                                                 [:= :table_id table-id]
+                                                                 [:in [:lower :name] (keys name->display-name)]]}))
+            :let  [lower-name (u/lower-case-en name)]
+            :when (= display_name (humanization/name->human-readable-name lower-name))]
+      (t2/update! :model/Field id {:display_name (name->display-name lower-name)}))))
 
 (mu/defn mark-table-upload!
   "Flag the Table with `table-id` as an authoritative, writable upload table."
@@ -91,17 +89,20 @@
   (t2/update! :model/Field field-id {:display_name display-name}))
 
 (mu/defn unarchived-models-for-table
-  "The id, query, and schema of the unarchived model Cards of the Table with `table-id`."
+  "The query-relevant columns of the unarchived model Cards of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Card :id :dataset_query :card_schema]
+  (t2/select (queries.card-schema/selection)
              :table_id table-id
              :type     :model
              :archived false))
 
 (mu/defn card-query-and-metadata
-  "The query, result metadata, and schema of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] card-id))
+  ;; Spelled out rather than calling `metabase.queries.core/card-query-info`: `queries` loads `upload` (via
+  ;; `driver-api`), so requiring its API namespace back from here is a cyclic load. `queries.card-schema` is the
+  ;; dependency-free namespace that exists for exactly this.
+  (t2/select-one (queries.card-schema/selection) :id card-id))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id`."

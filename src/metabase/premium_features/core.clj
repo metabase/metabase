@@ -37,6 +37,7 @@
   quotas
   TokenStatus
   clear-cache!
+  clear-local-cache!
   token-check-url
   transform-metered-as
   transform-stats]
@@ -81,6 +82,7 @@
   enable-scim?
   enable-semantic-search?
   enable-serialization?
+  enable-session-management?
   enable-session-timeout-config?
   enable-snippet-collections?
   enable-sso-google?

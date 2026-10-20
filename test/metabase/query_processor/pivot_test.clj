@@ -7,6 +7,8 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -35,7 +37,9 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -120,7 +124,67 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+  (testing "Should throw an Exception if pivot-rows or pivot-cols contain duplicates"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-rows: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [0 0 1] [] true true)))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-cols: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [] [1 1] true true))))
+  (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"pivot-rows and pivot-cols must not overlap"
+         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true)))))
+
+(deftest ^:parallel breakout-combinations-powerset-cap-test
+  (let [max-breakouts @#'qp.pivot/max-powerset-breakouts]
+    (testing "the powerset fallback is allowed up to the cap"
+      (is (= (long (Math/pow 2 max-breakouts))
+             (count (#'qp.pivot/breakout-combinations max-breakouts [] [] true true)))))
+    (testing "the powerset fallback is rejected past the cap, before any combinations are enumerated"
+      (doseq [num-breakouts [(inc max-breakouts) 30 62]]
+        (is (=? {:type          :invalid-query
+                 :num-breakouts num-breakouts}
+                (try
+                  (#'qp.pivot/breakout-combinations num-breakouts [] [] true true)
+                  nil
+                  (catch ExceptionInfo e
+                    (ex-data e)))))))
+    (testing "explicit pivot-rows/pivot-cols only produce a linear number of combinations, so they are not capped"
+      (is (= 60
+             (count (#'qp.pivot/breakout-combinations 30 (range 29) [29] true true)))))))
+
+(defn- many-breakouts-query
+  "A query against `checkins` with `n` distinct breakouts (the date bucketed by different temporal units)."
+  [n]
+  (let [mp    (mt/metadata-provider)
+        units [:day :week :month :quarter :year :day-of-week :day-of-month :day-of-year
+               :week-of-year :month-of-year :quarter-of-year]
+        date  (lib.metadata/field mp (mt/id :checkins :date))
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                  (lib/aggregate (lib/count)))
+        cols  (concat (map #(lib/with-temporal-bucket date %) units)
+                      (map #(lib.metadata/field mp (mt/id :checkins %)) [:id :user_id :venue_id]))]
+    (assert (<= n (count cols)))
+    (reduce lib/breakout query (take n cols))))
+
+(deftest powerset-breakout-cap-run-pivot-query-test
+  (testing "a pivot query with no pivot rows/cols and too many breakouts fails as an invalid query instead of
+           enumerating every breakout combination"
+    (let [query (qp.core/userland-query (many-breakouts-query (inc @#'qp.pivot/max-powerset-breakouts)))]
+      (doseq [native? [false true]]
+        (testing (str "use-native-pivot-tables = " native?)
+          (mt/with-temporary-setting-values [use-native-pivot-tables native?]
+            (qp.pivot.test-util/without-pivot-parity-check
+             (is (=? {:status     :failed
+                      :error      #"Too many breakouts.*"
+                      :error_type :invalid-query}
+                     (qp.pivot/run-pivot-query query))))))))))
+
 ;; TODO -- we should require these columns to be distinct as well (I think?)
 ;; TODO -- require all numbers to be positive
 ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
@@ -144,6 +208,80 @@
     (is (= (mt/rows (qp.pivot/run-pivot-query (test-query)))
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
+
+(deftest ^:parallel error-generating-pivot-queries-test
+  (testing "An error thrown while generating the pivot sub-queries, i.e. before the QP proper (and its error-handling middleware) runs"
+    ;; the native path silently drops out-of-range pivot indexes rather than throwing, so parity would disagree here
+    (qp.pivot.test-util/without-pivot-parity-check
+     (let [query (assoc (test-query) :pivot-rows [0 1 2 3])]
+       (testing "is thrown as-is for a non-userland query"
+         (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Error generating pivot queries"
+              (qp.pivot/run-pivot-query query))))
+       (testing "is returned in the usual formatted error shape for a userland query, like any other QP error"
+         (doseq [userland-query [(qp.core/userland-query query)
+                                 (assoc query :info {:context :ad-hoc})]]
+           (is (=? {:status     :failed
+                    :error      #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
+                    :error_type :invalid-query
+                    :json_query map?}
+                   (qp.pivot/run-pivot-query userland-query)))))))))
+
+(defn- orders-pivot-query
+  "Build a pivot query against `orders` with the breakouts in `fields` and an MBQL `:pivot` clause
+  pointing at the given row/column indexes into the breakout vector. Uses `lib.pivot/with-pivot` (not
+  legacy top-level keys) because the stale-UUID bug this test guards against is specific to the stage
+  `:pivot` clause — legacy keys never propagate to sub-queries' stages."
+  [fields rows-idx cols-idx]
+  (let [mp    (mt/metadata-provider)
+        base  (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) q
+                (reduce (fn [q f] (lib/breakout q (lib.metadata/field mp (mt/id :orders f)))) q fields)
+                (lib/aggregate q (lib/count)))
+        uuids (mapv lib.options/uuid (lib/breakouts base))]
+    (lib.pivot/with-pivot base
+      {:rows               (mapv uuids rows-idx)
+       :columns            (mapv uuids cols-idx)
+       :show-row-totals    true
+       :show-column-totals true})))
+
+(deftest ^:mb/driver-tests pivot-returns-every-rollup-bitmask-test
+  (testing "every pivot flow emits rows for every grouping-combo bitmask"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (mt/dataset test-data
+        (let [native? (driver.u/supports? driver/*driver* :native-pivot-tables (mt/db))
+              sql?    (isa? driver/hierarchy driver/*driver* :sql)
+              ;; `use-native-pivot-tables` picks the primary runner between `run-pivot-query-multi`
+              ;; (false) and `run-sql-pivot-query` (true). `:qp.pivot/forced-shape` picks which
+              ;; sub-shape `run-sql-pivot-query` compiles.
+              flows   (cond-> [{:flow :multi-query, :setting false, :shape nil}]
+                        sql?    (conj {:flow :union-all,          :setting true,  :shape :union-all})
+                        native? (conj {:flow :native-pivot-query, :setting true,  :shape :native-pivot-query}))
+              shapes  [{:label       "1 row x 1 col over 2 breakouts"
+                        :fields      [:product_id :user_id]
+                        :rows-idx    [0]
+                        :cols-idx    [1]
+                        :bitmask-set #{0 1 2 3}}
+                       {:label       "2 rows x 1 col over 3 breakouts"
+                        :fields      [:product_id :user_id :quantity]
+                        :rows-idx    [0 1]
+                        :cols-idx    [2]
+                        :bitmask-set #{0 2 3 4 6 7}}
+                       {:label       "1 row x 2 cols over 3 breakouts"
+                        :fields      [:product_id :user_id :quantity]
+                        :rows-idx    [2]
+                        :cols-idx    [0 1]
+                        :bitmask-set #{0 3 4 7}}]]
+          (doseq [{:keys [label fields rows-idx cols-idx bitmask-set]} shapes
+                  {:keys [flow setting shape]}                         flows]
+            (testing (str label " / flow = " flow)
+              (let [forced (cond-> (orders-pivot-query fields rows-idx cols-idx)
+                             shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape shape))]
+                (mt/with-temporary-setting-values [use-native-pivot-tables setting]
+                  (qp.pivot.test-util/without-pivot-parity-check
+                   (let [rows     (mt/rows (qp.pivot/run-pivot-query forced))
+                         bitmasks (into (sorted-set) (map #(long (nth % (count fields)))) rows)]
+                     (is (= bitmask-set bitmasks)))))))))))))
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
@@ -345,8 +483,8 @@
 
 (deftest ^:parallel apply-legacy-pivot-keys-kebab-case-test
   (testing "kebab-case legacy indices resolve to breakout :lib/uuid values"
-    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1 0] :pivot-cols [0]})]
-      (is (=? {:rows               [(breakout-uuid q 1) (breakout-uuid q 0)]
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1] :pivot-cols [0]})]
+      (is (=? {:rows               [(breakout-uuid q 1)]
                :columns            [(breakout-uuid q 0)]
                :show-row-totals    true
                :show-column-totals true}
@@ -370,15 +508,15 @@
       (is (=? {:show-row-totals false :show-column-totals false} (pivot-of (qp.pivot/apply-legacy-pivot-keys q-kebab))))
       (is (=? {:show-row-totals false :show-column-totals false} (pivot-of (qp.pivot/apply-legacy-pivot-keys q-snake)))))))
 
-(deftest ^:parallel apply-legacy-pivot-keys-drops-out-of-range-indices-test
-  (testing "out-of-range indices are silently dropped (matching legacy)"
+(deftest ^:parallel apply-legacy-pivot-keys-throws-on-out-of-range-indices-test
+  (testing "an out-of-range :pivot-rows index throws :invalid-query"
     (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0 5] :pivot-cols [99]})]
-      (is (=? {:rows [(breakout-uuid q 0)] :columns []}
-              (pivot-of (qp.pivot/apply-legacy-pivot-keys q))))))
-  (testing "no :pivot attached when every index is out of range"
-    (let [q   (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [5] :pivot-cols [99]})
-          out (qp.pivot/apply-legacy-pivot-keys q)]
-      (is (nil? (:pivot out))))))
+      (is (thrown-with-msg? ExceptionInfo #"Invalid pivot-rows"
+                            (qp.pivot/apply-legacy-pivot-keys q)))))
+  (testing "an out-of-range :pivot-cols index throws :invalid-query"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-cols [99]})]
+      (is (thrown-with-msg? ExceptionInfo #"Invalid pivot-cols"
+                            (qp.pivot/apply-legacy-pivot-keys q))))))
 
 (deftest ^:parallel apply-legacy-pivot-keys-strips-all-legacy-keys-test
   (testing "all 10 legacy key variants are stripped, including :pivot-measures"
@@ -412,72 +550,6 @@
     (let [q (two-breakout-query)]
       (is (= q (qp.pivot/apply-legacy-pivot-keys q))))))
 
-;;; ---- native-pivot-compatible? ----
-
-(deftest ^:parallel native-pivot-compatible?-test
-  (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                 (lib/breakout (meta/field-metadata :orders :created-at)))]
-    (testing "queries without window-function aggregations are compatible"
-      (is (qp.pivot/native-pivot-compatible? (lib/aggregate base (lib/count)))))
-    (testing ":cum-count aggregation is not compatible"
-      (is (not (qp.pivot/native-pivot-compatible? (lib/aggregate base (lib/cum-count))))))
-    (testing ":cum-sum aggregation is not compatible"
-      (is (not (qp.pivot/native-pivot-compatible?
-                (lib/aggregate base (lib/cum-sum (meta/field-metadata :orders :total)))))))
-    (testing ":offset aggregation is not compatible"
-      (is (not (qp.pivot/native-pivot-compatible?
-                (lib/aggregate base (lib/offset (lib/count) -1))))))
-    (testing "window-function aggregation nested inside an arithmetic clause is not compatible"
-      (let [total (meta/field-metadata :orders :total)
-            diff  (lib/expression-clause :- [(lib/sum total) (lib/offset (lib/sum total) -1)] nil)]
-        (is (not (qp.pivot/native-pivot-compatible? (lib/aggregate base diff)))))))
-  (testing "nested-field (e.g. JSON-unfolded) breakouts are compatible"
-    (let [json-mp (lib.tu/mock-metadata-provider
-                   {:database (assoc meta/database :id 1)
-                    :tables   [(merge (meta/table-metadata :venues)
-                                      {:id 1 :db-id 1 :name "json_table"})]
-                    :fields   [(merge (meta/field-metadata :venues :id)
-                                      {:id            1
-                                       :table-id      1
-                                       :name          "category"
-                                       :nfc-path      ["payload" "category"]
-                                       :database-type "text"})]})
-          query   (-> (lib/query json-mp (lib.metadata/table json-mp 1))
-                      (lib/aggregate (lib/count))
-                      (lib/breakout (lib.metadata/field json-mp 1)))]
-      (is (qp.pivot/native-pivot-compatible? query))))
-  (testing "metric whose definition is a window-function aggregation is incompatible"
-    (let [metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                           (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
-          metric-card  {:lib/type      :metadata/card
-                        :id            10000
-                        :entity-id     (apply str (repeat 21 "X"))
-                        :database-id   (meta/id)
-                        :name          "Cumulative Total"
-                        :type          :metric
-                        :dataset-query metric-query}
-          mp           (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [metric-card]})
-          query        (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
-                           (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id metric-card)]))
-                           (lib/breakout (lib.metadata/field mp (meta/id :orders :created-at))))]
-      (is (not (qp.pivot/native-pivot-compatible? query)))))
-  (testing "source card with a window-function aggregation"
-    (let [card-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                         (lib/breakout (meta/field-metadata :orders :created-at))
-                         (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
-          card       {:lib/type      :metadata/card
-                      :id            10001
-                      :entity-id     (apply str (repeat 21 "Y"))
-                      :database-id   (meta/id)
-                      :name          "Cumulative by Day"
-                      :type          :question
-                      :dataset-query card-query}
-          mp         (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [card]})
-          query      (-> (lib/query mp (lib.metadata/card mp (:id card)))
-                         (lib/aggregate (lib/count)))]
-      (testing "outer aggregations don't inherit the card's window-fn, so the pivot is compatible"
-        (is (qp.pivot/native-pivot-compatible? query))))))
-
 (defn- capture-first-query
   "Return `[p stub]` where `stub` is a `qp/process-query` replacement that delivers its first-received query to
   the promise `p` and returns a benign completed result."
@@ -502,21 +574,21 @@
             (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query)))
           (is (= 1 @invocations)))))))
 
-(deftest ^:parallel native-and-multi-pivot-paths-stash-same-pivot-options-test
+(deftest ^:parallel sql-and-multi-pivot-paths-stash-same-pivot-options-test
   (testing "the two pivot paths stash the same [:middleware :pivot-options] on the query given to qp/process-query"
     (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
-        (let [query                        (-> (qp.pivot.test-util/pivot-query)
-                                               qp.middleware.normalize/normalize-preprocessing-middleware)
-              [multi-p multi-stub]         (capture-first-query)
-              [native-p native-stub]       (capture-first-query)]
+        (let [query                  (-> (qp.pivot.test-util/pivot-query)
+                                         qp.middleware.normalize/normalize-preprocessing-middleware)
+              [multi-p multi-stub]   (capture-first-query)
+              [sql-p sql-stub]       (capture-first-query)]
           (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
             (#'qp.pivot/run-pivot-query-multi query nil))
-          (mt/with-dynamic-fn-redefs [qp.core/process-query native-stub]
-            (#'qp.pivot/run-native-pivot-query query nil))
+          (mt/with-dynamic-fn-redefs [qp.core/process-query sql-stub]
+            (#'qp.pivot/run-sql-pivot-query query nil))
           (is (some? (get-in @multi-p [:middleware :pivot-options])))
-          (is (= (get-in @multi-p  [:middleware :pivot-options])
-                 (get-in @native-p [:middleware :pivot-options]))))))))
+          (is (= (get-in @multi-p [:middleware :pivot-options])
+                 (get-in @sql-p   [:middleware :pivot-options]))))))))
 
 (deftest ^:mb/driver-tests pivot-with-expression-referencing-breakout-e2e-test
   (testing "pivot with a breakout that references an expression"
@@ -1079,6 +1151,21 @@
                   :aggregation [[:count]]
                   :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
 
+(deftest ^:parallel pivot-with-case-with-literal-else-in-aggregation-test
+  (testing "pivot runs when an aggregation wraps a :case with a literal else value (#84452)"
+    (mt/dataset test-data
+      (let [mp       (mt/metadata-provider)
+            orders   (lib.metadata/table mp (mt/id :orders))
+            total    (lib.metadata/field mp (mt/id :orders :total))
+            quantity (lib.metadata/field mp (mt/id :orders :quantity))
+            created  (lib.metadata/field mp (mt/id :orders :created_at))
+            query    (-> (lib/query mp orders)
+                         (lib/aggregate (lib/sum (lib/case [[(lib/> quantity 3) total]] 0)))
+                         (lib/breakout (lib/with-temporal-bucket created :year))
+                         (lib/breakout quantity))]
+        (is (=? {:status :completed}
+                (qp.pivot/run-pivot-query query)))))))
+
 (deftest ^:parallel measure-in-pivot-table-test
   (testing "a :measure clause used inside a pivot query executes like the equivalent inline aggregation"
     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
@@ -1244,28 +1331,51 @@
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
 
+(deftest ^:parallel single-combo-ua-preserves-user-order-by-test
+  (testing "UA compilation must honor user :order-by when there's only one grouping-set combo"
+    (let [mp       (mt/metadata-provider)
+          orders   (lib.metadata/table mp (mt/id :orders))
+          prod-id  (lib.metadata/field mp (mt/id :orders :product_id))
+          query    (-> (lib/query mp orders)
+                       (lib/breakout prod-id)
+                       (lib/aggregate (lib/count))
+                       (as-> q (lib/order-by q (lib/aggregation-ref q 0) :desc))
+                       (merge {:pivot-rows         [0]
+                               :pivot-cols         []
+                               :show-row-totals    false
+                               :show-column-totals false}))
+          forced   (lib.util/update-query-stage query -1 assoc :qp.pivot/forced-shape :union-all)
+          counts   (mapv last (mt/rows (qp.pivot/run-pivot-query forced)))]
+      (is (apply >= counts)
+          (str "Expected counts DESC; got: " counts)))))
+
 (deftest ^:parallel fe-friendly-legacy-field-refs-test
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
     ;; (This is calculated by [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]])
     ;;
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
-    (let [query (merge
-                 (mt/mbql-query orders
-                   {:aggregation  [[:count]]
-                    :breakout     [!year.created_at
-                                   $product_id->products.category
-                                   $user_id->people.source]
-                    :limit        1})
-                 {:pivot_rows [0 1 2]
-                  :pivot_cols []})]
-      (is (= (mt/$ids orders
-               [[:field %created_at {:temporal-unit :year}]
-                [:field %products.category {:source-field %product_id}]
-                [:field %people.source {:source-field %user_id}]
-                nil ; pivot-grouping does not have a field ref
-                [:aggregation 0]])
-             (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
+    ;;
+    ;; `:limit 1` applies per subquery under multi-query but only once under the single-query paths, so row
+    ;; counts legitimately diverge. This assertion only cares about column metadata, so restrict the parity
+    ;; check accordingly.
+    (qp.pivot.test-util/with-metadata-only-parity
+      (let [query (merge
+                   (mt/mbql-query orders
+                     {:aggregation  [[:count]]
+                      :breakout     [!year.created_at
+                                     $product_id->products.category
+                                     $user_id->people.source]
+                      :limit        1})
+                   {:pivot_rows [0 1 2]
+                    :pivot_cols []})]
+        (is (= (mt/$ids orders
+                 [[:field %created_at {:temporal-unit :year}]
+                  [:field %products.category {:source-field %product_id}]
+                  [:field %people.source {:source-field %user_id}]
+                  nil ; pivot-grouping does not have a field ref
+                  [:aggregation 0]])
+               (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query)))))))))
 
 (deftest ^:parallel fe-friendly-legacy-field-refs-test-2
   (testing "field_refs in the result metadata should preserve :base-type if it was specified for some reason, otherwise FE will break"
@@ -1423,97 +1533,160 @@
                  [str str int int int]
                  (qp.pivot/run-pivot-query query))))))))
 
-(deftest ^:parallel pivot-query-uses-custom-limit-test
+(deftest pivot-query-uses-custom-limit-test
   (testing "Pivot queries use a custom higher limit instead of the caller's constraints, so data stays consistent"
     ;; The multi-query path overrides the caller's `:constraints :max-results` with `pivot-query-max-rows`; the native
     ;; single-query path doesn't, so results legitimately diverge — this test is multi-query-only.
-    (qp.pivot.test-util/without-pivot-parity-check
-     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-       ;; The pivot-query has 2 aggregations (count, sum-of-quantity), so the pivot limit is 200k/2 = 100k.
-       ;; Even though we pass max-results=50, the pivot limit overrides it, so all rows come through.
-       (let [query   (qp.pivot.test-util/pivot-query)
-             query   (assoc query :constraints {:max-results 50})
-             results (qp.pivot/run-pivot-query query)
-             rows    (mt/formatted-rows [str str str int int int] results)
-             ;; pivot-grouping is column index 3 (state, source, category, pivot-grouping, count, sum)
-             ;; Group 0 = all breakouts (detail rows)
-             ;; Group 7 = grand total (no breakouts)
-             detail-rows       (filter #(zero? (nth % 3)) rows)
-             grand-total-row   (first (filter #(= 7 (nth % 3)) rows))
-             detail-count-sum  (reduce + (map #(nth % 4) detail-rows))
-             grand-total-count (nth grand-total-row 4)]
-         (testing "All detail rows are returned (not truncated to caller's max-results)"
-           (is (> (count detail-rows) 50)
-               "Detail rows should exceed the caller's max-results=50 because the pivot limit overrides it"))
-         (testing "The grand total row exists"
-           (is (some? grand-total-row)))
-         (testing "Detail rows sum to the grand total — data is consistent"
-           (is (= detail-count-sum grand-total-count)
-               (str "Detail count sum (" detail-count-sum ") should equal grand total ("
-                    grand-total-count ") because pivot uses its own higher limit"))))))))
+    (qp.pivot.test-util/with-multi-query-pivot!
+      (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+        ;; The pivot-query has 2 aggregations (count, sum-of-quantity), so the pivot limit is 200k/2 = 100k.
+        ;; Even though we pass max-results=50, the pivot limit overrides it, so all rows come through.
+        (let [query   (qp.pivot.test-util/pivot-query)
+              query   (assoc query :constraints {:max-results 50})
+              results (qp.pivot/run-pivot-query query)
+              rows    (mt/formatted-rows [str str str int int int] results)
+              ;; pivot-grouping is column index 3 (state, source, category, pivot-grouping, count, sum)
+              ;; Group 0 = all breakouts (detail rows)
+              ;; Group 7 = grand total (no breakouts)
+              detail-rows       (filter #(zero? (nth % 3)) rows)
+              grand-total-row   (first (filter #(= 7 (nth % 3)) rows))
+              detail-count-sum  (reduce + (map #(nth % 4) detail-rows))
+              grand-total-count (nth grand-total-row 4)]
+          (testing "All detail rows are returned (not truncated to caller's max-results)"
+            (is (> (count detail-rows) 50)
+                "Detail rows should exceed the caller's max-results=50 because the pivot limit overrides it"))
+          (testing "The grand total row exists"
+            (is (some? grand-total-row)))
+          (testing "Detail rows sum to the grand total — data is consistent"
+            (is (= detail-count-sum grand-total-count)
+                (str "Detail count sum (" detail-count-sum ") should equal grand total ("
+                     grand-total-count ") because pivot uses its own higher limit"))))))))
 
-(deftest ^:parallel pivot-query-short-circuits-when-master-hits-limit-test
+(deftest pivot-query-short-circuits-when-master-hits-limit-test
   (testing "When the master pivot query hits the row limit, remaining sub-queries are skipped and truncation is signaled"
     ;; The native pivot path is a single GROUPING SETS query, so the per-sub-query row cap doesn't apply — this test
     ;; intentionally exercises multi-query-only behavior.
-    (qp.pivot.test-util/without-pivot-parity-check
-     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-       ;; Use the standard pivot-query but override the pivot limit to be very small.
-       ;; The master query (state × source × category) produces ~200+ rows.
-       ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
-       (binding [qp.pivot/*pivot-max-result-rows* 20]
-         (let [query   (qp.pivot.test-util/pivot-query)
-               results (qp.pivot/run-pivot-query query)
-               rows    (mt/rows results)]
-           (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
-             ;; All rows should be pivot-grouping=0 (the master query's group)
-             (is (every? #(zero? (nth % 3)) rows)
-                 "All rows should be from the master query (pivot-grouping=0)"))
-           (testing "The result includes pivot_rows_truncated flag"
-             (is (= 10 (get-in results [:data :pivot_rows_truncated]))
-                 "Should signal truncation with the row count"))))))))
+    (qp.pivot.test-util/with-multi-query-pivot!
+      (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+        ;; Use the standard pivot-query but override the pivot limit to be very small.
+        ;; The master query (state × source × category) produces ~200+ rows.
+        ;; With pivot-max-result-rows 20, the limit is 20/2=10 per sub-query.
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20]
+          (let [query   (qp.pivot.test-util/pivot-query)
+                results (qp.pivot/run-pivot-query query)
+                rows    (mt/rows results)]
+            (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
+              ;; All rows should be pivot-grouping=0 (the master query's group)
+              (is (every? #(zero? (nth % 3)) rows)
+                  "All rows should be from the master query (pivot-grouping=0)"))
+            (testing "The result includes pivot_rows_truncated flag"
+              (is (= 10 (get-in results [:data :pivot_rows_truncated]))
+                  "Should signal truncation with the row count"))))))))
 
 (deftest pivot-query-with-high-unaggregated-row-limit-test
   (testing "Pivot queries don't fail when MB_UNAGGREGATED_QUERY_ROW_LIMIT exceeds the pivot row limit (#72157)"
     ;; This exercises the multi-query path's per-sub-query constraint plumbing; the native path doesn't use it.
-    (qp.pivot.test-util/without-pivot-parity-check
-     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-       ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
-       ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
-       ;; which violates the constraint schema without the fix.
-       ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
-       (binding [qp.pivot/*pivot-max-result-rows* 20]
-         (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
-           (let [query   (-> (qp.pivot.test-util/pivot-query)
-                             (assoc :constraints (qp.constraints/default-query-constraints)))
-                 results (qp.pivot/run-pivot-query query)]
-             (is (<= 2 (count (get-in query [:query :aggregation])))
-                 "Sanity check: pivot-query should have at least 2 aggregations")
-             (is (not= :failed (:status results))
-                 "Pivot query should not fail with a constraint violation"))))))))
+    (qp.pivot.test-util/with-multi-query-pivot!
+      (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+        ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
+        ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
+        ;; which violates the constraint schema without the fix.
+        ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20
+                                           qp.settings/unaggregated-query-row-limit 15]
+          (let [query   (-> (qp.pivot.test-util/pivot-query)
+                            (assoc :constraints (qp.constraints/default-query-constraints)))
+                results (qp.pivot/run-pivot-query query)]
+            (is (<= 2 (count (get-in query [:query :aggregation])))
+                "Sanity check: pivot-query should have at least 2 aggregations")
+            (is (not= :failed (:status results))
+                "Pivot query should not fail with a constraint violation")))))))
 
-(deftest ^:parallel native-pivot-honors-max-results-constraint-test
-  (testing "Native pivot path honors the caller's :constraints :max-results — no special pivot-only cap"
-    (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
-      (let [max-results 50
-            mp          (mt/metadata-provider)
-            orders      (lib.metadata/table mp (mt/id :orders))
-            product-id  (lib.metadata/field mp (mt/id :orders :product_id))
-            user-id     (lib.metadata/field mp (mt/id :orders :user_id))
-            query       (-> (lib/query mp orders)
-                            (lib/breakout product-id)
-                            (lib/breakout user-id)
-                            (lib/aggregate (lib/count))
-                            (merge {:constraints {:max-results max-results}
+(defn- native-pivot-two-breakout-query
+  "An orders breakout product × user × count pivot query, used by the native-pivot limit/ordering tests to
+  exercise all four grouping sets `#{0 1 2 3}`."
+  []
+  (let [mp         (mt/metadata-provider)
+        orders     (lib.metadata/table mp (mt/id :orders))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        user-id    (lib.metadata/field mp (mt/id :orders :user_id))]
+    (-> (lib/query mp orders)
+        (lib/breakout product-id)
+        (lib/breakout user-id)
+        (lib/aggregate (lib/count)))))
+
+(deftest native-pivot-exceeds-default-aggregated-cap-test
+  (testing "Native pivot path returns more than `default-aggregated-query-row-limit` rows when the detail set is bigger — the whole point of the pivot-specific cap"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        ;; `orders` has 18,760 rows, 18,076 unique `(product_id, user_id)` tuples. Add rollups + grand total
+        ;; and we're well past the plain aggregated cap of 10,000.
+        (let [default-aggregated-max (:max-results (qp.constraints/default-query-constraints))
+              query                  (-> (native-pivot-two-breakout-query)
+                                         (merge {:pivot_rows [0] :pivot_cols [1]}))
+              results                (qp.pivot/run-pivot-query query)]
+          (testing "row count exceeds the default aggregated cap"
+            (is (< default-aggregated-max (count (mt/rows results)))))
+          (testing "no truncation flag (we're well under `pivot-max-result-rows`)"
+            (is (not (contains? (:data results) :pivot_rows_truncated)))))))))
+
+(deftest native-pivot-caps-max-results-at-pivot-cap-test
+  (testing "Native pivot path caps `:constraints :max-results` at `pivot-max-result-rows` but honors a smaller caller-supplied value"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 100]
+          (let [run (fn [caller-max]
+                      (qp.pivot/run-pivot-query
+                       (-> (native-pivot-two-breakout-query)
+                           (cond-> caller-max (assoc :constraints {:max-results caller-max}))
+                           (assoc :pivot_rows [0] :pivot_cols [1]))))]
+            (testing "caller's smaller `:max-results` is honored"
+              (let [results (run 10)]
+                (is (= 10 (count (mt/rows results))))
+                (is (= 10 (get-in results [:data :pivot_rows_truncated])))))
+            (testing "caller's larger `:max-results` is clamped to `pivot-max-result-rows`"
+              (let [results (run 500)]
+                (is (= 100 (count (mt/rows results))))
+                (is (= 100 (get-in results [:data :pivot_rows_truncated])))))
+            (testing "no caller `:max-results` falls back to `pivot-max-result-rows`"
+              (let [results (run nil)]
+                (is (= 100 (count (mt/rows results))))
+                (is (= 100 (get-in results [:data :pivot_rows_truncated])))))))))))
+
+(deftest native-pivot-caps-max-results-bare-rows-test
+  (testing "Native pivot path caps `:max-results-bare-rows` at `pivot-max-result-rows` so it stays ≤ `:max-results`"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 10]
+          ;; `:max-results-bare-rows` (2000) > `pivot-max-result-rows` (10). Without the cap, the
+          ;; constraints middleware rejects the query with
+          ;; `max-results-bare-rows must be less than or equal to max-results`.
+          (let [query   (-> (native-pivot-two-breakout-query)
+                            (merge {:constraints {:max-results-bare-rows 2000}
                                     :pivot_rows  [0]
-                                    :pivot_cols  [1]})
-                            qp.middleware.normalize/normalize-preprocessing-middleware)
-            results     (#'qp.pivot/run-native-pivot-query query nil)]
-        (testing "row count matches the requested cap"
-          (is (= max-results (count (mt/rows results)))))
-        (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"
-          (is (= max-results (get-in results [:data :pivot_rows_truncated])))
-          (is (not (contains? (:data results) :rows_truncated))))))))
+                                    :pivot_cols  [1]}))
+                results (qp.pivot/run-pivot-query query)]
+            (testing "query completes without a constraint-schema violation"
+              (is (= :completed (:status results))))
+            (testing "row count is capped at `pivot-max-result-rows` and the truncation flag fires"
+              (is (= 10 (count (mt/rows results))))
+              (is (= 10 (get-in results [:data :pivot_rows_truncated]))))))))))
+
+(deftest native-pivot-emits-rollups-before-details-test
+  (testing "Native pivot path returns rows in pivot-grouping DESC order so totals survive `:max-results` truncation"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (doseq [shape [:native-pivot-query :union-all]]
+          (testing (str "forced-shape " shape)
+            (let [query   (-> (native-pivot-two-breakout-query)
+                              (merge {:pivot_rows [0] :pivot_cols [1]})
+                              qp.middleware.normalize/normalize-preprocessing-middleware
+                              (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape shape))
+                  results (qp.pivot/run-pivot-query query)]
+              (testing "all four grouping sets present and emitted in rollups-first (DESC) order"
+                ;; `long` on each `pivot-grouping` so drivers that return it as BigDecimal (e.g. Oracle) compare equal.
+                (is (= [3 2 1 0] (into [] (comp (map #(long (nth % 2))) (distinct))
+                                       (mt/rows results))))))))))))
 
 (deftest ^:parallel filters-query-test
   (testing "Pivot queries with a filter on a breakout column complete successfully"

@@ -141,7 +141,7 @@
               ["./bin/mage start-db postgres latest --port 5555" "start postgres on a custom port"]]
    :requires [[mage.start-db :as start-db]]
    :arg-schema [:tuple
-                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle]
+                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle :starburst]
                 [:enum :oldest :latest]]
    :options [["-p" "--port PORT" "Override the default host port for the container" :parse-fn Integer/parseInt]]
    :db-info      {:postgres   {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
@@ -151,6 +151,7 @@
                   :sqlserver  {:ports {:oldest 1433 :latest 1434}   :eol-url "https://endoflife.date/api/mssqlserver.json"}
                   :oracle     {:ports {:oldest 1521 :latest 1522}   :eol-url "https://endoflife.date/api/oracle-database.json"}
                   ;; some databases aren't on endoflife.date
+                  :starburst  {:ports {:oldest 8084 :latest 8085}   :eol-url nil}
                   :clickhouse {:ports {:oldest 8124 :latest 8123}   :eol-url nil}}
    :usage-fn start-db/usage
    :task (task!
@@ -253,6 +254,47 @@
    :requires [[mage.quick-test-runner :as qtr]]
    :task (task! (qtr/go parsed))}
 
+  openapi-diff
+  {:doc "Semantic diff of two OpenAPI specs, classified breaking-first, for the API changelog"
+   :examples [["./bin/mage openapi-diff old.json new.json" "Full diff, breaking changes first"]
+              ["./bin/mage openapi-diff old.json new.json --severity breaking" "Only what needs a changelog entry"]
+              ["./bin/mage openapi-diff --refs release-x.63.x release-x.64.x --severity breaking" "Generate both specs from source, then diff"]
+              ["./bin/mage openapi-diff --refs --committed release-x.63.x master" "Use each ref's committed spec (fast, may be stale)"]
+              ["./bin/mage openapi-diff --refs --grouped release-x.63.x master --severity breaking" "One line per distinct change, widest blast radius first"]]
+   :arg-schema [:tuple
+                [:string {:name "old" :description "Path to the older openapi.json, or a git ref with --refs"}]
+                [:string {:name "new" :description "Path to the newer openapi.json, or a git ref with --refs"}]]
+   :options [["-s" "--severity LEVEL" "Only show findings at or above LEVEL: breaking or additive"]
+             ["-r" "--refs" "Treat the arguments as git refs and generate each spec from its source"]
+             ["-c" "--committed" "With --refs, read each ref's committed spec instead of generating (fast, may be stale)"]
+             ["-g" "--grouped" "Collapse identical findings across endpoints: one line per distinct change"]]
+   :usage-fn (fn [_]
+               (str "In Claude Code:"
+                    "\n\n> " (c/green "What are the breaking API changes between the latest v64 and v65?")
+                    "\n\nThe api-changelog skill runs this task, triages the findings, and drafts changelog entries."
+                    "\n\nRun it by hand:"
+                    "\n  " (c/green "./bin/mage openapi-diff --refs --grouped v0.64.1.1 origin/release-x.65.x --severity breaking")
+                    "\n  Compare the last tag of the previous release with the new release branch. --refs builds"
+                    "\n  each spec from source (about 90 s, two JVM boots). --committed is fast, but the committed"
+                    "\n  spec lags the source, so it under-reports."
+                    "\n\nReading the result:"
+                    "\n  - BREAKING: a caller sending what it sent before can now fail or get a different result."
+                    "\n    When the tool cannot tell, it ranks breaking: read each finding before you write an entry."
+                    "\n  - A new enum value or a new tagged kind in a response is additive: callers must tolerate"
+                    "\n    values they do not know. A new null or a new type in a response is breaking."
+                    "\n  - A change to a shared component is reported once, listing every endpoint it reaches."
+                    "\n  - Preview APIs (behind a *-preview premium feature) and internal endpoints usually"
+                    "\n    need no changelog entry. Decide per finding."))
+   :requires [[mage.openapi-diff]]
+   :task (task! (mage.openapi-diff/cli-diff parsed))}
+
+  openapi-staleness
+  {:doc "Is the committed OpenAPI spec current relative to the API source? (a stale spec under-reports)"
+   :examples [["./bin/mage openapi-staleness"]]
+   :arg-schema [:tuple]
+   :requires [[mage.openapi-diff]]
+   :task (task! (mage.openapi-diff/cli-staleness parsed))}
+
   affected-modules
   {:doc "Which backend modules have changes?"
    :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]
@@ -311,18 +353,20 @@
                   (project-tests/run!)))}
 
   kondo-ratchets
-  {:doc "Validate the kondo and module ratchet files against the source tree (Babashka; seconds, not a test run)."
+  {:doc "Validate the kondo and module ratchet files against the source tree (about half a minute, most of it a kondo run over the files with a discouraged-var or discouraged-namespace ignore)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
-   :requires [[dev.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/check))}
+   :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check {:attribute mage.kondo-ratchet/attribute-occurrences!}))}
 
   kondo-ratchets-shrink
   {:doc "Lower kondo and module budgets to match the source tree. This is the only Mage task that writes the ratchet files."
    :examples [["./bin/mage kondo-ratchets-shrink" "Lower budgets to current counts without raising over-budget entries"]
-              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]]
-   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
-   :requires [[dev.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]
+              ["./bin/mage kondo-ratchets-shrink --seed :discouraged-var/clojure.core/println" "Set one discouraged symbol's budget to its current count"]
+              ["./bin/mage kondo-ratchets-shrink --seed :discouraged-var" "Set every discouraged-var symbol's budget to its current count"]]
+   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it); :discouraged-var/SYMBOL seeds one discouraged symbol, a bare :discouraged-var/:discouraged-namespace all of them"]]
+   :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
@@ -355,6 +399,24 @@
                "Generate resolve-as XML configuration and install it in your global editor configuration"]]
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
+
+  generate-docs
+  {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
+   :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
+              ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
+              ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
+              ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "usage-analytics"
+                         "embedding-sdk"
+                         "embedding-eajs"]]]
+   :requires [[mage.generate-docs :as generate-docs]]
+   :task (task! (generate-docs/run! (first (:arguments parsed)) (:options parsed)))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"
@@ -433,7 +495,7 @@
   -ratchets-merge
   {:doc "Internal three-way merge for ratchet files. Called by bin/merge-kondo-ratchets."
    :arg-schema [:tuple
-                [:enum {:name "kind"} "kondo" "modules"]
+                [:enum {:name "kind"} "kondo" "test" "modules"]
                 [:string {:name "base" :description "Ratchets file from the merge base"}]
                 [:string {:name "ours" :description "Git stage 2: ratchets file from the branch receiving the changes"}]
                 [:string {:name "theirs" :description "Git stage 3: ratchets file from the commits being applied"}]
@@ -453,10 +515,11 @@
               (spit output-path
                     (dev.kondo-ratchet/render-module-ratchets
                      (dev.kondo-ratchet/merge-module-ratchets base ours theirs)))
-              (let [merged (dev.kondo-ratchet/merge-ratchets base ours theirs)]
+              (let [merged (dev.kondo-ratchet/merge-ratchets base ours theirs)
+                    render (if (= kind "test") dev.kondo-ratchet/render-test dev.kondo-ratchet/render)]
                 (spit output-path (if (dev.kondo-ratchet/disabled? merged)
                                     (slurp ours-path)
-                                    (dev.kondo-ratchet/render merged)))))
+                                    (render merged)))))
             (println (str "merged ratchets into " output-path))))}
 
   -kondo-ratchets-pr-body
@@ -466,21 +529,21 @@
                 [:string {:name "after" :description "Ratchets file after shrinking"}]
                 [:string {:name "modules-before" :description "Module ratchets before shrinking"}]
                 [:string {:name "modules-after" :description "Module ratchets after shrinking"}]
+                [:string {:name "test-before" :description "Test ratchets file before shrinking"}]
+                [:string {:name "test-after" :description "Test ratchets file after shrinking"}]
                 [:string {:name "workflow-url" :description "URL of the workflow run"}]]
    :requires [[dev.kondo-ratchet]]
    :task (task!
-          (let [[before-path after-path modules-before-path modules-after-path workflow-url] (:arguments parsed)
-                read-ratchets (fn [path]
-                                (binding [dev.kondo-ratchet/*ratchets-file* path]
-                                  (dev.kondo-ratchet/read-ratchets)))
-                read-modules  (fn [path]
-                                (binding [dev.kondo-ratchet/*module-ratchets-file* path]
-                                  (dev.kondo-ratchet/read-module-ratchets)))]
-            (print (dev.kondo-ratchet/shrink-pr-body (assoc (read-ratchets before-path)
-                                                            :module-counts (read-modules modules-before-path))
-                                                     (assoc (read-ratchets after-path)
-                                                            :module-counts (read-modules modules-after-path))
-                                                     workflow-url))))}
+          (let [[before after modules-before modules-after test-before test-after workflow-url]
+                (:arguments parsed)]
+            (print (dev.kondo-ratchet/shrink-pr-body-from-files
+                    {:before         before
+                     :after          after
+                     :modules-before modules-before
+                     :modules-after  modules-after
+                     :test-before    test-before
+                     :test-after     test-after}
+                    workflow-url))))}
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."

@@ -56,6 +56,7 @@ type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 /**
  * @deprecated HOCs are deprecated
  */
+// eslint-disable-next-line react/display-name -- HOC names the wrapped component below.
 export function ExplicitSize<T>({
   selector,
   wrapped = false,

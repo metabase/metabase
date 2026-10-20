@@ -5,6 +5,7 @@
   they log in."
   (:require
    [java-time.api :as t]
+   [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
    [metabase.util.malli :as mu]
@@ -33,7 +34,7 @@
 
 (mu/defn- add-browser-id-cookie
   [request      :- ::request.schema/request
-   response     :- ::request.schema/response
+   response     :- ::api.macros/response
    browser-id   :- ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 

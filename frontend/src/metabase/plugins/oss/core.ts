@@ -2,6 +2,7 @@ import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
+import bridgeImage from "assets/img/bridge.svg?url";
 import noResultsSource from "assets/img/no_results.svg";
 import type { AdminPathKey, State } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -33,12 +34,12 @@ interface PluginDashboardSubscriptionParametersSectionOverride {
 }
 
 const defaultLandingPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: bridgeImage,
   isDefault: true,
 };
 
 const defaultLoginPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: bridgeImage,
   isDefault: true,
 };
 

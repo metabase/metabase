@@ -58,8 +58,7 @@ export const MoveDashboardStepContent = ({
       onCompleted();
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           error,
           t`Failed to move dashboard to the shared collection`,
@@ -84,8 +83,7 @@ export const MoveDashboardStepContent = ({
       onCompleted();
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(error, t`Failed to create a sample dashboard`),
       });
     }
@@ -125,7 +123,7 @@ export const MoveDashboardStepContent = ({
               variant="filled"
               onClick={handleMoveDashboard}
               loading={isMoving}
-              disabled={!effectiveDashboardId}
+              disabled={!effectiveDashboardId || sharedCollectionId === null}
             >
               {t`Move to shared collection`}
             </Button>
@@ -140,6 +138,7 @@ export const MoveDashboardStepContent = ({
           variant={hasXrayDashboard ? "default" : "filled"}
           onClick={handleCreateSampleDashboard}
           loading={isCreating}
+          disabled={sharedCollectionId === null}
         >
           {t`Create a sample dashboard`}
         </Button>

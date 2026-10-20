@@ -119,6 +119,7 @@
                   [:series :can_write]
                   :dashcard/action
                   :dashcard/linkcard-info]
+                 :creator
                  :can_restore
                  :can_delete
                  :tabs
@@ -309,7 +310,7 @@
 (defn add-query-average-durations
   "Add a `average_execution_time` field to each card (and series) belonging to `dashboard`."
   [dashboard]
-  ;; Doall is needed to fetch the average durations in this thread, in the context of *dashboard-load-id*.
+  ;; Doall is needed to fetch the average durations in this thread, in the context of *dashboard-load-key*.
   ;; Otherwise it happens on other threads without the MetadataProvider caching and makes many more AppDB requests.
   (update dashboard :dashcards (comp doall add-query-average-duration-to-dashcards)))
 
@@ -333,13 +334,23 @@
   (* 10 1000))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *dashboard-load-id* nil)
+(def ^:private ^:dynamic *dashboard-load-key*
+  "`[current-user-id dashboard-load-id]` for the dashboard load in progress, or nil when nothing should be cached."
+  nil)
+
+(defn- dashboard-load-key
+  "Cache key for a dashboard load: the client-supplied `dashboard-load-id` scoped to the current user.
+
+  Returns nil, disabling caching, when there is no load ID or no current user."
+  [dashboard-load-id]
+  (when (and dashboard-load-id api/*current-user-id*)
+    [api/*current-user-id* dashboard-load-id]))
 
 ;; This is a kind of two-layer memoization:
-;; - The outer layer is a 10-second TTL cache on *dashboard-load-id*.
+;; - The outer layer is a 10-second TTL cache on *dashboard-load-key*.
 ;; - Its value is the *function* to use to get the dashboard by ID!
-;; If *dashboard-load-id* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
-;; If *dashboard-load-id* is nil, it returns the unwrapped get-dashboard*.
+;; If *dashboard-load-key* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
+;; If *dashboard-load-key* is nil, it returns the unwrapped get-dashboard*.
 
 (defn- set-download-perms-on-dashcards
   "Set each dashcard's nested :card map :download_perms based on the current user's actual permissions."
@@ -370,7 +381,7 @@
       add-query-average-durations
       set-download-perms-on-dashcards))
 
-;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
+;; TODO: This indirect memoization by *dashboard-load-key* could probably be turned into a macro for reuse elsewhere.
 (defn- get-dashboard*
   "Get Dashboard with ID."
   [id]
@@ -385,21 +396,21 @@
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
 (def ^:private get-dashboard-fn
-  (memoize/ttl (fn [dashboard-load-id]
-                 (if dashboard-load-id
-                   (memoize/memo get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
-                   get-dashboard*))         ; If unset, just call through to get-dashboard*.
+  (memoize/ttl (fn [dashboard-load-key]
+                 (if dashboard-load-key
+                   (memoize/memo get-dashboard*) ; If dashboard-load-key is set, return a memoized get-dashboard*.
+                   get-dashboard*))          ; If unset, just call through to get-dashboard*.
                :ttl/threshold dashboard-load-cache-ttl))
 
 (def ^:private dashboard-load-metadata-provider-cache
-  (memoize/ttl (fn [_dashboard-load-id]
+  (memoize/ttl (fn [_dashboard-load-key]
                  (atom (cache/basic-cache-factory {})))
                :ttl/threshold dashboard-load-cache-ttl))
 
 (defn- do-with-dashboard-load-id [dashboard-load-id body-fn]
-  (if dashboard-load-id
-    (binding [*dashboard-load-id* dashboard-load-id]
-      (lib-be/with-existing-metadata-provider-cache (dashboard-load-metadata-provider-cache dashboard-load-id)
+  (if-let [load-key (dashboard-load-key dashboard-load-id)]
+    (binding [*dashboard-load-key* load-key]
+      (lib-be/with-existing-metadata-provider-cache (dashboard-load-metadata-provider-cache load-key)
         (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
         (body-fn)))
     (do
@@ -412,9 +423,9 @@
 (defn- get-dashboard
   "Get Dashboard with ID.
 
-  Memoized per `*dashboard-load-id*` with a TTL of 10 seconds."
+  Memoized per `*dashboard-load-key*` with a TTL of 10 seconds."
   [id]
-  ((get-dashboard-fn *dashboard-load-id*) id))
+  ((get-dashboard-fn *dashboard-load-key*) id))
 
 (mu/defn- cards-to-copy :- [:map
                             [:discard [:sequential :any]]
@@ -458,6 +469,14 @@
              :discard []}
             (filter :card_id dashcards))))
 
+(defn- reference-metrics
+  "Moves the metrics in `cards`' `:copy` to `:reference`, since a dashboards-only collection can't hold copies of them."
+  [{:keys [copy] :as cards}]
+  (let [metric? (fn [[_ card]] (= :metric (keyword (:type card))))]
+    (-> cards
+        (assoc :copy (into {} (remove metric?) copy))
+        (update :reference merge (into {} (filter metric?) copy)))))
+
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
@@ -466,18 +485,23 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
+        {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
+                                           dashboards-only? reference-metrics)]
     {:copied     (into {} (for [[id to-copy] copy]
-                            [id (queries/create-card!
-                                 (cond-> to-copy
-                                   true                    (assoc :collection_id dest-coll-id)
-                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
-                                 @api/*current-user*
-                                 ;; creating cards from a transaction. wait until tx complete to signal event
-                                 true
-                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
-                                 false)]))
+                            [id (queries/with-copy-source-card to-copy
+                                  (queries/create-card!
+                                   (cond-> to-copy
+                                     true                    (assoc :collection_id dest-coll-id)
+                                     same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                     (or (:dashboard_id to-copy)
+                                         dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
+                                                                 (dissoc :collection_position)))
+                                   @api/*current-user*
+                                   ;; creating cards from a transaction. wait until tx complete to signal event
+                                   true
+                                   ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                   false))]))
      :discarded  discard
      :referenced reference}))
 
@@ -651,7 +675,8 @@
   endpoints and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
+  ;; Not gated on `enable-embedding-modular`: an admin who turned guest embeds off still needs to see what is already
+  ;; published. Publishing itself stays gated.
   (dashboards-rest.db/embeddable-dashboards))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
@@ -848,6 +873,8 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+    (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
@@ -1194,12 +1221,15 @@
   (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/dashboard-public-link-created
-                                          {:object-id dashboard-id
-                                           :user-id api/*current-user-id*})
-                   (dashboards-rest.db/update-dashboard! dashboard-id
-                                                         {:public_uuid       <>
-                                                          :made_public_by_id api/*current-user-id*})))]
+                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                   (t2/with-transaction [_conn]
+                     (dashboards-rest.db/update-dashboard! dashboard-id
+                                                           {:public_uuid       <>
+                                                            :made_public_by_id api/*current-user-id*})
+                     (events/publish-event! :event/dashboard-public-link-created
+                                            {:object    (dashboards-rest.db/dashboard dashboard-id)
+                                             :object-id dashboard-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1216,12 +1246,14 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (dashboards-rest.db/update-dashboard! dashboard-id
-                                        {:public_uuid       nil
-                                         :made_public_by_id nil})
-  (events/publish-event! :event/dashboard-public-link-deleted
-                         {:object-id dashboard-id
-                          :user-id api/*current-user-id*})
+  (t2/with-transaction [_conn]
+    (dashboards-rest.db/update-dashboard! dashboard-id
+                                          {:public_uuid       nil
+                                           :made_public_by_id nil})
+    (events/publish-event! :event/dashboard-public-link-deleted
+                           {:object    (dashboards-rest.db/dashboard dashboard-id)
+                            :object-id dashboard-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

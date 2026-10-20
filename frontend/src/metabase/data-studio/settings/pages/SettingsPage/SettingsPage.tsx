@@ -6,8 +6,10 @@ import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Card, Center, Flex, Stack, Switch, Text, Title } from "metabase/ui";
 
-import { useDataStudioSettings, useLocalSetting } from "../../hooks";
+import { useDataStudioSettings } from "../../hooks/use-data-studio-settings";
 import type { DataStudioSetting } from "../../types";
+
+import { useLocalSetting } from "./hooks";
 
 export function SettingsPage() {
   usePageTitle(t`Settings`);

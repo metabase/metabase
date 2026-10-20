@@ -8,7 +8,6 @@ import {
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { GenericError } from "metabase/common/components/ErrorPages";
-import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useLocation, useParams } from "metabase/router";
@@ -48,8 +47,6 @@ export const EditTableDataContainer = () => {
   const location = useLocation();
   const { dbId: dbIdParam, tableId: tableIdParam } =
     useParams<EditTableDataContainerParams>();
-
-  useCloseNavbarOnMount();
 
   const databaseId = parseInt(dbIdParam ?? "", 10);
   const tableId = parseInt(tableIdParam ?? "", 10);

@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 
-import { Flex, Icon, Text, Title } from "metabase/ui";
+import { Center, Flex, Icon, Text, Title } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
-
-import { PermissionIconContainer } from "./PermissionHelpDescription.styled";
 
 interface PermissionHelpDescriptionProps {
   name: ReactNode;
@@ -22,9 +20,16 @@ export const PermissionHelpDescription = ({
   return (
     <div>
       <Flex align="center" mb={4}>
-        <PermissionIconContainer color={iconColor}>
+        <Center
+          w="1.375rem"
+          h="1.375rem"
+          bdrs="xxs"
+          mr="xs"
+          c="text-primary-inverse"
+          bg={iconColor}
+        >
           <Icon name={icon} />
-        </PermissionIconContainer>
+        </Center>
         <Title order={6} mt={0}>
           {name}
         </Title>

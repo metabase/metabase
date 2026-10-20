@@ -1,0 +1,5 @@
+.bulkActions {
+  transform: translateX(-50%);
+  /* Keep bulk actions below loading overlays and confirmation dialogs. */
+  z-index: calc(var(--mb-overlay-z-index) - 2);
+}

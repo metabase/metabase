@@ -37,7 +37,11 @@ export const JobTriggersSidebar = ({ jobKey }: JobTriggersSidebarProps) => {
         <Text fw="bold" style={{ wordBreak: "break-all" }}>
           {t`Triggers for ${jobKey}`}
         </Text>
-        <ActionIcon aria-label={t`Close`} onClick={handleClose}>
+        <ActionIcon
+          variant="subtle"
+          aria-label={t`Close`}
+          onClick={handleClose}
+        >
           <Icon name="close" />
         </ActionIcon>
       </Flex>

@@ -275,7 +275,9 @@ When including SQL in span attributes, **always** use `tracing/best-effort-sanit
 The `defjob` macro in `metabase.task.impl` automatically wraps every Quartz job with a `:tasks` root span:
 
 ```clojure
-(task/defjob ^{DisallowConcurrentExecution true} SessionCleanup [_]
+(task/defjob SessionCleanup
+  {:saved-class "metabase.session.task.session_cleanup.SessionCleanup"}
+  [_]
   (cleanup-sessions!))
 ;; Automatically creates span: "task.SessionCleanup" {:task/name "SessionCleanup"}
 ```

@@ -241,7 +241,7 @@
 (mu/defn card-archived-and-type
   "The archived flag and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :archived :type :card_schema] :id card-id))
+  (t2/select-one [:model/Card :archived :type] :id card-id))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
