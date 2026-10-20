@@ -12,10 +12,15 @@ const LONGER_THAN_CLOSE_MS = 1000;
 const setupUser = () =>
   userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
+const FADE_DURATION_MS = 200;
+
 const setup = () => {
   const user = setupUser();
   render(
-    <Tooltip label="Tooltip content">
+    <Tooltip
+      label="Tooltip content"
+      transitionProps={{ duration: FADE_DURATION_MS }}
+    >
       <button>Target</button>
     </Tooltip>,
   );
