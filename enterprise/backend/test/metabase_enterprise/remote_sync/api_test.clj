@@ -17,6 +17,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.driver.settings :as driver.settings]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -52,8 +53,8 @@
             (f))))
 
 (use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections
   test-helpers/clean-remote-sync-state
-  test-helpers/enable-custom-collections
   (fn [f]
     (mt/with-premium-features #{:remote-sync}
       (f))))

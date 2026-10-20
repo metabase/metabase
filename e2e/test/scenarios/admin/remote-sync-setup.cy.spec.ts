@@ -1,3 +1,5 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
 const { H } = cy;
 
 const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
@@ -82,16 +84,13 @@ describe("Remote Sync first-time setup", () => {
   });
 
   it("opens branch picker after push while collections to sync are hidden", () => {
-    H.updateSetting("remote-sync-collections-enabled", true);
-    H.configureGitWithNewSyncedCollection("read-write");
     H.updateSetting("remote-sync-collections-enabled", false);
+    H.createLibrary().then(({ body: library }) => {
+      H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+    });
     H.createBranchViaSettings("first-branch");
 
-    cy.visit("/collection/root");
-    H.moveCollectionItemToSyncedCollection(
-      "Orders, Count",
-      "Test Synced Collection",
-    );
+    H.publishTables({ table_ids: [SAMPLE_DATABASE.PRODUCTS_ID] });
     H.clickPushOption();
     H.modal()
       .button(/Push changes/)

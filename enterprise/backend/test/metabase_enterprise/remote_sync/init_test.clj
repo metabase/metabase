@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.settings.core :as setting]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
@@ -19,7 +20,8 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each th/clean-remote-sync-state th/enable-custom-collections)
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections th/clean-remote-sync-state)
 
 (defn- capture-async-import! []
   (let [calls (atom [])]

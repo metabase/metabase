@@ -609,16 +609,11 @@
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
-(defn assert-syncable-without-custom-collections
-  "Check that a remote-synced Collection of the default namespace is the Library or inside it, unless git sync can sync custom collections."
-  [{:keys [is_remote_synced location] :as collection}]
-  (when (and is_remote_synced
-             (nil? (:namespace collection))
-             (not (is-library? collection))
-             (not (remote-sync/custom-collections-syncable?))
-             (not (when-let [library (library-collection)]
-                    (some-> location (str/starts-with? (str "/" (:id library) "/"))))))
-    (let [msg (tru "Git sync can only sync the Library and transforms. Turn on custom collections to sync other collections.")]
+(defn assert-remote-syncable
+  "Check that a remote-synced Collection is one remote sync can sync."
+  [{:keys [is_remote_synced] :as collection}]
+  (when (and is_remote_synced (not (remote-sync/collection-syncable? collection)))
+    (let [msg (tru "Remote sync can only sync the Library and transforms. Turn on custom collections to sync other collections.")]
       (throw (ex-info msg {:status-code 400, :errors {:is_remote_synced msg}})))))
 
 (defenterprise check-library-content
@@ -1931,7 +1926,7 @@
                (cond->
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
     (assert-valid-remote-synced-parent <>)
-    (assert-syncable-without-custom-collections <>)))
+    (assert-remote-syncable <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2153,8 +2148,8 @@
                collection-name (assoc :slug (slugify collection-name)))
       (when-not *clearing-remote-sync*
         (assert-valid-remote-synced-parent (merge collection-before-updates <>))
-        (when (some #(contains? <> %) [:is_remote_synced :location])
-          (assert-syncable-without-custom-collections (merge collection-before-updates <>)))))))
+        (when (contains? <> :is_remote_synced)
+          (assert-remote-syncable (merge collection-before-updates <>)))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 

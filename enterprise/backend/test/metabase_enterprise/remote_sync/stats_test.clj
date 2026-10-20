@@ -7,18 +7,20 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
+
 (defmacro ^:private with-remote-sync
   [& body]
   `(mt/with-empty-h2-app-db!
      (mt/with-premium-features #{:remote-sync :transforms-basic}
-       (mt/with-temporary-setting-values [remote-sync-url                 "file:///tmp/remote-sync-repo"
-                                          remote-sync-transforms          true
-                                          remote-sync-collections-enabled true]
+       (mt/with-temporary-setting-values [remote-sync-url        "file:///tmp/remote-sync-repo"
+                                          remote-sync-transforms true]
          ~@body))))
 
 (deftest card-counts-test
@@ -113,8 +115,7 @@
 (deftest missing-feature-test
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{}
-      (mt/with-temporary-setting-values [remote-sync-url                 "file:///tmp/remote-sync-repo"
-                                         remote-sync-collections-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-url "file:///tmp/remote-sync-repo"]
         (mt/with-temp [:model/Collection {id :id} {:is_remote_synced true}
                        :model/Card       _        {:collection_id id}]
           (is (= {} (stats/remote-sync-stats))))))))

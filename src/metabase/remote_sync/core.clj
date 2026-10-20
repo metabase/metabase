@@ -78,8 +78,8 @@
                     (boolean (contains? remote-synced-coll-ids (:collection_id inst)))]))
             instances))))
 
-(defenterprise custom-collections-syncable?
-  "Whether a collection of the default namespace outside the Library can be remote-synced. Always true on OSS."
+(defenterprise collection-syncable?
+  "Whether `collection` can be remote-synced. Always false on OSS."
   metabase-enterprise.remote-sync.core
-  []
-  true)
+  [_collection]
+  false)

@@ -462,7 +462,7 @@
   []
   (t2/select-pks-vec :model/Collection :is_remote_synced true))
 
-(mu/defn custom-remote-synced-root-collection-ids :- [:set ::lib.schema.id/collection]
+(mu/defn custom-remote-synced-root-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]
   "The ids of the remote-synced top-level Collections of the default namespace other than those of `library-type`."
   [library-type :- :string]
   (t2/select-pks-set :model/Collection {:where [:and

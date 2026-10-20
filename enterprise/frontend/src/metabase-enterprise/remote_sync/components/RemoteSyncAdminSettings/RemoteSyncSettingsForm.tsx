@@ -61,14 +61,16 @@ export const RemoteSyncSettingsForm = ({
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const { initialValues } = useRemoteSyncInitialValues();
+  const { initialValues, libraryCollection } = useRemoteSyncInitialValues();
   const {
     handleSubmit,
     branchChangeModal,
     isUpdating,
+    isCreatingLibrary,
     unsyncedDependenciesError,
   } = useRemoteSyncSubmit({
     initialValues,
+    libraryCollection,
     onSaveSuccess,
     variant,
   });
@@ -110,7 +112,7 @@ export const RemoteSyncSettingsForm = ({
                 {isCollectionsSyncEnabled &&
                   (isRemoteSyncEnabled || isReadWrite) &&
                   !isModalVariant && <CollectionsToSyncSection />}
-                {isCollectionsSyncEnabled && isModalVariant && isReadWrite && (
+                {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />
                   </RemoteSyncSettingsSection>
@@ -143,7 +145,7 @@ export const RemoteSyncSettingsForm = ({
                   }
                   variant="filled"
                   disabled={isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]}
-                  loading={isSaving}
+                  loading={isSaving || isCreatingLibrary}
                 />
               </FormFooter>
 

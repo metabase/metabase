@@ -424,12 +424,6 @@ width: fixed
   (mt/with-temporary-setting-values [remote-sync-transforms false]
     (f)))
 
-(defn enable-custom-collections
-  "Test fixture that runs with remote-sync-collections-enabled on, so tests can sync collections besides the Library."
-  [f]
-  (mt/with-temporary-setting-values [remote-sync-collections-enabled true]
-    (f)))
-
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
   TransformTag, PythonLibrary), and the remote-sync-transforms setting are clean."

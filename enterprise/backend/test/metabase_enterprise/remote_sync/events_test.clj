@@ -12,11 +12,14 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.events.core :as events]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db))
 (defn- mark-synced!
@@ -254,8 +257,7 @@
 
 (deftest events-on-read-only-instance-do-not-track-synced-items-test
   (testing "On a read-only instance, no event marks a synced item dirty, since that change can never be pushed"
-    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
-                                       remote-sync-collections-enabled true]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Dashboard dashboard {:name "Test Dashboard" :collection_id (:id remote-sync-collection)}]
         (t2/delete! :model/RemoteSyncObject)
@@ -268,8 +270,7 @@
                             :model/Dashboard [:event/dashboard-public-link-created :event/dashboard-public-link-deleted]}
             topic topics]
       (testing topic
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
-                                           remote-sync-collections-enabled true]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                          model instance {:name "Shared" :collection_id (:id remote-sync-collection)}]
             (t2/delete! :model/RemoteSyncObject)

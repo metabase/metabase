@@ -17,7 +17,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -252,19 +251,6 @@
         (throw (ex-info (impl/source-error-message e)
                         {:status-code 400} e))))))
 
-(defn- set-collections-remote-sync!
-  "Applies `collection-states` with [[remote-sync.core/bulk-set-remote-sync]], rethrowing its failures as 400s."
-  [collection-states]
-  (when (seq collection-states)
-    (try
-      (remote-sync.core/bulk-set-remote-sync collection-states)
-      (catch Exception e
-        (throw (ex-info (or (ex-message e) "Invalid collection settings")
-                        (assoc (ex-data e)
-                               :error       (ex-message e)
-                               :status-code 400)
-                        e))))))
-
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Remote Sync related settings. You must be a superuser to do this."
   [_route-params
@@ -277,7 +263,6 @@
        [:remote-sync-branch {:optional true} [:maybe :string]]
        [:remote-sync-auto-import {:optional true} [:maybe :boolean]]
        [:remote-sync-transforms {:optional true} [:maybe :boolean]]
-       [:remote-sync-collections-enabled {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   ;; In read-write mode, changing the branch here would flip the setting without reconciling synced
@@ -312,25 +297,21 @@
     (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
       (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
                      "Cannot change synced collections when remote-sync-type is read-only."))
-    (when (and (false? (:remote-sync-collections-enabled settings))
-               (settings/remote-sync-collections-enabled))
-      (set-collections-remote-sync! (remote-sync.core/custom-collection-states)))
     (try
       (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
         (throw (ex-info (or (ex-message e) "Invalid settings")
                         {:error       (ex-message e)
                          :status-code 400} e))))
-    (let [syncs-defaults? (and (not (settings/remote-sync-collections-enabled))
-                               (settings/remote-sync-enabled)
-                               (= :read-write (settings/remote-sync-type)))]
-      (when (and syncs-defaults?
-                 (premium-features/enable-basic-transforms?)
-                 (not= :env (setting/get-raw-value-source :remote-sync-transforms)))
-        (settings/remote-sync-transforms! true))
-      (set-collections-remote-sync!
-       (cond-> collections
-         (and syncs-defaults? (premium-features/enable-library?)) remote-sync.core/assoc-library-sync)))
+    (when (seq collections)
+      (try
+        (remote-sync.core/bulk-set-remote-sync collections)
+        (catch Exception e
+          (throw (ex-info (or (ex-message e) "Invalid collection settings")
+                          (assoc (ex-data e)
+                                 :error       (ex-message e)
+                                 :status-code 400)
+                          e)))))
     (remote-sync.events/sync-transforms-tracking!)
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}

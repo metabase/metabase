@@ -8,10 +8,13 @@
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 ;;; ------------------------------------------------ Spec Validation Tests ---------------------------------------------
 
@@ -478,12 +481,12 @@
 (deftest model-editable?-collection-eligibility-test
   (testing "model-editable? with :collection eligibility (Card)"
     (testing "returns false when card is in remote-synced collection and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only remote-sync-collections-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced Collection" :is_remote_synced true :location "/"}]
           (is (false? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in synced collections should NOT be editable in read-only mode"))))
     (testing "returns true when card is in non-synced collection even in read-only mode"
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only remote-sync-collections-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Normal Collection" :is_remote_synced false :location "/"}]
           (is (true? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in non-synced collections should be editable"))))))

@@ -38,12 +38,15 @@
   (or (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
 
-(defenterprise custom-collections-syncable?
-  "Whether a collection of the default namespace outside the Library can be remote-synced, which needs custom collections enabled once git sync is configured."
-  :feature :none
-  []
-  (or (not (settings/remote-sync-enabled))
-      (settings/remote-sync-collections-enabled)))
+(defenterprise collection-syncable?
+  "Whether `collection` can be remote-synced: any Collection outside the default namespace, the Library and every Collection inside it, and any other once custom collections are on."
+  :feature :remote-sync
+  [{:keys [location] :as collection}]
+  (or (some? (:namespace collection))
+      (contains? collections/library-collection-types (:type collection))
+      (settings/remote-sync-collections-enabled)
+      (boolean (when-let [library (and location (collections/library-collection))]
+                 (some #{(:id library)} (collections/location-path->ids location))))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
@@ -444,18 +447,6 @@
                 :error_code  "remote-synced-dependents"
                 :errors      {:collections [(describe-dependent-failure remote-synced-dependents)]}}))))
 
-(mu/defn custom-collection-states :- [:map-of pos-int? :boolean]
-  "Collection states that stop syncing every remote-synced top-level Collection of the default namespace outside the Library."
-  []
-  (zipmap (remote-sync.db/custom-remote-synced-root-collection-ids collections/library-collection-type) (repeat false)))
-
-(mu/defn assoc-library-sync :- [:map-of pos-int? :boolean]
-  "`collection-states` plus the Library, created when missing, unless it is already synced."
-  [collection-states :- [:maybe [:map-of pos-int? :boolean]]]
-  (let [library (or (collections/library-collection) (collections/create-library-collection!))]
-    (cond-> (or collection-states {})
-      (not (:is_remote_synced library)) (assoc (:id library) true))))
-
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."
@@ -476,7 +467,7 @@
       (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
                       {:status-code 400})))
     (doseq [collection sync-on]
-      (collections/assert-syncable-without-custom-collections (assoc collection :is_remote_synced true)))
+      (collections/assert-remote-syncable (assoc collection :is_remote_synced true)))
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)
