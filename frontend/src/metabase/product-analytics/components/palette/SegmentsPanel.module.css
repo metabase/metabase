@@ -1,0 +1,38 @@
+/* Fills the column the setup panel gives it. */
+.root {
+  flex: 1;
+  min-height: 0;
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.section {
+  border: 1px dashed transparent;
+  border-radius: var(--mantine-radius-sm);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.section[data-drop-active="true"] {
+  border-color: var(--mb-color-border-brand);
+}
+
+.section[data-drop-over="true"] {
+  background-color: var(--mb-color-background-brand);
+}
+
+.section[data-drop-active="true"] * {
+  pointer-events: none;
+}

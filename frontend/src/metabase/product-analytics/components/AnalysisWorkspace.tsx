@@ -31,10 +31,10 @@ import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
 import { FilterPills } from "./FilterPills";
-import { SettingsPanel } from "./SettingsPanel";
+import { SetupPanel } from "./SetupPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
-import { SegmentPalette } from "./palette/SegmentPalette";
+import { SegmentsPanel } from "./palette/SegmentsPanel";
 import { InsightsPanel } from "./supporting/InsightsPanel";
 import { InsightsToggleContext } from "./supporting/InsightsToggle";
 import { SupportingAnalyses } from "./supporting/SupportingAnalyses";
@@ -44,18 +44,18 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   tableId: ConcreteTableId | undefined;
   savedCard?: Card;
   savedSettings?: StoredSettings;
-  /** For a new analysis, where the palette picks the table. */
+  /** For a new analysis, where the setup panel picks the table. */
   onTableChange?: (tableId: ConcreteTableId) => void;
 };
 
 /**
  * The event analysis page: the title and toolbar across the top, then the
- * segment palette, the setup panel and the result side by side. A new
- * analysis shows only the palette's table picker until a table is picked.
- * The result's column scrolls, with the kind's supporting analyses below the
- * primary chart. Each chart's insights button opens the insights in a side
- * panel on the right. A saved analysis opens on its result, with both side
- * panels collapsed.
+ * setup panel (with the segments attached to its right) and the result side
+ * by side. A new analysis shows only the setup panel's table picker until a
+ * table is picked. The result's column scrolls, with the kind's supporting
+ * analyses below the primary chart. Each chart's insights button opens the
+ * insights in a side panel on the right. A saved analysis opens on its
+ * result, with the side panels collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -65,8 +65,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   onTableChange,
 }: AnalysisWorkspaceProps<K>) => {
   const navigate = useNavigate();
-  const isNew = savedSettings === undefined;
-  const [isPaletteOpen, setIsPaletteOpen] = useState(isNew);
+  const [isSegmentsOpen, setIsSegmentsOpen] = useState(false);
   // The panel whose toolbar button is hovered lights up its border.
   const [hintedPanel, setHintedPanel] = useState<HintedPanel | null>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
@@ -79,6 +78,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     onSaved,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
+  // Without a table, the setup panel is where it gets picked.
+  const isSetupOpen = panel !== null || tableId === undefined;
   const {
     config,
     table,
@@ -107,7 +108,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onShowInsights: openInsights,
   });
   const insights = supporting.insights;
-  const isShowingInsights = isInsightsOpen && insights !== undefined;
   const drillQueries = useDrillQueries({
     spec,
     compiledBase: query.compiledBase,
@@ -169,7 +169,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 
   return (
     <SegmentDragProvider
-      isPaletteOpen={isPaletteOpen}
+      isPaletteOpen={isSetupOpen && isSegmentsOpen}
       onPeopleSegment={handleAddPeopleFilter}
     >
       {/* Keeps the app-wide react-dnd backend out of the palette's native drags. */}
@@ -196,14 +196,12 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           />
           <AnalysisToolbar
             widgets={widgets}
-            panel={panel}
             setupLabel={config.setupLabel}
             sql={query.sql}
             canSave={canSave}
             isSaveDisabled={isSaveDisabled}
-            isPaletteOpen={isPaletteOpen}
-            onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
-            onPanelChange={setPanel}
+            isSetupOpen={isSetupOpen}
+            onToggleSetup={() => setPanel(isSetupOpen ? null : "setup")}
             onHintPanel={setHintedPanel}
             onSave={handleSave}
           />
@@ -222,52 +220,52 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           align="stretch"
           mih={0}
         >
-          {isPaletteOpen && (
-            <SegmentPalette
+          {isSetupOpen && (
+            <SetupPanel
+              key={kind}
               tableId={tableId}
               table={table}
-              usersTable={usersTable}
               onTableChange={
                 onTableChange &&
                 ((id) => {
-                  // Picking the first table reveals the setup, even if its
-                  // toolbar button was toggled off while there was none.
+                  // Picking the first table keeps the setup showing, even if
+                  // its toolbar button was toggled off while there was none.
                   if (tableId === undefined && panel === null) {
                     setPanel("setup");
                   }
                   onTableChange(id);
                 })
               }
-              onSelectPeopleSegment={handleAddPeopleFilter}
-              isHinted={hintedPanel === "palette"}
-            />
-          )}
-          {tableId !== undefined && panel && (
-            <SettingsPanel
-              key={kind}
-              panel={panel}
+              tab={panel ?? "setup"}
+              onTabChange={setPanel}
+              setupLabel={config.setupLabel}
               widgets={widgets}
-              isHinted={hintedPanel === panel}
+              isSegmentsOpen={isSegmentsOpen}
+              onToggleSegments={() => setIsSegmentsOpen((isOpen) => !isOpen)}
+              segments={
+                <SegmentsPanel
+                  table={table}
+                  usersTable={usersTable}
+                  onSelectPeopleSegment={handleAddPeopleFilter}
+                />
+              }
+              isHinted={hintedPanel === "setup"}
             />
           )}
           {tableId !== undefined && (
             <InsightsToggleContext.Provider
-              value={
-                insights !== undefined
-                  ? {
-                      isOpen: isInsightsOpen,
-                      onToggle: () => setIsInsightsOpen((isOpen) => !isOpen),
-                      onHint: (isHinted) =>
-                        setHintedPanel(isHinted ? "insights" : null),
-                    }
-                  : null
-              }
+              value={{
+                isOpen: isInsightsOpen,
+                onToggle: () => setIsInsightsOpen((isOpen) => !isOpen),
+                onHint: (isHinted) =>
+                  setHintedPanel(isHinted ? "insights" : null),
+              }}
             >
               <Stack
                 flex={1}
                 miw={0}
                 gap="lg"
-                pr={isShowingInsights ? 0 : "lg"}
+                pr={isInsightsOpen ? 0 : "lg"}
                 style={{ overflowY: "auto" }}
               >
                 <AnalysisResult
@@ -289,7 +287,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               </Stack>
             </InsightsToggleContext.Provider>
           )}
-          {tableId !== undefined && isShowingInsights && (
+          {tableId !== undefined && isInsightsOpen && (
             <InsightsPanel
               insights={insights.insights}
               focus={insights.focus}

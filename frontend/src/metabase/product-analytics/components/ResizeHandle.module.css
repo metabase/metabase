@@ -1,0 +1,14 @@
+/* On the body while a panel is being resized. */
+.resizingX,
+.resizingY {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.resizingX {
+  cursor: col-resize;
+}
+
+.resizingY {
+  cursor: row-resize;
+}

@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Button, Group, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
-import type { AnalysisPanel, HintedPanel } from "../use-analysis-state";
+import type { HintedPanel } from "../use-analysis-state";
 
 import { SqlModal } from "./SqlModal";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
@@ -17,14 +17,12 @@ const findSetting = (
 
 type AnalysisToolbarProps = {
   widgets: SettingWidget[];
-  panel: AnalysisPanel | null;
   setupLabel: string;
   sql: string | null;
   canSave: boolean;
   isSaveDisabled: boolean;
-  isPaletteOpen: boolean;
-  onTogglePalette: () => void;
-  onPanelChange: (panel: AnalysisPanel | null) => void;
+  isSetupOpen: boolean;
+  onToggleSetup: () => void;
   /** The panel whose button is hovered, so the panel can show it's the one. */
   onHintPanel: (panel: HintedPanel | null) => void;
   onSave: () => void;
@@ -36,67 +34,30 @@ type AnalysisToolbarProps = {
  */
 export const AnalysisToolbar = ({
   widgets,
-  panel,
   setupLabel,
   sql,
   canSave,
   isSaveDisabled,
-  isPaletteOpen,
-  onTogglePalette,
-  onPanelChange,
+  isSetupOpen,
+  onToggleSetup,
   onHintPanel,
   onSave,
 }: AnalysisToolbarProps) => {
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
-  const hintProps = (target: HintedPanel) => ({
-    onMouseEnter: () => onHintPanel(target),
-    onMouseLeave: () => onHintPanel(null),
-  });
-
-  const togglePanel = (target: AnalysisPanel) =>
-    onPanelChange(panel === target ? null : target);
-  // Column role settings aren't shown, so some analyses have nothing here.
-  const hasAdvancedSettings = widgets.some(
-    (widget) =>
-      widget.section === "advanced" &&
-      !widget.hidden &&
-      widget.group === undefined,
-  );
 
   return (
     <>
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <Group gap="sm">
-          <Tooltip label={t`Data and segments`}>
-            <Button
-              variant="default"
-              aria-label={t`Data and segments`}
-              aria-pressed={isPaletteOpen}
-              leftSection={<Icon name="database" />}
-              onClick={onTogglePalette}
-              {...hintProps("palette")}
-            />
-          </Tooltip>
-          <Button.Group>
-            <Button
-              variant="default"
-              aria-pressed={panel === "setup"}
-              onClick={() => togglePanel("setup")}
-              {...hintProps("setup")}
-            >
-              {setupLabel}
-            </Button>
-            {hasAdvancedSettings && (
-              <Button
-                variant="default"
-                aria-label={t`Advanced settings`}
-                aria-pressed={panel === "advanced"}
-                leftSection={<Icon name="sliders" />}
-                onClick={() => togglePanel("advanced")}
-                {...hintProps("advanced")}
-              />
-            )}
-          </Button.Group>
+          <Button
+            variant="default"
+            aria-pressed={isSetupOpen}
+            onClick={onToggleSetup}
+            onMouseEnter={() => onHintPanel("setup")}
+            onMouseLeave={() => onHintPanel(null)}
+          >
+            {setupLabel}
+          </Button>
           <Button.Group>
             <ToolbarSetting setting={findSetting(widgets, "counting")} />
             <ToolbarSetting setting={findSetting(widgets, "filters")} />

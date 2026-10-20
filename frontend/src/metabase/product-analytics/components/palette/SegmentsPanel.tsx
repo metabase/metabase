@@ -1,21 +1,20 @@
-import { type HTMLAttributes, type Ref, forwardRef, useState } from "react";
-import { Resizable, type ResizeCallbackData } from "react-resizable";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import {
   Box,
   Button,
-  Divider,
   Group,
   Icon,
   Loader,
-  ScrollArea,
   Stack,
+  Tabs,
   Text,
+  Title,
   Tooltip,
 } from "metabase/ui";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import type { UsersTable } from "../../analyses/types";
 import { useEventDropTarget } from "../../segments/drag-context";
@@ -30,155 +29,64 @@ import {
   usePaletteSegments,
 } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
-import { EventTablePicker } from "../EventTablePicker";
 import { EventDefinitionEditor } from "../events/EventDefinitionEditor";
 import { useTableQuery } from "../events/use-table-query";
 
 import { NewSegmentModal } from "./NewSegmentModal";
 import { PaletteSegmentItem } from "./PaletteSegmentItem";
-import S from "./SegmentPalette.module.css";
+import S from "./SegmentsPanel.module.css";
 
-const DEFAULT_WIDTH = 272;
-const MIN_WIDTH = 240;
-const MAX_WIDTH = 400;
-
-type SegmentPaletteProps = {
-  tableId: ConcreteTableId | undefined;
+type SegmentsPanelProps = {
   table: Table | undefined;
   usersTable: UsersTable | undefined;
-  /** Absent when the table is fixed, as it is for a saved analysis. */
-  onTableChange?: (tableId: ConcreteTableId) => void;
   /** A click on a people segment, which adds it as a filter. */
   onSelectPeopleSegment: (segment: PaletteSegment) => void;
-  /** The toolbar button that closes the palette is hovered. */
-  isHinted?: boolean;
 };
 
 /**
- * The panel on the far left, beside the setup panel: the event table, then
- * its segments and the linked people table's, each draggable onto the setup
- * panel's slots. Until a table is picked, it's only the table picker, opened.
- * The toolbar's segments button shows and hides it.
+ * The column attached to the right of the setup panel: the event table's
+ * segments and the linked people table's, each draggable onto the setup
+ * panel's slots. The button beside the table picker shows and hides it.
  */
-export const SegmentPalette = ({
-  tableId,
+export const SegmentsPanel = ({
   table,
   usersTable,
-  onTableChange,
   onSelectPeopleSegment,
-  isHinted = false,
-}: SegmentPaletteProps) => {
-  const peopleTitle = getPeopleTitle(usersTable);
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-
-  const handleResize = (_event: unknown, data: ResizeCallbackData) =>
-    setWidth(data.size.width);
-  // The drag crosses text everywhere; keep it from selecting any.
-  const handleResizeStart = () => document.body.classList.add(S.noSelect);
-  const handleResizeStop = () => document.body.classList.remove(S.noSelect);
-
-  return (
-    <Resizable
-      width={width}
-      height={0}
-      axis="x"
-      minConstraints={[MIN_WIDTH, 0]}
-      maxConstraints={[MAX_WIDTH, 0]}
-      resizeHandles={["e"]}
-      handle={<PaletteResizeHandle />}
-      onResize={handleResize}
-      onResizeStart={handleResizeStart}
-      onResizeStop={handleResizeStop}
-    >
-      <Stack
-        className={S.root}
-        w={width}
-        pos="relative"
-        gap={0}
-        data-hinted={isHinted}
-      >
-        <Stack gap="md" px="md" pt="lg" pb="md">
-          <Text fw="bold" c="text-secondary">
-            {t`Event data`}
-          </Text>
-          {onTableChange !== undefined ? (
-            <EventTablePicker
-              tableId={tableId}
-              isInitiallyOpened={tableId === undefined}
-              onChange={onTableChange}
-              size="md"
-              fullWidth
-            />
-          ) : (
-            <Group gap="sm" wrap="nowrap" align="center">
-              <Icon name="database" />
-              <Text fw="bold" truncate>
-                {table?.display_name ?? t`Loading…`}
-              </Text>
-            </Group>
-          )}
-        </Stack>
-        {tableId !== undefined && (
-          <>
-            <Divider />
-            <ScrollArea flex={1} mih={0}>
-              <Stack gap="xl" pt="md" pb="lg">
-                <PaletteSection
-                  title={t`Event segments`}
-                  source="event"
-                  table={table}
-                  emptyMessage={t`No segments on this table yet.`}
-                />
-                <PaletteSection
-                  title={peopleTitle}
-                  source="people"
-                  table={usersTable?.table}
-                  samples={
-                    usersTable === undefined ? getSamplePeopleSegments() : []
-                  }
-                  emptyMessage={t`No segments on this table yet.`}
-                  onSelect={onSelectPeopleSegment}
-                />
-              </Stack>
-            </ScrollArea>
-          </>
-        )}
-      </Stack>
-    </Resizable>
-  );
-};
-
-type PaletteResizeHandleProps = HTMLAttributes<HTMLDivElement> & {
-  /** Passed by `Resizable`; a div can't take it. */
-  handleAxis?: string;
-};
-
-/** The grab strip on the palette's right edge. `Resizable` attaches the drag. */
-const PaletteResizeHandle = forwardRef(function PaletteResizeHandle(
-  { handleAxis: _handleAxis, ...rest }: PaletteResizeHandleProps,
-  ref: Ref<HTMLDivElement>,
-) {
-  return (
-    <Box
-      ref={ref}
-      className={S.handle}
-      pos="absolute"
-      top={0}
-      right={-4}
-      w="sm"
-      h="100%"
-      {...rest}
-    />
-  );
-});
-
-const getPeopleTitle = (usersTable: UsersTable | undefined): string => {
-  const name = usersTable?.table.display_name ?? "";
-  return /user/i.test(name) ? t`User segments` : t`Customer segments`;
-};
+}: SegmentsPanelProps) => (
+  <Stack className={S.root} gap={0}>
+    {/* As tall as the table picker's row (its lg ActionIcon), so both tab
+        bars line up. */}
+    <Group h="2.125rem" px="lg" mt="lg" mb="md">
+      <Title order={5}>{t`Segments`}</Title>
+    </Group>
+    <Tabs defaultValue="event" className={S.tabs}>
+      <Tabs.List px="lg">
+        <Tabs.Tab value="event">{t`Events`}</Tabs.Tab>
+        <Tabs.Tab value="people">{t`People`}</Tabs.Tab>
+      </Tabs.List>
+      <Box className={S.scroll}>
+        <Tabs.Panel value="event" py="md">
+          <PaletteSection
+            source="event"
+            table={table}
+            emptyMessage={t`No segments on this table yet.`}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value="people" py="md">
+          <PaletteSection
+            source="people"
+            table={usersTable?.table}
+            samples={usersTable === undefined ? getSamplePeopleSegments() : []}
+            emptyMessage={t`No segments on this table yet.`}
+            onSelect={onSelectPeopleSegment}
+          />
+        </Tabs.Panel>
+      </Box>
+    </Tabs>
+  </Stack>
+);
 
 type PaletteSectionProps = {
-  title: string;
   source: SegmentSource;
   /** Undefined when there's no such table; only `samples` are shown then. */
   table: Table | undefined;
@@ -191,7 +99,6 @@ type PaletteSectionProps = {
 type ModalState = { draft: SegmentDraft } | null;
 
 const PaletteSection = ({
-  title,
   source,
   table,
   samples = [],
@@ -230,23 +137,7 @@ const PaletteSection = ({
 
   return (
     <Stack className={S.section} gap="xs" px="md" py="xs" {...eventDropProps}>
-      <Group justify="space-between" wrap="nowrap" mb="xs">
-        <Group gap="xs" wrap="nowrap">
-          <Text fw="bold">{title}</Text>
-          {isLoading && <Loader size="xs" />}
-        </Group>
-        <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
-          <Button
-            size="compact-md"
-            variant="subtle"
-            leftSection={<Icon name="add" />}
-            disabled={!canEdit || isDrafting}
-            onClick={() => setIsDrafting(true)}
-          >
-            {t`Draft`}
-          </Button>
-        </Tooltip>
-      </Group>
+      {isLoading && <Loader size="xs" />}
       {takesEvents && eventDrop.isActive && (
         <Text c="text-brand" fw="bold">
           {t`Drop to draft a segment from it`}
@@ -324,6 +215,20 @@ const PaletteSection = ({
             setIsDrafting(false);
           }}
         />
+      )}
+      {!isDrafting && (
+        <Box>
+          <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
+            <Button
+              variant="subtle"
+              leftSection={<Icon name="add" />}
+              disabled={!canEdit}
+              onClick={() => setIsDrafting(true)}
+            >
+              {t`Draft a segment`}
+            </Button>
+          </Tooltip>
+        </Box>
       )}
       {modal !== null && table !== undefined && tableQuery !== undefined && (
         <NewSegmentModal

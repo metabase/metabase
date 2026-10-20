@@ -1,0 +1,76 @@
+.root {
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+  transition: border-color 120ms ease;
+}
+
+/* While the toolbar button that closes this panel is hovered. */
+.root[data-hinted="true"] {
+  border-color: var(--mb-color-border-strong);
+}
+
+.main,
+.segments {
+  position: relative;
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.segments {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--mb-color-border);
+  transition: border-color 120ms ease;
+}
+
+.mainHandle,
+.segmentsHandle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  z-index: 1;
+  width: 8px;
+  height: 100%;
+  touch-action: none;
+}
+
+/* Grabbing an edge darkens it: the rule between the columns, or the panel's
+   own right edge when nothing is beyond it. */
+.root:has(.mainHandle:is(:hover, :active)) .segments {
+  border-left-color: var(--mb-color-border-strong);
+}
+
+.root:not(:has(.segments)):has(.mainHandle:is(:hover, :active)),
+.root:has(.segmentsHandle:is(:hover, :active)) {
+  border-right-color: var(--mb-color-border-strong);
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.segmentsToggle {
+  flex-shrink: 0;
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background_surface-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+
+  &:hover,
+  &[aria-pressed="true"] {
+    background: var(--mb-color-background_surface-hover);
+  }
+
+  &[data-disabled] {
+    color: var(--mb-color-text-disabled);
+  }
+}

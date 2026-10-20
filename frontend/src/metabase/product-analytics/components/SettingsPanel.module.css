@@ -1,8 +1,0 @@
-.root {
-  transition: border-color 120ms ease;
-}
-
-/* While the toolbar button that closes this panel is hovered. */
-.root[data-hinted="true"] {
-  border-color: var(--mb-color-border-strong);
-}

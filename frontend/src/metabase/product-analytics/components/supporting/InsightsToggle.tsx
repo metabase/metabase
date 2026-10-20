@@ -12,7 +12,7 @@ type InsightsToggleState = {
   onHint: (isHinted: boolean) => void;
 };
 
-/** Null while the analysis has no insights, which hides every toggle. */
+/** Null outside an analysis's charts, which hides the toggle. */
 export const InsightsToggleContext = createContext<InsightsToggleState | null>(
   null,
 );

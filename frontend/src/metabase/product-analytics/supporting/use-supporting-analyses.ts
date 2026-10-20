@@ -97,11 +97,8 @@ export type SupportingAnalyses = {
   paths: PathsSupport | undefined;
   /** Set while the analysis is cohorts. */
   cohorts: CohortsSupport | undefined;
-  /**
-   * Set while the analysis has insights to show: funnels and lifecycles
-   * always, paths once they start at the start of a visit.
-   */
-  insights: InsightsSupport | undefined;
+  /** The insights side panel's content; every kind has one. */
+  insights: InsightsSupport;
   /** The chart click actions that lead to a supporting analysis. */
   getClickActions: (clicked: ClickObject) => ClickAction[];
 };
@@ -139,7 +136,6 @@ export const useSupportingAnalyses = ({
   const isFunnel = spec?.kind === "funnel";
   const isCohorts = spec?.kind === "cohorts";
   const isPaths = spec?.kind === "paths";
-  const isLifecycle = spec?.kind === "lifecycle";
 
   const { dataset, datasetQuery } = query;
   const cohortsSeries = useMemo((): SingleSeries<UnsavedCard> | undefined => {
@@ -215,13 +211,22 @@ export const useSupportingAnalyses = ({
     [spec, pathsFunnel, insights.state, onShowInsights],
   );
 
-  const insightsIdleLabel = isFunnel
-    ? t`Finish setting up the funnel to see insights.`
-    : isLifecycle
-      ? t`Finish setting up the lifecycle to see insights.`
-      : isPaths && insights.state.status !== "idle"
-        ? t`Start the paths at the start of a visit to see insights.`
-        : undefined;
+  const insightsIdleLabel = (() => {
+    switch (spec?.kind) {
+      case "funnel":
+        return t`Finish setting up the funnel to see insights.`;
+      case "lifecycle":
+        return t`Finish setting up the lifecycle to see insights.`;
+      case "paths":
+        return t`Start the paths at the start of a visit to see insights.`;
+      case "habit":
+        return t`Insights aren't available for habits yet.`;
+      case "cohorts":
+        return t`Insights aren't available for cohorts yet.`;
+      default:
+        return t`Finish setting up this analysis to see insights.`;
+    }
+  })();
 
   return {
     funnel: isFunnel
@@ -246,10 +251,7 @@ export const useSupportingAnalyses = ({
           error: query.error,
         }
       : undefined,
-    insights:
-      insightsIdleLabel !== undefined
-        ? { insights, focus: insightsFocus, idleLabel: insightsIdleLabel }
-        : undefined,
+    insights: { insights, focus: insightsFocus, idleLabel: insightsIdleLabel },
     getClickActions,
   };
 };

@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -24,11 +25,13 @@ import type {
 
 import type { MissingSetting } from "../analyses/types";
 
+import S from "./AnalysisResult.module.css";
+import { ResizeHandle } from "./ResizeHandle";
 import { InsightsToggle } from "./supporting/InsightsToggle";
 
 const SYNTHETIC_CARD_ID = -1;
-// The result shares a scrolling column with the supporting analyses below it.
-const MIN_HEIGHT_PX = 480;
+const MIN_HEIGHT_PX = 400;
+const MAX_HEIGHT_PX = 880;
 
 type AnalysisResultProps = {
   title: string;
@@ -59,6 +62,9 @@ export const AnalysisResult = ({
   onOpenSetup,
   clickActionsMode,
 }: AnalysisResultProps) => {
+  const paperRef = useRef<HTMLDivElement>(null);
+  // Undefined until the bottom edge is dragged.
+  const [height, setHeight] = useState<number>();
   const rawSeries: RawSeries | null =
     dataset?.data !== undefined && datasetQuery !== undefined
       ? [
@@ -79,7 +85,19 @@ export const AnalysisResult = ({
   const isShowingVisualization =
     !isIncomplete && !isLoading && !error && rawSeries !== null;
   return (
-    <Paper withBorder radius="md" p="lg" flex={1} miw={0} mih={MIN_HEIGHT_PX}>
+    <Paper
+      ref={paperRef}
+      withBorder
+      radius="md"
+      p="lg"
+      miw={0}
+      mih={MIN_HEIGHT_PX}
+      mah={MAX_HEIGHT_PX}
+      // Until it's resized, the chart fills the column's height.
+      flex={height === undefined ? 1 : "none"}
+      h={height}
+      className={S.root}
+    >
       <Stack h="100%">
         <Group justify="space-between" wrap="nowrap">
           <Title order={4}>{title}</Title>
@@ -114,6 +132,14 @@ export const AnalysisResult = ({
           )}
         </Stack>
       </Stack>
+      <ResizeHandle
+        className={S.handle}
+        axis="y"
+        getSize={() => paperRef.current?.offsetHeight ?? MIN_HEIGHT_PX}
+        min={MIN_HEIGHT_PX}
+        max={MAX_HEIGHT_PX}
+        onResize={setHeight}
+      />
     </Paper>
   );
 };
