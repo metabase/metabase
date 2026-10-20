@@ -18,17 +18,35 @@ const NOISY_SHARE = 0.2;
 // isn't all noise.
 const NOISY_FAIR_SHARE_MULTIPLE = 3;
 
-const BOUNDS_NOTES: Record<PathsSpec["direction"], string> = {
-  from: "the window of steps in each visit, starting at the first starting event",
-  to: "the window of steps in each visit, ending at the first ending event",
-  between:
-    "the window of steps in each visit, from the first starting event to the next ending event",
+/** Where a path's window starts and ends, in words, for the SQL notes. */
+const getBoundsNote = ({ direction, start, end }: PathsSpec): string => {
+  const starting =
+    start !== null ? "the first starting event" : "the first step of the visit";
+  const ending =
+    end === null
+      ? "the last step of the visit"
+      : direction === "between"
+        ? "the next ending event"
+        : "the first ending event";
+  switch (direction) {
+    case "from":
+      return `the window of steps in each visit, starting at ${starting}`;
+    case "to":
+      return `the window of steps in each visit, ending at ${ending}`;
+    case "between":
+      return `the window of steps in each visit, from ${starting} to ${ending}`;
+  }
 };
 
+/**
+ * Each visit's window. Without a starting event, it starts at the visit's
+ * first step, and without an ending event, it ends at the visit's last.
+ */
 const getBoundsBody = (
-  direction: PathsSpec["direction"],
+  { direction, start, end }: PathsSpec,
   depth: number,
 ): string[] => {
+  const endsAt = end !== null ? "min" : "max";
   switch (direction) {
     case "from":
       return [
@@ -38,7 +56,7 @@ const getBoundsBody = (
         "  toInt64(min(position)) AS first_position,",
         `  first_position + ${depth} AS last_position`,
         "FROM ordered_steps",
-        "WHERE is_start",
+        start !== null ? "WHERE is_start" : "",
         "GROUP BY actor, visit",
       ];
     case "to":
@@ -48,10 +66,10 @@ const getBoundsBody = (
         "SELECT",
         "  actor,",
         "  visit,",
-        "  toInt64(min(position)) AS last_position,",
+        `  toInt64(${endsAt}(position)) AS last_position,`,
         `  last_position - ${depth} AS first_position`,
         "FROM ordered_steps",
-        "WHERE is_end",
+        end !== null ? "WHERE is_end" : "",
         "GROUP BY actor, visit",
       ];
     case "between":
@@ -60,30 +78,35 @@ const getBoundsBody = (
         "  o.actor AS actor,",
         "  o.visit AS visit,",
         "  any(starts.first_position) AS first_position,",
-        "  toInt64(min(o.position)) AS last_position",
+        `  toInt64(${endsAt}(o.position)) AS last_position`,
         "FROM ordered_steps AS o",
         "INNER JOIN (",
         "  SELECT actor, visit, toInt64(min(position)) AS first_position",
         "  FROM ordered_steps",
-        "  WHERE is_start",
+        start !== null ? "  WHERE is_start" : "",
         "  GROUP BY actor, visit",
         ") AS starts ON starts.actor = o.actor AND starts.visit = o.visit",
-        "WHERE o.is_end AND o.position > starts.first_position",
+        `WHERE ${end !== null ? "o.is_end AND " : ""}o.position > starts.first_position`,
         "GROUP BY o.actor, o.visit",
         `HAVING last_position - first_position <= ${depth}`,
       ];
   }
 };
 
-export const planPaths = (spec: AnalysisSpec): QueryPlan => {
-  const paths = spec.paths;
-  if (!paths) {
-    return { ctes: [], select: "SELECT 1", warnings: [] };
-  }
+/** The steps a path shows after its first, at most. */
+export const getPathDepth = (paths: PathsSpec): number =>
+  Math.min(paths.steps, 8);
 
+/**
+ * The CTEs every paths query shares: each visit's steps in order as
+ * `ordered_steps`, and the window of them the paths cover as `bounds`.
+ */
+export const pathWindowCtes = (
+  spec: AnalysisSpec,
+  paths: PathsSpec,
+): { ctes: Cte[]; warnings: string[] } => {
   const warnings: string[] = [];
   const gap = paths.sessionGapMinutes * 60;
-  const depth = Math.min(paths.steps, 8);
 
   const isStep = paths.included.length
     ? paths.included.map((ref) => flagSql(ref.flag)).join("\n     OR ")
@@ -190,10 +213,26 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
 
   ctes.push({
     name: "bounds",
-    note: BOUNDS_NOTES[paths.direction],
+    note: getBoundsNote({ ...paths, start, end }),
     deps: ["ordered_steps"],
-    body: getBoundsBody(paths.direction, depth).join("\n"),
+    body: getBoundsBody({ ...paths, start, end }, getPathDepth(paths))
+      .filter(Boolean)
+      .join("\n"),
   });
+
+  return { ctes, warnings };
+};
+
+export const planPaths = (spec: AnalysisSpec): QueryPlan => {
+  const paths = spec.paths;
+  if (!paths) {
+    return { ctes: [], select: "SELECT 1", warnings: [] };
+  }
+
+  const depth = getPathDepth(paths);
+  const window = pathWindowCtes(spec, paths);
+  const warnings = [...window.warnings];
+  const ctes = [...window.ctes];
 
   ctes.push({
     name: "numbered",

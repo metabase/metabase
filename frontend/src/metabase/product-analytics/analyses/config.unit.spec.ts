@@ -569,33 +569,40 @@ describe("analysis settings", () => {
       expect(getMissingKeys(specResult)).toEqual(["cohorts.attribute"]);
     });
 
-    it("only requires the paths events the direction uses", () => {
-      const noEvents = { "paths.start": null, "paths.end": null };
+    it.each(["from", "to", "between"])(
+      "runs %s paths without events, from a visit's first step to its last",
+      (direction) => {
+        const { specResult } = setup({
+          kind: "paths",
+          stored: { "paths.direction": direction },
+        });
+        const spec = getReadySpec(specResult);
 
-      expect(
-        getMissingKeys(
-          setup({
-            kind: "paths",
-            stored: { ...noEvents, "paths.direction": "from" },
-          }).specResult,
-        ),
-      ).toEqual(["paths.start"]);
-      expect(
-        getMissingKeys(
-          setup({
-            kind: "paths",
-            stored: { ...noEvents, "paths.direction": "to" },
-          }).specResult,
-        ),
-      ).toEqual(["paths.end"]);
-      expect(
-        getMissingKeys(
-          setup({
-            kind: "paths",
-            stored: { ...noEvents, "paths.direction": "between" },
-          }).specResult,
-        ),
-      ).toEqual(["paths.start", "paths.end"]);
+        expect(spec.paths?.start).toBeNull();
+        expect(spec.paths?.end).toBeNull();
+      },
+    );
+
+    it("bounds paths by the visit when they have no events", () => {
+      const getBoundsSql = (direction: string) => {
+        const { specResult } = setup({
+          kind: "paths",
+          stored: { "paths.direction": direction },
+        });
+        const built = buildSql(getReadySpec(specResult), "SELECT 1", {
+          columns: PLANNER_COLUMNS,
+          flags: [],
+          extraColumns: [],
+        });
+        return built.ctes.find(({ name }) => name === "bounds")?.body ?? "";
+      };
+
+      expect(getBoundsSql("from")).not.toContain("is_start");
+      expect(getBoundsSql("to")).toContain(
+        "toInt64(max(position)) AS last_position",
+      );
+      expect(getBoundsSql("to")).not.toContain("is_end");
+      expect(getBoundsSql("between")).toContain("max(o.position)");
     });
 
     it("leaves the event its direction hides out of the query", () => {

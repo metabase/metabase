@@ -31,6 +31,7 @@ import {
   type FunnelInsights,
   useFunnelInsights,
 } from "../insights/use-funnel-insights";
+import { type PathSteps, usePathSteps } from "../path-steps/use-path-steps";
 import type { AnalysisSpec, FunnelSpec } from "../spec/types";
 import { periodOf } from "../sql/analyses/cohorts";
 import type { FunnelPathsRange } from "../sql/analyses/funnel-paths";
@@ -81,6 +82,8 @@ export type CohortsSupport = {
 export type SupportingAnalyses = {
   /** Set while the analysis is a funnel. */
   funnel: FunnelSupport | undefined;
+  /** Set while the analysis is paths: the steps across them. */
+  paths: PathSteps | undefined;
   /** Set while the analysis is cohorts. */
   cohorts: CohortsSupport | undefined;
   /** The chart click actions that lead to a supporting analysis. */
@@ -91,7 +94,8 @@ export type SupportingAnalyses = {
  * The supporting analyses below an analysis's primary chart, and the chart
  * click actions that bring one of them into view. Each kind of analysis
  * contributes its own: a funnel shows the paths between its steps and the
- * insights into who converts, and cohorts show their retention curves.
+ * insights into who converts, paths show their steps' entrances and exits,
+ * and cohorts show their retention curves.
  */
 export const useSupportingAnalyses = ({
   spec,
@@ -102,6 +106,7 @@ export const useSupportingAnalyses = ({
 }: UseSupportingAnalysesArgs): SupportingAnalyses => {
   const isFunnel = spec?.kind === "funnel";
   const isCohorts = spec?.kind === "cohorts";
+  const isPaths = spec?.kind === "paths";
 
   const { dataset, datasetQuery } = query;
   const cohortsSeries = useMemo((): SingleSeries<UnsavedCard> | undefined => {
@@ -123,6 +128,7 @@ export const useSupportingAnalyses = ({
   }, [spec, dataset, datasetQuery]);
 
   const insights = useFunnelInsights({ spec, tableId, base, context });
+  const pathSteps = usePathSteps({ spec, tableId, base });
   const [insightsFocus, setInsightsFocus] = useState<InsightsFocus>();
 
   const pathsFunnel = getPathsFunnel(spec);
@@ -185,6 +191,7 @@ export const useSupportingAnalyses = ({
           insights: { insights, focus: insightsFocus },
         }
       : undefined,
+    paths: isPaths ? pathSteps : undefined,
     cohorts: isCohorts
       ? {
           series: cohortsSeries,

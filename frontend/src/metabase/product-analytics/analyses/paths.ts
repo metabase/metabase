@@ -14,13 +14,11 @@ import {
   getCommonSpec,
   getEventDefinitionProps,
   getPageviewSpec,
-  incomplete,
   isBoolean,
   isEventDefinitionList,
   isOneOf,
   isOptionalEventDefinition,
   isPositiveInteger,
-  missingIf,
   ready,
 } from "./setting-helpers";
 import type {
@@ -74,7 +72,10 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     isValid: (value) => isOptionalEventDefinition(value),
     getHidden: (_context, settings) => settings["paths.direction"] === "to",
     readDependencies: ["paths.direction"],
-    getProps: getEventDefinitionProps,
+    getProps: (context) => ({
+      ...getEventDefinitionProps(context),
+      emptyLabel: t`Start of a visit`,
+    }),
   }),
   "paths.end": withWidgetProps({
     getTitle: () => t`The ending event`,
@@ -84,7 +85,10 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     isValid: (value) => isOptionalEventDefinition(value),
     getHidden: (_context, settings) => settings["paths.direction"] === "from",
     readDependencies: ["paths.direction"],
-    getProps: getEventDefinitionProps,
+    getProps: (context) => ({
+      ...getEventDefinitionProps(context),
+      emptyLabel: t`End of a visit`,
+    }),
   }),
   "paths.steps": {
     getTitle: () => t`Number of steps to see`,
@@ -171,25 +175,9 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
   settings: SETTINGS,
   toSpec: (settings, events) => {
     const direction = settings["paths.direction"];
-    const usesStart = direction !== "to";
-    const usesEnd = direction !== "from";
     // A hidden event keeps its value but mustn't reach the query.
-    const start = usesStart ? settings["paths.start"] : null;
-    const end = usesEnd ? settings["paths.end"] : null;
-    const isMissingStart = usesStart && start === null;
-    const isMissingEnd = usesEnd && end === null;
-    if (isMissingStart || isMissingEnd) {
-      return incomplete([
-        ...missingIf(isMissingStart, {
-          key: "paths.start",
-          message: t`Define a starting event.`,
-        }),
-        ...missingIf(isMissingEnd, {
-          key: "paths.end",
-          message: t`Define an ending event.`,
-        }),
-      ]);
-    }
+    const start = direction !== "to" ? settings["paths.start"] : null;
+    const end = direction !== "from" ? settings["paths.end"] : null;
     return ready({
       ...getCommonSpec("paths", settings),
       paths: {

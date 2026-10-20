@@ -1,6 +1,6 @@
 import type { GroupCounts } from "./types";
 
-const toCount = (value: unknown): number | undefined => {
+export const toCount = (value: unknown): number | undefined => {
   // Counts can arrive as strings when a 64-bit integer is serialised as JSON.
   const parsed = typeof value === "string" ? Number(value) : value;
   return typeof parsed === "number" && Number.isFinite(parsed)

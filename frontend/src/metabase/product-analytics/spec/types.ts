@@ -86,8 +86,9 @@ export interface FunnelSpec {
 
 export interface PathsSpec {
   direction: "from" | "to" | "between";
-  /** Null when the direction doesn't use it, and the user hasn't picked one. */
+  /** Null: paths start at the first step of each visit. Unused for "to". */
   start: FlagRef | null;
+  /** Null: paths end at the last step of each visit. Unused for "from". */
   end: FlagRef | null;
   steps: number;
   included: FlagRef[];
