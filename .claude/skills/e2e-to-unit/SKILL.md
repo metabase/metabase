@@ -11,7 +11,7 @@ This skill moves e2e coverage to Jest without loss. A migration must keep or inc
 
 ## Input
 
-The user gives a spec path, and optionally a list of candidate tests in that spec. The list can come from any source. Treat it as candidates, not as verdicts: triage still classifies each test. With no list, triage each test in the spec.
+The user gives one spec path, and optionally a list of candidate tests in that spec. One spec file is the unit of work: one spec for each run, branch and PR. Never take a folder or a list of specs. If the user gives a folder, ask which spec. The list can come from any source. Treat it as candidates, not as verdicts: triage still classifies each test. With no list, triage each test in the spec.
 
 ## Flow
 
@@ -76,7 +76,7 @@ A test that a signal for e2e keeps, but only because a backend test does not pin
 | 2 | S tests. Only when the user asks, or when the spec is slow or flaky. | Full: read each helper and hook, at most 10 gap breaks, backend breaks permitted. |
 | — | C and N tests | Do not touch. |
 
-Do one PR for each feature folder, so that the tests share one coverage map and one verify run.
+Do one PR for each spec. Do not group specs, also when they are in the same folder.
 
 ## Mode: triage
 
@@ -235,8 +235,7 @@ Do not include session history (what you tried first, or what a reviewer correct
 Tokens are expensive. CPU is cheap. Prove one time, in verify, with test runs. Do not prove in migrate.
 
 - **Do the classification yourself.** One read of a large spec is fast.
-- **Agents for search only.** Use one agent for each feature group, never one for each test, and at most 4 at a time. Use a cheaper model through the Agent tool's `model` parameter (`sonnet`, or `haiku` for pure grep and read). Give each agent the exact paths and the facts that you already know. Require a report under about 300 words, with `file:line` citations. A search result is a claim. Verify proves it.
-- **Reuse coverage maps.** Write one map for each feature area to `local/claude/coverage-maps/<area>.md`, with the commit SHA. Later specs in that area read it first. Check a citation again before you use it.
+- **Agents for search only.** One spec is usually small enough to search yourself. Use an agent only for a large search, never one for each test, and at most 4 at a time. Use a cheaper model through the Agent tool's `model` parameter (`sonnet`, or `haiku` for pure grep and read). Give each agent the exact paths and the facts that you already know. Require a report under about 300 words, with `file:line` citations. A search result is a claim. Verify proves it.
 - **Limit each investigation.** If you cannot explain an assertion after about 3 lookups, stop reading and write a probe. This also applies to subagents.
 - **Make Jest output short.** Use `--silent` and `-t`. If the output goes to a file, grep it for `✓|✕|Tests:`.
 - **Record the tokens** for each spec in the report, from the agent usage notifications. Record how many rows verify opened and how many the fix pass closed.
