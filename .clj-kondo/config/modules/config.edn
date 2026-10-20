@@ -3862,6 +3862,7 @@
            metabot
            models
            permissions
+           premium-features
            query-processor
            request
            run-tracking

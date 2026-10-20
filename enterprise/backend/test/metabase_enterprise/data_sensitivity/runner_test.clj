@@ -49,8 +49,10 @@
 (defn- wait-ended [run-id]
   (wait-for-run run-id #(nil? (:is_active %))))
 
-(defn- suggestions [run-id]
-  (t2/select :model/MetadataGenerationSuggestion :run_id run-id {:order-by [[:id :asc]]}))
+(defn- suggestions
+  "The proposals that run `run-id` wrote last."
+  [run-id]
+  (t2/select :model/MetadataGenerationProposal :last_run_id run-id {:order-by [[:id :asc]]}))
 
 (defn- table-name-in-message [messages]
   (second (re-find #"(?m)^name: (\S+)$" (:content (last messages)))))
@@ -59,7 +61,7 @@
   (runner/start-run! db request (mt/user->id :crowberto)))
 
 (deftest start-progress-succeed-test
-  (testing "a run classifies every table, records progress and usage, and writes suggestions instead of metadata"
+  (testing "a run classifies every table, records progress and usage, and writes proposals instead of metadata"
     (do-with-temp-tables
      3
      (fn [db tables]
@@ -83,13 +85,10 @@
                               [attribute proposed] [[:data_sensitivity "PII"] [:semantic_type "type/Name"]]]
                           {:table_id       (:id table)
                            :attribute      attribute
-                           :source         :none
-                           :current_value  nil
                            :proposed_value proposed
                            :confidence     :medium
                            :status         :pending}))
-                   (set (map #(select-keys % [:table_id :attribute :source :current_value :proposed_value
-                                              :confidence :status])
+                   (set (map #(select-keys % [:table_id :attribute :proposed_value :confidence :status])
                              (suggestions (:id run))))))
             (is (every? (fn [table]
                           (= [[nil nil]] (t2/select-fn-vec (juxt :data_sensitivity :semantic_type)
@@ -124,18 +123,18 @@
                             "ds_email" {:data_sensitivity "PII" :semantic_type "type/Email"}
                             "ds_id"    {:data_sensitivity "PUBLIC" :semantic_type "type/Category"}})
      (fn []
-       (testing "a semantic type that does not fit the field's type, or would replace a key type, makes no suggestion"
+       (testing "a semantic type that does not fit the field's type, or would replace a key type, makes no proposal"
          (let [run (start! db {:attributes [:semantic_type]})]
            (wait-ended (:id run))
            (is (= [["ds_email" "type/Email"]]
                   (for [s (suggestions (:id run))]
                     [(t2/select-one-fn :name :model/Field :id (:field_id s)) (:proposed_value s)])))))
-       (testing "a run without the semantic_type attribute makes no semantic_type suggestion"
+       (testing "a run without the semantic_type attribute makes no semantic_type proposal"
          (let [run (start! db {:attributes [:data_sensitivity]})]
            (wait-ended (:id run))
            (is (= #{:data_sensitivity} (set (map :attribute (suggestions (:id run))))))))))))
 
-(deftest suggestion-source-and-attributes-test
+(deftest proposal-attributes-test
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (:id db) :name "ds_sources" :active true}
                  :model/Field    _     {:table_id (:id table) :name "ds_agree" :base_type :type/Text
@@ -149,34 +148,24 @@
       (core-test/do-with-llm!
        (core-test/canned-llm entries)
        (fn []
-         (testing "agreeing and abstaining labels make no suggestion; the current value and its layer are recorded"
+         (testing "agreeing and abstaining labels make no proposal"
            (let [run (start! db {:attributes [:data_sensitivity :semantic_type]})]
              (wait-ended (:id run))
-             (is (= #{["ds_disagree" :data_sensitivity :deterministic "PUBLIC" "PII"]
-                      ["ds_agree" :semantic_type :none nil "type/Email"]
-                      ["ds_disagree" :semantic_type :deterministic "type/Name" "type/Email"]}
+             (is (= #{["ds_disagree" :data_sensitivity "PII"]
+                      ["ds_agree" :semantic_type "type/Email"]
+                      ["ds_disagree" :semantic_type "type/Email"]}
                     (set (for [s (suggestions (:id run))]
                            [(t2/select-one-fn :name :model/Field :id (:field_id s))
-                            (:attribute s) (:source s) (:current_value s) (:proposed_value s)]))))))
+                            (:attribute s) (:proposed_value s)]))))))
          (testing "a run writes only the requested attributes"
            (let [run (start! db {:attributes [:semantic_type]})]
              (wait-ended (:id run))
              (is (= #{:semantic_type} (set (map :attribute (suggestions (:id run))))))))
          (testing "an attribute outside the run attributes is refused"
            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
-                                 (start! db {:attributes [:display_name]}))))
-         (testing "an accepted AI value is recorded with source ai"
-           (field-user-settings/set-ai-values! (t2/select-one :model/Field :table_id (:id table) :name "ds_disagree")
-                                               {:semantic_type :type/Category})
-           (let [run (start! db {:attributes [:semantic_type]})]
-             (wait-ended (:id run))
-             (is (=? [{:source :ai :current_value "type/Category" :proposed_value "type/Email"}]
-                     (filter #(= :semantic_type (:attribute %))
-                             (t2/select :model/MetadataGenerationSuggestion :run_id (:id run)
-                                        :field_id (t2/select-one-pk :model/Field :table_id (:id table)
-                                                                    :name "ds_disagree"))))))))))))
+                                 (start! db {:attributes [:display_name]})))))))))
 
-(deftest description-suggestion-test
+(deftest description-proposal-test
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (:id db) :name "ds_descriptions" :active true}
                  :model/Field    _     {:table_id (:id table) :name "ds_none" :base_type :type/Text}
@@ -204,17 +193,111 @@
        (fn []
          (let [run (start! db {:attributes [:description]})]
            (is (=? {:status :succeeded :attributes [:description]} (wait-ended (:id run))))
-           (testing "a description is suggested only where it is new or differs, never over a human-set one"
-             (is (= #{["ds_none" :description :none nil "Customer email address."]
-                      ["ds_comment" :description :deterministic "old comment" "Shipping note."]}
+           (testing "a description is proposed only where it is new or differs, never over a human-set one"
+             (is (= #{["ds_none" :description "Customer email address."]
+                      ["ds_comment" :description "Shipping note."]}
                     (set (for [s (suggestions (:id run))]
                            [(t2/select-one-fn :name :model/Field :id (:field_id s))
-                            (:attribute s) (:source s) (:current_value s) (:proposed_value s)])))))
+                            (:attribute s) (:proposed_value s)])))))
            (testing "the call asks only for descriptions and shows the cleared description as human-set"
              (let [[system user] (map :content (first @messages))]
                (is (= (llm/system-prompt-for #{:description}) system))
                (is (str/includes? user "- ds_cleared (type/Text, VARCHAR; description: none [human-set])"))
                (is (str/includes? user "- ds_human (type/Text, VARCHAR; description: \"Written by a person\" [human-set])"))))))))))
+
+(defn- table-proposals
+  "The proposals of `table-id` as a map of [field name, attribute] to [proposed value, status, last run id]."
+  [table-id]
+  (into {}
+        (map (fn [p]
+               [[(t2/select-one-fn :name :model/Field :id (:field_id p)) (:attribute p)]
+                [(:proposed_value p) (:status p) (:last_run_id p)]]))
+        (t2/select :model/MetadataGenerationProposal :table_id table-id)))
+
+(deftest runs-upsert-proposals-test
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (:id db) :name "ds_upsert" :active true}
+                 :model/Field    _     {:table_id (:id table) :name "ds_a" :base_type :type/Text}
+                 :model/Field    b     {:table_id (:id table) :name "ds_b" :base_type :type/Text}
+                 :model/Field    _     {:table_id (:id table) :name "ds_c" :base_type :type/Text
+                                        :data_sensitivity :PUBLIC}
+                 :model/Field    _     {:table_id (:id table) :name "ds_d" :base_type :type/Text}]
+    (let [entries (atom {"ds_a" {:data_sensitivity "PII"}
+                         "ds_b" {:data_sensitivity "PII"}
+                         "ds_c" {:data_sensitivity "PII"}
+                         "ds_d" {:data_sensitivity "PII"}})]
+      (core-test/do-with-llm!
+       (fn [& args] (apply (core-test/canned-llm @entries) args))
+       (fn []
+         (let [run-1 (:id (start! db {:attributes [:data_sensitivity]}))]
+           (wait-ended run-1)
+           (is (= {["ds_a" :data_sensitivity] ["PII" :pending run-1]
+                   ["ds_b" :data_sensitivity] ["PII" :pending run-1]
+                   ["ds_c" :data_sensitivity] ["PII" :pending run-1]
+                   ["ds_d" :data_sensitivity] ["PII" :pending run-1]}
+                  (table-proposals (:id table))))
+           (t2/update! :model/MetadataGenerationProposal {:field_id (:id b)}
+                       {:status :rejected :decided_by (mt/user->id :crowberto) :decided_at :%now})
+           (reset! entries {"ds_a" {:data_sensitivity "PHI"}
+                            "ds_b" {:data_sensitivity "PHI"}
+                            "ds_c" {:data_sensitivity "PUBLIC"}
+                            "ds_d" {:data_sensitivity "UNSURE"}})
+           (let [run-2 (:id (start! db {:attributes [:data_sensitivity]}))]
+             (wait-ended run-2)
+             (testing "a second run replaces pending and rejected proposals, and deletes those it no longer makes"
+               (is (= {["ds_a" :data_sensitivity] ["PHI" :pending run-2]
+                       ["ds_b" :data_sensitivity] ["PHI" :pending run-2]}
+                      (table-proposals (:id table)))))
+             (testing "a replaced rejection loses its decision"
+               (is (=? {:decided_by nil :decided_at nil}
+                       (t2/select-one :model/MetadataGenerationProposal :field_id (:id b))))))
+           (testing "a run of other attributes leaves the proposals of the run's attributes alone"
+             (reset! entries {"ds_a" {:data_sensitivity "PII" :semantic_type "type/Email"}})
+             (let [run-3 (:id (start! db {:attributes [:semantic_type]}))]
+               (wait-ended run-3)
+               (is (=? {["ds_a" :data_sensitivity] ["PHI" :pending some?]
+                        ["ds_b" :data_sensitivity] ["PHI" :pending some?]
+                        ["ds_a" :semantic_type]    ["type/Email" :pending run-3]}
+                       (table-proposals (:id table))))))))))))
+
+(deftest table-scoped-run-keeps-other-tables-test
+  (do-with-temp-tables
+   2
+   (fn [db [table-1 table-2]]
+     (let [label (atom "PII")]
+       (core-test/do-with-llm!
+        (fn [& args] (apply (core-test/canned-llm (constantly {:data_sensitivity @label})) args))
+        (fn []
+          (let [run-1 (:id (start! db {:attributes [:data_sensitivity]}))]
+            (wait-ended run-1)
+            (reset! label "PHI")
+            (let [run-2 (:id (start! db {:attributes [:data_sensitivity] :table_ids [(:id table-1)]}))]
+              (wait-ended run-2)
+              (testing "the run replaces the proposals of its table"
+                (is (= {["ds_00_field" :data_sensitivity] ["PHI" :pending run-2]}
+                       (table-proposals (:id table-1)))))
+              (testing "the proposals of other tables do not change"
+                (is (= {["ds_01_field" :data_sensitivity] ["PII" :pending run-1]}
+                       (table-proposals (:id table-2)))))))))))))
+
+(deftest failed-table-keeps-proposals-test
+  (do-with-temp-tables
+   1
+   (fn [db [table]]
+     (let [fail? (atom false)]
+       (core-test/do-with-llm!
+        (fn [& args]
+          (if @fail?
+            (throw (ex-info "provider down" {}))
+            (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args)))
+        (fn []
+          (let [run-1 (:id (start! db {:attributes [:data_sensitivity]}))]
+            (wait-ended run-1)
+            (reset! fail? true)
+            (is (=? {:failed_tables 1} (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))))
+            (testing "a table that fails keeps its proposals"
+              (is (= {["ds_00_field" :data_sensitivity] ["PII" :pending run-1]}
+                     (table-proposals (:id table))))))))))))
 
 (deftest cancel-via-run-row-test
   (testing "a cancel written to the run row from elsewhere stops the run within one chunk call"

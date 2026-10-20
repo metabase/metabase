@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-sensitivity.runner
   "Background metadata generation runs. [[start-run!]] saves a `metadata_generation_run` row and starts a worker that
-  classifies the tables of the run in sequence and writes `metadata_generation_suggestion` rows; it writes no field
-  metadata. The chunk calls of a table run on the shared pool of [[llm/submit-packet]]. One run per database can be
+  classifies the tables of the run in sequence and upserts the `metadata_generation_proposal` rows of each table; it
+  writes no field metadata. The chunk calls of a table run on the shared pool of [[llm/submit-packet]]. One run per database can be
   active.
 
   Cancel and stop (decision `ghy-4721-run-cancel-and-stop-statuses`): [[cancel-run!]] sets the status to `canceling`
@@ -22,8 +22,8 @@
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.llm :as llm]
+   [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
-   [metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion :as suggestion]
    [metabase.database-routing.core :as database-routing]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
@@ -224,10 +224,7 @@
         (recur)))
     (cp.impl/deref-fixing-exceptions f)))
 
-;;; Suggestions
-
-(defn- source [field k current-value]
-  (context/layer-source (:human_set field) (:ai_set field) k current-value))
+;;; Proposals
 
 (defn- new-description
   "The description proposed in `entry` when it differs from the current `description`, else nil."
@@ -244,50 +241,44 @@
 (defn- confidence [s]
   (#{:high :medium :low} (some-> s keyword)))
 
-(mu/defn table-suggestions :- [:sequential ::suggestion/new-suggestion]
-  "The suggestion rows of one classified table for the `attributes` of run `run-id`: a `data_sensitivity` row for every
-  field whose proposed label is new or differs from the current one, a `semantic_type` row for every field whose
-  proposed type differs from the current one, and a `description` row for every field whose proposed description
-  differs from the current one. A human-set current value is a suggestion too, with source `:human`; the parse never
-  proposes a description for a human-set description."
-  [run-id         :- ms/PositiveInt
-   attributes     :- [:set ::run/attribute]
-   packet         :- ::context/packet
-   entries        :- [:map-of :string ::llm/entry]]
+(mu/defn table-proposals :- [:sequential ::proposal/new-proposal]
+  "The proposals of one classified table for the `attributes` of run `run-id`: a `data_sensitivity` proposal for
+  every field whose proposed label is new or differs from the current one, a `semantic_type` proposal for every field
+  whose proposed type differs from the current one, and a `description` proposal for every field whose proposed
+  description differs from the current one. A human-set current value gets a proposal too; the parse never proposes a
+  description for a human-set description."
+  [run-id     :- ms/PositiveInt
+   attributes :- [:set ::run/attribute]
+   packet     :- ::context/packet
+   entries    :- [:map-of :string ::llm/entry]]
   (vec
    (for [field (:fields packet)
          :let  [entry (get entries (:name field))
                 {:keys [status current proposed semantic_changed]}
                 (core/diff-field field entry)
                 description (new-description (:description field) entry)
-                base {:run_id     run-id
-                      :table_id   (get-in packet [:table :id])
-                      :field_id   (:id field)
-                      :confidence (confidence (:confidence proposed))
-                      :reasoning  (:reasoning proposed)}]
-         suggestion (cond-> []
-                      (and (attributes :data_sensitivity) (#{:new :disagree} status))
-                      (conj (assoc base
-                                   :attribute      :data_sensitivity
-                                   :source         (source field :data_sensitivity (:data_sensitivity current))
-                                   :current_value  (some-> (:data_sensitivity current) name)
-                                   :proposed_value (name (:data_sensitivity proposed))))
+                base {:last_run_id run-id
+                      :table_id    (get-in packet [:table :id])
+                      :field_id    (:id field)
+                      :confidence  (confidence (:confidence proposed))
+                      :reasoning   (:reasoning proposed)}]
+         p     (cond-> []
+                 (and (attributes :data_sensitivity) (#{:new :disagree} status))
+                 (conj (assoc base
+                              :attribute      :data_sensitivity
+                              :proposed_value (name (:data_sensitivity proposed))))
 
-                      (and (attributes :semantic_type) semantic_changed
-                           (not (key-type? (:semantic_type current))))
-                      (conj (assoc base
-                                   :attribute      :semantic_type
-                                   :source         (source field :semantic_type (:semantic_type current))
-                                   :current_value  (some-> (:semantic_type current) u/qualified-name)
-                                   :proposed_value (u/qualified-name (:semantic_type proposed))))
+                 (and (attributes :semantic_type) semantic_changed
+                      (not (key-type? (:semantic_type current))))
+                 (conj (assoc base
+                              :attribute      :semantic_type
+                              :proposed_value (u/qualified-name (:semantic_type proposed))))
 
-                      (and (attributes :description) description)
-                      (conj (assoc base
-                                   :attribute      :description
-                                   :source         (source field :description (not-empty (:description field)))
-                                   :current_value  (:description field)
-                                   :proposed_value description)))]
-     suggestion)))
+                 (and (attributes :description) description)
+                 (conj (assoc base
+                              :attribute      :description
+                              :proposed_value description)))]
+     p)))
 
 ;;; Worker
 
@@ -365,7 +356,10 @@
                           {:usage       (:usage classification)
                            :model       (:model classification)
                            :slow-calls  slow-calls
-                           :suggestions (table-suggestions run-id attributes packet (:fields classification))})
+                           :proposals   {:table_id   (:id table)
+                                         :attributes attributes
+                                         :proposals  (table-proposals run-id attributes packet
+                                                                      (:fields classification))}})
                         (catch Exception e
                           (cond
                             (stop-reason e)         {:end [:stopped (stop-reason e)]}
@@ -385,7 +379,7 @@
                             (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e)
                                                               elapsed)))]
               (log/warnf e "Metadata generation run %d failed for table %d" run-id (:id table))
-              (if (db/record-table! run-id (progress state) [])
+              (if (db/record-table! run-id (progress state) nil)
                 (recur state more)
                 (assoc state :end [:stopped :gone] :remaining more)))
 
@@ -395,7 +389,7 @@
                             (update :done inc)
                             (update :slow-calls (fnil + 0) (:slow-calls outcome))
                             (update :usage add-usage (:model outcome) (:usage outcome)))]
-              (if (db/record-table! run-id (progress state) (:suggestions outcome))
+              (if (db/record-table! run-id (progress state) (:proposals outcome))
                 (recur state more)
                 (assoc state :end [:stopped :gone] :remaining more)))))))))
 

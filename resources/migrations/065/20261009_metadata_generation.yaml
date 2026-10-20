@@ -1,5 +1,6 @@
-# Saved runs and per-field suggestions for LLM metadata generation (GHY-4721). A run proposes values for
-# some attributes of the fields of one database; a person reviews the suggestions before any value is written.
+# Runs and per-field proposals for LLM metadata generation (GHY-4721). A run proposes values for some attributes
+# of the fields of one database and upserts one proposal per field and attribute; a person reviews the proposals
+# before any value is written. The run row is the job record only.
 #
 # Index changesets have no rollback: the createTable rollback drops them. Their leading columns can back an FK
 # on MySQL, so a separate dropIndex fails there.
@@ -190,11 +191,11 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-10-09T00:00:05
       author: tplude
-      comment: Add metadata_generation_suggestion
+      comment: Add metadata_generation_proposal
       changes:
         - createTable:
-            tableName: metadata_generation_suggestion
-            remarks: A value that a metadata generation run proposes for one attribute of one field
+            tableName: metadata_generation_proposal
+            remarks: The pending or rejected value that the AI proposes for one attribute of one field; one row per field and attribute
             columns:
               - column:
                   name: id
@@ -205,15 +206,11 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: run_id
+                  name: last_run_id
                   type: int
-                  remarks: The run that made the suggestion
+                  remarks: The run that made the proposal last; NULL when that run is gone
                   constraints:
-                    nullable: false
-                    referencedTableName: metadata_generation_run
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metadata_generation_suggestion_run_id
-                    deleteCascade: true
+                    nullable: true
               - column:
                   name: table_id
                   type: int
@@ -222,17 +219,17 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: metabase_table
                     referencedColumnNames: id
-                    foreignKeyName: fk_metadata_generation_suggestion_table_id
+                    foreignKeyName: fk_metadata_generation_proposal_table_id
                     deleteCascade: true
               - column:
                   name: field_id
                   type: int
-                  remarks: The field the suggestion is for
+                  remarks: The field the proposal is for
                   constraints:
                     nullable: false
                     referencedTableName: metabase_field
                     referencedColumnNames: id
-                    foreignKeyName: fk_metadata_generation_suggestion_field_id
+                    foreignKeyName: fk_metadata_generation_proposal_field_id
                     deleteCascade: true
               - column:
                   name: attribute
@@ -240,18 +237,6 @@ databaseChangeLog:
                   remarks: data_sensitivity, semantic_type or description
                   constraints:
                     nullable: false
-              - column:
-                  name: source
-                  type: varchar(32)
-                  remarks: "Which layer gave the effective value at run time: human, ai, deterministic or none"
-                  constraints:
-                    nullable: false
-              - column:
-                  name: current_value
-                  type: ${text.type}
-                  remarks: The effective value at run time; NULL when there was none
-                  constraints:
-                    nullable: true
               - column:
                   name: proposed_value
                   type: ${text.type}
@@ -273,33 +258,33 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(16)
-                  remarks: pending, accepted, rejected, stale or applied
+                  remarks: pending or rejected; the next run that covers the field replaces a rejected proposal
                   defaultValue: pending
                   constraints:
                     nullable: false
               - column:
                   name: decided_by
                   type: int
-                  remarks: The user who accepted or rejected the suggestion
+                  remarks: The user who rejected the proposal
                   constraints:
                     nullable: true
               - column:
                   name: decided_at
                   type: ${timestamp_type}
-                  remarks: When the suggestion was accepted or rejected
+                  remarks: When the proposal was rejected
                   constraints:
                     nullable: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
-                  remarks: When the suggestion was saved
+                  remarks: When the proposal was saved first
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
-                  remarks: When the suggestion was last updated
+                  remarks: When the proposal was last updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -307,64 +292,63 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-10-09T00:00:06
       author: tplude
-      comment: Add FK on metadata_generation_suggestion.decided_by; SET NULL keeps the suggestion when the user is deleted
+      comment: Add FK on metadata_generation_proposal.decided_by; SET NULL keeps the proposal when the user is deleted
       changes:
         - addForeignKeyConstraint:
-            baseTableName: metadata_generation_suggestion
+            baseTableName: metadata_generation_proposal
             baseColumnNames: decided_by
             referencedTableName: core_user
             referencedColumnNames: id
-            constraintName: fk_metadata_generation_suggestion_decided_by
+            constraintName: fk_metadata_generation_proposal_decided_by
             onDelete: SET NULL
       rollback: # dropped with table
 
   - changeSet:
       id: v65.2026-10-09T00:00:07
       author: tplude
-      comment: One suggestion per run, field and attribute
+      comment: One proposal per field and attribute
       changes:
         - addUniqueConstraint:
-            tableName: metadata_generation_suggestion
-            constraintName: idx_unique_metadata_generation_suggestion_run_field_attribute
-            columnNames: run_id, field_id, attribute
+            tableName: metadata_generation_proposal
+            constraintName: idx_unique_metadata_generation_proposal_field_attribute
+            columnNames: field_id, attribute
       rollback: # dropped with table
 
   - changeSet:
       id: v65.2026-10-09T00:00:08
       author: tplude
-      comment: Index metadata_generation_suggestion by run and table
+      comment: Index metadata_generation_proposal.last_run_id
       changes:
         - createIndex:
-            tableName: metadata_generation_suggestion
-            indexName: idx_metadata_generation_suggestion_run_id_table_id
+            tableName: metadata_generation_proposal
+            indexName: idx_metadata_generation_proposal_last_run_id
             columns:
               - column:
-                  name: run_id
-              - column:
-                  name: table_id
+                  name: last_run_id
       rollback: # dropped with table
 
   - changeSet:
       id: v65.2026-10-09T00:00:09
       author: tplude
-      comment: Index metadata_generation_suggestion.field_id
+      comment: Add FK on metadata_generation_proposal.last_run_id; SET NULL keeps the proposal when the run is deleted
       changes:
-        - createIndex:
-            tableName: metadata_generation_suggestion
-            indexName: idx_metadata_generation_suggestion_field_id
-            columns:
-              - column:
-                  name: field_id
+        - addForeignKeyConstraint:
+            baseTableName: metadata_generation_proposal
+            baseColumnNames: last_run_id
+            referencedTableName: metadata_generation_run
+            referencedColumnNames: id
+            constraintName: fk_metadata_generation_proposal_last_run_id
+            onDelete: SET NULL
       rollback: # dropped with table
 
   - changeSet:
       id: v65.2026-10-09T00:00:10
       author: tplude
-      comment: Index metadata_generation_suggestion.table_id
+      comment: Index metadata_generation_proposal.table_id
       changes:
         - createIndex:
-            tableName: metadata_generation_suggestion
-            indexName: idx_metadata_generation_suggestion_table_id
+            tableName: metadata_generation_proposal
+            indexName: idx_metadata_generation_proposal_table_id
             columns:
               - column:
                   name: table_id
@@ -373,27 +357,12 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-10-09T00:00:11
       author: tplude
-      comment: Index metadata_generation_suggestion.decided_by
+      comment: Index metadata_generation_proposal.decided_by
       changes:
         - createIndex:
-            tableName: metadata_generation_suggestion
-            indexName: idx_metadata_generation_suggestion_decided_by
+            tableName: metadata_generation_proposal
+            indexName: idx_metadata_generation_proposal_decided_by
             columns:
               - column:
                   name: decided_by
       rollback: # dropped with table
-
-  - changeSet:
-      id: v65.2026-10-09T00:00:12
-      author: tplude
-      comment: Add metadata_generation_suggestion.edited_value
-      changes:
-        - addColumn:
-            tableName: metadata_generation_suggestion
-            columns:
-              - column:
-                  name: edited_value
-                  type: ${text.type}
-                  remarks: The value a person chose in place of proposed_value; NULL when not edited. Apply writes it as the person's value
-                  constraints:
-                    nullable: true

@@ -175,7 +175,7 @@
       :model/TransformTest
       :model/TransformTestRun
       :model/MetadataGenerationRun
-      :model/MetadataGenerationSuggestion])))
+      :model/MetadataGenerationProposal])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

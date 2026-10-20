@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
+   [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
-   [metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion :as suggestion]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -17,14 +17,12 @@
                                          :attributes  [:data_sensitivity :semantic_type]}
                                         overrides)))
 
-(defn- insert-suggestion! [run-id table-id field-id & {:as overrides}]
-  (t2/insert-returning-instance! :model/MetadataGenerationSuggestion
-                                 (merge {:run_id         run-id
+(defn- insert-proposal! [run-id table-id field-id & {:as overrides}]
+  (t2/insert-returning-instance! :model/MetadataGenerationProposal
+                                 (merge {:last_run_id    run-id
                                          :table_id       table-id
                                          :field_id       field-id
                                          :attribute      :semantic_type
-                                         :source         :deterministic
-                                         :current_value  "type/Category"
                                          :proposed_value "type/Email"
                                          :confidence     :high
                                          :reasoning      "Values look like email addresses."}
@@ -81,84 +79,83 @@
         (t2/update! :model/MetadataGenerationRun run-id {:status :canceled})
         (is (some? (insert-run! db-id)))))))
 
-(deftest suggestion-round-trip-test
-  (mt/with-temp [:model/User     {user-id :id}  {}
-                 :model/Database {db-id :id}    {}
-                 :model/Table    {table-id :id} {:db_id db-id}
-                 :model/Field    {field-id :id} {:table_id table-id}]
-    (let [{run-id :id}        (insert-run! db-id)
-          {suggestion-id :id} (insert-suggestion! run-id table-id field-id)
-          row                 (t2/select-one :model/MetadataGenerationSuggestion suggestion-id)]
-      (testing "a new suggestion is pending, with keyword attribute, source and confidence"
-        (is (=? {:run_id         run-id
+(deftest proposal-round-trip-test
+  (mt/with-temp [:model/User     {user-id :id}     {}
+                 :model/Database {db-id :id}       {}
+                 :model/Database {other-db-id :id} {}
+                 :model/Table    {table-id :id}    {:db_id db-id}
+                 :model/Field    {field-id :id}    {:table_id table-id}]
+    (let [{run-id :id}      (insert-run! db-id)
+          {proposal-id :id} (insert-proposal! run-id table-id field-id)
+          row               (t2/select-one :model/MetadataGenerationProposal proposal-id)]
+      (testing "a new proposal is pending, with keyword attribute and confidence"
+        (is (=? {:last_run_id    run-id
                  :table_id       table-id
                  :field_id       field-id
                  :attribute      :semantic_type
-                 :source         :deterministic
-                 :current_value  "type/Category"
                  :proposed_value "type/Email"
                  :confidence     :high
                  :reasoning      "Values look like email addresses."
                  :status         :pending
                  :decided_by     nil}
                 row))
-        (is (mr/validate ::suggestion/metadata-generation-suggestion row)))
-      (testing "a decision records the user and time"
-        (t2/update! :model/MetadataGenerationSuggestion suggestion-id
-                    {:status :applied :decided_by user-id :decided_at (t/offset-date-time)})
-        (is (=? {:status :applied :decided_by user-id :decided_at some?}
-                (t2/select-one :model/MetadataGenerationSuggestion suggestion-id))))
-      (testing "a field has one suggestion per run and attribute"
-        (is (thrown? Exception (t2/with-transaction [_conn] (insert-suggestion! run-id table-id field-id))))
-        (is (some? (insert-suggestion! run-id table-id field-id :attribute :description :source :none
-                                       :current_value nil)))))))
+        (is (mr/validate ::proposal/metadata-generation-proposal row)))
+      (testing "a rejection records the user and time"
+        (t2/update! :model/MetadataGenerationProposal proposal-id
+                    {:status :rejected :decided_by user-id :decided_at (t/offset-date-time)})
+        (is (=? {:status :rejected :decided_by user-id :decided_at some?}
+                (t2/select-one :model/MetadataGenerationProposal proposal-id))))
+      (testing "a field has one proposal per attribute, across runs"
+        (let [{other-run-id :id} (insert-run! other-db-id)]
+          (is (thrown? Exception (t2/with-transaction [_conn] (insert-proposal! other-run-id table-id field-id)))))
+        (is (some? (insert-proposal! run-id table-id field-id :attribute :description)))))))
 
 (deftest cascade-delete-test
-  (testing "deleting a field deletes its suggestions"
+  (testing "deleting a field deletes its proposals"
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {table-id :id} {:db_id db-id}
                    :model/Field    {field-a :id}  {:table_id table-id}
                    :model/Field    {field-b :id}  {:table_id table-id}]
       (let [{run-id :id} (insert-run! db-id)]
-        (insert-suggestion! run-id table-id field-a)
-        (insert-suggestion! run-id table-id field-b)
+        (insert-proposal! run-id table-id field-a)
+        (insert-proposal! run-id table-id field-b)
         (t2/delete! :model/Field field-a)
-        (is (= #{field-b} (t2/select-fn-set :field_id :model/MetadataGenerationSuggestion :run_id run-id))))))
-  (testing "deleting a table deletes its suggestions"
+        (is (= #{field-b} (t2/select-fn-set :field_id :model/MetadataGenerationProposal :last_run_id run-id))))))
+  (testing "deleting a table deletes its proposals"
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {table-a :id}  {:db_id db-id}
                    :model/Table    {table-b :id}  {:db_id db-id}
                    :model/Field    {field-a :id}  {:table_id table-a}
                    :model/Field    {field-b :id}  {:table_id table-b}]
       (let [{run-id :id} (insert-run! db-id)]
-        (insert-suggestion! run-id table-a field-a)
-        (insert-suggestion! run-id table-b field-b)
+        (insert-proposal! run-id table-a field-a)
+        (insert-proposal! run-id table-b field-b)
         (t2/delete! :model/Table table-a)
-        (is (= #{table-b} (t2/select-fn-set :table_id :model/MetadataGenerationSuggestion :run_id run-id))))))
-  (testing "deleting a run deletes its suggestions"
+        (is (= #{table-b} (t2/select-fn-set :table_id :model/MetadataGenerationProposal :last_run_id run-id))))))
+  (testing "deleting a run keeps its proposals and clears last_run_id"
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {table-id :id} {:db_id db-id}
                    :model/Field    {field-id :id} {:table_id table-id}]
-      (let [{run-id :id} (insert-run! db-id)]
-        (insert-suggestion! run-id table-id field-id)
+      (let [{run-id :id}      (insert-run! db-id)
+            {proposal-id :id} (insert-proposal! run-id table-id field-id)]
         (t2/delete! :model/MetadataGenerationRun run-id)
-        (is (zero? (t2/count :model/MetadataGenerationSuggestion :run_id run-id))))))
-  (testing "deleting a database deletes its runs and their suggestions"
+        (is (=? {:last_run_id nil} (t2/select-one :model/MetadataGenerationProposal proposal-id))))))
+  (testing "deleting a database deletes its runs and the proposals of its fields"
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {table-id :id} {:db_id db-id}
                    :model/Field    {field-id :id} {:table_id table-id}]
       (let [{run-id :id} (insert-run! db-id)]
-        (insert-suggestion! run-id table-id field-id)
+        (insert-proposal! run-id table-id field-id)
         (t2/delete! :model/Database db-id)
         (is (zero? (t2/count :model/MetadataGenerationRun :database_id db-id)))
-        (is (zero? (t2/count :model/MetadataGenerationSuggestion :run_id run-id))))))
-  (testing "deleting a user keeps runs and suggestions and clears the user reference"
+        (is (zero? (t2/count :model/MetadataGenerationProposal :field_id field-id))))))
+  (testing "deleting a user keeps runs and proposals and clears the user reference"
     (mt/with-temp [:model/User     {user-id :id}  {}
                    :model/Database {db-id :id}    {}
                    :model/Table    {table-id :id} {:db_id db-id}
                    :model/Field    {field-id :id} {:table_id table-id}]
-      (let [{run-id :id}        (insert-run! db-id :creator_id user-id)
-            {suggestion-id :id} (insert-suggestion! run-id table-id field-id :decided_by user-id)]
+      (let [{run-id :id}      (insert-run! db-id :creator_id user-id)
+            {proposal-id :id} (insert-proposal! run-id table-id field-id :decided_by user-id)]
         (t2/delete! :model/User user-id)
         (is (=? {:creator_id nil} (t2/select-one :model/MetadataGenerationRun run-id)))
-        (is (=? {:decided_by nil} (t2/select-one :model/MetadataGenerationSuggestion suggestion-id)))))))
+        (is (=? {:decided_by nil} (t2/select-one :model/MetadataGenerationProposal proposal-id)))))))

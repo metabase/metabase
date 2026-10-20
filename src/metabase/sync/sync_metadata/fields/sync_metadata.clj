@@ -4,6 +4,7 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
@@ -20,6 +21,12 @@
   JSON-stringified values stored in the application DB."
   [path]
   (some->> path (mapv name)))
+
+(defenterprise delete-pending-semantic-type-proposal!
+  "Delete the pending AI `semantic_type` proposal of the field with `field-id`. OSS has no proposals."
+  metabase-enterprise.data-sensitivity.db
+  [_field-id]
+  nil)
 
 (defn- crufty-field? [db field-metadata]
   (crufty/name? (:name field-metadata)
@@ -130,7 +137,8 @@
            (when-not (= old-base-type :type/*)
              (field-user-settings/unset-user-settings!
               (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type])
-             (field-user-settings/unset-ai-values! (select-keys metabase-field [:id]) [:semantic_type]))
+             (field-user-settings/unset-ai-values! (select-keys metabase-field [:id]) [:semantic_type])
+             (delete-pending-semantic-type-proposal! (u/the-id metabase-field)))
            {:base_type           new-base-type
             :effective_type      new-base-type
             :coercion_strategy   nil

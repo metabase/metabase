@@ -3955,7 +3955,7 @@
 
 (deftest metadata-generation-tables-test
   (testing "v65.2026-10-09T00:00:00 thru v65.2026-10-09T00:00:11: metadata_generation_run and
-           metadata_generation_suggestion"
+           metadata_generation_proposal"
     (impl/test-migrations ["v65.2026-10-09T00:00:00" "v65.2026-10-09T00:00:11"] [migrate!]
       (migrate!)
       (let [user-id       (t2/insert-returning-pk! :core_user {:first_name    "Metadata"
@@ -3996,46 +3996,50 @@
             field-a       (insert-field! table-id "email")
             field-b       (insert-field! table-id "name")
             run-id        (insert-run! "running" true)
-            insert-suggestion! (fn [field-id attribute]
-                                 (t2/insert-returning-pk! :metadata_generation_suggestion
-                                                          {:run_id         run-id
-                                                           :table_id       table-id
-                                                           :field_id       field-id
-                                                           :attribute      attribute
-                                                           :source         "none"
-                                                           :proposed_value "PII"
-                                                           :decided_by     user-id}))
-            suggestion-a  (insert-suggestion! field-a "data_sensitivity")
-            suggestion-b  (insert-suggestion! field-b "data_sensitivity")
-            suggestion    #(t2/select-one :metadata_generation_suggestion :id %)]
-        (testing "defaults: zero table counts on a run, pending status on a suggestion"
+            insert-proposal! (fn [field-id attribute]
+                               (t2/insert-returning-pk! :metadata_generation_proposal
+                                                        {:last_run_id    run-id
+                                                         :table_id       table-id
+                                                         :field_id       field-id
+                                                         :attribute      attribute
+                                                         :proposed_value "PII"
+                                                         :decided_by     user-id}))
+            proposal-a    (insert-proposal! field-a "data_sensitivity")
+            proposal-b    (insert-proposal! field-b "data_sensitivity")
+            proposal      #(t2/select-one :metadata_generation_proposal :id %)]
+        (testing "defaults: zero table counts on a run, pending status on a proposal"
           (is (=? {:total_tables 0 :done_tables 0 :failed_tables 0 :created_at some? :updated_at some?}
                   (t2/select-one :metadata_generation_run :id run-id)))
-          (is (=? {:status "pending" :created_at some?} (suggestion suggestion-a))))
+          (is (=? {:status "pending" :created_at some?} (proposal proposal-a))))
         (testing "a database has at most one active run; ended runs (is_active NULL) do not count"
           (is (thrown? Exception (insert-run! "pending" true)))
           (is (pos-int? (insert-run! "succeeded" nil)))
           (is (pos-int? (insert-run! "failed" nil))))
-        (testing "one suggestion per run, field and attribute"
-          (is (thrown? Exception (insert-suggestion! field-a "data_sensitivity")))
-          (is (pos-int? (insert-suggestion! field-a "semantic_type"))))
-        (testing "deleting a user keeps the run and the suggestion and clears the user reference"
+        (testing "one proposal per field and attribute"
+          (is (thrown? Exception (insert-proposal! field-a "data_sensitivity")))
+          (is (pos-int? (insert-proposal! field-a "semantic_type"))))
+        (testing "deleting a run keeps its proposals and clears last_run_id"
+          (let [ended-run-id (insert-run! "succeeded" nil)]
+            (t2/update! :metadata_generation_proposal :id proposal-b {:last_run_id ended-run-id})
+            (t2/delete! :metadata_generation_run :id ended-run-id)
+            (is (=? {:last_run_id nil} (proposal proposal-b)))))
+        (testing "deleting a user keeps the run and the proposal and clears the user reference"
           (t2/delete! :core_user :id user-id)
           (is (nil? (t2/select-one-fn :creator_id :metadata_generation_run :id run-id)))
-          (is (=? {:decided_by nil} (suggestion suggestion-a))))
-        (testing "deleting a field deletes its suggestions"
+          (is (=? {:decided_by nil} (proposal proposal-a))))
+        (testing "deleting a field deletes its proposals"
           (t2/delete! :metabase_field :id field-b)
-          (is (nil? (suggestion suggestion-b)))
-          (is (some? (suggestion suggestion-a))))
-        (testing "deleting a table deletes its suggestions"
+          (is (nil? (proposal proposal-b)))
+          (is (some? (proposal proposal-a))))
+        (testing "deleting a table deletes its proposals"
           (t2/delete! :metabase_table :id table-id)
-          (is (zero? (t2/count :metadata_generation_suggestion))))
+          (is (zero? (t2/count :metadata_generation_proposal))))
         (testing "deleting a database deletes its runs"
           (t2/delete! :metabase_database :id db-id)
           (is (zero? (t2/count :metadata_generation_run))))
         (testing "rolling back drops both tables"
           (migrate! :down 64)
-          (is (thrown? Exception (t2/query "SELECT id FROM metadata_generation_suggestion")))
+          (is (thrown? Exception (t2/query "SELECT id FROM metadata_generation_proposal")))
           (is (thrown? Exception (t2/query "SELECT id FROM metadata_generation_run"))))))))
 
 (deftest data-app-group-assignment-migration-test

@@ -74,33 +74,32 @@
     (runner/retry-failed! database run api/*current-user-id*)))
 
 (api.macros/defendpoint :get "/runs/:id/tables" :- [:sequential ::review/run-table]
-  "The tables that have suggestions in the run, with the number of suggestions by status and the number of pending
-  suggestions that would replace a value a person set."
+  "The tables that have proposals that the run wrote last, with the number of proposals by status and the number of
+  pending proposals that would replace a value a person set."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (db/run id))
   (review/run-tables id))
 
 (api.macros/defendpoint :get "/runs/:id/tables/:table-id/suggestions" :- [:sequential ::review/suggestion]
-  "The suggestions of the run for one table, in field order. `current_value` and `source` are the effective value and
-  its layer when the run read the field."
+  "The proposals that the run wrote last for one table, in field order. `current_value` and `source` are the value
+  readers see now and its layer."
   [{:keys [id table-id]} :- [:map {:closed true}
                              [:id       ms/PositiveInt]
                              [:table-id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (db/run id))
-  (db/table-suggestions id table-id))
+  (review/table-suggestions id table-id))
 
 (api.macros/defendpoint :post "/runs/:id/apply" :- ::review/apply-result
-  "Apply a review of the run in one request: write the suggestions in `accept`, or with `all` every pending or
-  rejected suggestion (of the tables in `table_ids`) except those in `except`, and mark those in `reject` as
-  rejected. `all` leaves out suggestions over a value a person set unless `include_human_set` is true. `edits` maps a
-  suggestion id to a value that replaces the proposed value and accepts the suggestion; the value follows the rules
+  "Apply a review of the run in one request: write the proposals in `accept`, or with `all` every proposal that the
+  run wrote last (of the tables in `table_ids`) except those in `except`, and mark those in `reject` as rejected. `all` leaves out proposals over a value a person set unless `include_human_set` is true. `edits` maps a
+  proposal id to a value that replaces the proposed value and accepts the proposal; the value follows the rules
   of the attribute (a data-sensitivity category, a semantic type that fits the field and is not a key type, or a
   non-blank description), else the request is a 400 and nothing is written. An edited value is written as the
-  person's value, any other as an AI value, and an unedited suggestion over a value a person set clears that value.
-  Each table is one transaction. A suggestion whose field changed after the run is marked `stale` and skipped. A
-  suggestion that cannot be written stays pending and is listed in `failures`."
+  person's value, any other as an AI value, and an unedited proposal over a value a person set clears that value.
+  Each table is one transaction; a written proposal is deleted. A proposal that cannot be written stays pending and is
+  listed in `failures`. `stale` is always 0."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- [:maybe ::review/apply-request]]

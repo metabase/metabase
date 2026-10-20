@@ -1,12 +1,13 @@
 (ns metabase-enterprise.data-sensitivity.review
-  "Review of the suggestions of a metadata generation run: counts per table, and apply. The review UI keeps the
-  selection and the edits until apply, which takes the accepted and rejected suggestions and the edited values in one
-  request. Apply writes the accepted suggestions as AI values (decision `ghy-4721-metadata-layer-precedence`) and marks
-  the rejected ones `rejected`.
+  "Review of the proposals that a metadata generation run wrote last: counts per table, and apply. The review UI keeps
+  the selection and the edits until apply, which takes the accepted and rejected proposals and the edited values in
+  one request. Apply writes the accepted proposals as AI values (decision `ghy-4721-metadata-layer-precedence`) and
+  deletes their rows, and marks the rejected ones `rejected` (decision `ghy-4721-ai-proposal-model`).
 
-  A suggestion with source `human` would replace a value a person set. Apply of `all` leaves those suggestions out
-  unless the request sets `include_human_set`; a suggestion accepted by id or by an edit is always included. Apply of
-  such a suggestion clears the person's value.
+  `source` and `current_value` are computed when a proposal is read or applied, from the value readers see now. A
+  proposal with source `human` would replace a value a person set. Apply of `all` leaves those proposals out unless
+  the request sets `include_human_set`; a proposal accepted by id or by an edit is always included. Apply of such a
+  proposal clears the person's value.
 
   An edited value replaces the proposed value of a suggestion at apply. Apply writes it as the person's value, not as
   an AI value (decision `ghy-4721-edited-suggestion-layer`)."
@@ -16,7 +17,7 @@
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.llm :as llm]
-   [metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion :as suggestion]
+   [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -31,7 +32,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private statuses
-  [:pending :rejected :stale :applied])
+  [:pending :rejected])
 
 (mr/def ::status-counts
   (into [:map {:closed true}] (for [s statuses] [s ms/IntGreaterThanOrEqualToZero])))
@@ -45,12 +46,23 @@
    [:counts             ::status-counts]
    [:human_set_pending  ms/IntGreaterThanOrEqualToZero]])
 
+(defn- human-set-pending-by-table
+  "A map of table id to the number of pending proposals of run `run-id` over a value a person set."
+  [run-id]
+  (let [ks       (db/run-pending-proposal-keys run-id)
+        settings (db/user-settings-by-field (vec (distinct (map :field_id ks))))]
+    (frequencies (keep (fn [{:keys [table_id field_id attribute]}]
+                         (when (= :human (context/value-source (get settings field_id) attribute nil))
+                           table_id))
+                       ks))))
+
 (mu/defn run-tables :- [:sequential ::run-table]
-  "One entry per table that has suggestions in run `run-id`: the number of suggestions by status, and the number of
-  pending suggestions that would replace a value a person set. Ordered by schema, then table name."
+  "One entry per table that has proposals that run `run-id` wrote last: the number of proposals by status, and the
+  number of pending proposals that would replace a value a person set. Ordered by schema, then table name."
   [run-id :- ms/PositiveInt]
   (let [rows   (db/run-table-status-counts run-id)
         tables (db/tables-by-id (into #{} (map :table_id) rows))
+        human  (human-set-pending-by-table run-id)
         zero   (zipmap statuses (repeat 0))]
     (->> (group-by :table_id rows)
          (map (fn [[table-id rows]]
@@ -60,20 +72,55 @@
                    :schema            (:schema table)
                    :total             (reduce + (map :n rows))
                    :counts            (reduce (fn [acc {:keys [status n]}] (update acc status + n)) zero rows)
-                   :human_set_pending (reduce + (for [{:keys [status source n]} rows
-                                                      :when (= [:pending :human] [status source])]
-                                                  n))})))
+                   :human_set_pending (get human table-id 0)})))
          (sort-by (juxt :schema :table_name :table_id))
          vec)))
 
+(mr/def ::source
+  [:enum :human :ai :deterministic :none])
+
 (mr/def ::suggestion
   [:merge
-   ::suggestion/metadata-generation-suggestion
+   ::proposal/metadata-generation-proposal
    [:map
+    [:source               ::source]
+    [:current_value        [:maybe :string]]
     [:field_name           :string]
     [:field_display_name   [:maybe :string]]
     [:field_base_type      :string]
     [:field_effective_type [:maybe :string]]]])
+
+(defn- current-value
+  "The value of `attribute` of `field` as a string, as `current_value` shows it."
+  [field attribute]
+  (let [value (get field attribute)]
+    (case attribute
+      :semantic_type    (some-> value u/qualified-name)
+      :data_sensitivity (some-> value name)
+      :description      value)))
+
+(defn- current-source [settings field attribute]
+  (let [value (current-value field attribute)]
+    (context/value-source settings attribute (if (= :description attribute) (not-empty value) value))))
+
+(defn- with-current
+  "`proposals` with the `source` and `current_value` of the value readers see now."
+  [proposals]
+  (let [field-ids (vec (distinct (map :field_id proposals)))
+        fields    (db/active-fields-by-id field-ids)
+        settings  (db/user-settings-by-field field-ids)]
+    (mapv (fn [{:keys [field_id attribute] :as p}]
+            (let [field (get fields field_id)]
+              (assoc p
+                     :current_value (some-> field (current-value attribute))
+                     :source        (if field (current-source (get settings field_id) field attribute) :none))))
+          proposals)))
+
+(mu/defn table-suggestions :- [:sequential ::suggestion]
+  "The proposals of `table-id` that run `run-id` wrote last, with their `source` and `current_value`."
+  [run-id   :- ms/PositiveInt
+   table-id :- ms/PositiveInt]
+  (with-current (db/table-proposals run-id table-id)))
 
 ;;; Edit
 
@@ -121,10 +168,10 @@
 ;;; Apply
 
 (mr/def ::apply-request
-  "Give `accept` (ids) or `all`, or neither when the request only rejects. `all` accepts every open suggestion of the
-  run, or of the tables in `table_ids`, except those in `except` or `reject`, and except those over a value a person
-  set unless `include_human_set`. `edits` maps a suggestion id to the value that replaces its proposed value; an edit
-  also accepts its suggestion."
+  "Give `accept` (ids) or `all`, or neither when the request only rejects. `all` accepts every proposal that the run
+  wrote last, or of the tables in `table_ids`, except those in `except` or `reject`, and except those over a value a
+  person set unless `include_human_set`. `edits` maps a proposal id to the value that replaces its proposed value; an
+  edit also accepts its proposal."
   [:map {:closed true}
    [:accept            {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:all               {:optional true} [:maybe :boolean]]
@@ -149,19 +196,6 @@
                             [:attribute     :keyword]
                             [:reason        ::failure-reason]]]]])
 
-(defn- current-value
-  "The value of `attribute` of `field` as a suggestion records it in `current_value`."
-  [field attribute]
-  (let [value (get field attribute)]
-    (case attribute
-      :semantic_type    (some-> value u/qualified-name)
-      :data_sensitivity (some-> value name)
-      :description      value)))
-
-(defn- current-source [settings field attribute]
-  (let [value (current-value field attribute)]
-    (context/value-source settings attribute (if (= :description attribute) (not-empty value) value))))
-
 (defn- value-to-write
   "The value apply writes for suggestion `s`: the edited value when the request edits it, else the proposed value."
   [{:keys [attribute edited_value proposed_value]}]
@@ -171,15 +205,12 @@
       :description                       value)))
 
 (defn- outcome
-  "`:write`, `:stale`, or a failure reason for accepted suggestion `s`. Stale: the value readers see, or the layer that
-  gives it, is not the one the run recorded. A semantic type never replaces a key type, which sync owns, and must fit
-  the field's type."
-  [field settings {:keys [attribute source current_value] :as s}]
+  "`:write` or a failure reason for accepted proposal `s`. A semantic type never replaces a key type, which sync owns,
+  and must fit the field's type."
+  [field {:keys [attribute] :as s}]
   (cond
     (nil? field)                                                        :field_not_found
     (not (:can_write field))                                            :not_writable
-    (or (not= current_value (current-value field attribute))
-        (not= source (current-source settings field attribute)))        :stale
     (not= :semantic_type attribute)                                     :write
     (key-type? (:semantic_type field))                                  :key_field
     (not (llm/semantic-type-fits? (value-to-write s)
@@ -187,17 +218,20 @@
     :else                                                               :write))
 
 (defn- write-table!
-  "Write the accepted suggestions `suggestions` of one table in one transaction and mark them applied, stale or, when
-  they fail, pending. An edited suggestion is written as the person's value; any other is written as an AI value, and
-  when it is over a human value, the person's value is cleared. Returns the outcome of each suggestion and the ids of
-  the written fields."
+  "Write the accepted proposals `suggestions` of one table in one transaction and delete their rows; a proposal that
+  fails is set back to pending. An edited proposal is written as the person's value; any other is written as an AI
+  value, and when it is over a human value now, the person's value is cleared. Returns the outcome of each proposal
+  and the ids of the written fields."
   [suggestions user-id]
   (t2/with-transaction [_conn]
     (let [field-ids (vec (distinct (map :field_id suggestions)))
           fields    (db/active-fields-by-id field-ids)
           settings  (db/user-settings-by-field field-ids)
-          outcomes  (mapv (fn [s]
-                            (assoc s ::outcome (outcome (get fields (:field_id s)) (get settings (:field_id s)) s)))
+          outcomes  (mapv (fn [{:keys [field_id attribute] :as s}]
+                            (let [field (get fields field_id)]
+                              (assoc s
+                                     ::outcome (outcome field s)
+                                     :source   (when field (current-source (get settings field_id) field attribute)))))
                           suggestions)
           writes    (filter #(= :write (::outcome %)) outcomes)
           by-field  (group-by :field_id writes)
@@ -218,17 +252,17 @@
                     new-type (some #(when (= :semantic_type (:attribute %)) (value-to-write %)) (by-field field-id))]
               :when (not (warehouse-schema.field/internal-remapping-allowed? (:base_type field) new-type))]
         (db/delete-dimensions! ids))
-      (doseq [[status ss] (group-by (comp {:write :applied :stale :stale} ::outcome) outcomes)]
-        (db/set-suggestion-status! (mapv :id ss) (or status :pending) user-id))
+      (let [{writes true failures false} (group-by #(= :write (::outcome %)) outcomes)]
+        (db/delete-proposals! (mapv :id writes))
+        (db/set-proposal-status! (mapv :id failures) :pending user-id))
       {:outcomes  outcomes
        :field-ids (vec (keys by-field))})))
 
 (defn- table-result [outcomes]
-  (let [by-outcome (group-by ::outcome outcomes)
-        failures   (remove #(#{:write :stale} (::outcome %)) outcomes)]
-    {:written  (count (:write by-outcome))
+  (let [failures (remove #(= :write (::outcome %)) outcomes)]
+    {:written  (- (count outcomes) (count failures))
      :rejected 0
-     :stale    (count (:stale by-outcome))
+     :stale    0
      :failed   (count failures)
      :failures (mapv (fn [s] {:suggestion_id (:id s)
                               :field_id      (:field_id s)
@@ -237,7 +271,7 @@
                      failures)}))
 
 (defn- apply-table!
-  "Write `suggestions`, the accepted suggestions of one table of run `run-id`, then publish `:event/field-update` for
+  "Write `suggestions`, the accepted proposals of one table of run `run-id`, then publish `:event/field-update` for
   each written field as `user-id`. A table that throws counts all its suggestions as failed and leaves their status."
   [run-id table-id suggestions user-id]
   (try
@@ -260,22 +294,29 @@
     (when (some (set except) (keys edits))
       (throw (bad-request (tru "An edited suggestion cannot be in except."))))))
 
+(defn- human-set?
+  "Whether a person set the value of the attribute of proposal `p` now."
+  [settings {:keys [field_id attribute]}]
+  (= :human (context/value-source (get settings field_id) attribute nil)))
+
 (defn- accepted-suggestions
-  "The open suggestions that the request accepts, each with the request's edit as `:edited_value`."
+  "The proposals that the request accepts, each with the request's edit as `:edited_value`."
   [run-id {:keys [accept all except table_ids include_human_set reject edits]}]
   (let [left-out (into (set except) reject)
-        by-id    (db/open-suggestions-by-id run-id (vec (distinct (concat accept (keys edits)))))
+        by-id    (db/open-proposals-by-id run-id (vec (distinct (concat accept (keys edits)))))
         in-scope (when all
-                   (remove #(or (left-out (:id %))
-                                (and (= :human (:source %)) (not include_human_set)))
-                           (db/open-suggestions run-id table_ids)))]
+                   (let [ps       (remove #(left-out (:id %)) (db/open-proposals run-id table_ids))
+                         settings (when-not include_human_set
+                                    (db/user-settings-by-field (vec (distinct (map :field_id ps)))))]
+                     (cond->> ps
+                       (not include_human_set) (remove #(human-set? settings %)))))]
     (->> (concat by-id in-scope)
          (m/distinct-by :id)
          (map #(assoc % :edited_value (get edits (:id %)))))))
 
 (defn- check-edits!
   "Throw a 400 when an edited value of `suggestions` is one a person cannot set; return `suggestions` with each edited
-  value normalized. A suggestion whose field is gone keeps its value; its write fails with `field_not_found`."
+  value normalized. A proposal whose field is gone keeps its value; its write fails with `field_not_found`."
   [suggestions]
   (let [fields (db/active-fields-by-id (vec (distinct (keep #(when (:edited_value %) (:field_id %)) suggestions))))]
     (mapv (fn [{:keys [attribute edited_value field_id] :as s}]
@@ -285,18 +326,18 @@
           suggestions)))
 
 (mu/defn apply! :- ::apply-result
-  "Apply the review of run `run-id` that `request` gives, as `user-id`: write the accepted suggestions, the edited
-  ones as the person's values and the others as AI values, and mark the rejected ones `rejected`. Only pending and
-  rejected suggestions take part; ids of other suggestions are ignored. An invalid edit is a 400 and nothing is
-  written. Each table is one transaction. A suggestion whose field changed after the run becomes `stale` and is
-  skipped; a suggestion that cannot be written stays pending and is listed in `failures`."
+  "Apply the review of run `run-id` that `request` gives, as `user-id`: write the accepted proposals, the edited ones
+  as the person's values and the others as AI values, and delete their rows, and mark the rejected ones `rejected`.
+  Only proposals that the run wrote last take part; other ids are ignored. An invalid edit is a 400 and nothing is
+  written. Each table is one transaction. A proposal that cannot be written stays pending and is listed in
+  `failures`."
   [run-id  :- ms/PositiveInt
    request :- ::apply-request
    user-id :- ms/PositiveInt]
   (check-request request)
   (let [accepted (check-edits! (accepted-suggestions run-id request))
-        rejected (db/open-suggestions-by-id run-id (vec (distinct (:reject request))))]
-    (db/set-suggestion-status! (mapv :id rejected) :rejected user-id)
+        rejected (db/open-proposals-by-id run-id (vec (distinct (:reject request))))]
+    (db/set-proposal-status! (mapv :id rejected) :rejected user-id)
     (transduce (map (fn [[table-id ss]] (apply-table! run-id table-id ss user-id)))
                (completing (fn [acc r] (merge-with #(if (number? %1) (+ %1 %2) (into %1 %2)) acc r)))
                {:written 0 :rejected (count rejected) :stale 0 :failed 0 :failures []}

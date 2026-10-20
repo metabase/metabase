@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-sensitivity.models.metadata-generation-run
   "A `metadata_generation_run` is one LLM metadata generation run over a database, a list of schemas or a list of
-  tables. Its suggestions are `metadata_generation_suggestion` rows. `is_active` is true while the run is pending,
+  tables. It is the job record only: the run upserts `metadata_generation_proposal` rows, which belong to no run, and
+  sets their `last_run_id`. `is_active` is true while the run is pending,
   running or canceling and NULL after, so the unique (database_id, is_active) constraint allows one active run per
   database."
   (:require
