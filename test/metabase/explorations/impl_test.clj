@@ -349,20 +349,45 @@
       (is (= [1 2] (sort (mapv :id (:metrics (explorations.impl/research-groups
                                               {:groups [{:metric_id 1} {:metric_id 2}]})))))))))
 
-(deftest research-groups-hard-errors-test
+(defn- research-groups-problems
+  "The `ex-data` [[explorations.impl/research-groups]] throws for `groups`."
+  [groups]
+  (try
+    (explorations.impl/research-groups {:groups groups})
+    (catch clojure.lang.ExceptionInfo e
+      (ex-data e))))
+
+(deftest research-groups-reports-every-bad-id-test
   (with-synthetic-metrics
-    (testing "unknown metric id"
-      (is (thrown-with-msg? Exception #"Unknown or inaccessible metric id 999"
-                            (explorations.impl/research-groups
-                             {:groups [{:metric_id 999}]}))))
-    (testing "dimension that isn't a candidate of its metric"
-      (is (thrown-with-msg? Exception #"not a candidate of metric"
-                            (explorations.impl/research-groups
-                             {:groups [{:metric_id 1 :dimension_ids ["region-2"]}]}))))
-    (testing "replace_default_dimensions with no dimension_ids"
-      (is (thrown-with-msg? Exception #"replace_default_dimensions requires"
-                            (explorations.impl/research-groups
-                             {:groups [{:metric_id 1 :replace_default_dimensions true}]}))))
+    (testing "every unknown metric id, not just the first"
+      (is (= {:unknown-metric-ids [999 1000]}
+             (research-groups-problems [{:metric_id 999} {:metric_id 1}
+                                        {:metric_id 1000} {:metric_id 999}]))))
+    (testing "every group that replaces the automatic dimensions with none"
+      (is (= {:replace-without-dimensions [1 2]}
+             (research-groups-problems [{:metric_id 1 :replace_default_dimensions true}
+                                        {:metric_id 2 :replace_default_dimensions true
+                                         :dimension_ids []}]))))
+    (testing "every dimension that isn't a candidate of its metric, with that metric's candidates"
+      (is (= {:invalid-dimensions [{:metric-id     1
+                                    :metric-name   "Revenue"
+                                    :dimension-ids ["region-2" "nope"]
+                                    :candidates    [{:id "region-1" :name "Region"}
+                                                    {:id "plan-1" :name "Plan"}]}
+                                   {:metric-id     2
+                                    :metric-name   "Churn"
+                                    :dimension-ids ["plan-1"]
+                                    :candidates    [{:id "region-2" :name "Region"}]}]}
+             (research-groups-problems [{:metric_id 1 :dimension_ids ["region-1" "region-2"]}
+                                        {:metric_id 2 :dimension_ids ["plan-1"]}
+                                        {:metric_id 1 :dimension_ids ["nope"]}]))))
+    (testing "one kind at a time: unknown metrics first, then empty replacements, then dimensions"
+      (is (= {:unknown-metric-ids [999]}
+             (research-groups-problems [{:metric_id 1 :replace_default_dimensions true}
+                                        {:metric_id 999}])))
+      (is (= {:replace-without-dimensions [2]}
+             (research-groups-problems [{:metric_id 1 :dimension_ids ["nope"]}
+                                        {:metric_id 2 :replace_default_dimensions true}]))))
     (testing "dimension the catalog still lists but query resolution drops"
       ;; `plan-1` survives the cheap catalog but its target no longer resolves against the
       ;; metric's query, so it must be rejected rather than silently dropped from the payload.
@@ -371,9 +396,12 @@
                                     (mapv #(update % :dimensions
                                                    (fn [ds] (filterv (comp #{"region-1"} :id) ds)))
                                           metrics))]
-        (is (thrown-with-msg? Exception #"not a candidate of metric"
-                              (explorations.impl/research-groups
-                               {:groups [{:metric_id 1 :dimension_ids ["plan-1"]}]})))))))
+        (is (= [{:metric-id     1
+                 :metric-name   "Revenue"
+                 :dimension-ids ["plan-1"]
+                 :candidates    [{:id "region-1" :name "Region"}]}]
+               (:invalid-dimensions
+                (research-groups-problems [{:metric_id 1 :dimension_ids ["plan-1"]}]))))))))
 
 ;;; ------------------------------------------ exploration-data ------------------------------------------
 
