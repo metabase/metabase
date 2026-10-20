@@ -34,7 +34,6 @@ export function PrototypesPage() {
             component={Link}
             to={`/prototypes/${candidate.id}`}
             label={candidate.name}
-            description={candidate.description}
             active={candidate.id === prototype.id}
           />
         ))}
