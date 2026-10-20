@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { NotebookCell } from "metabase/querying/notebook/components/NotebookCell";
-import { Box, Button, Group, Icon, Popover, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { toFilterClause } from "../../harness/clauses";
@@ -100,7 +100,6 @@ export function RailroadPrototype({
         />
       ) : (
         <Group gap="sm">
-          <Text c="text-secondary">{t`No filters`}</Text>
           <Button
             size="compact-sm"
             variant="subtle"

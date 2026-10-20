@@ -141,7 +141,6 @@ function FilterBar({ query, stageIndex, onChange }: QueryEditorProps) {
 
   return (
     <Group gap="sm" align="center">
-      {filters.length === 0 && <Text c="text-secondary">{t`No filters`}</Text>}
       {advancedFilters.length > 0 && (
         <AdvancedFilterPill
           query={query}

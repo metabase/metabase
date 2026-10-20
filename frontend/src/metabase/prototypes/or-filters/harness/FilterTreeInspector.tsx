@@ -23,7 +23,6 @@ export function FilterTreeInspector({
   return (
     <Stack gap="sm">
       <Text fw="bold">{t`Filter tree`}</Text>
-      {filters.length === 0 && <Text c="text-secondary">{t`No filters.`}</Text>}
       {filters.map((filter, index) => (
         <Stack key={index} gap="xs">
           <Text size="sm" c="text-secondary">

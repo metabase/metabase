@@ -209,7 +209,6 @@ function AddFilterPopover({
       <Popover.Target>
         {variant === "chill" ? (
           <Group gap="sm">
-            {isFirst && <Text c="text-secondary">{t`No filters`}</Text>}
             <Button
               size="compact-sm"
               variant="subtle"
