@@ -159,7 +159,7 @@
                               (fn [_] (throw (ex-info "Invalid research groups" problems)))]
     (research-call "add_research_groups" {:groups [{:metric_id 1}]})))
 
-(deftest add-research-groups-names-every-bad-id-test
+(deftest add-research-groups-reports-every-problem-at-once-test
   (testing "every problem in one error, so the model fixes them all in one retry"
     (is (= {:output (str "None of the groups were added:\n"
                          "- Metrics 999, 1000 were not found. They may not exist, or you may not have"
@@ -194,6 +194,11 @@
                                            :metric-name   "Churn"
                                            :dimension-ids ["plan-1"]
                                            :candidates    []}]}))))
+  (testing "anything else that fails in validation still ends the turn"
+    (is (= {:class :unrecoverable :code :internal}
+           (:error (add-groups-rejected-with {:something "else"}))))))
+
+(deftest add-research-groups-cuts-candidates-to-fit-test
   (testing "a long candidate list is counted rather than spelled out"
     (is (str/includes? (:output (add-groups-rejected-with
                                  {:invalid-dimensions
@@ -217,7 +222,9 @@
       (doseq [m (range 1 6)]
         (is (str/includes? output (str "Dimension \"wrong-" m "\" is not a candidate of metric " m))))
       (is (str/includes? output "Call `get_research_candidates` with `metric_ids` [1, 2, 3, 4, 5]"))
-      (is (str/includes? output "Candidate dimensions by metric:\n- Metric 1 (Metric 1): "))))
+      (is (str/includes? output "Candidate dimensions by metric:\n- Metric 1 (Metric 1): ")))))
+
+(deftest add-research-groups-suggests-lookups-within-the-limit-test
   (testing "the lookup that it suggests asks for no more metric_ids per call than the tool takes"
     (let [output  (:output (add-groups-rejected-with
                             {:invalid-dimensions (vec (for [m (range 1 22)]
@@ -231,10 +238,7 @@
       (is (= [(range 1 21) [21]] batches))
       (mt/with-test-user :crowberto
         (doseq [batch batches]
-          (is (nil? (:error (research-call "get_research_candidates" {:metric_ids batch}))))))))
-  (testing "anything else that fails in validation still ends the turn"
-    (is (= {:class :unrecoverable :code :internal}
-           (:error (add-groups-rejected-with {:something "else"}))))))
+          (is (nil? (:error (research-call "get_research_candidates" {:metric_ids batch})))))))))
 
 (defn- orders-count
   "The query of a minimal metric: a count of orders."
