@@ -330,14 +330,20 @@
           parts)))
 
 (defn- turn-input-parts
-  "The AISDK parts for this call of the turn: what the previous call sent, exactly as sent, then the parts added since.
-  Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
-  the turn, and Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything
-  before it has changed."
-  [sent-parts context memory tools link-registry]
-  (into sent-parts
-        (invert-links (subvec (messages/build-message-history context memory tools) (count sent-parts))
-                      link-registry)))
+  "The AISDK parts for this call of the turn.
+
+  Only the first call builds the history, which renders the viewing context. A later call sends what the previous
+  call sent, exactly as sent, then the parts of the steps added since. It does not build the history again: that
+  reads the viewing context again and inverts links against a registry that grows within the turn, and Claude Opus,
+  Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything before it has changed.
+
+  `sent-steps` is the number of memory steps that `sent-parts` holds, or nil before the first call."
+  [sent-parts sent-steps context memory tools link-registry]
+  (if sent-steps
+    (into sent-parts
+          (invert-links (messages/steps->parts (drop sent-steps (memory/get-steps memory)))
+                        link-registry))
+    (invert-links (messages/build-message-history context memory tools) link-registry)))
 
 (defn- call-llm
   "Call the LLM and stream processed parts.
@@ -670,6 +676,7 @@
      :status              :continue
      :usage-atom          usage-atom
      :sent-parts          []
+     :sent-steps          nil
      :undeclared-failures 0}))
 
 (defn- final-state-part [memory]
@@ -820,7 +827,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures consumer-stopped?] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts sent-steps undeclared-failures consumer-stopped?] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -830,7 +837,7 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
+          input-parts        (turn-input-parts sent-parts sent-steps context memory tools @link-registry-atom)
           xf                 (comp (call-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -873,9 +880,10 @@
 
               (should-continue? iteration max-iter terminal-tools parts)
               (assoc loop-state
-                     :result result'
-                     :iteration (inc iteration)
-                     :sent-parts input-parts
+                     :result              result'
+                     :iteration           (inc iteration)
+                     :sent-parts          input-parts
+                     :sent-steps          (count (memory/get-steps memory))
                      :undeclared-failures undeclared-failures)
 
               :else

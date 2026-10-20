@@ -146,6 +146,12 @@
   (->> (:parts step)
        (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
+(defn steps->parts
+  "The AISDK parts of agent `steps`, in order. [[build-message-history]] puts them last, after the input messages and
+  the dialect preload."
+  [steps]
+  (into [] (mapcat step->parts) steps))
+
 (defn- messages-with-injected-context
   "Returns messages from memory and injects context into the most recent one."
   [context memory]
@@ -182,7 +188,7 @@
    (let [input-messages (messages-with-injected-context context memory)
          steps          (memory/get-steps memory)
          input-parts    (mapcat input-message->parts input-messages)
-         step-parts     (mapcat step->parts steps)
+         step-parts     (steps->parts steps)
          ;; Preload the active SQL dialect (if any) as a synthetic load_skill
          ;; tool-call/result pair. It is placed after the input messages (so the
          ;; first message is still the user's) and before this turn's steps, which
