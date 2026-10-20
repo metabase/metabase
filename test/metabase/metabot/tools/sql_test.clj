@@ -394,3 +394,13 @@
                        (:error result)))
                 (is (str/includes? (:output result) "Don't retry"))))))))))
 
+
+(deftest missing-sql-editor-test
+  (doseq [memory [nil {} {:context {:user_is_viewing [{:type "code_editor" :buffers []}]}}]]
+    (let [result (invoke-sql-tool :sql memory "create_sql_query" {:database_id Integer/MAX_VALUE})]
+      (is (= {:class :unrecoverable
+              :code ::sql/missing-editor
+              :user-message "No active SQL editor was found. Open a SQL editor and try again."}
+             (:error result)))
+      (is (str/includes? (:output result) "Don't retry")))))
+

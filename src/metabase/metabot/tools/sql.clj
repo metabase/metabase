@@ -16,6 +16,7 @@
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -122,7 +123,8 @@
   (try
     (let [buffer-id (first-code-editor-buffer-id)]
       (if (nil? buffer-id)
-        {:output "No active code editor buffer found for SQL editing."}
+        (tools/unrecoverable! ::missing-editor
+                              {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})
         (let [{:keys [validation-result action-result]}
               (create-sql-query-tools/create-sql-query
                {:database-id database_id
