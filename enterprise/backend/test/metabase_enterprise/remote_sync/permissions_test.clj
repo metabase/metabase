@@ -553,6 +553,23 @@
                      (field-ids (mt/user-http-request :rasta :get 200 (str "database/" (mt/id) "/idfields")
                                                       :include_editable_data_model true)))))))))))
 
+(deftest publish-tables-read-only-test
+  (mt/with-premium-features #{:library}
+    (collections.tu/without-library
+     (mt/with-temp [:model/Collection {coll-id :id} {:type             collections/library-data-collection-type
+                                                     :is_remote_synced true}
+                    :model/Table      {table-id :id} {:db_id (mt/id)}]
+       (testing "tables cannot be published into a remote-synced collection when remote-sync-type is read-only"
+         (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+           (mt/user-http-request :crowberto :post 403 "ee/data-studio/table/publish-tables"
+                                 {:table_ids [table-id] :collection_id coll-id})
+           (is (false? (:is_published (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))))
+       (testing "tables can be published into a remote-synced collection when remote-sync-type is read-write"
+         (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                 {:table_ids [table-id] :collection_id coll-id})
+           (is (true? (:is_published (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))))))))
+
 ;;; ------------------------------------------------ Field Remote Sync Tests ------------------------------------------------
 
 (deftest field-remote-synced-permissions-read-only-test
