@@ -78,7 +78,7 @@ describe("DashboardMoreMenu", () => {
     expect(await getMenuItemLabels()).toEqual(["Bookmark", "Duplicate"]);
   });
 
-  it("keeps Verify and drops the edits when remote sync is read-only", async () => {
+  it("keeps Verify and Duplicate and drops the edits when remote sync is read-only", async () => {
     setup({
       dashboard: createMockDashboard({ can_write: true }),
       isAdmin: true,
@@ -88,6 +88,7 @@ describe("DashboardMoreMenu", () => {
     expect(await getMenuItemLabels()).toEqual([
       "Bookmark",
       "Verify this dashboard",
+      "Duplicate",
     ]);
   });
 

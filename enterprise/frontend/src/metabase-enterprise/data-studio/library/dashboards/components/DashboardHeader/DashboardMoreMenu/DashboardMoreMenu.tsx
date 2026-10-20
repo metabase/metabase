@@ -8,9 +8,7 @@ import {
 } from "metabase/api";
 import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Dashboard } from "metabase-types/api";
 
 import { useCanEditDashboard } from "../../../hooks/use-can-edit-dashboard";
@@ -49,7 +47,11 @@ type DashboardMenuProps = {
 
 function DashboardMenu({ dashboard, onOpenModal }: DashboardMenuProps) {
   const canEdit = useCanEditDashboard(dashboard);
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const { data: bookmarks = [] } = useListBookmarksQuery();
+  const isBookmarked = bookmarks.some(
+    (bookmark) =>
+      bookmark.type === "dashboard" && bookmark.item_id === dashboard.id,
+  );
 
   return (
     <Menu>
@@ -57,7 +59,7 @@ function DashboardMenu({ dashboard, onOpenModal }: DashboardMenuProps) {
         <MoreMenuButton aria-label={t`More options`} />
       </Menu.Target>
       <Menu.Dropdown>
-        <BookmarkMenuItem dashboard={dashboard} />
+        <BookmarkMenuItem dashboard={dashboard} isBookmarked={isBookmarked} />
         {dashboard.can_write && <ModerationMenuItems dashboard={dashboard} />}
         {canEdit && (
           <Menu.Item
@@ -67,14 +69,12 @@ function DashboardMenu({ dashboard, onOpenModal }: DashboardMenuProps) {
             {c("A verb, not a noun").t`Move`}
           </Menu.Item>
         )}
-        {!isRemoteSyncReadOnly && (
-          <Menu.Item
-            leftSection={<Icon name="clone" />}
-            onClick={() => onOpenModal("duplicate")}
-          >
-            {c("A verb, not a noun").t`Duplicate`}
-          </Menu.Item>
-        )}
+        <Menu.Item
+          leftSection={<Icon name="clone" />}
+          onClick={() => onOpenModal("duplicate")}
+        >
+          {c("A verb, not a noun").t`Duplicate`}
+        </Menu.Item>
         {canEdit && (
           <>
             <Menu.Divider role="separator" />
@@ -95,14 +95,13 @@ type DashboardMenuItemProps = {
   dashboard: Dashboard;
 };
 
-function BookmarkMenuItem({ dashboard }: DashboardMenuItemProps) {
-  const { data: bookmarks = [] } = useListBookmarksQuery();
+type BookmarkMenuItemProps = DashboardMenuItemProps & {
+  isBookmarked: boolean;
+};
+
+function BookmarkMenuItem({ dashboard, isBookmarked }: BookmarkMenuItemProps) {
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
-  const isBookmarked = bookmarks.some(
-    (bookmark) =>
-      bookmark.type === "dashboard" && bookmark.item_id === dashboard.id,
-  );
 
   return (
     <Menu.Item
