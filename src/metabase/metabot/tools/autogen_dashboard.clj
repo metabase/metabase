@@ -46,7 +46,8 @@
     (when (or (:archived entity) (false? (:active entity)))
       (unavailable-source! {:kind kind :id id}))
     {:entity entity
-     :path   (str "/auto/dashboard/" (name kind) "/" id)}))
+     ;; X-ray has no page for metrics, and its question page takes a card of any type
+     :path   (str "/auto/dashboard/" (name (if (= :metric kind) :question kind)) "/" id)}))
 
 (defn- source-value?
   "Whether `v` names a source, rather than being a placeholder for a field the model does not use.
