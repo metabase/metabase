@@ -5,13 +5,12 @@
    [metabase.test :as mt]))
 
 (deftest user-metabot-perms-sql-generation-scopes-test
-  (testing "sql-generation :yes grants sql, transforms, snippets scopes"
+  (testing "sql-generation :yes grants sql and snippets scopes"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :yes
                    :permission/metabot-nlq            :no
                    :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:sql:*"))
-      (is (contains? scopes "agent:transforms:*"))
       (is (contains? scopes "agent:snippets:*"))
       (is (not (contains? scopes "agent:notebook:*")))
       (is (not (contains? scopes "agent:viz:*"))))))
