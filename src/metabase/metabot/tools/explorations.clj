@@ -145,11 +145,13 @@
    LLM sees of the result."
   15)
 
-(defn- summarize-names [names]
-  (let [extra (- (count names) summary-max-names)]
-    (if (pos? extra)
-      (str (str/join ", " (take summary-max-names names)) " and " extra " more")
-      (str/join ", " names))))
+(defn- summarize-names
+  ([names] (summarize-names names summary-max-names))
+  ([names max-names]
+   (let [extra (- (count names) max-names)]
+     (if (pos? extra)
+       (str (str/join ", " (take max-names names)) " and " extra " more")
+       (str/join ", " names)))))
 
 (defn- not-found-sentence
   "That the `noun`s with `ids` were not found, without saying whether they exist."
@@ -159,9 +161,29 @@
          " access to them.")
     (str noun " " (first ids) " was not found. It may not exist, or you may not have access to it.")))
 
+(def ^:private error-text-budget
+  "How long the text of [[invalid-research-groups!]] may get once it lists candidates.
+  The runtime cuts a failure's text at 4,000 characters, and the bad ids and the steps come before
+  the candidates, so this budget leaves them room to spare."
+  3000)
+
+(defn- candidates-step
+  "A recovery step that lists up to `per-metric` candidates of each metric in `invalid-dimensions`."
+  [invalid-dimensions per-metric]
+  {:uses #{}
+   :text (te/lines
+          "Candidate dimensions by metric:"
+          (for [{:keys [metric-id metric-name candidates]} invalid-dimensions]
+            (str "- Metric " metric-id " (" metric-name "): "
+                 (if (seq candidates)
+                   (summarize-names (map #(str (pr-str (:id %)) " (" (:name %) ")") candidates)
+                                    per-metric)
+                   "none"))))})
+
 (tools/defrecoverable invalid-research-groups!
-  "Groups in `add_research_groups` that can't be added: metrics that weren't found, replacements of
-  the automatic dimensions with none, and dimension ids that aren't candidates of their metric."
+  "Groups in `add_research_groups` that can't be added.
+  Their metric wasn't found, they replace the automatic dimensions with none, or they name dimension
+  ids that aren't candidates of their metric."
   {:payload [:map {:closed true}
              [:unknown-metric-ids         {:optional true} [:sequential {:min 1} :int]]
              [:replace-without-dimensions {:optional true} [:sequential {:min 1} :int]]
@@ -175,49 +197,54 @@
                                               [:id   :string]
                                               [:name :string]]]]]]]]}
   [{:keys [unknown-metric-ids replace-without-dimensions invalid-dimensions]}]
-  {:message  (te/lines
-              "None of the groups were added:"
-              (when (seq unknown-metric-ids)
-                (str "- " (not-found-sentence "Metric" unknown-metric-ids)))
-              (when (seq replace-without-dimensions)
-                (str "- " (if (next replace-without-dimensions)
-                            (str "The groups for metrics " (str/join ", " replace-without-dimensions) " set")
-                            (str "The group for metric " (first replace-without-dimensions) " sets"))
-                     " `replace_default_dimensions` with no `dimension_ids`."))
-              (for [{:keys [metric-id metric-name dimension-ids candidates]} invalid-dimensions]
-                (str "- " (if (next dimension-ids) "Dimensions " "Dimension ")
-                     (str/join ", " (map pr-str dimension-ids))
-                     (if (next dimension-ids) " are not candidates" " is not a candidate")
-                     " of metric " metric-id " (" metric-name ")."
-                     (if (seq candidates)
-                       (str " Its candidates are "
-                            (summarize-names (map #(str (pr-str (:id %)) " (" (:name %) ")") candidates))
-                            ".")
-                       " It has no candidate dimensions."))))
-   :recovery (cond-> []
-               (seq unknown-metric-ids)
-               (conj {:uses #{"list_research_metrics" "get_research_candidates"}
-                      :text (str "Call `list_research_metrics` to find metrics that are available for"
-                                 " research, and take their ids from `get_research_candidates`.")})
+  (let [message (te/lines
+                 "None of the groups were added:"
+                 (when (seq unknown-metric-ids)
+                   (str "- " (not-found-sentence "Metric" unknown-metric-ids)))
+                 (when (seq replace-without-dimensions)
+                   (str "- " (if (next replace-without-dimensions)
+                               (str "The groups for metrics " (str/join ", " replace-without-dimensions)
+                                    " set")
+                               (str "The group for metric " (first replace-without-dimensions) " sets"))
+                        " `replace_default_dimensions` with no `dimension_ids`."))
+                 (for [{:keys [metric-id metric-name dimension-ids]} invalid-dimensions]
+                   (str "- " (if (next dimension-ids) "Dimensions " "Dimension ")
+                        (str/join ", " (map pr-str dimension-ids))
+                        (if (next dimension-ids) " are not candidates" " is not a candidate")
+                        " of metric " metric-id " (" metric-name ").")))
+        steps   (cond-> []
+                  (seq unknown-metric-ids)
+                  (conj {:uses #{"list_research_metrics" "get_research_candidates"}
+                         :text (str "Call `list_research_metrics` to find metrics that are available"
+                                    " for research, and take their ids from `get_research_candidates`.")})
 
-               (seq replace-without-dimensions)
-               (conj {:uses #{}
-                      :text (str "Pass the dimension ids to slice by, or drop"
-                                 " `replace_default_dimensions` to keep the automatic selection.")})
+                  (seq replace-without-dimensions)
+                  (conj {:uses #{}
+                         :text (str "Pass the dimension ids to slice by, or drop"
+                                    " `replace_default_dimensions` to keep the automatic selection.")})
 
-               (seq invalid-dimensions)
-               (conj {:uses #{}
-                      :text (str "A dimension id belongs to one metric, so the same dimension has a"
-                                 " different id under each metric. Take each group's ids from its own"
-                                 " metric's candidates.")}
-                     {:uses #{"get_research_candidates"}
-                      :text (str "Call `get_research_candidates` with `metric_ids` ["
-                                 (str/join ", " (map :metric-id invalid-dimensions))
-                                 "] to see every candidate.")}))})
+                  (seq invalid-dimensions)
+                  (conj {:uses #{}
+                         :text (str "A dimension id belongs to one metric, so the same dimension has a"
+                                    " different id under each metric. Take each group's ids from its"
+                                    " own metric's candidates.")}
+                        {:uses #{"get_research_candidates"}
+                         :text (str "Call `get_research_candidates` with `metric_ids` ["
+                                    (str/join ", " (map :metric-id invalid-dimensions))
+                                    "] to see every candidate.")}))
+        fits?   (fn [step]
+                  (<= (count (str/join "\n" (cons message (map :text (conj steps step)))))
+                      error-text-budget))]
+    {:message  message
+     :recovery (cond-> steps
+                 (seq invalid-dimensions)
+                 (into (take 1 (filter fits? (map #(candidates-step invalid-dimensions %)
+                                                  (range summary-max-names 0 -1))))))}))
 
 (defn- research-groups-payload
-  "Validate `groups` and hydrate the FE picker payload for them, with the snake_case keys that the
-   client reads. Invalid groups raise [[invalid-research-groups!]], which names every problem."
+  "Validate `groups` and hydrate the FE picker payload for them.
+   The payload has the snake_case keys that the client reads. Invalid groups raise
+   [[invalid-research-groups!]], which names every problem."
   [groups]
   (explorations/exploration-data->api
    (try

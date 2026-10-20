@@ -167,10 +167,9 @@
                          " access to them.\n"
                          "- The group for metric 2 sets `replace_default_dimensions` with no"
                          " `dimension_ids`.\n"
-                         "- Dimensions \"region-2\", \"nope\" are not candidates of metric 1 (Revenue)."
-                         " Its candidates are \"region-1\" (Region), \"plan-1\" (Plan).\n"
-                         "- Dimension \"plan-1\" is not a candidate of metric 3 (Churn). It has no"
-                         " candidate dimensions.\n"
+                         "- Dimensions \"region-2\", \"nope\" are not candidates of metric 1"
+                         " (Revenue).\n"
+                         "- Dimension \"plan-1\" is not a candidate of metric 3 (Churn).\n"
                          "Call `list_research_metrics` to find metrics that are available for"
                          " research, and take their ids from `get_research_candidates`.\n"
                          "Pass the dimension ids to slice by, or drop `replace_default_dimensions` to"
@@ -179,7 +178,10 @@
                          " id under each metric. Take each group's ids from its own metric's"
                          " candidates.\n"
                          "Call `get_research_candidates` with `metric_ids` [1, 3] to see every"
-                         " candidate.")
+                         " candidate.\n"
+                         "Candidate dimensions by metric:\n"
+                         "- Metric 1 (Revenue): \"region-1\" (Region), \"plan-1\" (Plan)\n"
+                         "- Metric 3 (Churn): none")
             :error  {:class :recoverable :code ::tools.explorations/invalid-research-groups}}
            (add-groups-rejected-with
             {:unknown-metric-ids         [999 1000]
@@ -201,7 +203,22 @@
                                     :dimension-ids ["nope"]
                                     :candidates    (vec (for [i (range 20)]
                                                           {:id (str "d" i) :name (str "D" i)}))}]}))
-                       "\"d14\" (D14) and 5 more.")))
+                       "\"d14\" (D14) and 5 more")))
+  (testing "candidates come last and are cut short, so the bad ids and the next steps fit"
+    (let [candidates (vec (for [i (range 15)]
+                            {:id   (format "00000000-0000-4000-8000-%012d" i)
+                             :name (str "Customer acquisition channel " i)}))
+          {:keys [output]} (add-groups-rejected-with
+                            {:invalid-dimensions (vec (for [m (range 1 6)]
+                                                        {:metric-id     m
+                                                         :metric-name   (str "Metric " m)
+                                                         :dimension-ids [(str "wrong-" m)]
+                                                         :candidates    candidates}))})]
+      (is (> 4000 (count output)) "the runtime cuts a failure at 4,000 characters")
+      (doseq [m (range 1 6)]
+        (is (str/includes? output (str "Dimension \"wrong-" m "\" is not a candidate of metric " m))))
+      (is (str/includes? output "Call `get_research_candidates` with `metric_ids` [1, 2, 3, 4, 5]"))
+      (is (str/includes? output "Candidate dimensions by metric:\n- Metric 1 (Metric 1): "))))
   (testing "anything else that fails in validation still ends the turn"
     (is (= {:class :unrecoverable :code :internal}
            (:error (add-groups-rejected-with {:something "else"}))))))
