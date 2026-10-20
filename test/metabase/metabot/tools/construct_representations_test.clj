@@ -2200,7 +2200,7 @@
           (let [mp     (lib-be/application-database-metadata-provider (mt/id))
                 metric (lib.metadata/card mp metric-id)]
             (is (= question-id (:source-card-id metric))
-                "the column that the old gate keyed off points at the source card")
+                "stage 0 names the card, which is the one source the metric cannot be used on")
             (is (= 2 (lib/stage-count (lib/query mp (:dataset-query metric)))))
             (is (= (mt/id :products) (:table-id metric)))))
         (testing "on its base table it is accepted, and the query the LLM gets back runs"
@@ -2475,10 +2475,9 @@
           (is (=? {:agent-error? true, :error :incompatible-metric} (ex-data e))))))))
 
 (deftest fk-dimension-breakout-on-source-card-stage-test
-  (testing (str "A metric's dimensions span its FK-reachable tables, referenced by portable FK. The implicit-join\n"
-                "repair pass used to recognise only `source-table:`, so on a `source-card:` stage the clause stayed\n"
-                "a bare field ref, passed every gate, and died in the QP with `Column \"__mb_source.CATEGORY\" not\n"
-                "found` -- the same whole-turn 500, one layer down.")
+  (testing (str "A metric's dimensions span its FK-reachable tables, referenced by portable FK. On a\n"
+                "`source-card:` stage the implicit-join repair wires such a reference to the FK column the card\n"
+                "returns; left bare, it would compile to `__mb_source.CATEGORY`, which does not exist.")
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name "Orders question" :type :question
                     :dataset_query (table-query :orders)}
@@ -2565,12 +2564,9 @@
                 "it filters on the card's computed column: count of orders with total > 50")))))))
 
 (deftest source-card-stage-rejects-unreachable-dimensions-like-source-table-test
-  (testing (str "An unreachable target table is a hard `:no-fk-path` error on a `source-card:` stage too. This\n"
-                "used to be softened to 'leave the clause alone', on the theory that a card can return columns its\n"
-                "base table has no FK to. It can -- but that case is already handled earlier, by the check for\n"
-                "columns the card RETURNS. By the time we get here the card demonstrably does not expose the\n"
-                "column, so the bare clause is known-broken: it compiles to `__mb_source.<COLUMN>` and dies at\n"
-                "execution. Softening traded a crisp retryable 400 for that.")
+  (testing (str "An unreachable target table is a hard `:no-fk-path` error on a `source-card:` stage too. A column\n"
+                "the card returns is left alone before this check, so a reference that reaches it names a column the\n"
+                "card does not expose, which would compile to `__mb_source.<COLUMN>` and fail at execution.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Reviews question" :type :question
                     :dataset_query (table-query :reviews)}]
@@ -2623,10 +2619,9 @@
               "and the query the LLM gets back executes, counting the card's users per source"))))))
 
 (deftest aggregating-source-card-rejects-fk-it-does-not-return-test
-  (testing (str "The reported bug. The card aggregates over ORDERS, so ORDERS.PRODUCT_ID is NOT among its returned\n"
-                "columns -- only the breakout is. Keying off the card's BASE TABLE found PRODUCT_ID anyway and\n"
-                "stamped it, producing `__mb_source.PRODUCT_ID`, which does not exist. Every downstream gate passed\n"
-                "it and the query died at execution. Now it is a retryable agent error instead.")
+  (testing (str "The card aggregates over ORDERS, so ORDERS.PRODUCT_ID is not among its returned columns, only\n"
+                "the breakout is. A `source-field` through PRODUCT_ID would compile to `__mb_source.PRODUCT_ID`,\n"
+                "which does not exist, so the reference is a retryable agent error instead.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Orders count by user" :type :question
                     :dataset_query (-> (table-query :orders)
@@ -2667,10 +2662,8 @@
             "a stage built on the model's table instead would lose the model's own filters and joins")))))
 
 (deftest source-card-with-restricted-fields-rejects-column-it-does-not-return-test
-  (testing (str "The base-table equality short-circuit used to fire before the returned-columns check, so a\n"
-                "reference to a base-table column the card does not project was left as a bare ref -- again\n"
-                "`__mb_source.<COLUMN>`. On a card stage there is no 'field is on the source table' shortcut to\n"
-                "take: what matters is only what the card returns.")
+  (testing (str "On a card stage what matters is what the card returns, not which table a column lives on: a\n"
+                "base-table column the card does not project would compile to `__mb_source.<COLUMN>`.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Orders id and total" :type :question
                     :dataset_query (lib/with-fields (table-query :orders) [(field-col :orders :id) (field-col :orders :total)])}]
@@ -2724,11 +2717,9 @@
                   "one row per distinct TOTAL the card returns"))))))))
 
 (deftest native-source-card-stage-leaves-clauses-alone-test
-  (testing (str "When we cannot work out what a card exposes, the pass must fail CLOSED -- leave the clause alone.\n"
-                "A native card is the reachable case: its columns carry no field ids. The old code resolved the\n"
-                "returned-column set to an EMPTY set on failure, and that set is consulted as a *skip* condition,\n"
-                "so empty meant 'skip nothing' -- a column the card really returns could be wired to an implicit\n"
-                "join and answer from a different join path, silently changing the rows with no error.")
+  (testing (str "When the pass cannot work out what a card exposes, it leaves the clause alone. A native card is\n"
+                "the reachable case: its columns carry no field ids, so the pass cannot tell a column the card\n"
+                "returns from one that an implicit join would answer through a different join path.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Native orders" :type :question
                     :dataset_query (mt/native-query {:query "SELECT ID, PRODUCT_ID FROM ORDERS"})}]

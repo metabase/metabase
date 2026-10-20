@@ -84,8 +84,6 @@
                   :description "Sum of all revenue"
                   :verified true
                   :collection {:name "Finance"}
-                  ;; The key this used to be given (`:default_time_dimension_field`, a map) is not produced
-                  ;; anywhere in production, so the rendered line was empty on every real render.
                   :default_time_dimension_field_name "date"
                   :queryable-dimensions [{:name "date" :field_id "d1" :base-type :type/Date :database_type "DATE"}]}
           xml (llm-shape/metric->xml metric)]

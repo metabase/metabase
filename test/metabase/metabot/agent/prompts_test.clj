@@ -73,8 +73,6 @@
           (is (str/includes? doc "on a `source-table` and a `source-card` stage alike"))
           (is (not (str/includes? doc "cannot resolve an implicit join against a metric aggregation"))))))
     (testing "the discovery snippet does not send the agent to the base table unconditionally"
-      ;; Not one of the surfaces above -- it is a shared prompt snippet, and it kept the pre-fix wording
-      ;; ("reference it ... on its base table") through the change that made that wrong for card-based metrics.
       (let [doc (slurp (io/resource "metabot/prompts/shared/prompt_snippets/semantic-layer-discovery.selmer"))]
         (is (str/includes? doc "base_table_fully_qualified_name"))
         (is (str/includes? doc "source_card_portable_entity_id"))
