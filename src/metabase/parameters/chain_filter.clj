@@ -111,6 +111,17 @@
   "Schema for a list of constraints."
   [:sequential ::constraint])
 
+(mr/def ::table-field-endpoint
+  [:map {:closed true}
+   [:table ::lib.schema.id/table]
+   [:field ::lib.schema.id/field]])
+
+(mr/def ::join-info
+  "Schema for one FK relationship join between a `:lhs` and `:rhs` Table/Field pair."
+  [:map {:closed true}
+   [:lhs ::table-field-endpoint]
+   [:rhs ::table-field-endpoint]])
+
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
   Restaurant -> Category instead of the usual Category -> Restaurant*)
