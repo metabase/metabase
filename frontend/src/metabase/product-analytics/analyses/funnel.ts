@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
@@ -11,6 +12,7 @@ import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
+  getAxisTitleSettings,
   getConversionColumnSettings,
   getSeriesSettings,
 } from "./series-settings";
@@ -189,6 +191,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           // The step labels are drawn by the chart, so the layout shouldn't reserve x-axis tick space
           "graph.x_axis.axis_enabled": false,
           ...getSeriesSettings(people, peopleTitle),
+          ...getAxisTitleSettings({ y: peopleTitle }),
         };
       case "overTime":
         return {
@@ -196,12 +199,17 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           "graph.metrics": ["conversion"],
           ...getSeriesSettings("conversion", t`Conversion`),
           ...getConversionColumnSettings("conversion"),
+          ...getAxisTitleSettings({
+            x: Lib.describeTemporalUnit(settings.granularity),
+            y: t`Conversion`,
+          }),
         };
       case "timeToConvert":
         return {
           "graph.dimensions": ["hours"],
           "graph.metrics": [people],
           ...getSeriesSettings(people, peopleTitle),
+          ...getAxisTitleSettings({ x: t`Hours to convert`, y: peopleTitle }),
         };
     }
   },

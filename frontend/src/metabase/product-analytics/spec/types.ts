@@ -104,10 +104,8 @@ export interface HabitSpec {
   /** What counts as showing up. Undefined: any event does. */
   active?: FlagRef;
   subPeriod: Extract<Period, "day" | "week">;
-  /** How many sub-periods the date range spans; undefined when open-ended. */
-  periods?: number;
-  measure: "histogram" | "ratio" | "threshold";
-  threshold: number;
+  /** "ratio": DAU/MAU, or WAU/MAU by week. */
+  measure: "histogram" | "ratio";
 }
 
 export type LifecycleStateName =

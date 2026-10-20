@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
-import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
-import { countPeriodsInDateRange } from "../date-range";
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, HabitSpec } from "../spec/types";
@@ -11,11 +11,15 @@ import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
+  getAxisTitleSettings,
+  getConversionColumnSettings,
+  getSeriesSettings,
+} from "./series-settings";
+import {
   getCommonSpec,
   getEventDefinitionProps,
   isOneOf,
   isOptionalEventDefinition,
-  isPositiveInteger,
   ready,
 } from "./setting-helpers";
 import type {
@@ -31,8 +35,10 @@ const toSubPeriod = (granularity: Granularity): HabitSpec["subPeriod"] =>
 const MEASURES: readonly HabitSettings["habit.measure"][] = [
   "histogram",
   "ratio",
-  "threshold",
 ];
+
+const ratioName = (granularity: Granularity): string =>
+  toSubPeriod(granularity) === "week" ? t`WAU/MAU` : t`DAU/MAU`;
 
 const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
   ...commonSettings({
@@ -55,24 +61,12 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
     widget: "select",
     getDefault: () => "histogram",
     isValid: (value) => isOneOf(MEASURES, value),
-    getProps: () => ({
+    getProps: (_context, settings) => ({
       options: [
         { name: t`How often people show up`, value: "histogram" },
-        { name: t`Daily over monthly actives`, value: "ratio" },
-        { name: t`Share of regulars`, value: "threshold" },
+        { name: ratioName(settings.granularity), value: "ratio" },
       ],
     }),
-  },
-  "habit.threshold": {
-    getTitle: () => t`Regulars are active at least`,
-    getSection: () => "setup",
-    widget: NumberStepperWidget,
-    getDefault: (_context, settings) =>
-      toSubPeriod(settings.granularity ?? "day") === "week" ? 2 : 5,
-    isValid: (value) => isPositiveInteger(value),
-    getHidden: (_context, settings) =>
-      settings["habit.measure"] !== "threshold",
-    readDependencies: ["habit.measure", "granularity"],
   },
 };
 
@@ -97,9 +91,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         // Empty means any event counts as showing up.
         active: active === null ? undefined : { flag: events.flagFor(active) },
         subPeriod,
-        periods: countPeriodsInDateRange(settings.date_range, subPeriod),
         measure: settings["habit.measure"],
-        threshold: settings["habit.threshold"],
       },
       output: {},
     });
@@ -110,30 +102,40 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         return "bar";
       case "ratio":
         return "line";
-      case "threshold":
-        return "table";
     }
   },
   getVizSettings: (settings) => {
     switch (settings["habit.measure"]) {
       case "histogram": {
         const people = grainLabel(settings.counting);
+        const peopleTitle = grainTitle(settings.counting);
         return {
           "graph.dimensions": ["periods"],
           "graph.metrics": [people],
-          series_settings: {
-            [people]: { title: grainTitle(settings.counting) },
-          },
+          ...getSeriesSettings(people, peopleTitle),
+          ...getAxisTitleSettings({
+            x:
+              toSubPeriod(settings.granularity) === "week"
+                ? t`Weeks active`
+                : t`Days active`,
+            y: peopleTitle,
+          }),
         };
       }
-      case "ratio":
+      case "ratio": {
+        const subPeriod = toSubPeriod(settings.granularity);
+        const title = ratioName(settings.granularity);
         return {
-          "graph.dimensions": ["day"],
+          "graph.dimensions": [subPeriod],
           "graph.metrics": ["ratio"],
-          series_settings: { ratio: { title: t`Daily over monthly actives` } },
+          ...getSeriesSettings("ratio", title),
+          ...getConversionColumnSettings("ratio"),
+          ...getAxisTitleSettings({
+            x: Lib.describeTemporalUnit(subPeriod),
+            y: title,
+          }),
         };
-      case "threshold":
-        return {};
+      }
     }
   },
   describePoint: (settings, point) => {
@@ -148,11 +150,12 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
           : t`Active in ${periods} different weeks`;
       }
       case "ratio": {
-        const day = formatPeriod(point.day, "day");
-        return t`Active on ${day}`;
+        const subPeriod = toSubPeriod(settings.granularity);
+        const period = formatPeriod(point[subPeriod], subPeriod);
+        return subPeriod === "day"
+          ? t`Active on ${period}`
+          : t`Active in ${period}`;
       }
-      case "threshold":
-        return null;
     }
   },
 };

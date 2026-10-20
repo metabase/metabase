@@ -7,6 +7,7 @@ import type {
 
 import {
   CONVERSION_COLUMN_FORMAT,
+  getAxisTitleSettings,
   getSeriesSettings,
 } from "../analyses/series-settings";
 import { SEGMENT_SEPARATOR } from "../sql/analyses/insights";
@@ -40,6 +41,7 @@ export const getExploreCard = (
     "graph.metrics": [explore.rateColumn],
     "graph.tooltip_columns": [columnKey(explore.countColumn)],
     ...getSeriesSettings(explore.rateColumn, explore.rateTitle),
+    ...getAxisTitleSettings({ y: explore.rateTitle }),
     column_settings: {
       [columnKey(explore.rateColumn)]: CONVERSION_COLUMN_FORMAT,
       [columnKey(explore.countColumn)]: { column_title: explore.countTitle },

@@ -20,6 +20,8 @@ import {
   getOutcomeLabels,
   planFunnelPaths,
 } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-paths";
+import { activeColumn } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit";
+import { IN_RANGE_FLAG } from "../../frontend/src/metabase/product-analytics/sql/analyses/lookback";
 import { hasCyclicFlow } from "../../frontend/src/metabase/visualizations/visualizations/SankeyChart/utils/cycle-detection";
 
 import { FLAG, defaultSpec } from "./specs";
@@ -397,6 +399,75 @@ if (cohortsSpec.cohorts !== undefined) {
       cohorts: { ...cohortsSpec.cohorts, by: "attribute" },
     },
     "cohorts (by country)",
+  );
+}
+
+// DAU/MAU and WAU/MAU: the range starts 40 days into the data, so the month
+// before its first period comes from the lookback. Check the first period
+// against counting it directly.
+const ratioStart = new Date(
+  new Date(truth.start).getTime() + 40 * 24 * 60 * 60 * 1000,
+).toISOString();
+const ratioEventsBase = `
+SELECT *, if(created_at >= toDateTime('${chDateTime(ratioStart)}'), 1, 0) AS ${IN_RANGE_FLAG}
+FROM (${eventsBaseSql(truth)})
+`;
+const habitSpec = defaultSpec("habit");
+for (const subPeriod of ["day", "week"] as const) {
+  const spec: AnalysisSpec = {
+    ...habitSpec,
+    habit: habitSpec.habit && {
+      ...habitSpec.habit,
+      subPeriod,
+      measure: "ratio",
+    },
+  };
+  const active = activeColumn(subPeriod);
+  const rows = await chJson(
+    buildSql(spec, ratioEventsBase, {
+      ...baseColumns(spec),
+      flags: [...Object.values(FLAG), IN_RANGE_FLAG],
+    }).sql,
+  );
+  console.log(`
+habit ratio by ${subPeriod} (${rows.length} rows)`);
+  const periodStart =
+    subPeriod === "day"
+      ? `toStartOfDay(toDateTime('${chDateTime(ratioStart)}'))`
+      : `toStartOfWeek(toDateTime('${chDateTime(ratioStart)}'), 1)`;
+  const periodEnd = `${periodStart} + INTERVAL 1 ${subPeriod.toUpperCase()}`;
+  const monthStart =
+    subPeriod === "day"
+      ? `${periodStart} - INTERVAL 29 DAY`
+      : `${periodStart} - INTERVAL 3 WEEK`;
+  const [direct] = await chJson(`
+    WITH events AS (${ratioEventsBase})
+    SELECT
+      toString(${periodStart}) AS period,
+      uniqExactIf(person_id, ${IN_RANGE_FLAG} = 1 AND created_at < ${periodEnd}) AS active,
+      uniqExactIf(person_id, created_at >= ${monthStart} AND created_at < ${periodEnd}) AS mau
+    FROM events
+    WHERE ${FLAG.active} = 1 AND created_at >= ${monthStart} AND created_at < ${periodEnd}
+  `);
+  const [first] = rows;
+  check(
+    `the first ${subPeriod} is the range's`,
+    String(first?.[subPeriod]) === String(direct?.period),
+    `got ${String(first?.[subPeriod])}, expected ${String(direct?.period)}`,
+  );
+  check(
+    `the first ${subPeriod}'s ${active} and MAU match counting them directly`,
+    asNumber(first?.[active]) === asNumber(direct?.active) &&
+      asNumber(first?.mau) === asNumber(direct?.mau),
+    `${active} ${asNumber(first?.[active])} vs ${asNumber(direct?.active)}, ` +
+      `mau ${asNumber(first?.mau)} vs ${asNumber(direct?.mau)}`,
+  );
+  const ratios = rows.map((row) => asNumber(row.ratio));
+  check(
+    `${active}/MAU is in (0, 1) and not always 1`,
+    ratios.every((ratio) => ratio > 0 && ratio <= 1) &&
+      ratios.some((ratio) => ratio < 1),
+    `min ${Math.min(...ratios)} max ${Math.max(...ratios)}`,
   );
 }
 

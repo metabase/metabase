@@ -337,7 +337,6 @@ These rules come from the planners, and between them they exercise every hook. D
 | `counting`                 | No "Sessions" option without a session column.                      | `getProps`, `isValid`, `readDependencies`     |
 | `cohorts.start_periods`    | Only when `cohorts.row_mode` is "started".                          | `getHidden`, `readDependencies`               |
 | `paths.start`, `paths.end` | Start is hidden for "to", and end is hidden for "from".             | `getHidden`                                   |
-| `habit.threshold`          | Only for `measure: "threshold"`. Default depends on the sub-period. | `getHidden`, `getDefault`, `readDependencies` |
 | `cohorts.horizon`          | Default depends on granularity, e.g. 8 weeks or 6 months.           | `getDefault`, `readDependencies`              |
 
 `writeDependencies` and `eraseDependencies` come with the engine, but nothing needs them yet.

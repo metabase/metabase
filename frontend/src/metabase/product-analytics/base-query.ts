@@ -12,7 +12,11 @@ import {
   type ProjectedColumn,
   type UsersTableLink,
 } from "./columns";
-import { parseDateRange } from "./date-range";
+import {
+  parseDateRange,
+  serializeDateRange,
+  widenDateRange,
+} from "./date-range";
 import { readEventQuery } from "./events/read-event-query";
 import type { AllocatedEvent, EventDefinition } from "./events/types";
 import {
@@ -22,6 +26,7 @@ import {
   readFilterQuery,
 } from "./filters";
 import { findColumn, findJoinedColumn } from "./find-column";
+import { IN_RANGE_FLAG } from "./sql/analyses/lookback";
 
 const STAGE = -1;
 
@@ -55,12 +60,20 @@ export type BaseQueryInput = {
   /** Needed when an extra column comes from the users table. */
   usersTable: UsersTableLink | undefined;
   filters: AnalysisFilters;
+  /**
+   * Days of history to read before the date range, from `getLookbackDays`.
+   * When it's more than 0, an `IN_RANGE_FLAG` column marks the events inside
+   * the range.
+   */
+  lookbackDays: number;
 };
 
 export type BuiltBaseQuery = {
   query: Lib.Query;
   databaseId: number;
   extraColumns: ProjectedColumn[];
+  /** The 0/1 columns: one per event, and `IN_RANGE_FLAG` with a lookback. */
+  flags: string[];
 };
 
 export const getTableMetadata = (
@@ -214,6 +227,7 @@ export const buildBaseQuery = (
     extraColumns,
     usersTable,
     filters,
+    lookbackDays,
   }: BaseQueryInput,
 ): BuiltBaseQuery => {
   const tableMetadata = getTableMetadata(metadataProvider, tableId);
@@ -224,12 +238,29 @@ export const buildBaseQuery = (
     throw new Error(t`Pick a person column in Advanced settings.`);
   }
 
+  const hasLookback = lookbackDays > 0;
+  const dateFilter = parseDateRange(dateRange);
+  const readRange =
+    hasLookback && dateFilter !== undefined
+      ? serializeDateRange(widenDateRange(dateFilter, lookbackDays))
+      : dateRange;
+
   // Cohorts are applied to the compiled SQL instead; see `BaseColumns`.
   let query = buildFilteredQuery(metadataProvider, tableMetadata, {
-    dateRange,
+    dateRange: readRange,
     columns,
     filters: { ...filters, cohorts: [] },
   });
+
+  if (hasLookback) {
+    const timestamp = findColumn(query, columns.timestamp);
+    // Without a date range, every event is in it.
+    const inRange =
+      dateFilter !== undefined
+        ? getDateFilterClause(timestamp, dateFilter)
+        : Lib.expressionClause("not-null", [timestamp]);
+    query = Lib.expression(query, STAGE, IN_RANGE_FLAG, asFlag(inRange));
+  }
 
   const usersColumns = extraColumns.filter(({ from }) => from === "users");
   let usersJoinAlias: string | undefined;
@@ -260,10 +291,14 @@ export const buildBaseQuery = (
       .filter(({ from }) => from === "events")
       .map(({ column }) => column),
   ]);
+  const flags = [
+    ...events.map(({ flag }) => flag),
+    ...(hasLookback ? [IN_RANGE_FLAG] : []),
+  ];
   const selected = [
     ...eventColumns.map((name) => findColumn(query, name)),
     ...usersColumns.map(({ column }) => findJoinedColumn(query, column)),
-    ...events.map(({ flag }) => findColumn(query, flag)),
+    ...flags.map((flag) => findColumn(query, flag)),
   ];
   query = Lib.withFields(query, STAGE, selected);
 
@@ -283,5 +318,6 @@ export const buildBaseQuery = (
           ? `${usersJoinAlias}__${column}`
           : column,
     })),
+    flags,
   };
 };

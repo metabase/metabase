@@ -257,29 +257,6 @@ describe("analysis settings", () => {
     expect(computed["columns.timestamp"]).toBe("ts");
   });
 
-  it("derives the habit threshold default from the granularity", () => {
-    const { computed, isHidden } = setup({
-      kind: "habit",
-      stored: { granularity: "week", "habit.measure": "threshold" },
-    });
-
-    expect(computed["habit.threshold"]).toBe(2);
-    expect(isHidden("habit.threshold")).toBe(false);
-    expect(setup({ kind: "habit" }).isHidden("habit.threshold")).toBe(true);
-  });
-
-  it("counts habit sub-periods over the date range", () => {
-    const { specResult } = setup({
-      kind: "habit",
-      stored: { granularity: "week", date_range: "past4weeks" },
-    });
-
-    expect(getReadySpec(specResult).habit).toMatchObject({
-      subPeriod: "week",
-      periods: 4,
-    });
-  });
-
   it("follows cohorts for as many periods as the date range spans", () => {
     const horizon = (stored: StoredSettings) =>
       setup({ kind: "cohorts", stored }).computed["cohorts.horizon"];

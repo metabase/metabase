@@ -13,6 +13,7 @@ import {
 } from "./events/mocks";
 import type { EventDefinition } from "./events/types";
 import { NO_FILTERS } from "./filters";
+import { IN_RANGE_FLAG } from "./sql/analyses/lookback";
 
 const STAGE = -1;
 
@@ -38,6 +39,7 @@ const getFlagParts = (event: EventDefinition) => {
     extraColumns: [],
     usersTable: undefined,
     filters: NO_FILTERS,
+    lookbackDays: 0,
   });
   const [flag] = Lib.expressions(query, STAGE);
   return {
@@ -83,6 +85,7 @@ describe("buildBaseQuery", () => {
       ],
       usersTable: undefined,
       filters: NO_FILTERS,
+      lookbackDays: 0,
     });
 
     expect(extraColumns).toEqual([{ as: "cohort_start", alias: "CREATED_AT" }]);
@@ -107,6 +110,7 @@ describe("buildBaseQuery", () => {
         primaryKey: "ID",
       },
       filters: NO_FILTERS,
+      lookbackDays: 0,
     });
 
     const [join] = Lib.joins(query, STAGE);
@@ -135,6 +139,7 @@ describe("buildBaseQuery", () => {
         ],
         usersTable: undefined,
         filters: NO_FILTERS,
+        lookbackDays: 0,
       }),
     ).toThrow("The person column doesn't link to a users table.");
   });
@@ -158,5 +163,56 @@ describe("createFlagAllocator", () => {
     expect(flags.flagFor(event)).toBe("ev_1");
     expect(flags.flagFor({ ...event })).toBe("ev_1");
     expect(flags.events).toHaveLength(1);
+  });
+
+  describe("with a lookback", () => {
+    const build = (dateRange: string, lookbackDays: number) =>
+      buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
+        dateRange,
+        columns: COLUMNS,
+        events: [],
+        extraColumns: [],
+        usersTable: undefined,
+        filters: NO_FILTERS,
+        lookbackDays,
+      });
+
+    it("reads the days before the range, and flags the events in it", () => {
+      const { query, flags } = build("past30days", 30);
+      const [filter] = Lib.filters(query, STAGE);
+      const [inRange] = Lib.expressions(query, STAGE);
+
+      expect(Lib.relativeDateFilterParts(query, STAGE, filter)).toMatchObject({
+        value: -60,
+        unit: "day",
+      });
+      expect(Lib.displayInfo(query, STAGE, inRange).displayName).toBe(
+        IN_RANGE_FLAG,
+      );
+      expect(Lib.expressionParts(query, STAGE, inRange)).toMatchObject({
+        operator: "case",
+        args: [{ operator: "time-interval", args: [{}, -30, "day"] }, 1, 0],
+      });
+      expect(flags).toEqual([IN_RANGE_FLAG]);
+    });
+
+    it("flags every event without a date range", () => {
+      const { query, flags } = build("", 30);
+      const [inRange] = Lib.expressions(query, STAGE);
+
+      expect(Lib.filters(query, STAGE)).toHaveLength(0);
+      expect(Lib.expressionParts(query, STAGE, inRange)).toMatchObject({
+        operator: "case",
+        args: [{ operator: "not-null" }, 1, 0],
+      });
+      expect(flags).toEqual([IN_RANGE_FLAG]);
+    });
+
+    it("adds nothing without one", () => {
+      const { query, flags } = build("past30days", 0);
+
+      expect(Lib.expressions(query, STAGE)).toHaveLength(0);
+      expect(flags).toEqual([]);
+    });
   });
 });

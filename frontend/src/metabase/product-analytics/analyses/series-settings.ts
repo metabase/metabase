@@ -21,6 +21,21 @@ export const getSeriesSettings = (
   },
 });
 
+/** Axis titles, in place of the result's column names. */
+export const getAxisTitleSettings = ({
+  x,
+  y,
+}: {
+  x?: string;
+  y: string;
+}): Pick<
+  VisualizationSettings,
+  "graph.x_axis.title_text" | "graph.y_axis.title_text"
+> => ({
+  ...(x !== undefined ? { "graph.x_axis.title_text": x } : {}),
+  "graph.y_axis.title_text": y,
+});
+
 /** Formatting for a 0–1 conversion rate in text. */
 export const CONVERSION_FORMAT = {
   number_style: "percent",

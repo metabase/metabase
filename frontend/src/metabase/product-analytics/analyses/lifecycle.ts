@@ -1,13 +1,17 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+
 import { CheckboxCardsWidget } from "../components/settings/CheckboxCardsWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, LifecycleStateName, Period } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
+import { grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
+import { getAxisTitleSettings } from "./series-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
@@ -144,13 +148,17 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     });
   },
   getDisplay: () => "bar",
-  getVizSettings: () => ({
+  getVizSettings: (settings) => ({
     "graph.dimensions": ["period", "state"],
     "graph.metrics": ["actors"],
     "stackable.stack_type": "stacked",
     series_settings: Object.fromEntries(
       STATES.map((state) => [state, { title: getStateName(state) }]),
     ),
+    ...getAxisTitleSettings({
+      x: Lib.describeTemporalUnit(settings.granularity),
+      y: grainTitle(settings.counting),
+    }),
   }),
   describePoint: (settings, point) => {
     const state = STATES.find((item) => item === pointString(point.state));

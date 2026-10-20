@@ -4,6 +4,8 @@ import { flagSql } from "../compile/flag";
 import { compileGrain } from "../compile/grain";
 import type { Cte } from "../compose";
 
+import { IN_RANGE_FLAG, getLookbackDays } from "./lookback";
+
 export interface BaseBlock {
   ctes: Cte[];
   splitColumn?: string;
@@ -22,6 +24,7 @@ export const scopedEvents = (
   const actor = compileGrain(spec.grain);
   const scope = compileActorPredicate(spec.scope);
   warnings.push(...scope.warnings);
+  const hasLookback = getLookbackDays(spec) > 0;
 
   const rowWhere = [
     ...extraWhere,
@@ -39,6 +42,7 @@ export const scopedEvents = (
         "SELECT",
         `  ${actor} AS actor`,
         "FROM events_base",
+        ...(hasLookback ? [`WHERE ${IN_RANGE_FLAG} = 1`] : []),
         "GROUP BY actor",
         `HAVING ${scope.having.join("\n   AND ")}`,
       ].join("\n"),
@@ -52,12 +56,15 @@ export const scopedEvents = (
     ...(spec.split ? [`${SPLIT_COLUMN}`] : []),
     "event_name",
     "url_path",
+    ...(hasLookback ? [IN_RANGE_FLAG] : []),
     ...extraColumns.map((column) => `${column.sql} AS ${column.as}`),
   ];
 
   ctes.push({
     name: "scoped_events",
-    note: "every event in range, for the chosen grain",
+    note: hasLookback
+      ? `every event in range, and the ${getLookbackDays(spec)} days before it marked by ${IN_RANGE_FLAG}, for the chosen grain`
+      : "every event in range, for the chosen grain",
     deps: scope.having.length
       ? ["events_base", "scope_actors"]
       : ["events_base"],

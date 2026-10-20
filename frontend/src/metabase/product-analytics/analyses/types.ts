@@ -78,7 +78,6 @@ export type PathsSettings = CommonSettings & {
 export type HabitSettings = CommonSettings & {
   "habit.active": EventDefinition | null;
   "habit.measure": HabitSpec["measure"];
-  "habit.threshold": number;
 };
 
 export type LifecycleSettings = CommonSettings & {

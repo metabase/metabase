@@ -99,6 +99,7 @@ export const useCompiledBase = ({
         request: nativeCompileRequest(built.query),
         databaseId: built.databaseId,
         extraColumns: built.extraColumns,
+        flags: built.flags,
       };
     } catch (error) {
       return {
@@ -113,15 +114,17 @@ export const useCompiledBase = ({
   const compiled = useMemo((): CompiledBase | undefined => {
     const extraColumns: ProjectedColumn[] | undefined = request?.extraColumns;
     const compiledDatabaseId = request?.databaseId;
+    const flags = request?.flags;
     return sql !== undefined &&
       extraColumns !== undefined &&
-      compiledDatabaseId !== undefined
+      compiledDatabaseId !== undefined &&
+      flags !== undefined
       ? {
           sql,
           databaseId: compiledDatabaseId,
           columns: {
             columns: base.columns,
-            flags: base.events.map(({ flag }) => flag),
+            flags,
             extraColumns,
             cohorts: base.filters.cohorts.flatMap(({ grain, ids }) => {
               const column = base.columns[COLUMN_ROLE_FOR_GRAIN[grain]];
