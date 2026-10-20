@@ -995,15 +995,23 @@
   (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden"}
     (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type "sensitive"}
       (testing "GET /api/database/:id/metadata?include_hidden=true"
-        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
-                          :tables)]
-          (is (some (partial = "CATEGORIES") (map :name tables)))
-          (is (->> tables
-                   (filter #(= "VENUES" (:name %)))
-                   first
-                   :fields
-                   (map :name)
-                   (some (partial = "PRICE"))))))
+        (let [venues-field-names (fn [tables]
+                                   (->> tables
+                                        (filter #(= "VENUES" (:name %)))
+                                        first
+                                        :fields
+                                        (map :name)
+                                        set))]
+          (testing "includes hidden tables, and sensitive fields only for users who can edit the data model"
+            (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
+                              :tables)]
+              (is (some (partial = "CATEGORIES") (map :name tables)))
+              (is (not (contains? (venues-field-names tables) "PRICE")))))
+          (testing "includes sensitive fields for admins"
+            (is (contains? (->> (mt/user-http-request :crowberto :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
+                                :tables
+                                venues-field-names)
+                           "PRICE")))))
       (testing "GET /api/database/:id/metadata"
         (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))
                           :tables)]
