@@ -1,10 +1,8 @@
 /*
- * `:not([data-css-specificity-hack])` rather than a bare class: this needs
- * to beat `TreeNodeRoot`'s own emotion-generated color/background rules
- * (tree/TreeNode.styled.tsx), which are also single-class specificity, so
- * source order alone can't be trusted to pick a winner. See
- * ArchiveButton.module.css / MetricExpressionPill.module.css for the same
- * trick elsewhere.
+ * `:not([data-css-specificity-hack])` rather than a bare class: this beats the
+ * tree node's own color/background rules (tree/TreeNode.module.css) whatever
+ * the stylesheet order. See ArchiveButton.module.css /
+ * MetricExpressionPill.module.css for the same trick elsewhere.
  */
 
 .adminSelected:not([data-css-specificity-hack="🦑"]) {

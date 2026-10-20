@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-29 05:50+0000\n"
+"POT-Creation-Date: 2026-10-06 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Latvian\n"
 "Language: lv_LV\n"
-"PO-Revision-Date: 2026-10-06 05:43\n"
+"PO-Revision-Date: 2026-10-13 05:46\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -275,7 +275,6 @@ msgid "User attribute"
 msgstr "Lietotāja atribūts"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -321,12 +320,11 @@ msgstr "Lietotāja atribūts"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/collections/components/ModelUploadModal.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
@@ -406,7 +404,6 @@ msgid "Cancel"
 msgstr "Atcelt"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -1158,8 +1155,6 @@ msgid "Search for a group"
 msgstr "Meklēt grupu"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantCollectionPermissionsPage/selectors.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantSpecificCollectionPermissionsPage/selectors.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
@@ -1211,7 +1206,6 @@ msgstr "Neizdevās eksportēt analītiku"
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
-#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/utils.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx
@@ -1343,16 +1337,10 @@ msgid "Unit"
 msgstr "Vienība"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr "Kartējums pievienots"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr "Kartējums atjaunināts"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
+msgid "Save the settings above to set up group mapping."
+msgstr "Saglabājiet iepriekšējos iestatījumus, lai iestatītu grupu kartēšanu."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Group mapping mode"
@@ -1381,36 +1369,43 @@ msgid "Off"
 msgstr "Izslēgts"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "New mapping"
 msgstr "Jauns kartējums"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
+#: frontend/src/metabase/settings-components/SettingsSection/SwitchSettingsSection.tsx
 #, javascript-format
 msgid "Using {0}"
 msgstr "Izmanto {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Users will be assigned to {0} groups based on their JWT group names"
-msgstr "Lietotāji tiks piešķirti {0} grupām, balstoties uz viņu JWT grupu nosaukumiem"
+msgid "At each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "Katrā pierakstīšanās reizē lietotāji tiek pievienoti {0} grupām, kuru nosaukumi ir viņu JWT, un noņemti no visām pārējām grupām, tostarp Administratori."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Groups could not be loaded"
+msgstr "Grupas nevarēja ielādēt"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "JWT group name"
+msgstr "JWT grupas nosaukums"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Enter JWT group..."
+msgstr "Ievadiet JWT grupu..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Add at least one mapping to use manual group mapping"
 msgstr "Pievienojiet vismaz vienu kartējumu, lai izmantotu manuālo grupu kartēšanu"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
-msgid "Add mapping"
-msgstr "Pievienot kartējumu"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "This is the last mapping, so group mapping will be turned off."
@@ -1422,90 +1417,42 @@ msgstr "Pārslēgties uz automātisko grupu kartēšanu?"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Your existing group mappings will be deleted, and users will be assigned to {0} groups matching their JWT group names."
-msgstr "Jūsu esošie grupu kartējumi tiks dzēsti, un lietotāji tiks piešķirti {0} grupām, kas atbilst viņu JWT grupu nosaukumiem."
+msgid "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "Jūsu esošās grupu kartēšanas tiks dzēstas. Turpmāk katrā pierakstīšanās reizē lietotāji tiek pievienoti {0} grupām, kuru nosaukumi ir viņu JWT, un noņemti no visām pārējām grupām, tostarp Administratori."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Delete mappings and switch"
 msgstr "Dzēst kartējumus un pārslēgties"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "JWT group name"
-msgstr "JWT grupas nosaukums"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "Enter JWT group..."
-msgstr "Ievadiet JWT grupu..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-msgid "A mapping for this group already exists"
-msgstr "Šai grupai kartējums jau pastāv"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "{0} groups"
-msgstr "{0} grupas"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "Pick {0} group..."
-msgstr "Izvēlieties {0} grupu..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
-msgstr "Rediģēt kartējumu"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-msgid "Delete mapping"
-msgstr "Dzēst kartējumu"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
-msgstr "Nav grupu"
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
 msgstr "Izmaiņas saglabātas"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Kļūda, saglabājot grupu kartējumu"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-msgid "Mapping deleted, but not all of its groups could be updated"
-msgstr "Kartējums dzēsts, bet ne visas tā grupas varēja tikt atjauninātas"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-msgid "Mapping deleted and group mapping turned off"
-msgstr "Kartējums dzēsts un grupu kartēšana izslēgta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr "Kartējums dzēsts"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
 msgstr "Kļūda, saglabājot JWT iestatījumus"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Changes saved. Group mapping is set to Automatic."
+msgstr "Izmaiņas saglabātas. Grupu kartēšana ir iestatīta uz Automātiska."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Kļūda, ielādējot JWT konfigurāciju"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Set up a signing key before saving"
+msgstr "Pirms saglabāšanas iestatiet parakstīšanas atslēgu"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1542,11 +1489,13 @@ msgid "Email attribute key"
 msgstr "E-pasta atribūta atslēga"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Vārda atribūta atslēga"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Uzvārda atribūta atslēga"
@@ -1560,9 +1509,8 @@ msgid "Tenant assignment attribute key"
 msgstr "Nomnieka piešķiršanas atribūta atslēga"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Grupu kartēšana"
 
@@ -1606,6 +1554,19 @@ msgstr "Saglabāt un iespējot"
 msgid "Save changes"
 msgstr "Saglabāt izmaiņas"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your OIDC provider"
+msgstr "Automātiski piešķirt lietotājus {0} grupām, balstoties uz grupām no jūsu OIDC nodrošinātāja"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "OIDC group name"
+msgstr "OIDC grupas nosaukums"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "Enter OIDC group..."
+msgstr "Ievadiet OIDC grupu..."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt is required"
 msgstr "Pieteikšanās uzvedne ir obligāta"
@@ -1627,6 +1588,10 @@ msgid "Client ID is required"
 msgstr "Client ID ir obligāts"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Client secret is required"
+msgstr "Client secret ir obligāts"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing."
 msgstr "OIDC atklāšana bija veiksmīga, bet akreditācijas datus neizdevās pārbaudīt. Identitātes nodrošinātājs neatbalsta testēšanai izmantoto grant type."
 
@@ -1639,25 +1604,8 @@ msgid "OIDC configuration check failed"
 msgstr "OIDC konfigurācijas pārbaude neizdevās"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider disabled"
-msgstr "OIDC nodrošinātājs ir atspējots"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider enabled"
-msgstr "OIDC nodrošinātājs ir iespējots"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
-msgid "Failed to update OIDC provider"
-msgstr "Neizdevās atjaunināt OIDC nodrošinātāju"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider deleted"
-msgstr "OIDC nodrošinātājs ir dzēsts"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Failed to delete OIDC provider"
-msgstr "Neizdevās dzēst OIDC nodrošinātāju"
+msgid "Error loading OIDC configuration"
+msgstr "Kļūda, ielādējot OIDC konfigurāciju"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OpenID Connect"
@@ -1679,10 +1627,6 @@ msgid "Provider identifier. Your OIDC redirect URI will be \"{0}/auth/sso/${ 1 }
 msgstr "Nodrošinātāja identifikators. Jūsu OIDC novirzīšanas URI būs \"{0}/auth/sso/${ 1 }/callback\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. okta"
-msgstr "piem., okta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt"
 msgstr "Pieteikšanās uzvedne"
 
@@ -1692,8 +1636,8 @@ msgid "Button text on the {0} sign-in screen"
 msgstr "Pogas teksts {0} pieteikšanās ekrānā"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. Sign in with Okta"
-msgstr "piem., Pieteikties ar Okta"
+msgid "Sign in with Okta"
+msgstr "Pierakstīties ar Okta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Issuer URI"
@@ -1701,8 +1645,8 @@ msgstr "Issuer URI"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The OIDC issuer URI. The discovery endpoint \"${ 0 }/.well-known/openid-configuration\" should be accessible."
-msgstr "OIDC issuer URI. Atklāšanas galapunktam \"${ 0 }/.well-known/openid-configuration\" jābūt pieejamam."
+msgid "The discovery endpoint \"{0}/.well-known/openid-configuration\" should be accessible"
+msgstr "Discovery galapunktam \"{0}/.well-known/openid-configuration\" jābūt pieejamam"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
@@ -1713,27 +1657,41 @@ msgstr "Klienta ID"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The Client ID configured for {0} in your OIDC provider."
-msgstr "Client ID, kas jūsu OIDC nodrošinātājā konfigurēts priekš {0}."
+msgid "This is configured for {0} in your OIDC provider"
+msgstr "Tas ir konfigurēts {0} jūsu OIDC nodrošinātājā"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
-msgid "Client Secret"
-msgstr "Client Secret"
+msgid "Client secret"
+msgstr "Klienta noslēpums"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "The Client secret configured in your OIDC provider."
-msgstr "Client secret, kas konfigurēts jūsu OIDC nodrošinātājā."
+msgid "This is configured in your OIDC provider"
+msgstr "Tas ir konfigurēts jūsu OIDC nodrošinātājā"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Leave blank to keep current value"
 msgstr "Atstājiet tukšu, lai saglabātu pašreizējo vērtību"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Scopes"
+msgstr "Scopes"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Comma-separated list of OIDC scopes to request"
+msgstr "Ar komatiem atdalīts pieprasāmo OIDC scope saraksts"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+msgid "Attributes"
+msgstr "Atribūti"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
-msgstr "Lai to iespējotu, jums būs jāizveido kartējumi, lai norādītu {0}, kurai(-ām) grupai(-ām) jāpievieno jūsu lietotāji, pamatojoties uz SSO grupu, kurā viņi atrodas."
+msgid "Map OIDC claims to the first name and last name fields in {0}. The email always comes from the standard email claim."
+msgstr "Kartējiet OIDC claim uz vārda un uzvārda laukiem {0}. E-pasts vienmēr nāk no standarta email claim."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1743,69 +1701,6 @@ msgstr "Grupas atribūta nosaukums"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "The OIDC claim that contains group membership information."
 msgstr "OIDC claim, kas satur informāciju par piederību grupām."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Optional settings"
-msgstr "Neobligātie iestatījumi"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Scopes"
-msgstr "Scopes"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Comma-separated list of OIDC scopes to request."
-msgstr "Ar komatiem atdalīts OIDC scope saraksts, ko pieprasīt."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Attribute mapping"
-msgstr "Atribūtu kartēšana"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
-msgstr "Kartējiet OIDC claim uz lietotāja atribūtiem. Izmantojiet standarta OIDC claim nosaukumus vai sava nodrošinātāja pielāgotos claim."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Email attribute"
-msgstr "E-pasta atribūts"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "First name attribute"
-msgstr "Vārda atribūts"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Last name attribute"
-msgstr "Uzvārda atribūts"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
-#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
-#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
-msgid "Disable"
-msgstr "Atspējot"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-msgid "Enable"
-msgstr "Iespējot"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete configuration"
-msgstr "Dzēst konfigurāciju"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete this OIDC provider?"
-msgstr "Dzēst šo OIDC nodrošinātāju?"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Users will no longer be able to sign in with this provider. This can't be undone."
-msgstr "Lietotāji vairs nevarēs pieteikties ar šo nodrošinātāju. To nevar atsaukt."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Check connection"
@@ -1825,24 +1720,8 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
-msgstr "Izmantojiet tālāk norādītos iestatījumus, lai konfigurētu savu SSO ar SAML. Ja jums ir kādi jautājumi, ieskatieties mūsu {0}."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
-msgid "documentation"
-msgstr "dokumentāciju"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Configure your identity provider (IdP)"
-msgstr "Konfigurējiet savu identitātes nodrošinātāju (IdP)"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Your identity provider will need the following info about {0}."
-msgstr "Jūsu identitātes nodrošinātājam būs nepieciešama šāda informācija par {0}."
+msgid "Identity provider (IdP) configuration"
+msgstr "Identitātes nodrošinātāja (IdP) konfigurācija"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1877,18 +1756,16 @@ msgid "Tenant assignment attribute"
 msgstr "Nomnieka piešķiršanas atribūts"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Tell {0} about your identity provider"
-msgstr "Pastāstiet {0} par savu identitātes nodrošinātāju"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "{0} will need the following info about your provider."
-msgstr "{0} būs nepieciešama šāda informācija par jūsu nodrošinātāju."
+msgid "Identity provider info"
+msgstr "Identitātes nodrošinātāja informācija"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
 msgstr "SAML identitātes nodrošinātāja URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "This is the URL where your users go to log in to your identity provider."
+msgstr "Šis ir URL, uz kuru jūsu lietotāji dodas, lai pieteiktos jūsu identitātes nodrošinātājā."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider certificate"
@@ -1903,8 +1780,16 @@ msgid "SAML identity provider issuer"
 msgstr "SAML identitātes nodrošinātāja izdevējs"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Sign SSO requests (optional)"
-msgstr "Parakstīt SSO pieprasījumus (neobligāti)"
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'."
+msgstr "Šis ir unikāls IdP identifikators. Bieži tiek dēvēts par Entītijas ID vai vienkārši par 'Issuer'."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Sign SSO requests"
+msgstr "Parakstīt SSO pieprasījumus"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Use a keystore to sign authentication requests sent to your identity provider"
+msgstr "Izmantojiet atslēgu glabātuvi, lai parakstītu autentifikācijas pieprasījumus, kas tiek nosūtīti jūsu identitātes nodrošinātājam"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore path"
@@ -1923,9 +1808,36 @@ msgstr "Ššš..."
 msgid "SAML keystore alias"
 msgstr "SAML atslēgu glabātuves aizstājvārds"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your SAML identity provider"
+msgstr "Automātiski piešķirt lietotājus {0} grupām, balstoties uz grupām no jūsu SAML identitātes nodrošinātāja"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "SAML group name"
+msgstr "SAML grupas nosaukums"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Enter SAML group..."
+msgstr "Ievadiet SAML grupu..."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set."
+msgstr "SAML atribūts, kas uzskaita lietotāja grupas. Grupu kartēšana nepiešķir nevienu grupu, kamēr tas nav iestatīts."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
 msgstr "Pieteikties ar SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
+msgstr "Atļaut {0} pierakstīšanos, lai izveidotu kontus jauniem lietotājiem un atkārtoti aktivizētu deaktivizētus kontus. Ja atspējots, pierakstīties var tikai lietotāji ar aktīviem {1} kontiem."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users. When disabled, only users with active {1} accounts can sign in."
+msgstr "Atļaut {0} pierakstīšanās laikā izveidot kontus jauniem lietotājiem. Ja atspējots, pierakstīties var tikai lietotāji ar aktīviem {1} kontiem."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
@@ -1934,14 +1846,13 @@ msgstr "Pieteikties ar SSO"
 msgid "User provisioning"
 msgstr "Lietotāju provisionēšana"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
-#, javascript-format
-msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
-msgstr "Atļaut {0} pierakstīšanos, lai izveidotu kontus jauniem lietotājiem un atkārtoti aktivizētu deaktivizētus kontus. Ja atspējots, pierakstīties var tikai lietotāji ar aktīviem {1} kontiem."
-
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Ļauj lietotājiem pieteikties, izmantojot JWT identitātes nodrošinātāju."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
+msgid "Failed to update OIDC provider"
+msgstr "Neizdevās atjaunināt OIDC nodrošinātāju"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
 msgid "Failed to deactivate OIDC provider"
@@ -2589,6 +2500,12 @@ msgstr "Dev servera URL"
 msgid "URL of the local dev server serving the visualization bundle, manifest, and assets."
 msgstr "Lokālā dev servera URL, kas apkalpo vizualizācijas bundle, manifestu un resursus."
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+msgid "Enable"
+msgstr "Iespējot"
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/BundleDropzone.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 msgid "Bundle must be a .tgz file produced by \"npm run build\"."
@@ -2645,6 +2562,17 @@ msgstr "Spraudņa darbības"
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 msgid "Replace bundle"
 msgstr "Aizstāt bundle"
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
+#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Disable"
+msgstr "Atspējot"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -2789,7 +2717,6 @@ msgstr "Atjaunināt"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 msgid "Add"
 msgstr "Pievienot"
@@ -2900,17 +2827,13 @@ msgid "They may have been built for a different version and may need to be updat
 msgstr "Tie var būt izveidoti citai versijai un var būt jāatjaunina."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
-#: frontend/src/metabase/metabot/utils/source-location.ts
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/querying/components/DataReference/MainPane.tsx
 #: metabase/collections/models/collection.clj
@@ -2944,6 +2867,19 @@ msgstr "Tabulas"
 msgid "No published tables in your library yet."
 msgstr "Jūsu bibliotēkā vēl nav publicētu tabulu."
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetHeader/SnippetHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/ArchivedSnippetsPage/ArchivedSnippetsPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/NewSnippetPage/NewSnippetPage.tsx
+#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
+#: frontend/src/metabase/data-studio/common/utils/get-library-collection-display-name.ts
+#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
+#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
+msgid "Semantic layer"
+msgstr "Semantiskais slānis"
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
 msgid "Published table"
 msgstr "Publicēta tabula"
@@ -2968,7 +2904,7 @@ msgid "Snippet"
 msgstr "Koda fragments"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3135,18 +3071,18 @@ msgstr[1] "Šīs kolekcijas arhivēšana arī atcels tajā esošo tabulu public�
 msgstr[2] "Šo kolekciju arhivēšana arī atcels tajās esošo tabulu publicēšanu (un visu no tām atkarīgo tabulu publicēšanu) un arhivēs visus pārējos apakšelementus."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
-msgid "Create your Library"
-msgstr "Izveidojiet savu Bibliotēku"
+msgid "Create your semantic layer"
+msgstr "Izveidojiet savu semantisko slāni"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Library created"
-msgstr "Bibliotēka izveidota"
+msgid "Semantic layer created"
+msgstr "Semantiskais slānis izveidots"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
-msgstr "Bibliotēka palīdz izveidot analītikas vienoto patiesības avotu, nodrošinot centralizēti pārvaldītu atlasīta satura kopu. Tā nodala autoritatīvus, atkārtoti izmantojamus komponentus no ad-hoc analīzēm."
+msgid "The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
+msgstr "Semantiskais slānis palīdz izveidot vienotu patiesības avotu analītikai, nodrošinot centralizēti pārvaldītu atlasīta satura kopu. Tas nodala autoritatīvus, atkārtoti izmantojamus komponentus no ad-hoc analīzēm."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3167,8 +3103,8 @@ msgstr "Versiju kontrole"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Sync your Library to Git"
-msgstr "Sinhronizējiet savu Bibliotēku ar Git"
+msgid "Sync your semantic layer to git"
+msgstr "Sinhronizējiet savu semantisko slāni ar git"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3182,8 +3118,8 @@ msgstr "Pēc noklusējuma izmantojiet uzticamus avotus, ko nosaka jūsu datu kom
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Create my Library"
-msgstr "Izveidot manu Bibliotēku"
+msgid "Create my semantic layer"
+msgstr "Izveidot manu semantisko slāni"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
 msgid "A source of truth for analytics"
@@ -3201,8 +3137,8 @@ msgid "Go to {0}"
 msgstr "Doties uz {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
-msgid "Publishing a table saves it to the Library."
-msgstr "Tabulas publicēšana saglabā to Bibliotēkā."
+msgid "Publishing a table saves it to the semantic layer."
+msgstr "Tabulas publicēšana saglabā to semantiskajā slānī."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
 msgid "Publish to"
@@ -3270,12 +3206,12 @@ msgid "Unpublish these tables?"
 msgstr "Atpublicēt šīs tabulas?"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove this table from the Library."
-msgstr "Tas noņems šo tabulu no Bibliotēkas."
+msgid "This will remove this table from the semantic layer."
+msgstr "Tas noņems šo tabulu no semantiskā slāņa."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove these tables from the Library."
-msgstr "Tas noņems šīs tabulas no Bibliotēkas."
+msgid "This will remove these tables from the semantic layer."
+msgstr "Tas noņems šīs tabulas no semantiskā slāņa."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #, javascript-format
@@ -3706,16 +3642,16 @@ msgid "No published tables yet"
 msgstr "Vēl nav publicētu tabulu"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Publish tables in the Library to see them here."
-msgstr "Publicējiet tabulas Bibliotēkā, lai tās redzētu šeit."
+msgid "Publish tables in the semantic layer to see them here."
+msgstr "Publicējiet tabulas semantiskajā slānī, lai tās redzētu šeit."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
 msgid "No metrics yet"
 msgstr "Vēl nav metrikas"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Put metrics in the Library to see them here."
-msgstr "Ievietojiet metrikas Bibliotēkā, lai tās redzētu šeit."
+msgid "Put metrics in the semantic layer to see them here."
+msgstr "Pievienojiet metrikas semantiskajam slānim, lai tās redzētu šeit."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 msgid "Failed to add users"
@@ -3729,6 +3665,7 @@ msgstr "Neizdevās noņemt lietotāju"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DataAppsSettingsPage.tsx
 msgid "Data apps"
 msgstr "Datu lietotnes"
 
@@ -3852,19 +3789,8 @@ msgid "Outdated"
 msgstr "Novecojis"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
-msgid "Sync failed"
-msgstr "Sinhronizācija neizdevās"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#, javascript-format
-msgid "Synced {0}"
-msgstr "Sinhronizēts {0}"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-msgid "Not synced yet"
-msgstr "Vēl nav sinhronizēts"
+msgid "Draft"
+msgstr "Melnraksts"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 msgid "No one has access yet"
@@ -4175,6 +4101,7 @@ msgstr "Process darbojas fonā. Atkarībā no datubāzes lieluma tas var aizņem
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/AddDimensionsPanel.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
@@ -4812,6 +4739,7 @@ msgstr "Lauks"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 #: enterprise/frontend/src/metabase-enterprise/schema_viewer/components/SchemaViewer/components/SelectedNodeInfoPanel/PanelBody/PanelBody.tsx
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: metabase/xrays/automagic_dashboards/core.clj
 msgid "{0} field"
 msgid_plural "{0} fields"
@@ -6277,16 +6205,16 @@ msgid "Curated semantic layer"
 msgstr "Kurēts semantiskais slānis"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Metrics and published tables within your Library."
-msgstr "Metrikas un publicētās tabulas jūsu Bibliotēkā."
+msgid "Metrics and published tables within your semantic layer."
+msgstr "Metrikas un publicētās tabulas jūsu semantiskajā slānī."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Full semantic layer"
 msgstr "Pilns semantiskais slānis"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Library entities plus every active physical table."
-msgstr "Bibliotēkas entītijas un katra aktīvā fiziskā tabula."
+msgid "Semantic layer entities plus every active physical table."
+msgstr "Semantiskā slāņa entītijas plus katra aktīvā fiziskā tabula."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Metabot-visible layer"
@@ -7288,6 +7216,7 @@ msgid "Could not connect to repository"
 msgstr "Neizdevās izveidot savienojumu ar repozitoriju"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/TestConnectionButton.tsx
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
 msgid "Test connection"
 msgstr "Pārbaudīt savienojumu"
 
@@ -7496,6 +7425,12 @@ msgstr "Jums ir nesinhronizētas izmaiņas. Ko vēlaties darīt?"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Failed to cancel sync"
 msgstr "Neizdevās atcelt sinhronizāciju"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#: frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.tsx
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+msgid "Sync failed"
+msgstr "Sinhronizācija neizdevās"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "An error occurred during sync."
@@ -8188,13 +8123,6 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Šis atribūts tiek mantots no nomnieka, bet varat pārrakstīt tā vērtību"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
-msgid "Attributes"
-msgstr "Atribūti"
-
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
 msgid "Duplicate login attribute keys"
 msgstr "Dublikāti pieteikšanās atribūtu atslēgās"
 
@@ -8824,6 +8752,7 @@ msgstr "Pievienot opciju:"
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputSearchableSelect.tsx
 #: frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.tsx
+#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 msgid "Nothing found"
 msgstr "Nekas netika atrasts"
 
@@ -9373,10 +9302,7 @@ msgstr "un"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] "tabulas"
-msgstr[1] "tabula"
-msgstr[2] "tabulas"
+msgstr "tabula"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9516,6 +9442,7 @@ msgstr "Aizvērt cilni"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/ValuesYouCanReference.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
@@ -10387,7 +10314,6 @@ msgstr "Mēs jūs informēsim, kad sasniegsiet {0}% no jums piešķirtā apjoma.
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "Agree and continue"
 msgstr "Piekrītu un turpinu"
 
@@ -13237,6 +13163,10 @@ msgid "You'll find this in your Slack app's {0} settings."
 msgstr "To atradīsiet savas Slack lietotnes {0} iestatījumos."
 
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
 msgid "Signing Secret"
 msgstr "Parakstīšanas noslēpums"
 
@@ -14260,13 +14190,16 @@ msgstr "Izveidot grupu"
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "Varat izmantot grupas, lai kontrolētu lietotāju piekļuvi datiem. Ievietojiet lietotājus grupās un pēc tam dodieties uz sadaļu Atļaujas, lai kontrolētu katras grupas piekļuvi. Administratori un Visi lietotāji grupas ir īpašas noklusējuma grupas, kuras nevar noņemt."
 
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "No groups"
+msgstr "Nav grupu"
+
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupDetailApp.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/common/components/UserForm.tsx
 msgid "Groups"
@@ -15360,6 +15293,141 @@ msgstr "Atļaut lietotājiem pašiem reģistrēties, ja viņu Google konta e-pas
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "Atļaut lietotājiem pašiem reģistrēties, ja viņu Google konta e-pasta adrese ir no:"
 
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "The {0} group is not affected."
+msgstr "Grupa {0} netiek ietekmēta."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "These groups are not affected: {0}."
+msgstr "Šīs grupas netiek ietekmētas: {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping"
+msgstr "Noņemt kartējumu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and members"
+msgstr "Noņemt kartējumu un dalībniekus"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete groups"
+msgstr "Noņemt kartējumu un dzēst grupas"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete group"
+msgstr "Noņemt kartējumu un dzēst grupu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "This mapping isn't linked to any group."
+msgstr "Šis kartējums nav sasaistīts ne ar vienu grupu."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of these groups will no longer be synced when users log in."
+msgstr "Šo grupu dalība vairs netiks sinhronizēta, kad lietotāji pierakstās."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of this group will no longer be synced when users log in."
+msgstr "Šīs grupas dalība vairs netiks sinhronizēta, kad lietotāji pierakstās."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove this group mapping?"
+msgstr "Noņemt šo grupas kartējumu?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr "Kas būtu jānotiek ar pašām grupām {0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr "Kas būtu jānotiek ar pašu grupu {0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Nothing, just remove the mapping"
+msgstr "Nekas, tikai noņemt kartējumu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from these groups"
+msgstr "Arī noņemt visus dalībniekus no šīm grupām"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from this group"
+msgstr "Arī noņemt visus dalībniekus no šīs grupas"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr "Dalībnieki saglabā savus {0} kontus."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
+msgstr "Arī dzēst grupas"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the group"
+msgstr "Arī dzēst grupu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr "Pievienot kartējumu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Manual group mappings"
+msgstr "Manuāla grupu kartēšana"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "No mappings yet"
+msgstr "Vēl nav kartējumu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr "{0} grupas"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr "Izvēlieties {0} grupu..."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr "Rediģēt kartējumu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr "Dzēst kartējumu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr "Kartējums dzēsts, bet ne visas tā grupas varēja tikt atjauninātas"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but its deleted group could not be removed from the other mappings"
+msgid_plural "Mapping deleted, but its deleted groups could not be removed from the other mappings"
+msgstr[0] "Kartējums dzēsts, bet tā dzēstās grupas nevarēja noņemt no citiem kartējumiem"
+msgstr[1] "Kartējums dzēsts, bet tā dzēsto grupu nevarēja noņemt no citiem kartējumiem"
+msgstr[2] "Kartējums dzēsts, bet tā dzēstās grupas nevarēja noņemt no citiem kartējumiem"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted"
+msgstr "Kartējums dzēsts"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr "Šai grupai kartējums jau pastāv"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping added"
+msgstr "Kartējums pievienots"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping updated"
+msgstr "Kartējums atjaunināts"
+
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP"
@@ -15615,7 +15683,6 @@ msgid "Edit configuration"
 msgstr "Rediģēt konfigurāciju"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "First, some legalese"
 msgstr "Vispirms — juridiskā daļa"
 
@@ -15832,28 +15899,18 @@ msgstr "Šī instance darbojas izstrādes režīmā un to drīkst izmantot tikai
 msgid "Get your token"
 msgstr "Iegūt savu tokenu"
 
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#, javascript-format
-msgid "Automatically assign people to {0} groups based on their LDAP group membership"
-msgstr "Automātiski piešķirt cilvēkus {0} grupām, pamatojoties uz viņu LDAP grupu piederību"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "Manual group mappings"
-msgstr "Manuāla grupu kartēšana"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "LDAP group name"
-msgstr "LDAP grupas nosaukums"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Vēl nav kartējumu"
-
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Aktivizēt"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Check your parentheses"
+msgstr "Pārbaudiet iekavas"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Port must be a whole number between 1 and 65535"
+msgstr "Portam jābūt veselam skaitlim no 1 līdz 65535"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Error loading LDAP configuration"
@@ -15912,6 +15969,15 @@ msgstr "Lietotāju filtrs"
 #, javascript-format
 msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
 msgstr "Kartējiet LDAP atribūtus uz e-pasta, vārda un uzvārda laukiem lietotnē {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Automātiski piešķirt cilvēkus {0} grupām, pamatojoties uz viņu LDAP grupu piederību"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "LDAP group name"
+msgstr "LDAP grupas nosaukums"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
@@ -16561,102 +16627,6 @@ msgstr "Valūtas vienība"
 msgid "Currency label style"
 msgstr "Valūtas marķējuma stils"
 
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-msgid "New group mapping name"
-msgstr "Jauns grupas kartējuma nosaukums"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Remove mapping"
-msgstr "Noņemt kartējumu"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and members"
-msgstr "Noņemt kartējumu un dalībniekus"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete groups"
-msgstr "Noņemt kartējumu un dzēst grupas"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete group"
-msgstr "Noņemt kartējumu un dzēst grupu"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "The Administrators group is not affected."
-msgstr "Administratoru grupa netiek ietekmēta."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "This mapping isn't linked to any group."
-msgstr "Šis kartējums nav sasaistīts ne ar vienu grupu."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of these groups will no longer be synced when users log in."
-msgstr "Šo grupu dalība vairs netiks sinhronizēta, kad lietotāji pierakstās."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of this group will no longer be synced when users log in."
-msgstr "Šīs grupas dalība vairs netiks sinhronizēta, kad lietotāji pierakstās."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove this group mapping?"
-msgstr "Noņemt šo grupas kartējumu?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the groups themselves in {0}?"
-msgstr "Kas būtu jānotiek ar pašām grupām {0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the group itself in {0}?"
-msgstr "Kas būtu jānotiek ar pašu grupu {0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Nothing, just remove the mapping"
-msgstr "Nekas, tikai noņemt kartējumu"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from these groups"
-msgstr "Arī noņemt visus dalībniekus no šīm grupām"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from this group"
-msgstr "Arī noņemt visus dalībniekus no šīs grupas"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "Members keep their {0} accounts."
-msgstr "Dalībnieki saglabā savus {0} kontus."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups"
-msgstr "Arī dzēst grupas"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the group"
-msgstr "Arī dzēst grupu"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "Kartējumi ļauj Metabase automātiski pievienot un noņemt lietotājus no grupām, balstoties uz dalības informāciju, ko nodrošina direktoriju serveris. Ja grupa nav nokartēta, tās dalība netiks sinhronizēta."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet, group sync is not on"
-msgstr "Vēl nav kartējumu, grupu sinhronizācija nav ieslēgta"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Synchronize Group Memberships"
-msgstr "Sinhronizēt grupu dalības"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "About mappings"
-msgstr "Par kartējumiem"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Delete this mapping?"
-msgstr "Dzēst šo kartējumu?"
-
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
 msgid "Homepage"
 msgstr "Sākumlapa"
@@ -17213,6 +17183,7 @@ msgstr "Sākts no"
 #: frontend/src/metabase/archive/hooks/use-delete-item.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionContentView.tsx
 #: frontend/src/metabase/documents/components/DocumentArchivedEntityBanner.tsx
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 #: frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.tsx
 msgid "This item has been permanently deleted."
 msgstr "Šis elements ir neatgriezeniski dzēsts."
@@ -17309,6 +17280,7 @@ msgstr "mape"
 
 #: frontend/src/metabase/archive/hooks/use-set-archive.ts
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 msgid "research"
 msgstr "izpēte"
 
@@ -17694,6 +17666,7 @@ msgid "No items of the selected types."
 msgstr "Nav vienumu ar atlasītajiem tipiem."
 
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsToolbar.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 msgid "Clear search"
 msgstr "Notīrīt meklēšanu"
 
@@ -18088,6 +18061,10 @@ msgstr "Mana jaunā fantastiskā kolekcija"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 msgid "Collection it's saved in"
 msgstr "Kolekcija, kurā tas ir saglabāts"
+
+#: frontend/src/metabase/common/collections/components/PinDropZone/PinDropZone.tsx
+msgid "Drag here to pin"
+msgstr "Velciet šeit, lai piespraustu"
 
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 msgid "Can't move this question into a dashboard"
@@ -19412,7 +19389,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "{0} minūtes"
 msgstr[1] "minūte"
 msgstr[2] "{0} minūtes"
@@ -20074,6 +20051,10 @@ msgstr "Visi nomnieku lietotāji"
 #: frontend/src/metabase/common/utils/groups.ts
 msgid "Data Analysts"
 msgstr "Datu analītiķi"
+
+#: frontend/src/metabase/common/utils/groups.ts
+msgid "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed."
+msgstr "Lai pievienotu dalībniekus šai grupai, nepieciešams plāns, kurā ir iekļauta Data Analysts grupa. Dalībniekus var tikai noņemt."
 
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
@@ -21879,11 +21860,6 @@ msgid "Data transformation"
 msgstr "Datu transformēšana"
 
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-msgid "Semantic layer"
-msgstr "Semantiskais slānis"
-
-#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/glossary/pages/GlossaryPage/GlossaryPage.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
 #: frontend/src/metabase/reference/glossary/GlossaryContainer.tsx
@@ -22155,8 +22131,8 @@ msgstr "Šai tabulai nav lauku"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-msgid "First, let's create your Library"
-msgstr "Vispirms izveidosim jūsu Bibliotēku"
+msgid "First, let's create your semantic layer"
+msgstr "Vispirms izveidosim jūsu semantisko slāni"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
@@ -22536,8 +22512,8 @@ msgid "Bring more order to your analytics"
 msgstr "Ieviesiet vairāk kārtības savā analītikā"
 
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
-msgid "Create a shared library of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
-msgstr "Izveidojiet koplietojamu datu kopu un metriku bibliotēku, uz ko jūsu komanda var paļauties, lai, augot jūsu datiem un pakārtotajam saturam, viss paliktu konsekvents."
+msgid "Create a shared semantic layer of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
+msgstr "Izveidojiet koplietojamu semantisko slāni ar datu kopām un metrikām, uz kurām jūsu komanda var paļauties, lai viss paliek konsekvents, augot jūsu datiem un atvasinātajam saturam."
 
 #: frontend/src/metabase/data-studio/upsells/pages/SchemaViewerUpsellPage.tsx
 msgid "Visualize your database structure"
@@ -22741,6 +22717,18 @@ msgstr "Varat pievienot savus datus jebkurā laikā."
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 msgid "I'll add my data later"
 msgstr "Datus pievienošu vēlāk"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection successful"
+msgstr "Savienojums veiksmīgs"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection failed"
+msgstr "Savienojums neizdevās"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Couldn't connect to the database"
+msgstr "Neizdevās izveidot savienojumu ar datubāzi"
 
 #: frontend/src/metabase/databases/components/DatabaseFormError/CheckHostAndPortButton.tsx
 msgid "Check Host and Port settings"
@@ -23251,6 +23239,11 @@ msgid "These options require changing the server code. You can play around with 
 msgstr "Šīs opcijas prasa mainīt servera kodu. Šeit varat pamēģināt un priekšskatīt opcijas. Plašāk skatiet {0}."
 
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
+msgid "documentation"
+msgstr "dokumentāciju"
+
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
 msgid "Use instance font"
 msgstr "Izmantot instances fontu"
 
@@ -23536,7 +23529,6 @@ msgstr "Kad jūs iegulstat diagrammas vai informācijas paneļus no Metabase sav
 "Metabase\" redzamu šajās iegultajās vienībās."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "Tomēr jums vajadzētu izlasīt augstāk norādīto licences tekstu, jo tā ir faktiskā licence, kurai jūs piekritīsiet, iespējojot šo funkciju."
 
@@ -25313,10 +25305,6 @@ msgid "Remove provider"
 msgstr "Noņemt pakalpojumu sniedzēju"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
-msgid "SQL generation also runs on this connection, and will stop working without it."
-msgstr "SQL ģenerēšana arī darbojas uz šī savienojuma un bez tā pārstās darboties."
-
-#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Semantic search also runs on this connection, and will stop working without it."
 msgstr "Semantiskā meklēšana arī darbojas uz šī savienojuma un bez tā pārstās darboties."
 
@@ -25448,8 +25436,8 @@ msgid "AI explorations"
 msgstr "MI izpētes"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
-msgid "Ask about your data, and type @ to mention an item"
-msgstr "Jautājiet par saviem datiem un ierakstiet @, lai pieminētu vienumu"
+msgid "Suggestions"
+msgstr "Ieteikumi"
 
 #: frontend/src/metabase/metabot/components/MetabotBranchPicker/MetabotBranchPicker.tsx
 msgid "Previous version"
@@ -25491,16 +25479,15 @@ msgid "Source is wrong"
 msgstr "Avots ir nepareizs"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Collapse data sources"
-msgstr "Sakļaut datu avotus"
+msgid "Give feedback"
+msgstr "Sniedziet atsauksmes"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Expand data sources"
-msgstr "Izvērst datu avotus"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Data sources used"
-msgstr "Izmantotie datu avoti"
+msgid "Data source used"
+msgid_plural "Data sources used"
+msgstr[0] "Izmantotie datu avoti"
+msgstr[1] "Izmantotais datu avots"
+msgstr[2] "Izmantotie datu avoti"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
@@ -25667,11 +25654,6 @@ msgid "Explore your metrics and models with AI."
 msgstr "Izpētiet savas metrikas un modeļus ar MI."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
-#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
-msgid "How can I help? Type @ to mention items."
-msgstr "Kā varu palīdzēt? Ierakstiet @, lai pieminētu vienumus."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
 #, javascript-format
 msgid "{0} isn't perfect. Double-check results."
 msgstr "{0} nav perfekts. Pārbaudiet rezultātus vēlreiz."
@@ -25681,41 +25663,10 @@ msgid "Fork conversation"
 msgstr "Atzarot sarunu"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
+#: frontend/src/metabase/metabot/state/actions.ts
 #, javascript-format
 msgid "Response from {0} was interrupted"
 msgstr "Atbilde no {0} tika pārtraukta"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was cut off because it hit the maximum length"
-msgstr "Atbilde no {0} tika aprauta, jo sasniedza maksimālo garumu"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
-msgstr "Jūsu pēdējā atbilde tika aprauta. Turpiniet tieši no vietas, kur apstājāties. Neatkārtojiet neko, ko jau uzrakstījāt."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
-msgstr "Atbilde no {0} tika apturēta satura filtra dēļ. Mēģiniet pārfrāzēt savu jautājumu."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "{0} paused after reaching its step limit for this response"
-msgstr "{0} tika pauzēts pēc šīs atbildes soļu limita sasniegšanas"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Continue working on my last request."
-msgstr "Turpini strādāt pie mana pēdējā pieprasījuma."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} stopped before it finished"
-msgstr "Atbilde no {0} apstājās, pirms tā tika pabeigta"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
-msgstr "Šī saruna ir sasniegusi maksimālo garumu un nevar turpināties. Lūdzu, sāciet jaunu čatu."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Conversation forked"
@@ -25821,6 +25772,12 @@ msgstr "Šis čats tuvojas {0}."
 msgid "New chat"
 msgstr "Jauns čats"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotResponseLoader.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
+msgid "Loading"
+msgstr "Notiek ielāde"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 msgid "UI bug"
 msgstr "UI kļūda"
@@ -25858,6 +25815,11 @@ msgstr "Aprakstiet, kādu SQL vēlaties; ierakstiet @, lai pieminētu vienumu."
 msgid "Send to {0}"
 msgstr "Sūtīt uz {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
+#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
+msgid "Stop generating"
+msgstr "Pārtraukt ģenerēšanu"
+
 #: frontend/src/metabase/metabot/components/MetabotManagedProviderLimit.tsx
 msgid "Add an AI provider"
 msgstr "Pievienot MI pakalpojumu sniedzēju"
@@ -25882,6 +25844,10 @@ msgstr "Sākt maksas abonementu"
 msgid "Ask {0}"
 msgstr "Jautāt {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
+msgid "Ask about your data. Type @ to mention items."
+msgstr "Jautājiet par saviem datiem. Ierakstiet @, lai pieminētu vienumus."
+
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
 msgid "Your Slack account has been connected successfully."
 msgstr "Jūsu Slack konts ir veiksmīgi savienots."
@@ -25905,10 +25871,6 @@ msgstr "Izveidots ar {0}"
 #, javascript-format
 msgid "{0} is disabled"
 msgstr "{0} ir atspējots"
-
-#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
-msgid "Stop generating"
-msgstr "Pārtraukt ģenerēšanu"
 
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
 #, javascript-format
@@ -26094,6 +26056,38 @@ msgstr "Nederīgs pieprasījuma formāts"
 #: frontend/src/metabase/metabot/state/actions.ts
 msgid "Sorry, we couldn't load that conversation."
 msgstr "Atvainojiet, mums neizdevās ielādēt šo sarunu."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "{0} paused after reaching its step limit for this response"
+msgstr "{0} tika pauzēts pēc šīs atbildes soļu limita sasniegšanas"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was cut off because it hit the maximum length"
+msgstr "Atbilde no {0} tika aprauta, jo sasniedza maksimālo garumu"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
+msgstr "Šī saruna ir sasniegusi maksimālo garumu un nevar turpināties. Lūdzu, sāciet jaunu čatu."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
+msgstr "Atbilde no {0} tika apturēta satura filtra dēļ. Mēģiniet pārfrāzēt savu jautājumu."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} stopped before it finished"
+msgstr "Atbilde no {0} apstājās, pirms tā tika pabeigta"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Continue working on my last request."
+msgstr "Turpini strādāt pie mana pēdējā pieprasījuma."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
+msgstr "Jūsu pēdējā atbilde tika aprauta. Turpiniet tieši no vietas, kur apstājāties. Neatkārtojiet neko, ko jau uzrakstījāt."
 
 #: frontend/src/metabase/metadata/components/CoercionStrategyPicker/CoercionStrategyPicker.tsx
 msgid "To enable casting, please select a data type"
@@ -29067,19 +29061,6 @@ msgstr "Nekešot rezultātus"
 msgid "No caching"
 msgstr "Bez kešošanas"
 
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-#, javascript-format
-msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
-msgstr "Noklikšķinot uz \"Agree and continue\", jūs piekrītat {0}"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "our embedding license."
-msgstr "mūsu iegulšanas licencei."
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "Kad jūs iegulstat diagrammas vai informācijas paneļus no Metabase savā lietotnē, uz šo lietotni neattiecas Affero General Public License, kas sedz pārējo Metabase, ar nosacījumu, ka jūs saglabājat Metabase logo un \"Powered by Metabase\" redzamu šajos iegulumos."
-
 #: frontend/src/metabase/pulse/pulse.ts
 msgid "emailed"
 msgstr "nosūtīts pa e-pastu"
@@ -30809,6 +30790,30 @@ msgstr "{0}+klikšķis, lai atvērtu jaunā cilnē"
 msgid "Pick columns"
 msgstr "Izvēlieties kolonnas"
 
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns"
+msgstr "Meklēt kolonnas"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns…"
+msgstr "Meklēt kolonnas…"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+#, javascript-format
+msgid "{0} column found"
+msgid_plural "{0} columns found"
+msgstr[0] "Atrastas {0} kolonnas"
+msgstr[1] "Atrasta {0} kolonna"
+msgstr[2] "Atrastas {0} kolonnas"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Select all of these"
+msgstr "Atlasīt visas šīs"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "No columns found"
+msgstr "Nav atrasta neviena kolonna"
+
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
@@ -31783,6 +31788,11 @@ msgstr "Sinhronizācijas kļūda"
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing…"
 msgstr "Sinhronizē…"
+
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+#, javascript-format
+msgid "Sync failed: {0}"
+msgstr "Sinhronizācija neizdevās: {0}"
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing completed"
@@ -33432,11 +33442,6 @@ msgstr "Mainīgajiem transformācijās jābūt vai nu neobligātiem, vai arī ar
 #: frontend/src/metabase/ui/components/data-display/KeyboardShortcut/KeyboardShortcut.tsx
 msgid "then"
 msgstr "pēc tam"
-
-#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
-#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
-msgid "Loading"
-msgstr "Notiek ielāde"
 
 #: frontend/src/metabase/ui/components/data-display/TreeTable/SelectionCheckbox/SelectionCheckbox.tsx
 msgid "Deselect row"
@@ -35704,6 +35709,10 @@ msgid "You don''t have permissions to do that."
 msgstr "Jums nav atļauju to darīt."
 
 #: metabase/actions/execution.clj
+msgid "You do not have permissions to run this action."
+msgstr "Jums nav atļauju izpildīt šo darbību."
+
+#: metabase/actions/execution.clj
 msgid "Error executing action."
 msgstr "Kļūda, izpildot darbību."
 
@@ -35728,10 +35737,6 @@ msgid "Implicit parameters must be provided."
 msgstr "Jānorāda netiešie parametri."
 
 #: metabase/actions/execution.clj
-msgid "HTTP actions cannot be executed from public endpoints."
-msgstr "HTTP darbības nevar izpildīt no publiskiem galapunktiem."
-
-#: metabase/actions/execution.clj
 msgid "Unknown action type {0}."
 msgstr "Nezināms darbības tips {0}."
 
@@ -35739,26 +35744,13 @@ msgstr "Nezināms darbības tips {0}."
 msgid "Values can only be fetched for actions that require a Primary Key."
 msgstr "Vērtības var izgūt tikai darbībām, kurām nepieciešama primārā atslēga."
 
-#: metabase/actions/http_action.clj
-#: metabase/driver/sql/parameters/substitute.clj
-msgid "Unable to substitute parameters: {0}"
-msgstr "Neizdevās aizstāt parametrus: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Cannot call the service: missing required parameters: {0}"
-msgstr "Nevar izsaukt pakalpojumu: trūkst obligāto parametru: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Too many results returned: {0}"
-msgstr "Atgriezts pārāk daudz rezultātu: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "HTTP actions are disabled."
-msgstr "HTTP darbības ir atspējotas."
-
 #: metabase/actions/models.clj
 msgid "Actions must be made with models, not cards."
 msgstr "Darbības jāveic ar modeļiem, nevis kartiņām."
+
+#: metabase/actions/models.clj
+msgid "Implicit actions are not supported for models with clauses."
+msgstr "Netiešās darbības netiek atbalstītas modeļiem ar klauzulām."
 
 #: metabase/actions/schema.clj
 msgid "value must be a JSON object mapping parameter ids to scalar values."
@@ -35771,10 +35763,6 @@ msgstr "vērtībai jāatbilst parametru id ar skalārām vērtībām."
 #: metabase/actions/schema.clj
 msgid "Unsupported action type"
 msgstr "Neatbalstīts darbības tips"
-
-#: metabase/actions/schema.clj
-msgid "must be a valid json-query, something like ''.item.title''"
-msgstr "jābūt derīgam json-query, piemēram, ''.item.title''"
 
 #: metabase/actions/schema.clj
 msgid "Unsupported implicit action kind"
@@ -35805,16 +35793,8 @@ msgid "Whether the Database has table data editing enabled."
 msgstr "Vai Datubāzē ir iespējota tabulu datu rediģēšana."
 
 #: metabase/actions_rest/api.clj
-msgid "HTTP actions are not supported."
-msgstr "HTTP darbības netiek atbalstītas."
-
-#: metabase/actions_rest/api.clj
 msgid "Must provide a database_id for query actions"
 msgstr "Query darbībām jānorāda database_id"
-
-#: metabase/actions_rest/api.clj
-msgid "Implicit actions are not supported for models with clauses."
-msgstr "Netiešās darbības netiek atbalstītas modeļiem ar klauzulām."
 
 #: metabase/agent_api/settings.clj
 msgid "Whether the Agent API is enabled."
@@ -35897,12 +35877,24 @@ msgid "`field` clause needs a portable FK in its third slot, not a numeric id. U
 msgstr "`field` klauzulai trešajā pozīcijā ir nepieciešama portatīva FK, nevis skaitlisks id. Izmantojiet vektoru `[<database>, <schema>, <table>, <column>]` (atrisināts pret metadatu nodrošinātāju) vai kolonnas nosaukumu kā virkni (starp-posmu atsaucēm)."
 
 #: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+msgstr "`{0}` neiztur turp-atpakaļ ceļu caur jautājuma saiti, ko atver frontend: jautājums vai nu neielādējas, vai arī klusi pazaudē klauzulu un atbild ar kaut ko citu. Tā vietā uzlieciet vienību uz kolonnas — `temporal-unit` opciju uz `field` / `expression` atsauces, salīdzinot ar perioda pirmo dienu kā vienkāršu datuma virkni, piemēram, \"2025-01-01\" — vai arī izrakstiet diapazonu kā `>=` tā pirmajai dienai un `<` pirmajai dienai pēc tās, abas kā vienkāršas datuma virknes (nevis `between`, kas nomet visu pēc pusnakts tā pēdējā dienā). Izmantojiet diapazonu `year` uz `expression` atsauces, ko vaicājumu dzinis nolasa kā skaitli, un iekš `aggregation:` (`count-where`, `sum-where`, `share`) un join `conditions:`, kur vienības pārvietošana uz kolonnu mainītu atbildi."
+
+#: metabase/agent_lib/representations/repair.clj
 msgid "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
 msgstr "Vaicājumu veidotāja izteiksmju redaktors noraida {0} klauzulu posmā {1}: {2}. Vaicājumu varētu izveidot, bet to nevarētu vizualizēt vai saglabāt — pārraksti problemātisko klauzulu."
 
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` ir {1} pielāgota kolonna, tāpēc to nevar veikt grupēšanu intervālos pēc {2}. Salīdziniet to ar vienkāršu vērtību vai tā vietā veiciet grupēšanu intervālos pēc datuma / datetime kolonnas."
+
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` ir {1} kolonna, tāpēc to nevar veikt grupēšanu intervālos pēc {2}. Salīdziniet to ar vienkāršu vērtību vai tā vietā veiciet grupēšanu intervālos pēc datuma / datetime kolonnas."
+
 #: metabase/agent_lib/representations/resolve.clj
-msgid "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-msgstr "Nederīgs laika literālis {0} laukā :absolute-datetime — izmantojiet ISO-8601 datumu, datumu un laiku, gadu vai gads-mēnesis."
+msgid "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
+msgstr "Nederīgs laika literālis {0} — izmantojiet ISO-8601 datumu, datetime, gadu vai gads-mēnesis."
 
 #: metabase/ai_tracing/api.clj
 msgid "Eval trace not found"
@@ -35959,6 +35951,10 @@ msgstr "Vai jau ir ģenerēta ne-tabulas diagramma. Nepieciešams analītikai, l
 #: metabase/analytics/settings.clj
 msgid "Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics."
 msgstr "Iespējot iegulšanas ceļa, vaicājuma parametru, lietotāja aģenta, IP adreses un Metabot sarunu metadatu žurnalēšanu jūsu iekšējo datu un iegulšanu lietotājiem. Šī informācija tiks rādīta jūsu lietošanas analītikā."
+
+#: metabase/analytics/settings.clj
+msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
+msgstr "Iespējot vai atspējot visus koda eksperimentus. Kad atspējots, darbojas tikai produkcijas koda ceļš."
 
 #: metabase/analyze/query_results.clj
 msgid "value must be an array of valid results column metadata maps."
@@ -36294,38 +36290,6 @@ msgstr "Atsvaidzināt kešotos rezultātus šādā daļā no to kešošanas ilgu
 msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "Absolūtais maksimālais laiks, cik ilgi glabāt jebkādus kešotos vaicājumu rezultātus, sekundēs."
 
-#: metabase/channel/api/channel.clj
-msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr "Jābūt namespaced kanālam. Piem.: channel/http"
-
-#: metabase/channel/api/channel.clj metabase/channel/shared.clj
-msgid "Invalid channel details"
-msgstr "Nederīgas kanāla detaļas"
-
-#: metabase/channel/api/slack.clj
-msgid "Invalid Slack token."
-msgstr "Nederīgs Slack tokens."
-
-#: metabase/channel/api/slack.clj
-msgid "invalid token"
-msgstr "nederīgs tokens"
-
-#: metabase/channel/api/slack.clj
-msgid "Slack channel not found."
-msgstr "Slack kanāls nav atrasts."
-
-#: metabase/channel/api/slack.clj
-msgid "channel not found"
-msgstr "kanāls nav atrasts"
-
-#: metabase/channel/api/slack.clj
-msgid "You must configure a site-url for Slack integration to work."
-msgstr "Lai Slack integrācija darbotos, jums ir jākonfigurē site-url."
-
-#: metabase/channel/api/slack.clj
-msgid "Bug reporting is not enabled."
-msgstr "Kļūdu ziņošana nav ieslēgta."
-
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
 msgstr "SMTP hosts nav iestatīts."
@@ -36525,6 +36489,38 @@ msgstr "Kļūda, reģistrējot fontus: Metabase nevarēs sūtīt Pulse."
 #: metabase/channel/render/style.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
 msgstr "Šī ir zināma problēma ar noteiktām JVM. Plašāku informāciju skatiet {0}."
+
+#: metabase/channel/rest/api/channel.clj
+msgid "Must be a namespaced channel. E.g: channel/http"
+msgstr "Jābūt namespaced kanālam. Piem.: channel/http"
+
+#: metabase/channel/rest/api/channel.clj metabase/channel/shared.clj
+msgid "Invalid channel details"
+msgstr "Nederīgas kanāla detaļas"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Invalid Slack token."
+msgstr "Nederīgs Slack tokens."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "invalid token"
+msgstr "nederīgs tokens"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Slack channel not found."
+msgstr "Slack kanāls nav atrasts."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "channel not found"
+msgstr "kanāls nav atrasts"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "You must configure a site-url for Slack integration to work."
+msgstr "Lai Slack integrācija darbotos, jums ir jākonfigurē site-url."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Bug reporting is not enabled."
+msgstr "Kļūdu ziņošana nav ieslēgta."
 
 #: metabase/channel/settings.clj
 msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
@@ -37232,6 +37228,14 @@ msgstr "Trūkst atļauju lasīt tabulu shēmā {0}"
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Nav atļauju dzēst tabulu shēmā {0}"
 
+#: metabase/driver/druid_jdbc.clj
+msgid "Invalid {0}."
+msgstr "Nederīgs {0}."
+
+#: metabase/driver/druid_jdbc.clj
+msgid "must not contain spaces, quotes, or semicolons"
+msgstr "nedrīkst saturēt atstarpes, pēdiņas vai semikolu"
+
 #: metabase/driver/h2.clj
 msgid "Connection String"
 msgstr "Savienojuma virkne"
@@ -37583,6 +37587,42 @@ msgid "The passphrase for this private key is incorrect."
 msgstr "Šīs privātās atslēgas paroles frāze ir nepareiza."
 
 #: metabase/driver/snowflake.clj
+msgid "No OIDC token was provided. Paste a JWT or set the token file path."
+msgstr "Netika nodrošināts neviens OIDC tokens. Ielīmējiet JWT vai iestatiet tokena faila ceļu."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path."
+msgstr "OIDC tokens nav derīgs JWT. Pārbaudiet ielīmēto tokenu vai failu norādītajā ceļā."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `iss` (issuer) claim."
+msgstr "OIDC tokenam trūkst obligātā `iss` (issuer) claim."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `sub` (subject) claim."
+msgstr "OIDC tokenam trūkst obligātā `sub` (subject) claim."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.)."
+msgstr "Nav atrasti AWS akreditācijas dati. Pārliecinieties, ka Metabase workload ir piesaistīta IAM loma (instance profile, ECS task role, IRSA u.c.)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS region was found. Set AWS_REGION in Metabase''s environment."
+msgstr "Nav atrasts AWS reģions. Iestatiet AWS_REGION Metabase vidē."
+
+#: metabase/driver/snowflake.clj
+msgid "No Azure managed identity is configured on Metabase''s host."
+msgstr "Metabase resursdatorā nav konfigurēta Azure pārvaldītā identitāte."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a token from Azure''s identity endpoint."
+msgstr "Metabase neizdevās iegūt tokenu no Azure identitātes galapunkta."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached."
+msgstr "Metabase neizdevās iegūt GCP identitātes tokenu. Pārbaudiet, vai workload ir piesaistīts service account."
+
+#: metabase/driver/snowflake.clj
 msgid "Snowflake doesn''t support extract us week"
 msgstr "Snowflake neatbalsta extract us week"
 
@@ -37609,6 +37649,10 @@ msgstr "Neizdevās parsēt vietējo vaicājumu. Iespējams, ar jūsu vaicājumu 
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
 msgstr "Nederīgs vietējais vaicājums uzdošanās režīmā. Tam jābūt vienam {0} priekšrakstam."
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "Unable to substitute parameters: {0}"
+msgstr "Neizdevās aizstāt parametrus: {0}"
 
 #: metabase/driver/sql/parameters/substitute.clj
 msgid "Cannot run the query: missing required parameters: {0}"
@@ -39595,22 +39639,6 @@ msgstr "{0} {1} {2} vērtības"
 msgid "{0} {1} values"
 msgstr "{0} {1} vērtības"
 
-#: metabase/llm/api.clj
-msgid "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings."
-msgstr "LLM SQL ģenerēšana nav konfigurēta. Lūdzu, iestatiet Anthropic API atslēgu administratora iestatījumos."
-
-#: metabase/llm/api.clj
-msgid "Failed to parse SQL. Use @mentions to provide table references."
-msgstr "Neizdevās parsēt SQL. Izmantojiet @mentions, lai norādītu tabulas atsauces."
-
-#: metabase/llm/api.clj
-msgid "No tables found. Use @mentions or provide source SQL with table references."
-msgstr "Nav atrasta neviena tabula. Izmantojiet @mentions vai norādiet avota SQL ar tabulu atsaucēm."
-
-#: metabase/llm/api.clj
-msgid "No accessible tables found. Check table permissions."
-msgstr "Nav atrasta neviena pieejama tabula. Pārbaudiet tabulu atļaujas."
-
 #: metabase/llm/api/provider.clj
 msgid "The {0} connection is configured by environment variables and cannot be changed here."
 msgstr "{0} savienojums ir konfigurēts ar vides mainīgajiem un šeit to nevar mainīt."
@@ -39692,6 +39720,10 @@ msgid "The root both surfaces hang off; leave off any /anthropic or /v1 path."
 msgstr "Sakne, uz kuras balstās abi galapunkti; neiekļaujiet nekādu /anthropic vai /v1 ceļu."
 
 #: metabase/llm/provider.clj
+msgid "xAI"
+msgstr "xAI"
+
+#: metabase/llm/provider.clj
 msgid "Google Gemini Enterprise"
 msgstr "Google Gemini Enterprise"
 
@@ -39752,6 +39784,14 @@ msgid "A short-lived token, e.g. the output of gcloud auth print-access-token. U
 msgstr "Īslaicīgs tokens, piem., komandas gcloud auth print-access-token izvade. Noder testēšanai."
 
 #: metabase/llm/provider.clj
+msgid "Model Garden endpoint ID"
+msgstr "Model Garden galapunkta ID"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to."
+msgstr "Neobligāti. Izmantojiet atvērto modeli, ko izvietojāt no Model Garden, nevis tādu, ko hostē Google. Iestatiet atrašanās vietu uz reģionu, kurā to izvietojāt."
+
+#: metabase/llm/provider.clj
 msgid "Derived from the location when left at the global host."
 msgstr "Atvasināts no lokācijas, ja atstāts globālais hosts."
 
@@ -39806,6 +39846,14 @@ msgstr "Slepenā piekļuves atslēga"
 #: metabase/llm/provider.clj
 msgid "Region"
 msgstr "Reģions"
+
+#: metabase/llm/provider.clj
+msgid "Model ID"
+msgstr "Modeļa ID"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN."
+msgstr "Neobligāti. Izmantojiet inference profilu vai modeli, kas nav uzskaitīts šim reģionam, pēc tā ID vai ARN."
 
 #: metabase/llm/provider.clj
 msgid "Session token"
@@ -39927,16 +39975,8 @@ msgid "The Anthropic API Key."
 msgstr "Anthropic API atslēga."
 
 #: metabase/llm/settings.clj
-msgid "The Anthropic model to use."
-msgstr "Izmantojamais Anthropic modelis."
-
-#: metabase/llm/settings.clj
 msgid "The Anthropic API base URL."
 msgstr "Anthropic API bāzes URL."
-
-#: metabase/llm/settings.clj
-msgid "The Anthropic API version."
-msgstr "Anthropic API versija."
 
 #: metabase/llm/settings.clj
 msgid "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')"
@@ -39989,6 +40029,14 @@ msgstr "DeepSeek API bāzes URL. Gan Anthropic-saderīgā ziņojumu saskarne (`/
 #: metabase/llm/settings.clj
 msgid "The DeepSeek API Key."
 msgstr "DeepSeek API atslēga."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API base URL used for Chat Completions."
+msgstr "xAI API bāzes URL, ko izmanto Chat Completions."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API Key."
+msgstr "xAI API Key."
 
 #: metabase/llm/settings.clj
 msgid "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set."
@@ -40077,14 +40125,6 @@ msgstr "Soketa (starpbaitu lasīšanas) taimauts milisekundēs LLM API pieprasī
 #: metabase/llm/settings.clj
 msgid "TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever."
 msgstr "TCP savienojuma taimauts milisekundēs LLM API pieprasījumiem. Ja piegādātājs nestrādā vai nav sasniedzams, jānotiek ātrai atteicei, nevis darba procesa pavediena turēšanai aizņemtā stāvoklī bezgalīgi."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per user per minute."
-msgstr "Maksimālais SQL ģenerēšanas pieprasījumu skaits uz lietotāju minūtē."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per IP address per minute."
-msgstr "Maksimālais SQL ģenerēšanas pieprasījumu skaits uz IP adresi minūtē."
 
 #: metabase/logger/api.clj
 msgid "Sync issue troubleshooting"
@@ -40181,6 +40221,14 @@ msgstr "Konstatēta neatbilstība starp informācijas paneļa `collection_id` ({
 #: metabase_enterprise/content_verification/api/routes.clj
 msgid "Content verification"
 msgstr "Satura verifikācija"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: {0}"
+msgstr "Vaicājums neizdevās: {0}"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: unknown error"
+msgstr "Vaicājums neizdevās: nezināma kļūda"
 
 #: metabase/metabot/scope.clj
 msgid "Construct SQL queries"
@@ -40354,6 +40402,30 @@ msgstr "Izveidot un rediģēt uzdevumus"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "Nav konfigurēts neviens LLM nodrošinātāja savienojums ar nosaukumu {0}."
 
+#: metabase/metabot/self.clj
+msgid "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account."
+msgstr "{0} noraidīja pieprasījumu norēķinu problēmas dēļ, piemēram, beidzās kredīti. Pārbaudiet sava konta norēķinu iestatījumus."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+msgstr "MI nodrošinātājs noraidīja pieprasījumu norēķinu problēmas dēļ. Lūdzu, sazinieties ar savu administratoru."
+
+#: metabase/metabot/self.clj
+msgid "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account."
+msgstr "{0} pašlaik ierobežo pieprasījumus no Metabase. Pamēģiniet vēlreiz pēc brīža, un, ja tas turpinās, pārbaudiet sava konta rate limitus."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider is rate limiting requests right now. Please try again in a moment."
+msgstr "MI nodrošinātājs šobrīd ierobežo pieprasījumus. Lūdzu, pamēģiniet vēlreiz pēc brīža."
+
+#: metabase/metabot/self.clj
+msgid "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+msgstr "{0} noraidīja API atslēgu vai akreditācijas datus, ko nosūtīja Metabase. Pārbaudiet tos MI iestatījumos."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+msgstr "MI nodrošinātājs noraidīja akreditācijas datus, ko nosūtīja Metabase. Lūdzu, sazinieties ar savu administratoru."
+
 #: metabase/metabot/self/adapter.clj
 msgid "{0} API error (HTTP {1})"
 msgstr "{0} API kļūda (HTTP {1})"
@@ -40441,6 +40513,10 @@ msgstr "AWS Bedrock ir ierobežojis pieprasījumu biežumu"
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock nedarbojas, bet nesaka, kāpēc"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock returned an incomplete response from {0}"
+msgstr "AWS Bedrock atgrieza nepilnīgu atbildi no {0}"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
@@ -40567,8 +40643,8 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "Nederīgs Google modelis {0} — tika gaidīts publisher kvalificēts ID, piemēram, \"google/gemini-3.5-flash\""
 
 #: metabase/metabot/self/google.clj
-msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
-msgstr "Neatbalstīts Google modelis {0}. Tiek atbalstīti tikai google/* un anthropic/* modeļi."
+msgid "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
+msgstr "Neatbalstīts Google modelis {0}. Tiek atbalstīti tikai google/*, anthropic/* un endpoints/* modeļi."
 
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
@@ -40617,6 +40693,10 @@ msgstr "(galapunkts: {0})"
 #: metabase/metabot/self/google.clj
 msgid "check that \"{0}\" is a valid location"
 msgstr "pārbaudiet, vai \"{0}\" ir derīga atrašanās vieta"
+
+#: metabase/metabot/self/google.clj
+msgid "Nothing is deployed on Google endpoint {0}"
+msgstr "Google galapunktā {0} nekas nav izvietots"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API error (HTTP {0})"
@@ -40667,6 +40747,7 @@ msgid "Moonshot returned an internal server error"
 msgstr "Moonshot atgrieza iekšēju servera kļūdu"
 
 #: metabase/metabot/self/openai.clj
+#: metabase/metabot/self/openai/chat_completions.clj
 msgid "The model provider failed to complete the response"
 msgstr "Modeļa nodrošinātājs nespēja pabeigt atbildi"
 
@@ -40837,6 +40918,30 @@ msgstr "Savienojums ar vLLM serveri tika pārtraukts, pirms atbilde tika pabeigt
 #: metabase/metabot/self/vllm.clj
 msgid "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
 msgstr "vLLM serveris neatbildēja {0}ms laikā. Pārbaudiet, vai tas nav pārslogots, vai palieliniet vLLM pieprasījuma taimautu."
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API error (HTTP {0})"
+msgstr "xAI API kļūda (HTTP {0})"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key expired or invalid"
+msgstr "xAI API atslēga ir beigusies vai nederīga"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key lacks permission, or the team is out of credits"
+msgstr "xAI API atslēgai nav atļauju, vai komandai ir beigušies kredīti"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API endpoint or model was not found"
+msgstr "xAI API galapunkts vai modelis netika atrasts"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI has rate limited us"
+msgstr "xAI ir mūs ierobežojis pēc pieprasījumu biežuma"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI returned an internal server error"
+msgstr "xAI atgrieza iekšēju servera kļūdu"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API error (HTTP {0})"
@@ -41530,6 +41635,10 @@ msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "Jūs nevarat noņemt pēdējo ''Admin'' grupas dalībnieku!"
 
 #: metabase/permissions/models/permissions_group_membership.clj
+msgid "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."
+msgstr "Lai pievienotu lietotājus grupai ''Data Analysts'', ir nepieciešama Advanced Permissions funkcija, kas šajā instancē nav iespējota."
+
+#: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
 msgstr "Grupai ''All Users'' nevar pievienot vai noņemt lietotājus."
 
@@ -41766,6 +41875,10 @@ msgstr "Tokenam jābūt derīgam 64 heksadecimālu rakstzīmju tokenam vai airga
 #: metabase/premium_features/token_check.clj
 msgid "Token validation is currently unavailable."
 msgstr "Tokena validācija pašlaik nav pieejama."
+
+#: metabase/premium_features/token_check.clj
+msgid "Token validation timed out."
+msgstr "Tokena validācija pārsniedza noildzi."
 
 #: metabase/premium_features/token_check.clj
 #: metabase_enterprise/premium_features/airgap.clj
@@ -42595,13 +42708,13 @@ msgstr "Faila ceļš priekš {0}"
 msgid "{0} points to non-existent file: {1}"
 msgstr "{0} norāda uz neesošu failu: {1}"
 
-#: metabase/segments/api.clj
-msgid "Segment definition must specify a source table."
-msgstr "Segmenta definīcijā ir jānorāda avota tabula."
-
 #: metabase/segments/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
 msgstr "Jūs nevarat atjaunināt Segment creator_id."
+
+#: metabase/segments/rest/api.clj
+msgid "Segment definition must specify a source table."
+msgstr "Segmenta definīcijā ir jānorāda avota tabula."
 
 #: metabase/segments/schema.clj
 msgid "value must be a valid MBQL query with a source table and filters."
@@ -42686,6 +42799,10 @@ msgstr "Divu faktoru autentifikācija jau ir iestatīta. Pirms atkārtotas reģi
 #: metabase/session/api.clj
 msgid "Invalid reset token"
 msgstr "Nederīgs atiestatīšanas tokens"
+
+#: metabase/session/api.clj
+msgid "Unauthenticated"
+msgstr "Nav autentificēts"
 
 #: metabase/session/api.clj metabase_enterprise/mfa/core.clj
 msgid "Authentication session expired. Please log in again."
@@ -43113,6 +43230,14 @@ msgstr "Vai pēc nākamā datubāzes savienojuma pievienošanas jāparāda ievad
 msgid "Invalid timezone {0}: {1}"
 msgstr "Nederīga laika josla {0}: {1}"
 
+#: metabase/system/paths.clj
+msgid "Reading from path is disallowed: {0}"
+msgstr "Lasīšana no ceļa nav atļauta: {0}"
+
+#: metabase/system/paths.clj
+msgid "Writing to path is disallowed: {0}"
+msgstr "Rakstīšana uz ceļu nav atļauta: {0}"
+
 #: metabase/system/settings.clj
 msgid "The startup time in milliseconds"
 msgstr "Startēšanas laiks milisekundēs"
@@ -43136,6 +43261,14 @@ msgstr "Nederīgs locales iestatījums {0}"
 #: metabase/system/settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
 msgstr "E-pasta adrese, uz kuru lietotāji jānovirza, ja viņiem rodas problēma."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may read files from, e.g. for database secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Ar komatiem atdalīts direktoriju allowlist, no kurām Metabase drīkst lasīt failus, piem., datubāzes noslēpumiem, kas norādīti kā lokāls faila ceļš. Izmantojiet NONE, lai neatļautu nevienu ceļu. Noklusējums ir /tmp Metabase Cloud un / (visi ceļi), ja pašmitināts."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Ar komatiem atdalīts direktoriju allowlist, kurās Metabase drīkst rakstīt failus. Izmantojiet NONE, lai neatļautu nevienu ceļu. Noklusējums ir /tmp Metabase Cloud un / (visi ceļi), ja pašmitināts."
 
 #: metabase/tiles/api.clj
 msgid "No appropriate image writer found!"
@@ -43667,10 +43800,6 @@ msgstr "Nezinu, kā parsēt {0}, izmantojot formātu {1}"
 msgid "{0} must be at least 16 characters."
 msgstr "{0} jābūt vismaz 16 rakstzīmēm."
 
-#: metabase/util/experiment/settings.clj
-msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
-msgstr "Iespējot vai atspējot visus koda eksperimentus. Kad atspējots, darbojas tikai produkcijas koda ceļš."
-
 #: metabase/util/files.clj
 msgid "Resource does not exist."
 msgstr "Resurss neeksistē."
@@ -43873,8 +44002,8 @@ msgstr "vērtībai jābūt derīgam entītijas tipam (atslēgvārdam vai virknei
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
-msgid "Tables can only be published to Library/Data collections."
-msgstr "Tabulas var publicēt tikai Bibliotēkas/Datu kolekcijās."
+msgid "Tables can only be published to Semantic layer/Data collections."
+msgstr "Tabulas var publicēt tikai Semantic layer/Data kolekcijās."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 msgid "unexpected multipart part"
@@ -44458,65 +44587,13 @@ msgstr "Nomnieku lietotājus nevar pievienot datu lietotnēm."
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Datu lietotnes vaicājumi nevar izmantot metriku, kas atsaucas uz citiem saglabātiem jautājumiem vai metrikām: {0}"
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
-msgstr "{0}/{1}: \"version\" jābūt pozitīvam veselam skaitlim, piemēram, 1."
+#: metabase_enterprise/data_apps/apps.clj
+msgid "A data app with this slug already exists."
+msgstr "Datu lietotne ar šādu slug jau eksistē."
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" must be a one-line string."
-msgstr "{0}/{1}: \"description\" jābūt vienrindas virknei."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-msgstr "{0}/{1}: \"description\" ir vienrindas kopsavilkums — tam jābūt {2} rakstzīmes vai mazāk."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-msgstr "{0}/{1}: \"{2}\" nav derīgs allowed_hosts ieraksts — izmantojiet origin, piemēram, https://api.example.com vai https://*.example.com."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"allowed_hosts\" must be a list."
-msgstr "{0}/{1}: \"allowed_hosts\" ir jābūt sarakstam."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "Could not parse {0}/{1}: {2}"
-msgstr "Neizdevās parsēt {0}/{1}: {2}"
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes."
-msgstr "{0}: lietotnes direktorijas nosaukums ir tās slugs, tāpēc tajā drīkst būt tikai mazie burti, cipari un defises."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: \"{1}\" is a reserved slug — rename the directory."
-msgstr "{0}: \"{1}\" ir rezervēts slugs — pārdēvējiet direktoriju."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"name\" is required."
-msgstr "{0}/{1}: \"name\" ir obligāts."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" is required."
-msgstr "{0}/{1}: \"path\" ir obligāts."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" must not contain \"..\"."
-msgstr "{0}/{1}: \"path\" nedrīkst saturēt \"..\"."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle not synced yet."
-msgstr "Bundle vēl nav sinhronizēts."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Could not read {0}."
-msgstr "Neizdevās nolasīt {0}."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle file \"{0}\" not found in the repository."
-msgstr "Komplekta fails \"{0}\" repozitorijā netika atrasts."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle for \"{0}\" must be less than {1} MiB."
-msgstr "Komplektam \"{0}\" jābūt mazākam par {1} MiB."
+#: metabase_enterprise/data_apps/models/data_app.clj
+msgid "Bundle file \"{0}\" not found."
+msgstr "Bundle fails \"{0}\" netika atrasts."
 
 #: metabase_enterprise/data_complexity_score/api.clj
 msgid "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
@@ -44823,6 +44900,18 @@ msgstr "Smilškastes jautājumi nevar atgriezt kolonnas, kuru tipi atšķiras no
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "You do not have permissions to modify a question that is used for row and column level security."
 msgstr "Jums nav atļauju modificēt jautājumu, kas tiek izmantots rindu un kolonnu līmeņa drošībai."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a snippet that is used for row and column level security."
+msgstr "Jums nav atļauju modificēt koda fragmentu, kas tiek izmantots rindu un kolonnu līmeņa drošībai."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a segment that is used for row and column level security."
+msgstr "Jums nav atļauju modificēt segmentu, kas tiek izmantots rindu un kolonnu līmeņa drošībai."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a measure that is used for row and column level security."
+msgstr "Jums nav atļauju modificēt mērījumu, kas tiek izmantots rindu un kolonnu līmeņa drošībai."
 
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."

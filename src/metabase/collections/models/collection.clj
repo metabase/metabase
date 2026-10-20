@@ -245,6 +245,14 @@
                                parse-long)]
       (root-collection-type-by-id root-id))))
 
+(defn table-root-collection-type
+  "Return the `:type` of the top-level ancestor of the collection that holds a record's parent table.
+  Reads `:table_collection_id`, `:table_collection_location`, `:table_collection_type` from the ingestion record map."
+  [{:keys [table_collection_id table_collection_location table_collection_type]}]
+  (root-collection-type {:collection_id       table_collection_id
+                         :collection_location table_collection_location
+                         :collection_type     table_collection_type}))
+
 (def library-entity-id
   "The entity_id for the Library collection."
   "librarylibrarylibrary")
@@ -368,6 +376,8 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
+        ;; not even an administrator edits a data app's collection: only a pull of its app changes it
+        (not= (keyword (:namespace instance)) data-apps-ns)
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
@@ -389,7 +399,9 @@
 ;;; |                                              Slug Validation                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- slugify [collection-name]
+(defn slugify
+  "The slug a collection named `collection-name` is stored with."
+  [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
     (throw (ex-info (tru "Collection name cannot be blank!")
@@ -1530,7 +1542,8 @@
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
                     {:non-remote-synced-models non-remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:non-remote-synced-models}})))
   model)
 
 (defn check-remote-synced-dependents
@@ -1545,7 +1558,8 @@
   (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
                     {:remote-synced-models remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:remote-synced-models}})))
   model)
 
 (defn moving-into-remote-synced?
@@ -2275,8 +2289,7 @@
           :slug
           :type]
    :skip []
-   :transform {:created_at        (serdes/date)
-               ;; We only dump the parent id, and recalculate the location from that on load.
+   :transform {;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
                                               (serdes/fk :model/Collection)
@@ -2355,7 +2368,8 @@
           (throw (ex-info msg {:status-code          400
                                :errors               {:collection_id msg}
                                :allowed-namespaces   allowed-namespaces
-                               :collection-namespace collection-namespace})))))))
+                               :collection-namespace collection-namespace
+                               :response/keys        #{:allowed-namespaces :collection-namespace}})))))))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are

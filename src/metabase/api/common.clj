@@ -86,6 +86,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -152,7 +153,9 @@
                                   (not (i18n/localized-string? message)))
                            [(:message message) message]
                            [message])]
-      (throw (ex-info (str message) (assoc info :status-code code)))))
+      ;; a map message is authored as the response body, so all of it is client-facing
+      (throw (ex-info (str message)
+                      (apply api-error/extend-response-keys (assoc info :status-code code) (keys info))))))
   condition)
 
 (defn check

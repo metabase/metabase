@@ -22,6 +22,7 @@ import {
   isSectionRoot,
   isSelectableItem,
   toggleItem,
+  toggleItems,
   toggleSectionRoot,
 } from "./utils";
 
@@ -250,6 +251,44 @@ describe("library-bulk-selection.utils", () => {
       const t1 = tableItem(1);
       const m1 = metricItem(9);
       expect(ids(toggleItem([t1], m1))).toEqual(["metric:9"]);
+    });
+  });
+
+  describe("toggleItems", () => {
+    it("leaves the selection unchanged when there is nothing to toggle", () => {
+      const selected = [tableItem(1)];
+      expect(toggleItems(selected, [])).toBe(selected);
+    });
+
+    it("selects every item, then deselects them on a second toggle", () => {
+      const s1 = snippetItem(1);
+      const c1 = subCollection(4, "snippets");
+
+      const selected = toggleItems([], [s1, c1]);
+      expect(ids(selected)).toEqual(["snippet:1", "collection:4"]);
+      expect(toggleItems(selected, [s1, c1])).toEqual([]);
+    });
+
+    it("adds the missing items when only some are selected", () => {
+      const d1 = dashboardItem(1);
+      const d2 = dashboardItem(2);
+      expect(ids(toggleItems([d1], [d1, d2]))).toEqual([
+        "dashboard:1",
+        "dashboard:2",
+      ]);
+    });
+
+    it("keeps selected items that are not being toggled when deselecting", () => {
+      const d1 = dashboardItem(1);
+      const d2 = dashboardItem(2);
+      const d3 = dashboardItem(3);
+      expect(ids(toggleItems([d1, d2, d3], [d1, d2]))).toEqual(["dashboard:3"]);
+    });
+
+    it("replaces a selection from another section", () => {
+      expect(
+        ids(toggleItems([tableItem(1)], [actionItem(1), actionItem(2)])),
+      ).toEqual(["action:1", "action:2"]);
     });
   });
 

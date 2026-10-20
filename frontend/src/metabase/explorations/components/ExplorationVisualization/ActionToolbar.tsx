@@ -324,8 +324,8 @@ export function ActionToolbar({
 
       <Group
         gap="xxs"
-        bg="background-primary"
-        bd="1px solid border"
+        bg="background_page-primary"
+        bd="1px solid border-neutral"
         bdrs="lg"
         px="sm"
         py="xxs"
@@ -337,7 +337,7 @@ export function ActionToolbar({
               {selectedTimeline ? (
                 <Group
                   aria-label={t`Change selected timeline`}
-                  bd="0.5px solid border"
+                  bd="0.5px solid border-neutral"
                   bdrs="lg"
                   py="xxs"
                   px="sm"
@@ -346,6 +346,7 @@ export function ActionToolbar({
                 >
                   {selectedTimeline.name}
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Remove timeline`}
                     onClick={(e) => {
                       handleSelectTimelineId(null, "click");
@@ -456,11 +457,7 @@ export function ActionToolbar({
         >
           <Menu.Target>
             <Tooltip label={t`More actions`} disabled={isMoreActionsOpen}>
-              <ActionIcon
-                size="2rem"
-                variant="viewHeader"
-                aria-label={t`More actions`}
-              >
+              <ActionIcon variant="subtle" aria-label={t`More actions`}>
                 <Icon name="ellipsis" size="1.125rem" />
               </ActionIcon>
             </Tooltip>
@@ -512,10 +509,8 @@ function TriageNavButton({
   return (
     <Tooltip label={label} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
       <ActionIcon
-        className={S.triageButton}
         aria-label={label}
         radius="xl"
-        size="2rem"
         disabled={!onClick}
         onClick={onClick}
       >

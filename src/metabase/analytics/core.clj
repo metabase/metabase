@@ -46,9 +46,8 @@
   include-sdk-info
   pii-fields-from
   pii-request-info
-  with-auth-method! get-auth-method
+  with-auth-method!
   with-client! get-client
-  get-route
   with-version! get-version]
  [metabase.analytics.settings
   anon-tracking-enabled

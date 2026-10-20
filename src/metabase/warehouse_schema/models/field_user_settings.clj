@@ -28,7 +28,8 @@
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."
@@ -128,8 +129,7 @@
    :defaults  {:description_set        false
                :semantic_type_set      false
                :fk_target_field_id_set false}
-   :transform {:created_at   (serdes/date)
-               :fk_target_field_id (serdes/fk :model/Field)
+   :transform {:fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
                               :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]
