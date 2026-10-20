@@ -7,6 +7,7 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase.collections.core :as collections]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -16,7 +17,7 @@
 
 (def ^:private bundle-path
   "Where the app template builds its bundle, relative to the app's directory."
-  "./dist/index.js")
+  "dist/index.js")
 
 (defn- name->slug
   "The slug `app-name` gives an app: its letters and numbers, lowercased, separated by single dashes."
@@ -32,17 +33,19 @@
    :yaml (serialization/entity-yaml entity)})
 
 (mu/defn generate :- ::data-apps.schema/app-files
-  "The `data_app.yaml` of a new app named `name`, served at `slug` (from the name by default), and its collection's
-  file, both with new entity IDs."
-  [{app-name :name :keys [slug description]} :- ::data-apps.schema/app-request]
+  "The `data_app.yaml` of an app named `name`, served at `slug` (from the name by default), and its collection's file,
+  with the entity IDs `entity_id` and `collection_id` of an existing app, or new ones, and the YAML an export writes
+  for them once a pull saves them."
+  [{app-name :name :keys [slug description entity_id collection_id]} :- ::data-apps.schema/app-request]
   (let [slug          (or slug (name->slug app-name))
         _             (when-not (mr/validate ::data-apps.schema/slug slug)
                         (throw (ex-info (tru "Pass a slug: \"{0}\" is not a valid one." slug) {:status-code 400})))
-        app-id        (u/generate-nano-id)
-        collection-id (u/generate-nano-id)
+        app-id        (or entity_id (u/generate-nano-id))
+        collection-id (or collection_id (u/generate-nano-id))
         collection    {:name        (str "Data App: " slug)
                        :namespace   "data-apps"
                        :entity_id   collection-id
+                       :slug        (collections/slugify (str "Data App: " slug))
                        :serdes/meta [{:model "Collection" :id collection-id
                                       :label (serialization/slugify-name (str "Data App: " slug))}]}
         app           (m/assoc-some {:version     data-app.config/supported-app-version

@@ -143,8 +143,7 @@ export function useViewerUrl(
       console.error(error);
       setInitialLoadComplete(true);
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`There was a problem restoring the page state`,
       });
     }

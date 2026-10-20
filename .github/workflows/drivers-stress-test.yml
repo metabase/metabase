@@ -564,7 +564,7 @@ jobs:
       MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: 'SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit'
     services:
       presto:
-        image: metabase/presto-mb-ci:latest # version 0.254
+        image: metabase/presto-mb-ci:0.295
         ports:
           - "8443:8443"
         env:

@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.table-utils :as table-utils]
+   [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.document :as document-tools]
    [metabase.metabot.tools.shared :as shared]
@@ -149,11 +150,15 @@
 
 (deftest document-construct-model-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"
-    (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
-                                (fn [_]
+    ;; Stubbed one layer below the tool: `construct_notebook_query` is a record now, and the
+    ;; pipeline call and the chart creation are the two things inside it worth standing in for.
+    (mt/with-dynamic-fn-redefs [construct-tools/execute-representations-query
+                                (fn [_ & _]
                                   {:structured-output {:query-id "3"
                                                        :query {:database 1
-                                                               :type "query"}}})]
+                                                               :type "query"}}})
+                                create-chart-tools/create-chart
+                                (fn [args] {:chart-id "c-1" :chart-type (:chart-type args)})]
       (doseq [chart-type ["treemap" "boxplot"]]
         (let [result (document-tools/document-construct-model-chart-tool
                       {:name "Test Name"
@@ -173,7 +178,7 @@
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test Database"}})
                                 warehouses/get-database (fn [_] (throw (ex-info "boom" {})))
                                 create-sql-query-tools/create-sql-query (fn [_] (throw (ex-info "boom" {})))
-                                construct-tools/construct-notebook-query-tool (fn [_] (throw (ex-info "boom" {})))]
+                                construct-tools/execute-representations-query (fn [_ & _] (throw (ex-info "boom" {})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                             (document-tools/document-schema-collect-tool {})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"

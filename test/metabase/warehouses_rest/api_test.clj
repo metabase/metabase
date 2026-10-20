@@ -841,9 +841,9 @@
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
                                                   :settings {:api-test-disabled-for-database false}}]
         (is (= "Setting api-test-disabled-for-database is not enabled for this database"
-               (:message (mt/user-http-request :crowberto :put 400
-                                               (format "database/%s" db-id)
-                                               {:settings {:api-test-disabled-for-database true}}))))))
+               (mt/user-http-request :crowberto :put 400
+                                     (format "database/%s" db-id)
+                                     {:settings {:api-test-disabled-for-database true}})))))
     (testing "should not validate settings being reset to nil (default)"
       ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
@@ -1233,27 +1233,39 @@
               (is (= expected-keys
                      (set (keys db)))))))))))
 
-(deftest ^:parallel databases-caching
+(defn- database-list-call-count
+  "The number of app-db queries a `GET /api/database` by Rasta makes once its caches are warm."
+  []
+  ;; The first request fills caches that outlive it, so only the second one counts.
+  (mt/user-http-request :rasta :get 200 "database")
+  (t2/with-call-count [call-count]
+    (mt/user-http-request :rasta :get 200 "database")
+    (call-count)))
+
+;; Not ^:parallel: `GET /api/database` lists every Database in the app DB, so Databases that concurrently running
+;; tests create or delete (and any caches they invalidate) can change the query count between the warm-up request
+;; and the counted one.
+(deftest ^:synchronized databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-      (mt/with-temp [:model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}]
-        (mt/user-http-request :rasta :get 200 "database")
-        (t2/with-call-count [call-count]
-          (mt/user-http-request :rasta :get 200 "database")
-          (is (< (call-count) 10)))))))
+      (let [baseline (database-list-call-count)]
+        (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}]
+          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
+          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
+          (is (<= (database-list-call-count) (+ baseline 2))))))))
 
 (deftest databases-list-test-2
   (testing "GET /api/database"
@@ -1896,8 +1908,10 @@
                                                                                 (binding [driver.settings/*allow-testing-h2-connections* true]
                                                                                   (f)))
                                             t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
-                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
-                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
+                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL.
+                                                                              ;; The id is a `?` parameter under Honey SQL but an inlined literal
+                                                                              ;; under FunnySQL, so accept either.
+                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = (?:\?|\d+)$" sql)
                                                                                 (swap! db-reads inc))
                                                                               (run-query rf init conn model sql-args opts))]
                   (t2/select-one :model/Database :id db-id)
@@ -2811,15 +2825,19 @@
                           :ssl false,
                           :tunnel-enabled false,
                           :advanced-options false}
-        new-details      {:service-account-json "{\"type\": \"service_account\", \"project_id\": \"bigquery-project\"}",
-                          :dataset-filters-type "inclusion",
-                          :dataset-filters-patterns "dev",
-                          :project-id nil
+        new-details      {:host "mysql.example.com",
+                          :port 3306,
+                          :dbname "shop",
+                          :user "shop",
+                          :password "password",
                           :advanced-options false}]
+    ;; saving a Database validates its details through the driver, which loads it on first use -- and a driver namespace
+    ;; cannot load while one of its multimethods is redefined below
+    (driver/the-initialized-driver :mysql)
     (with-redefs [driver/can-connect? (constantly true)]
       (testing "when the engine changes, the existing details are not merged into the new ones (#77480)"
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details existing-details}]
-          (api-update-database! 200 db-id {:engine :bigquery-cloud-sdk, :details new-details})
+          (api-update-database! 200 db-id {:engine :mysql, :details new-details})
           (is (= new-details
                  (t2/select-one-fn :details :model/Database :id db-id))))
         (testing "without an engine change, existing details are still merged into partial updates"

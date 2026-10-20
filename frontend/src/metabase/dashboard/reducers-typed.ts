@@ -1,6 +1,6 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
-import { assocIn, dissocIn } from "icepick";
+import { assocIn } from "icepick";
 import _ from "underscore";
 
 import {
@@ -480,12 +480,15 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          return assocIn(state, [dashcard_id, card_id], result);
+          // Mutates the draft: icepick would copy child drafts into a frozen
+          // object Immer skips when finalizing, leaving revoked proxies behind.
+          // Object.assign because DashCardDataMap does not model { error } results.
+          Object.assign((state[dashcard_id] ??= {}), { [card_id]: result });
         }
       })
       .addCase(clearCardData, (state, action) => {
         const { cardId, dashcardId } = action.payload;
-        return dissocIn(state, [dashcardId, cardId]);
+        delete state[dashcardId]?.[cardId];
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
         CARD_UPDATED,

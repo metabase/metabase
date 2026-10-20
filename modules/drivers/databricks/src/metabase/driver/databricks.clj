@@ -92,13 +92,12 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
-(defmethod driver/validate-db-details! :databricks
-  [_driver details]
-  (sql-jdbc/reject-dangerous-additional-options! details)
-  (when-let [opts (not-empty (:additional-options details))]
-    ;; `StagingAllowedLocalPaths` is the older spelling of the same setting, and the client still honors it
-    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths|StagingAllowedLocalPaths" opts)
-      (throw (Exception. "Potentially dangerous keys in connection details")))))
+(defmethod driver/disallowed-connection-parameters :databricks
+  [driver]
+  ;; enable Unity Catalog volume operations, which read and write arbitrary local files. `StagingAllowedLocalPaths` is
+  ;; the older spelling of the same setting, and the client still honors it
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["VolumeOperationAllowedLocalPaths" "StagingAllowedLocalPaths"]))
 
 (defn- catalog-present?
   [jdbc-spec catalog]
@@ -131,6 +130,10 @@
 (defn- split-catalog+schema
   [schema]
   (str/split schema #"\."))
+
+(defmethod sql.qp/use-ctes-for-stages? :databricks
+  [_driver]
+  true)
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
   [_driver [tag identifier-type components :as _identifier]]

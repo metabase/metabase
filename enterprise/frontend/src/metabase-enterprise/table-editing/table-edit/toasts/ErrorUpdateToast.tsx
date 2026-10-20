@@ -68,12 +68,12 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   return (
     <Group gap="2.5rem" w="20rem">
       <Group gap="0.5rem">
-        <Icon name="warning" c="feedback-negative" size={12} />
+        <Icon name="warning" c="feedback-negative-strong" size={12} />
         <Text c="inherit" fw={700}>{t`Couldn't save table changes`}</Text>
       </Group>
 
       <Button
-        variant="on-dark-secondary"
+        variant="default"
         size="sm"
         onClick={() => setShowDetails(true)}
       >{t`More info`}</Button>

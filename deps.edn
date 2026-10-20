@@ -137,7 +137,7 @@
   org.apache.sshd/sshd-core                 {:mvn/version "2.19.0"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
-  org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
+  org.apache.tika/tika-core                 {:mvn/version "3.3.3"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.86"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.86"}
@@ -429,6 +429,10 @@
   ;; as some default values differ between dev and prod
   ;;
   ;;    clojure -M:ee:doc api-documentation
+  ;;
+  ;; or run every documentation command in one JVM
+  ;;
+  ;;    clojure -M:ee:doc all-documentation
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
@@ -752,7 +756,8 @@
                                    "test/metabase/channel/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"
-                                   "frontend/src/metabase/documents/components/Editor/data/data\\.json$"]}}
+                                   "frontend/src/metabase/documents/components/Editor/data/data\\.json$"
+                                   "frontend/src/metabase/common/components/EmojiPicker/emojibase/en\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage

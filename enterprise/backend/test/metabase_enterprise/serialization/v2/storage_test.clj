@@ -42,22 +42,18 @@
           (testing "the Collections properly exported"
             (let [yaml-parent (-> (yaml/from-file (io/file dump-dir "collections" "main"
                                                            "some_collection.yaml"))
-                                  (dissoc :serdes/meta)
-                                  (update :created_at t/offset-date-time))
+                                  (dissoc :serdes/meta))
                   yaml-child  (-> (yaml/from-file (io/file dump-dir "collections" "main"
                                                            "some_collection" "child_collection.yaml"))
-                                  (dissoc :serdes/meta)
-                                  (update :created_at t/offset-date-time))]
+                                  (dissoc :serdes/meta))]
               (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
                          (dissoc :id :location)
                          (assoc :parent_id nil)
-                         (update :created_at t/offset-date-time)
                          (select-keys (keys yaml-parent)))
                      yaml-parent))
               (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
                          (dissoc :id :location)
                          (assoc :parent_id (:entity_id parent))
-                         (update :created_at t/offset-date-time)
                          (select-keys (keys yaml-child)))
                      yaml-child)))))))))
 
@@ -405,43 +401,17 @@
         filenames))
 
 (deftest same-name-stable-filename-test
-  (testing "two same-named entities in a folder get deterministic filename de-dup suffixes (`foo.yaml` vs
-           `foo_2.yaml`) across exports — otherwise re-exports swap which card lands in which file, producing huge
-           phantom git-sync diffs (GHY-3754)"
-    (testing "the older entity (earlier created_at) keeps the unsuffixed file, so adding a new same-named entity
-             appends `_2` rather than displacing the existing file. created_at decides even when entity_id order and
-             insertion order both disagree"
-      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (mt/with-empty-h2-app-db!
-          ;; The OLD card has the *larger* entity_id and is inserted *second*, so created_at is the only thing that
-          ;; can put it in the unsuffixed file — proving created_at takes precedence over entity_id and row order.
-          (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}
-                             :model/Card       _new {:name          "Dup Name"
-                                                     :collection_id (:id coll)
-                                                     :created_at    #t "2024-01-01T00:00:00Z"
-                                                     :entity_id     "aaaaaaaaaaaaaaaaaaaaa"}
-                             :model/Card       _old {:name          "Dup Name"
-                                                     :collection_id (:id coll)
-                                                     :created_at    #t "2020-01-01T00:00:00Z"
-                                                     :entity_id     "zzzzzzzzzzzzzzzzzzzzz"}]
-            (is (= ["zzzzzzzzzzzzzzzzzzzzz" "aaaaaaaaaaaaaaaaaaaaa"]
-                   (export-and-read-eids! dump-dir ["dup_name.yaml" "dup_name_2.yaml"]))
-                "older card (earlier created_at) wins the unsuffixed file; newer card gets _2")))))
-    (testing "entity_id breaks ties deterministically when created_at is identical"
-      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (mt/with-empty-h2-app-db!
-          (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}
-                             :model/Card       _zzz {:name          "Dup Name"
-                                                     :collection_id (:id coll)
-                                                     :created_at    #t "2024-01-01T00:00:00Z"
-                                                     :entity_id     "zzzzzzzzzzzzzzzzzzzzz"}
-                             :model/Card       _aaa {:name          "Dup Name"
-                                                     :collection_id (:id coll)
-                                                     :created_at    #t "2024-01-01T00:00:00Z"
-                                                     :entity_id     "aaaaaaaaaaaaaaaaaaaaa"}]
-            (is (= ["aaaaaaaaaaaaaaaaaaaaa" "zzzzzzzzzzzzzzzzzzzzz"]
-                   (export-and-read-eids! dump-dir ["dup_name.yaml" "dup_name_2.yaml"]))
-                "with equal created_at, smaller entity_id wins the unsuffixed file")))))))
+  (testing "Same-named entities in a folder get their filename de-dup suffixes (`foo.yaml`, `foo_2.yaml`) by entity_id
+           compared byte by byte, whatever the insertion order"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}
+                           :model/Card       _ {:name "Dup Name" :collection_id (:id coll) :entity_id "aaaaaaaaaaaaaaaaaaaaa"}
+                           :model/Card       _ {:name "Dup Name" :collection_id (:id coll) :entity_id "_bbbbbbbbbbbbbbbbbbbb"}
+                           :model/Card       _ {:name "Dup Name" :collection_id (:id coll) :entity_id "Zzzzzzzzzzzzzzzzzzzzz"}
+                           :model/Card       _ {:name "Dup Name" :collection_id (:id coll) :entity_id "-cccccccccccccccccccc"}]
+          (is (= ["-cccccccccccccccccccc" "Zzzzzzzzzzzzzzzzzzzzz" "_bbbbbbbbbbbbbbbbbbbb" "aaaaaaaaaaaaaaaaaaaaa"]
+                 (export-and-read-eids! dump-dir ["dup_name.yaml" "dup_name_2.yaml" "dup_name_3.yaml" "dup_name_4.yaml"]))))))))
 
 (deftest ^:parallel resolve-path-test
   (let [resolve-path @#'storage.util/resolve-path]

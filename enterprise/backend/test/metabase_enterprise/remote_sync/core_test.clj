@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -17,7 +18,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 ;; Disabling a collection now marks its RemoteSyncObject rows rather than deleting them, so rows seeded by
 ;; a test outlive it without this — leaking dirty state into every later test.
-(use-fixtures :each rs.test/clean-object)
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections rs.test/clean-object)
 
 ;; bulk-set-remote-sync tests
 

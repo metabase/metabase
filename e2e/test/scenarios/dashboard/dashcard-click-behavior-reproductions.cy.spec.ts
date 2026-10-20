@@ -898,7 +898,8 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
   });
 
   it("passes values from unused columns of row visualization to click behavior (metabase#46318)", () => {
-    cy.findAllByRole("graphics-symbol").eq(0).click();
+    // One colour per sub group; bars follow the row order (group_1, group_2).
+    H.chartPathWithFillColor("#98D9D9").should("have.length", 2).eq(0).click();
     cy.location("href").should(
       "eq",
       `${Cypress.config("baseUrl")}/?q=group_1__sub_group_1`,
@@ -906,7 +907,7 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 
     cy.go("back");
 
-    cy.findAllByRole("graphics-symbol").eq(2).click(); // intentionally eq(2), not eq(1) - that's how row viz works
+    H.chartPathWithFillColor("#F2A86F").should("have.length", 2).eq(0).click();
     cy.location("href").should(
       "eq",
       `${Cypress.config("baseUrl")}/?q=group_1__sub_group_2`,
@@ -914,14 +915,14 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 
     cy.go("back");
 
-    cy.findAllByRole("graphics-symbol").eq(1).click(); // intentionally eq(1), not eq(2) - that's how row viz works
+    H.chartPathWithFillColor("#98D9D9").should("have.length", 2).eq(1).click();
     cy.location("href").should(
       "eq",
       `${Cypress.config("baseUrl")}/?q=group_2__sub_group_1`,
     );
     cy.go("back");
 
-    cy.findAllByRole("graphics-symbol").eq(3).click();
+    H.chartPathWithFillColor("#F2A86F").should("have.length", 2).eq(1).click();
     cy.location("href").should(
       "eq",
       `${Cypress.config("baseUrl")}/?q=group_2__sub_group_2`,
@@ -1651,11 +1652,15 @@ describe("issue 13785", () => {
           .click();
 
         cy.wait("@cardQuery");
-        cy.url().should("include", "2026-08");
-        H.chartPathWithFillColor("#509EE3").should("have.length", 1);
-        // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
-        // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
-        H.echartsContainer().get("text").contains("12");
+        cy.location("search").should("eq", "?date_filter=2026-08");
+        H.chartPathWithFillColor("#509EE3")
+          .should("have.length", 1)
+          .first()
+          .trigger("mousemove");
+        H.assertEChartsTooltip({
+          header: "August 2026",
+          rows: [{ name: "Count", value: "12" }],
+        });
       });
     });
   });

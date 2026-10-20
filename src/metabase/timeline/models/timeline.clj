@@ -58,8 +58,7 @@
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
    :skip      []
-   :transform {:created_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
+   :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :created_at)} opts))}
+               :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :entity_id)} opts))}
    :defaults  {:archived false :default false}})

@@ -1,4 +1,5 @@
 import { ActionsSectionLayout } from "metabase/data-studio/app/pages/ActionsSectionLayout";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
 /**
@@ -41,6 +42,13 @@ const actionSettingsPage = () =>
     /* webpackChunkName: "data-actions" */ "./pages/ActionSettingsPage"
   ).then(({ ActionSettingsPage }) => ({ Component: ActionSettingsPage }));
 
+const actionDependenciesPage = () =>
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionDependenciesPage"
+  ).then(({ ActionDependenciesPage }) => ({
+    Component: ActionDependenciesPage,
+  }));
+
 export function getDataStudioActionRoutes() {
   return (
     <Route path="actions" element={<ActionsSectionLayout />}>
@@ -52,6 +60,11 @@ export function getDataStudioActionRoutes() {
       <Route path=":actionId/fields" lazy={actionFieldsPage} />
       <Route path=":actionId/fields/:fieldId" lazy={actionFieldsPage} />
       <Route path=":actionId/run" lazy={actionRunPage} />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route path=":actionId/dependencies" lazy={actionDependenciesPage}>
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+        </Route>
+      )}
       <Route path=":actionId/settings" lazy={actionSettingsPage} />
     </Route>
   );
