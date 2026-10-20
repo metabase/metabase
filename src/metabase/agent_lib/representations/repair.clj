@@ -2183,10 +2183,8 @@
   (ex-info (format (str "Field %s is on table %s, which has no foreign key from the source %s, so it cannot be "
                         "reached implicitly. To group or filter by a column from that table, add an explicit `joins:` "
                         "entry and reference the field using the join alias. If the foreign key comes from a table you "
-                        "joined in this stage, set `source-field-join-alias` instead. If you are aggregating a metric "
-                        "that relates to that table (metrics can join tables that have no foreign key), its dimensions "
-                        "list the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a "
-                        "field from the source.")
+                        "joined in this stage, set `source-field-join-alias` instead. Otherwise use a field from the "
+                        "source.")
                    (display-portable fk)
                    (display-target-table fk target-table-id)
                    (pr-str source-label))
@@ -3443,7 +3441,7 @@
                     :filter      "`filters:`")]
         (throw (ex-info
                 (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
-                     where stage-idx message)
+                     where stage-idx (str/replace message #"\.$" ""))
                 {:agent-error? true
                  :error        :expression-editor-rejection
                  :status-code  400

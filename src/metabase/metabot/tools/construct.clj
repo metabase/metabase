@@ -938,7 +938,7 @@
   `recovery-hint` is absent or has nothing to say about this error."
   [e recovery-hint]
   (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
-    (ex-info (str (ex-message e) " " hint) (ex-data e) e)
+    (ex-info (str (ex-message e) "\n" hint) (ex-data e) e)
     e))
 
 (defn execute-representations-query
