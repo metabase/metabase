@@ -30,6 +30,12 @@ export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
  */
 export const IDENTIFIED_COLUMN = "person__identified";
 
+/**
+ * The event table column with when each person was first seen, on every
+ * event. Lifecycle uses it to tell who's new without reading their history.
+ */
+export const FIRST_SEEN_COLUMN = "person__first_seen_at";
+
 /** How the event table reaches the users table its person column links to. */
 export type UsersTableLink = {
   tableId: TableId;

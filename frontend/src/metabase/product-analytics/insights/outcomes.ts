@@ -1,5 +1,7 @@
 import { c, msgid, ngettext, t } from "ttag";
 
+import type { Period } from "../spec/types";
+
 /**
  * What an analysis's insights are about, in words: the outcome counted at
  * each question, and what's counted. Strings are formatted by the caller.
@@ -20,15 +22,25 @@ export type InsightOutcome = {
   /** "About 340 more conversions than at everyone else's rate", or fewer. */
   describeExcess: (count: number, formatted: string, isMore: boolean) => string;
   /** When no insight stands out. */
-  describeNothingFound: (columns: number, size: string) => string;
-  /** The explore query's columns: the size and rate of each segment. */
+  describeNothingFound: (attributes: number, size: string) => string;
+  /** When there's nothing to compare actors by. */
+  noAttributesLabel: string;
+  /**
+   * The explore query's columns: the size and rate of each segment, and the
+   * rate expected of it when the population has expected outcomes.
+   */
   explore: {
     countColumn: string;
     countTitle: string;
     rateColumn: string;
     rateTitle: string;
+    expectedRateColumn?: string;
+    expectedRateTitle?: string;
   };
 };
+
+const columnsLabel = () =>
+  t`There are no columns with few enough distinct values to compare people by.`;
 
 /** People reaching the next funnel step. */
 export const getConversionOutcome = (): InsightOutcome => ({
@@ -59,6 +71,7 @@ export const getConversionOutcome = (): InsightOutcome => ({
   describeNothingFound: (columns, size) =>
     c("{0} is a number of columns, {1} is a number of people")
       .t`Nothing stands out. Checked ${columns} columns across ${size} people.`,
+  noAttributesLabel: columnsLabel(),
   explore: {
     countColumn: "people",
     countTitle: t`People`,
@@ -96,6 +109,7 @@ export const getBounceOutcome = (): InsightOutcome => ({
   describeNothingFound: (columns, size) =>
     c("{0} is a number of columns, {1} is a number of visits")
       .t`Nothing stands out. Checked ${columns} columns across ${size} visits.`,
+  noAttributesLabel: columnsLabel(),
   explore: {
     countColumn: "visits",
     countTitle: t`Visits`,
@@ -103,3 +117,81 @@ export const getBounceOutcome = (): InsightOutcome => ({
     rateTitle: t`Bounce rate`,
   },
 });
+
+const periodWords = (
+  period: Period,
+): { next: string; active: string; activeTitle: string } => {
+  switch (period) {
+    case "day":
+      return {
+        next: t`the next day`,
+        active: t`active days`,
+        activeTitle: t`Active days`,
+      };
+    case "week":
+      return {
+        next: t`the next week`,
+        active: t`active weeks`,
+        activeTitle: t`Active weeks`,
+      };
+    case "month":
+      return {
+        next: t`the next month`,
+        active: t`active months`,
+        activeTitle: t`Active months`,
+      };
+  }
+};
+
+/**
+ * People active in a period who are active the next one too, compared with
+ * what's expected of people as active as them.
+ */
+export const getReturnOutcome = (period: Period): InsightOutcome => {
+  const { next, active, activeTitle } = periodWords(period);
+  return {
+    isHigherBetter: true,
+    searchingLabel: t`Looking for what people who come back did…`,
+    describeRate: (rate) =>
+      c("{0} is a percentage, {1} is a period like 'the next week'")
+        .t`${rate} came back ${next}`,
+    describeComparison: (rate, expectedRate, size) =>
+      c(
+        "{0} and {1} are percentages, {2} is a number, {3} is a plural like 'active weeks'",
+      )
+        .t`${rate} came back vs. ${expectedRate} expected for people as active · ${size} ${active}`,
+    describeMultiple: (multiplier) =>
+      c("{0} is a multiplier, like 2.5")
+        .t`${multiplier}× as likely to come back`,
+    describeDifference: (percent, isMore) =>
+      isMore
+        ? c("{0} is a percentage").t`${percent} more likely to come back`
+        : c("{0} is a percentage").t`${percent} less likely to come back`,
+    describeExcess: (count, formatted, isMore) =>
+      isMore
+        ? ngettext(
+            msgid`About ${formatted} more return than expected for people as active`,
+            `About ${formatted} more returns than expected for people as active`,
+            count,
+          )
+        : ngettext(
+            msgid`About ${formatted} fewer return than expected for people as active`,
+            `About ${formatted} fewer returns than expected for people as active`,
+            count,
+          ),
+    describeNothingFound: (events, size) =>
+      c(
+        "{0} is a number of event conditions, {1} is a number, {2} is a plural like 'active weeks'",
+      )
+        .t`Nothing stands out. Checked ${events} event conditions across ${size} ${active}.`,
+    noAttributesLabel: t`There are no event segments on this table to compare people by. Save some to see what people who come back do.`,
+    explore: {
+      countColumn: "active_periods",
+      countTitle: activeTitle,
+      rateColumn: "came_back",
+      rateTitle: t`Came back`,
+      expectedRateColumn: "expected_rate",
+      expectedRateTitle: t`Expected for people as active`,
+    },
+  };
+};

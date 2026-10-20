@@ -262,3 +262,61 @@ describe("findInsights", () => {
     expect(excesses).toEqual([...excesses].sort((a, b) => b - a));
   });
 });
+
+describe("findInsights with expected outcomes", () => {
+  // Busy people come back 90% of the time and quiet ones 30%. Inviters are
+  // mostly busy, so they come back more than everyone else either way.
+  const group = (
+    conditions: GroupCounts["conditions"],
+    reached: number,
+    converted: number,
+    expectedOutcomes: number,
+  ): GroupCounts => ({
+    question: 1,
+    conditions,
+    reached,
+    converted,
+    expected: {
+      outcomes: expectedOutcomes,
+      variance: expectedOutcomes * (1 - expectedOutcomes / reached),
+    },
+  });
+  const search = (inviterReturns: number) => {
+    // 1,000 inviters, 900 of them busy: 900 × 0.9 + 100 × 0.3 = 840 expected.
+    const inviters = group(
+      [{ attributeId: "invite", value: "true" }],
+      1000,
+      inviterReturns,
+      840,
+    );
+    // 9,000 others, 1,000 of them busy: 900 + 8,000 × 0.3 = 3,300 expected.
+    const others = group(
+      [{ attributeId: "invite", value: "false" }],
+      9000,
+      3300,
+      3300,
+    );
+    const total = group([], 10000, inviterReturns + 3300, 4140);
+    return findInsights(
+      indexCounts({
+        rows: [total, inviters, others],
+        singleAttributes: ["invite"],
+      }),
+    );
+  };
+
+  it("doesn't report a group that only comes back as often as its activity predicts", () => {
+    expect(search(840)).toEqual([]);
+  });
+
+  it("reports a group that beats what its activity predicts, against that", () => {
+    const [insight] = search(920);
+
+    expect(insight).toMatchObject({
+      conditions: [{ attributeId: "invite", value: "true" }],
+      rate: 0.92,
+      restRate: 0.84,
+    });
+    expect(insight.excess).toBeCloseTo(80);
+  });
+});

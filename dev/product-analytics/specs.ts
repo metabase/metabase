@@ -99,6 +99,7 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
         lifecycle: {
           active: { flag: FLAG.active },
           period: "week",
+          hasFirstSeen: true,
         },
         output: {
           lifecycleShown: ["new", "returning", "resurrected", "dormant"],

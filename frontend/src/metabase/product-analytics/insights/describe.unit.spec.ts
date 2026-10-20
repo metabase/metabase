@@ -59,8 +59,13 @@ describe("describeExcess", () => {
 });
 
 describe("describeCondition", () => {
-  const browser = { column: "browser", displayName: "Browser" };
+  const browser = {
+    kind: "column" as const,
+    column: "browser",
+    displayName: "Browser",
+  };
   const identified = {
+    kind: "column" as const,
     column: "person__identified",
     displayName: "Person Identified",
   };
@@ -79,12 +84,16 @@ describe("describeCondition", () => {
 describe("describeValue", () => {
   it("keeps the values of most columns as they are", () => {
     expect(
-      describeValue({ column: "browser", displayName: "Browser" }, "Safari"),
+      describeValue(
+        { kind: "column", column: "browser", displayName: "Browser" },
+        "Safari",
+      ),
     ).toBe("Safari");
   });
 
   it("names whether the person was identified", () => {
     const identified = {
+      kind: "column" as const,
       column: "person__identified",
       displayName: "Person Identified",
     };
@@ -97,6 +106,7 @@ describe("describeAttribute", () => {
   it("uses the column's description", () => {
     expect(
       describeAttribute({
+        kind: "column" as const,
         column: "role",
         displayName: "Role",
         description: "Set at signup",
@@ -107,6 +117,7 @@ describe("describeAttribute", () => {
   it("explains whether the person was identified without a description", () => {
     expect(
       describeAttribute({
+        kind: "column" as const,
         column: "person__identified",
         displayName: "Person Identified",
       }),
@@ -115,7 +126,37 @@ describe("describeAttribute", () => {
 
   it("has nothing to add for other columns", () => {
     expect(
-      describeAttribute({ column: "browser", displayName: "Browser" }),
+      describeAttribute({
+        kind: "column",
+        column: "browser",
+        displayName: "Browser",
+      }),
     ).toBeUndefined();
+  });
+});
+
+describe("event attributes", () => {
+  const invite = (minCount: number) => ({
+    kind: "event" as const,
+    displayName: "Sent an invite",
+    minCount,
+  });
+
+  it("names the event and how many times, like a column and its value", () => {
+    expect(describeCondition(invite(1), "true")).toBe("Sent an invite: yes");
+    expect(describeCondition(invite(1), "false")).toBe("Sent an invite: no");
+    expect(describeCondition(invite(3), "true")).toBe(
+      "Sent an invite: 3+ times",
+    );
+    expect(describeCondition(invite(3), "false")).toBe(
+      "Sent an invite: under 3 times",
+    );
+  });
+
+  it("labels the values for a chart axis", () => {
+    expect(describeValue(invite(1), "true")).toBe("Yes");
+    expect(describeValue(invite(1), "false")).toBe("No");
+    expect(describeValue(invite(10), "true")).toBe("10+ times");
+    expect(describeValue(invite(10), "false")).toBe("Under 10 times");
   });
 });

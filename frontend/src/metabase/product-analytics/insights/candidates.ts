@@ -8,8 +8,9 @@ import type { Field } from "metabase-types/api";
 
 import type { AnalysisContext } from "../analyses/types";
 import { type ColumnRoles, IDENTIFIED_COLUMN } from "../columns";
+import type { AttributeAsOfRules } from "../sql/analyses/insights";
 
-import type { InsightAttribute } from "./types";
+import type { ColumnInsightAttribute, InsightAttribute } from "./types";
 
 const MIN_DISTINCT_VALUES = 2;
 /** Columns with more values rarely make groups big enough to report, and cost the most rows. */
@@ -62,7 +63,7 @@ export const getInsightAttributes = ({
   context,
   roles,
   stepColumns,
-}: GetInsightAttributesArgs): InsightAttribute[] => {
+}: GetInsightAttributesArgs): ColumnInsightAttribute[] => {
   const roleColumns = new Set(Object.values(roles));
   const distinctCount = (field: Field) =>
     field.fingerprint?.global?.["distinct-count"] ?? MAX_DISTINCT_VALUES;
@@ -81,6 +82,7 @@ export const getInsightAttributes = ({
     )
     .slice(0, MAX_ATTRIBUTES)
     .map((field, index) => ({
+      kind: "column",
       id: `attr_${index + 1}`,
       column: field.name,
       from: "events",
@@ -88,4 +90,18 @@ export const getInsightAttributes = ({
       description: field.description ?? undefined,
       asOf: isIdentified(field) ? "true-by-step" : "first-seen",
     }));
+};
+
+/** The column attributes' ids, and how each one's value is taken as of a question's moment. */
+export const getColumnAttributeRules = (
+  attributes: readonly InsightAttribute[],
+): { ids: string[]; asOf: AttributeAsOfRules } => {
+  const columns = attributes.filter(
+    (attribute): attribute is ColumnInsightAttribute =>
+      attribute.kind === "column",
+  );
+  return {
+    ids: columns.map(({ id }) => id),
+    asOf: new Map(columns.map(({ id, asOf }) => [id, asOf])),
+  };
 };

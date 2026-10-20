@@ -2,6 +2,7 @@ import { c } from "ttag";
 
 import { funnelInsightPopulation } from "../sql/analyses/funnel-insights";
 
+import { getColumnAttributeRules } from "./candidates";
 import { getConversionOutcome } from "./outcomes";
 import type { InsightsAnalysis } from "./types";
 
@@ -9,7 +10,12 @@ import type { InsightsAnalysis } from "./types";
 export const FUNNEL_INSIGHTS: InsightsAnalysis = {
   getOutcome: getConversionOutcome,
   appliesTo: (spec) => spec.kind === "funnel",
-  getPopulation: funnelInsightPopulation,
+  attributeKind: "column",
+  searchesPairs: true,
+  getPopulation: (spec, attributes) => {
+    const { ids, asOf } = getColumnAttributeRules(attributes);
+    return funnelInsightPopulation(spec, ids, asOf);
+  },
   getQuestions: (spec, totals) => {
     const steps = spec.funnel?.steps ?? [];
     return totals

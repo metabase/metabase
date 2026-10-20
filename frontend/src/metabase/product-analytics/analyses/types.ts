@@ -83,6 +83,7 @@ export type HabitSettings = CommonSettings & {
 export type LifecycleSettings = CommonSettings & {
   "lifecycle.active": EventDefinition | null;
   "lifecycle.shown": LifecycleStateName[];
+  "lifecycle.first_seen_column": string | null;
 };
 
 export type CohortsSettings = CommonSettings & {

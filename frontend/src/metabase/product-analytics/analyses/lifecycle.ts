@@ -2,14 +2,18 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
+import { FIRST_SEEN_COLUMN } from "../columns";
 import { CheckboxCardsWidget } from "../components/settings/CheckboxCardsWidget";
+import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, LifecycleStateName, Period } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
+import { FIRST_SEEN_EXTRA_COLUMN } from "../sql/analyses/lifecycle";
 import { grainTitle } from "../sql/compile/grain";
 
+import { getDateColumnOptions, isDateColumnInTable } from "./column-roles";
 import { commonSettings } from "./common-settings";
 import { getAxisTitleSettings } from "./series-settings";
 import {
@@ -76,6 +80,12 @@ const getStateDescription = (
   }
 };
 
+/** First seen only says when a person started, so other counting uses the first period in range. */
+const getFirstSeenColumn = (settings: LifecycleSettings): string | null =>
+  settings.counting === "person"
+    ? settings["lifecycle.first_seen_column"]
+    : null;
+
 // granularity's units exclude "hour" here; isValid enforces it.
 const getPeriod = (granularity: Granularity): Period =>
   granularity === "hour" ? "day" : granularity;
@@ -94,6 +104,26 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
       ...getEventDefinitionProps(context),
       emptyLabel: t`Any action or event`,
     }),
+  }),
+  "lifecycle.first_seen_column": withWidgetProps({
+    getTitle: () => t`When each person was first seen`,
+    getHint: () =>
+      t`People are new in the period they were first seen. Without this column, they're new in the first period they're active in the date range, even if they were active before it.`,
+    getSection: () => "setup",
+    secondary: true,
+    widget: ColumnPickerWidget,
+    getDefault: (context) =>
+      isDateColumnInTable(context.table, FIRST_SEEN_COLUMN)
+        ? FIRST_SEEN_COLUMN
+        : null,
+    isValid: (value, context) =>
+      value === null || isDateColumnInTable(context.table, value),
+    getHidden: (_context, settings) => settings.counting !== "person",
+    getProps: (context) => ({
+      columns: getDateColumnOptions(context.table),
+      isRequired: false,
+    }),
+    readDependencies: ["counting"],
   }),
   "lifecycle.shown": withWidgetProps({
     getTitle: () => t`Groups to show`,
@@ -143,9 +173,16 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
         // Empty means any event counts as being active.
         active: active === null ? undefined : { flag: events.flagFor(active) },
         period: getPeriod(settings.granularity),
+        hasFirstSeen: getFirstSeenColumn(settings) !== null,
       },
       output: { lifecycleShown: settings["lifecycle.shown"] },
     });
+  },
+  getExtraColumns: (settings) => {
+    const column = getFirstSeenColumn(settings);
+    return column !== null
+      ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" }]
+      : [];
   },
   getDisplay: () => "bar",
   getVizSettings: (settings) => ({

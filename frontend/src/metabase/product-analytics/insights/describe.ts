@@ -6,7 +6,11 @@ import { IDENTIFIED_COLUMN } from "../columns";
 import { NOT_SET_VALUE } from "../sql/analyses/insights";
 
 import type { InsightOutcome } from "./outcomes";
-import type { Insight, InsightAttribute } from "./types";
+import type {
+  ColumnInsightAttribute,
+  EventInsightAttribute,
+  Insight,
+} from "./types";
 
 const MULTIPLIER_FROM = 2;
 // Below this, a whole-number percentage would hide the difference.
@@ -41,23 +45,62 @@ export const describeExcess = (
   return outcome.describeExcess(count, formatNumber(count), excess >= 0);
 };
 
-type DescribedAttribute = Pick<
-  InsightAttribute,
-  "column" | "displayName" | "description"
->;
+type DescribedAttribute =
+  | Pick<
+      ColumnInsightAttribute,
+      "kind" | "column" | "displayName" | "description"
+    >
+  | Pick<
+      EventInsightAttribute,
+      "kind" | "displayName" | "description" | "minCount"
+    >;
 
 const isIdentified = (attribute: DescribedAttribute | undefined) =>
-  attribute?.column === IDENTIFIED_COLUMN;
+  attribute?.kind === "column" && attribute.column === IDENTIFIED_COLUMN;
+
+/** Whether an actor did an event at least so many times, as a chart axis shows it: "Yes", or "3+ times". */
+const describeEventValue = (minCount: number, value: string): string => {
+  const did = value === "true";
+  if (minCount <= 1) {
+    return did ? t`Yes` : t`No`;
+  }
+  return did
+    ? c("{0} is a number").t`${minCount}+ times`
+    : c("{0} is a number").t`Under ${minCount} times`;
+};
 
 /** One value of an attribute, as a chart axis shows it. */
 export const describeValue = (
   attribute: DescribedAttribute | undefined,
   value: string,
 ): string => {
+  if (attribute?.kind === "event") {
+    return describeEventValue(attribute.minCount, value);
+  }
   if (isIdentified(attribute)) {
     return value === "true" ? t`Identified` : t`Anonymous`;
   }
   return value;
+};
+
+/** "Sent an invite: yes" or "Sent an invite: 3+ times", like a column and its value. */
+const describeEventCondition = (
+  {
+    displayName: name,
+    minCount,
+  }: Pick<EventInsightAttribute, "displayName" | "minCount">,
+  value: string,
+): string => {
+  const did = value === "true";
+  if (minCount <= 1) {
+    return did
+      ? c("{0} is an event name").t`${name}: yes`
+      : c("{0} is an event name").t`${name}: no`;
+  }
+  return did
+    ? c("{0} is an event name, {1} is a number").t`${name}: ${minCount}+ times`
+    : c("{0} is an event name, {1} is a number")
+        .t`${name}: under ${minCount} times`;
 };
 
 /**
@@ -68,6 +111,9 @@ export const describeCondition = (
   attribute: DescribedAttribute | undefined,
   value: string,
 ): string => {
+  if (attribute?.kind === "event") {
+    return describeEventCondition(attribute, value);
+  }
   if (isIdentified(attribute)) {
     return value === "true" ? t`Person is identified` : t`Person is anonymous`;
   }

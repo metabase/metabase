@@ -8,6 +8,8 @@ import {
 } from "./options";
 import {
   benjaminiHochberg,
+  differencePValue,
+  expectedPValue,
   interactionPValue,
   rateOf,
   subtractCounts,
@@ -31,8 +33,9 @@ const hasEnoughPeople = (
   counts.reached * (1 - pooledRate) >= options.minExpectedOutcomes;
 
 /**
- * The group compared with everyone else at its question, or `null` when
- * either side is too small to compare.
+ * The group compared with everyone else at its question, or with expected
+ * outcomes, with what's expected of its actors. `null` when either side is
+ * too small to compare.
  */
 export const evaluateGroup = (
   group: GroupCounts,
@@ -49,13 +52,19 @@ export const evaluateGroup = (
     return null;
   }
   const rate = rateOf(group);
-  const restRate = rateOf(rest);
+  const restRate =
+    group.expected !== undefined
+      ? group.expected.outcomes / group.reached
+      : rateOf(rest);
   return {
     ...group,
     rate,
     restRate,
     excess: group.reached * (rate - restRate),
-    pValue: twoProportionPValue(group, rest),
+    pValue:
+      group.expected !== undefined
+        ? expectedPValue(group)
+        : twoProportionPValue(group, rest),
   };
 };
 
@@ -196,7 +205,8 @@ const overlapOf = (
 /**
  * Whether `other` accounts for `insight`: among the people outside `other`,
  * `insight` converts like everyone else. When `insight` is (almost) inside
- * `other`, it's whether it converts like the rest of `other`.
+ * `other`, it's whether it converts like the rest of `other`. With expected
+ * outcomes, "converts like" is beating what's expected by as much.
  */
 const isExplainedBy = (
   insight: Insight,
@@ -219,7 +229,7 @@ const isExplainedBy = (
   const outsideOther = subtractCounts(insight, overlap);
   if (outsideOther.reached < getMinGroupSize(total.reached, options)) {
     return (
-      twoProportionPValue(insight, subtractCounts(other, overlap)) >=
+      differencePValue(insight, subtractCounts(other, overlap)) >=
       options.relatedGroupAlpha
     );
   }
@@ -227,9 +237,7 @@ const isExplainedBy = (
     subtractCounts(total, insight),
     subtractCounts(other, overlap),
   );
-  return (
-    twoProportionPValue(outsideOther, neither) >= options.relatedGroupAlpha
-  );
+  return differencePValue(outsideOther, neither) >= options.relatedGroupAlpha;
 };
 
 /**

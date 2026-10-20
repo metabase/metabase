@@ -29,6 +29,7 @@ import {
   getClickedTransition,
 } from "../insights/clicked-transition";
 import { FUNNEL_INSIGHTS } from "../insights/funnel-analysis";
+import { LIFECYCLE_INSIGHTS } from "../insights/lifecycle-analysis";
 import type { InsightsAnalysis } from "../insights/types";
 import { type Insights, useInsights } from "../insights/use-insights";
 import { type PathSteps, usePathSteps } from "../path-steps/use-path-steps";
@@ -78,6 +79,11 @@ export type PathsSupport = {
   insights: Insights | undefined;
 };
 
+/** Who comes back the next period, below the lifecycle chart. */
+export type LifecycleSupport = {
+  insights: Insights;
+};
+
 /** The retention curves below the cohort table, from the table's own result. */
 export type CohortsSupport = {
   /** The line chart, once the cohort query's result is in. */
@@ -93,6 +99,8 @@ export type SupportingAnalyses = {
   paths: PathsSupport | undefined;
   /** Set while the analysis is cohorts. */
   cohorts: CohortsSupport | undefined;
+  /** Set while the analysis is lifecycle. */
+  lifecycle: LifecycleSupport | undefined;
   /** The chart click actions that lead to a supporting analysis. */
   getClickActions: (clicked: ClickObject) => ClickAction[];
 };
@@ -105,6 +113,8 @@ const getInsightsAnalysis = (
       return FUNNEL_INSIGHTS;
     case "paths":
       return BOUNCE_INSIGHTS;
+    case "lifecycle":
+      return LIFECYCLE_INSIGHTS;
     default:
       return undefined;
   }
@@ -127,6 +137,7 @@ export const useSupportingAnalyses = ({
   const isFunnel = spec?.kind === "funnel";
   const isCohorts = spec?.kind === "cohorts";
   const isPaths = spec?.kind === "paths";
+  const isLifecycle = spec?.kind === "lifecycle";
 
   const { dataset, datasetQuery } = query;
   const cohortsSeries = useMemo((): SingleSeries<UnsavedCard> | undefined => {
@@ -230,6 +241,7 @@ export const useSupportingAnalyses = ({
           error: query.error,
         }
       : undefined,
+    lifecycle: isLifecycle ? { insights } : undefined,
     getClickActions,
   };
 };

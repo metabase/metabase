@@ -23,6 +23,9 @@ A person's traits come in two forms:
   earlier step. `person__identified` is true from someone's first
   `identify()` on and false before, whatever traits it sent. The double
   underscore keeps it apart from a trait called `identified`.
+  `person__first_seen_at` is the person's first event, anonymous or not, on
+  every event. Lifecycle uses it to tell who's new, like PostHog's person
+  `created_at`, so it doesn't have to read history before the date range.
 - **Current:** the columns of `pa_identities_resolved`, through the FK below.
   Use these for "what are my Pro customers doing" questions, not for insights.
 

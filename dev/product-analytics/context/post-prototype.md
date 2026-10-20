@@ -75,3 +75,9 @@ So it can be a driver feature, the way `:regex` gates `regexextract`.
 - **Event name values:** checking them needs the column's field values, which aren't in the table metadata the settings see today.
 - **Segment:** the separate `pages` table needs a union with `tracks` before any of this applies.
 - **Whole schemas:** this belongs with fingerprinting whole schemas in [analysis-settings.plan.md](analysis-settings.plan.md), which assigns every role at once.
+
+## Which events insights compare people by
+
+Lifecycle insights compare people by the event table's saved segments: whether they did each one at least 1, 3 and 10 times in a period (`insights/event-candidates.ts`). Each segment adds a flag column to `events_base` and a `countIf` per person per period to the population, so the query slows down as segments are added. The prototype takes the first 20.
+
+Real tables can have hundreds of segments, most of them rarely used. The plan is a notion of **popular events**: the segments (and later, raw event names) that enough people do often enough to be worth comparing by, picked from a cheap pass over recent data. Insights would only look at those.

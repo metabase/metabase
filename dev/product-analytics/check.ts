@@ -21,7 +21,11 @@ import {
   planFunnelPaths,
 } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-paths";
 import { activeColumn } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit";
-import { IN_RANGE_FLAG } from "../../frontend/src/metabase/product-analytics/sql/analyses/lookback";
+import { FIRST_SEEN_EXTRA_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
+import {
+  IN_RANGE_FLAG,
+  getLookbackDays,
+} from "../../frontend/src/metabase/product-analytics/sql/analyses/lookback";
 import { hasCyclicFlow } from "../../frontend/src/metabase/visualizations/visualizations/SankeyChart/utils/cycle-detection";
 
 import { FLAG, defaultSpec } from "./specs";
@@ -95,8 +99,17 @@ async function chJson(sql: string): Promise<Record<string, unknown>[]> {
   return parsed.data.filter(isRecord);
 }
 
-const eventsBaseSql = (truth: GroundTruth): string => `
+/**
+ * Every event in the data. `in_range` marks the events from `rangeStart` on,
+ * for analyses that read history before the date range.
+ */
+const eventsBaseSql = (
+  truth: GroundTruth,
+  rangeStart = truth.start,
+): string => `
 SELECT
+  if(created_at >= toDateTime('${chDateTime(rangeStart)}'), 1, 0) AS ${IN_RANGE_FLAG},
+  person__first_seen_at,
   person_id,
   session_id,
   event_id,
@@ -234,6 +247,14 @@ const checkIdentities = async (truth: GroundTruth) => {
   );
 };
 const baseColumns = (spec: AnalysisSpec): BaseColumns => ({
+  ...baseColumnsWithoutRange(spec),
+  flags: [
+    ...Object.values(FLAG),
+    ...(getLookbackDays(spec) > 0 ? [IN_RANGE_FLAG] : []),
+  ],
+});
+
+const baseColumnsWithoutRange = (spec: AnalysisSpec): BaseColumns => ({
   columns: {
     timestamp: "created_at",
     person: "person_id",
@@ -243,7 +264,12 @@ const baseColumns = (spec: AnalysisSpec): BaseColumns => ({
     url_path: "url_path",
   },
   flags: Object.values(FLAG),
-  extraColumns: cohortColumns(spec),
+  extraColumns: [
+    ...cohortColumns(spec),
+    ...(spec.lifecycle?.hasFirstSeen
+      ? [{ as: FIRST_SEEN_EXTRA_COLUMN, alias: "person__first_seen_at" }]
+      : []),
+  ],
 });
 
 const run = async (
@@ -408,10 +434,7 @@ if (cohortsSpec.cohorts !== undefined) {
 const ratioStart = new Date(
   new Date(truth.start).getTime() + 40 * 24 * 60 * 60 * 1000,
 ).toISOString();
-const ratioEventsBase = `
-SELECT *, if(created_at >= toDateTime('${chDateTime(ratioStart)}'), 1, 0) AS ${IN_RANGE_FLAG}
-FROM (${eventsBaseSql(truth)})
-`;
+const ratioEventsBase = eventsBaseSql(truth, ratioStart);
 const habitSpec = defaultSpec("habit");
 for (const subPeriod of ["day", "week"] as const) {
   const spec: AnalysisSpec = {
@@ -424,10 +447,7 @@ for (const subPeriod of ["day", "week"] as const) {
   };
   const active = activeColumn(subPeriod);
   const rows = await chJson(
-    buildSql(spec, ratioEventsBase, {
-      ...baseColumns(spec),
-      flags: [...Object.values(FLAG), IN_RANGE_FLAG],
-    }).sql,
+    buildSql(spec, ratioEventsBase, baseColumns(spec)).sql,
   );
   console.log(`
 habit ratio by ${subPeriod} (${rows.length} rows)`);
@@ -470,6 +490,62 @@ habit ratio by ${subPeriod} (${rows.length} rows)`);
     `min ${Math.min(...ratios)} max ${Math.max(...ratios)}`,
   );
 }
+
+// Lifecycle: the range starts 40 days into the data, so its first week has
+// people from before it. New means first seen that week, and returning means
+// active the week before too, which only the lookback can see.
+const lifecycleStart = ratioStart;
+const lifecycleSpec = defaultSpec("lifecycle");
+const lifecycleRows = await chJson(
+  buildSql(
+    lifecycleSpec,
+    eventsBaseSql(truth, lifecycleStart),
+    baseColumns(lifecycleSpec),
+  ).sql,
+);
+console.log(`\nlifecycle from ${lifecycleStart.slice(0, 10)}`);
+const firstWeek = `toStartOfWeek(toDateTime('${chDateTime(lifecycleStart)}'), 1)`;
+const [lifecycleDirect] = await chJson(`
+  WITH events AS (${eventsBaseSql(truth, lifecycleStart)}),
+  weeks AS (
+    SELECT
+      person_id,
+      toStartOfWeek(min(person__first_seen_at), 1) AS first_seen_week,
+      countIf(toStartOfWeek(created_at, 1) = ${firstWeek} AND ${IN_RANGE_FLAG} = 1) > 0 AS active_now,
+      countIf(toStartOfWeek(created_at, 1) = ${firstWeek} - INTERVAL 1 WEEK) > 0 AS active_before
+    FROM events
+    WHERE ${FLAG.active} = 1
+    GROUP BY person_id
+  )
+  SELECT
+    toString(${firstWeek}) AS week,
+    countIf(active_now AND first_seen_week = ${firstWeek}) AS new,
+    countIf(active_now AND active_before) AS returning
+  FROM weeks
+`);
+const lifecycleAt = (state: string) =>
+  asNumber(
+    lifecycleRows.find(
+      (row) =>
+        String(row.period) === String(lifecycleDirect?.week) &&
+        row.state === state,
+    )?.actors,
+  );
+check(
+  "lifecycle starts at the range's first week",
+  String(lifecycleRows[0]?.period) === String(lifecycleDirect?.week),
+  `got ${String(lifecycleRows[0]?.period)}, expected ${String(lifecycleDirect?.week)}`,
+);
+check(
+  "new in the first week are the people first seen that week",
+  lifecycleAt("new") === asNumber(lifecycleDirect?.new),
+  `got ${lifecycleAt("new")}, expected ${asNumber(lifecycleDirect?.new)}`,
+);
+check(
+  "returning in the first week were active the week before",
+  lifecycleAt("returning") === asNumber(lifecycleDirect?.returning),
+  `got ${lifecycleAt("returning")}, expected ${asNumber(lifecycleDirect?.returning)}`,
+);
 
 // Funnel paths must agree with the funnel: everyone who reached the starting
 // step starts a path, and everyone who reached the ending step converts.

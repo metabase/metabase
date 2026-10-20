@@ -135,9 +135,7 @@ const InsightsList = ({
     pairsError,
   } = state;
   if (attributes.length === 0) {
-    return (
-      <Text c="text-secondary">{t`There are no columns with few enough distinct values to compare people by.`}</Text>
-    );
+    return <Text c="text-secondary">{outcome.noAttributesLabel}</Text>;
   }
   const isNothingFound =
     insights.length === 0 && !isFindingPairs && pairsError === undefined;

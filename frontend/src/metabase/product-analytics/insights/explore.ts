@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  BASELINE_COLOR_NAME,
   CONVERSION_COLUMN_FORMAT,
   getAxisTitleSettings,
   getSeriesSettings,
@@ -14,7 +15,7 @@ import { SEGMENT_SEPARATOR } from "../sql/analyses/insights";
 
 import { describeValue } from "./describe";
 import type { InsightOutcome } from "./outcomes";
-import type { InsightSegment } from "./segments";
+import { type InsightSegment, getExpectedRate } from "./segments";
 import type { InsightAttribute } from "./types";
 
 /** The explore query's segment column: the attribute names, joined. */
@@ -25,29 +26,59 @@ export const getExploreSegmentLabel = (
 
 const columnKey = (name: string) => JSON.stringify(["name", name]);
 
+/** The expected rate's column and title, when the outcome has one. */
+const expectedRateOf = ({
+  explore,
+}: InsightOutcome): { column: string; title: string } | undefined =>
+  explore.expectedRateColumn !== undefined &&
+  explore.expectedRateTitle !== undefined
+    ? { column: explore.expectedRateColumn, title: explore.expectedRateTitle }
+    : undefined;
+
 /**
  * An unsaved question for the query builder: the outcome rate as bars, by each
  * value of the insight's attributes, with each segment's size in the tooltip.
+ * When the outcome has an expected rate, it's a gray bar beside each.
  */
 export const getExploreCard = (
   datasetQuery: DatasetQuery,
   attributes: readonly Pick<InsightAttribute, "displayName">[],
-  { explore }: InsightOutcome,
-): UnsavedCard => ({
-  display: "bar",
-  dataset_query: datasetQuery,
-  visualization_settings: {
-    "graph.dimensions": [getExploreSegmentLabel(attributes)],
-    "graph.metrics": [explore.rateColumn],
-    "graph.tooltip_columns": [columnKey(explore.countColumn)],
-    ...getSeriesSettings(explore.rateColumn, explore.rateTitle),
-    ...getAxisTitleSettings({ y: explore.rateTitle }),
-    column_settings: {
-      [columnKey(explore.rateColumn)]: CONVERSION_COLUMN_FORMAT,
-      [columnKey(explore.countColumn)]: { column_title: explore.countTitle },
+  outcome: InsightOutcome,
+): UnsavedCard => {
+  const { explore } = outcome;
+  const expected = expectedRateOf(outcome);
+  return {
+    display: "bar",
+    dataset_query: datasetQuery,
+    visualization_settings: {
+      "graph.dimensions": [getExploreSegmentLabel(attributes)],
+      "graph.metrics": [
+        explore.rateColumn,
+        ...(expected !== undefined ? [expected.column] : []),
+      ],
+      "graph.tooltip_columns": [columnKey(explore.countColumn)],
+      series_settings: {
+        ...getSeriesSettings(explore.rateColumn, explore.rateTitle)
+          .series_settings,
+        ...(expected !== undefined
+          ? getSeriesSettings(
+              expected.column,
+              expected.title,
+              BASELINE_COLOR_NAME,
+            ).series_settings
+          : {}),
+      },
+      ...getAxisTitleSettings({ y: explore.rateTitle }),
+      column_settings: {
+        [columnKey(explore.rateColumn)]: CONVERSION_COLUMN_FORMAT,
+        ...(expected !== undefined
+          ? { [columnKey(expected.column)]: CONVERSION_COLUMN_FORMAT }
+          : {}),
+        [columnKey(explore.countColumn)]: { column_title: explore.countTitle },
+      },
     },
-  },
-});
+  };
+};
 
 const describeSegment = (
   { label, values }: InsightSegment,
@@ -68,8 +99,10 @@ export const getExploreData = (
   segments: readonly InsightSegment[],
   attributes: readonly InsightAttribute[],
   sql: string,
-  { explore }: InsightOutcome,
+  outcome: InsightOutcome,
 ): DatasetData => {
+  const { explore } = outcome;
+  const expected = expectedRateOf(outcome);
   const segmentLabel = getExploreSegmentLabel(attributes);
   const cols: DatasetColumn[] = [
     {
@@ -90,6 +123,16 @@ export const getExploreData = (
       source: "native",
       base_type: "type/Float",
     },
+    ...(expected !== undefined
+      ? [
+          {
+            name: expected.column,
+            display_name: expected.title,
+            source: "native",
+            base_type: "type/Float",
+          },
+        ]
+      : []),
   ];
   return {
     cols,
@@ -97,6 +140,7 @@ export const getExploreData = (
       describeSegment(segment, attributes),
       segment.reached,
       segment.rate,
+      ...(expected !== undefined ? [getExpectedRate(segment) ?? null] : []),
     ]),
     native_form: { query: sql },
     rows_truncated: 0,

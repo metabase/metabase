@@ -1,6 +1,9 @@
 import {
   benjaminiHochberg,
+  differencePValue,
+  expectedPValue,
   interactionPValue,
+  subtractCounts,
   twoProportionPValue,
 } from "./stats";
 
@@ -93,5 +96,68 @@ describe("interactionPValue", () => {
         neither: { reached: 16000, converted: 4000 },
       }),
     ).toBeLessThan(1e-6);
+  });
+});
+
+describe("expected outcomes", () => {
+  it("is 1 when a group has as many outcomes as expected", () => {
+    expect(
+      expectedPValue({
+        reached: 100,
+        converted: 50,
+        expected: { outcomes: 50, variance: 25 },
+      }),
+    ).toBeCloseTo(1, 6);
+  });
+
+  it("tests the outcomes against the expected ones", () => {
+    // z = (60 - 50) / sqrt(25) = 2
+    expect(
+      expectedPValue({
+        reached: 100,
+        converted: 60,
+        expected: { outcomes: 50, variance: 25 },
+      }),
+    ).toBeCloseTo(0.0455, 4);
+  });
+
+  it("compares how far two groups beat what's expected of them", () => {
+    // Different rates, but each beats its own expectation by 10 points.
+    const busy = {
+      reached: 100,
+      converted: 90,
+      expected: { outcomes: 80, variance: 16 },
+    };
+    const quiet = {
+      reached: 100,
+      converted: 30,
+      expected: { outcomes: 20, variance: 16 },
+    };
+
+    expect(differencePValue(busy, quiet)).toBeCloseTo(1, 6);
+    expect(differencePValue(busy, { ...quiet, converted: 10 })).toBeLessThan(
+      0.05,
+    );
+  });
+
+  it("subtracts expected outcomes with the counts", () => {
+    expect(
+      subtractCounts(
+        {
+          reached: 100,
+          converted: 60,
+          expected: { outcomes: 50, variance: 25 },
+        },
+        {
+          reached: 40,
+          converted: 30,
+          expected: { outcomes: 20, variance: 10 },
+        },
+      ),
+    ).toEqual({
+      reached: 60,
+      converted: 30,
+      expected: { outcomes: 30, variance: 15 },
+    });
   });
 });

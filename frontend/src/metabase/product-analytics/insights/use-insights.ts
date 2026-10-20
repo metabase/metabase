@@ -1,7 +1,9 @@
 import { useMemo } from "react";
+import _ from "underscore";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
+import * as Lib from "metabase-lib";
 import type {
   ConcreteTableId,
   Dataset,
@@ -13,6 +15,8 @@ import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
 import { buildSql } from "../build-sql";
 import { getEventFilterColumns } from "../events/filter-columns";
+import type { SegmentDraft } from "../segments/types";
+import { usePaletteSegments } from "../segments/use-palette-segments";
 import type { AnalysisSpec } from "../spec/types";
 import { type InsightsQuery, planInsights } from "../sql/analyses/insights";
 import {
@@ -24,6 +28,7 @@ import { useStableValue } from "../use-stable-value";
 
 import { getInsightAttributes } from "./candidates";
 import { indexCounts } from "./counts";
+import { getEventAttributes } from "./event-candidates";
 import {
   getExploreCard,
   getExploreData,
@@ -45,6 +50,8 @@ import type {
   InsightQuestion,
   InsightsAnalysis,
 } from "./types";
+
+const NO_DRAFTS: SegmentDraft[] = [];
 
 export type InsightsState =
   | { status: "idle" }
@@ -116,12 +123,36 @@ export const useInsights = ({
   const activeSpec =
     spec !== undefined && analysis?.appliesTo(spec) ? spec : undefined;
   const isActive = activeSpec !== undefined;
-  const outcome = useMemo(() => analysis?.getOutcome(), [analysis]);
+  const outcome =
+    activeSpec !== undefined ? analysis?.getOutcome(activeSpec) : undefined;
   const metadataProvider = useMetadataProvider(context.table?.db_id ?? null);
+  const attributeKind = analysis?.attributeKind;
+  const eventSegments = usePaletteSegments(
+    attributeKind === "event" ? tableId : undefined,
+    "event",
+    NO_DRAFTS,
+  );
 
-  const attributes = useMemo(() => {
+  const attributes = useMemo((): InsightAttribute[] => {
     if (!isActive) {
       return [];
+    }
+    if (attributeKind === "event") {
+      const tableMetadata =
+        tableId !== undefined
+          ? Lib.tableOrCardMetadata(metadataProvider, tableId)
+          : null;
+      return tableMetadata !== null
+        ? getEventAttributes({
+            segments: eventSegments.saved,
+            tableQuery: Lib.queryFromTableOrCardMetadata(
+              metadataProvider,
+              tableMetadata,
+            ),
+            metadataProvider,
+            excluded: base.events.map(({ event }) => event),
+          })
+        : [];
     }
     const stepColumns = new Set(
       base.events.flatMap(({ event }) =>
@@ -129,21 +160,47 @@ export const useInsights = ({
       ),
     );
     return getInsightAttributes({ context, roles: base.columns, stepColumns });
-  }, [isActive, metadataProvider, base, context]);
+  }, [
+    isActive,
+    attributeKind,
+    tableId,
+    eventSegments.saved,
+    metadataProvider,
+    base,
+    context,
+  ]);
   const attributeIds = useMemo(
     () => attributes.map(({ id }) => id),
-    [attributes],
-  );
-  const asOf = useMemo(
-    () => new Map(attributes.map(({ id, asOf }) => [id, asOf])),
     [attributes],
   );
 
   const insightsBase = useStableValue<BaseQueryInput>({
     ...base,
+    events: [
+      ...base.events,
+      ..._.uniq(
+        attributes.flatMap((attribute) =>
+          attribute.kind === "event"
+            ? [{ flag: attribute.flag, event: attribute.event }]
+            : [],
+        ),
+        false,
+        ({ flag }) => flag,
+      ),
+    ],
     extraColumns: [
       ...base.extraColumns,
-      ...attributes.map(({ id, column, from }) => ({ as: id, column, from })),
+      ...attributes.flatMap((attribute) =>
+        attribute.kind === "column"
+          ? [
+              {
+                as: attribute.id,
+                column: attribute.column,
+                from: attribute.from,
+              },
+            ]
+          : [],
+      ),
     ],
   });
   const compiledBase = useCompiledBase({
@@ -156,7 +213,7 @@ export const useInsights = ({
   const toSql = (query: InsightsQuery) => {
     const population =
       activeSpec !== undefined
-        ? analysis?.getPopulation(activeSpec, attributeIds, asOf)
+        ? analysis?.getPopulation(activeSpec, attributes)
         : undefined;
     return activeSpec !== undefined &&
       population !== undefined &&
@@ -193,15 +250,16 @@ export const useInsights = ({
     [singles.currentData],
   );
 
+  const searchesPairs = analysis?.searchesPairs ?? false;
   const pairValues = useMemo(
     () =>
-      singleRows !== undefined
+      singleRows !== undefined && searchesPairs
         ? planPairs(
             indexCounts({ rows: singleRows, singleAttributes: attributeIds }),
             attributeIds,
           )
         : undefined,
-    [singleRows, attributeIds],
+    [singleRows, attributeIds, searchesPairs],
   );
   const pairsQuery =
     pairValues !== undefined && pairValues.size > 0
@@ -253,6 +311,7 @@ export const useInsights = ({
       segmentLabel: getExploreSegmentLabel(insightAttributes),
       countColumn: outcome.explore.countColumn,
       rateColumn: outcome.explore.rateColumn,
+      expectedRateColumn: outcome.explore.expectedRateColumn,
       minSize: getMinSegmentSize(total.reached),
       isDescending: isDescending(insight),
     });
@@ -278,7 +337,9 @@ export const useInsights = ({
     if (activeSpec === undefined || analysis === undefined) {
       return { status: "idle" };
     }
-    if (context.table === undefined) {
+    const isLoadingSegments =
+      attributeKind === "event" && eventSegments.isLoading;
+    if (context.table === undefined || isLoadingSegments) {
       return { status: "loading" };
     }
     if (attributes.length === 0) {

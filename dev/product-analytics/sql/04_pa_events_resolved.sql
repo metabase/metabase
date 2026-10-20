@@ -17,6 +17,11 @@
 -- before. The traits can't stand in for it, since an identify() may send none
 -- of them. The double underscore keeps it apart from a trait called
 -- "identified".
+--
+-- person__first_seen_at is when the person's first event happened, anonymous
+-- or not, across every visitor_id stitched into them. It's on every event,
+-- like PostHog's person created_at, so lifecycle can tell who's new without
+-- reading history from before the date range.
 
 DROP TABLE IF EXISTS product_analytics.pa_events_resolved;
 
@@ -50,7 +55,8 @@ SELECT
     nullIf(h.identity_data['plan'], '') AS person_plan,
     nullIf(h.identity_data['billing_cycle'], '') AS person_billing_cycle,
     -- ASOF LEFT JOIN fills a missing match with defaults, not NULLs
-    toBool(h.session_id != '') AS person__identified
+    toBool(h.session_id != '') AS person__identified,
+    min(s.created_at) OVER (PARTITION BY s.person_id) AS person__first_seen_at
 FROM stitched AS s
 ASOF LEFT JOIN product_analytics.pa_identity_history AS h
     ON h.website_id = s.website_id

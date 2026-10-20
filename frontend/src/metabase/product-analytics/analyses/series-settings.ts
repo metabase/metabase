@@ -4,6 +4,9 @@ import type { VisualizationSettings } from "metabase-types/api";
 const SERIES_COLOR_NAME = "accent0";
 const CONVERSION_DECIMALS = 2;
 
+/** The color of a series that's a baseline to compare with, like an expected rate. */
+export const BASELINE_COLOR_NAME = "accent-gray";
+
 /**
  * A metric in the one color product analytics charts share, rather than one
  * hashed from its name. The color name keeps it following the active palette.
@@ -11,12 +14,13 @@ const CONVERSION_DECIMALS = 2;
 export const getSeriesSettings = (
   metric: string,
   title: string,
+  colorName: string = SERIES_COLOR_NAME,
 ): Pick<VisualizationSettings, "series_settings"> => ({
   series_settings: {
     [metric]: {
       title,
-      color: color(SERIES_COLOR_NAME),
-      color_name: SERIES_COLOR_NAME,
+      color: color(colorName),
+      color_name: colorName,
     },
   },
 });

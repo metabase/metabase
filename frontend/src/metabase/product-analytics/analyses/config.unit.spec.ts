@@ -257,6 +257,33 @@ describe("analysis settings", () => {
     expect(computed["columns.timestamp"]).toBe("ts");
   });
 
+  it("finds when people were first seen for lifecycle by the column's name", () => {
+    const table = createMockTable({
+      ...EVENT_TABLE,
+      fields: [
+        ...(EVENT_TABLE.fields ?? []),
+        createMockField({
+          id: 8,
+          name: "person__first_seen_at",
+          base_type: "type/DateTime",
+        }),
+      ],
+    });
+    const withColumn = setup({ kind: "lifecycle", table });
+    const withoutColumn = setup({ kind: "lifecycle", table: EVENT_TABLE });
+
+    expect(getReadySpec(withColumn.specResult).lifecycle?.hasFirstSeen).toBe(
+      true,
+    );
+    expect(withColumn.extraColumns).toEqual([
+      { as: "first_seen", column: "person__first_seen_at", from: "events" },
+    ]);
+    expect(getReadySpec(withoutColumn.specResult).lifecycle?.hasFirstSeen).toBe(
+      false,
+    );
+    expect(withoutColumn.extraColumns).toEqual([]);
+  });
+
   it("follows cohorts for as many periods as the date range spans", () => {
     const horizon = (stored: StoredSettings) =>
       setup({ kind: "cohorts", stored }).computed["cohorts.horizon"];

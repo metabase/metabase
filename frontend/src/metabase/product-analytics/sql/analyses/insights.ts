@@ -13,6 +13,10 @@ export const OTHER_VALUE = "(other)";
 export const SEGMENT_SEPARATOR = " · ";
 /** The singles query's column naming each question, when the population has one. */
 export const QUESTION_LABEL_COLUMN = "question_label";
+/** The counts' sum of each actor's expected chance of the outcome, when the population has one. */
+export const EXPECTED_COLUMN = "expected_outcomes";
+/** The counts' sum of each actor's p × (1 − p), the variance of the outcomes expected. */
+export const EXPECTED_VARIANCE_COLUMN = "expected_outcomes_variance";
 
 /**
  * How an attribute's value is taken as of a question's moment, like reaching
@@ -71,11 +75,15 @@ export const attributeSql = (id: string): string => flagSql(id);
  * CTE named `source`: `k`, the question's number from 1; `converted`, whether
  * the actor had the outcome; and each attribute by its id, as of the
  * question's moment. With `hasLabels`, a `label` column names each question.
+ * With `hasExpected`, an `expected` column holds each actor's chance of the
+ * outcome given what else is known about them, like how active they were,
+ * and groups are compared with that instead of with everyone else.
  */
 export type InsightPopulation = {
   ctes: Cte[];
   source: string;
   hasLabels: boolean;
+  hasExpected?: boolean;
   warnings: string[];
 };
 
@@ -97,6 +105,8 @@ export type InsightsQuery =
       /** The names of the columns holding each segment's size and rate. */
       countColumn: string;
       rateColumn: string;
+      /** The column for each segment's expected rate, read when the population has one. */
+      expectedRateColumn?: string;
       /** Smaller segments are pooled into `OTHER_VALUE`. */
       minSize: number;
       /** Sort by rate, highest first; `OTHER_VALUE` is always last. */
@@ -115,13 +125,22 @@ export const attributesOf = (query: InsightsQuery): string[] => {
   }
 };
 
-const COUNTS = ["  count() AS reached,", "  countIf(converted) AS converted"];
+const countsOf = ({ hasExpected }: InsightPopulation): string[] =>
+  hasExpected
+    ? [
+        "  count() AS reached,",
+        "  countIf(converted) AS converted,",
+        `  sum(expected) AS ${EXPECTED_COLUMN},`,
+        `  sum(expected * (1 - expected)) AS ${EXPECTED_VARIANCE_COLUMN}`,
+      ]
+    : ["  count() AS reached,", "  countIf(converted) AS converted"];
 
 // Columns outside a grouping set come back as '', which no attribute value is.
 const singlesSelect = (
-  { source, hasLabels }: InsightPopulation,
+  population: InsightPopulation,
   attributes: readonly string[],
 ): string => {
+  const { source, hasLabels } = population;
   const ids = attributes.map(attributeSql);
   const sets = ["(k)", ...ids.map((id) => `(k, ${id})`)];
   return [
@@ -129,16 +148,17 @@ const singlesSelect = (
     "  k,",
     ...ids.map((id) => `  ${id},`),
     ...(hasLabels ? [`  any(label) AS ${QUESTION_LABEL_COLUMN},`] : []),
-    ...COUNTS,
+    ...countsOf(population),
     `FROM ${source}`,
     `GROUP BY GROUPING SETS (${sets.join(", ")})`,
   ].join("\n");
 };
 
 const pairsSelect = (
-  { source }: InsightPopulation,
+  population: InsightPopulation,
   kept: ReadonlyMap<string, readonly string[]>,
 ): string => {
+  const { source, hasExpected } = population;
   const ids = [...kept.keys()].map(attributeSql);
   const sets = ids.flatMap((a, index) =>
     ids.slice(index + 1).map((b) => `(k, ${a}_kept, ${b}_kept)`),
@@ -147,11 +167,12 @@ const pairsSelect = (
     "SELECT",
     "  k,",
     ...ids.map((id) => `  ${id}_kept AS ${id},`),
-    ...COUNTS,
+    ...countsOf(population),
     "FROM (",
     "  SELECT",
     "    k,",
     "    converted,",
+    ...(hasExpected ? ["    expected,"] : []),
     [...kept]
       .map(
         ([id, values]) =>
@@ -166,17 +187,19 @@ const pairsSelect = (
 };
 
 const exploreSelect = (
-  { source }: InsightPopulation,
+  { source, hasExpected }: InsightPopulation,
   {
     question,
     attributes,
     segmentLabel,
     countColumn,
     rateColumn,
+    expectedRateColumn,
     minSize,
     isDescending,
   }: Extract<InsightsQuery, { kind: "explore" }>,
 ): string => {
+  const expectedColumn = hasExpected ? expectedRateColumn : undefined;
   const ids = attributes.map(attributeSql);
   const segment =
     ids.length === 1
@@ -187,12 +210,22 @@ const exploreSelect = (
     "SELECT",
     `  if(segment_size >= ${Math.ceil(minSize)}, segment, ${lit(OTHER_VALUE)}) AS ${label},`,
     `  sum(segment_size) AS ${ident(countColumn)},`,
-    `  round(sum(segment_converted) / sum(segment_size), 4) AS ${ident(rateColumn)}`,
+    `  round(sum(segment_converted) / sum(segment_size), 4) AS ${ident(rateColumn)}` +
+      (expectedColumn !== undefined ? "," : ""),
+    ...(expectedColumn !== undefined
+      ? [
+          `  round(sum(segment_expected) / sum(segment_size), 4) AS ${ident(expectedColumn)}`,
+        ]
+      : []),
     "FROM (",
     "  SELECT",
     `    ${segment} AS segment,`,
     "    count() AS segment_size,",
-    "    countIf(converted) AS segment_converted",
+    "    countIf(converted) AS segment_converted" +
+      (expectedColumn !== undefined ? "," : ""),
+    ...(expectedColumn !== undefined
+      ? ["    sum(expected) AS segment_expected"]
+      : []),
     `  FROM ${source}`,
     `  WHERE k = ${Math.trunc(question)}`,
     "  GROUP BY segment",

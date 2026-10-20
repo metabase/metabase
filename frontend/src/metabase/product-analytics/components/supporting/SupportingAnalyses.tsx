@@ -13,9 +13,18 @@ type SupportingAnalysesProps = {
 
 /** The panels below the primary chart, in the order they're read. */
 export const SupportingAnalyses = ({ supporting }: SupportingAnalysesProps) => {
-  const { funnel, paths, cohorts } = supporting;
+  const { funnel, paths, cohorts, lifecycle } = supporting;
   if (cohorts !== undefined) {
     return <RetentionCurvesPanel cohorts={cohorts} />;
+  }
+  if (lifecycle !== undefined) {
+    return (
+      <InsightsPanel
+        insights={lifecycle.insights}
+        focus={undefined}
+        idleLabel={t`Finish setting up the lifecycle to see insights.`}
+      />
+    );
   }
   if (paths !== undefined) {
     return (

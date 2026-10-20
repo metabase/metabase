@@ -20,6 +20,7 @@ import { planPairs } from "../../frontend/src/metabase/product-analytics/insight
 import { parseCountRows } from "../../frontend/src/metabase/product-analytics/insights/rows";
 import { findInsights } from "../../frontend/src/metabase/product-analytics/insights/search";
 import {
+  getExpectedRate,
   getInsightSegments,
   getMinSegmentSize,
   isDescending,
@@ -34,6 +35,9 @@ import {
   type InsightsQuery,
   planInsights,
 } from "../../frontend/src/metabase/product-analytics/sql/analyses/insights";
+import { FIRST_SEEN_EXTRA_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
+import { lifecycleInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle-insights";
+import { IN_RANGE_FLAG } from "../../frontend/src/metabase/product-analytics/sql/analyses/lookback";
 
 import { FLAG, defaultSpec } from "./specs";
 
@@ -307,11 +311,174 @@ FROM ${TABLE}`;
     }
   }
 
+  failures.push(...(await checkLifecycle()));
+
   if (failures.length > 0) {
     console.log(`\n${failures.length} check(s) failed`);
     process.exit(1);
   }
   console.log("\nAll checks passed");
+};
+
+/**
+ * Lifecycle insights compare people by the events they did in a week, against
+ * people as active as them. The generator plants a reason to come back:
+ * people who invite someone in their first week are more active from then on.
+ * Errors come with heavy use, like everything else, but change nothing, so
+ * they mustn't show up once people are compared with others as active.
+ */
+const checkLifecycle = async (): Promise<string[]> => {
+  const failures: string[] = [];
+  const spec = defaultSpec("lifecycle");
+  const events = [
+    { flag: FLAG.invite, name: "Sent an invite" },
+    { flag: FLAG.report, name: "Created a report" },
+    { flag: FLAG.error, name: "Hit an error" },
+    { flag: FLAG.trial, name: "Started trial" },
+  ];
+  const attributes = events.flatMap(({ flag }, eventIndex) =>
+    [1, 3, 10].map((minCount, index) => ({
+      id: `attr_${eventIndex * 3 + index + 1}`,
+      flag,
+      minCount,
+    })),
+  );
+  const ids = attributes.map(({ id }) => id);
+  const describeAttribute = (id: string, value: string) => {
+    const attribute = attributes.find((item) => item.id === id);
+    const name = events.find(({ flag }) => flag === attribute?.flag)?.name;
+    return `${value === "true" ? "" : "not "}${name} ${attribute?.minCount}+`;
+  };
+  const population = lifecycleInsightPopulation(spec, attributes);
+  if (population === undefined) {
+    throw new Error("The lifecycle spec has no lifecycle.");
+  }
+  // All of the data is in range, so nobody's history is cut off.
+  const baseSql = `SELECT person_id, session_id, event_id, created_at, event_name, url_path,
+  person__first_seen_at, 1 AS ${IN_RANGE_FLAG},
+  if(event_name = 'trial_started', 1, 0) AS ${FLAG.trial},
+  if(startsWith(url_path, '/app') OR event_name IN ('report_created', 'invite_sent', 'checkout_completed'), 1, 0) AS ${FLAG.active},
+  if(event_name = 'invite_sent', 1, 0) AS ${FLAG.invite},
+  if(event_name = 'error', 1, 0) AS ${FLAG.error},
+  if(event_name = 'report_created', 1, 0) AS ${FLAG.report}
+FROM ${TABLE}`;
+  const toSql = (query: InsightsQuery): string =>
+    buildSql(
+      spec,
+      baseSql,
+      {
+        columns: {
+          timestamp: "created_at",
+          person: "person_id",
+          session: "session_id",
+          event_id: "event_id",
+          event_name: "event_name",
+          url_path: "url_path",
+        },
+        flags: [
+          FLAG.trial,
+          FLAG.active,
+          FLAG.invite,
+          FLAG.error,
+          FLAG.report,
+          IN_RANGE_FLAG,
+        ],
+        extraColumns: [
+          { as: FIRST_SEEN_EXTRA_COLUMN, alias: "person__first_seen_at" },
+        ],
+      },
+      planInsights(population, query),
+    ).sql;
+
+  console.log("\nLifecycle, by week:");
+  const started = performance.now();
+  const { names, rows } = await chRows(
+    toSql({ kind: "singles", attributes: ids }),
+  );
+  console.log(
+    `  singles: ${rows.length} rows in ${Math.round(performance.now() - started)}ms`,
+  );
+  const counts = indexCounts({
+    rows: parseCountRows(names, rows, ids),
+    singleAttributes: ids,
+  });
+  const insights = findInsights(counts);
+  const states = ["new", "returning", "resurrected"];
+  insights.forEach((insight) =>
+    console.log(
+      `  ${states[insight.question - 1]} | ` +
+        insight.conditions
+          .map(({ attributeId, value }) =>
+            describeAttribute(attributeId, value),
+          )
+          .join(" and ") +
+        ` | ${(insight.rate * 100).toFixed(1)}% vs ${(insight.restRate * 100).toFixed(1)}% expected | ` +
+        `${insight.reached} active weeks | excess ${insight.excess.toFixed(0)} | p ${insight.pValue.toExponential(1)}`,
+    ),
+  );
+
+  const flagOf = (insight: Insight) =>
+    attributes.find(({ id }) => id === insight.conditions[0]?.attributeId)
+      ?.flag;
+  const foundInvite = insights.some(
+    (insight) =>
+      insight.question === 1 &&
+      flagOf(insight) === FLAG.invite &&
+      insight.conditions[0]?.value === "true" &&
+      insight.excess > 0,
+  );
+  console.log(
+    `  ${foundInvite ? "ok  " : "FAIL"} found new | Sent an invite, higher`,
+  );
+  if (!foundInvite) {
+    failures.push("lifecycle new | Sent an invite higher");
+  }
+  const errors = insights.filter((insight) => flagOf(insight) === FLAG.error);
+  console.log(
+    `  ${errors.length === 0 ? "ok  " : "FAIL"} not found Hit an error, at any state`,
+  );
+  if (errors.length > 0) {
+    failures.push("unexpected lifecycle | Hit an error");
+  }
+
+  for (const insight of insights) {
+    const total = counts.totals.get(insight.question);
+    if (total === undefined) {
+      continue;
+    }
+    const explore = await chRows(
+      toSql({
+        kind: "explore",
+        question: insight.question,
+        attributes: insight.conditions.map(({ attributeId }) => attributeId),
+        segmentLabel: "segment",
+        countColumn: "active_periods",
+        rateColumn: "came_back",
+        expectedRateColumn: "expected_rate",
+        minSize: getMinSegmentSize(total.reached),
+        isDescending: isDescending(insight),
+      }),
+    );
+    const fromSql = explore.rows.map(([label, size, rate, expected]) => [
+      String(label),
+      Number(size),
+      Number(rate).toFixed(4),
+      Number(expected).toFixed(4),
+    ]);
+    const fromCounts = getInsightSegments(counts, insight).map((segment) => [
+      segment.label,
+      segment.reached,
+      segment.rate.toFixed(4),
+      (getExpectedRate(segment) ?? 0).toFixed(4),
+    ]);
+    if (!Bun.deepEquals(fromSql, fromCounts)) {
+      console.log(`  FAIL explore ${JSON.stringify(insight.conditions)}`);
+      console.log(`    SQL:    ${JSON.stringify(fromSql)}`);
+      console.log(`    counts: ${JSON.stringify(fromCounts)}`);
+      failures.push(`lifecycle explore ${JSON.stringify(insight.conditions)}`);
+    }
+  }
+  return failures;
 };
 
 await main();

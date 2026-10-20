@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { bounceInsightPopulation } from "../sql/analyses/bounce-insights";
 import { canShowBounces } from "../sql/analyses/path-steps";
 
+import { getColumnAttributeRules } from "./candidates";
 import { getBounceOutcome } from "./outcomes";
 import type { InsightsAnalysis } from "./types";
 
@@ -16,7 +17,12 @@ export const BOUNCE_INSIGHTS: InsightsAnalysis = {
     spec.kind === "paths" &&
     spec.paths !== undefined &&
     canShowBounces(spec.paths),
-  getPopulation: bounceInsightPopulation,
+  attributeKind: "column",
+  searchesPairs: true,
+  getPopulation: (spec, attributes) => {
+    const { ids, asOf } = getColumnAttributeRules(attributes);
+    return bounceInsightPopulation(spec, ids, asOf);
+  },
   getQuestions: (_spec, totals, labels) =>
     totals
       .flatMap(({ question, reached, converted }) => {

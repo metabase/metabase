@@ -1,8 +1,57 @@
-import type { AnalysisSpec } from "../../spec/types";
+import type { AnalysisSpec, LifecycleSpec } from "../../spec/types";
 import { INTERVAL, dateTimeLit, lit } from "../compile/dialect";
 import type { DrillPoint, QueryPlan } from "../compose";
 
 import { pointString, scopedEvents, startOf } from "./base";
+import { IN_RANGE_FLAG } from "./lookback";
+
+/** The `events_base` column with when each actor was first seen, when the spec has one. */
+export const FIRST_SEEN_EXTRA_COLUMN = "first_seen";
+
+/** What lifecycle reads from `events_base` beyond each event's actor and time. */
+export const lifecycleEventColumns = (
+  lifecycle: LifecycleSpec,
+): { as: string; sql: string }[] =>
+  lifecycle.hasFirstSeen
+    ? [{ as: FIRST_SEEN_EXTRA_COLUMN, sql: FIRST_SEEN_EXTRA_COLUMN }]
+    : [];
+
+/**
+ * Aggregates over an actor's events in a period: whether any of them is in
+ * the date range, and when the actor was first seen.
+ */
+export const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
+  `max(${IN_RANGE_FLAG}) AS in_range`,
+  ...(lifecycle.hasFirstSeen
+    ? [`min(${FIRST_SEEN_EXTRA_COLUMN}) AS first_seen_at`]
+    : []),
+];
+
+/**
+ * The window columns that place an actor's active period in the lifecycle,
+ * over rows of `actor`, `period` and the `lifecyclePeriodColumns`, including
+ * the periods read before the date range:
+ *
+ * - `previous`: the actor's active period before this one.
+ * - `state`: new in the period they were first seen (without a first seen
+ *   column, their first active period read), returning when they were active
+ *   the period before, and resurrected otherwise. Like PostHog's, someone
+ *   first seen before the range is resurrected in their first period in it.
+ */
+export const lifecycleStateColumns = (lifecycle: LifecycleSpec): string[] => {
+  const firstPeriod = lifecycle.hasFirstSeen
+    ? startOf(lifecycle.period, "first_seen_at")
+    : "min(period) OVER (PARTITION BY actor)";
+  return [
+    "lagInFrame(period) OVER (PARTITION BY actor ORDER BY period) AS previous,",
+    `${firstPeriod} AS first_period,`,
+    "multiIf(",
+    "  period = first_period, 'new',",
+    `  previous = period - INTERVAL ${INTERVAL[lifecycle.period]}, 'returning',`,
+    "  'resurrected'",
+    ") AS state",
+  ];
+};
 
 export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
   const lifecycle = spec.lifecycle;
@@ -10,60 +59,82 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     return { ctes: [], select: "SELECT 1", warnings: [] };
   }
 
-  const base = scopedEvents(spec, lifecycle.active);
+  const base = scopedEvents(
+    spec,
+    lifecycle.active,
+    lifecycleEventColumns(lifecycle),
+  );
   const period = lifecycle.period;
   const step = INTERVAL[period];
 
   const periods = {
     name: "actor_periods",
-    note: `one row per ${spec.grain} per ${period} they were active`,
+    note: `one row per ${spec.grain} per ${period} they were active, including the ${period} before the range`,
     deps: ["scoped_events"],
     body: [
       "SELECT",
       "  actor,",
-      `  ${startOf(period)} AS period`,
+      `  ${startOf(period)} AS period,`,
+      lifecyclePeriodColumns(lifecycle)
+        .map((column) => `  ${column}`)
+        .join(",\n"),
       "FROM scoped_events",
       "GROUP BY actor, period",
     ].join("\n"),
   };
 
+  const rangePeriods = {
+    name: "range_periods",
+    note: `the ${period}s in the date range`,
+    deps: ["actor_periods"],
+    body: "SELECT DISTINCT period FROM actor_periods WHERE in_range = 1",
+  };
+
   const classified = {
     name: "classified",
-    note: "each active period, compared against the actor's previous one",
+    note: "each active period in the range, compared against the actor's previous one",
     deps: ["actor_periods"],
     body: [
-      "SELECT",
-      "  actor,",
-      "  period,",
-      "  lagInFrame(period) OVER (PARTITION BY actor ORDER BY period) AS previous,",
-      "  min(period) OVER (PARTITION BY actor) AS first_period,",
-      "  multiIf(",
-      "    period = first_period, 'new',",
-      `    previous = period - INTERVAL ${step}, 'returning',`,
-      "    'resurrected'",
-      "  ) AS state",
-      "FROM actor_periods",
+      "SELECT actor, period, state",
+      "FROM (",
+      "  SELECT",
+      "    actor,",
+      "    period,",
+      "    in_range,",
+      lifecycleStateColumns(lifecycle)
+        .map((column) => `    ${column}`)
+        .join("\n"),
+      "  FROM actor_periods",
+      ")",
+      "WHERE in_range = 1",
     ].join("\n"),
   };
 
+  const wentQuiet = [
+    "SELECT actor, period FROM (",
+    "  SELECT",
+    "    actor,",
+    "    period,",
+    "    leadInFrame(period) OVER (PARTITION BY actor ORDER BY period",
+    "      ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS next_period",
+    "  FROM actor_periods",
+    ")",
+    `WHERE (next_period <= period OR next_period > period + INTERVAL ${step})`,
+    `  AND period + INTERVAL ${step} IN (SELECT period FROM range_periods)`,
+  ];
+
   const quiet = {
     name: "went_quiet",
-    note: "the period after each actor's last active one, where they did not return",
-    deps: ["actor_periods"],
+    note: "the period in the range after each actor's last active one, where they did not return",
+    deps: ["actor_periods", "range_periods"],
     body: [
       "SELECT",
       // Not aliased `period`: ClickHouse would read the alias in WHERE.
       `  period + INTERVAL ${step} AS quiet_period,`,
       "  count() AS actors",
       "FROM (",
-      "  SELECT",
-      "    actor,",
-      "    period,",
-      "    leadInFrame(period) OVER (PARTITION BY actor ORDER BY period",
-      "      ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS next_period",
-      "  FROM actor_periods",
+      ...wentQuiet.map((line) => `  ${line}`),
       ")",
-      `WHERE next_period <= period OR next_period > period + INTERVAL ${step}`,
       "GROUP BY quiet_period",
     ].join("\n"),
   };
@@ -86,22 +157,11 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     if (state !== "dormant") {
       return `SELECT actor FROM classified\nWHERE period = ${at} AND state = ${lit(state)}`;
     }
-    return [
-      "SELECT actor FROM (",
-      "  SELECT",
-      "    actor,",
-      "    period,",
-      "    leadInFrame(period) OVER (PARTITION BY actor ORDER BY period",
-      "      ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS next_period",
-      "  FROM actor_periods",
-      ")",
-      `WHERE (next_period <= period OR next_period > period + INTERVAL ${step})`,
-      `  AND period + INTERVAL ${step} = ${at}`,
-    ].join("\n");
+    return [...wentQuiet, `  AND period + INTERVAL ${step} = ${at}`].join("\n");
   };
 
   return {
-    ctes: [...base.ctes, periods, classified, quiet],
+    ctes: [...base.ctes, periods, rangePeriods, classified, quiet],
     select: [
       "SELECT period, state, actors FROM (",
       "  SELECT period, state, count() AS actors",
@@ -119,6 +179,11 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     warnings: [
       ...base.warnings,
       "“Went quiet” is derived from gaps between active periods, so an actor who never returns is counted quiet once — in the period after their last activity.",
+      ...(lifecycle.hasFirstSeen
+        ? []
+        : [
+            "Without a column for when each person was first seen, people are new in their first active period read, which only reaches one period before the range.",
+          ]),
     ],
     members,
   };

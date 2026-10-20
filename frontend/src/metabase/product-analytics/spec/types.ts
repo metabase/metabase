@@ -118,6 +118,12 @@ export interface LifecycleSpec {
   /** What counts as being active. Undefined: any event does. */
   active?: FlagRef;
   period: Period;
+  /**
+   * Whether `events_base` has when each actor was first seen, as the
+   * `first_seen` column. Without it, actors are new in their first active
+   * period in the date range.
+   */
+  hasFirstSeen: boolean;
 }
 
 export interface CohortsSpec {

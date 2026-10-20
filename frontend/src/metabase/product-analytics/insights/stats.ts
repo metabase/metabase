@@ -40,7 +40,53 @@ export const rateOf = ({ reached, converted }: Counts): number =>
 export const subtractCounts = (whole: Counts, part: Counts): Counts => ({
   reached: whole.reached - part.reached,
   converted: whole.converted - part.converted,
+  ...(whole.expected !== undefined && part.expected !== undefined
+    ? {
+        expected: {
+          outcomes: whole.expected.outcomes - part.expected.outcomes,
+          variance: whole.expected.variance - part.expected.variance,
+        },
+      }
+    : {}),
 });
+
+/**
+ * Two-sided p-value of whether a group's outcomes differ from what's expected
+ * of its actors, treating each actor's outcome as an independent draw at their
+ * expected chance. 1 when nothing is expected or nothing could vary.
+ */
+export const expectedPValue = ({ converted, expected }: Counts): number => {
+  if (expected === undefined || expected.variance <= 0) {
+    return 1;
+  }
+  return normalPValue(
+    (converted - expected.outcomes) / Math.sqrt(expected.variance),
+  );
+};
+
+/**
+ * Whether `a` and `b` have the outcome at different rates. With expected
+ * outcomes, it's whether they beat (or miss) what's expected of them by
+ * different amounts per actor, so groups of more and less active actors can
+ * be compared.
+ */
+export const differencePValue = (a: Counts, b: Counts): number => {
+  if (a.expected === undefined || b.expected === undefined) {
+    return twoProportionPValue(a, b);
+  }
+  if (a.reached <= 0 || b.reached <= 0) {
+    return 1;
+  }
+  const excessRate = ({ reached, converted, expected }: Counts) =>
+    (converted - (expected?.outcomes ?? 0)) / reached;
+  const variance = ({ reached, expected }: Counts) =>
+    (expected?.variance ?? 0) / (reached * reached);
+  const standardError = Math.sqrt(variance(a) + variance(b));
+  if (standardError === 0) {
+    return 1;
+  }
+  return normalPValue((excessRate(a) - excessRate(b)) / standardError);
+};
 
 /**
  * Two-sided, pooled two-proportion z-test of whether `a` and `b` convert at

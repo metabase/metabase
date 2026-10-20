@@ -19,6 +19,15 @@ export type InsightSegment = Counts & {
   rate: number;
 };
 
+/** The rate expected of a segment, when the counts carry expected outcomes. */
+export const getExpectedRate = ({
+  reached,
+  expected,
+}: Counts): number | undefined =>
+  expected !== undefined && reached > 0
+    ? expected.outcomes / reached
+    : undefined;
+
 /** People in a segment smaller than this are counted in `OTHER_VALUE`. */
 export const getMinSegmentSize = (
   questionReached: number,
@@ -75,6 +84,7 @@ export const getInsightSegments = (
       values: valuesOf(group, attributeIds),
       reached: group.reached,
       converted: group.converted,
+      ...(group.expected !== undefined ? { expected: group.expected } : {}),
       rate: rateOf(group),
     }))
     .sortBy("label")

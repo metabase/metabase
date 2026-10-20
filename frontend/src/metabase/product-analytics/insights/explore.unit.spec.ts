@@ -4,6 +4,7 @@ import type { InsightSegment } from "./segments";
 import type { InsightAttribute } from "./types";
 
 const IDENTIFIED: InsightAttribute = {
+  kind: "column",
   id: "attr_1",
   column: "person__identified",
   from: "events",
@@ -11,6 +12,7 @@ const IDENTIFIED: InsightAttribute = {
   asOf: "true-by-step",
 };
 const BROWSER: InsightAttribute = {
+  kind: "column",
   id: "attr_2",
   column: "browser",
   from: "events",

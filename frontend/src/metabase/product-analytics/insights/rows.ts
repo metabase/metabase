@@ -1,4 +1,8 @@
-import { QUESTION_LABEL_COLUMN } from "../sql/analyses/insights";
+import {
+  EXPECTED_COLUMN,
+  EXPECTED_VARIANCE_COLUMN,
+  QUESTION_LABEL_COLUMN,
+} from "../sql/analyses/insights";
 
 import type { GroupCounts } from "./types";
 
@@ -13,6 +17,7 @@ export const toCount = (value: unknown): number | undefined => {
 /**
  * Reads the rows of an insights counts query. An empty attribute value means
  * the row doesn't group by that attribute. Rows that can't be read are skipped.
+ * Expected outcomes are read when the query has them.
  */
 export const parseCountRows = (
   columnNames: readonly string[],
@@ -23,6 +28,8 @@ export const parseCountRows = (
   const questionIndex = indexOf("k");
   const reachedIndex = indexOf("reached");
   const convertedIndex = indexOf("converted");
+  const expectedIndex = indexOf(EXPECTED_COLUMN);
+  const expectedVarianceIndex = indexOf(EXPECTED_VARIANCE_COLUMN);
   const attributeIndexes = attributeIds
     .map((attributeId) => ({ attributeId, index: indexOf(attributeId) }))
     .filter(({ index }) => index >= 0);
@@ -44,7 +51,25 @@ export const parseCountRows = (
         ? [{ attributeId, value }]
         : [];
     });
-    return [{ question, reached, converted, conditions }];
+    const expectedOutcomes =
+      expectedIndex >= 0 ? toCount(row[expectedIndex]) : undefined;
+    const expectedVariance =
+      expectedVarianceIndex >= 0
+        ? toCount(row[expectedVarianceIndex])
+        : undefined;
+    const expected =
+      expectedOutcomes !== undefined && expectedVariance !== undefined
+        ? { outcomes: expectedOutcomes, variance: expectedVariance }
+        : undefined;
+    return [
+      {
+        question,
+        reached,
+        converted,
+        ...(expected !== undefined ? { expected } : {}),
+        conditions,
+      },
+    ];
   });
 };
 
