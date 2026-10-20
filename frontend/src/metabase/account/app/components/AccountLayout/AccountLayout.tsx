@@ -34,7 +34,8 @@ const AccountLayout = ({
         mx="auto"
         px={{ base: "sm", sm: "lg" }}
         py={{ base: "sm", sm: "xxl" }}
-        w={{ base: "100%", sm: rem(540) }}
+        w="100%"
+        maw={rem(540)}
       >
         <Outlet />
       </Box>
