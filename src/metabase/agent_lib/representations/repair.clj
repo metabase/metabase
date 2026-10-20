@@ -2200,13 +2200,11 @@
   ;; addresses the card in its own vocabulary, and the two card types take different lookups.
   (ex-info (let [[kind short-kind] (if (= "model" card-type) ["model" "model"] ["saved question" "question"])]
              (format (str "Field %s is on %s, which the %s %s reads from but does not return, so it cannot be "
-                          "referenced here. Use a column that %s returns. If the stage does not aggregate a metric "
-                          "defined on this %s, you can instead build it on `source-table:`.")
+                          "referenced here. Use a column that %s returns.")
                      (display-portable fk)
                      (display-target-table fk target-table-id)
                      kind
                      (pr-str card-name)
-                     short-kind
                      short-kind))
            {:status-code      400
             :error            :column-not-returned

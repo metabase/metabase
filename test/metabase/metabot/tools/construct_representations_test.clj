@@ -2642,7 +2642,9 @@
                                                  "aggregation" [["count" {}]]}]}))))]
         (is (=? {:error :column-not-returned, :source-card-type "model"} (ex-data e)))
         (is (str/includes? (ex-message e) "which the model \"Orders id and total\" reads from"))
-        (is (not (str/includes? (ex-message e) "saved question")))))))
+        (is (not (str/includes? (ex-message e) "saved question")))
+        (is (not (str/includes? (ex-message e) "source-table"))
+            "a stage built on the model's table instead would lose the model's own filters and joins")))))
 
 (deftest source-card-with-restricted-fields-rejects-column-it-does-not-return-test
   (testing (str "The base-table equality short-circuit used to fire before the returned-columns check, so a\n"
@@ -2669,6 +2671,7 @@
                                  (run! [db-name "PUBLIC" "ORDERS" "QUANTITY"])))]
               (is (=? {:agent-error? true, :error :column-not-returned} (ex-data e)))
               (is (str/includes? (ex-message e) "does not return"))
+              (is (not (str/includes? (ex-message e) "source-table")))
               (is (not (str/includes? (ex-message e) "read_resource"))
                   "the shared pipeline's message stays surface-neutral; the lookup advice is each surface's own")
               (testing "and the URI that Metabot's recovery step and the Agent API's hint send the agent to resolves"
