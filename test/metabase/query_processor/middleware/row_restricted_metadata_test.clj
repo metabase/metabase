@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.row-restricted-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]))
 
 (def ^:private metadata
@@ -11,36 +13,45 @@
 (def ^:private stripped-metadata
   {:cols [{:name "PRICE"} {:name "NAME"} {:name "count"}]})
 
-(def ^:private query
-  {:database 1, :type :query, :query {:source-table 10}})
+(defn- venues-query
+  "An MBQL 5 query, the shape post-processing receives."
+  []
+  (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn- strip
   "Run `metadata` through the middleware for `query`, returning what the next rff receives."
   [query]
   ((row-restricted-metadata/strip-row-restricted-fingerprints query identity) metadata))
 
-(deftest unrestricted-query-keeps-fingerprints-test
+(deftest ^:parallel unrestricted-query-keeps-fingerprints-test
   (testing "with no row restriction in force the cols are passed through untouched"
-    (is (= metadata (strip query)))))
+    (is (= metadata (strip (venues-query))))))
 
-(deftest sandboxed-query-loses-fingerprints-test
-  (testing "a sandboxed-table marker strips the fingerprint from every col, not only the sandboxed table's (BOT-2115)"
+(deftest ^:parallel sandboxed-query-loses-fingerprints-test
+  (testing "a sandboxed-table marker on a stage strips the fingerprint from every col, not only its table's (BOT-2115)"
     (is (= stripped-metadata
-           (strip (assoc-in query [:query :query-permissions/sandboxed-table] 10)))))
-  (testing "including a marker nested in a join's source query"
+           (strip (assoc-in (venues-query) [:stages 0 :query-permissions/sandboxed-table] (meta/id :venues))))))
+  (testing "including a marker on the stage of a join, where it sits once a sandboxed joined table is inlined"
+    (let [query (lib/join (venues-query)
+                          (lib/join-clause (meta/table-metadata :categories)
+                                           [(lib/= (meta/field-metadata :venues :category-id)
+                                                   (meta/field-metadata :categories :id))]))]
+      (is (= metadata (strip query)))
+      (is (= stripped-metadata
+             (strip (assoc-in query [:stages 0 :joins 0 :stages 0 :query-permissions/sandboxed-table]
+                              (meta/id :categories)))))))
+  (testing "including a marker on an inner stage, where it sits once a sandboxed source table is wrapped"
     (is (= stripped-metadata
-           (strip (assoc-in query [:query :joins]
-                            [{:source-query {:source-table                      20
-                                             :query-permissions/sandboxed-table 20}
-                              :condition    [:= [:field 1 nil] [:field 2 {:join-alias "c"}]]
-                              :alias        "c"}]))))))
+           (strip (-> (venues-query)
+                      lib/append-stage
+                      (assoc-in [:stages 0 :query-permissions/sandboxed-table] (meta/id :venues))))))))
 
-(deftest impersonated-query-loses-fingerprints-test
+(deftest ^:parallel impersonated-query-loses-fingerprints-test
   (testing "a connection-impersonation role on the query strips the fingerprint from every col (BOT-2115)"
     (is (= stripped-metadata
-           (strip (assoc query :impersonation/role "restricted_role"))))))
+           (strip (assoc (venues-query) :impersonation/role "restricted_role"))))))
 
-(deftest db-routed-query-loses-fingerprints-test
+(deftest ^:parallel db-routed-query-loses-fingerprints-test
   (testing "a destination database on the query strips the fingerprint from every col (BOT-2115)"
     (is (= stripped-metadata
-           (strip (assoc query :destination-database/id 2))))))
+           (strip (assoc (venues-query) :destination-database/id 2))))))
