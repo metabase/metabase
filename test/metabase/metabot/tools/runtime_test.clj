@@ -21,6 +21,16 @@
    :recovery [{:uses #{"search"}        :text "Call `search` to find a widget id."}
               {:uses #{"read_resource"} :text "Or call `read_resource` on the widget collection."}]})
 
+(tools.error/defrecoverable runtime-test-quoted-failure!
+  "A failure whose message quotes foreign text, the way a database's error reaches the model."
+  {:payload [:map {:closed true}
+             [:said   :string]
+             [:prefix :string]]
+   :quoted  #{:said}}
+  [{:keys [said prefix]}]
+  {:message  (str prefix (pr-str said))
+   :recovery []})
+
 (defn- tool
   "A one-off `Tool` with `declared` and a body of `f`, for the runtime to drive."
   [declared f]
@@ -331,6 +341,20 @@
              clojure.lang.ExceptionInfo #"may only carry authored text"
              (tools.runtime/render {:class :validation :code :invalid-arguments :message message}
                                    all-tool-names)))))))
+
+(deftest ^:parallel render-skips-the-text-a-declaration-quotes-test
+  (let [render (fn [payload]
+                 (tools.runtime/render (tools.error/classify
+                                        (try (tools.error/throw-recoverable! ::runtime-test-quoted-failure payload)
+                                             (catch Throwable e e)))
+                                       all-tool-names))]
+    (testing "a class name inside the foreign text a declaration quotes is data, so the check lets it through"
+      (is (= "The database said: \"Column clojure.lang.foo not found\""
+             (:output (render {:said "Column clojure.lang.foo not found", :prefix "The database said: "})))))
+    (testing "the rest of the text is still checked"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"may only carry authored text"
+           (render {:said "Column foo not found", :prefix "clojure.lang.ExceptionInfo: "}))))))
 
 ;; Whether a declaration's text names a tool it has not declared is a property of the declaration,
 ;; not of a render, so `render` no longer checks it — see

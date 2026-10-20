@@ -264,7 +264,8 @@
   "The query failed to compile, or its database returned an error."
   {:payload [:map {:closed true}
              ;; The compiler's or the database's own text, which the message quotes.
-             [:query-error [:maybe :string]]]}
+             [:query-error [:maybe :string]]]
+   :quoted  #{:query-error}}
   [{:keys [query-error]}]
   {:message  (query-failed-output query-error)
    :recovery []})
