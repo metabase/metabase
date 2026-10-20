@@ -11,8 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- url [run-id & parts]
-  (apply str "ee/data-sensitivity/runs/" run-id parts))
+(def ^:private url "ee/data-sensitivity/proposals/apply")
 
 (defn- suggestion! [run-id table-id field-id & {:as overrides}]
   (t2/insert-returning-pk! :model/MetadataGenerationProposal
@@ -36,15 +35,15 @@
 (defn- settings [field-id]
   (t2/select-one :model/FieldUserSettings :field_id field-id))
 
-(defn- apply! [run-id body]
-  (mt/user-http-request :crowberto :post 200 (url run-id "/apply") body))
+(defn- apply! [body]
+  (mt/user-http-request :crowberto :post 200 url body))
 
-(def ^:private nothing {:written 0 :rejected 0 :stale 0 :failed 0 :failures []})
+(def ^:private nothing {:written 0 :rejected 0 :failed 0 :failures []})
 
 (defn- do-with-run
   "Tables `A` and `B` of one database with a run over them. `f` gets the run id and a map of table and field ids: text
   fields `a-text` (deterministic `type/Category`), `a-plain` (no semantic type) and `b-text` (deterministic
-  `type/Category`), integer field `a-int` (no semantic type) and `a-fk` (`type/FK`)."
+  `type/Category`), integer field `a-int` (no semantic type) and `a-fk` (`type/FK`), and the database id `db`."
   [f]
   (mt/with-temp [:model/Database {db-id :id}  {}
                  :model/Table    {a :id}      {:db_id db-id :schema "S" :name "A"}
@@ -61,14 +60,11 @@
                                                             :scope       {:type :database}
                                                             :attributes  [:data_sensitivity :semantic_type :description]
                                                             :status      :succeeded}]
-    (f run-id {:a a :b b :a-text a-text :a-plain a-plain :a-int a-int :a-fk a-fk :b-text b-text})))
+    (f run-id {:db db-id :a a :b b :a-text a-text :a-plain a-plain :a-int a-int :a-fk a-fk :b-text b-text})))
 
 (deftest superuser-required-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run
-     (fn [run-id _]
-       (mt/user-http-request :rasta :post 403 (url run-id "/apply") {})
-       (mt/user-http-request :crowberto :post 404 (url Integer/MAX_VALUE "/apply") {})))))
+    (mt/user-http-request :rasta :post 403 url {})))
 
 (deftest apply-writes-accepted-ai-values-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -82,7 +78,7 @@
              pending (suggestion! run-id a a-plain)
              other   (suggestion! run-id b b-text)]
          (is (= (assoc nothing :written 3)
-                (apply! run-id {:accept [sem ds desc]})))
+                (apply! {:accept [sem ds desc]})))
          (testing "only the accepted proposals are written, and their rows are deleted"
            (is (= {sem :deleted ds :deleted desc :deleted pending :pending other :pending}
                   (statuses [sem ds desc pending other]))))
@@ -97,7 +93,7 @@
          (testing "the deterministic layer does not change"
            (is (= :type/Category (t2/select-one-fn :semantic_type :model/Field :id a-text))))
          (testing "an accepted proposal is not written again"
-           (is (= nothing (apply! run-id {:accept [sem]})))))))))
+           (is (= nothing (apply! {:accept [sem]})))))))))
 
 (deftest apply-accepts-rejects-and-edits-in-one-request-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -111,7 +107,7 @@
              left     (suggestion! run-id a a-plain :attribute :description
                                    :proposed_value "Left alone.")]
          (is (= (assoc nothing :written 3 :rejected 1)
-                (apply! run-id {:accept [sem ds] :reject [rejected] :edits {edited "type/Score"}})))
+                (apply! {:accept [sem ds] :reject [rejected] :edits {edited "type/Score"}})))
          (is (= {sem :deleted ds :deleted edited :deleted rejected :rejected left :pending}
                 (statuses [sem ds edited rejected left])))
          (testing "the edit is written as the person's value, the others as AI values"
@@ -122,15 +118,17 @@
            (is (nil? (settings b-text)))
            (is (=? {:decided_by (mt/user->id :crowberto) :decided_at some?}
                    (t2/select-one :model/MetadataGenerationProposal rejected))))
+         (testing "a rejected proposal is hidden from the review"
+           (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id b))))
          (testing "a rejected proposal can be accepted by a later apply"
-           (is (= (assoc nothing :written 1) (apply! run-id {:accept [rejected]})))
+           (is (= (assoc nothing :written 1) (apply! {:accept [rejected]})))
            (is (= :deleted (get (statuses [rejected]) rejected)))))))))
 
 (deftest apply-all-test
   (mt/with-premium-features #{:data-sensitivity}
-    (testing "all accepts every proposal of the run except those in except or reject, and leaves out human-set ones"
+    (testing "all accepts the pending proposals in scope except excepted, rejected and human-set ones"
       (do-with-run
-       (fn [run-id {:keys [a b a-text a-plain a-int b-text]}]
+       (fn [run-id {:keys [db a b a-text a-plain a-int b-text]}]
          (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
          (let [human    (suggestion! run-id a a-text)
                ds       (suggestion! run-id a a-plain :attribute :data_sensitivity
@@ -140,7 +138,7 @@
                                      :proposed_value "No.")
                other    (suggestion! run-id b b-text)]
            (is (= (assoc nothing :written 2 :rejected 1)
-                  (apply! run-id {:all true :except [excepted] :reject [rejected]})))
+                  (apply! {:all true :database_id db :except [excepted] :reject [rejected]})))
            (is (= {human :pending ds :deleted excepted :pending rejected :rejected other :deleted}
                   (statuses [human ds excepted rejected other])))
            (is (=? {:semantic_type :type/Name :semantic_type_set true} (settings a-text))))))
@@ -151,7 +149,7 @@
            (let [human (suggestion! run-id a a-text)
                  other (suggestion! run-id b b-text)]
              (is (= (assoc nothing :written 1)
-                    (apply! run-id {:all true :table_ids [a] :include_human_set true})))
+                    (apply! {:all true :table_ids [a] :include_human_set true})))
              (is (= {human :deleted other :pending} (statuses [human other])))
              (is (=? {:semantic_type nil :semantic_type_set false :ai_semantic_type :type/Email}
                      (settings a-text)))))))
@@ -160,7 +158,7 @@
          (fn [run-id {:keys [a a-text]}]
            (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
            (let [human (suggestion! run-id a a-text)]
-             (is (= (assoc nothing :written 1) (apply! run-id {:all true :edits {human "type/Title"}})))
+             (is (= (assoc nothing :written 1) (apply! {:all true :field_ids [a-text] :edits {human "type/Title"}})))
              (is (=? {:semantic_type :type/Title :semantic_type_set true} (settings a-text))))))))))
 
 (deftest apply-request-validation-test
@@ -171,42 +169,77 @@
              ds  (suggestion! run-id a a-plain :attribute :data_sensitivity
                               :proposed_value "PII")]
          (testing "the selection must be consistent"
-           (mt/user-http-request :crowberto :post 400 (url run-id "/apply") {:accept [sem] :all true})
-           (mt/user-http-request :crowberto :post 400 (url run-id "/apply") {:accept [sem] :except [ds]})
-           (mt/user-http-request :crowberto :post 400 (url run-id "/apply") {:table_ids [a]})
-           (mt/user-http-request :crowberto :post 400 (url run-id "/apply") {:accept [sem] :reject [sem]})
-           (mt/user-http-request :crowberto :post 400 (url run-id "/apply") {:reject [sem] :edits {sem "type/Score"}})
-           (mt/user-http-request :crowberto :post 400 (url run-id "/apply")
+           (mt/user-http-request :crowberto :post 400 url {:accept [sem] :all true})
+           (mt/user-http-request :crowberto :post 400 url {:accept [sem] :except [ds]})
+           (mt/user-http-request :crowberto :post 400 url {:table_ids [a]})
+           (mt/user-http-request :crowberto :post 400 url {:all true})
+           (mt/user-http-request :crowberto :post 400 url {:all true :table_ids [a] :schema "S"})
+           (mt/user-http-request :crowberto :post 400 url {:accept [sem] :reject [sem]})
+           (mt/user-http-request :crowberto :post 400 url {:reject [sem] :edits {sem "type/Score"}})
+           (mt/user-http-request :crowberto :post 400 url
                                  {:all true :except [sem] :edits {sem "type/Score"}}))
          (testing "a refused edit is a 400 and writes nothing"
-           (mt/user-http-request :crowberto :post 400 (url run-id "/apply")
+           (mt/user-http-request :crowberto :post 400 url
                                  {:accept [ds] :edits {sem "type/Email"}})
            (is (= {sem :pending ds :pending} (statuses [sem ds])))
            (is (nil? (settings a-plain))))
-         (testing "ids of another run are ignored"
-           (mt/with-temp [:model/MetadataGenerationRun {other-run :id} {:database_id (t2/select-one-fn :db_id :model/Table a)
-                                                                        :scope       {:type :database}
-                                                                        :attributes  [:semantic_type]
-                                                                        :status      :succeeded
-                                                                        :is_active   nil}]
-             (is (= nothing (apply! other-run {:accept [sem] :reject [ds]})))
-             (is (= {sem :pending ds :pending} (statuses [sem ds]))))))))))
+         (testing "ids that name no proposal are ignored"
+           (is (= nothing (apply! {:accept [Integer/MAX_VALUE] :reject [(dec Integer/MAX_VALUE)]})))
+           (is (= {sem :pending ds :pending} (statuses [sem ds])))))))))
+
+(deftest apply-skips-changed-proposals-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [db a a-text a-plain a-int]}]
+       (let [replaced (suggestion! run-id a a-text :proposed_value "type/Name")
+             same     (suggestion! run-id a a-plain :attribute :data_sensitivity :proposed_value "PII")
+             rejected (suggestion! run-id a a-plain :attribute :description :proposed_value "New text.")
+             edited   (suggestion! run-id a a-int :proposed_value "type/Score")
+             gone     (suggestion! run-id a a-plain)]
+         (t2/delete! :model/MetadataGenerationProposal gone)
+         (is (= {:written  1
+                 :rejected 0
+                 :failed   4
+                 :failures [{:proposal_id replaced :field_id a-text :attribute "semantic_type" :reason "changed"}
+                            {:proposal_id rejected :field_id a-plain :attribute "description" :reason "changed"}
+                            {:proposal_id edited :field_id a-int :attribute "semantic_type" :reason "changed"}
+                            {:proposal_id gone :field_id nil :attribute nil :reason "changed"}]}
+                (apply! {:accept          [replaced same]
+                         :reject          [rejected gone]
+                         :edits           {edited "type/Quantity"}
+                         :proposed_values {replaced "type/Email"
+                                           same     "PII"
+                                           rejected "Old text."
+                                           edited   "type/Quantity"
+                                           gone     "type/Email"}})))
+         (testing "a changed proposal is neither written nor rejected"
+           (is (= {replaced :pending same :deleted rejected :pending edited :pending}
+                  (statuses [replaced same rejected edited])))
+           (is (nil? (settings a-text)))
+           (is (nil? (settings a-int))))
+         (testing "all skips a changed proposal too"
+           (is (=? {:written 0 :failed 1 :failures [{:proposal_id edited :reason "changed"}]}
+                   (apply! {:all true :database_id db :except [replaced rejected]
+                            :proposed_values {edited "type/Quantity"}}))))
+         (testing "a proposal without a seen value is written"
+           (is (=? {:written 1 :failed 0} (apply! {:accept [replaced]})))
+           (is (=? {:ai_semantic_type :type/Name} (settings a-text)))))))))
 
 (deftest apply-reads-human-layer-at-accept-time-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
-     (fn [run-id {:keys [a a-text a-plain]}]
+     (fn [run-id {:keys [db a a-text a-plain]}]
        (let [sem (suggestion! run-id a a-text)
              ds  (suggestion! run-id a a-plain :attribute :data_sensitivity :proposed_value "PII")]
          (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
          (t2/insert! :model/FieldUserSettings {:field_id a-plain :ai_data_sensitivity :PHI})
          (testing "all leaves out a proposal over a value a person set after the run"
-           (is (= (assoc nothing :written 1) (apply! run-id {:all true})))
+           (is (= (assoc nothing :written 1) (apply! {:all true :database_id db})))
            (is (= {sem :pending ds :deleted} (statuses [sem ds])))
            (is (=? {:semantic_type :type/Name} (effective a-text)))
            (is (=? {:data_sensitivity :PII} (effective a-plain))))
          (testing "accept by id replaces the person's value"
-           (is (= (assoc nothing :written 1) (apply! run-id {:accept [sem]})))
+           (is (= (assoc nothing :written 1) (apply! {:accept [sem]})))
            (is (=? {:semantic_type nil :semantic_type_set false :ai_semantic_type :type/Email} (settings a-text)))))))))
 
 (deftest apply-over-human-value-test
@@ -218,7 +251,7 @@
        (let [sem  (suggestion! run-id a a-text)
              desc (suggestion! run-id a a-plain :attribute :description
                                :proposed_value "A plain text field.")]
-         (is (=? {:written 2} (apply! run-id {:accept [sem desc]})))
+         (is (=? {:written 2} (apply! {:accept [sem desc]})))
          (is (= {sem :deleted desc :deleted} (statuses [sem desc])))
          (testing "the person's value is cleared and readers see the AI value"
            (is (=? {:semantic_type nil :semantic_type_set false :ai_semantic_type :type/Email} (settings a-text)))
@@ -232,7 +265,7 @@
     (do-with-run
      (fn [run-id {:keys [a a-plain]}]
        (suggestion! run-id a a-plain :proposed_value "type/Category")
-       (is (=? {:written 1} (apply! run-id {:all true})))
+       (is (=? {:written 1} (apply! {:all true :table_ids [a]})))
        (is (=? {:semantic_type :type/Category :has_field_values nil} (effective a-plain)))
        (is (nil? (t2/select-one-fn :has_field_values :model/Field :id a-plain)))))))
 
@@ -245,12 +278,12 @@
              missing   (suggestion! run-id a a-plain :attribute :description
                                     :proposed_value "Gone.")]
          (t2/update! :model/Field a-plain {:active false})
-         (is (= {:written 0 :rejected 0 :stale 0 :failed 3
-                 :failures [{:suggestion_id key-field :field_id a-fk :attribute "semantic_type" :reason "key_field"}
-                            {:suggestion_id misfit :field_id a-int :attribute "semantic_type" :reason "type_mismatch"}
-                            {:suggestion_id missing :field_id a-plain :attribute "description"
+         (is (= {:written 0 :rejected 0 :failed 3
+                 :failures [{:proposal_id key-field :field_id a-fk :attribute "semantic_type" :reason "key_field"}
+                            {:proposal_id misfit :field_id a-int :attribute "semantic_type" :reason "type_mismatch"}
+                            {:proposal_id missing :field_id a-plain :attribute "description"
                              :reason "field_not_found"}]}
-                (apply! run-id {:accept [key-field misfit missing]})))
+                (apply! {:accept [key-field misfit missing]})))
          (testing "failed proposals stay pending and write nothing"
            (is (= #{:pending} (set (vals (statuses [key-field misfit missing])))))
            (is (nil? (settings a-fk)))))))))
@@ -258,7 +291,7 @@
 (deftest apply-side-effects-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
-     (fn [run-id {:keys [a a-text a-int]}]
+     (fn [run-id {:keys [db a a-text a-int]}]
        (mt/with-temp [:model/Dimension {dim :id} {:field_id a-int :type :internal :name "Remapped"}]
          (suggestion! run-id a a-int :proposed_value "type/Quantity")
          (suggestion! run-id a a-int :attribute :data_sensitivity
@@ -267,7 +300,7 @@
          (let [published (atom [])]
            (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
              (mt/with-current-user (mt/user->id :crowberto)
-               (is (=? {:written 3} (review/apply! run-id {:all true} (mt/user->id :crowberto))))))
+               (is (=? {:written 3} (review/apply! {:all true :database_id db} (mt/user->id :crowberto))))))
            (testing "one :event/field-update per written field, with the value readers see"
              (is (= #{[:event/field-update a-int] [:event/field-update a-text]}
                     (set (map (fn [[topic {:keys [object]}]] [topic (:id object)]) @published))))
@@ -285,8 +318,8 @@
     (is (= :human (context/value-source {:semantic_type_set true :ai_semantic_type :type/Email} :semantic_type nil)))
     (is (= :human (context/value-source {:display_name "X"} :display_name "X")))))
 
-(defn- apply-edit! [run-id suggestion-id status value]
-  (mt/user-http-request :crowberto :post status (url run-id "/apply") {:edits {suggestion-id value}}))
+(defn- apply-edit! [suggestion-id status value]
+  (mt/user-http-request :crowberto :post status url {:edits {suggestion-id value}}))
 
 (deftest edit-validation-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -298,21 +331,21 @@
              desc (suggestion! run-id a a-plain :attribute :description
                                :proposed_value "A field.")]
          (testing "only a superuser can apply"
-           (mt/user-http-request :rasta :post 403 (url run-id "/apply") {:edits {sem "type/Score"}}))
+           (mt/user-http-request :rasta :post 403 url {:edits {sem "type/Score"}}))
          (testing "a semantic type must be known, not a key type, and fit the field"
-           (apply-edit! run-id sem 400 "type/Nonsense")
-           (apply-edit! run-id sem 400 "type/PK")
-           (apply-edit! run-id sem 400 "type/FK")
-           (apply-edit! run-id sem 400 "type/Email"))
+           (apply-edit! sem 400 "type/Nonsense")
+           (apply-edit! sem 400 "type/PK")
+           (apply-edit! sem 400 "type/FK")
+           (apply-edit! sem 400 "type/Email"))
          (testing "a data sensitivity must be a category"
-           (apply-edit! run-id ds 400 "SECRET"))
+           (apply-edit! ds 400 "SECRET"))
          (testing "a description must be non-blank and at most the cap"
-           (apply-edit! run-id desc 400 "   ")
-           (apply-edit! run-id desc 400 (apply str (repeat 201 "x"))))
+           (apply-edit! desc 400 "   ")
+           (apply-edit! desc 400 (apply str (repeat 201 "x"))))
          (testing "a refused value leaves the proposal as it was"
            (is (= {sem :pending ds :pending desc :pending} (statuses [sem ds desc]))))
          (testing "a valid value is normalized and written"
-           (is (=? {:written 1} (apply-edit! run-id desc 200 "  A counter.  ")))
+           (is (=? {:written 1} (apply-edit! desc 200 "  A counter.  ")))
            (is (=? {:description "A counter." :description_set true} (settings a-plain)))))))))
 
 (deftest edited-value-applies-as-human-value-test
@@ -328,11 +361,11 @@
              human (suggestion! run-id a a-text
                                 :proposed_value "type/Category")]
          (is (= (assoc nothing :written 4)
-                (apply! run-id {:accept [sem]
-                                :edits  {sem   "type/Score"
-                                         ds    "BIZ_CONF"
-                                         desc  "The plain text."
-                                         human "type/Title"}})))
+                (apply! {:accept [sem]
+                         :edits  {sem   "type/Score"
+                                  ds    "BIZ_CONF"
+                                  desc  "The plain text."
+                                  human "type/Title"}})))
          (is (= {sem :deleted ds :deleted desc :deleted human :deleted} (statuses [sem ds desc human])))
          (testing "edited values land in the human layer with their set flags, not in the AI columns"
            (is (=? {:semantic_type :type/Score :semantic_type_set true :ai_semantic_type nil} (settings a-int)))

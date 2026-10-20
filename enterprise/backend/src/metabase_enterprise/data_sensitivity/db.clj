@@ -197,58 +197,57 @@
 
 ;;; Review
 
-(mu/defn run-table-status-counts :- [:sequential [:map {:closed true}
-                                                  [:table_id ms/PositiveInt]
-                                                  [:status   ::proposal/status]
-                                                  [:n        :int]]]
-  "One row per table and status, with the number of proposals that run `run-id` wrote last."
-  [run-id :- ms/PositiveInt]
-  (mapv (fn [row]
-          (-> row
-              (update :status keyword)
-              (update :n int)))
-        (t2/query {:select   [:table_id :status [:%count.* :n]]
-                   :from     [:metadata_generation_proposal]
-                   :where    [:= :last_run_id run-id]
-                   :group-by [:table_id :status]})))
+(mr/def ::scope
+  "The proposals of the fields in `field_ids`, of the tables in `table_ids`, or of the tables of `database_id` (in
+  `schema` when given). Given keys all apply."
+  [:map {:closed true}
+   [:database_id {:optional true} [:maybe ::lib.schema.id/database]]
+   [:schema      {:optional true} [:maybe :string]]
+   [:table_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/table]]]
+   [:field_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]])
 
-(mu/defn run-pending-proposal-keys :- [:sequential [:map [:table_id ms/PositiveInt]
-                                                    [:field_id ms/PositiveInt]
-                                                    [:attribute ::run/attribute]]]
-  "The table, field and attribute of the pending proposals that run `run-id` wrote last."
-  [run-id :- ms/PositiveInt]
-  (t2/select [:model/MetadataGenerationProposal :table_id :field_id :attribute]
-             :last_run_id run-id :status :pending))
+(defn- scope-where [{:keys [database_id schema table_ids field_ids]}]
+  (cond-> [:and [:= :t.active true]]
+    database_id     (conj [:= :t.db_id database_id])
+    schema          (conj [:= :t.schema schema])
+    (seq table_ids) (conj [:in :p.table_id table_ids])
+    (seq field_ids) (conj [:in :p.field_id field_ids])))
 
-(mu/defn table-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
-  "The proposals of `table-id` that run `run-id` wrote last, with the field's `field_name`, `field_display_name`,
-  `field_base_type` and `field_effective_type`, ordered by field position, field id and attribute."
-  [run-id   :- ms/PositiveInt
-   table-id :- ::lib.schema.id/table]
+(mu/defn pending-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
+  "The pending proposals in `scope` of active tables, with the field's `field_name`, `field_display_name`,
+  `field_base_type` and `field_effective_type`, ordered by schema, table name, field position, field id and
+  attribute."
+  [scope :- ::scope]
   (t2/select :model/MetadataGenerationProposal
              {:select   [:p.* [:f.name :field_name] [:f.display_name :field_display_name]
                          [:f.base_type :field_base_type] [:f.effective_type :field_effective_type]]
               :from     [[:metadata_generation_proposal :p]]
-              :join     [(warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
-              :where    [:and [:= :p.last_run_id run-id] [:= :p.table_id table-id]]
-              :order-by [[:f.position :asc] [:f.id :asc] [:p.attribute :asc]]}))
+              :join     [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
+                         (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
+              :where    (conj (scope-where scope) [:= :p.status "pending"])
+              :order-by [[:t.schema :asc] [:t.name :asc] [:p.table_id :asc]
+                         [:f.position :asc] [:f.id :asc] [:p.attribute :asc]]}))
 
-(mu/defn open-proposals-by-id :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
-  "The proposals that run `run-id` wrote last among `ids`, ordered by id."
-  [run-id :- ms/PositiveInt
-   ids    :- [:sequential ms/PositiveInt]]
+(mu/defn pending-proposal-keys :- [:sequential [:map
+                                                [:id        ms/PositiveInt]
+                                                [:table_id  ms/PositiveInt]
+                                                [:field_id  ms/PositiveInt]
+                                                [:attribute ::run/attribute]]]
+  "The id, table, field and attribute of the pending proposals in `scope` of active tables, ordered by id."
+  [scope :- ::scope]
+  (t2/select :model/MetadataGenerationProposal
+             {:select   [:p.id :p.table_id :p.field_id :p.attribute]
+              :from     [[:metadata_generation_proposal :p]]
+              :join     [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]]
+              :where    (conj (scope-where scope) [:= :p.status "pending"])
+              :order-by [[:p.id :asc]]}))
+
+(mu/defn proposals-by-id :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
+  "The proposals with `ids`, ordered by id."
+  [ids :- [:sequential ms/PositiveInt]]
   (if (seq ids)
-    (t2/select :model/MetadataGenerationProposal :last_run_id run-id :id [:in ids] {:order-by [[:id :asc]]})
+    (t2/select :model/MetadataGenerationProposal :id [:in ids] {:order-by [[:id :asc]]})
     []))
-
-(mu/defn open-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
-  "The proposals that run `run-id` wrote last, of the tables in `table-ids` when it is non-nil, ordered by id."
-  [run-id    :- ms/PositiveInt
-   table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
-  (apply t2/select :model/MetadataGenerationProposal
-         (concat [:last_run_id run-id]
-                 (when table-ids [:table_id [:in table-ids]])
-                 [{:order-by [[:id :asc]]}])))
 
 ;;; Apply
 

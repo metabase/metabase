@@ -7,10 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- url [run-id & parts]
-  (apply str "ee/data-sensitivity/runs/" run-id parts))
-
-(defn- suggestion! [run-id table-id field-id & {:as overrides}]
+(defn- proposal! [run-id table-id field-id & {:as overrides}]
   (t2/insert-returning-pk! :model/MetadataGenerationProposal
                            (merge {:last_run_id    run-id
                                    :table_id       table-id
@@ -21,59 +18,91 @@
                                    :reasoning      "Values look like email addresses."}
                                   overrides)))
 
-(defn- do-with-run!
-  "Two tables `A` (fields a1, a2) and `B` (field b1) with a run over them. `f` gets the run id, the table ids and a map
-  of proposal name to id: `a1-sem` and `a1-ds` on a1, `a2-human` on a2, whose semantic type a person set, `b1-sem` on
-  b1."
+(defn- do-with-proposals!
+  "Tables `A` (fields a1, a2) and `B` (field b1) in schema `S` and table `C` (field c1) in schema `T` of one database,
+  with proposals of two runs. `f` gets the database id, the table ids and a map of proposal name to id: `a1-sem` and
+  `a1-ds` on a1, `a2-human` on a2, whose semantic type a person set, `b1-sem` on b1 of the older run, `c1-sem` on c1."
   [f]
   (mt/with-temp [:model/Database {db-id :id}  {}
                  :model/Table    {a :id}      {:db_id db-id :schema "S" :name "A"}
                  :model/Table    {b :id}      {:db_id db-id :schema "S" :name "B"}
+                 :model/Table    {c :id}      {:db_id db-id :schema "T" :name "C"}
                  :model/Field    {a1 :id}     {:table_id a :name "a1" :position 0 :semantic_type :type/Category}
                  :model/Field    {a2 :id}     {:table_id a :name "a2" :position 1}
                  :model/Field    {b1 :id}     {:table_id b :name "b1" :position 0}
+                 :model/Field    {c1 :id}     {:table_id c :name "c1" :position 0}
+                 :model/MetadataGenerationRun {old-run :id} {:database_id db-id
+                                                             :scope       {:type :database}
+                                                             :attributes  [:semantic_type]
+                                                             :status      :succeeded
+                                                             :is_active   nil}
                  :model/MetadataGenerationRun {run-id :id} {:database_id db-id
                                                             :scope       {:type :database}
                                                             :attributes  [:data_sensitivity :semantic_type]
                                                             :status      :succeeded}]
     (field-user-settings/upsert-user-settings {:id a2} {:semantic_type :type/Name})
-    (f run-id {:a a :b b}
-       {:a1-sem   (suggestion! run-id a a1)
-        :a1-ds    (suggestion! run-id a a1 :attribute :data_sensitivity :proposed_value "PII")
-        :a2-human (suggestion! run-id a a2)
-        :b1-sem   (suggestion! run-id b b1)})))
+    (f db-id {:a a :b b :c c}
+       {:a1-sem   (proposal! run-id a a1)
+        :a1-ds    (proposal! run-id a a1 :attribute :data_sensitivity :proposed_value "PII")
+        :a2-human (proposal! run-id a a2)
+        :b1-sem   (proposal! old-run b b1)
+        :c1-sem   (proposal! run-id c c1)})))
 
 (deftest superuser-required-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run!
-     (fn [run-id {:keys [a]} _]
-       (mt/user-http-request :rasta :get 403 (url run-id "/tables"))
-       (mt/user-http-request :rasta :get 403 (url run-id "/tables/" a "/suggestions"))
-       (mt/user-http-request :rasta :post 403 (url run-id "/apply") {:all true})))))
+    (do-with-proposals!
+     (fn [db-id _ _]
+       (mt/user-http-request :rasta :get 403 "ee/data-sensitivity/proposals/tables" :database-id db-id)
+       (mt/user-http-request :rasta :get 403 "ee/data-sensitivity/proposals" :database-id db-id)
+       (mt/user-http-request :rasta :post 403 "ee/data-sensitivity/proposals/apply"
+                             {:all true :database_id db-id})))))
 
-(deftest run-tables-test
+(deftest table-counts-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run!
-     (fn [run-id {:keys [a b]} {:keys [b1-sem]}]
-       (t2/update! :model/MetadataGenerationProposal b1-sem {:status :rejected})
-       (is (= [{:table_id a :table_name "A" :schema "S" :total 3 :human_set_pending 1
-                :counts {:pending 3 :rejected 0}}
-               {:table_id b :table_name "B" :schema "S" :total 1 :human_set_pending 0
-                :counts {:pending 0 :rejected 1}}]
-              (mt/user-http-request :crowberto :get 200 (url run-id "/tables"))))
-       (testing "an unknown run is a 404"
-         (mt/user-http-request :crowberto :get 404 (url Integer/MAX_VALUE "/tables")))))))
+    (do-with-proposals!
+     (fn [db-id {:keys [a b c]} {:keys [a1-ds]}]
+       (t2/update! :model/MetadataGenerationProposal a1-ds {:status :rejected})
+       (testing "pending proposals of all runs per table, without rejected ones"
+         (is (= [{:table_id a :table_name "A" :schema "S" :pending 2 :human_set_pending 1}
+                 {:table_id b :table_name "B" :schema "S" :pending 1 :human_set_pending 0}
+                 {:table_id c :table_name "C" :schema "T" :pending 1 :human_set_pending 0}]
+                (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables"
+                                      :database-id db-id))))
+       (testing "schema and table-id narrow the scope"
+         (is (=? [{:table_id c}]
+                 (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables"
+                                       :database-id db-id :schema "T")))
+         (is (=? [{:table_id b :pending 1}]
+                 (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables" :table-id b))))
+       (testing "an inactive table is left out"
+         (t2/update! :model/Table c {:active false})
+         (is (= [a b] (map :table_id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables"
+                                                           :database-id db-id)))))
+       (testing "a scope needs a database or a table that exists"
+         (mt/user-http-request :crowberto :get 400 "ee/data-sensitivity/proposals/tables")
+         (mt/user-http-request :crowberto :get 400 "ee/data-sensitivity/proposals/tables" :schema "S")
+         (mt/user-http-request :crowberto :get 404 "ee/data-sensitivity/proposals/tables"
+                               :database-id Integer/MAX_VALUE)
+         (mt/user-http-request :crowberto :get 404 "ee/data-sensitivity/proposals/tables" :table-id c))))))
 
-(deftest table-suggestions-test
+(deftest pending-proposals-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run!
-     (fn [run-id {:keys [a b]} {:keys [a1-sem a1-ds a2-human]}]
-       (testing "proposals of one table in field order, with the field name and the current value and its layer"
+    (do-with-proposals!
+     (fn [db-id {:keys [a b]} {:keys [a1-sem a1-ds a2-human b1-sem c1-sem]}]
+       (testing "pending proposals in table and field order, with the reasoning and the current value and its layer"
          (is (=? [{:id a1-ds    :field_name "a1" :attribute "data_sensitivity" :source "none" :current_value nil
-                   :status "pending" :last_run_id run-id}
+                   :status "pending"}
                   {:id a1-sem   :field_name "a1" :attribute "semantic_type" :source "deterministic"
-                   :current_value "type/Category" :proposed_value "type/Email" :confidence "high"}
-                  {:id a2-human :field_name "a2" :source "human" :current_value "type/Name"}]
-                 (mt/user-http-request :crowberto :get 200 (url run-id "/tables/" a "/suggestions")))))
-       (testing "a table without proposals of the run has none"
-         (is (= [] (mt/user-http-request :crowberto :get 200 (url run-id "/tables/" (inc b) "/suggestions")))))))))
+                   :current_value "type/Category" :proposed_value "type/Email" :confidence "high"
+                   :reasoning "Values look like email addresses."}
+                  {:id a2-human :field_name "a2" :source "human" :current_value "type/Name"}
+                  {:id b1-sem}
+                  {:id c1-sem}]
+                 (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :database-id db-id))))
+       (testing "a rejected proposal is hidden"
+         (t2/update! :model/MetadataGenerationProposal a1-ds {:status :rejected})
+         (is (= [a1-sem a2-human]
+                (map :id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id a)))))
+       (testing "a table without pending proposals has none"
+         (t2/update! :model/MetadataGenerationProposal b1-sem {:status :rejected})
+         (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id b))))))))
