@@ -26,7 +26,7 @@
   (-> model->dependency-type vals set))
 
 (def backfillable-dependency-types
-  "Dependency types that the backfill job computes dependencies for. Excludes `:table`: tables aren't
+  "Dependency types that the dependency job computes dependencies for. Excludes `:table`: tables aren't
   backfilled directly; links involving tables are found via analysis of the other side of the relation."
   (disj dependency-types :table))
 

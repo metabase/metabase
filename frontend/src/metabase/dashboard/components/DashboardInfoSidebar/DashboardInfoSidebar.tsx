@@ -8,7 +8,7 @@ import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
-import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
+import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {
   SIDESHEET_HORIZONTAL_PADDING,
   Sidesheet,
@@ -238,18 +238,11 @@ const HistoryTab = ({
 }) => {
   const dispatch = useDispatch();
 
-  const events = useMemo(() => {
-    const moderationEvents = PLUGIN_MODERATION.getModerationTimelineEvents(
-      moderationReviews,
-      currentUser,
-    );
-    const revisionEvents = getTimelineEvents({ revisions, currentUser });
-
-    return [...revisionEvents, ...moderationEvents].sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
-  }, [moderationReviews, revisions, currentUser]);
+  const events = useMemo(
+    () =>
+      getActivityTimelineEvents({ revisions, moderationReviews, currentUser }),
+    [moderationReviews, revisions, currentUser],
+  );
 
   return (
     <SidesheetCard>
