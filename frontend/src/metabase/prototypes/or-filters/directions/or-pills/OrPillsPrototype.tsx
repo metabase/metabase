@@ -148,10 +148,14 @@ const MAX_FULL_LABEL_CLAUSES = 2;
 function PillLabel({ query, stageIndex, rows }: PillLabelProps) {
   // Each clause is paired with the connector that precedes it.
   const parts = rows.flatMap((row) =>
-    row.map((clause, clauseIndex) => ({
-      connector: clauseIndex > 0 ? t`and` : t`or`,
-      label: getFilterLabel(query, stageIndex, clause),
-    })),
+    row.flatMap((item, itemIndex) => {
+      const itemConnector = itemIndex > 0 ? t`and` : t`or`;
+      const clauses = item.type === "clause" ? [item.clause] : item.clauses;
+      return clauses.map((clause, clauseIndex) => ({
+        connector: clauseIndex > 0 ? t`or` : itemConnector,
+        label: getFilterLabel(query, stageIndex, clause),
+      }));
+    }),
   );
   const [first, ...rest] = parts;
   if (!first) {
