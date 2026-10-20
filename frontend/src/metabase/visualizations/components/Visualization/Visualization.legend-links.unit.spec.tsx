@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { delay } from "__support__/utils";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -60,18 +60,32 @@ const setup = async ({ rawSeries }: SetupOpts) => {
 
 const getLegend = () => screen.getByLabelText("Legend");
 const getLegendTitle = (name: string) => within(getLegend()).getByText(name);
+const getLegendLink = (name: string) =>
+  within(getLegend()).getByRole("link", { name });
 
 describe("Visualization dashcard legend links (metabase#83401)", () => {
-  it("should link each series to its own question", async () => {
+  it("should link each series to its own question, building the URL on hover", async () => {
+    const { getHref } = await setup({
+      rawSeries: [createBarSeries(1, "Card1"), createBarSeries(2, "Card2")],
+    });
+
+    expect(getLegendLink("Card2")).toHaveAttribute("href", "#");
+    expect(getHref).not.toHaveBeenCalled();
+
+    await userEvent.hover(getLegendTitle("Card2"));
+
+    expect(getLegendLink("Card2")).toHaveAttribute("href", "/question/2");
+  });
+
+  it("should build the URL when a series link is focused", async () => {
     await setup({
       rawSeries: [createBarSeries(1, "Card1"), createBarSeries(2, "Card2")],
     });
 
-    await userEvent.hover(getLegendTitle("Card2"));
+    act(() => getLegendLink("Card2").focus());
 
-    expect(
-      within(getLegend()).getByRole("link", { name: "Card2" }),
-    ).toHaveAttribute("href", "/question/2");
+    expect(getLegendLink("Card2")).toHaveFocus();
+    expect(getLegendLink("Card2")).toHaveAttribute("href", "/question/2");
   });
 
   it("should open the question through onChangeCardAndRun when a series is clicked", async () => {
@@ -111,9 +125,7 @@ describe("Visualization dashcard legend links (metabase#83401)", () => {
 
     await userEvent.hover(getLegendTitle("Sum"));
 
-    expect(
-      within(getLegend()).getByRole("link", { name: "Sum" }),
-    ).toHaveAttribute("href", "/question/3");
+    expect(getLegendLink("Sum")).toHaveAttribute("href", "/question/3");
   });
 
   it("should not link breakout series, which open drills instead", async () => {
