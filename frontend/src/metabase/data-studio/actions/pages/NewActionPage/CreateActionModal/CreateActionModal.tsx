@@ -73,7 +73,7 @@ export function CreateActionModal({
   };
 
   return (
-    <Modal title={t`Save your action`} opened padding="xxl" onClose={onClose}>
+    <Modal title={t`Save your action`} opened onClose={onClose}>
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}

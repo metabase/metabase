@@ -22,8 +22,8 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
-   (java.sql Connection)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources PooledDataSource)
+   (java.sql Connection SQLException)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -276,6 +276,8 @@
         ;; went through a connection test (serialization import, config files).
         _                   (driver.u/with-database-network-policy database
                               (driver.u/validate-connection-hosts! driver details))
+        ;; likewise for parameters that were disallowed after the database was saved
+        _                   (driver.u/validate-connection-parameters! driver details)
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
@@ -283,6 +285,8 @@
                              driver
                              id
                              details-with-tunnel)
+        ;; the auth provider's response is merged into the details, so it can set parameters too
+        _                   (driver.u/validate-connection-parameters! driver details-with-auth)
         spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
@@ -366,6 +370,32 @@
             :let      [[old-map] (swap-vals! pool-cache-key->connection-pool dissoc cache-key)
                        pool-spec (get old-map cache-key)]
             :when     pool-spec]
+      (destroy-pool! db-id pool-spec)
+      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
+
+(defn- empty-pool?
+  [data-source]
+  (and (instance? PooledDataSource data-source)
+       (try
+         (zero? (.getNumConnectionsDefaultUser ^PooledDataSource data-source))
+         (catch SQLException _
+           false))))
+
+(defn invalidate-empty-pool!
+  "Closes the cached pool for a given `data-source` if it has no connections. This should be called
+   after a checkout from a pool fails, otherwise c3p0 will make repeated requests which can lock
+   out certain DBs (#84206). We don't use [[pool-cache-key]] here to avoid looking up the database
+   object from the app DB, which could fail or have a race condition across multiple pods."
+  [data-source]
+  (when (empty-pool? data-source)
+    (doseq [[cache-key pool-spec] @pool-cache-key->connection-pool
+            :when (identical? (:datasource pool-spec) data-source)
+            :let [db-id (first cache-key)]]
+      (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
+      ;; do not remove a newer pool that another thread put in the cache
+      (swap! pool-cache-key->connection-pool
+             #(cond-> %
+                (identical? (get % cache-key) pool-spec) (dissoc cache-key)))
       (destroy-pool! db-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
 
@@ -519,6 +549,7 @@
 (defn do-with-connection-spec-for-testing-connection
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
+  (driver.u/validate-connection-parameters! driver details)
   (let [details (-> details
                     (update :port #(or % (default-ssh-tunnel-target-port driver)))
                     (ssh/resolve-known-hosts driver))]
@@ -526,7 +557,9 @@
       (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
                                driver
                                details-with-tunnel)
-            spec (connection-details->spec driver details-with-auth)]
+            ;; the auth provider's response is merged into the details, so it can set parameters too
+            _                 (driver.u/validate-connection-parameters! driver details-with-auth)
+            spec              (connection-details->spec driver details-with-auth)]
         (f spec)))))
 
 (defmacro with-connection-spec-for-testing-connection

@@ -18,7 +18,7 @@ export const QUERY_DEFINITIONS: DefinitionKind = {
   idKey: "savedQuestionEntityId",
 };
 
-const ACTION_DEFINITIONS: DefinitionKind = {
+export const ACTION_DEFINITIONS: DefinitionKind = {
   directory: "actions",
   idKey: "copiedActionEntityId",
 };

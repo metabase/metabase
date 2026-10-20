@@ -18,7 +18,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.core :as queries]
    [metabase.util.i18n :refer [tru]]
@@ -147,7 +146,6 @@
    query     :- ::lib.schema/query]
   {:entity_id              entity-id
    :name                   card-name
-   :created_at             (mi/current-timestamp)
    :card_schema            queries/current-card-schema-version
    :type                   :question
    :display                :table
