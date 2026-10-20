@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Group,
+  Icon,
   Loader,
   SimpleGrid,
   Stack,
@@ -23,11 +24,50 @@ import {
   withNestedExample,
   withOrExample,
   withPillsExample,
+  withTwoGroupsExample,
 } from "./harness/examples";
 import { useOrdersQuery } from "./harness/useOrdersQuery";
 import type { FilterDirection } from "./types";
 
 const STAGE_INDEX = 0;
+
+type Example = {
+  label: string;
+  load: (query: Lib.Query, stageIndex: number) => Lib.Query;
+};
+
+const EXAMPLES: Example[] = [
+  {
+    get label() {
+      return t`A or B`;
+    },
+    load: withOrExample,
+  },
+  {
+    get label() {
+      return t`(A and B) or C`;
+    },
+    load: withDnfExample,
+  },
+  {
+    get label() {
+      return t`(A or B), C as two pills`;
+    },
+    load: withPillsExample,
+  },
+  {
+    get label() {
+      return t`(A and B) or (C and D)`;
+    },
+    load: withTwoGroupsExample,
+  },
+  {
+    get label() {
+      return t`A and B and (C or (D and E))`;
+    },
+    load: withNestedExample,
+  },
+];
 
 type OrFilterCanvasProps = {
   direction: FilterDirection;
@@ -57,48 +97,32 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Box>
-          <Title order={3}>{direction.name}</Title>
-          <Text c="text-secondary">{direction.description}</Text>
-        </Box>
-        <Group gap="xs">
+      <Box>
+        <Title order={3}>{direction.name}</Title>
+        <Text c="text-secondary">{direction.description}</Text>
+      </Box>
+
+      <Group gap="sm" align="center">
+        <Text fw="bold" c="text-secondary">{t`Examples`}</Text>
+        {EXAMPLES.map(({ label, load }) => (
           <Button
-            size="compact-sm"
+            key={label}
+            size="sm"
             variant="default"
-            onClick={() => setQuery(withOrExample(query, STAGE_INDEX))}
+            onClick={() => setQuery(load(query, STAGE_INDEX))}
           >
-            {t`Load OR example`}
+            {label}
           </Button>
-          <Button
-            size="compact-sm"
-            variant="default"
-            onClick={() => setQuery(withDnfExample(query, STAGE_INDEX))}
-          >
-            {t`Load grouped example`}
-          </Button>
-          <Button
-            size="compact-sm"
-            variant="default"
-            onClick={() => setQuery(withPillsExample(query, STAGE_INDEX))}
-          >
-            {t`Load two-pill example`}
-          </Button>
-          <Button
-            size="compact-sm"
-            variant="default"
-            onClick={() => setQuery(withNestedExample(query, STAGE_INDEX))}
-          >
-            {t`Load nested example`}
-          </Button>
-          <Button
-            size="compact-sm"
-            variant="default"
-            onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
-          >
-            {t`Clear filters`}
-          </Button>
-        </Group>
+        ))}
+        <Button
+          ml="auto"
+          size="sm"
+          variant="subtle"
+          leftSection={<Icon name="close" />}
+          onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
+        >
+          {t`Clear filters`}
+        </Button>
       </Group>
 
       <ChillFrame

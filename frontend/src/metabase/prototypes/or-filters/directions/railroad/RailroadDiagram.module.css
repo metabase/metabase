@@ -1,0 +1,116 @@
+.svg {
+  display: block;
+  overflow: visible;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.8125rem;
+}
+
+.track {
+  fill: none;
+  stroke: var(--mb-color-border-neutral-strong);
+  stroke-width: 2;
+}
+
+.pillBody {
+  fill: var(--mb-color-background_surface-primary);
+  stroke: var(--mb-color-core-filter);
+  stroke-width: 1.5;
+}
+
+.pillLabel {
+  fill: var(--mb-color-text-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pillAction {
+  cursor: pointer;
+  opacity: 0.45;
+}
+
+.pill:hover .pillAction,
+.pillAction:hover {
+  opacity: 1;
+}
+
+.pillAction line,
+.pillAction path {
+  fill: none;
+  stroke: var(--mb-color-text-secondary);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.pillAction:hover line,
+.pillAction:hover path {
+  stroke: var(--mb-color-core-filter);
+}
+
+.plus {
+  cursor: pointer;
+}
+
+.plus circle {
+  fill: var(--mb-color-background_surface-primary);
+  stroke: var(--mb-color-border-neutral-strong);
+  stroke-width: 1.5;
+}
+
+.plus text {
+  fill: var(--mb-color-text-secondary);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.plus:hover circle {
+  stroke: var(--mb-color-core-filter);
+}
+
+.plus:hover text {
+  fill: var(--mb-color-core-filter);
+}
+
+.plusBetween {
+  opacity: 0;
+}
+
+.svg:hover .plusBetween {
+  opacity: 0.6;
+}
+
+.plusBetween:hover {
+  opacity: 1;
+}
+
+.orLabel {
+  fill: var(--mb-color-text-secondary);
+  font-style: italic;
+  font-size: 0.75rem;
+  paint-order: stroke;
+  stroke: var(--mb-color-background_surface-primary);
+  stroke-width: 4;
+}
+
+.branchButton {
+  cursor: pointer;
+}
+
+.branchButton rect {
+  fill: none;
+  stroke: var(--mb-color-border-neutral-strong);
+  stroke-dasharray: 3 3;
+  stroke-width: 1.2;
+}
+
+.branchButton text {
+  fill: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.branchButton:hover rect {
+  stroke: var(--mb-color-core-filter);
+}
+
+.branchButton:hover text {
+  fill: var(--mb-color-core-filter);
+}

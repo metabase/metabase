@@ -9,6 +9,7 @@ import {
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
 import { ExpressionBarPrototype } from "./expression-bar/ExpressionBarPrototype";
 import { OrPillsPrototype } from "./or-pills/OrPillsPrototype";
+import { RailroadPrototype } from "./railroad/RailroadPrototype";
 
 export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
@@ -51,5 +52,15 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
       return t`One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them.`;
     },
     Component: ExpressionBarPrototype,
+  },
+  {
+    id: "railroad",
+    get name() {
+      return t`OR filters C: Railroad tracks`;
+    },
+    get description() {
+      return t`Filters drawn as tracks. Series = and, parallel tracks = or; any left-to-right path through the diagram is a matching row.`;
+    },
+    Component: RailroadPrototype,
   },
 ];

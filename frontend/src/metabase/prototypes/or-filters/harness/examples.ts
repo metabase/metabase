@@ -122,3 +122,31 @@ export function withNestedExample(
     clearFilters(query, stageIndex),
   );
 }
+
+/**
+ * Two full AND groups joined by OR:
+ * `([Total] > 100 AND [Quantity] > 3) OR ([Tax] > 2 AND [Discount] > 5)`.
+ */
+export function withTwoGroupsExample(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const total = findColumn(query, stageIndex, "Total");
+  const quantity = findColumn(query, stageIndex, "Quantity");
+  const tax = findColumn(query, stageIndex, "Tax");
+  const discount = findColumn(query, stageIndex, "Discount");
+  if (!total || !quantity || !tax || !discount) {
+    return query;
+  }
+  const orClause = Lib.expressionClause("or", [
+    Lib.expressionClause("and", [
+      Lib.numberFilterClause({ operator: ">", column: total, values: [100] }),
+      Lib.numberFilterClause({ operator: ">", column: quantity, values: [3] }),
+    ]),
+    Lib.expressionClause("and", [
+      Lib.numberFilterClause({ operator: ">", column: tax, values: [2] }),
+      Lib.numberFilterClause({ operator: ">", column: discount, values: [5] }),
+    ]),
+  ]);
+  return Lib.filter(clearFilters(query, stageIndex), stageIndex, orClause);
+}
