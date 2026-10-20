@@ -6,7 +6,7 @@
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Func
+   (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot Expressions$Func
                              Expressions$Insert Expressions$Parameter Expressions$PropertyEQ Expressions$Query
                              Expressions$Select Expressions$Semicolon Expressions$SetOperation Expressions$Subquery
                              Expressions$Table Expressions$Update Expressions$WithTableHint)
@@ -40,13 +40,19 @@
          "Commit" "Rollback" "Use" "Execute" "LoadData" "Kill" "Pragma" "Cache" "Uncache" "Refresh" "Analyze"
          "NextValueFor" "QueryTransform"]))
 
-;; Advancing a sequence is a write a SELECT can make. sqlglot parses only the SQL-standard `NEXT VALUE FOR` as its
-;; own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as a `.NEXTVAL` pseudo-column, and
-;; Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`.
-(def ^:private sequence-write-functions #{"nextval" "setval" "getnextval"})
+;; Writes a SELECT can make through a built-in function. Advancing a sequence is one: sqlglot parses only the
+;; SQL-standard `NEXT VALUE FOR` as its own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as
+;; a `.NEXTVAL` pseudo-column, and Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`. Postgres large
+;; objects are another, and any role can create one by default.
+(def ^:private write-functions
+  #{;; sequences
+    "nextval" "setval" "getnextval"
+    ;; Postgres large objects
+    "lo_creat" "lo_create" "lo_from_bytea" "lo_put" "lowrite" "lo_truncate" "lo_truncate64" "lo_unlink"
+    "lo_import" "lo_export"})
 
 ;; Built-in functions that reach past the query that calls them: they take a lock that can outlive it, change the
-;; session's settings, signal or stop another session, or hold the connection waiting.
+;; session's settings, signal or stop another session, hold the connection waiting, or act outside the database.
 (def ^:private session-effect-functions
   #{;; Postgres advisory locks
     "pg_advisory_lock" "pg_advisory_lock_shared" "pg_try_advisory_lock" "pg_try_advisory_lock_shared"
@@ -56,8 +62,15 @@
     "get_lock" "release_lock" "release_all_locks"
     ;; session settings and signals
     "set_config" "pg_notify" "pg_terminate_backend" "pg_cancel_backend" "pg_reload_conf"
+    ;; Postgres dblink: a named connection stays open on the session
+    "dblink_connect" "dblink_connect_u"
+    ;; Snowflake: stop another session's work
+    "system$cancel_query" "system$cancel_all_queries" "system$abort_session" "system$abort_transaction"
     ;; waiting
-    "pg_sleep" "pg_sleep_for" "pg_sleep_until" "sleep" "benchmark"})
+    "pg_sleep" "pg_sleep_for" "pg_sleep_until" "sleep" "benchmark" "sleepeachrow" "system$wait"
+    "master_pos_wait" "source_pos_wait" "wait_for_executed_gtid_set" "wait_until_sql_thread_after_gtids"
+    ;; running a program, Java code or a request outside the database
+    "executable" "reflect" "java_method" "http_request" "system$send_email"})
 
 ;; Functions that take a SQL string and run it. The parser reads that string as an opaque literal, so a write, a
 ;; lock, or a session change hidden inside it escapes the checks above. The wrapper is refused whatever the string
@@ -107,18 +120,36 @@
   [names stmt]
   (some #(names (function-name %)) (ast/walk stmt)))
 
+(defn- sql-executing-function
+  "The name of the first function in `stmt` that runs SQL passed to it as text, or nil."
+  [stmt]
+  (some (fn [node]
+          (or (sql-executing-functions (function-name node))
+              ;; Trino passes a query through to a connector's database with
+              ;; `TABLE(catalog.system.query(query => '...'))`. The name `query` alone is too common to refuse, so it
+              ;; counts only under a `system` schema.
+              (when (and (instance? Expressions$Dot node)
+                         (ast/ast-node? (ast/this node))
+                         (= "system" (u/lower-case-en (ast/node-name (ast/this node))))
+                         (= "query" (function-name (ast/arg node "expression"))))
+                "system.query")))
+        (ast/walk stmt)))
+
 (defn- writes-or-locks? [node]
   (cond
     (ast/instance-of-any? not-read-only-classes node)
     true
 
     (instance? Expressions$Anonymous node)
-    (contains? sequence-write-functions (u/lower-case-en (ast/node-name node)))
+    (contains? write-functions (u/lower-case-en (ast/node-name node)))
 
     ;; MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
-    ;; connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres.
+    ;; connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres. The variable is
+    ;; searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
     (instance? Expressions$PropertyEQ node)
-    (instance? Expressions$Parameter (ast/this node))
+    (let [target (ast/this node)]
+      (and (ast/ast-node? target)
+           (boolean (some #(instance? Expressions$Parameter %) (ast/walk target)))))
 
     (instance? Expressions$Column node)
     (and (seq (ast/text node "table"))
@@ -187,7 +218,7 @@
     :else
     (if-let [function (first-function-in session-effect-functions (first stmts))]
       ["session-function" function]
-      (if-let [executor (first-function-in sql-executing-functions (first stmts))]
+      (if-let [executor (sql-executing-function (first stmts))]
         ["sql-executing-function" executor]
         (hidden-sql sql dialect)))))
 
