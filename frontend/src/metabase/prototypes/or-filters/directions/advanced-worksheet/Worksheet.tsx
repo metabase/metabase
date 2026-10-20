@@ -32,8 +32,8 @@ import {
 import type * as Lib from "metabase-lib";
 
 import { toFilterClause } from "../../harness/clauses";
-import { ClauseToken } from "../or-pills/GroupEditor";
 
+import { ClauseToken } from "./ClauseToken";
 import S from "./Worksheet.module.css";
 import {
   type Connector,

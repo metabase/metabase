@@ -20,3 +20,12 @@
 .rowAdd[data-opened="true"] {
   opacity: 1;
 }
+
+.menuItem {
+  padding: 0.75rem 1rem;
+  border-radius: 0;
+}
+
+.menuItem + .menuItem {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}

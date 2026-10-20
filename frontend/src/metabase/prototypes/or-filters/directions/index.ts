@@ -7,6 +7,7 @@ import {
   AdvancedWorksheetPrototype,
 } from "./advanced-worksheet/AdvancedWorksheetPrototype";
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
+import { ExpressionBarPrototype } from "./expression-bar/ExpressionBarPrototype";
 import { OrPillsPrototype } from "./or-pills/OrPillsPrototype";
 
 export const FILTER_DIRECTIONS: FilterDirection[] = [
@@ -40,5 +41,15 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
     },
     Component: AdvancedWorksheetPrototype,
     FilterButton: AdvancedWorksheetFilterButton,
+  },
+  {
+    id: "expression-bar",
+    get name() {
+      return t`OR filters B: Expression bar`;
+    },
+    get description() {
+      return t`One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them.`;
+    },
+    Component: ExpressionBarPrototype,
   },
 ];

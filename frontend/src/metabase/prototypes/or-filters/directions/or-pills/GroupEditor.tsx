@@ -1,135 +1,211 @@
-import cx from "classnames";
-import { useState } from "react";
+import { Fragment, forwardRef, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   Box,
   Button,
   Divider,
   Group,
   Icon,
-  Popover,
+  Menu,
   Stack,
   Text,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 
 import S from "./GroupEditor.module.css";
 import { Token } from "./Token";
-import { type PillRows, toPillClause, updateRow } from "./orPills";
+import {
+  type AddTarget,
+  type ClausePath,
+  type PillRows,
+  addClause,
+  getClause,
+  removeClause,
+  replaceClause,
+} from "./orPills";
 
 type GroupEditorProps = {
   query: Lib.Query;
   stageIndex: number;
   rows: PillRows;
   onUpdate: (rows: PillRows) => void;
+  /** Ungroups the pill: each row becomes its own top-level filter. */
+  onExpand: (rows: PillRows) => void;
 };
 
 /**
- * The dropdown for one pill (Figma "Group editor"): rows of AND-ed tokens
- * joined by OR, edited as a draft and written back on "Update filter".
+ * The dropdown for one pill. A pill holding a single standard filter shows the
+ * plain filter picker with an "Or…" button (Figma "Filter popover"); anything
+ * else shows rows of AND-ed tokens joined by OR (Figma "Group editor"), edited
+ * as a draft and written back on "Update filter".
  */
 export function GroupEditor({
   query,
   stageIndex,
   rows: initialRows,
   onUpdate,
+  onExpand,
 }: GroupEditorProps) {
   const [rows, setRows] = useState(initialRows);
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Only one thing is ever on screen: the single-clause editor, the rows, or
+  // the picker that adds/replaces one clause (no picker stacked over the rows).
+  const [view, setView] = useState<EditorView>({ type: "auto" });
 
-  const handleAdd = (rowIndex: number, filterable: Lib.Filterable) => {
-    const clause = toFilterClause(query, stageIndex, filterable);
-    setRows(
-      rowIndex === rows.length
-        ? [...rows, [clause]]
-        : updateRow(rows, rowIndex, (row) => [...row, clause]),
+  const singleClause =
+    view.type === "auto"
+      ? getSingleStandardClause(query, stageIndex, rows)
+      : undefined;
+  if (singleClause) {
+    return (
+      <SingleClauseEditor
+        query={query}
+        stageIndex={stageIndex}
+        clause={singleClause.clause}
+        column={singleClause.column}
+        onOr={() =>
+          setView({
+            type: "add",
+            target: { kind: "row", rowIndex: rows.length },
+          })
+        }
+        onUpdate={(clause) => onUpdate([[{ type: "clause", clause }]])}
+      />
     );
+  }
+
+  const handleAdd = (target: AddTarget, filterable: Lib.Filterable) => {
+    setRows(
+      addClause(rows, target, toFilterClause(query, stageIndex, filterable)),
+    );
+    setView({ type: "rows" });
   };
 
-  const handleReplace = (
-    rowIndex: number,
-    clause: Lib.FilterClause,
-    filterable: Lib.Filterable,
-  ) => {
-    const nextClause = toFilterClause(query, stageIndex, filterable);
+  const handleReplace = (path: ClausePath, filterable: Lib.Filterable) => {
     setRows(
-      updateRow(rows, rowIndex, (row) =>
-        row.map((member) => (member === clause ? nextClause : member)),
-      ),
+      replaceClause(rows, path, toFilterClause(query, stageIndex, filterable)),
     );
+    setView({ type: "rows" });
   };
 
-  const handleRemove = (rowIndex: number, clause: Lib.FilterClause) => {
-    setRows(
-      updateRow(rows, rowIndex, (row) =>
-        row.filter((member) => member !== clause),
-      ),
+  if (view.type === "add") {
+    return (
+      <FilterPicker
+        query={query}
+        stageIndex={stageIndex}
+        onSelect={(filterable) => handleAdd(view.target, filterable)}
+        onClose={() => setView({ type: "rows" })}
+      />
     );
-  };
+  }
 
-  const draftClause = toPillClause(rows);
+  if (view.type === "replace") {
+    return (
+      <FilterPicker
+        query={query}
+        stageIndex={stageIndex}
+        filter={getClause(rows, view.path)}
+        onSelect={(filterable) => handleReplace(view.path, filterable)}
+        onClose={() => setView({ type: "rows" })}
+      />
+    );
+  }
+
+  const renderClause = (path: ClausePath) => {
+    const clause = getClause(rows, path);
+    return clause ? (
+      <Token
+        onClick={() => setView({ type: "replace", path })}
+        onRemove={() => setRows(removeClause(rows, path))}
+      >
+        {getFilterLabel(query, stageIndex, clause)}
+      </Token>
+    ) : null;
+  };
 
   return (
     <Box miw={420} ff="monospace">
       <Stack gap="sm" px="md" pt="sm" pb="md">
         <Stack gap="xs">
-          {rows.map((row, rowIndex) => (
-            <Group key={rowIndex} gap="xs" wrap="wrap" className={S.row}>
-              <Icon name="grabber" c="text-secondary" />
-              <Text w={52} c="text-secondary">
-                {rowIndex === 0 ? t`Where` : t`or`}
-              </Text>
-              {row.flatMap((clause, clauseIndex) => [
-                clauseIndex > 0 && (
-                  <Text key={`and-${clauseIndex}`} c="text-secondary">
-                    {t`and`}
-                  </Text>
-                ),
-                <ClauseToken
-                  key={clauseIndex}
-                  query={query}
-                  stageIndex={stageIndex}
-                  clause={clause}
-                  onReplace={(filterable) =>
-                    handleReplace(rowIndex, clause, filterable)
-                  }
-                  onRemove={() => handleRemove(rowIndex, clause)}
-                />,
-              ])}
-              <AddButton
-                query={query}
-                stageIndex={stageIndex}
-                label={t`and`}
-                className={S.rowAdd}
-                onAdd={(filterable) => handleAdd(rowIndex, filterable)}
-              />
-            </Group>
-          ))}
+          {rows.map((row, rowIndex) => {
+            const indexed = row.map((item, itemIndex) => ({ item, itemIndex }));
+            const clauses = indexed.filter(
+              ({ item }) => item.type === "clause",
+            );
+            const subgroups = indexed.flatMap(({ item, itemIndex }) =>
+              item.type === "subgroup" ? [{ item, itemIndex }] : [],
+            );
+            return (
+              <Fragment key={rowIndex}>
+                <Group gap="xs" wrap="wrap" className={S.row}>
+                  <Icon name="grabber" c="text-secondary" />
+                  <Lead>{rowIndex === 0 ? t`Where` : t`or`}</Lead>
+                  {clauses.map(({ itemIndex }, index) => (
+                    <Fragment key={itemIndex}>
+                      {index > 0 && <Connector label={t`and`} />}
+                      {renderClause({ rowIndex, itemIndex })}
+                    </Fragment>
+                  ))}
+                  <RowAddMenu
+                    className={S.rowAdd}
+                    onAddFilter={() =>
+                      setView({
+                        type: "add",
+                        target: { kind: "row", rowIndex },
+                      })
+                    }
+                    onAddSubgroup={() =>
+                      setView({
+                        type: "add",
+                        target: { kind: "new-subgroup", rowIndex },
+                      })
+                    }
+                  />
+                </Group>
+                {/* Figma: a subgroup is its own line, indented past the row's lead. */}
+                {subgroups.map(({ item, itemIndex }) => (
+                  <Group key={itemIndex} gap="xs" wrap="wrap" className={S.row}>
+                    <Icon name="grabber" c="text-secondary" />
+                    <Lead />
+                    <Lead>{t`and`}</Lead>
+                    {item.clauses.map((_clause, clauseIndex) => (
+                      <Fragment key={clauseIndex}>
+                        {clauseIndex > 0 && <Connector label={t`or`} />}
+                        {renderClause({ rowIndex, itemIndex, clauseIndex })}
+                      </Fragment>
+                    ))}
+                    <AddButton
+                      label={t`or`}
+                      className={S.rowAdd}
+                      onClick={() =>
+                        setView({
+                          type: "add",
+                          target: { kind: "subgroup", rowIndex, itemIndex },
+                        })
+                      }
+                    />
+                  </Group>
+                ))}
+              </Fragment>
+            );
+          })}
         </Stack>
         <Box>
           <AddButton
-            query={query}
-            stageIndex={stageIndex}
             label={t`or`}
             fw="bold"
-            onAdd={(filterable) => handleAdd(rows.length, filterable)}
+            onClick={() =>
+              setView({
+                type: "add",
+                target: { kind: "row", rowIndex: rows.length },
+              })
+            }
           />
         </Box>
-        {isExpanded && (
-          <Text size="sm" c="text-secondary">
-            {draftClause
-              ? getFilterLabel(
-                  query,
-                  stageIndex,
-                  toFilterClause(query, stageIndex, draftClause),
-                )
-              : t`No conditions`}
-          </Text>
-        )}
       </Stack>
       <Divider />
       <Group justify="space-between" p="md">
@@ -137,9 +213,10 @@ export function GroupEditor({
           variant="subtle"
           size="compact-md"
           px={0}
-          onClick={() => setIsExpanded((expanded) => !expanded)}
+          // Changes the logic: OR rows become AND-ed top-level pills.
+          onClick={() => onExpand(rows)}
         >
-          {isExpanded ? t`Collapse` : t`Expand`}
+          {t`Expand`}
         </Button>
         <Button variant="filled" onClick={() => onUpdate(rows)}>
           {t`Update filter`}
@@ -149,111 +226,209 @@ export function GroupEditor({
   );
 }
 
-type ClauseTokenProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  clause: Lib.FilterClause;
-  onReplace: (filterable: Lib.Filterable) => void;
-  onRemove: () => void;
-};
+function Connector({ label }: { label: string }) {
+  return <Text c="text-secondary">{label}</Text>;
+}
 
-export function ClauseToken({
-  query,
-  stageIndex,
-  clause,
-  onReplace,
-  onRemove,
-}: ClauseTokenProps) {
-  const [isOpened, setIsOpened] = useState(false);
+const LEAD_WIDTH = 52;
 
+function Lead({ children }: { children?: string }) {
   return (
-    <Popover
-      opened={isOpened}
-      position="bottom-start"
-      transitionProps={{ duration: 0 }}
-      // Rendered inside the editor's dropdown, so clicking the picker is not
-      // an outside click for the editor's own popover.
-      withinPortal={false}
-      onChange={setIsOpened}
-    >
-      <Popover.Target>
-        <Token
-          onClick={() => setIsOpened((opened) => !opened)}
-          onRemove={onRemove}
-        >
-          {getFilterLabel(query, stageIndex, clause)}
-        </Token>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={stageIndex}
-          filter={clause}
-          onSelect={(filterable) => {
-            onReplace(filterable);
-            setIsOpened(false);
-          }}
-          onClose={() => setIsOpened(false)}
-        />
-      </Popover.Dropdown>
-    </Popover>
+    <Text w={LEAD_WIDTH} c="text-secondary">
+      {children}
+    </Text>
   );
 }
 
-type AddButtonProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  label: string;
-  className?: string;
-  fw?: "bold";
-  onAdd: (filterable: Lib.Filterable) => void;
+type SingleStandardClause = {
+  clause: Lib.FilterClause;
+  column: Lib.ColumnMetadata;
 };
 
-export function AddButton({
+function getSingleStandardClause(
+  query: Lib.Query,
+  stageIndex: number,
+  rows: PillRows,
+): SingleStandardClause | undefined {
+  const [firstRow = [], ...otherRows] = rows;
+  const [item, ...otherItems] = firstRow;
+  if (
+    item?.type !== "clause" ||
+    otherRows.length > 0 ||
+    otherItems.length > 0
+  ) {
+    return undefined;
+  }
+  const { clause } = item;
+  const column = Lib.filterParts(query, stageIndex, clause)?.column;
+  return column ? { clause, column } : undefined;
+}
+
+type SingleClauseEditorProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  clause: Lib.FilterClause;
+  column: Lib.ColumnMetadata;
+  onOr: () => void;
+  onUpdate: (clause: Lib.FilterClause) => void;
+};
+
+/** Figma "Filter popover": the real picker body with "Or…" next to "Update filter". */
+function SingleClauseEditor({
   query,
   stageIndex,
-  label,
+  clause,
+  column,
+  onOr,
+  onUpdate,
+}: SingleClauseEditorProps) {
+  const [isPickingColumn, setIsPickingColumn] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  const handleChange = (filterable: Lib.Filterable) => {
+    onUpdate(toFilterClause(query, stageIndex, filterable));
+  };
+
+  if (isPickingColumn) {
+    return (
+      <FilterPicker
+        query={query}
+        stageIndex={stageIndex}
+        onSelect={handleChange}
+        onClose={() => setIsPickingColumn(false)}
+      />
+    );
+  }
+
+  return (
+    <Box ref={bodyRef}>
+      <FilterPickerBody
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={clause}
+        isNew={false}
+        withSubmitButton={false}
+        onChange={handleChange}
+        onBack={() => setIsPickingColumn(true)}
+      />
+      <Divider />
+      <Group justify="space-between" p="md" ff="monospace">
+        <Button variant="default" onClick={onOr}>
+          {t`Or…`}
+        </Button>
+        <Button
+          variant="filled"
+          // The picker body commits on form submit; its own submit button is hidden.
+          onClick={() =>
+            bodyRef.current?.querySelector("form")?.requestSubmit()
+          }
+        >
+          {t`Update filter`}
+        </Button>
+      </Group>
+    </Box>
+  );
+}
+
+type EditorView =
+  | { type: "auto" }
+  | { type: "rows" }
+  | { type: "add"; target: AddTarget }
+  | { type: "replace"; path: ClausePath };
+
+type AddButtonProps = {
+  label?: string;
+  className?: string;
+  fw?: "bold";
+  "aria-label"?: string;
+  onClick: () => void;
+};
+
+const AddButton = forwardRef<HTMLButtonElement, AddButtonProps>(
+  function AddButton({ label, className, fw, onClick, ...props }, ref) {
+    return (
+      <Button
+        ref={ref}
+        size="compact-md"
+        variant="subtle"
+        c="text-secondary"
+        fw={fw ?? "normal"}
+        className={className}
+        leftSection={<Icon name="add" />}
+        onClick={onClick}
+        {...props}
+      >
+        {label}
+      </Button>
+    );
+  },
+);
+
+type RowAddMenuProps = {
+  className?: string;
+  onAddFilter: () => void;
+  onAddSubgroup: () => void;
+};
+
+/** Figma "Alt · + offers Filter or Subgroup": the row's "+" picks what to add. */
+function RowAddMenu({
   className,
-  fw,
-  onAdd,
-}: AddButtonProps) {
+  onAddFilter,
+  onAddSubgroup,
+}: RowAddMenuProps) {
   const [isOpened, setIsOpened] = useState(false);
 
   return (
-    <Popover
+    <Menu
       opened={isOpened}
       position="bottom-start"
-      transitionProps={{ duration: 0 }}
-      // Rendered inside the editor's dropdown, so clicking the picker is not
-      // an outside click for the editor's own popover.
+      // Rendered inside the editor's dropdown, so picking an item is not an
+      // outside click for the pill's own popover.
       withinPortal={false}
       onChange={setIsOpened}
     >
-      <Popover.Target>
-        <Button
-          size="compact-md"
-          variant="subtle"
-          c="text-secondary"
-          fw={fw ?? "normal"}
-          className={cx(className)}
+      <Menu.Target>
+        <AddButton
+          aria-label={t`Add to this row`}
+          className={className}
           data-opened={isOpened}
-          leftSection={<Icon name="add" />}
           onClick={() => setIsOpened((opened) => !opened)}
-        >
-          {label}
-        </Button>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={stageIndex}
-          onSelect={(filterable) => {
-            onAdd(filterable);
-            setIsOpened(false);
-          }}
-          onClose={() => setIsOpened(false)}
         />
-      </Popover.Dropdown>
-    </Popover>
+      </Menu.Target>
+      <Menu.Dropdown w={380} p={0} ff="monospace">
+        <Menu.Item className={S.menuItem} onClick={onAddFilter}>
+          <MenuItemLabel
+            title={t`Filter`}
+            description={t`One more filter connected by and`}
+          />
+        </Menu.Item>
+        <Menu.Item className={S.menuItem} onClick={onAddSubgroup}>
+          <MenuItemLabel
+            title={t`Subgroup`}
+            description={t`Several filters where at least one must match: and ( … or … )`}
+          />
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
+function MenuItemLabel({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Stack gap={4}>
+      <Text fw="bold" c="text-primary">
+        {title}
+      </Text>
+      <Text size="sm" c="text-secondary">
+        {description}
+      </Text>
+    </Stack>
   );
 }
