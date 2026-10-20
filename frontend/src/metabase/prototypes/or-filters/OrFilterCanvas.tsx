@@ -7,6 +7,7 @@ import {
   Group,
   Icon,
   Loader,
+  Paper,
   SimpleGrid,
   Stack,
   Text,
@@ -97,7 +98,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   }
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Box>
         <Title order={3}>{direction.name}</Title>
         <Text c="text-secondary">{direction.description}</Text>
@@ -176,8 +177,12 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
       <Stack gap="sm">
         <Title order={3}>{t`Preview`}</Title>
         <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-          <QueryResults query={query} stageIndex={STAGE_INDEX} />
-          <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
+          <Paper withBorder radius="md" p="lg" miw={0}>
+            <QueryResults query={query} stageIndex={STAGE_INDEX} />
+          </Paper>
+          <Paper withBorder radius="md" p="lg" miw={0}>
+            <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
+          </Paper>
         </SimpleGrid>
       </Stack>
     </Stack>
