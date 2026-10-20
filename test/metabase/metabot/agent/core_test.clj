@@ -14,9 +14,9 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.config :as metabot.config]
-   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
@@ -746,7 +746,7 @@
                                       :charts  map?}}
                          {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (metabot.persistence/combine-text-parts-xf)
+                          (into [] (streaming/combine-text-parts-xf)
                                 (run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -1117,7 +1117,7 @@
                      {:type :data :data-type "state"}
                      {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (metabot.persistence/combine-text-parts-xf)
+                      (into [] (streaming/combine-text-parts-xf)
                             (run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}

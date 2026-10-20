@@ -190,26 +190,6 @@
                   (json/encode {:message      (pr-str error)
                                 :encode-error true})))))))
 
-(defn combine-text-parts-xf
-  "Transducer that merges consecutive `:text` parts into a single `:text` part.
-  Non-text parts pass through unchanged. Used before persistence so streaming
-  text deltas consolidate into one stored block."
-  []
-  (fn [rf]
-    (let [pending (volatile! nil)]
-      (fn
-        ([] (rf))
-        ([result]
-         (let [p @pending]
-           (rf (if p (rf result p) result))))
-        ([result part]
-         (let [prev @pending]
-           (if (and prev (= :text (:type prev) (:type part)))
-             (do (vswap! pending update :text str (:text part))
-                 result)
-             (do (vreset! pending part)
-                 (if prev (rf result prev) result)))))))))
-
 (defn live-messages
   "A conversation's non-deleted messages in reader order (created_at, id)."
   [conversation-id]
@@ -408,7 +388,7 @@
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final
   streamed parts.
 
-  `parts` should be the post-[[combine-text-parts-xf]] parts vector. Stream metadata
+  `parts` should be the post-[[streaming/combine-text-parts-xf]] parts vector. Stream metadata
   (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
   the v2 at-rest format (see [[parts->storable-content]]) before storage; usage is
   accumulated separately into the `usage` column; the error part body, if any,

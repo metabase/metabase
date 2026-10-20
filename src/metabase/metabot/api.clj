@@ -15,6 +15,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -276,7 +277,7 @@
                 (vreset! canceled? true))))
           (finally
             (try
-              (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+              (let [combined-parts (into [] (streaming/combine-text-parts-xf) @parts-atom)
                     aborted?       @canceled?
                     thrown-ex      @thrown
                     ;; Precedence: aborted > thrown > streamed `:error`.

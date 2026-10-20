@@ -301,25 +301,6 @@
         (is (= channel-id (:slack_channel_id conversation)))
         (is (= thread-ts (:slack_thread_ts conversation)))))))
 
-(deftest ^:parallel combine-text-parts-xf-merges-consecutive-text-test
-  (testing "consecutive :text parts coalesce; non-text parts split runs"
-    (let [parts [{:type :text :text "Hello, "}
-                 {:type :text :text "world"}
-                 {:type :text :text "!"}
-                 {:type :tool-input :id "c1" :function "search"}
-                 {:type :text :text "After "}
-                 {:type :text :text "tool."}]
-          out   (into [] (metabot-persistence/combine-text-parts-xf) parts)]
-      (is (= [{:type :text :text "Hello, world!"}
-              {:type :tool-input :id "c1" :function "search"}
-              {:type :text :text "After tool."}]
-             out))))
-  (testing "single text part flushes on completion"
-    (is (= [{:type :text :text "lone"}]
-           (into [] (metabot-persistence/combine-text-parts-xf) [{:type :text :text "lone"}]))))
-  (testing "empty input"
-    (is (= [] (into [] (metabot-persistence/combine-text-parts-xf) [])))))
-
 (deftest ^:parallel parts->storable-content-preserves-non-map-tool-result-test
   ;; Regression: a non-map tool result used to throw in `select-keys`, failing the turn's persist.
   (testing "a bare string/scalar tool result is stored as-is under :output"

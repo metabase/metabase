@@ -4,9 +4,9 @@
   between two turns: the first request of a turn must start with the last request of the turn before it, in the
   wire format of each adapter.
 
-  For now they cover the `<context>` block sent before each user message. Other parts of a turn — the SQL dialect
-  preload, thinking, text streamed in deltas, parallel tool calls, failed tool calls — are not yet replayed as they
-  were sent, so no conversation here has them."
+  For now they cover the `<context>` block sent before each user message and assistant text streamed in deltas.
+  Other parts of a turn — the SQL dialect preload, thinking, parallel tool calls, failed tool calls — are not yet
+  replayed as they were sent, so no conversation here has them."
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -30,12 +30,13 @@
 ;;; ------------------------------------------------ The conversation ------------------------------------------------
 
 (defn- run-turns!
-  "Send `turns` in one conversation through the agent-streaming endpoint. A turn is `{:message :context :response}`,
-  where `:response` is what the provider streams back to the turn's one LLM call. Each message names the previous
-  answer as its parent, as the frontend does. Returns the request options the adapter got on each LLM call, in order."
+  "Send `turns` in one conversation through the agent-streaming endpoint. A turn is `{:message :context :responses}`,
+  where `:responses` holds what the provider streams back to each LLM call of the turn, in order. Each message names
+  the previous answer as its parent, as the frontend does. Returns one vector per turn, with the request options the
+  adapter got on each LLM call of that turn, in order."
   [turns]
   (let [conversation-id (str (random-uuid))
-        pending         (atom (map :response turns))
+        pending         (atom (mapcat :responses turns))
         requests        (atom [])]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider "anthropic/claude-opus-5-5"]
@@ -45,19 +46,20 @@
                                   conversation-title/ensure-title! (constantly nil)]
         (mt/with-model-cleanup [:model/MetabotMessage
                                 [:model/MetabotConversation :created_at]]
-          (reduce (fn [parent-id {:keys [message context]}]
-                    (let [answer-id (str (random-uuid))]
-                      (mt/user-http-request :crowberto :post 202 "metabot/agent-streaming"
-                                            (cond-> {:message              message
-                                                     :context              context
-                                                     :conversation_id      conversation-id
-                                                     :assistant_message_id answer-id
-                                                     :state                {}}
-                                              parent-id (assoc :parent_message_id parent-id)))
-                      answer-id))
-                  nil
-                  turns))))
-    @requests))
+          (second
+           (reduce (fn [[parent-id per-turn] {:keys [message context]}]
+                     (let [answer-id (str (random-uuid))
+                           sent      (count @requests)]
+                       (mt/user-http-request :crowberto :post 202 "metabot/agent-streaming"
+                                             (cond-> {:message              message
+                                                      :context              context
+                                                      :conversation_id      conversation-id
+                                                      :assistant_message_id answer-id
+                                                      :state                {}}
+                                               parent-id (assoc :parent_message_id parent-id)))
+                       [answer-id (conj per-turn (subvec @requests sent))]))
+                   [nil []]
+                   turns)))))))
 
 (defn- answer [id text]
   (mut/mock-llm-response [{:type :start :id id}
@@ -66,12 +68,33 @@
 (def ^:private two-turns
   "Two turns five minutes apart, each answered by one LLM call. The `<context>` block of each user message holds the
   time of its own turn, so the two blocks differ."
-  [{:message  "How many orders do we have?"
-    :context  {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
-    :response (answer "msg-1" "There are 18,760 orders.")}
-   {:message  "And last month?"
-    :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
-    :response (answer "msg-2" "Last month there were 1,412.")}])
+  [{:message   "How many orders do we have?"
+    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :responses [(answer "msg-1" "There are 18,760 orders.")]}
+   {:message   "And last month?"
+    :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :responses [(answer "msg-2" "Last month there were 1,412.")]}])
+
+(defn- load-skill-call
+  "A response with text and then a call to `load_skill`, which always succeeds."
+  [id text]
+  (mut/mock-llm-response [{:type :start :id id}
+                          {:type :text :id (str id "-text") :text text}
+                          {:type :tool-input :id (str id "-call") :function "load_skill"
+                           :arguments {:ids ["read-resource"]}}]))
+
+(def ^:private streamed-text-turns
+  "Two turns, the first with three LLM calls. [[mut/mock-llm-response]] streams text in deltas of five characters,
+  so each text block of the first two calls arrives in parts. The text of the second call is only whitespace, as a
+  model can send before a tool call."
+  [{:message   "How many orders do we have?"
+    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :responses [(load-skill-call "msg-1" "Let me read how to look up a table first.")
+                (load-skill-call "msg-2" "\n\n")
+                (answer "msg-3" "There are 18,760 orders.")]}
+   {:message   "And last month?"
+    :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :responses [(answer "msg-4" "Last month there were 1,412.")]}])
 
 ;;; ------------------------------------------------ Prefix comparison -----------------------------------------------
 
@@ -142,16 +165,37 @@
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
+(defn- check-turn-edges
+  "Check, for each adapter not in `except`, that the first request of each turn starts with the last request of the
+  turn before it."
+  ([turns] (check-turn-edges turns #{}))
+  ([turns except]
+   (doseq [{:keys [adapter history render]} (remove (comp except :adapter) adapters)
+           [i [turn-n next-turn]]           (map-indexed vector (partition 2 1 turns))]
+     (testing (format "%s: turn %d's first request starts with turn %d's last request, cache markers aside"
+                      adapter (+ i 2) (inc i))
+       (is (nil? (prefix-break history (render (last turn-n)) (render (first next-turn)))))))))
+
 (deftest user-message-replays-with-its-context-block-test
-  (let [[turn-1 turn-2 :as requests] (run-turns! two-turns)
-        user-messages                (fn [opts] (keep #(when (= :user (:role %)) (:content %)) (:input opts)))]
+  (let [[[turn-1 :as first-turn] [turn-2 :as second-turn] :as turns] (run-turns! two-turns)
+        user-messages (fn [opts] (keep #(when (= :user (:role %)) (:content %)) (:input opts)))]
     (testing "each user message is sent with the <context> block of its own turn, in every later turn too"
-      (is (= 2 (count requests)))
+      (is (= [1 1] [(count first-turn) (count second-turn)]))
       (is (=? [#"(?s)<context>.*2026-10-20T10:00:00Z.*</context>\nHow many orders do we have\?"]
               (user-messages turn-1)))
       (is (=? [#"(?s)<context>.*2026-10-20T10:00:00Z.*</context>\nHow many orders do we have\?"
                #"(?s)<context>.*2026-10-20T10:05:00Z.*</context>\nAnd last month\?"]
               (user-messages turn-2))))
-    (doseq [{:keys [adapter history render]} adapters]
-      (testing (str adapter ": turn 2's first request starts with turn 1's last request, cache markers aside")
-        (is (nil? (prefix-break history (render turn-1) (render turn-2))))))))
+    (check-turn-edges turns)))
+
+(deftest streamed-text-replays-as-one-part-test
+  (let [[first-turn :as turns] (run-turns! streamed-text-turns)
+        texts                  (fn [opts] (keep #(when (= :text (:type %)) (:text %)) (:input opts)))]
+    (testing "a text block streamed in deltas is sent as one part in the next call, and blank text is not sent"
+      (is (= 3 (count first-turn)))
+      (is (= ["Let me read how to look up a table first."]
+             (texts (last first-turn)))))
+    ;; Not DeepSeek. Its builder turns thinking off while the open turn holds a tool call with no signed reasoning,
+    ;; as these mocked calls do, so turn 1 ends with thinking off and turn 2 starts with it on. DeepSeek's own calls
+    ;; carry signed reasoning, but history does not replay reasoning, so the two turns would differ there instead.
+    (check-turn-edges turns #{"deepseek"})))

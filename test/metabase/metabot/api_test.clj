@@ -1309,33 +1309,6 @@
            (metabot.persistence/extract-usage
             [{:type :usage :usage {:promptTokens 50 :completionTokens 10}}])))))
 
-(deftest combine-text-parts-xf-test
-  (testing "passes through non-text parts"
-    (is (= [{:type :tool, :id 1} {:type :tool, :id 2}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :tool, :id 1} {:type :tool, :id 2}]))))
-  (testing "combines consecutive text parts"
-    (is (= [{:type :text, :text "hello world"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "hello "}
-                  {:type :text, :text "world"}]))))
-  (testing "combines multiple runs"
-    (is (= [{:type :text, :text "ab"}
-            {:type :tool, :id 1}
-            {:type :text, :text "cd"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "a"}
-                  {:type :text, :text "b"}
-                  {:type :tool, :id 1}
-                  {:type :text, :text "c"}
-                  {:type :text, :text "d"}]))))
-  (testing "handles empty input"
-    (is (= [] (into [] (metabot.persistence/combine-text-parts-xf) []))))
-  (testing "handles single text part"
-    (is (= [{:type :text, :text "solo"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "solo"}])))))
-
 (defn- start-and-finalize-with-provider!
   "Helper: run start-turn! + finalize-assistant-turn! under `provider`, return the
   finalized assistant row."

@@ -205,6 +205,27 @@
                              (map? (:data dp)) (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
 
+(defn combine-text-parts-xf
+  "Transducer that merges consecutive `:text` parts into a single `:text` part.
+  Non-text parts pass through unchanged. Text streams as one part per delta: the
+  agent loop merges a step's parts before it keeps them in memory, and persistence
+  merges a turn's parts before it stores them, so both hold the same text blocks."
+  []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (rf (if p (rf result p) result))))
+        ([result part]
+         (let [prev @pending]
+           (if (and prev (= :text (:type prev) (:type part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+             (do (vreset! pending part)
+                 (if prev (rf result prev) result)))))))))
+
 (defn post-process-xf
   "Composed transducer for post-processing agent output.
 
