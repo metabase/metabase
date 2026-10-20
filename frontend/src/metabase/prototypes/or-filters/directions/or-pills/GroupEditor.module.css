@@ -5,8 +5,7 @@
 }
 
 .row:hover,
-.row:focus-within,
-.row:has(.rowAdd[data-opened="true"]) {
+.row:focus-within {
   background-color: var(--mb-color-background_page-secondary);
 }
 
@@ -16,7 +15,6 @@
 }
 
 .row:hover .rowAdd,
-.row:focus-within .rowAdd,
-.rowAdd[data-opened="true"] {
+.row:focus-within .rowAdd {
   opacity: 1;
 }

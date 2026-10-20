@@ -1,19 +1,10 @@
-import cx from "classnames";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  Icon,
-  Popover,
-  Stack,
-  Text,
-} from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
+import { Box, Button, Divider, Group, Icon, Stack, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 
@@ -29,8 +20,10 @@ type GroupEditorProps = {
 };
 
 /**
- * The dropdown for one pill (Figma "Group editor"): rows of AND-ed tokens
- * joined by OR, edited as a draft and written back on "Update filter".
+ * The dropdown for one pill. A pill holding a single standard filter shows the
+ * plain filter picker with an "Or…" button (Figma "Filter popover"); anything
+ * else shows rows of AND-ed tokens joined by OR (Figma "Group editor"), edited
+ * as a draft and written back on "Update filter".
  */
 export function GroupEditor({
   query,
@@ -40,6 +33,26 @@ export function GroupEditor({
 }: GroupEditorProps) {
   const [rows, setRows] = useState(initialRows);
   const [isExpanded, setIsExpanded] = useState(false);
+  // Only one thing is ever on screen: the single-clause editor, the rows, or
+  // the picker that adds/replaces one clause (no picker stacked over the rows).
+  const [view, setView] = useState<EditorView>({ type: "auto" });
+
+  const singleClause =
+    view.type === "auto"
+      ? getSingleStandardClause(query, stageIndex, rows)
+      : undefined;
+  if (singleClause) {
+    return (
+      <SingleClauseEditor
+        query={query}
+        stageIndex={stageIndex}
+        clause={singleClause.clause}
+        column={singleClause.column}
+        onOr={() => setView({ type: "add", rowIndex: rows.length })}
+        onUpdate={(clause) => onUpdate([[clause]])}
+      />
+    );
+  }
 
   const handleAdd = (rowIndex: number, filterable: Lib.Filterable) => {
     const clause = toFilterClause(query, stageIndex, filterable);
@@ -48,6 +61,7 @@ export function GroupEditor({
         ? [...rows, [clause]]
         : updateRow(rows, rowIndex, (row) => [...row, clause]),
     );
+    setView({ type: "rows" });
   };
 
   const handleReplace = (
@@ -61,7 +75,33 @@ export function GroupEditor({
         row.map((member) => (member === clause ? nextClause : member)),
       ),
     );
+    setView({ type: "rows" });
   };
+
+  if (view.type === "add") {
+    return (
+      <FilterPicker
+        query={query}
+        stageIndex={stageIndex}
+        onSelect={(filterable) => handleAdd(view.rowIndex, filterable)}
+        onClose={() => setView({ type: "rows" })}
+      />
+    );
+  }
+
+  if (view.type === "replace") {
+    return (
+      <FilterPicker
+        query={query}
+        stageIndex={stageIndex}
+        filter={view.clause}
+        onSelect={(filterable) =>
+          handleReplace(view.rowIndex, view.clause, filterable)
+        }
+        onClose={() => setView({ type: "rows" })}
+      />
+    );
+  }
 
   const handleRemove = (rowIndex: number, clause: Lib.FilterClause) => {
     setRows(
@@ -89,34 +129,27 @@ export function GroupEditor({
                     {t`and`}
                   </Text>
                 ),
-                <ClauseToken
+                <Token
                   key={clauseIndex}
-                  query={query}
-                  stageIndex={stageIndex}
-                  clause={clause}
-                  onReplace={(filterable) =>
-                    handleReplace(rowIndex, clause, filterable)
-                  }
+                  onClick={() => setView({ type: "replace", rowIndex, clause })}
                   onRemove={() => handleRemove(rowIndex, clause)}
-                />,
+                >
+                  {getFilterLabel(query, stageIndex, clause)}
+                </Token>,
               ])}
               <AddButton
-                query={query}
-                stageIndex={stageIndex}
                 label={t`and`}
                 className={S.rowAdd}
-                onAdd={(filterable) => handleAdd(rowIndex, filterable)}
+                onClick={() => setView({ type: "add", rowIndex })}
               />
             </Group>
           ))}
         </Stack>
         <Box>
           <AddButton
-            query={query}
-            stageIndex={stageIndex}
             label={t`or`}
             fw="bold"
-            onAdd={(filterable) => handleAdd(rows.length, filterable)}
+            onClick={() => setView({ type: "add", rowIndex: rows.length })}
           />
         </Box>
         {isExpanded && (
@@ -149,111 +182,117 @@ export function GroupEditor({
   );
 }
 
-type ClauseTokenProps = {
+type SingleStandardClause = {
+  clause: Lib.FilterClause;
+  column: Lib.ColumnMetadata;
+};
+
+function getSingleStandardClause(
+  query: Lib.Query,
+  stageIndex: number,
+  rows: PillRows,
+): SingleStandardClause | undefined {
+  const [firstRow = [], ...otherRows] = rows;
+  const [clause, ...otherClauses] = firstRow;
+  if (clause == null || otherRows.length > 0 || otherClauses.length > 0) {
+    return undefined;
+  }
+  const column = Lib.filterParts(query, stageIndex, clause)?.column;
+  return column ? { clause, column } : undefined;
+}
+
+type SingleClauseEditorProps = {
   query: Lib.Query;
   stageIndex: number;
   clause: Lib.FilterClause;
-  onReplace: (filterable: Lib.Filterable) => void;
-  onRemove: () => void;
+  column: Lib.ColumnMetadata;
+  onOr: () => void;
+  onUpdate: (clause: Lib.FilterClause) => void;
 };
 
-function ClauseToken({
+/** Figma "Filter popover": the real picker body with "Or…" next to "Update filter". */
+function SingleClauseEditor({
   query,
   stageIndex,
   clause,
-  onReplace,
-  onRemove,
-}: ClauseTokenProps) {
-  const [isOpened, setIsOpened] = useState(false);
+  column,
+  onOr,
+  onUpdate,
+}: SingleClauseEditorProps) {
+  const [isPickingColumn, setIsPickingColumn] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  const handleChange = (filterable: Lib.Filterable) => {
+    onUpdate(toFilterClause(query, stageIndex, filterable));
+  };
+
+  if (isPickingColumn) {
+    return (
+      <FilterPicker
+        query={query}
+        stageIndex={stageIndex}
+        onSelect={handleChange}
+        onClose={() => setIsPickingColumn(false)}
+      />
+    );
+  }
 
   return (
-    <Popover
-      opened={isOpened}
-      position="bottom-start"
-      transitionProps={{ duration: 0 }}
-      // Rendered inside the editor's dropdown, so clicking the picker is not
-      // an outside click for the editor's own popover.
-      withinPortal={false}
-      onChange={setIsOpened}
-    >
-      <Popover.Target>
-        <Token
-          onClick={() => setIsOpened((opened) => !opened)}
-          onRemove={onRemove}
+    <Box ref={bodyRef}>
+      <FilterPickerBody
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={clause}
+        isNew={false}
+        withSubmitButton={false}
+        onChange={handleChange}
+        onBack={() => setIsPickingColumn(true)}
+      />
+      <Divider />
+      <Group justify="space-between" p="md" ff="monospace">
+        <Button variant="default" onClick={onOr}>
+          {t`Or…`}
+        </Button>
+        <Button
+          variant="filled"
+          // The picker body commits on form submit; its own submit button is hidden.
+          onClick={() =>
+            bodyRef.current?.querySelector("form")?.requestSubmit()
+          }
         >
-          {getFilterLabel(query, stageIndex, clause)}
-        </Token>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={stageIndex}
-          filter={clause}
-          onSelect={(filterable) => {
-            onReplace(filterable);
-            setIsOpened(false);
-          }}
-          onClose={() => setIsOpened(false)}
-        />
-      </Popover.Dropdown>
-    </Popover>
+          {t`Update filter`}
+        </Button>
+      </Group>
+    </Box>
   );
 }
 
+type EditorView =
+  | { type: "auto" }
+  | { type: "rows" }
+  | { type: "add"; rowIndex: number }
+  | { type: "replace"; rowIndex: number; clause: Lib.FilterClause };
+
 type AddButtonProps = {
-  query: Lib.Query;
-  stageIndex: number;
   label: string;
   className?: string;
   fw?: "bold";
-  onAdd: (filterable: Lib.Filterable) => void;
+  onClick: () => void;
 };
 
-function AddButton({
-  query,
-  stageIndex,
-  label,
-  className,
-  fw,
-  onAdd,
-}: AddButtonProps) {
-  const [isOpened, setIsOpened] = useState(false);
-
+function AddButton({ label, className, fw, onClick }: AddButtonProps) {
   return (
-    <Popover
-      opened={isOpened}
-      position="bottom-start"
-      transitionProps={{ duration: 0 }}
-      // Rendered inside the editor's dropdown, so clicking the picker is not
-      // an outside click for the editor's own popover.
-      withinPortal={false}
-      onChange={setIsOpened}
+    <Button
+      size="compact-md"
+      variant="subtle"
+      c="text-secondary"
+      fw={fw ?? "normal"}
+      className={className}
+      leftSection={<Icon name="add" />}
+      onClick={onClick}
     >
-      <Popover.Target>
-        <Button
-          size="compact-md"
-          variant="subtle"
-          c="text-secondary"
-          fw={fw ?? "normal"}
-          className={cx(className)}
-          data-opened={isOpened}
-          leftSection={<Icon name="add" />}
-          onClick={() => setIsOpened((opened) => !opened)}
-        >
-          {label}
-        </Button>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={stageIndex}
-          onSelect={(filterable) => {
-            onAdd(filterable);
-            setIsOpened(false);
-          }}
-          onClose={() => setIsOpened(false)}
-        />
-      </Popover.Dropdown>
-    </Popover>
+      {label}
+    </Button>
   );
 }
