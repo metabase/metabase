@@ -52,15 +52,16 @@ export function startsOperand(token: Token | undefined): boolean {
 
 /**
  * The stage's top-level filters (implicitly AND-ed) as one token stream.
- * Parentheses appear only where precedence needs them: an OR inside an AND.
- * Nested same-operator clauses are flattened.
+ * Every nested group is parenthesised, even where precedence would not need
+ * it, so what the user typed comes back looking the same. Nested
+ * same-operator clauses are flattened.
  */
 export function readTokens(query: Lib.Query, stageIndex: number): Token[] {
   const filters = Lib.filters(query, stageIndex);
-  // A lone top-level OR has no surrounding AND, so it needs no parentheses.
-  const parentOp = filters.length > 1 ? "and" : "or";
+  // A lone filter is the root of the expression; several share an implicit AND root.
+  const depth = filters.length > 1 ? 1 : 0;
   return joinWithOp(
-    filters.map((filter) => readClause(query, stageIndex, filter, parentOp)),
+    filters.map((filter) => readClause(query, stageIndex, filter, depth)),
     "and",
   );
 }
@@ -69,7 +70,7 @@ function readClause(
   query: Lib.Query,
   stageIndex: number,
   clause: Lib.FilterClause,
-  parentOp: BoolOperator,
+  depth: number,
 ): Token[] {
   const parts = Lib.expressionParts(query, stageIndex, clause);
   if (parts.operator !== "and" && parts.operator !== "or") {
@@ -82,13 +83,12 @@ function readClause(
         query,
         stageIndex,
         toFilterClause(query, stageIndex, Lib.expressionClause(arg)),
-        op,
+        depth + 1,
       ),
     ),
     op,
   );
-  const needsParens = op === "or" && parentOp === "and";
-  return needsParens ? [OPEN_PAREN, ...tokens, CLOSE_PAREN] : tokens;
+  return depth > 0 ? [OPEN_PAREN, ...tokens, CLOSE_PAREN] : tokens;
 }
 
 function joinWithOp(groups: Token[][], op: BoolOperator): Token[] {
