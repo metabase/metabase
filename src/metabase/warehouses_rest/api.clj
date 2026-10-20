@@ -63,14 +63,12 @@
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables
-  "Hydrate tables for each database. Optional `can-query?` and `can-write-metadata?` filters
-   can be applied to filter tables by permission level."
-  [dbs & {:keys [can-query? can-write-metadata?]}]
+  "Hydrate tables for each database. An optional `can-query?` filter keeps only the tables the user can query."
+  [dbs & {:keys [can-query?]}]
   (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
         _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? all-tables)
-                          can-query?          (filter mi/can-query?)
-                          can-write-metadata? (filter mi/can-write?))
+                          can-query?          (filter mi/can-query?))
         db-id->tables (group-by :db_id filtered-tables)]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
@@ -293,8 +291,7 @@
              exclude-uneditable-details?
              include-only-uploadable?
              router-database-id
-             can-query?
-             can-write-metadata?]}]
+             can-query?]}]
   (let [filter-on-router-database-id (when (some->> router-database-id
                                                     (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes))
                                        router-database-id)
@@ -307,7 +304,7 @@
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
-      include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
+      include-tables?              (add-tables :can-query? can-query?)
       include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
@@ -351,9 +348,6 @@
 
   * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.
 
-  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions
-    for at least one table in the database. Default: `false`.
-
   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for
   `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user
@@ -361,7 +355,7 @@
   {:scope api-scope/data-app}
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
-           include_stubs router_database_id can-query can-write-metadata]}
+           include_stubs router_database_id can-query]}
    :- [:map {:closed true}
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:enum "tables" "schemas"]]
@@ -373,31 +367,23 @@
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
        [:include_only_uploadable     {:default false} [:maybe :boolean]]
        [:router_database_id          {:optional true} [:maybe ms/PositiveInt]]
-       [:can-query                   {:optional true} [:maybe :boolean]]
-       [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+       [:can-query                   {:optional true} [:maybe :boolean]]]]
   (let [include-tables?                 (= include "tables")
         include-schemas?                (= include "schemas")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
-        has-table-metadata-perms?       (fn [{db-id :id}]
-                                          (= :yes (perms/most-permissive-database-permission-for-user
-                                                   api/*current-user-id*
-                                                   :perms/manage-table-metadata
-                                                   db-id)))
-        db-list-res                     (cond->> (or (dbs-list :include-tables?                 include-tables?
-                                                               :include-schemas?                include-schemas?
-                                                               :include-saved-questions-db?     saved
-                                                               :include-saved-questions-tables? include-saved-questions-tables?
-                                                               :include-editable-data-model?    include_editable_data_model
-                                                               :exclude-uneditable-details?     only-editable?
-                                                               :include-analytics?              include_analytics
-                                                               :include-stubs?                  include_stubs
-                                                               :include-only-uploadable?        include_only_uploadable
-                                                               :router-database-id              router_database_id
-                                                               :can-query?                      can-query
-                                                               :can-write-metadata?             can-write-metadata)
-                                                     [])
-                                          can-write-metadata (filter has-table-metadata-perms?))]
+        db-list-res                     (or (dbs-list :include-tables?                 include-tables?
+                                                      :include-schemas?                include-schemas?
+                                                      :include-saved-questions-db?     saved
+                                                      :include-saved-questions-tables? include-saved-questions-tables?
+                                                      :include-editable-data-model?    include_editable_data_model
+                                                      :exclude-uneditable-details?     only-editable?
+                                                      :include-analytics?              include_analytics
+                                                      :include-stubs?                  include_stubs
+                                                      :include-only-uploadable?        include_only_uploadable
+                                                      :router-database-id              router_database_id
+                                                      :can-query?                      can-query)
+                                            [])]
     {:data  db-list-res
      :total (count db-list-res)}))
 
@@ -1277,23 +1263,19 @@
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.
 
   Optional filters:
-  - `can-query=true` - filter to only schemas containing tables the user can query
-  - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for"
+  - `can-query=true` - filter to only schemas containing tables the user can query"
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model
            include_hidden
-           can-query
-           can-write-metadata]} :- [:map {:closed true}
-                                    [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                    [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                    [:can-query                   {:optional true} [:maybe :boolean]]
-                                    [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+           can-query]} :- [:map {:closed true}
+                           [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                           [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                           [:can-query                   {:optional true} [:maybe :boolean]]]]
   (schema.table/database-schemas id {:include-editable-data-model? include_editable_data_model
                                      :include-hidden?              include_hidden
-                                     :can-query?                   can-query
-                                     :can-write-metadata?          can-write-metadata}))
+                                     :can-query?                   can-query}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1341,25 +1323,22 @@
   instead (#77353).
 
   Optional filters:
-  - `can-query=true` - filter to only tables the user can query
-  - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  - `can-query=true` - filter to only tables the user can query"
   {:scope api-scope/data-app}
   [{:keys [id schema]} :- [:map {:closed true}
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}
-                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
+   {:keys [include_hidden include_editable_data_model can-query include_measures]} :- [:map {:closed true}
+                                                                                       [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                       [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                       [:include_measures            {:optional true} [:maybe :boolean]]]]
   (api/check-404 (seq (schema.table/schema-tables-list
                        id
                        schema
                        {:include-hidden?              include_hidden
                         :include-editable-data-model? include_editable_data_model
                         :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata
                         :include-measures?            include_measures}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -1377,25 +1356,22 @@
   the URL path (#77353).
 
   Optional filters:
-  - `can-query=true` - filter to only tables the user can query
-  - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  - `can-query=true` - filter to only tables the user can query"
   ;; Tagged for the same reason as the `/:id/schema/:schema` sibling, and it is this route the SDK
   ;; usually reaches: `GET /:id/schemas` reports a nil schema as "", and the sibling's `NonBlankString`
   ;; route regex cannot match an empty segment, so every schemaless warehouse lands here.
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}
-                                                                                                                 [:schema                      {:optional true} [:maybe :string]]
-                                                                                                                 [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                                                 [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                                                 [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                                                 [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                                                                                                 [:include_measures            {:optional true} [:maybe :boolean]]]]
+   {:keys [schema include_hidden include_editable_data_model can-query include_measures]} :- [:map {:closed true}
+                                                                                              [:schema                      {:optional true} [:maybe :string]]
+                                                                                              [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                              [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                              [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                              [:include_measures            {:optional true} [:maybe :boolean]]]]
   (let [opts {:include-hidden?              include_hidden
               :include-editable-data-model? include_editable_data_model
               :can-query?                   can-query
-              :can-write-metadata?          can-write-metadata
               :include-measures?            include_measures}]
     (api/check-404 (seq (if (str/blank? schema)
                           (concat (schema.table/schema-tables-list id nil opts)

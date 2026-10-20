@@ -77,11 +77,10 @@
   "Get all `Tables`.
 
   Optional filters:
-  - `can-query=true` - filter to only tables the user can execute queries against
-  - `can-write=true` - filter to only tables the user can edit metadata for"
+  - `can-query=true` - filter to only tables the user can execute queries against"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           published-only can-query can-write include-transform-targets]}
+           published-only can-query include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -93,7 +92,6 @@
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
-       [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
   (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
@@ -115,7 +113,6 @@
           tables)
       (into [] (comp (filter mi/can-read?)
                      (if can-query (filter mi/can-query?) identity)
-                     (if can-write (filter mi/can-write?) identity)
                      (map schema.table/present-table))
             tables))))
 

@@ -4,6 +4,13 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.66.0
+
+- The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
+  `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
+  `GET /api/table`, have been removed and are ignored. To list only what the current user can edit the data model of,
+  pass `include_editable_data_model=true` instead.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with

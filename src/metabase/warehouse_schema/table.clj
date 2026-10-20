@@ -197,7 +197,7 @@
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
+  [id {:keys [include-editable-data-model? include-hidden? can-query?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
                            (->> schemas
@@ -205,14 +205,12 @@
                                 filter-schema-by-data-model-perms
                                 (map :schema))
                            (filter (partial can-read-schema? id) schemas)))
-        ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
+        ;; For can-query?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
-                                   (if (or can-query? can-write-metadata?)
+                                   (if can-query?
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
-                                           filtered-tables (cond->> tables
-                                                             can-query?          (filter mi/can-query?)
-                                                             can-write-metadata? (filter mi/can-write?))
+                                           filtered-tables (filter mi/can-query? tables)
                                            allowed-schemas (set (map :schema filtered-tables))]
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
@@ -231,7 +229,7 @@
   `include-editable-data-model?` routes the filtering through data-model permissions instead."
   ([db-id schema]
    (schema-tables-list db-id schema {}))
-  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata? include-measures?]}]
+  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? include-measures?]}]
    (when-not include-editable-data-model?
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
@@ -242,8 +240,7 @@
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (filter-tables-by-data-model-perms candidate-tables)
                                      (filter mi/can-read? candidate-tables))
-                            can-query?          (filter mi/can-query?)
-                            can-write-metadata? (filter mi/can-write?))
+                            can-query? (filter mi/can-query?))
          hydration-keys   (cond-> []
                             (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
