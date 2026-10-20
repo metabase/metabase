@@ -117,9 +117,9 @@
            (contains? collection/library-collection-types (:type collection)))))
 
 (defn check-custom-collections-unsynced!
-  "Throws when turning off custom collections, with `enabled?` false, while a top-level custom collection is remote-synced."
-  [enabled?]
-  (when (and (not enabled?) (some custom-collection? (remote-sync.db/remote-synced-root-collections)))
+  "Throws when a top-level custom collection is remote-synced."
+  []
+  (when (some custom-collection? (remote-sync.db/remote-synced-root-collections))
     (throw (ex-info (tru "Stop syncing the collections besides the Library, transforms, snippets and data apps before turning off remote-sync-custom-collections-enabled.")
                     {:status-code 400}))))
 
@@ -131,14 +131,16 @@
   :encryption :no
   :default false
   :setter (fn [new-value]
-            (check-custom-collections-unsynced! (boolean (if (string? new-value) (setting/string->boolean new-value) new-value)))
+            (when-not (if (string? new-value) (setting/string->boolean new-value) new-value)
+              (check-custom-collections-unsynced!))
             (setting/set-value-of-type! :boolean :remote-sync-custom-collections-enabled new-value)))
 
 (defmethod startup/def-startup-validation! ::remote-sync-custom-collections-enabled
   [_]
   (when (and (remote-sync-enabled)
-             (= :env (setting/get-raw-value-source :remote-sync-custom-collections-enabled)))
-    (check-custom-collections-unsynced! (remote-sync-custom-collections-enabled))))
+             (= :env (setting/get-raw-value-source :remote-sync-custom-collections-enabled))
+             (not (remote-sync-custom-collections-enabled)))
+    (check-custom-collections-unsynced!)))
 
 (defn pin-remote-sync-custom-collections-enabled!
   "Stores [[remote-sync-custom-collections-enabled]] when nothing has set it yet, enabled only where remote sync is already configured."
