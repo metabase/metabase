@@ -123,16 +123,16 @@ jobs:
 
       - name: Notify Slack about migrations that need a backport or a release
         if: >-
+          github.ref_name == 'master' &&
           steps.run-test.outputs.skipped == 'true' &&
           steps.run-test.outputs.unreleased_migrations != '' &&
-          matrix.target == needs.generate-test-matrix.outputs.oldest-target
+          matrix.target == needs.generate-test-matrix.outputs.oldest-target   
         uses: actions/github-script@v9
         env:
           UNRELEASED_MIGRATIONS: ${{ steps.run-test.outputs.unreleased_migrations }}
-          # TODO: update to 48 hours and send to #engineering-ci once this has been validated, also add conditional so this only runs on master
-          NOTIFY_AFTER_HOURS: 0
+          NOTIFY_AFTER_HOURS: 24
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL: 'xv-migration-failures'
+          SLACK_CHANNEL: 'engineering-ci'
         with:
           script: | # js
             const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
