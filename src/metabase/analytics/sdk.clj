@@ -44,6 +44,19 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+(def data-app-client
+  "The [[*client*]] a data app reports. It must match `EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader` on the FE:
+  [[metabase.server.middleware.data-app-scope]] confines requests that carry it."
+  "data-app")
+
+(defn- preview-client
+  [client]
+  (str client "-preview"))
+
+(def data-app-clients
+  "The [[*client*]]s a data app reports: published, and in its dev preview."
+  #{data-app-client (preview-client data-app-client)})
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client-identifier*
   "Used to track the identifier of the concrete embedding client, e.g. the data-app name."
@@ -191,12 +204,12 @@
     "embedding-iframe-static"
     "embedding-public"
     "embedding-simple"
-    "data-app"})
+    data-app-client})
 
 (defn- track-sdk-response
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
-  (case sdk-client
+  (condp = sdk-client
     "embedding-sdk-react"       (analytics/inc! :metabase-sdk/response {:status (str status)})
     "embedding-iframe"          (analytics/inc! :metabase-embedding-iframe/response {:status (str status)})
     "embedding-iframe-full-app" (analytics/inc! :metabase-embedding-iframe-full-app/response {:status (str status)})
@@ -204,7 +217,7 @@
     "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
     ;; Known client, but a response-code counter tells us nothing actionable about data apps - so no metric.
-    "data-app"                  nil
+    data-app-client             nil
     (log/info "Unknown client.")))
 
 (defn embedding-context?
@@ -242,7 +255,7 @@
           route (embedding-route (:uri request))
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
           client (cond-> metabase-client-header
-                   preview? (some-> (str "-preview")))]
+                   preview? (some-> preview-client))]
       (binding [*client*            client
                 *client-identifier* identifier
                 *route*             route

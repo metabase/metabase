@@ -140,20 +140,23 @@
       (catch Throwable e
         (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
-(events/derive! ::card-query-model-view :metabase/event)
-(events/derive! :event/card-query ::card-query-model-view)
+(events/derive! ::card-query-view :metabase/event)
+(events/derive! :event/card-query ::card-query-view)
 
-(m/defmethod events/publish-event! ::card-query-model-view
-  "Log a view for models, which are opened as ad-hoc `card__id` queries that fire :event/card-query but never
-  :event/card-read. The :ad-hoc + model guards keep regular cards (logged via card-read) and downloads out."
+(m/defmethod events/publish-event! ::card-query-view
+  "Log a view for the cards read through ad-hoc `card__id` queries, which never fire `:event/card-read`: models, and
+  the saved questions a data app queries."
   [topic {:keys [card-id user-id context]}]
   (span/with-span!
-    {:name    "view-log-model-query"
+    {:name    "view-log-card-query"
      :topic   topic
      :user-id user-id}
     (try
+      ;; Only ad-hoc queries, which keeps downloads out. Other ad-hoc queries on a regular question are left out too:
+      ;; opening the question is logged as its card-read. A data app's dev preview counts: its read is still a view.
       (when (and (= context :ad-hoc)
-                 (= :model (view-log.db/card-type card-id)))
+                 (or (contains? analytics/data-app-clients (analytics/get-client))
+                     (= :model (view-log.db/card-type card-id))))
         (increment-view-counts! :model/Card card-id)
         (record-views! (generate-view :model :model/Card
                                       :object-id card-id
