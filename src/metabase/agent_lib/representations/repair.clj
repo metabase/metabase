@@ -1303,7 +1303,7 @@
 ;;; upper bound. This counts whole days and lets the expression editor re-save the result:
 ;;; dropping the unit loses the last day's times, and a day-bucketed ref prints as an unknown
 ;;; column. Default timestamps only lose their wrapper. Negations stay for E7 because filters
-;;; and conditional aggregations handle NULLs differently. Pass 2.95 keeps its own scope.
+;;; and conditional aggregations handle NULLs differently on DateTime columns.
 ;;; ============================================================
 
 (defn- next-day [literal]
@@ -3106,7 +3106,7 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. The tool automatically expands date-only `day` / `default` comparisons into whole-day ranges outside `filters:` and `expressions:`, and unwraps `default` timestamps. Other temporal clauses, including date-only `!=` and `not-in` with different NULL behaviour in filters and aggregations, still need a rewrite. For date negations, exclude NULLs explicitly and compare outside the excluded day ranges. Write a range as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). In `filters:` and `expressions:` you can put the unit on the column with `temporal-unit` instead, except for `year` on an `expression` reference, which the query engine reads as a number."
+               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Write a range as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). For date negations, compare outside the excluded days: to exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. In `filters:` and `expressions:` you can put the unit on the column with `temporal-unit` instead and compare it to the first day of the period as a plain date string, except for `year` on an `expression` reference, which the query engine reads as a number."
                     (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause

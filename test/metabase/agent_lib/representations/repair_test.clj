@@ -1207,7 +1207,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"`>=` its first day and `<` the first day after it.*not `between`.*`year` on an `expression` reference"
-         (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")])))))
+         (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")]))))
+  (testing "date negations leave the choice of counting NULL dates to the model"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count"
+         (repair-in-stage {"aggregation" [["count-where" {} ["!=" {} created-at (abs-dt "2025-01-31" "day")]]]})))))
 
 ;;; ============================================================
 ;;; Pass 1.867 - rewrite temporal-extract to its get-* equivalent
