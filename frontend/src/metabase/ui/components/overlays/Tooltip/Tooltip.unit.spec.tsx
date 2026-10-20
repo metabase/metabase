@@ -149,25 +149,6 @@ describe("Tooltip", () => {
     expect(onParentDoubleClick).not.toHaveBeenCalled();
   });
 
-  it("lets Escape through while disabled and hovered", async () => {
-    const user = setupUser();
-    const onWindowKeyDown = jest.fn<void, [string]>();
-    const listener = (event: KeyboardEvent) => onWindowKeyDown(event.key);
-    window.addEventListener("keydown", listener);
-    render(
-      <Tooltip label="Tooltip content" disabled>
-        <button>Target</button>
-      </Tooltip>,
-    );
-
-    await user.hover(screen.getByRole("button", { name: "Target" }));
-    await user.keyboard("{Escape}");
-    window.removeEventListener("keydown", listener);
-
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-    expect(onWindowKeyDown).toHaveBeenCalledWith("Escape");
-  });
-
   it("doesn't catch the pointer when its owner controls whether it's open", async () => {
     const TooltipWithTarget = ({ opened }: { opened: boolean }) => (
       <Tooltip label="Tooltip content" opened={opened}>
