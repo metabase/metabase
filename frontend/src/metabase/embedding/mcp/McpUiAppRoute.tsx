@@ -174,11 +174,13 @@ function McpUiAppRouteContent({
       store,
     });
 
+  // No credential check: the settings and the query load only with one, and
+  // after an expiry the chart must stay mounted, because a remount would build
+  // the tool result's question over the handle the user derived.
   const isReady = !!(
     instanceUrl &&
     hostContext &&
     isSettingsReady &&
-    uiCredential &&
     deserializedQuery
   );
 
