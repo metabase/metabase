@@ -797,7 +797,7 @@
             ;; aggregations, cyclic expression refs, type-incompatible arguments. Must run
             ;; after the `_runnable` gate: `diagnose-expression` itself validates its query
             ;; argument against the same schema.
-            _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
+            _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query repaired)
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr repaired)

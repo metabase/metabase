@@ -2183,3 +2183,41 @@
           (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
                  (:code classified)))
           (is (str/includes? (tools.error/recoverable-text classified #{}) expected)))))))
+
+(deftest diagnostic-stage-numbers-after-split-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [split? [false true]
+              [stage-kvs error-code expected]
+              [[{"aggregation" [["field" {} "count"]]}
+                :aggregation-entry-not-aggregation
+                "Stage 1 aggregation entry 0 is a `field` clause"]
+               [{"filters" [[">" {} ["offset" {} ["field" {} "count"] -1] 1]]}
+                :expression-editor-rejection
+                "rejects a `filters:` clause in stage 1: OFFSET is not supported in custom filters"]
+               [{"joins" [{"alias" "P"
+                           "strategy" "left-join"
+                           "stages" [{"lib/type" "mbql.stage/mbql"
+                                      "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+                           "conditions" [["=" {} ["field" {} "PRODUCT_ID"]
+                                          ["field" {"join-alias" "P"} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]
+                 "breakout" [["field" {"join-alias" "P"} "NOPE"]]}
+                :unresolved-join-alias-field
+                "stage 1, join \"P\" doesn't return \"NOPE\""]]]
+        (testing (str error-code ", split: " split?)
+          (let [query (query-data
+                       {"lib/type" "mbql/query"
+                        "stages" [(cond-> {"lib/type" "mbql.stage/mbql"
+                                           "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                           "aggregation" [["count" {}]]
+                                           "breakout" [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                    split? (assoc "filters" [[">" {} ["aggregation" {} 0] 10]]))
+                                  (merge {"lib/type" "mbql.stage/mbql"} stage-kvs)]})
+                error (try
+                        (tools/with-pipeline-errors (construct/execute-representations-query query))
+                        (catch clojure.lang.ExceptionInfo e e))
+                classified (tools.error/classify error)]
+            (is (= :recoverable (:class classified)))
+            (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
+                   (:code classified)))
+            (is (str/includes? (tools.error/recoverable-text classified #{}) expected))))))))

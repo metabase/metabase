@@ -2718,7 +2718,7 @@
      :problems (vec (for [{:keys [alias cols named-refs path-refs]} checks
                           :let  [bad (bad-join-alias-refs mp cols named-refs path-refs import-resolver)]
                           :when (seq bad)]
-                      {:stage      idx
+                      {:stage      (repr/original-stage-index query idx)
                        :join-alias alias
                        :clauses    (vec bad)
                        :columns    (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
@@ -3073,7 +3073,7 @@
   (when (and (map? query) (vector? (get query "stages")))
     (doseq [[idx stage] (map-indexed vector (get query "stages"))]
       (when (map? stage)
-        (aggregation-entry-not-aggregation-error! stage idx)))
+        (aggregation-entry-not-aggregation-error! stage (repr/original-stage-index query idx))))
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (blank-expression-ref-error! query)
@@ -3235,30 +3235,33 @@
   Unlike the rest of this namespace this runs after resolve. Call it only on a query that already
   passed the suppressed-type-check `::lib.schema/query` validation - `diagnose-expression`
   validates its query argument against that same schema, and its raw validation error would
-  otherwise preempt the friendly message."
-  [pmbql-query]
-  (doseq [stage-idx      (range (lib/stage-count pmbql-query))
-          [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
-                          [:aggregation (lib/aggregations pmbql-query stage-idx)]
-                          [:filter      (lib/filters      pmbql-query stage-idx)]]
-          [pos clause]   (map-indexed vector clauses)]
-    (when-let [{:keys [message]} (lib.expression/diagnose-expression
-                                  pmbql-query stage-idx mode clause
-                                  (when (#{:expression :aggregation} mode) pos))]
-      (let [where (case mode
-                    :expression  "custom column (`expressions:`)"
-                    :aggregation "`aggregation:`"
-                    :filter      "`filters:`")]
-        (throw (ex-info
-                (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
-                     where stage-idx message)
-                {:agent-error? true
-                 :error        :expression-editor-rejection
-                 :status-code  400
-                 :stage        stage-idx
-                 :mode         mode
-                 :clause       clause})))))
-  pmbql-query)
+  otherwise preempt the friendly message. The optional `repaired-query` supplies the original stage
+  indexes for diagnostics."
+  ([pmbql-query] (assert-editor-accepts-expressions! pmbql-query nil))
+  ([pmbql-query repaired-query]
+   (doseq [stage-idx      (range (lib/stage-count pmbql-query))
+           [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
+                           [:aggregation (lib/aggregations pmbql-query stage-idx)]
+                           [:filter      (lib/filters      pmbql-query stage-idx)]]
+           [pos clause]   (map-indexed vector clauses)]
+     (when-let [{:keys [message]} (lib.expression/diagnose-expression
+                                   pmbql-query stage-idx mode clause
+                                   (when (#{:expression :aggregation} mode) pos))]
+       (let [original-idx (repr/original-stage-index repaired-query stage-idx)
+             where (case mode
+                     :expression  "custom column (`expressions:`)"
+                     :aggregation "`aggregation:`"
+                     :filter      "`filters:`")]
+         (throw (ex-info
+                 (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
+                      where original-idx message)
+                 {:agent-error? true
+                  :error        :expression-editor-rejection
+                  :status-code  400
+                  :stage        original-idx
+                  :mode         mode
+                  :clause       clause})))))
+   pmbql-query))
 
 (defn- unbucketed-ref
   "`clause` with its `temporal-unit`, and the type the bucket stamped on it, taken off.

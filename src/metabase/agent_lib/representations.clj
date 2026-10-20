@@ -226,14 +226,18 @@
   "Malli schema for a single MBQL stage in the portable representations form."
   [:schema {:registry registry} [:ref ::stage]])
 
+(defn original-stage-index
+  "Return the input stage index for a repaired stage, or `stage-idx` without repair metadata."
+  [query stage-idx]
+  (get (::original-stage-indexes (meta query)) stage-idx stage-idx))
+
 (defn original-query-path
   "Translate a repaired query path to the stage indexes in the original input."
   [query path]
-  (let [[stage-key stage-idx] path
-        original-idx (when (and (#{:stages "stages"} stage-key) (integer? stage-idx))
-                       (get (::original-stage-indexes (meta query)) stage-idx))]
+  (let [[stage-key stage-idx] path]
     (cond-> path
-      (some? original-idx) (assoc 1 original-idx))))
+      (and (#{:stages "stages"} stage-key) (integer? stage-idx))
+      (assoc 1 (original-stage-index query stage-idx)))))
 
 (defn validate-query
   "Validate a string-keyed portable representations query against [[query-schema]] and return it
