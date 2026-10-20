@@ -406,7 +406,7 @@
                                     request)
                            request respond raise))))))))
 
-(defn- handler
+(defn- dispatch
   [request respond raise]
   (if-let [route (match-route (:request-method request) ((some-fn :path-info :uri) request))]
     (try
@@ -419,4 +419,4 @@
   "Iframe routes mounted at `/api/embed-mcp`. MCP-feature gated; each route authenticates the UI credential itself."
   (mcp.validation/+mcp-enabled
    ;; Iframe-only routes, so they stay out of the published API docs.
-   (open-api/handler-with-open-api-spec handler (constantly nil))))
+   (open-api/handler-with-open-api-spec dispatch (constantly nil))))
