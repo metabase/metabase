@@ -88,10 +88,8 @@
        "Use when a user wants to receive or send regular updates on a dashboard's contents.\n"
        "Requires a valid `dashboard_id`, a `slack_channel` name, and a `schedule`.\n"
        "\n"
-       "Delivery is Slack-only: the `email` argument is not implemented and is ignored, and Slack must\n"
-       "be connected in Metabase settings. A call without `slack_channel` fails, so if the user asks to\n"
-       "be emailed a dashboard, tell them this tool can only deliver to Slack rather than accepting an\n"
-       "email address."))
+       "Delivery is Slack-only, and Slack must be connected in Metabase settings. If the user asks to\n"
+       "be emailed a dashboard, tell them this tool can only deliver to Slack."))
 
 (defrecord CreateDashboardSubscriptionTool []
   tools/Tool
@@ -101,7 +99,6 @@
      :scope       scope/agent-dashboard-subscribe
      :args        [:map {:closed true}
                    [:dashboard_id :int]
-                   [:email {:optional true} [:maybe :string]]
                    [:slack_channel [:string {:min 1}]]
                    [:schedule tools.create-alert/schedule-schema]]})
 
