@@ -149,6 +149,25 @@ describe("Tooltip", () => {
     expect(onParentDoubleClick).not.toHaveBeenCalled();
   });
 
+  it("closes straight away when disabled and the pointer leaves the target", async () => {
+    const user = setupUser();
+    render(
+      <div>
+        <Tooltip label="Tooltip content" disabled>
+          <button>Target</button>
+        </Tooltip>
+        <span>Elsewhere</span>
+      </div>,
+    );
+    const target = screen.getByRole("button", { name: "Target" });
+
+    await user.hover(target);
+    expect(target).toHaveAttribute("aria-describedby");
+
+    await user.hover(screen.getByText("Elsewhere"));
+    expect(target).not.toHaveAttribute("aria-describedby");
+  });
+
   it("doesn't catch the pointer when its owner controls whether it's open", async () => {
     const TooltipWithTarget = ({ opened }: { opened: boolean }) => (
       <Tooltip label="Tooltip content" opened={opened}>

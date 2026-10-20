@@ -56,6 +56,10 @@ const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
       <MantineTooltip
         {...rest}
         {...tooltipProps}
+        // The delay only gives the pointer time to reach the tooltip. Mantine
+        // still opens a disabled one invisibly, and while open it takes the
+        // Escape key, so it shouldn't linger.
+        closeDelay={rest.disabled ? 0 : rest.closeDelay}
         label={<div {...labelProps}>{label}</div>}
         mod={[{ hoverable: isHoverable }, mod]}
         portalProps={resolvedPortalProps}
