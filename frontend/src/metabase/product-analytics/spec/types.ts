@@ -149,6 +149,8 @@ export interface AnalysisSpec {
   bucket: Bucket;
   split?: boolean;
   scope: ActorPredicate;
+  /** Events that paths name by their `url_path` rather than their `event_name`. */
+  pageview?: FlagRef;
   funnel?: FunnelSpec;
   paths?: PathsSpec;
   habit?: HabitSpec;

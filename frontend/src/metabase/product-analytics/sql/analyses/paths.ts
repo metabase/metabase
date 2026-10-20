@@ -9,10 +9,8 @@ import {
   kindSql,
   pathNodeKeySql,
   pathNodeLabelSql,
+  stepNameSql,
 } from "./path-nodes";
-
-export const STEP_NAME_SQL =
-  "if(event_name != '' AND event_name IS NOT NULL, event_name, url_path)";
 
 // A step is noisy when it makes up at least this share of all steps...
 const NOISY_SHARE = 0.2;
@@ -98,7 +96,7 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     { as: "is_step", sql: `(${isStep})` },
     { as: "is_start", sql: start !== null ? flagSql(start.flag) : "0" },
     { as: "is_end", sql: end !== null ? flagSql(end.flag) : "0" },
-    { as: "step_name", sql: STEP_NAME_SQL },
+    { as: "step_name", sql: stepNameSql(spec) },
   ]);
   warnings.push(...base.warnings);
 
@@ -313,7 +311,6 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
     warnings: [
       ...warnings,
-      `Steps are named by ${lit("event_name")}, falling back to ${lit("url_path")} — two different events sharing a name collapse into one node.`,
       "Visits are re-derived here from the gap setting rather than using session_id or visit_id.",
     ],
   };

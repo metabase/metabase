@@ -13,6 +13,7 @@ import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
+  getPageviewSpec,
   incomplete,
   isBoolean,
   isEventDefinitionList,
@@ -205,6 +206,7 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
         maxNodes: settings["paths.max_nodes"],
         minVolume: settings["paths.min_volume"],
       },
+      ...getPageviewSpec(settings, events),
       output: { pathsEdgeMetric: settings["paths.edge_metric"] },
     });
   },

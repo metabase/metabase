@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import type { ColumnRole, ColumnRoles } from "../columns";
 import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
+import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { CountingMenu } from "../components/toolbar/CountingMenu";
 import { DateRangeButton } from "../components/toolbar/DateRangeButton";
 import { FilterButton } from "../components/toolbar/FilterButton";
@@ -17,7 +18,7 @@ import {
   getDefaultColumn,
   isColumnInTable,
 } from "./column-roles";
-import { isOneOf } from "./setting-helpers";
+import { isOneOf, isOptionalEventDefinition } from "./setting-helpers";
 import type {
   AnalysisContext,
   AnalysisSettingDefinitions,
@@ -131,4 +132,15 @@ export const commonSettings = ({
     false,
   ),
   "columns.url_path": columnRoleSetting("url_path", () => t`URL path`, false),
+  pageviews: withWidgetProps({
+    getTitle: () => t`Pageviews`,
+    getHint: () =>
+      t`Paths show each pageview as its URL path, rather than as one event.`,
+    group: "columns",
+    getSection: () => "advanced",
+    widget: EventDefinitionWidget,
+    getDefault: (context) => context.detectedPageviews ?? null,
+    isValid: (value) => isOptionalEventDefinition(value),
+    getProps: (context) => ({ table: context.table, emptyLabel: t`None` }),
+  }),
 });

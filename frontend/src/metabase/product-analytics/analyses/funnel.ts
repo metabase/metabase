@@ -17,6 +17,7 @@ import {
 import {
   getCommonSpec,
   getEventDefinitionProps,
+  getPageviewSpec,
   incomplete,
   isBoolean,
   isEventDefinitionList,
@@ -161,6 +162,8 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         ordering: settings["funnel.ordering"],
         allowRetry: settings["funnel.allow_retry"],
       },
+      // For the paths between steps. After the steps, so they keep their flags.
+      ...getPageviewSpec(settings, events),
       output: { funnelView: settings["funnel.view"] },
     });
   },

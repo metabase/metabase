@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
+import { useMetadataProvider } from "metabase/metadata-store";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import { getPersonColumn, getUsersTableLink } from "./analyses/column-roles";
@@ -13,6 +14,7 @@ import type {
 } from "./analyses/types";
 import type { BaseQueryInput } from "./base-query";
 import { createFlagAllocator } from "./events/allocate-flags";
+import { detectPageviews } from "./events/pageviews";
 import { computeSettings, getSettingWidgets } from "./settings/compute";
 import type { StoredSettings } from "./settings/types";
 import type { AnalysisKind } from "./spec/types";
@@ -65,10 +67,17 @@ export const useAnalysis = <K extends AnalysisKind>({
   );
   const table = tableMetadata.currentData;
   const usersTable = useUsersTable(table, stored);
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+  // Memoized: a new query each render would get new clause ids, and with
+  // them a new base query.
+  const detectedPageviews = useMemo(
+    () => detectPageviews(metadataProvider, table),
+    [metadataProvider, table],
+  );
 
   const context = useMemo<AnalysisContext>(
-    () => ({ table, usersTable }),
-    [table, usersTable],
+    () => ({ table, usersTable, detectedPageviews }),
+    [table, usersTable, detectedPageviews],
   );
   const computed = useMemo(
     () => computeSettings(config.settings, context, stored),

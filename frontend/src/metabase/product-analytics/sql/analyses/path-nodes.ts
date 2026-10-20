@@ -2,13 +2,23 @@ import { t } from "ttag";
 
 import type { PathNodeKind, PathsColumns } from "metabase/viz-core";
 
+import type { AnalysisSpec } from "../../spec/types";
 import { lit } from "../compile/dialect";
+import { flagSql } from "../compile/flag";
 
 /** The columns the paths chart reads beside source, target and weight. */
 export const PATHS_COLUMNS: PathsColumns = {
   sourceLabel: "source_label",
   targetLabel: "target_label",
   targetKind: "target_kind",
+};
+
+/** What a step is called: a pageview's URL path, or any other event's name. */
+export const stepNameSql = ({ pageview }: AnalysisSpec): string => {
+  const eventName = "ifNull(event_name, '')";
+  return pageview !== undefined
+    ? `if(${flagSql(pageview.flag)}, url_path, ${eventName})`
+    : eventName;
 };
 
 export const kindSql = (kind: PathNodeKind): string => lit(kind);

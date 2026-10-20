@@ -11,8 +11,8 @@ import {
   kindSql,
   pathNodeKeySql,
   pathNodeLabelSql,
+  stepNameSql,
 } from "./path-nodes";
-import { STEP_NAME_SQL } from "./paths";
 
 export type FunnelPathsRange = {
   /** The funnel step the paths start from, numbered from 1. */
@@ -108,7 +108,7 @@ export const planFunnelPaths = (
 
   // Splitting would give an actor a row per split value.
   const levels = funnelLevels({ ...spec, split: false }, funnel, [
-    { as: "step_name", sql: STEP_NAME_SQL },
+    { as: "step_name", sql: stepNameSql(spec) },
   ]);
 
   const ctes: Cte[] = [
@@ -284,9 +284,6 @@ export const planFunnelPaths = (
       `GROUP BY step, source, target, ${PATHS_COLUMNS.sourceLabel}, ${PATHS_COLUMNS.targetLabel}, ${PATHS_COLUMNS.targetKind}, converted`,
       "ORDER BY step, converted DESC, weight DESC",
     ].join("\n"),
-    warnings: [
-      ...levels.warnings,
-      `Steps between the funnel steps are named by ${lit("event_name")}, falling back to ${lit("url_path")}.`,
-    ],
+    warnings: levels.warnings,
   };
 };

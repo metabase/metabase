@@ -253,6 +253,7 @@ Make `AnalysisWorkspace` generic over `K` too, so the config, stored settings an
 | `columns.event_name` | A text column named like `event_name` or `event`, else none                                                |
 | `columns.url_path`   | `type/URL`, else a column named like `url_path` or `path`, else none                                       |
 
+- `pageviews` sits with them in the Columns group. It's an event, not a column, and paths name the events it matches by their URL path rather than their event name. It defaults to `event_type = 1` on tables with an `event_type` number column (Umami and Track), and to none elsewhere. See `events/pageviews.ts`, and [post-prototype.md](post-prototype.md) for other schemas.
 - `isValid` checks that the column still exists. If the table changes, a stored choice falls back to the default.
 - They go in the Advanced panel, grouped under "Columns", until there's a design for them.
 - Other settings depend on them. With no session column, `counting` drops the "Sessions" option (`getProps`), and a stored "session" falls back to "person" (`isValid`). Both read `columns.session`.

@@ -432,6 +432,83 @@ describe("analysis settings", () => {
     expect(from.isHidden("paths.end")).toBe(true);
   });
 
+  describe("pageviews", () => {
+    const PAGEVIEW = createMockEventDefinition({ name: "Pageview" });
+
+    const getPathsSql = (stored: StoredSettings) => {
+      const { specResult, allocation } = setup({
+        kind: "paths",
+        stored: { ...REQUIRED_EVENTS.paths, ...stored },
+      });
+      const spec = getReadySpec(specResult);
+      const built = buildSql(spec, "SELECT 1", {
+        columns: PLANNER_COLUMNS,
+        flags: allocation.events.map(({ flag }) => flag),
+        extraColumns: [],
+      });
+      return { spec, sql: built.sql };
+    };
+
+    it("defaults to the pageviews detected in the table", () => {
+      const config = getAnalysisConfig("paths");
+      const computed = computeSettings(
+        config.settings,
+        {
+          table: EVENT_TABLE,
+          usersTable: undefined,
+          detectedPageviews: PAGEVIEW,
+        },
+        {},
+      );
+
+      expect(computed.pageviews).toEqual(PAGEVIEW);
+    });
+
+    it("defaults to none when the table has no pageviews we recognize", () => {
+      const { computed } = setup({ kind: "paths", table: EVENT_TABLE });
+
+      expect(computed.pageviews).toBeNull();
+    });
+
+    it("names pageviews by their URL path", () => {
+      const { spec, sql } = getPathsSql({
+        pageviews: PAGEVIEW,
+        "columns.url_path": "path",
+      });
+
+      expect(spec.pageview).toEqual({ flag: "ev_2" });
+      expect(sql).toContain(
+        "if(ev_2, url_path, ifNull(event_name, '')) AS step_name",
+      );
+    });
+
+    it("names pageviews like other events without a URL path column", () => {
+      const { spec, sql } = getPathsSql({ pageviews: PAGEVIEW });
+
+      expect(spec.pageview).toBeUndefined();
+      expect(sql).toContain("ifNull(event_name, '') AS step_name");
+      expect(sql).not.toContain("url_path, ifNull");
+    });
+
+    it("gives the funnel steps their flags before the pageviews", () => {
+      const { specResult } = setup({
+        kind: "funnel",
+        stored: {
+          ...REQUIRED_EVENTS.funnel,
+          pageviews: PAGEVIEW,
+          "columns.url_path": "path",
+        },
+      });
+      const spec = getReadySpec(specResult);
+
+      expect(spec.funnel?.steps.map(({ flag }) => flag)).toEqual([
+        "ev_1",
+        "ev_2",
+      ]);
+      expect(spec.pageview).toEqual({ flag: "ev_3" });
+    });
+  });
+
   describe("incomplete settings", () => {
     it("keeps a funnel with too few steps and reports it as incomplete", () => {
       const { computed, specResult } = setup({
