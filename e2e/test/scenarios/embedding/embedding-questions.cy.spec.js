@@ -202,18 +202,6 @@ describe("scenarios [EE] > embedding > questions", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-
-    // Remap Product ID -> Product Title
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      name: "Product ID as Title",
-      type: "external",
-      human_readable_field_id: PRODUCTS.TITLE,
-    });
-
-    // Do not include Subtotal anywhere
-    cy.request("PUT", `/api/field/${ORDERS.SUBTOTAL}`, {
-      visibility_type: "sensitive",
-    });
   });
 
   it("should display according to `#locale` and `#font` hash parameters (metabase#22561, metabase#50182, metabase#45638)", () => {
