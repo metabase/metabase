@@ -2,9 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
@@ -315,6 +319,28 @@
                 :user-message "You can't save this chart because you don't have permission to run its query."}
                (tools.error/classify
                 (is (thrown? clojure.lang.ExceptionInfo (save! {:target_type "collection"}))))))))))
+
+(defn- invoke-save-entity
+  "Call `save_entity` with `args` through the runtime, as the agent loop does, and return the outcome."
+  [args]
+  (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
+                  (metabot.tools/->entries [#'save-entity/save-entity-tool] (chart-memory) nil :internal))]
+    ((:fn (get entries "save_entity")) args)))
+
+(deftest card-create-event-failure-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {}]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic _event]
+                                                            (when (= :event/card-create topic)
+                                                              (throw (ex-info "A subscriber failed." {}))))]
+          (testing "the card is committed before its event is published, so a failing subscriber still reports the
+                   save and the agent has no reason to save it again"
+            (let [outcome (invoke-save-entity
+                           (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)}))]
+              (is (nil? (:error outcome)))
+              (is (= [(get-in outcome [:structured-output :card-id])]
+                     (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
 
 (deftest undeclared-failure-test
   (testing "a failure nobody declared ends the turn rather than reaching the agent"

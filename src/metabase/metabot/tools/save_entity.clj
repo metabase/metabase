@@ -23,6 +23,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -213,6 +214,15 @@
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
 
+(defn- publish-card-create!
+  "Publish the `:card-create` event for `card`, which is already committed. A failure is logged, not thrown."
+  [card]
+  (try
+    (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
+    (catch Exception e
+      ;; Failing the call now would tell the agent nothing was saved, and its retry would save the card twice.
+      (log/error e "Failed to publish the card-create event for a card Metabot saved" {:card-id (:id card)}))))
+
 (def ^:private tool-description
   "What the model is told `save_entity` is."
   (str
@@ -285,8 +295,7 @@
               (when-let [conversation-id (shared/current-conversation-id)]
                 (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
               saved))
-          _ (events/publish-event! :event/card-create
-                                   {:object card :user-id api/*current-user-id*})
+          _ (publish-card-create! card)
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")
                             ""
