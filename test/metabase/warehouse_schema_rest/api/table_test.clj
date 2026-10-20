@@ -1562,6 +1562,17 @@
         (is (= 1 (count response)))
         (is (= "queryable_table" (-> response first :name)))))))
 
+(deftest list-tables-include-editable-data-model-filter-test
+  (testing "include-editable-data-model=true filters to only tables the user can edit the data model of"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table    {table-id :id} {:db_id db-id :active true}]
+        (let [table-ids (fn [user]
+                          (into #{} (comp (filter #(= db-id (:db_id %))) (map :id))
+                                (mt/user-http-request user :get 200 "table" :include-editable-data-model true)))]
+          (is (= #{table-id} (table-ids :crowberto)))
+          (is (= #{} (table-ids :rasta))))))))
+
 ;;; ---------------------------------------- /data endpoint permission tests ----------------------------------------
 
 (deftest get-table-data-endpoint-denies-when-cannot-query-test

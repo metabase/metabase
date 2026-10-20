@@ -77,10 +77,12 @@
   "Get all `Tables`.
 
   Optional filters:
-  - `can-query=true` - filter to only tables the user can execute queries against"
+  - `can-query=true` - filter to only tables the user can execute queries against
+  - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the
+    tables the user can read"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           published-only can-query include-transform-targets]}
+           published-only can-query include-editable-data-model include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -92,6 +94,7 @@
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
+       [:include-editable-data-model {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
   (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
@@ -111,8 +114,10 @@
       (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                           :table-ids (into #{} (map :id) tables)})
           tables)
-      (into [] (comp (filter mi/can-read?)
-                     (if can-query (filter mi/can-query?) identity)
+      (if include-editable-data-model
+        (schema.table/filter-tables-by-data-model-perms tables)
+        (filter mi/can-read? tables))
+      (into [] (comp (if can-query (filter mi/can-query?) identity)
                      (map schema.table/present-table))
             tables))))
 
