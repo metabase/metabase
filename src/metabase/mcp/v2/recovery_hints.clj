@@ -53,7 +53,7 @@
 
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id usable-sources]}]
+  [{:keys [error entity-type entity-id usable-sources source-card source-card-type]}]
   (case error
     :incompatible-metric
     (usable-sources-hint usable-sources)
@@ -77,8 +77,14 @@
                        "the table to list its columns with their numeric ids.")])
 
     :ambiguous-fk
-    (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
-                       "source table to list the available foreign-key columns.")])
+    (if (and source-card source-card-type)
+      ;; A card returns a joined foreign key under its join alias (`O2__USER_ID`), which the table's fields don't show.
+      (message/msg [(str "Call \"get_content\" with items [{\"type\": %s, \"id\": %s}] and include [\"fields\"] to "
+                         "list the columns it returns. Put the foreign-key column's `lib/desired-column-alias` (its "
+                         "`name` when it has none) in `source-field-name`.")]
+                   source-card-type source-card)
+      (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
+                         "source table to list the available foreign-key columns.")]))
 
     :no-fk-path
     (message/msg [(str "If a metric relates to that table, call \"browse_data\" with action \"get_fields\" for the "
