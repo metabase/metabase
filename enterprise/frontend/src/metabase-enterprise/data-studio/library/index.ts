@@ -23,10 +23,11 @@ import {
 } from "./utils";
 
 export function initializePlugin() {
+  PLUGIN_LIBRARY.getDataStudioLibraryRoutes = getDataStudioLibraryRoutes;
+  PLUGIN_LIBRARY.getDataStudioDashboardRoutes = getDataStudioDashboardRoutes;
+
   if (hasPremiumFeature("library")) {
     PLUGIN_LIBRARY.isEnabled = true;
-    PLUGIN_LIBRARY.getDataStudioLibraryRoutes = getDataStudioLibraryRoutes;
-    PLUGIN_LIBRARY.getDataStudioDashboardRoutes = getDataStudioDashboardRoutes;
     PLUGIN_LIBRARY.useGetLibraryCollection = useGetLibraryCollection;
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType =
       useGetLibraryChildCollectionByType;

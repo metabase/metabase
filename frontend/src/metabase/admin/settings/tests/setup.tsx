@@ -208,7 +208,7 @@ export const setup = async ({
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
-  const { wrapper, store } = getTestStoreAndWrapper({
+  const { wrapper } = getTestStoreAndWrapper({
     storeInitialState: initialState,
     withRouter: true,
     initialRoute: `/admin/settings${initialRoute}`,
@@ -216,7 +216,7 @@ export const setup = async ({
 
   testingLibraryRender(
     <>
-      <Route path="admin/settings">{getSettingsRoutes(store)}</Route>
+      <Route path="admin/settings">{getSettingsRoutes()}</Route>
       <Route
         path="unauthorized"
         element={<div data-testid="unauthorized-page">Unauthorized</div>}

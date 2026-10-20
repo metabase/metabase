@@ -1,5 +1,7 @@
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Outlet, Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 const dataAppLayout = () =>
   import(
@@ -39,7 +41,10 @@ export function registerDataAppsPagePrefetch(): void {
  */
 export function getRoutes() {
   return (
-    <Route path={`${Urls.DATA_APP_URL_SEGMENT}/:name`} lazy={dataAppLayout}>
+    <Route
+      path={`${Urls.DATA_APP_URL_SEGMENT}/:name`}
+      lazy={featureGatedRoute("data-apps", dataAppLayout, notFoundRoute)}
+    >
       <Route index lazy={dataAppView} />
       {/* Sub-paths under /apps/:name are owned by the iframe's router.
           Same component — `DataAppView` just keeps the iframe mounted; the URL

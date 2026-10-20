@@ -1,4 +1,16 @@
-import { Route, redirect, registerPagePrefetch } from "metabase/router";
+import {
+  notFoundRoute,
+  outletRoute,
+  redirectRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
+import { Outlet, Route, redirect, registerPagePrefetch } from "metabase/router";
+import {
+  featureGatedComponent,
+  featureGatedRoute,
+} from "metabase-enterprise/settings/feature-gated-route";
+
+const PassThroughOutlet = () => <Outlet />;
 import * as Urls from "metabase/urls";
 
 import {
@@ -138,31 +150,56 @@ function getCliAnalyticsRoutes() {
   );
 }
 
+const GatedMetabotAnalyticsAvailabilityLayout = featureGatedComponent(
+  "ai_controls",
+  MetabotAnalyticsAvailabilityLayout,
+  PassThroughOutlet,
+);
+
+const gatedOnAiControls = (enabled: PluginRoute) =>
+  featureGatedRoute("ai_controls", enabled, metabotAnalyticsUpsellPage);
+
+/**
+ * The union of the licensed tree and the upsell tree, mounted on every
+ * instance. `ai_controls` picks the page per leaf, and the pathless wrapper
+ * holds the whole section to what an unknown URL gets when `audit_app` is
+ * absent, which is when nothing here used to mount at all.
+ */
 export function getAiAuditingRoutes() {
   return (
-    <>
+    <Route lazy={featureGatedRoute("audit_app", outletRoute, notFoundRoute)}>
       <Route index element={redirect("usage")} />
-      <Route element={<MetabotAnalyticsAvailabilityLayout />}>
+      <Route element={<GatedMetabotAnalyticsAvailabilityLayout />}>
         <Route path="usage">
-          <Route index element={redirect("conversations")} />
-          <Route path=":metric" lazy={conversationStatsPage} />
+          <Route
+            index
+            lazy={gatedOnAiControls(redirectRoute("conversations"))}
+          />
+          <Route
+            path=":metric"
+            lazy={gatedOnAiControls(conversationStatsPage)}
+          />
+          <Route path="*" lazy={gatedOnAiControls(notFoundRoute)} />
         </Route>
-        <Route path="conversations" lazy={conversationsPage} />
-        <Route path="conversations/:convoId" lazy={conversationDetailPage} />
+        <Route
+          path="conversations"
+          lazy={featureGatedRoute(
+            "ai_controls",
+            conversationsPage,
+            notFoundRoute,
+          )}
+        />
+        <Route
+          path="conversations/:convoId"
+          lazy={featureGatedRoute(
+            "ai_controls",
+            conversationDetailPage,
+            notFoundRoute,
+          )}
+        />
       </Route>
       {getMcpAnalyticsRoutes()}
       {getCliAnalyticsRoutes()}
-    </>
-  );
-}
-
-export function getAiAuditingUpsellRoutes() {
-  return (
-    <>
-      <Route index element={redirect("usage")} />
-      <Route path="usage/*" lazy={metabotAnalyticsUpsellPage} />
-      {getMcpAnalyticsRoutes()}
-      {getCliAnalyticsRoutes()}
-    </>
+    </Route>
   );
 }

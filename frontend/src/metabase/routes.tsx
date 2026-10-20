@@ -304,9 +304,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
             children: [
               ...toRouteObjects(getMetabotRoutes()),
 
-              ...(PLUGIN_DATA_APPS.isEnabled
-                ? toRouteObjects(PLUGIN_DATA_APPS.getRoutes())
-                : []),
+              ...toRouteObjects(PLUGIN_DATA_APPS.getRoutes()),
 
               // The global all hands routes, things in here are for all the folks
               { path: "/", lazy: landingPage },
@@ -533,9 +531,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               ...toRouteObjects(getAccountRoutes(store, IsAuthenticated)),
 
               // ADMIN
-              ...toRouteObjects(
-                getAdminRoutes(store, CanAccessSettings, IsAdmin),
-              ),
+              ...toRouteObjects(getAdminRoutes(CanAccessSettings, IsAdmin)),
 
               // DATA STUDIO
               ...toRouteObjects(getDataStudioRoutes(IsAdmin)),

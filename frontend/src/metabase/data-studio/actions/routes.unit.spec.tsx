@@ -6,7 +6,7 @@ describe("data studio action routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getDataStudioActionRoutes());
 
-    expect(loaders).toHaveLength(9);
+    expect(loaders).toHaveLength(10);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

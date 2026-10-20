@@ -5,9 +5,10 @@ import { WritableConnectionInfoSection } from "./components/WritableConnectionIn
 import { getWritableConnectionInfoRoutes } from "./routes";
 
 export function initializePlugin() {
+  PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes =
+    getWritableConnectionInfoRoutes;
+
   if (hasPremiumFeature("writable_connection")) {
-    PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes =
-      getWritableConnectionInfoRoutes;
     PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection =
       WritableConnectionInfoSection;
   }
