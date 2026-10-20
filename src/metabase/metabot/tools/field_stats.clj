@@ -8,24 +8,37 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
-   [metabase.sync.core :as sync]))
+   [metabase.sync.core :as sync]
+   [metabase.util.log :as log]))
 
 (defn- build-field-statistics [fvs fp limit]
   (merge
-   (when fp
-     {:statistics (-> (or (:global fp) {})
-                      (set/rename-keys {:nil% :percent-null})
-                      (into (vals (:type fp))))})
+   (cond
+     (= ::unavailable fp) {:statistics_unavailable true}
+     fp                   {:statistics (-> (or (:global fp) {})
+                                           (set/rename-keys {:nil% :percent-null})
+                                           (into (vals (:type fp))))})
    (when-let [values (-> fvs :values not-empty)]
      {:field_values       (into [] (if limit (take limit) identity) values)
       :field_values_total (count values)
       :has_more_values    (:has_more_values fvs)})))
 
-(defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
+(defn- get-or-create-fingerprint!
+  "The fingerprint of `field`, computed now when it has none.
+
+  Nil when sampling saved none, and `::unavailable` when the database couldn't be sampled."
+  [{:keys [id fingerprint] :as field}]
   (or fingerprint
-      ;; Run with admin perms to match behavior during normal sync.
-      (and (pos? (:updated-fingerprints (request/as-admin (sync/refingerprint-field! field))))
-           (metabot.db/field-fingerprint id))))
+      (let [result (try
+                     ;; Run with admin perms to match behavior during normal sync.
+                     (request/as-admin (sync/refingerprint-field! field))
+                     (catch Exception e
+                       (log/warnf "Could not fingerprint field %d: %s" id (ex-message e))
+                       nil))]
+        ;; When sync can't sample the database it returns `:sync/no-connection` or a Throwable, not a stats map
+        (cond
+          (not (map? result))                   ::unavailable
+          (pos? (:updated-fingerprints result)) (metabot.db/field-fingerprint id)))))
 
 (defn- field-statistics
   "Fingerprint statistics are global (computed across every row of the table), so they're withheld

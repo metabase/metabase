@@ -21,6 +21,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
@@ -1511,6 +1512,27 @@
         (let [output (read-field :products :category)]
           (is (str/includes? output "| Widget |"))
           (is (not (str/includes? output "This list shows"))))))))
+
+(deftest read-table-field-whose-database-cannot-be-sampled-test
+  (testing "a field with no fingerprint still reads when computing one fails, for each way sync reports
+           the failure: the details come back without statistics, with a note saying why"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [field-id (mt/id :orders :total)
+            uri      (str "metabase://table/" (mt/id :orders) "/fields/" field-id)]
+        (mt/with-temp-vals-in-db :model/Field field-id {:fingerprint nil}
+          (doseq [[failure refingerprint] {"no connection"
+                                           (constantly :sync/no-connection)
+                                           "a sample query that failed"
+                                           (constantly (ex-info "Table \"ORDERS\" not found" {}))
+                                           "a transient connection error"
+                                           (fn [_] (throw (java.net.ConnectException. "Connection refused")))}]
+            (testing failure
+              (mt/with-dynamic-fn-redefs [sync/refingerprint-field! refingerprint]
+                (let [{:keys [resources output]} (read-uris {:uris [uri]})]
+                  (is (= {:statistics_unavailable true}
+                         (get-in resources [0 :content :structured-output :value_metadata])))
+                  (is (str/includes? output (str "Metabase couldn't sample this field from the database, so"
+                                                 " there are no statistics to show."))))))))))))
 
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)
