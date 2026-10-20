@@ -29,19 +29,19 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
     Component: BaselinePrototype,
   },
   {
-    id: "normalized-nested-form",
+    id: "or-pills",
     get name() {
       return t`Normalized nested form`;
     },
     get description() {
-      return t`Pills stay AND-ed at the top level. Click a pill to edit its OR rows in a dropdown.`;
+      return t`Pills stay AND-ed at the top level. Click a pill to edit its OR rows in a dropdown; subgroups alternate and/or and nest to any depth.`;
     },
     Component: OrPillsPrototype,
   },
   {
     id: "or-advanced-worksheet",
     get name() {
-      return t`Worksheet toggleable operators`;
+      return t`Worksheet with toggleable operators`;
     },
     get description() {
       return t`One "Advanced filter" pill opens a worksheet. Each group is a line; click its first connector to switch and/or. Subgroups nest up to three levels.`;
@@ -50,12 +50,12 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
     FilterButton: AdvancedWorksheetFilterButton,
   },
   {
-    id: "expression-bar",
+    id: "expression-bar-inline",
     get name() {
       return t`Expression bar`;
     },
     get description() {
-      return t`Expression bar with Cancel and Apply inside the bar. The header button hides and shows the filter strip.`;
+      return t`One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them. Cancel and Apply sit in the bar; the header button hides and shows the strip.`;
     },
     Component: ExpressionBarInlinePrototype,
     canHideFilters: true,

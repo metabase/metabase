@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { Link, useParams } from "metabase/router";
 import { Box, Flex, Group, NavLink, Stack, Title } from "metabase/ui";
@@ -12,9 +13,11 @@ import { PROTOTYPES } from "../registry";
  */
 export function PrototypesPage() {
   const { prototypeId } = useParams();
+  // The index route shows the first prototype; an unknown id is a 404.
   const prototype =
-    PROTOTYPES.find((candidate) => candidate.id === prototypeId) ??
-    PROTOTYPES[0];
+    prototypeId === undefined
+      ? PROTOTYPES[0]
+      : PROTOTYPES.find((candidate) => candidate.id === prototypeId);
 
   return (
     <Flex h="100%" mih="100vh">
@@ -34,13 +37,13 @@ export function PrototypesPage() {
             component={Link}
             to={`/prototypes/${candidate.id}`}
             label={candidate.name}
-            active={candidate.id === prototype.id}
+            active={candidate.id === prototype?.id}
           />
         ))}
       </Stack>
 
       <Box flex={1} p="lg" style={{ overflow: "auto" }}>
-        <prototype.Component />
+        {prototype ? <prototype.Component /> : <NotFound />}
       </Box>
     </Flex>
   );
