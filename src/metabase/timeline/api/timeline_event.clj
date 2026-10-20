@@ -90,11 +90,12 @@
   (let [timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))
         ;; the event's own 404 or 403 comes before anything about the destination, as it always did
-        _                      (api/write-check :model/TimelineEvent id)
-        new-timeline           (when (contains? timeline-event-updates :timeline_id)
-                                 (validated/validate
+        existing               (api/write-check :model/TimelineEvent id)
+        new-timeline           (when (api/column-will-change? (:timeline_id existing)
+                                                              (get timeline-event-updates :timeline_id ::api/not-provided))
+                                 (validated/parse
                                   (event-update/->TimelineWrite api/*current-user-id* (:timeline_id timeline-event-updates))))
-        validated-update       (validated/validate
+        validated-update       (validated/parse
                                 (event-update/->EventUpdate api/*current-user-id*
                                                             id
                                                             (u/select-keys-when timeline-event-updates

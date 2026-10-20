@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.timeline.event-update]
@@ -41,11 +42,6 @@
   "The icon of the Timeline with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one-fn :icon :model/Timeline :id id))
-
-(mu/defn timelines-by-id
-  "A map of id to Timeline for the Timelines with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
 
 (mu/defn timelines-for-collection
   "The Timelines of the Collection with `collection-id` whose archived flag is `archived`."
@@ -113,15 +109,18 @@
                             [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
 
 (defn update-timeline-event!
-  "Apply `validated-update`, an [[metabase.timeline.event-update/->EventUpdate]] that has been validated, returning the
+  "Apply `update`, a [[metabase.timeline.event-update/EventUpdate]] that `validated/parse` returned, for the current user. Returns the
   number updated."
-  [validated-update]
-  (let [^EventUpdate validated-update (validated/validated EventUpdate validated-update)
-        ^TimelineWrite new-timeline    (.-new-timeline validated-update)]
-    (t2/update! :model/TimelineEvent
-                (.-event-id validated-update)
-                (cond-> (.-changes validated-update)
-                  new-timeline (assoc :timeline_id (.-timeline-id new-timeline))))))
+  [update]
+  (let [^EventUpdate update (validated/validated EventUpdate update)]
+    ;; A parsed update does not expire. Kept, and written later as someone else, it would carry the first user's checks.
+    (when-not (= (.-user-id update) api/*current-user-id*)
+      (throw (ex-info "Expected an update parsed for the current user" {:status-code 500})))
+    (let [^TimelineWrite new-timeline (.-new-timeline update)]
+      (t2/update! :model/TimelineEvent
+                  (.-event-id update)
+                  (cond-> (.-changes update)
+                    new-timeline (assoc :timeline_id (.-timeline-id new-timeline)))))))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."

@@ -37,6 +37,8 @@
     (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase-enterprise.sandbox.db)))))
   (testing "metabase.driver.<driver>.db is allowed for driver modules"
     (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Database :id 1) 'metabase.driver.bigquery-cloud-sdk.db)))))
+  (testing "a namespace under metabase.<module>.db is allowed"
+    (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.db.fetch)))))
   (testing "a nested db namespace is not a module db namespace"
     (is (=? [{:type :metabase/t2-query-namespace}]
             (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.db))))

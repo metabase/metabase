@@ -99,6 +99,12 @@
       (is (= "Not found."
              (mt/user-http-request :rasta :put 404 (str "timeline-event/" Integer/MAX_VALUE) {:timeline_id tl-b}))
           "a missing event is a 404 before anything is said about the destination timeline")))
+  (testing "PUT /api/timeline-event/:id is a 404 for a null timeline_id"
+    (mt/with-temp [:model/Timeline      {tl-id :id} {}
+                   :model/TimelineEvent {ev-id :id} {:name "Event" :timeline_id tl-id}]
+      (mt/user-http-request :crowberto :put 404 (str "timeline-event/" ev-id) {:timeline_id nil :name "moved"})
+      (is (= {:timeline_id tl-id :name "Event"}
+             (select-keys (t2/select-one :model/TimelineEvent :id ev-id) [:timeline_id :name])))))
   (testing "PUT /api/timeline-event/:id is a 404 for an event that does not exist"
     (is (= "Not found."
            (mt/user-http-request :rasta :put 404 (str "timeline-event/" Integer/MAX_VALUE) {:name "nope"})))))

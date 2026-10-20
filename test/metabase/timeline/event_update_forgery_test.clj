@@ -13,6 +13,8 @@
    [metabase.util.validated :as validated]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- refused? [thunk]
   (try (thunk) false
        (catch clojure.lang.ExceptionInfo e
@@ -34,19 +36,19 @@
       (let [rasta      (mt/user->id :rasta)
             crowberto  (mt/user->id :crowberto)
             before     (event-row ev-id)
-            ok         (validated/validate (event-update/->EventUpdate rasta ev-id {:name "ok"} nil))
+            ok         (validated/parse (event-update/->EventUpdate rasta ev-id {:name "ok"} nil))
             ;; a real proof that crowberto, an admin, may write the locked timeline
             crowberto-may-write-locked (mt/with-current-user crowberto
-                                         (validated/validate (event-update/->TimelineWrite crowberto locked-tl)))]
+                                         (validated/parse (event-update/->TimelineWrite crowberto locked-tl)))]
         (doseq [[label thunk]
                 [["a timeline_id in the changes"
-                  #(validated/validate (event-update/->EventUpdate rasta ev-id {:timeline_id locked-tl} nil))]
+                  #(validated/parse (event-update/->EventUpdate rasta ev-id {:timeline_id locked-tl} nil))]
                  ["a move to a timeline rasta cannot write"
-                  #(validated/validate (event-update/->TimelineWrite rasta locked-tl))]
+                  #(validated/parse (event-update/->TimelineWrite rasta locked-tl))]
                  ["a TimelineWrite never validated"
-                  #(validated/validate (event-update/->EventUpdate rasta ev-id {} (event-update/->TimelineWrite rasta locked-tl)))]
+                  #(validated/parse (event-update/->EventUpdate rasta ev-id {} (event-update/->TimelineWrite rasta locked-tl)))]
                  ["a TimelineWrite validated for another user"
-                  #(validated/validate (event-update/->EventUpdate rasta ev-id {} crowberto-may-write-locked))]
+                  #(validated/parse (event-update/->EventUpdate rasta ev-id {} crowberto-may-write-locked))]
                  ["assoc a new destination onto a validated update"
                   #(timeline.db/update-timeline-event! (assoc ok :new-timeline crowberto-may-write-locked))]
                  ["assoc raw changes onto a validated update"
@@ -67,31 +69,66 @@
                     (edn/read-string {:readers {'metabase.timeline.event_update.EventUpdate event-update/map->EventUpdate}}
                                      (pr-str ok)))]
                  ["validating as someone other than the current user"
-                  #(validated/validate (event-update/->EventUpdate crowberto ev-id {:name "x"} crowberto-may-write-locked))]
+                  #(validated/parse (event-update/->EventUpdate crowberto ev-id {:name "x"} crowberto-may-write-locked))]
                  ["changes as a mutable java.util.HashMap, to mutate after validating"
-                  #(validated/validate (event-update/->EventUpdate rasta ev-id (java.util.HashMap. {:name "ok"}) nil))]
+                  #(validated/parse (event-update/->EventUpdate rasta ev-id (java.util.HashMap. {:name "ok"}) nil))]
+                 ["changes as a persistent-looking map over mutable state, to mutate after validating"
+                  #(let [state (atom {:name "ok"})]
+                     (validated/parse (event-update/->EventUpdate rasta ev-id
+                                                                  (proxy [clojure.lang.APersistentMap] []
+                                                                    (valAt
+                                                                      ([k] (get @state k))
+                                                                      ([k nf] (get @state k nf)))
+                                                                    (entryAt [k] (find @state k))
+                                                                    (containsKey [k] (contains? @state k))
+                                                                    (count [] (count @state))
+                                                                    (seq [] (seq @state))
+                                                                    (iterator [] (.iterator ^Iterable @state)))
+                                                                  nil)))]
+                 ["changes as a mutable subclass of PersistentArrayMap, to mutate after validating"
+                  #(let [state (atom {:name "ok"})]
+                     (validated/parse (event-update/->EventUpdate rasta ev-id
+                                                                  (proxy [clojure.lang.PersistentArrayMap] [(object-array [])]
+                                                                    (valAt
+                                                                      ([k] (get @state k))
+                                                                      ([k nf] (get @state k nf)))
+                                                                    (count [] (count @state))
+                                                                    (seq [] (seq @state)))
+                                                                  nil)))]
                  ["a column the update may not set"
-                  #(validated/validate (event-update/->EventUpdate rasta ev-id {:creator_id crowberto} nil))]]]
+                  #(validated/parse (event-update/->EventUpdate rasta ev-id {:creator_id crowberto} nil))]]]
           (testing label
             (is (refused? thunk))
             (is (= before (event-row ev-id)) "nothing was written")))))))
+
+(defrecord LookalikeUpdate [user-id event-id changes new-timeline]
+  validated/Validatable
+  (declaration [_] {:checks []}))
+
+(deftest a-parsed-record-of-another-class-is-refused-test
+  (testing "a record with EventUpdate's fields and no checks parses, and the sink still refuses it"
+    (mt/with-temp [:model/Timeline      {tl-id :id} {}
+                   :model/TimelineEvent {ev-id :id} {:name "before" :timeline_id tl-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (refused? #(timeline.db/update-timeline-event!
+                        (validated/parse (->LookalikeUpdate (mt/user->id :rasta) ev-id {:name "forged"} nil)))))
+        (is (= "before" (t2/select-one-fn :name :model/TimelineEvent :id ev-id)))))))
 
 (deftest extend-type-cannot-replace-the-checks-test
   (testing "Clojure refuses to extend a record to a protocol it implements inline, so its checks cannot be emptied"
     (is (thrown-with-msg? IllegalArgumentException #"already directly implements"
                           (extend-type metabase.timeline.event_update.EventUpdate
                             validated/Validatable
-                            (checks [_] [])
-                            (external-checks [_] []))))))
+                            (declaration [_] {:checks []}))))))
 
 ;;; Known residuals, by design. None is reachable from an HTTP request; each needs code in the JVM.
 ;;;
-;;; - `(.put @#'metabase.util.validated/issued forged true)`: a private var is reachable by var-quote. A lint that
-;;;   flags `#'metabase.util.validated/` outside that namespace would make it visible in review.
-;;; - `with-redefs` of `validated/validated` or `validated/validate`: test-only by convention.
+;;; - `(.put @#'metabase.util.validated/issued forged true)`: a private var is reachable by var-quote.
+;;;   `metabase.util.validated-test/no-var-quote-into-validated-test` fails on one in any source file.
+;;; - `with-redefs` of `validated/parsed` or `validated/parse`: test-only by convention.
 ;;; - Binding `api/*current-user-id*` before validating: ambient authority that every permission check in Metabase
 ;;;   already trusts. The record names the user, and `::acting-user-is-current-user` requires the two to agree.
-;;; - Time of check vs time of use: permissions revoked between `validate` and the write are not seen. The record is
-;;;   validated one call before the write, as the endpoint always checked.
-;;; - A validated record does not expire, and the sink does not compare its user to the current one. Code that keeps a
-;;;   validated record and writes it later, or as someone else, still writes. Validate where you write.
+;;; - Time of check vs time of use: permissions revoked between `parse` and the write are not seen. The record is
+;;;   parsed one call before the write, as the endpoint always checked.
+;;; - A parsed record does not expire. The sink refuses one parsed for another user, but code that keeps a parsed
+;;;   record and writes it later, as the same user, still writes. Parse where you write.
