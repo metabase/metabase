@@ -589,7 +589,7 @@
   (`\"ai_usage_limit_reached\"` and `\"permission_denied\"` respectively)."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
-  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
+  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice reasoning?]}]
    (warn-when-missing-required-permission "call-llm" tracking-opts)
    (or (when-let [limit-msg (usage/check-usage-limits!)]
          (error-reducible limit-msg "ai_usage_limit_reached"))
@@ -606,7 +606,9 @@
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)
-                                (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
+                                (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts))
+                                ;; Prototype: a profile can turn thinking off.
+                                (some? reasoning?)          (assoc :reasoning? reasoning?))
                make-source    (fn []
                                 (eduction (comp (core/tool-executor-xf tools)
                                                 (core/lite-aisdk-xf)

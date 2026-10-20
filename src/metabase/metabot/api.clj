@@ -29,6 +29,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools.prototype-filters :as prototype-filters]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
@@ -424,6 +425,17 @@
                         :user-agent (get-in req [:headers "user-agent"])
                         :ip-address (request/ip-address req)}]
     (streaming-request body* request-info)))
+
+;; Prototype: the natural-language filter box of the filter picker. One LLM call, without the agent loop.
+(api.macros/defendpoint :post "/prototype-filters" :- :map
+  "Add the filters that `message` describes to `query`."
+  [_route-params
+   _query-params
+   {:keys [query message]} :- [:map {:closed true}
+                               [:query   ms/OpaqueJSONObject]
+                               [:message ms/NonBlankString]]]
+  (metabot.config/check-metabot-enabled!)
+  (prototype-filters/build-filters query message))
 
 (api.macros/defendpoint :post "/feedback"  :- [:map
                                                [:status [:= 204]]

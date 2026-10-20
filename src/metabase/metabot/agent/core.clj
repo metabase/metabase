@@ -160,7 +160,9 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :internal-sql :sql :nlq :document-generate-content :slackbot :explorations])
+  ;; Prototype: `:prototype_filters` is the filter box of the filter picker.
+  [:enum :embedding_next :internal :internal-sql :sql :nlq :document-generate-content :slackbot :explorations
+   :prototype_filters])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -312,7 +314,9 @@
   [memory profile tools system-msg iteration tracking-opts link-registry-atom input-parts]
   (let [model        (:model profile)
         llm-opts     (cond-> {}
-                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+                       (:required-tool-call? profile)  (assoc :tool-choice "required")
+                       ;; Prototype: see `:reasoning?` in the profile schema.
+                       (contains? profile :reasoning?) (assoc :reasoning? (:reasoning? profile)))]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request

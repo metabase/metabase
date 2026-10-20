@@ -43,7 +43,9 @@
     "sql"
     "slackbot"
     "transforms_codegen"
-    "document-generate-content"})
+    "document-generate-content"
+    ;; Prototype: the natural-language filter box. It has no case branch in the analytics views.
+    "prototype_filters"})
 
 (defenterprise valid-usage-profile-id
   "Return `profile-id` when it can be persisted to `ai_usage_log`, otherwise nil."

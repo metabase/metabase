@@ -17,6 +17,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.metabot.tools.prototype-filters :as tools.prototype-filters]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -86,6 +87,9 @@
                [:prompt-template :string]
                [:max-iterations :int]
                [:temperature {:optional true} [:maybe number?]]
+               ;; Prototype: turn thinking off for a profile, and use the mini model instead of the Metabot model.
+               [:reasoning? {:optional true} :boolean]
+               [:mini-model? {:optional true} :boolean]
                [:tools [:vector tool-var-schema]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:skills? {:optional true} :boolean]
@@ -193,6 +197,19 @@
                         #'tools/edit-sql-query-tool
                         #'tools/replace-sql-query-tool
                         #'tools/ask-for-sql-clarification-tool]})
+
+;; Prototype: the natural-language filter box of the filter picker. It only adds filters to the current query, so a
+;; successful `construct_notebook_query` ends the turn.
+(register-profile!
+ {:name             :prototype_filters
+  :prompt-template  "prototype-filter-builder.selmer"
+  :max-iterations   6
+  :reasoning?       false
+  :always-on-skills [:construct-notebook-query-core :construct-notebook-query-operators]
+  :terminal-tools   #{"construct_notebook_query"}
+  :system-prompt-context #'tools.prototype-filters/query-tables-system-context
+  :tools            [#'tools/read-resource-tool
+                     #'tools/construct-notebook-query-tool]})
 
 ;; :nlq and :nlq-fallback are a pair selected by the library index's health (see [[get-profile]]): when the
 ;; library index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
@@ -345,7 +362,9 @@
                       (do (log/warn "nlq-fallback profile is not registered; serving :nlq unredirected")
                           profile))
                     profile)]
-      (assoc profile :model (metabot.settings/llm-metabot-provider)))
+      (assoc profile :model (if (:mini-model? profile)
+                              (metabot.settings/llm-mini-model)
+                              (metabot.settings/llm-metabot-provider))))
     ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
     (log/warnf "No metabot profile registered for %s" profile-id)))
 

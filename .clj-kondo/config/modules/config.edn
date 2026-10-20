@@ -1577,6 +1577,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/ModerationReview
+                    :model/OsiAiContext
                     :model/QueryTable
                     :model/Segment
                     :model/Table

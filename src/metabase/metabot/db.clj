@@ -1082,3 +1082,13 @@
   "A map of Segment ID to entity ID for `ids`."
   [ids :- [:sequential ::lib.schema.id/segment]]
   (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))
+
+(defn prototype-ai-contexts
+  "Prototype: the AI contexts of the Tables `table-ids` and of their Segments."
+  [table-ids]
+  (when (seq table-ids)
+    (let [segment-ids (t2/select-pks-set :model/Segment :table_id [:in table-ids] :archived false)]
+      (concat
+       (t2/select :model/OsiAiContext :entity_type "table" :entity_local_id [:in table-ids])
+       (when (seq segment-ids)
+         (t2/select :model/OsiAiContext :entity_type "segment" :entity_local_id [:in segment-ids]))))))
