@@ -673,6 +673,7 @@ function commitDataApp(
   if (initializeRepo) {
     setupGitSync();
     copySyncedCollectionFixture();
+    updateSetting("remote-sync-custom-collections-enabled", true);
   }
   // A copy only adds, so a file the author deleted would stay in the repository.
   cy.task("removeDataAppPaths", { paths: [collectionsDir] });
