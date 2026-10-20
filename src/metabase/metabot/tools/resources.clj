@@ -1142,13 +1142,9 @@
     (llm-shape/entity->xml structured)))
 
 (defn- resource-element
-  "One `<resource>` element, for either outcome.
-
-  `uri` goes through `pr-str` because it reaches the model inside an attribute and is the agent's
-  own text — an unescaped `\"` would close the attribute early and the rest of the URI would read as
-  markup."
+  "Wrap a resource body with its URI in an escaped XML attribute."
   [uri body]
-  (str "<resource uri=" (pr-str uri) ">\n" body "\n</resource>"))
+  (str "<resource uri=\"" (llm-shape/escape-xml uri) "\">\n" body "\n</resource>"))
 
 (def ^:private uri-arg
   "The one thing a read takes. Both declarations below build their `:args` from this, so the single

@@ -1392,10 +1392,8 @@
 
 (deftest ^:parallel a-uri-attribute-is-escaped-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (testing "the URI is the agent's own text and reaches the model inside an attribute, so a quote
-             in it must not be able to close that attribute early"
-      (let [{:keys [output]} (read-uris {:uris ["metabase://table/\"><script>"]})]
-        (is (str/includes? output "<resource uri=\"metabase://table/\\\"><script>\">"))))))
+    (let [{:keys [output]} (read-uris {:uris ["metabase://table/<&\""]})]
+      (is (str/includes? output "<resource uri=\"metabase://table/&lt;&amp;&quot;\">")))))
 
 (deftest read-missing-fields-test
   (let [mp       (mt/metadata-provider)

@@ -1083,7 +1083,7 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Fetch " next-page-uri " for the next page — copy it exactly, do not "
+                         "Fetch " (escape-xml next-page-uri) " for the next page — copy it exactly, do not "
                          "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)
