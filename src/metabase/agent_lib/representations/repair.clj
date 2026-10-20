@@ -2178,10 +2178,16 @@
     (str target-table-id)))
 
 (defn- no-fk-path-error [fk source-label target-table-id extra]
-  (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. If the foreign key comes from a table you joined in this stage, set `source-field-join-alias` instead. If you are aggregating a metric that relates to that table (metrics can join tables that have no foreign key), its dimensions list the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a field from the source."
-                (display-portable fk)
-                (display-target-table fk target-table-id)
-                (pr-str source-label))
+  (ex-info (format (str "Field %s is on table %s, which has no foreign key from the source %s, so it cannot be "
+                        "reached implicitly. To group or filter by a column from that table, add an explicit `joins:` "
+                        "entry and reference the field using the join alias. If the foreign key comes from a table you "
+                        "joined in this stage, set `source-field-join-alias` instead. If you are aggregating a metric "
+                        "that relates to that table (metrics can join tables that have no foreign key), its dimensions "
+                        "list the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a "
+                        "field from the source.")
+                   (display-portable fk)
+                   (display-target-table fk target-table-id)
+                   (pr-str source-label))
            (merge {:status-code  400
                    :error        :no-fk-path
                    :agent-error? true
@@ -2192,15 +2198,16 @@
 (defn- column-not-returned-error [fk card-name card-type card-id target-table-id]
   ;; `card-id` and `:source-card-type` ride in the ex-data rather than the message: each surface's recovery hint
   ;; addresses the card in its own vocabulary, and the two card types take different lookups.
-  (ex-info (if (= "model" card-type)
-             (tru "Field {0} is on {1}, which the model {2} reads from but does not return, so it cannot be referenced here. Use a column that model returns. If the stage does not aggregate a metric defined on this model, you can instead build it on `source-table:`."
-                  (display-portable fk)
-                  (display-target-table fk target-table-id)
-                  (pr-str card-name))
-             (tru "Field {0} is on {1}, which the saved question {2} reads from but does not return, so it cannot be referenced here. Use a column that question returns. If the stage does not aggregate a metric defined on this question, you can instead build it on `source-table:`."
-                  (display-portable fk)
-                  (display-target-table fk target-table-id)
-                  (pr-str card-name)))
+  (ex-info (let [[kind short-kind] (if (= "model" card-type) ["model" "model"] ["saved question" "question"])]
+             (format (str "Field %s is on %s, which the %s %s reads from but does not return, so it cannot be "
+                          "referenced here. Use a column that %s returns. If the stage does not aggregate a metric "
+                          "defined on this %s, you can instead build it on `source-table:`.")
+                     (display-portable fk)
+                     (display-target-table fk target-table-id)
+                     kind
+                     (pr-str card-name)
+                     short-kind
+                     short-kind))
            {:status-code      400
             :error            :column-not-returned
             :agent-error?     true
@@ -2210,10 +2217,12 @@
             :target-table     target-table-id}))
 
 (defn- unexportable-fk-error [fk source-label target-table-id extra]
-  (ex-info (tru "Field {0} is on table {1}, which is reachable from the source {2} only through a foreign key that could not be resolved, so it cannot be reached implicitly. Add an explicit `joins:` entry and reference the field using the join alias, or use a column the source returns."
-                (display-portable fk)
-                (display-target-table fk target-table-id)
-                (pr-str source-label))
+  (ex-info (format (str "Field %s is on table %s, which is reachable from the source %s only through a foreign key "
+                        "that could not be resolved, so it cannot be reached implicitly. Add an explicit `joins:` entry "
+                        "and reference the field using the join alias, or use a column the source returns.")
+                   (display-portable fk)
+                   (display-target-table fk target-table-id)
+                   (pr-str source-label))
            (merge {:status-code  400
                    :error        :unexportable-fk
                    :agent-error? true
@@ -2228,15 +2237,14 @@
   ;; with the surface's own discovery tool to inspect the available foreign-key columns.
   ;; `by-name?`: a card source can return the same FK column under several names, which `source-field` alone cannot
   ;; tell apart.
-  (ex-info (if by-name?
-             (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause, and `source-field-name` with the name the source returns that foreign-key column under, to disambiguate."
-                  (display-portable fk)
-                  (pr-str source-label)
-                  n)
-             (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate."
-                  (display-portable fk)
-                  (pr-str source-label)
-                  n))
+  (ex-info (format (str "Field %s can be reached from %s via %d foreign keys. Specify the `source-field` option on the "
+                        "field clause"
+                        (when by-name?
+                          ", and `source-field-name` with the name the source returns that foreign-key column under,")
+                        " to disambiguate.")
+                   (display-portable fk)
+                   (pr-str source-label)
+                   n)
            (merge {:status-code  400
                    :error        :ambiguous-fk
                    :agent-error? true
@@ -3347,7 +3355,8 @@
        Runs *before* the basic implicit-join pass so the latter sees an already-
        disambiguated clause.
     4. auto-wire `source-field` on field clauses that reference a foreign table via a single
-       unambiguous FK on the source table (implicit-join resolution);
+       unambiguous FK on the source table, or on a `source-card:` stage via a single FK column
+       the card returns (implicit-join resolution);
     4.5. infer `base-type` / `effective-type` on field references in a stage whose source is
        a saved question / model (`source-card:`), using the card's resolved returned columns.
        Must run *before* Pass 5: a `source-card` stage's own bare-name field refs need
@@ -3371,8 +3380,9 @@
   Pass 4, Pass 4.5, Pass 4.7, Pass 5, and Pass 5.7 require `mp` (a `MetadataProvider`); they are
   best-effort no-ops when `mp` can't resolve the relevant pieces (so the subsequent
   validate/resolve stages can surface the real error with their own, better messages). Hard FK
-  errors from Pass 4 (`:no-fk-path`, `:ambiguous-fk`) are raised as `:agent-error?` ex-info so
-  the tool wrapper can relay them to the LLM. Pass 4.5 and Pass 5 never throw on their own - if
+  errors from Pass 4 (`:no-fk-path`, `:ambiguous-fk`, and on a `source-card:` stage
+  `:column-not-returned` and `:unexportable-fk`) are raised as `:agent-error?` ex-info so the
+  tool wrapper can relay them to the LLM. Pass 4.5 and Pass 5 never throw on their own - if
   a prefix / source-card can't be resolved, they just leave the affected clauses alone; Pass
   5.7 then raises the `:agent-error?` only for refs that survived to the end still unresolved.
 

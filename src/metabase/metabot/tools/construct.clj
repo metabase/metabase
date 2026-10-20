@@ -769,15 +769,9 @@
         required     (vals required-by-metric-id)
         source-cards (into #{} (keep #(when (= :card (:kind %)) (:card-id %))) required)
         source-table-ids (into #{} (keep #(when (= :table (:kind %)) (:table-id %))) required)
-        ;; One column-restricted select covering the metrics AND their source cards, for readability *and* entity
-        ;; id -- every name and id below comes from here, never from the metadata provider, which is not
-        ;; permission-aware. This gate runs before `export-query`, whose permission-aware content store is the
-        ;; thing that read-checks entity-id lookups, and `check-source-table-query-permissions!` covers only stage
-        ;; sources, not aggregation metric refs. The pk arity of `can-read?` would also throw outright on a card
-        ;; that has since been deleted, turning this 400 into a 500; a card that is gone is simply absent here.
+        ;; Names and entity ids come from these read-checked rows, never from the metadata provider, which is not
+        ;; permission-aware.
         readable     (tools.u/readable-source-cards (into (set metric-ids) source-cards))
-        ;; Required tables get the same treatment: named only when queryable, which is what `metric-details` and
-        ;; search check before offering the same table.
         db-name      (:name (lib.metadata/database mp))
         table-id->fk (when (seq source-table-ids)
                        (into {}
@@ -785,31 +779,31 @@
                                    (map (fn [{:keys [id schema name]}] [id [db-name schema name]])))
                              (metabot.db/table-schema-rows (vec source-table-ids))))
         describe     (fn [metric-id]
-                       ;; One whole `tru` per branch rather than a fragment glued into a `str` -- word order is the
-                       ;; translator's.
-                       (let [metric-name (pr-str (or (:name (get readable metric-id)) metric-id))
-                             r           (get required-by-metric-id metric-id)
-                             eid         (when (= :card (:kind r))
-                                           (:entity_id (get readable (:card-id r))))
-                             table-fk    (when (= :table (:kind r))
-                                           (get table-id->fk (:table-id r)))]
-                         (cond
-                           ;; An unreadable definition, or a multi-stage metric over a native source card (`:kind
-                           ;; :table` with nothing to name). Naming any source leaves no edit that satisfies the error.
-                           (or (nil? r)
-                               (and (= :table (:kind r)) (nil? (:table-id r))))
-                           (tru "{0} (has no usable source)" metric-name)
+                       (let [r        (get required-by-metric-id metric-id)
+                             eid      (when (= :card (:kind r))
+                                        (:entity_id (get readable (:card-id r))))
+                             table-fk (when (= :table (:kind r))
+                                        (get table-id->fk (:table-id r)))]
+                         (str (pr-str (or (:name (get readable metric-id)) metric-id))
+                              (cond
+                                ;; An unreadable definition, or a multi-stage metric over a native source card.
+                                (or (nil? r)
+                                    (and (= :table (:kind r)) (nil? (:table-id r))))
+                                " (has no usable source)"
 
-                           table-fk
-                           (tru "{0} (needs source-table: {1})" metric-name (json/encode table-fk))
+                                table-fk
+                                (str " (needs source-table: " (json/encode table-fk) ")")
 
-                           eid
-                           (tru "{0} (needs source-card: {1})" metric-name (pr-str eid))
+                                eid
+                                (str " (needs source-card: " (pr-str eid) ")")
 
-                           :else
-                           (tru "{0} (defined on a source you do not have access to)" metric-name))))]
-    {:message        (tru "These metrics cannot be used on this stage''s source: {0}. A metric only works on the source it was defined on, so the stage must use that source. Either change the stage''s source-table:/source-card: to the one shown for each metric, or drop the metric and express the aggregation directly."
-                          (str/join ", " (map describe metric-ids)))
+                                :else
+                                " (defined on a source you do not have access to)"))))]
+    {:message        (str "These metrics cannot be used on this stage's source: "
+                          (str/join ", " (map describe metric-ids))
+                          ". A metric only works on the source it was defined on, so the stage must use that source. "
+                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                          "or drop the metric and express the aggregation directly.")
      :usable-sources (into {}
                            (keep (fn [[metric-id r]]
                                    (cond
