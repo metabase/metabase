@@ -182,6 +182,7 @@ segment "Was active"       "[\"or\", {}, [\"starts-with\", {}, [\"field\", {}, $
 segment "Sent an invite"   "$(event_name_in invite_sent)"
 segment "Hit an error"     "$(event_name_in error)"
 segment "Created a report" "$(event_name_in report_created)"
+segment "Connected an integration" "$(event_name_in integration_connected)"
 ```
 
 To start over, archive them with `mb segment archive <id>` (ids from

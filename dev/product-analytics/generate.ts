@@ -388,8 +388,19 @@ function personaOf(rng: () => number): Persona {
   ]);
 }
 
-function dailyActiveChance(persona: Persona, weekFromSignup: number, invited: boolean): number {
-  const bonus = invited ? 0.12 : 0;
+// Existing users who connect an integration are more active from then on. Each
+// active day from their third week, until they do, they connect one by chance.
+const INTEGRATION_FROM_WEEK = 2;
+const INTEGRATION_DAILY_CHANCE = 0.01;
+const INTEGRATION_BONUS = 0.15;
+
+function dailyActiveChance(
+  persona: Persona,
+  weekFromSignup: number,
+  invited: boolean,
+  connected: boolean,
+): number {
+  const bonus = (invited ? 0.12 : 0) + (connected ? INTEGRATION_BONUS : 0);
   const curves: Record<Persona, number[]> = {
     power: [0.9, 0.88, 0.85, 0.83, 0.8, 0.78, 0.75],
     regular: [0.62, 0.5, 0.42, 0.38, 0.34, 0.32, 0.3],
@@ -472,6 +483,7 @@ const truth: GroundTruth = {
     trial_started: 0,
     checkout_completed: 0,
     invite_sent: 0,
+    integration_connected: 0,
     report_created: 0,
     subscription_cancelled: 0,
     error: 0,
@@ -827,7 +839,10 @@ function simulatePerson(
     }
   }
 
-  // Ongoing activity.
+  // Ongoing activity. Whether they connect an integration is drawn from its
+  // own stream, so everyone who doesn't keeps the same events.
+  const integrationRng = rngFrom(`${SEED}:integration:${person.i}`);
+  let connected = false;
   const signupDay = Math.floor((person.signupAt - START_MS) / 86_400_000);
   for (let day = signupDay; day < DAYS; day++) {
     const dayStart = START_MS + day * 86_400_000;
@@ -835,7 +850,12 @@ function simulatePerson(
       continue;
     }
     const weekFromSignup = Math.floor((dayStart - person.signupAt) / (7 * 86_400_000));
-    const chance = dailyActiveChance(person.persona, weekFromSignup, person.willInvite);
+    const chance = dailyActiveChance(
+      person.persona,
+      weekFromSignup,
+      person.willInvite,
+      connected,
+    );
     if (rng() > chance) {
       if (person.persona === "churned" && weekFromSignup >= 2) {
         break;
@@ -861,6 +881,17 @@ function simulatePerson(
         push(at, { type: 2, name: "error", path, data: { code: "checkout_failed" } }, true);
       }
       at += (1 + Math.floor(rng() * 8)) * 60_000;
+    }
+    if (
+      !connected &&
+      weekFromSignup >= INTEGRATION_FROM_WEEK &&
+      integrationRng() < INTEGRATION_DAILY_CHANCE
+    ) {
+      connected = push(
+        at,
+        { type: 2, name: "integration_connected", path: "/app/settings" },
+        true,
+      );
     }
   }
 

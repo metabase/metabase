@@ -30,6 +30,7 @@ import {
   getClickedTransition,
 } from "../insights/clicked-transition";
 import { FUNNEL_INSIGHTS } from "../insights/funnel-analysis";
+import { HABIT_INSIGHTS } from "../insights/habit-analysis";
 import { LIFECYCLE_INSIGHTS } from "../insights/lifecycle-analysis";
 import type { InsightsAnalysis } from "../insights/types";
 import { type Insights, useInsights } from "../insights/use-insights";
@@ -113,6 +114,8 @@ const getInsightsAnalysis = (
       return BOUNCE_INSIGHTS;
     case "lifecycle":
       return LIFECYCLE_INSIGHTS;
+    case "habit":
+      return HABIT_INSIGHTS;
     default:
       return undefined;
   }
@@ -220,7 +223,7 @@ export const useSupportingAnalyses = ({
       case "paths":
         return t`Start the paths at the start of a visit to see insights.`;
       case "habit":
-        return t`Insights aren't available for habits yet.`;
+        return t`Finish setting up the habit analysis to see insights.`;
       case "cohorts":
         return t`Insights aren't available for cohorts yet.`;
       default:

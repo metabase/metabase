@@ -194,3 +194,47 @@ export const getReturnOutcome = (period: Period): InsightOutcome => {
     },
   };
 };
+
+/**
+ * People active in a week who become regulars over the next few weeks,
+ * compared with what's expected of people as active as them that week.
+ */
+export const getRegularOutcome = (): InsightOutcome => ({
+  isHigherBetter: true,
+  searchingLabel: t`Looking for what people who become regulars did…`,
+  describeRate: (rate) => c("{0} is a percentage").t`${rate} became regulars`,
+  describeComparison: (rate, expectedRate, size) =>
+    c("{0} and {1} are percentages, {2} is a number of active weeks")
+      .t`${rate} became regulars vs. ${expectedRate} expected for people as active · ${size} active weeks`,
+  describeMultiple: (multiplier) =>
+    c("{0} is a multiplier, like 2.5")
+      .t`${multiplier}× as likely to become a regular`,
+  describeDifference: (percent, isMore) =>
+    isMore
+      ? c("{0} is a percentage").t`${percent} more likely to become a regular`
+      : c("{0} is a percentage").t`${percent} less likely to become a regular`,
+  describeExcess: (count, formatted, isMore) =>
+    isMore
+      ? ngettext(
+          msgid`About ${formatted} more regular than expected for people as active`,
+          `About ${formatted} more regulars than expected for people as active`,
+          count,
+        )
+      : ngettext(
+          msgid`About ${formatted} fewer regular than expected for people as active`,
+          `About ${formatted} fewer regulars than expected for people as active`,
+          count,
+        ),
+  describeNothingFound: (events, size) =>
+    c("{0} is a number of event conditions, {1} is a number of active weeks")
+      .t`Nothing stands out. Checked ${events} event conditions across ${size} active weeks.`,
+  noAttributesLabel: t`There are no event segments on this table to compare people by. Save some to see what regulars do.`,
+  explore: {
+    countColumn: "active_weeks",
+    countTitle: t`Active weeks`,
+    rateColumn: "became_regular",
+    rateTitle: t`Became regulars`,
+    expectedRateColumn: "expected_rate",
+    expectedRateTitle: t`Expected for people as active`,
+  },
+});

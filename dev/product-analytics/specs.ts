@@ -33,6 +33,7 @@ export const FLAG = {
   invite: "ev_6",
   error: "ev_7",
   report: "ev_8",
+  integration: "ev_9",
 } as const;
 
 export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
@@ -89,6 +90,7 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
           active: { flag: FLAG.active },
           subPeriod: "day",
           measure: "histogram",
+          hasFirstSeen: true,
         },
         output: {},
       };

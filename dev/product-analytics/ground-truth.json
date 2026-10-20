@@ -9,17 +9,18 @@
     "end": "2026-09-21T00:00:00.000Z"
   },
   "counts": {
-    "events": 1638496,
-    "pageviews": 1500691,
+    "events": 1679483,
+    "pageviews": 1537240,
     "signup": 22123,
     "trial_started": 5077,
     "checkout_completed": 1598,
     "invite_sent": 3726,
-    "report_created": 96797,
-    "subscription_cancelled": 84,
-    "error": 8400,
-    "error_incident": 3312,
-    "identities": 28882
+    "integration_connected": 1685,
+    "report_created": 99342,
+    "subscription_cancelled": 85,
+    "error": 8607,
+    "error_incident": 3381,
+    "identities": 28883
   },
   "funnel": {
     "pricing": 19364,

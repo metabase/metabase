@@ -78,6 +78,7 @@ export type PathsSettings = CommonSettings & {
 export type HabitSettings = CommonSettings & {
   "habit.active": EventDefinition | null;
   "habit.measure": HabitSpec["measure"];
+  "habit.first_seen_column": string | null;
 };
 
 export type LifecycleSettings = CommonSettings & {

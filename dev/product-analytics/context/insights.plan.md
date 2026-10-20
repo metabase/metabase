@@ -415,8 +415,8 @@ The search reads rows of (question, attribute values, reached, converted). For f
 | Funnel | reached step k | reached step k+1 |
 | Paths (bounces) | visits that landed on page k | had no other step |
 | Cohorts | started in the cohort | returned in period N |
-| Habit | active in the lookback | active ≥ X sub-periods |
-| Lifecycle | active in a period | active in the next period |
+| Habit | active in a week, as new or not | active on N+ days (or weeks) of the next 4 weeks |
+| Lifecycle | active in a period, as new, returning or resurrected | active in the next period |
 
 Paths as a whole isn't a rate, but its bounces are (see [Bounces](#bounces)). Exits are too, but left out for now: every visit exits somewhere, so a group with shorter visits exits more from every page, and the "explained by" rule only compares insights within one question, so it can't fold those together.
 
@@ -426,10 +426,15 @@ Built with bounces, the second analysis:
 
 - **SQL** (`sql/analyses/insights.ts`): an analysis supplies an `InsightPopulation`, a CTE with one row per actor per question: `k`, `converted` and each attribute by its id, as of the question's moment. Optionally a `label` per question. The singles, pairs and explore queries run over it unchanged.
 - **Search:** what was a transition is a question. `search.ts`, `counts.ts` and `segments.ts` don't know what kind.
-- **Hook** (`insights/use-insights.ts`): takes an `InsightsAnalysis` adapter, saying when it applies, how to build its population, and how to head each question. `funnel-analysis.ts` and `bounce-analysis.ts` are the two.
-- **Wording** (`insights/outcomes.ts`): an `InsightOutcome` per analysis, for the panel and the explore chart ("2× as likely to bounce", "visits"), and whether a higher rate is better. A higher bounce rate is red.
+- **Hook** (`insights/use-insights.ts`): takes an `InsightsAnalysis` adapter, saying when it applies, what kind of attributes it compares by, whether to look for pairs, how to build its population, and how to head each question. `funnel-analysis.ts`, `bounce-analysis.ts`, `lifecycle-analysis.ts` and `habit-analysis.ts` are the four.
+- **Wording** (`insights/outcomes.ts`): an `InsightOutcome` per analysis, built from the spec, for the panel and the explore chart ("2× as likely to bounce", "visits"), and whether a higher rate is better. A higher bounce rate is red.
+- **Two kinds of attribute** (`InsightAttribute` in `insights/types.ts`):
+  - `column`: a table column, as of the question's moment (`candidates.ts`). Funnels and bounces.
+  - `event`: whether the actor did one of the event table's saved segments at least 1, 3 or 10 times (`event-candidates.ts`). Each segment gets a flag column on `events_base`, and the population counts it. Lifecycle and habit.
+- **Expected outcomes** (optional): a population with `hasExpected` has an `expected` column, each actor's chance of the outcome given what else is known about them. The counts sum it and its variance. The search then compares a group with what's expected of it, not with everyone else (see [Compared with people as active](#compared-with-people-as-active)).
+- **Pairs are optional** (`searchesPairs`). The pair interaction test compares raw rates, so it doesn't fit populations with expected outcomes.
 
-The as-of rule is the population's: a funnel takes the first value seen by the person by reaching step k; bounces take the value on the landing event.
+The as-of rule is the population's: a funnel takes the first value seen by the person by reaching step k; bounces take the value on the landing event; lifecycle and habit count the events in the period (a week, for habit).
 
 ### Bounces
 
@@ -439,6 +444,89 @@ The as-of rule is the population's: a funnel takes the first value seen by the p
 - **Attributes as of landing:** the value on the visit's first step's event. A value from later in the visit would leak the outcome, and the funnel's per-person rule would give every visit the person's first-ever UTM tags.
 - **Bounce** means the visit had one step, after merging repeats and with the event kinds the paths count. A visit that viewed one page and then fired an event that isn't counted as a step still bounced.
 - **Expected finding: viewers bounce more and admins less, from every app page.** Nothing about browsing depends on role in the generator, but role is drawn by persona (power users are 50% admin and 5% viewer), and persona sets how long a visit is (1–3 events a day for casual users, 4–12 for power users). Persona never reaches the data, so it's a hidden confounder. Grouped by each person's number of visits, a stand-in for persona, the role gap disappears: 44–45% for every role at 1–3 visits, 30% at 4–10. It's a real association, not chance or leakage, and the reason the panel avoids causal language.
+
+### Lifecycle
+
+"What do people who keep coming back do?" The classic version of this finding is "people who invite a friend in their first week churn less". Event and person properties answer it badly, so lifecycle compares people by **what they did**, not who they are.
+
+- **Questions:** one per state a person can be in for a period: new, returning and resurrected. Each heads as "New → Returning the following week".
+- **Who:** one row per person per period they were active in the range, so a person active in 8 weeks counts 8 times ("active weeks").
+- **Success:** active the next period too. The range's last period is left out, since there's no next period, and so is the one before it, since the last period may be cut short.
+- **Attributes:** event attributes, counted in that period. The segment that defines being active is left out, since being active can't predict being active. Segments are compared ignoring `lib/uuid`s, through `Lib.areLegacyQueriesEqual`.
+- **No pairs.** A pair is better asked as a segment of its own.
+- **States match the chart.** `lifecycleStateColumns` in `sql/analyses/lifecycle.ts` builds both. See [Who's new](#whos-new).
+
+#### Compared with people as active
+
+Measured in the same period as the behavior, every segment predicts coming back, because active people do everything more. Measuring the outcome in the next period fixes the timing but not the confounding: in the generator, persona drives both how much people do and whether they come back.
+
+So each row's `expected` chance of coming back is the rate of everyone in the **same state** with the **same number of active days** (hours, for a day) and the **same number of events, to a power of 2**. A group's insight is its rate against the rate expected of its members: "89.85% returned vs. 78.61% expected for people as active". The explore chart shows the expected rate as a gray bar beside each value.
+
+- **Test:** `(observed − expected) / √Σ p(1 − p)`, the outcomes against independent draws at each person's expected chance (`expectedPValue` in `stats.ts`). It ignores the error in estimating each stratum's rate, and a group that's most of its stratum pulls the expected rate towards itself, which makes the test conservative for big groups.
+- **"Explained by":** compares how far two groups beat what's expected of them per person (`differencePValue`).
+- **Excess and ranking** are unchanged: `n × (rate − expected rate)` is observed minus expected outcomes.
+- **Why both strata.** With active days alone, "Hit an error" looked like a reason to come back (new: 93.9% vs 91.1% expected, z = 2.7; returning: z = 8.6). Errors come with heavy use: power users have more events per active day, so they hit more errors, and come back more. Adding event volume took errors to noise (z = −0.8 and 0.8) and kept the planted invite effect (new: 99.0% vs 91.8%, z = 13).
+- **Why not normalize the attribute instead,** like "errors were 3% of their events against 1% for everyone". The share's denominator is activity, which is what predicts coming back. A one-time action like an invite is 1 of 500 events for a power user and 1 of 20 for a casual one, so it would look *worse* the more engaged the person. It also needs a row per person in the browser.
+
+#### Who's new
+
+Lifecycle used to only see events in the range, so "new" meant "first active in the range": 82% of the range's first week were old users, and so were 7% of later "new" people (40% of those who never signed up in the range). The top insight was an artifact of that. Lifecycle now works like PostHog's:
+
+- **First seen:** `pa_events_resolved.person__first_seen_at` is each person's first event, anonymous or not, on every event, like PostHog's person `created_at`. The "When each person was first seen" setting finds it by name, only when counting people.
+- **New** is the period someone was first seen in, **returning** is active the period before, and otherwise **resurrected**.
+- **Lookback:** lifecycle reads the period before the range (`getLookbackDays`, two periods' worth of days since a range can start partway through one), so the range's first period can be returning or went quiet. Only periods in the range show.
+- **First seen counts any event,** while being active can be a narrower event. Someone who browsed the marketing site weeks before first using the app is resurrected, not new, in their first active week, and can be returning without ever being new. PostHog does the same; it avoids reading history.
+
+#### Results
+
+`check-insights.ts` checks lifecycle by week over all the data: "Sent an invite" among new people (99.5% vs 96.8% expected) is found, and "Hit an error" isn't, at any state. With the app's defaults (any event, last 90 days, the README's segments) there are 14 insights, all singles: 8 for returning, 5 for resurrected and 1 for new. The biggest are "Signed up: yes" among returning (93.4% vs 78.8%) and resurrected people (89.9% vs 78.6%): visitors who come back and sign up become users.
+
+Known issues:
+
+- **Segments inside the activity measure** are matched against people with more events, because their own events count. "Created a report" comes out slightly negative everywhere (returning: 92.1% vs 93.2%), with nothing planted.
+- **Segments that are the activity.** With "Any action or event", "Was active" is a segment like any other. Since activity is held fixed, "Was active: no" means "all their events were marketing pages" (returning: 94.8% vs 66.1%). Correct but not interesting; picking an activity leaves it out.
+- **Segment count.** Each segment adds a `countIf` per person per period; the prototype takes the first 20 (see [post-prototype.md](post-prototype.md), "Which events insights compare people by").
+
+### Habit
+
+"What do people who become regulars do?" Lifecycle asks whether people come back at all, which tops out for heavy users: returning people come back 79–93% of the time, so it can't say what moves someone from twice a week to most days. Habit asks how often they show up, and weights the people who show up most.
+
+- **Not over the whole range.** The histogram counts active days over the range, and "did X in the range" correlates with that through opportunity: someone active on 30 days had 30 days to send an invite. Like lifecycle, the behavior comes before the outcome.
+- **Who:** one row per person per week they were active in the range, so a person active in 9 weeks counts 9 times ("active weeks"). Rows are calendar weeks at either granularity.
+- **Success, "became a regular":** active on N or more days of the **next 4 weeks**, or in N or more of the 4 weeks by week. A fixed window ahead means no exposure bias: people who stop count as not regular, and nobody has less time to be active in. 4 weeks is the month of WAU/MAU, close to DAU/MAU's 30 days: a person's active days in the next 4 weeks over 28 is their own DAU/MAU for the month ahead.
+- **The range** only decides which weeks are rows: a week needs 4 full weeks after it, before the range's last week, which may be cut short. With the default 90 days (14 calendar weeks, the first and last partial), rows come from the first 9, and the rest only supply outcomes. A range spanning fewer than 6 calendar weeks has no insights.
+- **N without asking:** one N over all rows, the smallest that makes at most 20% of them regulars, so "regular" means the same thing at every question. It's in each question's heading ("New → Active 14+ days in the next 4 weeks"), passed as the population's `label`. Active days are small integers with many ties, so it can't be an exact 20%.
+- **By week,** N can only be 0–4, and about half of rows are active in all 4 following weeks, so N is the whole window ("Active every week of the next 4") with about 50% regulars. It still means something, "never missed a week", but is less selective. A longer window would sharpen it but leave few weeks with a full window in a 90-day range.
+- **Questions:** new (the week someone was first seen) and everyone else. Not split into returning and resurrected like lifecycle, since the expected chance already holds activity fixed. Without the "When each person was first seen" setting, everyone is one question, "Everyone".
+- **Expected chance:** the same strata as lifecycle, the week's active days and events to a power of 2, at each question.
+- **DAU/MAU and WAU/MAU** show the same insights: the population doesn't depend on the measure.
+- **SQL** (`sql/analyses/habit-insights.ts`): the per-person-per-period activity CTE, shared with lifecycle in `sql/analyses/event-activity.ts`, then the activity ahead as a window sum over the following rows by week number (`toRelativeWeekNum`, `RANGE BETWEEN 1 FOLLOWING AND 4 FOLLOWING`). Weeks without activity have no row and add nothing. The threshold is one CTE over the rows' distribution of activity ahead.
+
+#### Planted: connecting an integration
+
+The generator's invite bonus only happens in someone's first week, so nothing was planted for existing users. Now, from their third week, existing users have a 1% chance on each active day of connecting an integration (once), after which their daily chance of being active goes up by 0.15 for good. 1,685 people connect one. Its draws come from their own random stream, so everyone who doesn't connect one keeps the same events, and the other planted effects are unchanged. The README adds a "Connected an integration" segment.
+
+#### Results
+
+`check-insights.ts` checks habit by day (histogram) and by week (WAU/MAU) over all the data, with "Was active" as the activity:
+
+- **By day,** N is 14: 25.7% of 2,867 new weeks and 18.2% of 68,136 other weeks are regulars. "Sent an invite" among new people (61.4% vs 31.1% expected) and "Connected an integration" among everyone else (51.1% vs 40.3%) are found, and "Hit an error" isn't.
+- **By week,** N is 4 (every week): 53.6% and 47.8%. Both planted effects are found (80.3% vs 57.7%, 85.4% vs 73.1%).
+- **Lifecycle** finds the integration too, among returning people (96.0% vs 92.1%).
+
+With the app's defaults (any event, last 90 days, by day, the README's 8 original segments) there are 13 insights, all singles; adding "Connected an integration" makes 14. N is 14 days, with 11,628 new weeks (20.2% regulars) and 62,294 others (18.2%). Only "Sent an invite" (new: 60.7% vs 35.0% expected; everyone else: 63.5% vs 31.6%) and the integration were planted. The rest:
+
+- **"Was active" as a segment** (5): with "Any action or event", it splits app weeks from marketing-page weeks, like lifecycle's "Segments that are the activity". With "Was active" as the activity there are 9 insights, integration included.
+- **The week a visitor becomes a user** (2): "Signed up" (18.8% vs 11.4%) and "Started trial". First seen is the first marketing visit, often a week before signing up, so the signup week counts under everyone else, and people early in their life are more active in the weeks ahead than others as active that week. See tenure under [Later](#later).
+- **Persona proxies** (2): "Created a report 3+" and "Viewed pricing".
+- **Inside the activity** (1): "Purchased" comes out lower (17.0% vs 20.5%), since its events count as activity.
+
+Known issues, beyond lifecycle's:
+
+- **Rows aren't independent.** A person's weeks are correlated, and someone active in 9 weeks counts 9 times, so p-values are too small for people with many weeks. Lifecycle has the same problem. The fix keeps the rows and changes only the variance: sum each person's (outcome − expected) over their rows before squaring, a cluster-robust variance. The singles query would need to unpivot attributes into rows first. One row per person (say, the first 80% of the range against the rest) would fix it too, but attributes would saturate over a long window, the windows would change with the range, and it would stop weighting heavy users.
+- **Weeks that are already regular add little.** 96% of 7-of-7-day weeks became regulars (by day), so they can barely beat their expected chance, and add little weight to the test. Insights come mostly from 3–6-day weeks. In the generator, a 7-day week is nearly always a power user.
+- **Few new weeks with a narrow activity.** With "Was active" as the activity, most people were first seen on marketing pages days before first using the app, often in an earlier week, so only 2,867 rows are new. Their first active week falls under everyone else, which is why "Sent an invite" is found there too (63.2% vs 28.7%). With the app's default of any event, first seen is first active. See "First active, not first seen" under [Later](#later).
+- **Persona proxies.** By day, "Created a report 3+" among everyone else comes out slightly positive (95.5% vs 93.5%): power users create reports from more of their report page views, so it marks persona beyond activity. Nothing about reports was planted. By week, "Hit an error" comes out slightly negative (78.4% vs 79.5%), like "Created a report" in lifecycle: errors are activity, so people with errors are compared with people busier than them.
 
 ## Implementation
 
@@ -493,7 +581,14 @@ A fix needs both: some way to test a pair against an explanation with a third co
 
 - Derive the step chart from pass 1 (see [above](#future-optimization-one-scan-for-the-chart-and-pass-1)).
 - GUI exploration through a saved per-person question.
-- The other analyses.
+- Cohorts.
+- **Cluster-robust variance** for populations with several rows per person, lifecycle and habit (see [Habit](#habit), known issues).
+- **Event attributes for funnels:** what people did between steps, like "what does someone do on their trial that makes them likely to buy?". Counting events between reaching step k and converting leaks: fast converters have less time to do anything, and the events of converting predict it perfectly. Count them in a fixed window after reaching step k, among people who hadn't converted by its end.
+- **Pairs with expected outcomes:** an interaction test against expected outcomes, so lifecycle and habit can look for pairs too.
+- **First active, not first seen,** for lifecycle's and habit's new when being active is a narrower event than any event (see [Who's new](#whos-new)). It needs each person's first time doing that event, so it reads history, unless it's stamped on events like first seen.
+- **Tenure in the expected chance,** for habit and maybe lifecycle: weeks since first seen (0, 1, 2, 3, 4+) alongside activity, since habits fade with time since signup in the generator and in real products. Tried on habit with the app's defaults: "Signed up" goes from 18.8% vs 11.4% expected to 18.8% vs 16.3%, "Started trial" drops out, and 14 insights become 11 (9 become 8 with "Was active" as the activity). It doesn't touch persona proxies or "Was active". One more column in the strata, but it thins each stratum.
+- **Choosing N from the histogram:** selecting bars could set what makes a regular. The bars count days over the whole range, not the 4 weeks ahead, so it would need its own wording.
+- **Popular events** in place of the first 20 segments (see post-prototype.md).
 - `event_data` map keys as candidate columns. Real Track data keeps sparse properties there.
 - Binning numeric columns.
 - **New vs. returning visitor** as a bounce attribute: the visit's number for that person, known at landing, so it can't leak. With it, the "explained by" rule could fold "viewers bounce more" into "first visits bounce more", the engagement behind it (see [Bounces](#bounces)).

@@ -1,28 +1,19 @@
-import _ from "underscore";
-
-import type {
-  AnalysisSpec,
-  LifecycleStateName,
-  Period,
-} from "../../spec/types";
+import type { AnalysisSpec, LifecycleStateName } from "../../spec/types";
 import { INTERVAL, lit } from "../compile/dialect";
-import { flagSql } from "../compile/flag";
 
-import { scopedEvents, startOf } from "./base";
-import { type InsightPopulation, attributeSql } from "./insights";
+import {
+  type EventCountAttribute,
+  eventActivityBase,
+  eventActivityCte,
+  eventActivityRowColumns,
+  expectedOutcomeCte,
+} from "./event-activity";
+import type { InsightPopulation } from "./insights";
 import {
   lifecycleEventColumns,
   lifecyclePeriodColumns,
   lifecycleStateColumns,
 } from "./lifecycle";
-
-/** An attribute that's whether an event happened at least `minCount` times in the period. */
-export type EventCountAttribute = {
-  id: string;
-  /** The event's flag column on `events_base`. */
-  flag: string;
-  minCount: number;
-};
 
 export type LifecycleInsightState = Exclude<LifecycleStateName, "dormant">;
 
@@ -32,16 +23,6 @@ export const LIFECYCLE_INSIGHT_STATES: readonly LifecycleInsightState[] = [
   "returning",
   "resurrected",
 ];
-
-/** What activity within a period is counted in, to compare people as active. */
-const ACTIVE_UNIT: Record<Period, string> = {
-  day: "toStartOfHour(ts)",
-  week: "toStartOfDay(ts)",
-  month: "toStartOfDay(ts)",
-};
-
-const hitColumn = (flag: string) => `${flagSql(flag)}_hit`;
-const countColumn = (flag: string) => `${flagSql(flag)}_count`;
 
 /**
  * Lifecycle's insight population, `lifecycle_returns`: one row per actor per
@@ -70,43 +51,18 @@ export const lifecycleInsightPopulation = (
   }
   const period = lifecycle.period;
   const step = `INTERVAL ${INTERVAL[period]}`;
-  const flags = _.uniq(attributes.map(({ flag }) => flag));
-  // Every event, so the attributes can count events that aren't activity.
-  const base = scopedEvents(spec, undefined, [
-    {
-      as: "is_active",
-      sql:
-        lifecycle.active !== undefined ? flagSql(lifecycle.active.flag) : "1",
-    },
-    ...flags.map((flag) => ({ as: hitColumn(flag), sql: flagSql(flag) })),
-    ...lifecycleEventColumns(lifecycle),
-  ]);
-
-  const activity = {
-    name: "lifecycle_activity",
-    note: `how active each ${spec.grain} was in each ${period}, and how many times they did each event`,
-    deps: ["scoped_events"],
-    body: [
-      "SELECT",
-      "  actor,",
-      `  ${startOf(period)} AS period,`,
-      `  uniqExactIf(${ACTIVE_UNIT[period]}, is_active = 1) AS active_units,`,
-      "  countIf(is_active = 1) AS active_events,",
-      [
-        ...lifecyclePeriodColumns(lifecycle),
-        ...flags.map(
-          (flag) => `countIf(${hitColumn(flag)} = 1) AS ${countColumn(flag)}`,
-        ),
-      ]
-        .map((column) => `  ${column}`)
-        .join(",\n"),
-      "FROM scoped_events",
-      "GROUP BY actor, period",
-      "HAVING active_units > 0",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  };
+  const base = eventActivityBase(
+    spec,
+    lifecycle.active,
+    attributes,
+    lifecycleEventColumns(lifecycle),
+  );
+  const activity = eventActivityCte(
+    spec,
+    period,
+    attributes,
+    lifecyclePeriodColumns(lifecycle),
+  );
   const states = {
     name: "lifecycle_states",
     note: "each active period's lifecycle state, and the actor's next active period",
@@ -122,7 +78,6 @@ export const lifecycleInsightPopulation = (
       `FROM ${activity.name}`,
     ].join("\n"),
   };
-  const ids = attributes.map(({ id }) => attributeSql(id));
   const periods = {
     name: "lifecycle_periods",
     note: "one row per active period in the range with a next one in it: its state, whether they came back, and the attributes",
@@ -132,33 +87,19 @@ export const lifecycleInsightPopulation = (
       "  actor,",
       `  indexOf([${LIFECYCLE_INSIGHT_STATES.map(lit).join(", ")}], state) AS k,`,
       `  next = period + ${step} AS converted,`,
-      "  active_units,",
-      "  floor(log2(active_events)) AS active_events_scale" +
-        (ids.length > 0 ? "," : ""),
-      attributes
-        .map(
-          ({ id, flag, minCount }) =>
-            `  if(${countColumn(flag)} >= ${Math.max(1, Math.trunc(minCount))}, 'true', 'false') AS ${attributeSql(id)}`,
-        )
+      eventActivityRowColumns(attributes)
+        .map((column) => `  ${column}`)
         .join(",\n"),
       `FROM ${states.name}`,
       "WHERE in_range = 1",
       `  AND period + ${step} < (SELECT max(period) FROM ${activity.name} WHERE in_range = 1)`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  };
-  const returns = {
-    name: "lifecycle_returns",
-    note: "each row's chance of coming back, at the rate of the people in its state who were as active",
-    deps: [periods.name],
-    body: [
-      "SELECT",
-      "  *,",
-      "  avg(converted) OVER (PARTITION BY k, active_units, active_events_scale) AS expected",
-      `FROM ${periods.name}`,
     ].join("\n"),
   };
+  const returns = expectedOutcomeCte(
+    "lifecycle_returns",
+    periods.name,
+    "each row's chance of coming back, at the rate of the people in its state who were as active",
+  );
 
   return {
     ctes: [...base.ctes, activity, states, periods, returns],

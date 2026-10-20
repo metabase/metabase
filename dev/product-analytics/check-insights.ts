@@ -17,7 +17,10 @@ import { IDENTIFIED_COLUMN } from "../../frontend/src/metabase/product-analytics
 import { indexCounts } from "../../frontend/src/metabase/product-analytics/insights/counts";
 import { DEFAULT_INSIGHT_OPTIONS } from "../../frontend/src/metabase/product-analytics/insights/options";
 import { planPairs } from "../../frontend/src/metabase/product-analytics/insights/plan-pairs";
-import { parseCountRows } from "../../frontend/src/metabase/product-analytics/insights/rows";
+import {
+  parseCountRows,
+  parseQuestionLabels,
+} from "../../frontend/src/metabase/product-analytics/insights/rows";
 import { findInsights } from "../../frontend/src/metabase/product-analytics/insights/search";
 import {
   getExpectedRate,
@@ -29,9 +32,19 @@ import type {
   GroupCounts,
   Insight,
 } from "../../frontend/src/metabase/product-analytics/insights/types";
+import type {
+  AnalysisSpec,
+  HabitSpec,
+} from "../../frontend/src/metabase/product-analytics/spec/types";
+import type { EventCountAttribute } from "../../frontend/src/metabase/product-analytics/sql/analyses/event-activity";
 import { funnelInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-insights";
 import {
+  HABIT_INSIGHT_QUESTIONS,
+  habitInsightPopulation,
+} from "../../frontend/src/metabase/product-analytics/sql/analyses/habit-insights";
+import {
   type AttributeAsOf,
+  type InsightPopulation,
   type InsightsQuery,
   planInsights,
 } from "../../frontend/src/metabase/product-analytics/sql/analyses/insights";
@@ -312,6 +325,10 @@ FROM ${TABLE}`;
   }
 
   failures.push(...(await checkLifecycle()));
+  failures.push(
+    ...(await checkHabit({ subPeriod: "day", measure: "histogram" })),
+  );
+  failures.push(...(await checkHabit({ subPeriod: "week", measure: "ratio" })));
 
   if (failures.length > 0) {
     console.log(`\n${failures.length} check(s) failed`);
@@ -320,47 +337,70 @@ FROM ${TABLE}`;
   console.log("\nAll checks passed");
 };
 
-/**
- * Lifecycle insights compare people by the events they did in a week, against
- * people as active as them. The generator plants a reason to come back:
- * people who invite someone in their first week are more active from then on.
- * Errors come with heavy use, like everything else, but change nothing, so
- * they mustn't show up once people are compared with others as active.
- */
-const checkLifecycle = async (): Promise<string[]> => {
-  const failures: string[] = [];
-  const spec = defaultSpec("lifecycle");
-  const events = [
-    { flag: FLAG.invite, name: "Sent an invite" },
-    { flag: FLAG.report, name: "Created a report" },
-    { flag: FLAG.error, name: "Hit an error" },
-    { flag: FLAG.trial, name: "Started trial" },
-  ];
-  const attributes = events.flatMap(({ flag }, eventIndex) =>
+/** The event segments lifecycle and habit compare people by, as in the README. */
+const SEGMENTS = [
+  { flag: FLAG.invite, name: "Sent an invite" },
+  { flag: FLAG.report, name: "Created a report" },
+  { flag: FLAG.error, name: "Hit an error" },
+  { flag: FLAG.trial, name: "Started trial" },
+  { flag: FLAG.integration, name: "Connected an integration" },
+];
+const SEGMENT_ATTRIBUTES: EventCountAttribute[] = SEGMENTS.flatMap(
+  ({ flag }, segmentIndex) =>
     [1, 3, 10].map((minCount, index) => ({
-      id: `attr_${eventIndex * 3 + index + 1}`,
+      id: `attr_${segmentIndex * 3 + index + 1}`,
       flag,
       minCount,
     })),
-  );
-  const ids = attributes.map(({ id }) => id);
-  const describeAttribute = (id: string, value: string) => {
-    const attribute = attributes.find((item) => item.id === id);
-    const name = events.find(({ flag }) => flag === attribute?.flag)?.name;
-    return `${value === "true" ? "" : "not "}${name} ${attribute?.minCount}+`;
-  };
-  const population = lifecycleInsightPopulation(spec, attributes);
-  if (population === undefined) {
-    throw new Error("The lifecycle spec has no lifecycle.");
-  }
-  // All of the data is in range, so nobody's history is cut off.
+);
+
+const describeSegment = (insight: Insight) =>
+  insight.conditions
+    .map(({ attributeId, value }) => {
+      const attribute = SEGMENT_ATTRIBUTES.find(({ id }) => id === attributeId);
+      const name = SEGMENTS.find(({ flag }) => flag === attribute?.flag)?.name;
+      return `${value === "true" ? "" : "not "}${name} ${attribute?.minCount}+`;
+    })
+    .join(" and ");
+
+const segmentFlagOf = (insight: Insight) =>
+  SEGMENT_ATTRIBUTES.find(({ id }) => id === insight.conditions[0]?.attributeId)
+    ?.flag;
+
+/** Whether an insight is that people who did the event at least once do better. */
+const isHigherForSegment = (insight: Insight, flag: string) =>
+  segmentFlagOf(insight) === flag &&
+  insight.conditions[0]?.value === "true" &&
+  insight.excess > 0;
+
+/**
+ * Searches an event-segment population over all of the data, in range so
+ * nobody's history is cut off, prints what it finds, and checks the explore
+ * chart's SQL against the counts. Returns the insights and any failures.
+ */
+const runSegmentInsights = async ({
+  title,
+  spec,
+  population,
+  questionName,
+  unit,
+}: {
+  title: string;
+  spec: AnalysisSpec;
+  population: InsightPopulation;
+  questionName: (question: number) => string;
+  unit: string;
+}): Promise<{ insights: Insight[]; failures: string[] }> => {
+  const failures: string[] = [];
+  const ids = SEGMENT_ATTRIBUTES.map(({ id }) => id);
   const baseSql = `SELECT person_id, session_id, event_id, created_at, event_name, url_path,
   person__first_seen_at, 1 AS ${IN_RANGE_FLAG},
   if(event_name = 'trial_started', 1, 0) AS ${FLAG.trial},
   if(startsWith(url_path, '/app') OR event_name IN ('report_created', 'invite_sent', 'checkout_completed'), 1, 0) AS ${FLAG.active},
   if(event_name = 'invite_sent', 1, 0) AS ${FLAG.invite},
   if(event_name = 'error', 1, 0) AS ${FLAG.error},
-  if(event_name = 'report_created', 1, 0) AS ${FLAG.report}
+  if(event_name = 'report_created', 1, 0) AS ${FLAG.report},
+  if(event_name = 'integration_connected', 1, 0) AS ${FLAG.integration}
 FROM ${TABLE}`;
   const toSql = (query: InsightsQuery): string =>
     buildSql(
@@ -381,6 +421,7 @@ FROM ${TABLE}`;
           FLAG.invite,
           FLAG.error,
           FLAG.report,
+          FLAG.integration,
           IN_RANGE_FLAG,
         ],
         extraColumns: [
@@ -390,7 +431,7 @@ FROM ${TABLE}`;
       planInsights(population, query),
     ).sql;
 
-  console.log("\nLifecycle, by week:");
+  console.log(`\n${title}:`);
   const started = performance.now();
   const { names, rows } = await chRows(
     toSql({ kind: "singles", attributes: ids }),
@@ -398,48 +439,29 @@ FROM ${TABLE}`;
   console.log(
     `  singles: ${rows.length} rows in ${Math.round(performance.now() - started)}ms`,
   );
+  const labels = parseQuestionLabels(names, rows);
+  if (labels.size > 0) {
+    console.log(
+      `  labels: ${[...labels].map(([question, label]) => `${questionName(question)} ${label}`).join(", ")}`,
+    );
+  }
   const counts = indexCounts({
     rows: parseCountRows(names, rows, ids),
     singleAttributes: ids,
   });
-  const insights = findInsights(counts);
-  const states = ["new", "returning", "resurrected"];
-  insights.forEach((insight) =>
+  [...counts.totals].forEach(([question, total]) =>
     console.log(
-      `  ${states[insight.question - 1]} | ` +
-        insight.conditions
-          .map(({ attributeId, value }) =>
-            describeAttribute(attributeId, value),
-          )
-          .join(" and ") +
-        ` | ${(insight.rate * 100).toFixed(1)}% vs ${(insight.restRate * 100).toFixed(1)}% expected | ` +
-        `${insight.reached} active weeks | excess ${insight.excess.toFixed(0)} | p ${insight.pValue.toExponential(1)}`,
+      `  ${questionName(question)}: ${total.reached} ${unit}, ${((total.converted / total.reached) * 100).toFixed(1)}% converted`,
     ),
   );
-
-  const flagOf = (insight: Insight) =>
-    attributes.find(({ id }) => id === insight.conditions[0]?.attributeId)
-      ?.flag;
-  const foundInvite = insights.some(
-    (insight) =>
-      insight.question === 1 &&
-      flagOf(insight) === FLAG.invite &&
-      insight.conditions[0]?.value === "true" &&
-      insight.excess > 0,
+  const insights = findInsights(counts);
+  insights.forEach((insight) =>
+    console.log(
+      `  ${questionName(insight.question)} | ${describeSegment(insight)} | ` +
+        `${(insight.rate * 100).toFixed(1)}% vs ${(insight.restRate * 100).toFixed(1)}% expected | ` +
+        `${insight.reached} ${unit} | excess ${insight.excess.toFixed(0)} | p ${insight.pValue.toExponential(1)}`,
+    ),
   );
-  console.log(
-    `  ${foundInvite ? "ok  " : "FAIL"} found new | Sent an invite, higher`,
-  );
-  if (!foundInvite) {
-    failures.push("lifecycle new | Sent an invite higher");
-  }
-  const errors = insights.filter((insight) => flagOf(insight) === FLAG.error);
-  console.log(
-    `  ${errors.length === 0 ? "ok  " : "FAIL"} not found Hit an error, at any state`,
-  );
-  if (errors.length > 0) {
-    failures.push("unexpected lifecycle | Hit an error");
-  }
 
   for (const insight of insights) {
     const total = counts.totals.get(insight.question);
@@ -452,8 +474,8 @@ FROM ${TABLE}`;
         question: insight.question,
         attributes: insight.conditions.map(({ attributeId }) => attributeId),
         segmentLabel: "segment",
-        countColumn: "active_periods",
-        rateColumn: "came_back",
+        countColumn: "size",
+        rateColumn: "rate",
         expectedRateColumn: "expected_rate",
         minSize: getMinSegmentSize(total.reached),
         isDescending: isDescending(insight),
@@ -472,11 +494,134 @@ FROM ${TABLE}`;
       (getExpectedRate(segment) ?? 0).toFixed(4),
     ]);
     if (!Bun.deepEquals(fromSql, fromCounts)) {
-      console.log(`  FAIL explore ${JSON.stringify(insight.conditions)}`);
+      const label = `${title} explore ${JSON.stringify(insight.conditions)}`;
+      console.log(`  FAIL ${label}`);
       console.log(`    SQL:    ${JSON.stringify(fromSql)}`);
       console.log(`    counts: ${JSON.stringify(fromCounts)}`);
-      failures.push(`lifecycle explore ${JSON.stringify(insight.conditions)}`);
+      failures.push(label);
     }
+  }
+  return { insights, failures };
+};
+
+const expectFound = (
+  failures: string[],
+  label: string,
+  isFound: boolean,
+): void => {
+  console.log(`  ${isFound ? "ok  " : "FAIL"} found ${label}`);
+  if (!isFound) {
+    failures.push(label);
+  }
+};
+
+const expectNotFound = (
+  failures: string[],
+  label: string,
+  isFound: boolean,
+): void => {
+  console.log(`  ${isFound ? "FAIL" : "ok  "} not found ${label}`);
+  if (isFound) {
+    failures.push(`unexpected ${label}`);
+  }
+};
+
+/**
+ * Lifecycle insights compare people by the events they did in a week, against
+ * people as active as them. The generator plants reasons to come back: people
+ * who invite someone in their first week are more active from then on, and so
+ * are people who connect an integration later. Errors come with heavy use,
+ * like everything else, but change nothing, so they mustn't show up once
+ * people are compared with others as active.
+ */
+const checkLifecycle = async (): Promise<string[]> => {
+  const population = lifecycleInsightPopulation(
+    defaultSpec("lifecycle"),
+    SEGMENT_ATTRIBUTES,
+  );
+  if (population === undefined) {
+    throw new Error("The lifecycle spec has no lifecycle.");
+  }
+  const states = ["new", "returning", "resurrected"];
+  const { insights, failures } = await runSegmentInsights({
+    title: "Lifecycle, by week",
+    spec: defaultSpec("lifecycle"),
+    population,
+    questionName: (question) => states[question - 1] ?? String(question),
+    unit: "active weeks",
+  });
+  expectFound(
+    failures,
+    "lifecycle new | Sent an invite, higher",
+    insights.some(
+      (insight) =>
+        insight.question === 1 && isHigherForSegment(insight, FLAG.invite),
+    ),
+  );
+  expectNotFound(
+    failures,
+    "lifecycle | Hit an error, at any state",
+    insights.some((insight) => segmentFlagOf(insight) === FLAG.error),
+  );
+  return failures;
+};
+
+/**
+ * Habit insights ask what people do in a week that makes them regulars over
+ * the next 4. Inviting someone in the first week and connecting an integration
+ * later both raise how often people are active from then on, so they should
+ * show up for new people and everyone else.
+ *
+ * By day, errors shouldn't show up, as in lifecycle. By week, being active
+ * every week of the next 4 is a coarse outcome, and errors come out slightly
+ * worse: they're activity, so people with errors are compared with people
+ * busier than them. By week also runs with WAU/MAU's lookback, though all
+ * the data here is in range.
+ */
+const checkHabit = async (
+  habit: Pick<HabitSpec, "subPeriod" | "measure">,
+): Promise<string[]> => {
+  const daySpec = defaultSpec("habit");
+  const spec: AnalysisSpec = {
+    ...daySpec,
+    habit: daySpec.habit && { ...daySpec.habit, ...habit },
+  };
+  const population = habitInsightPopulation(spec, SEGMENT_ATTRIBUTES);
+  if (population === undefined) {
+    throw new Error("The habit spec has no habit.");
+  }
+  const { insights, failures } = await runSegmentInsights({
+    title: `Habit, by ${habit.subPeriod}, ${habit.measure}`,
+    spec,
+    population,
+    questionName: (question) =>
+      question === HABIT_INSIGHT_QUESTIONS.new ? "new" : "everyone else",
+    unit: "active weeks",
+  });
+  expectFound(
+    failures,
+    `habit by ${habit.subPeriod} new | Sent an invite, higher`,
+    insights.some(
+      (insight) =>
+        insight.question === HABIT_INSIGHT_QUESTIONS.new &&
+        isHigherForSegment(insight, FLAG.invite),
+    ),
+  );
+  expectFound(
+    failures,
+    `habit by ${habit.subPeriod} everyone else | Connected an integration, higher`,
+    insights.some(
+      (insight) =>
+        insight.question === HABIT_INSIGHT_QUESTIONS.rest &&
+        isHigherForSegment(insight, FLAG.integration),
+    ),
+  );
+  if (habit.subPeriod === "day") {
+    expectNotFound(
+      failures,
+      "habit by day | Hit an error",
+      insights.some((insight) => segmentFlagOf(insight) === FLAG.error),
+    );
   }
   return failures;
 };
