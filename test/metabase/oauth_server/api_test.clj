@@ -887,13 +887,15 @@
 
 (defn- token-request!
   "POST to /oauth/token with form-encoded params."
-  [params & {:keys [expected-status authorization]
+  [params & {:keys [expected-status authorization ip-address full-response?]
              :or   {expected-status 200}}]
   (let [request-options (cond-> {:headers {"content-type" "application/x-www-form-urlencoded"}}
-                          authorization (assoc-in [:headers "authorization"] authorization))]
-    (client/client :post expected-status "oauth/token"
-                   {:request-options request-options}
-                   params)))
+                          authorization (assoc-in [:headers "authorization"] authorization)
+                          ip-address    (assoc-in [:headers "x-forwarded-for"] ip-address))
+        request         (if full-response? client/client-full-response client/client)]
+    (request :post expected-status "oauth/token"
+             {:request-options request-options}
+             params)))
 
 (set! *warn-on-reflection* true)
 
@@ -961,15 +963,66 @@
 (deftest token-ip-refusals-throttled-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (dotimes [_ 50]
-      (is (string? (:error (token-request! {:grant_type "authorization_code"
-                                          :client_id  (str (random-uuid))
-                                          :code       "bogus-code"}
-                                         :expected-status 400)))))
+      (is (= "invalid_request" (:error (token-request! {:grant_type "authorization_code"
+                                                        :client_id  (str (random-uuid))
+                                                        :code       "bogus-code"}
+                                                       :expected-status 400)))))
     (is (= "too_many_requests"
            (:error (token-request! {:grant_type "authorization_code"
                                     :client_id  (str (random-uuid))
                                     :code       "bogus-code"}
                                    :expected-status 429))))))
+
+(deftest token-requests-without-client-id-use-only-ip-throttle-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/user-http-request :crowberto :get 200 "api/user/current")
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+            ip-address "198.51.100.1"]
+        (dotimes [_ 11]
+          (is (= "invalid_request"
+                 (:error (token-request! {:grant_type "authorization_code" :code "bogus-code"}
+                                         :ip-address ip-address :expected-status 400)))))
+        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+        (is (string? (:access_token
+                      (token-request! {:grant_type   "authorization_code"
+                                       :code         (authorize-and-get-code! client-id)
+                                       :redirect_uri "https://example.com/callback"}
+                                      :ip-address ip-address
+                                      :authorization (basic-auth-header client-id client-secret)))))))))
+
+(deftest token-client-throttle-is-scoped-to-ip-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/user-http-request :crowberto :get 200 "api/user/current")
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
+        (dotimes [_ 10]
+          (is (= "invalid_request"
+                 (:error (token-request! {:grant_type    "refresh_token"
+                                          :client_id     client-id
+                                          :refresh_token "bogus-token"}
+                                         :ip-address "198.51.100.2" :expected-status 400)))))
+        (is (string? (:access_token
+                      (token-request! {:grant_type   "authorization_code"
+                                       :client_id    client-id
+                                       :code         (authorize-and-get-code! client-id)
+                                       :redirect_uri "https://example.com/callback"}
+                                      :ip-address "198.51.100.3"
+                                      :authorization (basic-auth-header client-id client-secret)))))))))
+
+(deftest token-basic-auth-determines-client-throttle-key-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id} (create-test-client!)
+            authorization (basic-auth-header client-id "wrong-secret")
+            params        (fn [] {:grant_type "authorization_code"
+                                  :client_id  (str (random-uuid))
+                                  :code       "bogus-code"})]
+        (dotimes [_ 10]
+          (is (= "invalid_request"
+                 (:error (token-request! (params) :authorization authorization :expected-status 400)))))
+        (is (= "too_many_requests"
+               (:error (token-request! (params) :authorization authorization :expected-status 429))))))))
 
 (deftest successful-token-requests-do-not-count-toward-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -984,8 +1037,8 @@
         (loop [refresh-token (:refresh_token tokens), remaining 51]
           (when (pos? remaining)
             (let [response (token-request! {:grant_type    "refresh_token"
-                                           :refresh_token refresh-token}
-                                          :authorization authorization)]
+                                            :refresh_token refresh-token}
+                                           :authorization authorization)]
               (is (string? (:access_token response)))
               (recur (:refresh_token response) (dec remaining)))))))))
 

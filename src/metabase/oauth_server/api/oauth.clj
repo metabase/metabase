@@ -21,6 +21,7 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
+   [oidc-provider.token-endpoint :as oidc.token-endpoint]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
@@ -257,7 +258,7 @@
 
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
-;; Per-client_id is tight (one agent per client)
+;; Each client/IP pair has a tighter limit on guesses from one source.
 (def ^:private token-client-throttler
   (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms))
 
@@ -290,6 +291,15 @@
          (u.throttle/throttle-response e# {:error             "too_many_requests"
                                            :error_description (ex-message e#)})
          (throw e#)))))
+
+(defn- do-with-token-throttling
+  [ip-address client-id f]
+  (if client-id
+    (with-throttling-429 [token-client-throttler [client-id ip-address]
+                          token-ip-throttler     ip-address]
+      (f))
+    (with-throttling-429 [token-ip-throttler ip-address]
+      (f))))
 
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------
 
@@ -635,23 +645,22 @@
             [:code_verifier {:optional true} [:maybe :string]]
             [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    request]
-  (let [ip-address (request/ip-address request)
-        ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
-        ;; HTTP Basic auth) to avoid pooling unrelated clients into a shared throttle bucket.
-        client-id  (or (:client_id body) ip-address)]
+  (let [ip-address           (request/ip-address request)
+        authorization-header (get-in request [:headers "authorization"])
+        client-id            (or (:client-id (oidc.token-endpoint/parse-basic-auth authorization-header))
+                                 (:client_id body))]
     (try
-      (with-throttling-429 [token-client-throttler client-id
-                            token-ip-throttler     ip-address]
-        (or (when-let [provider (oauth-server/get-provider)]
-              (let [authorization-header (get-in request [:headers "authorization"])]
-                (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider body authorization-header)]
-                  {:status  200
-                   :headers {"Content-Type"  "application/json"
-                             "Cache-Control" "no-store"
-                             "Pragma"        "no-cache"}
-                   :body    response})))
-            {:status 404 :body {:error "not_found"}}))
+      (do-with-token-throttling ip-address client-id
+                                (fn []
+                                  (or (when-let [provider (oauth-server/get-provider)]
+                                        (check-resource-indicators! (:resource body))
+                                        (let [response (oidc/token-request provider body authorization-header)]
+                                          {:status  200
+                                           :headers {"Content-Type"  "application/json"
+                                                     "Cache-Control" "no-store"
+                                                     "Pragma"        "no-cache"}
+                                           :body    response}))
+                                      {:status 404 :body {:error "not_found"}})))
       (catch ExceptionInfo e
         (log/warnf "OAuth token request failed: %s" (ex-message e))
         (let [data  (ex-data e)
