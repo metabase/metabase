@@ -11,7 +11,7 @@ import { useSelector } from "metabase/redux";
 import type { AdminPath } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Box, Button, Flex, Group, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Group, Icon } from "metabase/ui";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 import { AppSwitcher } from "../AppSwitcher";
@@ -106,7 +106,7 @@ export const AdminNavbar = ({
           ))}
           {/* Security Center is rendered outside adminPaths because it
               needs a live query to show an active-advisories badge */}
-          {PLUGIN_SECURITY_CENTER.isEnabled && (
+          {PLUGIN_SECURITY_CENTER.isEnabled && isAdmin && (
             <PLUGIN_SECURITY_CENTER.SecurityCenterNavItem
               currentPath={currentPath}
             />
@@ -116,7 +116,11 @@ export const AdminNavbar = ({
         {!isPaidPlan && isAdmin && <StoreLink />}
       </Flex>
       <Group gap="0.5rem" ms="auto">
-        <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
+        <MobileNavbar
+          adminPaths={adminPaths}
+          currentPath={currentPath}
+          isAdmin={isAdmin}
+        />
         <AppSwitcher />
       </Group>
     </Flex>
@@ -126,24 +130,27 @@ export const AdminNavbar = ({
 interface AdminMobileNavbarProps {
   adminPaths: AdminPath[];
   currentPath: string;
+  isAdmin: boolean;
 }
 
-const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
+const MobileNavbar = ({
+  adminPaths,
+  currentPath,
+  isAdmin,
+}: AdminMobileNavbarProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const ref = useClickOutside(() => setMobileNavOpen(false));
 
   return (
     <Group ref={ref} hiddenFrom="md" gap="0.5rem" align="center">
-      {/* TODO: replace with ActionIcon (GDGT-2457) */}
-      <Button
+      <ActionIcon
         onClick={() => setMobileNavOpen((prev) => !prev)}
-        variant="transparent"
-        size="compact-md"
-        leftSection={
-          <Icon name="burger" size={24} color="text-primary-inverse" />
-        }
-      />
+        variant="on-dark-secondary"
+        aria-label={t`Toggle navigation`}
+      >
+        <Icon name="burger" />
+      </ActionIcon>
 
       {mobileNavOpen && (
         <Flex
@@ -174,7 +181,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           ))}
           {/* Security Center is rendered outside adminPaths because it
               needs a live query to show an active-advisories badge */}
-          {PLUGIN_SECURITY_CENTER.isEnabled && (
+          {PLUGIN_SECURITY_CENTER.isEnabled && isAdmin && (
             <PLUGIN_SECURITY_CENTER.SecurityCenterMobileNavItem
               currentPath={currentPath}
             />

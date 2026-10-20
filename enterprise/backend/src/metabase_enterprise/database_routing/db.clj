@@ -60,6 +60,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id database-id))
 
+(mu/defn all-router-user-attributes :- [:maybe [:map-of ::lib.schema.id/database :string]]
+  "A map of router Database ID to routing user attribute for every DatabaseRouter."
+  []
+  (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter))
+
 (mu/defn router-user-attributes-by-database
   "A map of Database ID to routing user attribute for `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]

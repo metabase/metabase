@@ -6,9 +6,27 @@ title: Driver interface changelog
 
 ## Metabase 0.65.0
 
+- `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
+  connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
+  details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
+  Names match case-insensitively and as substrings. Extend the parent's list rather than replacing it:
+
+  ```clj
+  (defmethod driver/disallowed-connection-parameters :my-driver
+    [driver]
+    (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
+  ```
+
 - `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.
+
+- `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
+  delete their `defmethod`, which no longer compiles.
+
+- `driver/native-query-deps` can now return `{:unresolved-table {:schema ... :table ...}}` for a table the query names
+  that matches no synced table or transform target. Dependency tracking recomputes such a query once sync finds the
+  table. Drivers built on `:sql` get this from `metabase.sql-tools.core/referenced-tables`.
 
 ## Metabase 0.64.0
 

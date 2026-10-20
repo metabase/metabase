@@ -4,6 +4,7 @@
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -69,7 +70,7 @@
   This value is used when loading old revision records that predate the schema versioning system."
   20)
 
-(def ^:private current-schema-version
+(def current-card-schema-version
   "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
   It is used to guide `after-select` logic in how to modernize a card correctly.
 
@@ -83,13 +84,13 @@
     version.
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
-  and including [[current-schema-version]]."
+  and including [[current-card-schema-version]]."
   24)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
 
-  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-schema-version]]
+  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-card-schema-version]]
   is 25, then the `after-select` logic will effectively call
 
       (-> card
@@ -135,7 +136,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
@@ -460,7 +462,7 @@
   (let [card     (lib/normalize ::queries.schema/card card)
         defaults {:parameters         []
                   :parameter_mappings []
-                  :card_schema        current-schema-version}
+                  :card_schema        current-card-schema-version}
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
@@ -759,7 +761,7 @@
           :else
           (loop [card card]
             ;; Use >= to allow for downgrades.
-            (if (>= (:card_schema card) current-schema-version)
+            (if (>= (:card_schema card) current-card-schema-version)
               card
               (let [new-version (inc (:card_schema card))]
                 (recur (assoc (upgrade-card-schema-to card new-version)
@@ -781,7 +783,7 @@
   (let [stored-schema (:card_schema original)]
     (if-not (and stored-schema
                  ;; Use < to leave downgraded rows alone, matching [[upgrade-card-schema-to-latest]].
-                 (< stored-schema current-schema-version)
+                 (< stored-schema current-card-schema-version)
                  (some #(contains? changes %) card-schema/schema-upgrade-triggers))
       card
       ;; Force the `update-baseline-select?` flag to false, since this runs inside the `t2/before-update` process.
@@ -798,7 +800,7 @@
             relevant (when (seq columns)
                        (select-keys upgraded columns))]
         (-> (merge card relevant)
-            (assoc :card_schema current-schema-version))))))
+            (assoc :card_schema current-card-schema-version))))))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
   (atom #{}))
@@ -849,7 +851,7 @@
   ;; +===============================================================================================+
   ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
-  ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
+  ;; |   See [[current-card-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
@@ -993,13 +995,41 @@
     :dashboard-question
     (:type card)))
 
+(defn- check-data-app-card
+  "Throws unless `card`, when it is in a data app's collection, is what a pull of the app accepts: a question or
+  metric that is not archived, public or embedded, reading no card outside the collection. The next export writes
+  the card into the app's files, and every pull refuses a file that says otherwise."
+  [{:keys [collection_id] :as card}]
+  (when (and (some? collection_id)
+             (perms/data-app-collection? collection_id))
+    ;; a new card without a type is a question, the column's default
+    (when (or (not (contains? #{:question :metric} (keyword (or (:type card) :question))))
+              (:archived card)
+              (:public_uuid card)
+              (:enable_embedding card)
+              (:embedding_params card)
+              (:embedding_type card))
+      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
+                      {:status-code 400})))
+    (let [card-ids (into #{}
+                         (keep (fn [path]
+                                 (let [{:keys [model id]} (last path)]
+                                   (when (= "Card" model) id))))
+                         (serdes/serialization-dependencies "Card" card))
+          outside  (when (seq card-ids)
+                     (queries.db/card-ids-outside-collection card-ids collection_id))]
+      (when (seq outside)
+        (throw (ex-info (str "A card in a data app's collection can read only the app's own cards, not card "
+                             (str/join ", " (sort outside)))
+                        {:status-code 400}))))))
+
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-visibility-permissions! card *copy-source-card*)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
-               :card_schema current-schema-version)
+               :card_schema current-card-schema-version)
         normalize-card
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
@@ -1007,8 +1037,10 @@
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields
+        maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))))
+    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
+    (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -1059,7 +1091,10 @@
   the chart it was saved from, so sever the link back to its origin — the conversation
   then stops showing that chart as saved. Only content edits count (query, display, viz
   settings); renames, moves, and archiving keep the link. The Metabot save paths stamp
-  these columns with raw table updates, so stamping never re-enters this hook."
+  these columns with raw table updates, so stamping never re-enters this hook.
+
+  Metabot's `run_query` tool also reads these columns, to tell SQL that Metabot saved from SQL
+  a person has since edited. Changing what clears them changes which saved SQL it will run."
   [card changes]
   (if (and (some (partial contains? changes)
                  [:dataset_query :display :visualization_settings])
@@ -1086,6 +1121,8 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
+        ;; after the query's columns are set again: `source_card_id` is one of the references it reads
+        (doto check-data-app-card)
         (clear-metabot-origin changes)
         (pre-update changes)
         (move-model-actions original)
@@ -1236,10 +1273,7 @@
                                                 ;; coerced to `{}`. See #74615.
                                                 (m/update-existing :dataset_query #(lib-be/normalize-query nil % {:strict? true})))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                             ;; 1. This function is called when storing metadata.
-                                             ;; 2. The metadata for storage shouldn't have remaps.
-                                             ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
-                                             {:query     (assoc-in (:dataset_query card-data) [:middleware :disable-remaps?] true)
+                                             {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
                                               :entity-id (:entity_id card-data)
                                               :model?    (model? card-data)})
@@ -1475,13 +1509,11 @@
                                                         :result_metadata :collection_preview :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
-      ;; Invalidate the cache for card
-      (cache/invalidate-config! {:questions [(:id card-before-update)]
-                                 :with-overrides? true})
-      ;; ok, now save the Card
       (queries.db/update-card! (:id card-before-update)
                                (m/update-existing updated-fields :dataset_query
-                                                  #(lib/normalize ::queries.schema/card.dataset-query %))))
+                                                  #(lib/normalize ::queries.schema/card.dataset-query %)))
+      (cache/invalidate-config! {:questions [(:id card-before-update)]
+                                 :with-overrides? true}))
     ;; Update all transitively dependent cards if the database was changed (#74561)
     (cascade-database-change-to-dependents! card-before-update card-updates)
     ;; ok, now update dependent dashcard parameters
@@ -1666,8 +1698,7 @@
           ;; always re-derived from public_uuid on import
           :public_uuid_prefix]
    :transform
-   {:created_at             (serdes/date)
-    ;; database_id is usually derivable from dataset_query, but must be kept when the query
+   {;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
                               {::serdes/fk true
@@ -1834,7 +1865,8 @@
   ^:allow-subquery {:select [:report_card.id
                              [(h2x/literal "Card") :model]
                              [:report_card.name :name]
-                             :last_used_at]
+                             :last_used_at
+                             :report_card.collection_id]
                     :from :report_card
                     :left-join [:moderation_review [:and
                                                     [:= :moderation_review.moderated_item_id :report_card.id]
@@ -1859,7 +1891,4 @@
                               [:= :report_card.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
                               [:= :report_card.public_uuid nil])
-                            [:or
-                             (when (contains? (:collection-ids args) nil)
-                               [:is :report_card.collection_id nil])
-                             [:in :report_card.collection_id (-> args :collection-ids)]]]})
+                            (staleness/collection-filter :report_card.collection_id args)]})

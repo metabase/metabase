@@ -191,7 +191,7 @@
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
-(defmethod sql.tx/session-schema :clickhouse [_] "default")
+(defmethod sql.tx/session-schema :clickhouse [_] (-> (mt/db) :details :db))
 
 (defmethod sql.tx/generated-column-sql :clickhouse [_ expr]
   (format "ALIAS (%s)" expr))

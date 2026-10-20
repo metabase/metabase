@@ -24,8 +24,9 @@ describe("Static Embed Setup phase - EE, with token", () => {
           enterprisePlugins: ["whitelabel"],
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
-
-        expect(screen.getByText("Setting up a static embed")).toBeVisible();
+        expect(
+          await screen.findByText("Setting up a static embed"),
+        ).toBeVisible();
 
         const link = screen.getByRole("link", {
           name: "documentation",

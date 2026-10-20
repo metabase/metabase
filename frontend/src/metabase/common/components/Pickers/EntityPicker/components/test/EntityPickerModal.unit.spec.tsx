@@ -11,6 +11,15 @@ import type { OmniPickerItem } from "../../types";
 
 import { setup } from "./setup";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/common/components/Pickers/EntityPicker/constants", () => ({
+  ...jest.requireActual(
+    "metabase/common/components/Pickers/EntityPicker/constants",
+  ),
+  SEARCH_DEBOUNCE_MS: 0,
+}));
+
 const expectActiveItem = async (itemName: string) =>
   waitFor(() =>
     expect(

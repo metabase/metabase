@@ -41,7 +41,7 @@ export const DataReferenceTriggerButton = ({
 }) => (
   <Tooltip label={t`Data Reference`}>
     <ActionIcon
-      variant="viewHeader"
+      variant="subtle"
       onClick={onClick}
       aria-label={t`Data Reference`}
     >

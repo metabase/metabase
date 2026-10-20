@@ -47,6 +47,7 @@ SELECT
     (SELECT aul.source
      FROM ai_usage_log aul
      WHERE aul.conversation_id = c.id
+       AND aul.source <> 'conversation_title'
      ORDER BY aul.created_at
      LIMIT 1)                                                         AS source,
     (SELECT CASE aul.source
@@ -61,11 +62,11 @@ SELECT
                 WHEN 'unknown'                           THEN 'Unknown'
                 WHEN 'contextual_interestingness'        THEN 'Research'
                 WHEN 'exploration'                       THEN 'Research'
-                WHEN 'data_sensitivity_classification'   THEN 'Data Sensitivity'
                 ELSE aul.source
             END
      FROM ai_usage_log aul
      WHERE aul.conversation_id = c.id
+       AND aul.source <> 'conversation_title'
      ORDER BY aul.created_at
      LIMIT 1)                                                         AS source_name,
     c.ip_address                                                      AS ip_address,
@@ -79,6 +80,7 @@ SELECT
     (SELECT aul.model
      FROM ai_usage_log aul
      WHERE aul.conversation_id = c.id
+       AND aul.source <> 'conversation_title'
      ORDER BY aul.created_at
      LIMIT 1)                                                         AS model
 FROM metabot_conversation c

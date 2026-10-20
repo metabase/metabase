@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-29 05:50+0000\n"
+"POT-Creation-Date: 2026-10-06 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Catalan\n"
 "Language: ca_ES\n"
-"PO-Revision-Date: 2026-10-06 05:42\n"
+"PO-Revision-Date: 2026-10-13 05:46\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -279,7 +279,6 @@ msgstr "Atribut d\n"
 "usuari"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -325,12 +324,11 @@ msgstr "Atribut d\n"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/collections/components/ModelUploadModal.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
@@ -410,7 +408,6 @@ msgid "Cancel"
 msgstr "Cancel·la"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -1160,8 +1157,6 @@ msgid "Search for a group"
 msgstr "Cerca un grup"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantCollectionPermissionsPage/selectors.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantSpecificCollectionPermissionsPage/selectors.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
@@ -1213,7 +1208,6 @@ msgstr "No s’han pogut exportar les analítiques"
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
-#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/utils.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx
@@ -1345,16 +1339,10 @@ msgid "Unit"
 msgstr "Unitat"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr "S'ha afegit l'assignació"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr "S'ha actualitzat l'assignació"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
+msgid "Save the settings above to set up group mapping."
+msgstr "Desa la configuració anterior per configurar el mapatge de grups."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Group mapping mode"
@@ -1383,36 +1371,43 @@ msgid "Off"
 msgstr "Desactivat"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "New mapping"
 msgstr "Mapatge nou"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
+#: frontend/src/metabase/settings-components/SettingsSection/SwitchSettingsSection.tsx
 #, javascript-format
 msgid "Using {0}"
 msgstr "Utilitzant {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Users will be assigned to {0} groups based on their JWT group names"
-msgstr "Els usuaris s''assignaran a {0} grups segons els noms dels seus grups JWT"
+msgid "At each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "A cada inici de sessió, s'afegeixen persones als grups de {0} que s'anomenen al seu JWT i s'eliminen de tots els altres grups, inclòs Administradors."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Groups could not be loaded"
+msgstr "No s'han pogut carregar els grups"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "JWT group name"
+msgstr "Nom del grup JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Enter JWT group..."
+msgstr "Introdueix el grup JWT..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Add at least one mapping to use manual group mapping"
 msgstr "Afegeix com a mínim un mapatge per utilitzar el mapatge manual de grups"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
-msgid "Add mapping"
-msgstr "Afegeix un mapatge"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "This is the last mapping, so group mapping will be turned off."
@@ -1424,90 +1419,42 @@ msgstr "Canviar al mapatge automàtic de grups?"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Your existing group mappings will be deleted, and users will be assigned to {0} groups matching their JWT group names."
-msgstr "Els mapatges de grups existents se suprimiran, i els usuaris s''assignaran a {0} grups que coincideixin amb els noms dels seus grups JWT."
+msgid "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "S'eliminaran els mapatges de grups existents. A partir d'aleshores, a cada inici de sessió, s'afegeixen persones als grups de {0} que s'anomenen al seu JWT i s'eliminen de tots els altres grups, inclòs Administradors."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Delete mappings and switch"
 msgstr "Suprimeix els mapatges i canvia"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "JWT group name"
-msgstr "Nom del grup JWT"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "Enter JWT group..."
-msgstr "Introdueix el grup JWT..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-msgid "A mapping for this group already exists"
-msgstr "Ja existeix un mapatge per a aquest grup"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "{0} groups"
-msgstr "{0} grups"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "Pick {0} group..."
-msgstr "Tria {0} grup..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
-msgstr "Edita el mapatge"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-msgid "Delete mapping"
-msgstr "Suprimeix el mapatge"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
-msgstr "Sense grups"
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
 msgstr "Canvis desats"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Error en desar el mapatge de grups"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-msgid "Mapping deleted, but not all of its groups could be updated"
-msgstr "S''ha suprimit el mapatge, però no s''han pogut actualitzar tots els seus grups"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-msgid "Mapping deleted and group mapping turned off"
-msgstr "S''ha suprimit el mapatge i s''ha desactivat el mapatge de grups"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr "S'ha suprimit l'assignació"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
 msgstr "Error en desar la configuració de JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Changes saved. Group mapping is set to Automatic."
+msgstr "Canvis desats. El mapatge de grups està establert a Automàtic."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Error en carregar la configuració de JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Set up a signing key before saving"
+msgstr "Configura una clau de signatura abans de desar"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1544,11 +1491,13 @@ msgid "Email attribute key"
 msgstr "Clau de l''atribut de correu electrònic"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Clau de l''atribut de nom"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Clau de l''atribut de cognom"
@@ -1562,9 +1511,8 @@ msgid "Tenant assignment attribute key"
 msgstr "Clau de l''atribut d''assignació de tenant"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Mapatge de grups"
 
@@ -1608,6 +1556,19 @@ msgstr "Desa i habilita"
 msgid "Save changes"
 msgstr "Desa els canvis"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your OIDC provider"
+msgstr "Assigna automàticament persones als grups de {0} en funció dels grups del teu proveïdor OIDC"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "OIDC group name"
+msgstr "Nom del grup OIDC"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "Enter OIDC group..."
+msgstr "Introdueix un grup OIDC..."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt is required"
 msgstr "Cal un prompt d'inici de sessió"
@@ -1629,6 +1590,10 @@ msgid "Client ID is required"
 msgstr "L'ID de client és obligatori"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Client secret is required"
+msgstr "Cal el secret de client"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing."
 msgstr "El discovery d'OIDC s'ha completat correctament, però no s'han pogut verificar les credencials. El proveïdor d'identitat no admet el tipus de concessió utilitzat per a la prova."
 
@@ -1641,25 +1606,8 @@ msgid "OIDC configuration check failed"
 msgstr "Ha fallat la comprovació de la configuració OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider disabled"
-msgstr "Proveïdor OIDC desactivat"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider enabled"
-msgstr "Proveïdor OIDC activat"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
-msgid "Failed to update OIDC provider"
-msgstr "No s'ha pogut actualitzar el proveïdor OIDC"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider deleted"
-msgstr "Proveïdor OIDC eliminat"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Failed to delete OIDC provider"
-msgstr "No s'ha pogut eliminar el proveïdor OIDC"
+msgid "Error loading OIDC configuration"
+msgstr "Error en carregar la configuració OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OpenID Connect"
@@ -1681,10 +1629,6 @@ msgid "Provider identifier. Your OIDC redirect URI will be \"{0}/auth/sso/${ 1 }
 msgstr "Identificador del proveïdor. L'URI de redirecció OIDC serà \"{0}/auth/sso/${ 1 }/callback\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. okta"
-msgstr "p. ex. okta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt"
 msgstr "Prompt d'inici de sessió"
 
@@ -1694,8 +1638,8 @@ msgid "Button text on the {0} sign-in screen"
 msgstr "Text del botó a la pantalla d'inici de sessió de {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. Sign in with Okta"
-msgstr "p. ex. Inicia sessió amb Okta"
+msgid "Sign in with Okta"
+msgstr "Inicia la sessió amb Okta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Issuer URI"
@@ -1703,8 +1647,8 @@ msgstr "URI de l'emissor"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The OIDC issuer URI. The discovery endpoint \"${ 0 }/.well-known/openid-configuration\" should be accessible."
-msgstr "L'URI de l'emissor OIDC. L'endpoint de discovery \"${ 0 }/.well-known/openid-configuration\" hauria d'estar accessible."
+msgid "The discovery endpoint \"{0}/.well-known/openid-configuration\" should be accessible"
+msgstr "L'endpoint de descoberta \"{0}/.well-known/openid-configuration\" hauria d'estar accessible"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
@@ -1715,27 +1659,41 @@ msgstr "ID de client"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The Client ID configured for {0} in your OIDC provider."
-msgstr "L'ID de client configurat per a {0} al teu proveïdor OIDC."
+msgid "This is configured for {0} in your OIDC provider"
+msgstr "Això es configura per a {0} al teu proveïdor OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
-msgid "Client Secret"
+msgid "Client secret"
 msgstr "Secret de client"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "The Client secret configured in your OIDC provider."
-msgstr "El secret de client configurat al teu proveïdor OIDC."
+msgid "This is configured in your OIDC provider"
+msgstr "Això es configura al teu proveïdor OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Leave blank to keep current value"
 msgstr "Deixa-ho en blanc per mantenir el valor actual"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Scopes"
+msgstr "Àmbits"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Comma-separated list of OIDC scopes to request"
+msgstr "Llista separada per comes dels scopes OIDC que se sol·licitaran"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+msgid "Attributes"
+msgstr "Atributs"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
-msgstr "Per activar-ho, hauràs de crear mapatges per indicar a {0} a quin(s) grup(s) s’han d’afegir els teus usuaris segons el grup d'SSO on siguin."
+msgid "Map OIDC claims to the first name and last name fields in {0}. The email always comes from the standard email claim."
+msgstr "Assigna claims d'OIDC als camps de nom i cognom a {0}. El correu electrònic sempre prové del claim estàndard de correu electrònic."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1745,69 +1703,6 @@ msgstr "Nom de l'atribut de grup"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "The OIDC claim that contains group membership information."
 msgstr "El claim d’OIDC que conté informació sobre la pertinença a grups."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Optional settings"
-msgstr "Configuració opcional"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Scopes"
-msgstr "Àmbits"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Comma-separated list of OIDC scopes to request."
-msgstr "Llista d'àmbits OIDC a sol·licitar, separats per comes."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Attribute mapping"
-msgstr "Mapatge d'atributs"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
-msgstr "Mapatge de claims OIDC a atributs d'usuari. Utilitza noms de claims OIDC estàndard o claims personalitzats del teu proveïdor."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Email attribute"
-msgstr "Atribut de correu electrònic"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "First name attribute"
-msgstr "Atribut del nom"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Last name attribute"
-msgstr "Atribut dels cognoms"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
-#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
-#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
-msgid "Disable"
-msgstr "Desactiva"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-msgid "Enable"
-msgstr "Activa"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete configuration"
-msgstr "Elimina la configuració"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete this OIDC provider?"
-msgstr "Vols eliminar aquest proveïdor OIDC?"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Users will no longer be able to sign in with this provider. This can't be undone."
-msgstr "Els usuaris ja no podran iniciar sessió amb aquest proveïdor. No es pot desfer."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Check connection"
@@ -1827,24 +1722,8 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
-msgstr "Feu servir la configuració de sota per configurar el vostre SSO via SAML. Si teniu cap pregunta, consulteu la nostra {0}."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
-msgid "documentation"
-msgstr "documentació"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Configure your identity provider (IdP)"
-msgstr "Configureu el vostre proveïdor d'identitat (IdP)"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Your identity provider will need the following info about {0}."
-msgstr "El teu proveïdor d''identitat necessitarà la informació següent sobre {0}."
+msgid "Identity provider (IdP) configuration"
+msgstr "Configuració del proveïdor d'identitat (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1879,18 +1758,16 @@ msgid "Tenant assignment attribute"
 msgstr "Atribut d’assignació de tenant"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Tell {0} about your identity provider"
-msgstr "Informa {0} sobre el teu proveïdor d''identitat"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "{0} will need the following info about your provider."
-msgstr "{0} necessitarà la informació següent sobre el teu proveïdor."
+msgid "Identity provider info"
+msgstr "Informació del proveïdor d'identitat"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
 msgstr "URL del proveïdor d'identitat SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "This is the URL where your users go to log in to your identity provider."
+msgstr "Aquesta és l'URL on els teus usuaris van per iniciar sessió al teu proveïdor d'identitat."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider certificate"
@@ -1905,8 +1782,16 @@ msgid "SAML identity provider issuer"
 msgstr "Emissor del proveïdor d'identitat SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Sign SSO requests (optional)"
-msgstr "Signa les sol·licituds d’SSO (opcional)"
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'."
+msgstr "Aquest és un identificador únic per a l'IdP. Sovint s'anomena ID de l'entitat o simplement 'Issuer'."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Sign SSO requests"
+msgstr "Signa les sol·licituds d’SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Use a keystore to sign authentication requests sent to your identity provider"
+msgstr "Utilitza un magatzem de claus per signar les sol·licituds d'autenticació enviades al teu proveïdor d'identitat"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore path"
@@ -1925,9 +1810,36 @@ msgstr "Xxt..."
 msgid "SAML keystore alias"
 msgstr "Àlies del magatzem de claus SAML"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your SAML identity provider"
+msgstr "Assigna automàticament persones als grups de {0} en funció dels grups del teu proveïdor d'identitat SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "SAML group name"
+msgstr "Nom del grup SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Enter SAML group..."
+msgstr "Introdueix un grup SAML..."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set."
+msgstr "L'atribut SAML que llista els grups d'un usuari. El mapatge de grups no assigna cap grup fins que s'estableix."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
 msgstr "Inicia la sessió amb SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
+msgstr "Permet que l''inici de sessió amb {0} creï comptes per a usuaris nous i reactivi comptes desactivats. Quan estigui desactivat, només els usuaris amb comptes actius de {1} poden iniciar sessió."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users. When disabled, only users with active {1} accounts can sign in."
+msgstr "Permet que l'inici de sessió amb {0} creï comptes per a usuaris nous. Quan estigui desactivat, només els usuaris amb comptes actius de {1} poden iniciar sessió."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
@@ -1936,16 +1848,15 @@ msgstr "Inicia la sessió amb SSO"
 msgid "User provisioning"
 msgstr "Aprovisionament d'usuaris"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
-#, javascript-format
-msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
-msgstr "Permet que l''inici de sessió amb {0} creï comptes per a usuaris nous i reactivi comptes desactivats. Quan estigui desactivat, només els usuaris amb comptes actius de {1} poden iniciar sessió."
-
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Permet als usuaris iniciar sessi mitjan\n"
 "ant un provedor d\n"
 "identitat JWT."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
+msgid "Failed to update OIDC provider"
+msgstr "No s'ha pogut actualitzar el proveïdor OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
 msgid "Failed to deactivate OIDC provider"
@@ -2591,6 +2502,12 @@ msgstr "URL del servidor de desenvolupament"
 msgid "URL of the local dev server serving the visualization bundle, manifest, and assets."
 msgstr "URL del servidor de desenvolupament local que serveix el paquet de visualització, el manifest i els recursos."
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+msgid "Enable"
+msgstr "Activa"
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/BundleDropzone.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 msgid "Bundle must be a .tgz file produced by \"npm run build\"."
@@ -2647,6 +2564,17 @@ msgstr "Accions del plugin"
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 msgid "Replace bundle"
 msgstr "Substitueix el bundle"
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
+#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Disable"
+msgstr "Desactiva"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -2791,7 +2719,6 @@ msgstr "Actualitza"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 msgid "Add"
 msgstr "Afegeix"
@@ -2902,17 +2829,13 @@ msgid "They may have been built for a different version and may need to be updat
 msgstr "Potser s'han creat per a una versió diferent i cal actualitzar-les."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
-#: frontend/src/metabase/metabot/utils/source-location.ts
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/querying/components/DataReference/MainPane.tsx
 #: metabase/collections/models/collection.clj
@@ -2946,6 +2869,19 @@ msgstr "Taules"
 msgid "No published tables in your library yet."
 msgstr "Encara no hi ha taules publicades a la teva Biblioteca."
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetHeader/SnippetHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/ArchivedSnippetsPage/ArchivedSnippetsPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/NewSnippetPage/NewSnippetPage.tsx
+#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
+#: frontend/src/metabase/data-studio/common/utils/get-library-collection-display-name.ts
+#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
+#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
+msgid "Semantic layer"
+msgstr "Capa semàntica"
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
 msgid "Published table"
 msgstr "Taula publicada"
@@ -2970,7 +2906,7 @@ msgid "Snippet"
 msgstr "Fragment de codi"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3136,18 +3072,18 @@ msgstr[0] "Arxivar aquesta col·lecció també en despublicarà les taules de di
 msgstr[1] "Arxivar aquestes col·leccions també en despublicarà les taules de dins (i qualsevol taula que en depengui) i arxivarà qualsevol altre element fill."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
-msgid "Create your Library"
-msgstr "Crea la teva Biblioteca"
+msgid "Create your semantic layer"
+msgstr "Crea la teva capa semàntica"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Library created"
-msgstr "Biblioteca creada"
+msgid "Semantic layer created"
+msgstr "Capa semàntica creada"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
-msgstr "La Biblioteca t'ajuda a crear una font de veritat per a l'analítica proporcionant un conjunt de contingut curat gestionat centralment. Separa components autoritzats i reutilitzables de les anàlisis ad-hoc."
+msgid "The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
+msgstr "La capa semàntica t'ajuda a crear una font de veritat per a l'analítica proporcionant un conjunt de contingut curat gestionat centralment. Separa components autoritzats i reutilitzables de les anàlisis ad hoc."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3168,8 +3104,8 @@ msgstr "Control de versions"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Sync your Library to Git"
-msgstr "Sincronitza la teva Biblioteca amb Git"
+msgid "Sync your semantic layer to git"
+msgstr "Sincronitza la teva capa semàntica a git"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3183,8 +3119,8 @@ msgstr "Per defecte, fonts fiables que el teu equip de dades prescriu"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Create my Library"
-msgstr "Crea la meva Biblioteca"
+msgid "Create my semantic layer"
+msgstr "Crea la meva capa semàntica"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
 msgid "A source of truth for analytics"
@@ -3202,8 +3138,8 @@ msgid "Go to {0}"
 msgstr "Ves a {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
-msgid "Publishing a table saves it to the Library."
-msgstr "Publicar una taula la desa a la Biblioteca."
+msgid "Publishing a table saves it to the semantic layer."
+msgstr "Publicar una taula la desa a la capa semàntica."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
 msgid "Publish to"
@@ -3271,12 +3207,12 @@ msgid "Unpublish these tables?"
 msgstr "Vols despublicar aquestes taules?"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove this table from the Library."
-msgstr "Això eliminarà aquesta taula de la Biblioteca."
+msgid "This will remove this table from the semantic layer."
+msgstr "Això eliminarà aquesta taula de la capa semàntica."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove these tables from the Library."
-msgstr "Això eliminarà aquestes taules de la Biblioteca."
+msgid "This will remove these tables from the semantic layer."
+msgstr "Això eliminarà aquestes taules de la capa semàntica."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #, javascript-format
@@ -3707,16 +3643,16 @@ msgid "No published tables yet"
 msgstr "Encara no hi ha taules publicades"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Publish tables in the Library to see them here."
-msgstr "Publica taules a la Biblioteca per veure-les aquí."
+msgid "Publish tables in the semantic layer to see them here."
+msgstr "Publica taules a la capa semàntica per veure-les aquí."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
 msgid "No metrics yet"
 msgstr "Encara no hi ha mètriques"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Put metrics in the Library to see them here."
-msgstr "Posa mètriques a la Biblioteca per veure-les aquí."
+msgid "Put metrics in the semantic layer to see them here."
+msgstr "Posa mètriques a la capa semàntica per veure-les aquí."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 msgid "Failed to add users"
@@ -3730,6 +3666,7 @@ msgstr "No s''ha pogut eliminar l''usuari"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DataAppsSettingsPage.tsx
 msgid "Data apps"
 msgstr "Aplicacions de dades"
 
@@ -3852,19 +3789,8 @@ msgid "Outdated"
 msgstr "Obsolet"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
-msgid "Sync failed"
-msgstr "Ha fallat la sincronització"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#, javascript-format
-msgid "Synced {0}"
-msgstr "Sincronitzat {0}"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-msgid "Not synced yet"
-msgstr "Encara no s’ha sincronitzat"
+msgid "Draft"
+msgstr "Esborrany"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 msgid "No one has access yet"
@@ -4175,6 +4101,7 @@ msgstr "El procs sexecuta en segon pla. Segons la mida de la base de dades, po
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/AddDimensionsPanel.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
@@ -4800,6 +4727,7 @@ msgstr "Camp"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 #: enterprise/frontend/src/metabase-enterprise/schema_viewer/components/SchemaViewer/components/SelectedNodeInfoPanel/PanelBody/PanelBody.tsx
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: metabase/xrays/automagic_dashboards/core.clj
 msgid "{0} field"
 msgid_plural "{0} fields"
@@ -6254,16 +6182,16 @@ msgid "Curated semantic layer"
 msgstr "Capa semàntica curada"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Metrics and published tables within your Library."
-msgstr "M8triques i taules publicades dins la teva Biblioteca."
+msgid "Metrics and published tables within your semantic layer."
+msgstr "Mètriques i taules publicades dins de la teva capa semàntica."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Full semantic layer"
 msgstr "Capa semàntica completa"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Library entities plus every active physical table."
-msgstr "Entitats de la Biblioteca més totes les taules físiques actives."
+msgid "Semantic layer entities plus every active physical table."
+msgstr "Entitats de la capa semàntica més totes les taules físiques actives."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Metabot-visible layer"
@@ -7258,6 +7186,7 @@ msgid "Could not connect to repository"
 msgstr "No s\tha pogut connectar al repositori"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/TestConnectionButton.tsx
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
 msgid "Test connection"
 msgstr "Prova la connexió"
 
@@ -7464,6 +7393,12 @@ msgstr "Tens canvis sense sincronitzar. Què vols fer?"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Failed to cancel sync"
 msgstr "No s'ha pogut cancel·lar la sincronització"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#: frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.tsx
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+msgid "Sync failed"
+msgstr "Ha fallat la sincronització"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "An error occurred during sync."
@@ -8154,13 +8089,6 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Aquest atribut s’hereta del tenant, però en pots substituir el valor"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
-msgid "Attributes"
-msgstr "Atributs"
-
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
 msgid "Duplicate login attribute keys"
 msgstr "Claus d'atribut d'inici de sessió duplicades"
 
@@ -8789,6 +8717,7 @@ msgstr "Afegeix una opci:"
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputSearchableSelect.tsx
 #: frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.tsx
+#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 msgid "Nothing found"
 msgstr "No sha trobat res"
 
@@ -9336,9 +9265,7 @@ msgstr "i"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] "taula"
-msgstr[1] "taules"
+msgstr "taula"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9478,6 +9405,7 @@ msgstr "Tanca la pestanya"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/ValuesYouCanReference.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
@@ -10347,7 +10275,6 @@ msgstr "Et notificarem quan hagis arribat al {0}% de la teva assignació."
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "Agree and continue"
 msgstr "D'acord i continua"
 
@@ -13195,6 +13122,10 @@ msgid "You'll find this in your Slack app's {0} settings."
 msgstr "Ho trobaràs a la configuració de {0} de la teva aplicació de Slack."
 
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
+msgid "Client Secret"
+msgstr "Secret de client"
+
+#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
 msgid "Signing Secret"
 msgstr "Secret de signatura"
 
@@ -14213,13 +14144,16 @@ msgstr "Crea un grup"
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "Podeu fer servir grups per controlar l'accés dels vostres usuaris a les dades. Poseu els usuaris en grups i després aneu a la secció Permisos per controlar l'accés de cada grup. Els grups Administradors i Tots els usuaris són grups predeterminats especials que no es poden eliminar."
 
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "No groups"
+msgstr "Sense grups"
+
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupDetailApp.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/common/components/UserForm.tsx
 msgid "Groups"
@@ -15305,6 +15239,140 @@ msgstr "Permet que els usuaris es registrin pel seu compte si l'adreça de corre
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "Permet que els usuaris es registrin pel seu compte si l'adreça de correu electrònic del seu compte de Google és de:"
 
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "The {0} group is not affected."
+msgstr "El grup {0} no es veu afectat."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "These groups are not affected: {0}."
+msgstr "Aquests grups no es veuen afectats: {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping"
+msgstr "Elimina el mapatge"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and members"
+msgstr "Elimina el mapatge i els membres"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete groups"
+msgstr "Elimina el mapatge i suprimeix els grups"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete group"
+msgstr "Elimina el mapatge i suprimeix el grup"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "This mapping isn't linked to any group."
+msgstr "Aquest mapatge no està vinculat a cap grup."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of these groups will no longer be synced when users log in."
+msgstr "La pertinença a aquests grups ja no se sincronitzarà quan els usuaris iniciïn sessió."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of this group will no longer be synced when users log in."
+msgstr "La pertinença a aquest grup ja no se sincronitzarà quan els usuaris iniciïn sessió."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove this group mapping?"
+msgstr "Vols eliminar aquest mapatge de grup?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr "Què hauria de passar amb els grups en si a {0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr "Què hauria de passar amb el grup en si a {0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Nothing, just remove the mapping"
+msgstr "Res, només elimina el mapatge"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from these groups"
+msgstr "També elimina tots els membres d''aquests grups"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from this group"
+msgstr "També elimina tots els membres d''aquest grup"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr "Els membres conserven els seus comptes de {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
+msgstr "També suprimeix els grups"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the group"
+msgstr "També suprimeix el grup"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr "Afegeix un mapatge"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Manual group mappings"
+msgstr "Mapatges de grups manuals"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "No mappings yet"
+msgstr "Encara no hi ha cap mapatge"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr "{0} grups"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr "Tria {0} grup..."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr "Edita el mapatge"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr "Suprimeix el mapatge"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr "S''ha suprimit el mapatge, però no s''han pogut actualitzar tots els seus grups"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but its deleted group could not be removed from the other mappings"
+msgid_plural "Mapping deleted, but its deleted groups could not be removed from the other mappings"
+msgstr[0] "Mapatge suprimit, però no s'ha pogut eliminar el seu grup suprimit dels altres mapatges"
+msgstr[1] "Mapatge suprimit, però no s'han pogut eliminar els seus grups suprimits dels altres mapatges"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted"
+msgstr "S'ha suprimit l'assignació"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr "Ja existeix un mapatge per a aquest grup"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping added"
+msgstr "S'ha afegit l'assignació"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping updated"
+msgstr "S'ha actualitzat l'assignació"
+
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP"
@@ -15560,7 +15628,6 @@ msgid "Edit configuration"
 msgstr "Edita la configuració"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "First, some legalese"
 msgstr "Primer, una mica de lletra petita"
 
@@ -15777,28 +15844,18 @@ msgstr "Aquesta instància està en mode de desenvolupament i només es pot util
 msgid "Get your token"
 msgstr "Obtén el teu token"
 
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#, javascript-format
-msgid "Automatically assign people to {0} groups based on their LDAP group membership"
-msgstr "Assigna automàticament persones als grups de {0} segons la seva pertinença a grups d'LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "Manual group mappings"
-msgstr "Mapatges de grups manuals"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "LDAP group name"
-msgstr "Nom del grup d'LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Encara no hi ha cap mapatge"
-
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Activa"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Check your parentheses"
+msgstr "Comprova els parèntesis"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Port must be a whole number between 1 and 65535"
+msgstr "El port ha de ser un nombre enter entre 1 i 65535"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Error loading LDAP configuration"
@@ -15857,6 +15914,15 @@ msgstr "Filtre d’usuari"
 #, javascript-format
 msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
 msgstr "Assigna atributs d'LDAP als camps de correu electrònic, nom i cognoms a {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Assigna automàticament persones als grups de {0} segons la seva pertinença a grups d'LDAP"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "LDAP group name"
+msgstr "Nom del grup d'LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
@@ -16507,102 +16573,6 @@ msgstr "Unitat de moneda"
 msgid "Currency label style"
 msgstr "Estil d’etiqueta de moneda"
 
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-msgid "New group mapping name"
-msgstr "Nom de la nova assignació de grup"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Remove mapping"
-msgstr "Elimina el mapatge"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and members"
-msgstr "Elimina el mapatge i els membres"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete groups"
-msgstr "Elimina el mapatge i suprimeix els grups"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete group"
-msgstr "Elimina el mapatge i suprimeix el grup"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "The Administrators group is not affected."
-msgstr "El grup Administrators no es veu afectat."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "This mapping isn't linked to any group."
-msgstr "Aquest mapatge no està vinculat a cap grup."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of these groups will no longer be synced when users log in."
-msgstr "La pertinença a aquests grups ja no se sincronitzarà quan els usuaris iniciïn sessió."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of this group will no longer be synced when users log in."
-msgstr "La pertinença a aquest grup ja no se sincronitzarà quan els usuaris iniciïn sessió."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove this group mapping?"
-msgstr "Vols eliminar aquest mapatge de grup?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the groups themselves in {0}?"
-msgstr "Què hauria de passar amb els grups en si a {0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the group itself in {0}?"
-msgstr "Què hauria de passar amb el grup en si a {0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Nothing, just remove the mapping"
-msgstr "Res, només elimina el mapatge"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from these groups"
-msgstr "També elimina tots els membres d''aquests grups"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from this group"
-msgstr "També elimina tots els membres d''aquest grup"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "Members keep their {0} accounts."
-msgstr "Els membres conserven els seus comptes de {0}."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups"
-msgstr "També suprimeix els grups"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the group"
-msgstr "També suprimeix el grup"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "Els mapatges permeten que Metabase afegeixi i tregui automàticament usuaris dels grups segons la informació de pertinença proporcionada pel servidor de directori. Si un grup no està mapat, la seva pertinença no se sincronitzarà."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet, group sync is not on"
-msgstr "Encara no hi ha cap assignació, la sincronització de grups no està activada"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Synchronize Group Memberships"
-msgstr "Sincronitza les pertinences als grups"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "About mappings"
-msgstr "Sobre els mapatges"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Delete this mapping?"
-msgstr "Vols suprimir aquest mapatge?"
-
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
 msgid "Homepage"
 msgstr "P e0gina d\tinici"
@@ -17159,6 +17129,7 @@ msgstr "Iniciat des de"
 #: frontend/src/metabase/archive/hooks/use-delete-item.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionContentView.tsx
 #: frontend/src/metabase/documents/components/DocumentArchivedEntityBanner.tsx
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 #: frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.tsx
 msgid "This item has been permanently deleted."
 msgstr "Aquest element s'ha suprimit definitivament."
@@ -17255,6 +17226,7 @@ msgstr "carpeta"
 
 #: frontend/src/metabase/archive/hooks/use-set-archive.ts
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 msgid "research"
 msgstr "recerca"
 
@@ -17637,6 +17609,7 @@ msgid "No items of the selected types."
 msgstr "No hi ha elements dels tipus seleccionats."
 
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsToolbar.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 msgid "Clear search"
 msgstr "Esborra la cerca"
 
@@ -18031,6 +18004,10 @@ msgstr "La meva nova col·lecció fantàstica"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 msgid "Collection it's saved in"
 msgstr "Col·lecció on es desarà"
+
+#: frontend/src/metabase/common/collections/components/PinDropZone/PinDropZone.tsx
+msgid "Drag here to pin"
+msgstr "Arrossega aquí per fixar"
 
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 msgid "Can't move this question into a dashboard"
@@ -19348,7 +19325,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "Minut"
 msgstr[1] "{0} Minuts"
 
@@ -20023,6 +20000,10 @@ msgstr "Tots els usuaris de tenant"
 #: frontend/src/metabase/common/utils/groups.ts
 msgid "Data Analysts"
 msgstr "Analistes de dades"
+
+#: frontend/src/metabase/common/utils/groups.ts
+msgid "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed."
+msgstr "Afegir membres a aquest grup requereix un pla que inclogui el grup Data Analysts. Només es poden eliminar membres."
 
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
@@ -21825,11 +21806,6 @@ msgid "Data transformation"
 msgstr "Transformació de dades"
 
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-msgid "Semantic layer"
-msgstr "Capa semàntica"
-
-#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/glossary/pages/GlossaryPage/GlossaryPage.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
 #: frontend/src/metabase/reference/glossary/GlossaryContainer.tsx
@@ -22101,8 +22077,8 @@ msgstr "Aquesta taula no té camps"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-msgid "First, let's create your Library"
-msgstr "Primer, creem la teva Biblioteca"
+msgid "First, let's create your semantic layer"
+msgstr "Primer, creem la teva capa semàntica"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
@@ -22482,8 +22458,8 @@ msgid "Bring more order to your analytics"
 msgstr "Posa més ordre a la teva analítica"
 
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
-msgid "Create a shared library of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
-msgstr "Crea una biblioteca compartida de datasets i mètriques en què el teu equip pugui confiar, perquè tot es mantingui coherent a mesura que creixen les dades i el contingut downstream."
+msgid "Create a shared semantic layer of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
+msgstr "Crea una capa semàntica compartida de datasets i mètriques en què el teu equip pugui confiar, perquè tot es mantingui coherent a mesura que creixen les teves dades i el contingut dependent."
 
 #: frontend/src/metabase/data-studio/upsells/pages/SchemaViewerUpsellPage.tsx
 msgid "Visualize your database structure"
@@ -22687,6 +22663,18 @@ msgstr "Afegeix les teves dades en qualsevol moment."
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 msgid "I'll add my data later"
 msgstr "Afegiré les meves dades més endavant"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection successful"
+msgstr "Connexió correcta"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection failed"
+msgstr "Connexió fallida"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Couldn't connect to the database"
+msgstr "No s'ha pogut connectar a la base de dades"
 
 #: frontend/src/metabase/databases/components/DatabaseFormError/CheckHostAndPortButton.tsx
 msgid "Check Host and Port settings"
@@ -23197,6 +23185,11 @@ msgid "These options require changing the server code. You can play around with 
 msgstr "Aquestes opcions requereixen canviar el codi del servidor. Pots provar-les i previsualitzar-les aquí. Consulta el/la {0} per a més informació."
 
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
+msgid "documentation"
+msgstr "documentació"
+
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
 msgid "Use instance font"
 msgstr "Fes servir la tipografia de la instància"
 
@@ -23482,7 +23475,6 @@ msgstr "Quan incrustes gràfics o taulers de control de Metabase a la\n"
 "Metabase\" visibles en aquestes incrustacions."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "Tot i això, hauries de llegir el text de la llicència enllaçat més amunt, ja que és la llicència real que acceptaràs en habilitar aquesta funcionalitat."
 
@@ -25261,10 +25253,6 @@ msgid "Remove provider"
 msgstr "Elimina el proveïdor"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
-msgid "SQL generation also runs on this connection, and will stop working without it."
-msgstr "La generació d'SQL també s’executa en aquesta connexió, i deixarà de funcionar sense ella."
-
-#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Semantic search also runs on this connection, and will stop working without it."
 msgstr "La cerca semàntica també s’executa en aquesta connexió, i deixarà de funcionar sense ella."
 
@@ -25396,8 +25384,8 @@ msgid "AI explorations"
 msgstr "Exploracions d'IA"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
-msgid "Ask about your data, and type @ to mention an item"
-msgstr "Pregunta sobre les teves dades i escriu @ per mencionar un element"
+msgid "Suggestions"
+msgstr "Suggeriments"
 
 #: frontend/src/metabase/metabot/components/MetabotBranchPicker/MetabotBranchPicker.tsx
 msgid "Previous version"
@@ -25439,16 +25427,14 @@ msgid "Source is wrong"
 msgstr "La font és incorrecta"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Collapse data sources"
-msgstr "Replega les fonts de dades"
+msgid "Give feedback"
+msgstr "Dona feedback"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Expand data sources"
-msgstr "Desplega les fonts de dades"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Data sources used"
-msgstr "Fonts de dades utilitzades"
+msgid "Data source used"
+msgid_plural "Data sources used"
+msgstr[0] "Font de dades utilitzada"
+msgstr[1] "Fonts de dades utilitzades"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
@@ -25612,11 +25598,6 @@ msgid "Explore your metrics and models with AI."
 msgstr "Explora les teves mètriques i models amb IA."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
-#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
-msgid "How can I help? Type @ to mention items."
-msgstr "Com et puc ajudar? Escriu @ per mencionar elements."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
 #, javascript-format
 msgid "{0} isn't perfect. Double-check results."
 msgstr "{0} no és perfecte. Revisa els resultats."
@@ -25626,41 +25607,10 @@ msgid "Fork conversation"
 msgstr "Bifurca la conversa"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
+#: frontend/src/metabase/metabot/state/actions.ts
 #, javascript-format
 msgid "Response from {0} was interrupted"
 msgstr "La resposta de {0} s'ha interromput"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was cut off because it hit the maximum length"
-msgstr "La resposta de {0} s'ha tallat perquè ha arribat a la longitud màxima"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
-msgstr "La teva última resposta s'ha tallat. Continua exactament on ho vas deixar. No repeteixis res del que ja has escrit."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
-msgstr "La resposta de {0} s'ha aturat per un filtre de contingut. Prova de reformular la pregunta."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "{0} paused after reaching its step limit for this response"
-msgstr "{0} s’ha posat en pausa després d’arribar al límit de passos per a aquesta resposta"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Continue working on my last request."
-msgstr "Continua treballant en la meva última sol·licitud."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} stopped before it finished"
-msgstr "La resposta de {0} s'ha aturat abans d'acabar"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
-msgstr "Aquesta conversa ha assolit la seva longitud màxima i no pot continuar. Inicieu un xat nou."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Conversation forked"
@@ -25766,6 +25716,12 @@ msgstr "Aquest xat s’acosta al/a la {0}."
 msgid "New chat"
 msgstr "Xat nou"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotResponseLoader.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
+msgid "Loading"
+msgstr "Carregant"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 msgid "UI bug"
 msgstr "Error de la IU"
@@ -25803,6 +25759,11 @@ msgstr "Descriu quin SQL vols; escriu @ per mencionar un element."
 msgid "Send to {0}"
 msgstr "Envia a {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
+#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
+msgid "Stop generating"
+msgstr "Atura la generació"
+
 #: frontend/src/metabase/metabot/components/MetabotManagedProviderLimit.tsx
 msgid "Add an AI provider"
 msgstr "Afegeix un proveïdor d’IA"
@@ -25827,6 +25788,10 @@ msgstr "Inicia una subscripció de pagament"
 msgid "Ask {0}"
 msgstr "Pregunta a {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
+msgid "Ask about your data. Type @ to mention items."
+msgstr "Pregunta sobre les teves dades. Escriu @ per mencionar elements."
+
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
 msgid "Your Slack account has been connected successfully."
 msgstr "El teu compte de Slack s’ha connectat correctament."
@@ -25850,10 +25815,6 @@ msgstr "Creat amb {0}"
 #, javascript-format
 msgid "{0} is disabled"
 msgstr "{0} està desactivat"
-
-#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
-msgid "Stop generating"
-msgstr "Atura la generació"
 
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
 #, javascript-format
@@ -26037,6 +25998,38 @@ msgstr "Format de sol·licitud no vàlid"
 #: frontend/src/metabase/metabot/state/actions.ts
 msgid "Sorry, we couldn't load that conversation."
 msgstr "Ho sentim, no hem pogut carregar aquesta conversa."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "{0} paused after reaching its step limit for this response"
+msgstr "{0} s’ha posat en pausa després d’arribar al límit de passos per a aquesta resposta"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was cut off because it hit the maximum length"
+msgstr "La resposta de {0} s'ha tallat perquè ha arribat a la longitud màxima"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
+msgstr "Aquesta conversa ha assolit la seva longitud màxima i no pot continuar. Inicieu un xat nou."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
+msgstr "La resposta de {0} s'ha aturat per un filtre de contingut. Prova de reformular la pregunta."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} stopped before it finished"
+msgstr "La resposta de {0} s'ha aturat abans d'acabar"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Continue working on my last request."
+msgstr "Continua treballant en la meva última sol·licitud."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
+msgstr "La teva última resposta s'ha tallat. Continua exactament on ho vas deixar. No repeteixis res del que ja has escrit."
 
 #: frontend/src/metabase/metadata/components/CoercionStrategyPicker/CoercionStrategyPicker.tsx
 msgid "To enable casting, please select a data type"
@@ -29005,19 +28998,6 @@ msgstr "No guardis els resultats a la memòria cau"
 msgid "No caching"
 msgstr "Sense memòria cau"
 
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-#, javascript-format
-msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
-msgstr "En fer clic a \"D'acord i continua\" estàs acceptant {0}"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "our embedding license."
-msgstr "la nostra llicència d'incrustació."
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "Quan incrustes gràfics o taulers de control de Metabase a la teva pròpia aplicació, aquesta aplicació no està subjecta a la Llicència Pública General Affero que cobreix la resta de Metabase, sempre que mantinguis el logotip de Metabase i el \"Powered by Metabase\" visibles en aquestes incrustacions."
-
 #: frontend/src/metabase/pulse/pulse.ts
 msgid "emailed"
 msgstr "enviat per correu"
@@ -30739,6 +30719,29 @@ msgstr "{0}+clic per obrir en una pestanya nova"
 msgid "Pick columns"
 msgstr "Tria columnes"
 
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns"
+msgstr "Cerca columnes"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns…"
+msgstr "Cerca columnes…"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+#, javascript-format
+msgid "{0} column found"
+msgid_plural "{0} columns found"
+msgstr[0] "S'ha trobat {0} columna"
+msgstr[1] "S'han trobat {0} columnes"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Select all of these"
+msgstr "Selecciona totes aquestes"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "No columns found"
+msgstr "No s'ha trobat cap columna"
+
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
@@ -31715,6 +31718,11 @@ msgstr "Error en sincronitzar"
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing…"
 msgstr "Sincronitzant…"
+
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+#, javascript-format
+msgid "Sync failed: {0}"
+msgstr "La sincronització ha fallat: {0}"
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing completed"
@@ -33360,11 +33368,6 @@ msgstr "Les variables a les transformacions han de ser opcionals o tenir un valo
 #: frontend/src/metabase/ui/components/data-display/KeyboardShortcut/KeyboardShortcut.tsx
 msgid "then"
 msgstr "després"
-
-#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
-#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
-msgid "Loading"
-msgstr "Carregant"
 
 #: frontend/src/metabase/ui/components/data-display/TreeTable/SelectionCheckbox/SelectionCheckbox.tsx
 msgid "Deselect row"
@@ -35625,6 +35628,10 @@ msgid "You don''t have permissions to do that."
 msgstr "No tens permisos per fer-ho."
 
 #: metabase/actions/execution.clj
+msgid "You do not have permissions to run this action."
+msgstr "No tens permisos per executar aquesta acció."
+
+#: metabase/actions/execution.clj
 msgid "Error executing action."
 msgstr "Error en executar l''acció."
 
@@ -35649,10 +35656,6 @@ msgid "Implicit parameters must be provided."
 msgstr "Cal proporcionar els paràmetres implícits."
 
 #: metabase/actions/execution.clj
-msgid "HTTP actions cannot be executed from public endpoints."
-msgstr "Les accions HTTP no es poden executar des d'endpoints públics."
-
-#: metabase/actions/execution.clj
 msgid "Unknown action type {0}."
 msgstr "Tipus d''acció desconegut {0}."
 
@@ -35660,26 +35663,13 @@ msgstr "Tipus d''acció desconegut {0}."
 msgid "Values can only be fetched for actions that require a Primary Key."
 msgstr "Només es poden obtenir valors per a accions que requereixen una clau d''entitat."
 
-#: metabase/actions/http_action.clj
-#: metabase/driver/sql/parameters/substitute.clj
-msgid "Unable to substitute parameters: {0}"
-msgstr "No s''han pogut substituir els paràmetres: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Cannot call the service: missing required parameters: {0}"
-msgstr "No es pot cridar el servei: falten paràmetres obligatoris: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Too many results returned: {0}"
-msgstr "S''han retornat massa resultats: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "HTTP actions are disabled."
-msgstr "Les accions HTTP estan desactivades."
-
 #: metabase/actions/models.clj
 msgid "Actions must be made with models, not cards."
 msgstr "Les accions s'han de fer amb models, no amb targetes."
+
+#: metabase/actions/models.clj
+msgid "Implicit actions are not supported for models with clauses."
+msgstr "Les accions implícites no són compatibles amb models amb clàusules."
 
 #: metabase/actions/schema.clj
 msgid "value must be a JSON object mapping parameter ids to scalar values."
@@ -35692,10 +35682,6 @@ msgstr "el valor ha de mapar els id de paràmetre a valors escalars."
 #: metabase/actions/schema.clj
 msgid "Unsupported action type"
 msgstr "Tipus d''acció no compatible"
-
-#: metabase/actions/schema.clj
-msgid "must be a valid json-query, something like ''.item.title''"
-msgstr "ha de ser una json-query vàlida, una cosa com ''.item.title''"
 
 #: metabase/actions/schema.clj
 msgid "Unsupported implicit action kind"
@@ -35726,16 +35712,8 @@ msgid "Whether the Database has table data editing enabled."
 msgstr "Si la base de dades té habilitada l’edició de dades de taules."
 
 #: metabase/actions_rest/api.clj
-msgid "HTTP actions are not supported."
-msgstr "Les accions HTTP no són compatibles."
-
-#: metabase/actions_rest/api.clj
 msgid "Must provide a database_id for query actions"
 msgstr "Cal proporcionar un database_id per a les accions de consulta"
-
-#: metabase/actions_rest/api.clj
-msgid "Implicit actions are not supported for models with clauses."
-msgstr "Les accions implícites no són compatibles amb models amb clàusules."
 
 #: metabase/agent_api/settings.clj
 msgid "Whether the Agent API is enabled."
@@ -35818,12 +35796,24 @@ msgid "`field` clause needs a portable FK in its third slot, not a numeric id. U
 msgstr "La clàusula `field` necessita una FK portable a la tercera posició, no un id numèric. Fes servir un vector `[<database>, <schema>, <table>, <column>]` (resolt contra el proveïdor de metadades) o un nom de columna en forma de string (per a referències entre etapes)."
 
 #: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+msgstr "`{0}` no sobreviu a l'anada i tornada a través de l'enllaç de pregunta que obre el frontend: la pregunta o bé no es carrega, o bé perd la clàusula en silenci i respon una altra cosa. En lloc d'això, posa la unitat a la columna: una opció `temporal-unit` a la referència `field` / `expression`, comparada amb el primer dia del període com una cadena de data plana com \"2025-01-01\"; o bé escriu el rang com `>=` el seu primer dia i `<` el primer dia posterior, totes dues com a cadenes de data planes (no `between`, que elimina tot el que hi ha després de mitjanit del seu últim dia). Fes servir el rang per a `year` en una referència `expression`, que el motor de consultes llegeix com un número, i dins de `aggregation:` (`count-where`, `sum-where`, `share`) i a les `conditions:` dels joins, on moure la unitat a la columna canviaria la resposta."
+
+#: metabase/agent_lib/representations/repair.clj
 msgid "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
 msgstr "L'editor d'expressions del constructor de consultes rebutja una clàusula {0} a l'etapa {1}: {2}. La consulta es construiria però no es podria visualitzar ni desar: reescriu la clàusula problemàtica."
 
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` és una columna personalitzada de {1}, així que no es pot fer agrupació per intervals per {2}. Compara-la amb un valor pla, o fes agrupació per intervals d'una columna de data / datetime."
+
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` és una columna de {1}, així que no es pot fer agrupació per intervals per {2}. Compara-la amb un valor pla, o fes agrupació per intervals d'una columna de data / datetime."
+
 #: metabase/agent_lib/representations/resolve.clj
-msgid "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-msgstr "Literal temporal no vàlid {0} a :absolute-datetime — fes servir una data, data i hora, any o any-mes ISO-8601."
+msgid "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
+msgstr "Literal temporal no vàlid {0} — fes servir una data, datetime, any o any-mes ISO-8601."
 
 #: metabase/ai_tracing/api.clj
 msgid "Eval trace not found"
@@ -35880,6 +35870,10 @@ msgstr "Si ja s'ha generat un gràfic que no sigui una taula. Necessari perquè 
 #: metabase/analytics/settings.clj
 msgid "Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics."
 msgstr "Activa el registre del camí d'incrustació, els paràmetres de consulta, l'agent d'usuari, l'adreça IP i les metadades de converses de Metabot per als usuaris de les teves dades internes i incrustacions. Aquesta informació es mostrarà a la teva analítica d’ús."
+
+#: metabase/analytics/settings.clj
+msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
+msgstr "Activa o desactiva tots els experiments de codi. Quan està desactivat, només s'executa el camí de codi de producció."
 
 #: metabase/analyze/query_results.clj
 msgid "value must be an array of valid results column metadata maps."
@@ -36213,38 +36207,6 @@ msgstr "Actualitza els resultats a la memòria cau aquesta fracció de la durada
 msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "El temps màxim absolut per mantenir qualsevol resultat de consulta en memòria cau, en segons."
 
-#: metabase/channel/api/channel.clj
-msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr "Ha de ser un canal amb espai de noms. P. ex.: channel/http"
-
-#: metabase/channel/api/channel.clj metabase/channel/shared.clj
-msgid "Invalid channel details"
-msgstr "Detalls del canal no vàlids"
-
-#: metabase/channel/api/slack.clj
-msgid "Invalid Slack token."
-msgstr "Token de Slack no vàlid."
-
-#: metabase/channel/api/slack.clj
-msgid "invalid token"
-msgstr "token no vàlid"
-
-#: metabase/channel/api/slack.clj
-msgid "Slack channel not found."
-msgstr "Canal de Slack no trobat."
-
-#: metabase/channel/api/slack.clj
-msgid "channel not found"
-msgstr "canal no trobat"
-
-#: metabase/channel/api/slack.clj
-msgid "You must configure a site-url for Slack integration to work."
-msgstr "Has de configurar un site-url perquè la integració amb Slack funcioni."
-
-#: metabase/channel/api/slack.clj
-msgid "Bug reporting is not enabled."
-msgstr "L'informe d'errors no està habilitat."
-
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
 msgstr "No s''ha establert el host SMTP."
@@ -36444,6 +36406,38 @@ msgstr "Error en registrar els tipus de lletra: Metabase no podrà enviar Pulses
 #: metabase/channel/render/style.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
 msgstr "És un problema conegut amb certes JVM. Consulta {0} per a més detalls."
+
+#: metabase/channel/rest/api/channel.clj
+msgid "Must be a namespaced channel. E.g: channel/http"
+msgstr "Ha de ser un canal amb espai de noms. P. ex.: channel/http"
+
+#: metabase/channel/rest/api/channel.clj metabase/channel/shared.clj
+msgid "Invalid channel details"
+msgstr "Detalls del canal no vàlids"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Invalid Slack token."
+msgstr "Token de Slack no vàlid."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "invalid token"
+msgstr "token no vàlid"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Slack channel not found."
+msgstr "Canal de Slack no trobat."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "channel not found"
+msgstr "canal no trobat"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "You must configure a site-url for Slack integration to work."
+msgstr "Has de configurar un site-url perquè la integració amb Slack funcioni."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Bug reporting is not enabled."
+msgstr "L'informe d'errors no està habilitat."
 
 #: metabase/channel/settings.clj
 msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
@@ -37151,6 +37145,14 @@ msgstr "Falten permisos per llegir una taula a l''esquema {0}"
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Falten permisos per suprimir una taula a l''esquema {0}"
 
+#: metabase/driver/druid_jdbc.clj
+msgid "Invalid {0}."
+msgstr "{0} no vàlid."
+
+#: metabase/driver/druid_jdbc.clj
+msgid "must not contain spaces, quotes, or semicolons"
+msgstr "no ha de contenir espais, cometes ni punts i coma"
+
 #: metabase/driver/h2.clj
 msgid "Connection String"
 msgstr "Cadena de connexió"
@@ -37501,6 +37503,42 @@ msgid "The passphrase for this private key is incorrect."
 msgstr "La frase de pas per a aquesta clau privada és incorrecta."
 
 #: metabase/driver/snowflake.clj
+msgid "No OIDC token was provided. Paste a JWT or set the token file path."
+msgstr "No s'ha proporcionat cap token OIDC. Enganxa un JWT o estableix el camí del fitxer del token."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path."
+msgstr "El token OIDC no és un JWT vàlid. Comprova el token que has enganxat o el fitxer al camí proporcionat."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `iss` (issuer) claim."
+msgstr "Al token OIDC li falta el claim `iss` (issuer) obligatori."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `sub` (subject) claim."
+msgstr "Al token OIDC li falta el claim `sub` (subject) obligatori."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.)."
+msgstr "No s'han trobat credencials d'AWS. Assegura't que el workload de Metabase tingui un rol d'IAM associat (instance profile, ECS task role, IRSA, etc.)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS region was found. Set AWS_REGION in Metabase''s environment."
+msgstr "No s'ha trobat cap regió d'AWS. Defineix AWS_REGION a l'entorn de Metabase."
+
+#: metabase/driver/snowflake.clj
+msgid "No Azure managed identity is configured on Metabase''s host."
+msgstr "No hi ha cap identitat gestionada d'Azure configurada a l'host de Metabase."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a token from Azure''s identity endpoint."
+msgstr "Metabase no ha pogut obtenir un token de l'endpoint d'identitat d'Azure."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached."
+msgstr "Metabase no ha pogut obtenir un token d'identitat de GCP. Comprova que el workload tingui un compte de servei associat."
+
+#: metabase/driver/snowflake.clj
 msgid "Snowflake doesn''t support extract us week"
 msgstr "Snowflake no admet extract us week"
 
@@ -37527,6 +37565,10 @@ msgstr "No s'ha pogut analitzar la consulta nativa. Pot ser que hi hagi algun pr
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
 msgstr "Consulta nativa suplantada no vàlida. Ha de ser una única sentència {0}."
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "Unable to substitute parameters: {0}"
+msgstr "No s''han pogut substituir els paràmetres: {0}"
 
 #: metabase/driver/sql/parameters/substitute.clj
 msgid "Cannot run the query: missing required parameters: {0}"
@@ -39489,22 +39531,6 @@ msgstr "{0} {1} {2} valors"
 msgid "{0} {1} values"
 msgstr "{0} {1} valors"
 
-#: metabase/llm/api.clj
-msgid "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings."
-msgstr "La generació de SQL amb LLM no està configurada. Defineix una clau API d’Anthropic a la configuració d’administració."
-
-#: metabase/llm/api.clj
-msgid "Failed to parse SQL. Use @mentions to provide table references."
-msgstr "No s’ha pogut analitzar el SQL. Fes servir @mentions per proporcionar referències de taules."
-
-#: metabase/llm/api.clj
-msgid "No tables found. Use @mentions or provide source SQL with table references."
-msgstr "No s’han trobat taules. Fes servir @mentions o proporciona el SQL d’origen amb referències de taules."
-
-#: metabase/llm/api.clj
-msgid "No accessible tables found. Check table permissions."
-msgstr "No s’han trobat taules accessibles. Comprova els permisos de les taules."
-
 #: metabase/llm/api/provider.clj
 msgid "The {0} connection is configured by environment variables and cannot be changed here."
 msgstr "La connexió {0} està configurada per variables d’entorn i no es pot canviar aquí."
@@ -39586,6 +39612,10 @@ msgid "The root both surfaces hang off; leave off any /anthropic or /v1 path."
 msgstr "L'arrel d'on pengen totes dues superfícies; no incloguis cap ruta /anthropic ni /v1."
 
 #: metabase/llm/provider.clj
+msgid "xAI"
+msgstr "xAI"
+
+#: metabase/llm/provider.clj
 msgid "Google Gemini Enterprise"
 msgstr "Google Gemini Enterprise"
 
@@ -39646,6 +39676,14 @@ msgid "A short-lived token, e.g. the output of gcloud auth print-access-token. U
 msgstr "Un token de curta durada, p. ex. la sortida de gcloud auth print-access-token. Útil per fer proves."
 
 #: metabase/llm/provider.clj
+msgid "Model Garden endpoint ID"
+msgstr "ID d'endpoint de Model Garden"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to."
+msgstr "Opcional. Fes servir un model obert que hagis desplegat des de Model Garden en comptes d'un que allotja Google. Defineix la ubicació a la regió on l'has desplegat."
+
+#: metabase/llm/provider.clj
 msgid "Derived from the location when left at the global host."
 msgstr "Derivat de la ubicació quan es deixa a l'host global."
 
@@ -39700,6 +39738,14 @@ msgstr "Clau d'accés secreta"
 #: metabase/llm/provider.clj
 msgid "Region"
 msgstr "Regió"
+
+#: metabase/llm/provider.clj
+msgid "Model ID"
+msgstr "ID de model"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN."
+msgstr "Opcional. Fes servir un perfil d'inferència, o un model que no estigui llistat per a aquesta regió, mitjançant el seu ID o ARN."
 
 #: metabase/llm/provider.clj
 msgid "Session token"
@@ -39820,16 +39866,8 @@ msgid "The Anthropic API Key."
 msgstr "La clau d’API d’Anthropic."
 
 #: metabase/llm/settings.clj
-msgid "The Anthropic model to use."
-msgstr "El model d’Anthropic que s’ha d’utilitzar."
-
-#: metabase/llm/settings.clj
 msgid "The Anthropic API base URL."
 msgstr "L’URL base de l’API d’Anthropic."
-
-#: metabase/llm/settings.clj
-msgid "The Anthropic API version."
-msgstr "La versió de l’API d’Anthropic."
 
 #: metabase/llm/settings.clj
 msgid "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')"
@@ -39882,6 +39920,14 @@ msgstr "L'URL base de l'API de DeepSeek. Tant la superfície de Missatges compat
 #: metabase/llm/settings.clj
 msgid "The DeepSeek API Key."
 msgstr "La clau de l'API de DeepSeek."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API base URL used for Chat Completions."
+msgstr "L'URL base de l'API d'xAI que s'utilitza per a Chat Completions."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API Key."
+msgstr "La clau d'API d'xAI."
 
 #: metabase/llm/settings.clj
 msgid "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set."
@@ -39970,14 +40016,6 @@ msgstr "Temps d'espera del socket (lectura inter-byte) en mil·lisegons per a le
 #: metabase/llm/settings.clj
 msgid "TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever."
 msgstr "Temps d'espera de connexió TCP en mil·lisegons per a les sol·licituds a l'API del LLM. Un proveïdor caigut o inabastable hauria de fallar ràpid en lloc de retenir un fil de treball per sempre."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per user per minute."
-msgstr "Màxim de sol·licituds de generació de SQL per usuari i minut."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per IP address per minute."
-msgstr "Màxim de sol·licituds de generació de SQL per adreça IP i minut."
 
 #: metabase/logger/api.clj
 msgid "Sync issue troubleshooting"
@@ -40074,6 +40112,14 @@ msgstr "S'ha detectat una discrepància entre el `collection_id` del tauler de c
 #: metabase_enterprise/content_verification/api/routes.clj
 msgid "Content verification"
 msgstr "Verificació de contingut"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: {0}"
+msgstr "La consulta ha fallat: {0}"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: unknown error"
+msgstr "La consulta ha fallat: error desconegut"
 
 #: metabase/metabot/scope.clj
 msgid "Construct SQL queries"
@@ -40247,6 +40293,30 @@ msgstr "Crea i edita tasques pendents"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "No s'ha configurat cap connexió de proveïdor LLM amb el nom {0}."
 
+#: metabase/metabot/self.clj
+msgid "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account."
+msgstr "{0} ha rebutjat la sol·licitud per un problema de facturació, com ara haver-se quedat sense crèdits. Comprova la configuració de facturació del teu compte."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+msgstr "El proveïdor d'IA ha rebutjat la sol·licitud per un problema de facturació. Contacta amb el teu administrador."
+
+#: metabase/metabot/self.clj
+msgid "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account."
+msgstr "{0} està limitant la freqüència de les sol·licituds de Metabase. Torna-ho a provar d'aquí a un moment i, si continua passant, comprova els límits de freqüència del teu compte."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider is rate limiting requests right now. Please try again in a moment."
+msgstr "El proveïdor d'IA està limitant la freqüència de les sol·licituds ara mateix. Torna-ho a provar d'aquí a un moment."
+
+#: metabase/metabot/self.clj
+msgid "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+msgstr "{0} ha rebutjat la clau d'API o les credencials que ha enviat Metabase. Comprova-les a la configuració d'IA."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+msgstr "El proveïdor d'IA ha rebutjat les credencials que ha enviat Metabase. Contacta amb el teu administrador."
+
 #: metabase/metabot/self/adapter.clj
 msgid "{0} API error (HTTP {1})"
 msgstr "Error d'API de {0} (HTTP {1})"
@@ -40334,6 +40404,10 @@ msgstr "AWS Bedrock ens ha limitat la taxa"
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock no funciona però no diu per què"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock returned an incomplete response from {0}"
+msgstr "AWS Bedrock ha retornat una resposta incompleta de {0}"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
@@ -40460,8 +40534,8 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "Model de Google no vàlid {0} — s'esperava un ID qualificat per editor com ara \"google/gemini-3.5-flash\""
 
 #: metabase/metabot/self/google.clj
-msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
-msgstr "Model de Google {0} no compatible. Només s'admeten els models google/* i anthropic/*."
+msgid "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
+msgstr "Model de Google no compatible {0}. Només s'admeten models google/*, anthropic/* i endpoints/*."
 
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
@@ -40510,6 +40584,10 @@ msgstr "(endpoint: {0})"
 #: metabase/metabot/self/google.clj
 msgid "check that \"{0}\" is a valid location"
 msgstr "comprova que \"{0}\" sigui una ubicació vàlida"
+
+#: metabase/metabot/self/google.clj
+msgid "Nothing is deployed on Google endpoint {0}"
+msgstr "No hi ha res desplegat a l'endpoint de Google {0}"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API error (HTTP {0})"
@@ -40560,6 +40638,7 @@ msgid "Moonshot returned an internal server error"
 msgstr "Moonshot ha retornat un error intern del servidor"
 
 #: metabase/metabot/self/openai.clj
+#: metabase/metabot/self/openai/chat_completions.clj
 msgid "The model provider failed to complete the response"
 msgstr "El proveïdor del model no ha pogut completar la resposta"
 
@@ -40730,6 +40809,30 @@ msgstr "La connexió amb el servidor vLLM s'ha interromput abans que acabés la 
 #: metabase/metabot/self/vllm.clj
 msgid "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
 msgstr "El servidor vLLM no ha respost en {0}ms. Comprova que no estigui sobrecarregat o augmenta el temps d'espera de sol·licitud de vLLM."
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API error (HTTP {0})"
+msgstr "xAI API error (HTTP {0})"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key expired or invalid"
+msgstr "xAI API key expired or invalid"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key lacks permission, or the team is out of credits"
+msgstr "xAI API key lacks permission, or the team is out of credits"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API endpoint or model was not found"
+msgstr "xAI API endpoint or model was not found"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI has rate limited us"
+msgstr "xAI ens ha aplicat un límit de freqüència"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI returned an internal server error"
+msgstr "xAI ha retornat un error intern del servidor"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API error (HTTP {0})"
@@ -41423,6 +41526,10 @@ msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "No pots treure l'últim membre del grup ''Admin''!"
 
 #: metabase/permissions/models/permissions_group_membership.clj
+msgid "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."
+msgstr "Afegir persones al grup ''Data Analysts'' requereix la funcionalitat Advanced Permissions, que no està habilitada en aquesta instància."
+
+#: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
 msgstr "No pots afegir ni treure usuaris al/del grup ''All Users''."
 
@@ -41659,6 +41766,10 @@ msgstr "El token ha de ser un token vàlid de 64 caràcters hexadecimals o un to
 #: metabase/premium_features/token_check.clj
 msgid "Token validation is currently unavailable."
 msgstr "La validació del token no està disponible actualment."
+
+#: metabase/premium_features/token_check.clj
+msgid "Token validation timed out."
+msgstr "S'ha esgotat el temps d'espera de la validació del token."
 
 #: metabase/premium_features/token_check.clj
 #: metabase_enterprise/premium_features/airgap.clj
@@ -42484,13 +42595,13 @@ msgstr "Camí del fitxer per a {0}"
 msgid "{0} points to non-existent file: {1}"
 msgstr "{0} apunta a un fitxer inexistent: {1}"
 
-#: metabase/segments/api.clj
-msgid "Segment definition must specify a source table."
-msgstr "La definició del segment ha d'especificar una taula d'origen."
-
 #: metabase/segments/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
 msgstr "No pots actualitzar el creator_id d'un Segment."
+
+#: metabase/segments/rest/api.clj
+msgid "Segment definition must specify a source table."
+msgstr "La definició del segment ha d'especificar una taula d'origen."
 
 #: metabase/segments/schema.clj
 msgid "value must be a valid MBQL query with a source table and filters."
@@ -42575,6 +42686,10 @@ msgstr "L'autenticació de dos factors ja està configurada. Desactiva-la abans 
 #: metabase/session/api.clj
 msgid "Invalid reset token"
 msgstr "Token de restabliment no vàlid"
+
+#: metabase/session/api.clj
+msgid "Unauthenticated"
+msgstr "No autenticat"
 
 #: metabase/session/api.clj metabase_enterprise/mfa/core.clj
 msgid "Authentication session expired. Please log in again."
@@ -43002,6 +43117,14 @@ msgstr "Si s'ha de mostrar un modal introductori després que s'afegeixi la prop
 msgid "Invalid timezone {0}: {1}"
 msgstr "Zona horària no vàlida {0}: {1}"
 
+#: metabase/system/paths.clj
+msgid "Reading from path is disallowed: {0}"
+msgstr "No es permet llegir del camí: {0}"
+
+#: metabase/system/paths.clj
+msgid "Writing to path is disallowed: {0}"
+msgstr "No es permet escriure al camí: {0}"
+
 #: metabase/system/settings.clj
 msgid "The startup time in milliseconds"
 msgstr "El temps d'inici en mil·lisegons"
@@ -43025,6 +43148,14 @@ msgstr "Configuració regional no vàlida {0}"
 #: metabase/system/settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
 msgstr "L'adreça de correu a la qual s'hauria de referir els usuaris si es troben amb un problema."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may read files from, e.g. for database secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Llista permesa separada per comes de directoris des dels quals Metabase pot llegir fitxers, p. ex. per a secrets de base de dades indicats com a camí de fitxer local. Fes servir NONE per no permetre cap camí. Per defecte és /tmp a Metabase Cloud i / (qualsevol camí) quan és autoallotjat."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Llista permesa separada per comes de directoris on Metabase pot escriure fitxers. Fes servir NONE per no permetre cap camí. Per defecte és /tmp a Metabase Cloud i / (qualsevol camí) quan és autoallotjat."
 
 #: metabase/tiles/api.clj
 msgid "No appropriate image writer found!"
@@ -43555,10 +43686,6 @@ msgstr "No sé com analitzar {0} fent servir el format {1}"
 msgid "{0} must be at least 16 characters."
 msgstr "{0} ha de tenir com a mínim 16 caràcters."
 
-#: metabase/util/experiment/settings.clj
-msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
-msgstr "Activa o desactiva tots els experiments de codi. Quan està desactivat, només s'executa el camí de codi de producció."
-
 #: metabase/util/files.clj
 msgid "Resource does not exist."
 msgstr "El recurs no existeix."
@@ -43761,8 +43888,8 @@ msgstr "el valor ha de ser un tipus d'entitat vàlid (keyword o string)."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
-msgid "Tables can only be published to Library/Data collections."
-msgstr "Les taules només es poden publicar a les col·leccions Biblioteca/Dades."
+msgid "Tables can only be published to Semantic layer/Data collections."
+msgstr "Les taules només es poden publicar a col·leccions de Capa semàntica/Dades."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 msgid "unexpected multipart part"
@@ -44346,65 +44473,13 @@ msgstr "Els usuaris tenant no es poden afegir a les aplicacions de dades."
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Les consultes de l’aplicació de dades no poden fer servir mètriques que facin referència a altres preguntes desades o mètriques: {0}"
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
-msgstr "{0}/{1}: \"version\" ha de ser un nombre enter positiu, com ara 1."
+#: metabase_enterprise/data_apps/apps.clj
+msgid "A data app with this slug already exists."
+msgstr "Ja existeix una aplicació de dades amb aquest slug."
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" must be a one-line string."
-msgstr "{0}/{1}: \"description\" ha de ser una cadena d'una sola línia."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-msgstr "{0}/{1}: \"description\" és un resum d'una sola línia — ha de tenir {2} caràcters o menys."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-msgstr "{0}/{1}: \"{2}\" no és una entrada allowed_hosts vàlida — fes servir un origin com https://api.example.com o https://*.example.com."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"allowed_hosts\" must be a list."
-msgstr "{0}/{1}: \"allowed_hosts\" ha de ser una llista."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "Could not parse {0}/{1}: {2}"
-msgstr "No s'ha pogut analitzar {0}/{1}: {2}"
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes."
-msgstr "{0}: el nom del directori de l'aplicació és el seu slug, així que ha de ser en lletres minúscules, números i guions."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: \"{1}\" is a reserved slug — rename the directory."
-msgstr "{0}: \"{1}\" és un slug reservat — canvia el nom del directori."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"name\" is required."
-msgstr "{0}/{1}: \"name\" és obligatori."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" is required."
-msgstr "{0}/{1}: \"path\" és obligatori."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" must not contain \"..\"."
-msgstr "{0}/{1}: \"path\" no ha de contenir \"..\"."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle not synced yet."
-msgstr "El bundle encara no s’ha sincronitzat."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Could not read {0}."
-msgstr "No s'ha pogut llegir {0}."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle file \"{0}\" not found in the repository."
-msgstr "No s'ha trobat el fitxer de bundle \"{0}\" al repositori."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle for \"{0}\" must be less than {1} MiB."
-msgstr "El bundle de \"{0}\" ha de ser inferior a {1} MiB."
+#: metabase_enterprise/data_apps/models/data_app.clj
+msgid "Bundle file \"{0}\" not found."
+msgstr "No s'ha trobat el fitxer de bundle \"{0}\"."
 
 #: metabase_enterprise/data_complexity_score/api.clj
 msgid "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
@@ -44711,6 +44786,18 @@ msgstr "Les preguntes de sandbox no poden retornar columnes que tinguin tipus di
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "You do not have permissions to modify a question that is used for row and column level security."
 msgstr "No tens permisos per modificar una pregunta que s'utilitza per a la seguretat a nivell de fila i de columna."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a snippet that is used for row and column level security."
+msgstr "No tens permisos per modificar un fragment de codi que s'utilitza per a la seguretat a nivell de fila i columna."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a segment that is used for row and column level security."
+msgstr "No tens permisos per modificar un segment que s'utilitza per a la seguretat a nivell de fila i columna."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a measure that is used for row and column level security."
+msgstr "No tens permisos per modificar una mesura que s'utilitza per a la seguretat a nivell de fila i columna."
 
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."

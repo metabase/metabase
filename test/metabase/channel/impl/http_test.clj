@@ -13,6 +13,7 @@
    [metabase.server.handler :as server.handler]
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]
@@ -148,11 +149,12 @@
   (channel/can-connect? :channel/http details))
 
 (defmacro exception-data
+  "The client-facing ex-data of the exception `body` throws."
   [& body]
   `(try
      ~@body
      (catch Exception e#
-       (ex-data e#))))
+       (api-error/response-data (ex-data e#)))))
 
 (deftest can-connect-no-auth-test
   (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
@@ -7,6 +8,7 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
+  getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
 } from "metabase/app/nav/selectors";
@@ -55,7 +57,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (data?.error_code === "archived" && context === "query-builder") {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   }
-  return <GenericError details={data?.message} />;
+  return <GenericError details={findErrorMessage(data)} />;
 };
 
 export function App() {
@@ -74,6 +76,9 @@ export function App() {
   );
   const isMonitorApp = useSelector((state) =>
     getIsMonitorApp(state, routerProps),
+  );
+  const isEmbeddingHubApp = useSelector((state) =>
+    getIsEmbeddingHubApp(state, routerProps),
   );
   const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
   const isAppBarVisible = useSelector((state) =>
@@ -124,7 +129,11 @@ export function App() {
               <EmbedSetupModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isMonitorApp ||
+                  isEmbeddingHubApp ||
+                  isDataApp
                 }
               />
             </AppContentContainer>

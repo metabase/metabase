@@ -31,7 +31,6 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.util :as perms.u]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -645,7 +644,7 @@
       [:model/Card {card-id :id} {:name    "Card"
                                   :display "table"}]
       (is (= "Card with type table is not compatible to have series"
-             (:message (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id)))))))
+             (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id))))))
   (testing "404 if the card does not exsits"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 (format "card/%d/series" Integer/MAX_VALUE))))))
@@ -1091,7 +1090,7 @@
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-modular enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1105,7 +1104,7 @@
     (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
+        (mt/with-temporary-setting-values [enable-embedding-modular embedding-type]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:embedding_type nil}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1584,19 +1583,80 @@
           (testing "admin should be able to save a Card if All Users doesn't have ad-hoc data perms"
             (is (some? (create-card! :crowberto 200))))
           (testing "non-admin should get an error"
-            (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-              (is (malli= [:map
-                           [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                           [:query          [:map
-                                             [:lib/type [:= "mbql/query"]]
-                                             [:stages [:sequential
-                                                       {:min 1, :max 1}
-                                                       [:map
-                                                        [:source-table [:= (mt/id :venues)]]]]]]]
-                           [:required-perms :map]
-                           [:actual-perms   [:sequential perms.u/PathSchema]]
-                           [:trace          [:sequential :any]]]
-                          (create-card! :rasta 403))))))))))
+            (testing "Permissions errors keep their meaningful message (#14931)"
+              (testing "but not the ex-data: the (preprocessed) query inlines source Cards the user may not read (SEC-1173)"
+                (is (= "You cannot save this Question because you do not have permissions to run its query."
+                       (create-card! :rasta 403)))))))))))
+
+(deftest create-card-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "POST /api/card"
+    (testing "the 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+      (mt/with-temp [:model/Card {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection
+                                                                            (mt/user->id :crowberto)))
+                                                  :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+        (let [body (mt/with-model-cleanup [:model/Card]
+                     (mt/user-http-request :rasta :post 403 "card"
+                                           (merge (mt/with-temp-defaults :model/Card)
+                                                  {:dataset_query (mt/mbql-query nil {:source-table (str "card__" secret-id)})
+                                                   :collection_id (-> :rasta mt/user->id collection/user->personal-collection u/the-id)})))]
+          (is (= "You cannot save this Question because you do not have permissions to run its query."
+                 body)))))))
+
+(deftest save-card-with-sensitive-field-test
+  (testing "non-admins can't save a query that references a :sensitive column (SEC-829)"
+    (let [sensitive-query (mt/mbql-query users {:fields [$id $password]})]
+      (mt/with-model-cleanup [:model/Card]
+        (testing "POST /api/card"
+          (let [body (mt/user-http-request :rasta :post 400 "card"
+                                           (card-with-name-and-query (mt/random-name) sensitive-query))]
+            (is (=? #".*not available for querying.*" body))
+            (testing "without naming the column"
+              (is (not (re-find #"(?i)password" (pr-str body))))))
+          (is (some? (mt/user-http-request :crowberto :post 200 "card"
+                                           (card-with-name-and-query (mt/random-name) sensitive-query))))))
+      (mt/with-temp [:model/Card card {:creator_id    (mt/user->id :crowberto)
+                                       :dataset_query sensitive-query}]
+        (testing "PUT /api/card/:id without changing the query still works on a card an admin saved"
+          (is (=? {:name "Renamed"}
+                  (mt/user-http-request :rasta :put 200 (format "card/%d" (:id card)) {:name "Renamed"}))))
+        (testing "PUT /api/card/:id changing the query to another one that references the column is rejected"
+          (is (=? #".*not available for querying.*"
+                  (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card))
+                                        {:dataset_query (mt/mbql-query users {:fields [$password]})})))))
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
+        (testing "PUT /api/card/:id adding the column to a query is rejected"
+          (is (=? #".*not available for querying.*"
+                  (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card))
+                                        {:dataset_query sensitive-query}))))))))
+
+(deftest sensitive-field-in-saved-content-test
+  (testing "content someone else saved that uses a :sensitive column keeps working for non-admins who can see it"
+    (mt/with-temp [:model/Card    card    {:creator_id    (mt/user->id :crowberto)
+                                           :dataset_query (mt/mbql-query users
+                                                            {:fields   [$id $password]
+                                                             :filter   [:not-null $password]
+                                                             :order-by [[:asc $id]]
+                                                             :limit    1})}
+                   :model/Segment segment {:table_id   (mt/id :users)
+                                           :definition (mt/mbql-query users {:filter [:starts-with $password "4"]})}]
+      (testing "running the saved card"
+        (is (= [[1 "4be68cda-6fd5-4ba7-944e-2b475600bda5"]]
+               (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))))))
+      (testing "an ad-hoc query built on top of the saved card"
+        (is (= [["4be68cda-6fd5-4ba7-944e-2b475600bda5"]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                              {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (str "card__" (:id card))
+                                                          :fields       [[:field "PASSWORD" {:base-type :type/Text}]]}})))))
+      (testing "an ad-hoc query using a segment defined on the column"
+        (is (= [[1]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                              (mt/mbql-query users
+                                                {:fields   [$id]
+                                                 :filter   [:segment (:id segment)]
+                                                 :order-by [[:asc $id]]
+                                                 :limit    1})))))))))
 
 (deftest create-card-parameter-permissions-generic-error-test
   (testing "POST /api/card"
@@ -1971,11 +2031,11 @@
   (testing "PUT /api/card/:id"
     (mt/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding-static false]
+        (mt/with-temporary-setting-values [enable-embedding-modular false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
@@ -1989,7 +2049,7 @@
 (deftest update-embedding-type-to-nil-test
   (testing "PUT /api/card/:id"
     (testing "Admin should be able to set embedding_type to nil to clear it"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (mt/with-temp [:model/Card card {:enable_embedding true
                                          :embedding_type "static-legacy"}]
           (testing "Verify initial state has embedding_type set"
@@ -2310,18 +2370,10 @@
                          :name "Updated name"}
                         (update-card! :rasta 200 {:name "Updated name"}))))
               (testing "should *not* be allowed to update query"
-                (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-                  (is (malli= [:map
-                               [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                               [:query          [:map
-                                                 [:stages [:sequential
-                                                           {:min 1, :max 1}
-                                                           [:map
-                                                            [:source-table [:= (mt/id :users)]]]]]]]
-                               [:required-perms :map]
-                               [:actual-perms   [:sequential perms.u/PathSchema]]
-                               [:trace          [:sequential :any]]]
-                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
+                (testing "Permissions errors keep their meaningful message (#14931)"
+                  (testing "but not the ex-data: the (preprocessed) query inlines source Cards the user may not read (SEC-1173)"
+                    (is (= "You cannot save this Question because you do not have permissions to run its query."
+                           (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)})))))
                 (testing "make sure query hasn't changed in the DB"
                   (is (=? {:lib/type :mbql/query
                            :stages   [{:source-table (mt/id :checkins)}]}
@@ -3591,11 +3643,17 @@
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (mt/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
-                 (m/map-vals boolean (select-keys card [:name :id])))))))))
+                 (m/map-vals boolean (select-keys card [:name :id])))))))
+    (testing "and that we can still see them once guest embeds are turned off"
+      (mt/with-temporary-setting-values [enable-embedding-modular false]
+        (mt/with-temp [:model/Card _ {:enable_embedding true}]
+          (is (= [{:name true, :id true}]
+                 (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
+                   (m/map-vals boolean (select-keys card [:name :id]))))))))))
 
 (deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
@@ -4309,8 +4367,8 @@
   [request]
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-discard-model-updates! [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
-      (mt/with-temp [:model/Database   {db-id :id}         {:engine driver/*driver*}
-                     :model/Database   {other-db-id :id}   {:engine driver/*driver* :uploads_enabled true}
+      (mt/with-temp [:model/Database   {db-id :id}         {:engine driver/*driver* :dbms_version (:dbms_version (mt/db))}
+                     :model/Database   {other-db-id :id}   {:engine driver/*driver* :dbms_version (:dbms_version (mt/db)) :uploads_enabled true}
                      :model/Table      {table-id :id}      {:db_id db-id, :is_upload true}
                      :model/Collection {collection-id :id} {}]
         (let [card-defaults {:collection_id collection-id
@@ -4414,7 +4472,7 @@
                                :name                   "Bad Card"
                                :display                "table"
                                :visualization_settings {}}]
-        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""}
+        (is (=? #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\".*"
                 (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
 
 (deftest ^:parallel format-export-middleware-test

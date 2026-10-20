@@ -509,6 +509,19 @@ describe("version-helpers", () => {
       expect(latest).toBe("v0.12.4-beta");
     });
 
+    it("should sort double digit pre release patches numerically", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.64.0-beta" },
+          { ref: "refs/tags/v0.64.0.1-beta" },
+          { ref: "refs/tags/v0.64.0.10-beta" },
+          { ref: "refs/tags/v0.64.0.2-beta" },
+          { ref: "refs/tags/v0.64.0.9-beta" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.64.0.10-beta");
+    });
+
     it("should ignore pre releases with a flag passeed", () => {
       const latest = getLastReleaseFromTags({
         tags: [
@@ -843,17 +856,13 @@ describe("version-helpers", () => {
     });
 
     it("should return the correct extra tags for a beta version", async () => {
-      expect(await getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-      ]);
+      expect(await getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual(
+        ["v0.75.x", "v1.75.x"],
+      );
 
-      expect(await getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-      ]);
+      expect(await getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual(
+        ["v0.75.x", "v1.75.x", "v0.75.1.x", "v1.75.1.x"],
+      );
 
       expect(
         await getExtraTagsForVersion({ version: "v0.75.1.2-beta" }),
@@ -973,5 +982,4 @@ describe("version-helpers", () => {
       expect(getMinorVersion(input)).toBe(expected);
     });
   });
-
 });

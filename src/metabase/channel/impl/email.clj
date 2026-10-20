@@ -221,7 +221,7 @@
 (def ^:private payload-type->default-template
   {:notification/dashboard {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
-                                           :subject "{{payload.dashboard.name}}"
+                                           :subject "{{computed.subject}}"
                                            :path    "dashboard_subscription"}}
    :notification/card      {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
@@ -302,7 +302,7 @@
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf]}]
+  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf subject]}]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -349,7 +349,8 @@
                               "<p>Dashboard content available in attached files</p>")
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
-                                  (assoc :computed {:dashboard_content  dashboard-content
+                                  (assoc :computed {:subject            (or subject (:name dashboard))
+                                                    :dashboard_content  dashboard-content
                                                     :icon_cid           (:content-id icon-attachment)
                                                     :dashboard_has_tabs (some-> dashboard :tabs seq)
                                                     :management_text    (if (nil? non-user-email)
