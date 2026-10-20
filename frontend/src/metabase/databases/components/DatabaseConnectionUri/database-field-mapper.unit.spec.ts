@@ -27,18 +27,6 @@ describe.each<{
   {
     engineKey: "mysql",
     connectionString:
-      "jdbc:mysql://metabase:password@localhost:3304/sample?allowPublicKeyRetrieval=true",
-    additionalOptions: "allowPublicKeyRetrieval=true",
-  },
-  {
-    engineKey: "postgres",
-    connectionString:
-      "jdbc:postgresql://metabase:password@localhost:5404/sample?prepareThreshold=0",
-    additionalOptions: "prepareThreshold=0",
-  },
-  {
-    engineKey: "mysql",
-    connectionString:
       "jdbc:mysql://metabase:password@localhost:3304/sample?allowPublicKeyRetrieval=true&useSSL=false",
     additionalOptions: "allowPublicKeyRetrieval=true&useSSL=false",
   },

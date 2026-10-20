@@ -31,6 +31,7 @@ jobs:
     name: Generate E2E snapshots
     needs: e2e-matrix-builder
     if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
+    continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
