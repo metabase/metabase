@@ -72,10 +72,13 @@ describe("scenarios > embedding > questions", () => {
       { ...regularQuestion, enable_embedding: true },
       { wrapId: true, idAlias: "regularQuestionId" },
     );
-    cy.get("@regularQuestionId").then((regularQuestionId) => {
+    H.createQuestion({
+      ...regularQuestion,
+      enable_embedding: false,
+    }).then(({ body: { id: sourceQuestionId } }) => {
       H.createQuestion(
         {
-          query: { "source-table": `card__${regularQuestionId}`, limit: 10 },
+          query: { "source-table": `card__${sourceQuestionId}`, limit: 10 },
           enable_embedding: true,
         },
         { wrapId: true, idAlias: "nestedQuestionId" },
