@@ -2329,6 +2329,12 @@
                 (contains? (:returned-field-ids info) field-id)
                 clause
 
+                ;; lib resolves a ref that lacks its `join-alias` against the stage's explicit joins, so a field one of
+                ;; them returns already has its join. A join that could not be resolved might return it too.
+                (let [joined @(:join-field-ids source-info)]
+                  (or (nil? joined) (contains? joined field-id)))
+                clause
+
                 ;; The card reads this table but does not project this column. There is no implicit join to make --
                 ;; the fix is to pick a column it does return, not to join the table to itself, which is what the
                 ;; generic no-FK-path advice would send the agent off to build.
@@ -2356,7 +2362,20 @@
               ;; repair, where guessing risks a `source-field` that silently answers from the wrong join path.
               clause)))))))
 
-(declare ^:private explicit-join-source-tables)
+(declare ^:private explicit-join-source-tables ^:private resolved-columns)
+
+(defn- join-field-ids
+  "The ids of the fields the explicit `joins` return, each join's own stages resolved as a standalone query, or nil
+  when one of them cannot be resolved."
+  [mp database joins content-store]
+  (reduce (fn [ids join]
+            (if-let [cols (when (and (map? join) (vector? (get join "stages")))
+                            (resolved-columns mp database (get join "stages") content-store
+                                              (format "join %s" (pr-str (get join "alias")))))]
+              (into ids (keep :id) cols)
+              (reduced nil)))
+          #{}
+          joins))
 
 (defn- stage-source-info
   "What Pass 3 needs to know about a stage's source, or nil when it cannot be resolved (skip the stage).
@@ -2366,7 +2385,7 @@
   gate passes it. But the card's FK candidates are its own *returned* columns, not its base table's -- see
   [[try-resolve-card-source-info]]. That is resolved behind a delay, so a stage with nothing to repair never pays
   for it."
-  [stage mp import-resolver]
+  [stage mp import-resolver database content-store]
   (if-let [source-table-fk (get stage "source-table")]
     (when-let [table-id (try-resolve-source-table-id import-resolver source-table-fk)]
       {:kind          :table
@@ -2376,6 +2395,7 @@
       {:kind             :card
        :card-id          card-id
        :joined-table-ids (into #{} (map :source-table-id) (explicit-join-source-tables import-resolver (get stage "joins")))
+       :join-field-ids   (delay (join-field-ids mp database (get stage "joins") content-store))
        :info             (delay (try-resolve-card-source-info mp card-id))})))
 
 (defn- resolve-implicit-joins-in-stage
@@ -2384,8 +2404,8 @@
   Skips descent into the `\"joins\"` subtree by plucking it out before the postwalk and
   restoring it afterwards - field clauses inside explicit joins are expected to carry a
   `join-alias` already."
-  [stage mp import-resolver export-resolver]
-  (if-let [source-info (stage-source-info stage mp import-resolver)]
+  [stage mp import-resolver export-resolver database content-store]
+  (if-let [source-info (stage-source-info stage mp import-resolver database content-store)]
     (let [joins  (get stage "joins")
           stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))
           walked (walk/postwalk
@@ -2411,7 +2431,7 @@
     (let [import-resolver (resolve.mp/import-resolver mp content-store)
           export-resolver (resolve.mp/export-resolver mp)]
       (update-in query ["stages" 0] resolve-implicit-joins-in-stage
-                 mp import-resolver export-resolver))))
+                 mp import-resolver export-resolver (get query "database") content-store))))
 
 ;;; ============================================================
 ;;; Pass 3.5 -- auto-wire `source-field-join-alias` for implicit joins through an explicitly

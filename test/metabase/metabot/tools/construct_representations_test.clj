@@ -2762,6 +2762,41 @@
               (is (= [[nil 67] ["Doohickey" 12682] ["Gadget" 2270] ["Gizmo" 3532] ["Widget" 209]]
                      (mt/rows (qp/process-query query)))))))))))
 
+(deftest source-card-stage-keeps-fields-its-explicit-joins-return-test
+  (testing "a field the stage's explicit join returns keeps that join, as lib resolves a ref that lacks its join alias"
+    (mt/with-temp [:model/Card {products-eid :entity_id} {:name          "Products"
+                                                          :type          :question
+                                                          :dataset_query (table-query :products)}]
+      (doseq [card-type [:question :model]]
+        (mt/with-temp [:model/Card {orders-eid :entity_id} {:name          "Orders"
+                                                            :type          card-type
+                                                            :dataset_query (table-query :orders)}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                  ;; The join condition is not the foreign key, so the explicit join and an implicit one disagree.
+                  join    (fn [join-source]
+                            {"alias"      "P"
+                             "strategy"   "left-join"
+                             "stages"     [(assoc join-source "lib/type" "mbql.stage/mbql")]
+                             "conditions" [["=" {}
+                                            ["field" {} [db-name "PUBLIC" "ORDERS" "QUANTITY"]]
+                                            ["field" {"join-alias" "P"} [db-name "PUBLIC" "PRODUCTS" "ID"]]]]})]
+              (doseq [[join-label join-source] [["a saved question" {"source-card" products-eid}]
+                                                ["a table" {"source-table" [db-name "PUBLIC" "PRODUCTS"]}]]]
+                (testing (str "a " (name card-type) " joined to " join-label)
+                  (let [query (-> (construct/execute-representations-query
+                                   (query-data
+                                    {"lib/type" "mbql/query"
+                                     "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                  "source-card" orders-eid
+                                                  "joins"       [(join join-source)]
+                                                  "breakout"    [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                                  "aggregation" [["count" {}]]}]}))
+                                  (get-in [:structured-output :query]))]
+                    (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
+                    (is (= [[nil 67] ["Doohickey" 12682] ["Gadget" 2270] ["Gizmo" 3532] ["Widget" 209]]
+                           (mt/rows (qp/process-query query))))))))))))))
+
 (deftest gate-checks-only-the-first-stage-test
   (testing (str "The gate inspects stage 0 only -- where a source is chosen. A metric ref on a later stage is left\n"
                 "to the QP: the source there is the previous stage's output, not something the LLM can edit the way\n"
