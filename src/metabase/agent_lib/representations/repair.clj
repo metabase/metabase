@@ -1302,8 +1302,9 @@
 ;;; Date-only day/default bounds become ranges on the raw ref, with an exclusive next-day
 ;;; upper bound. This counts whole days and lets the expression editor re-save the result:
 ;;; dropping the unit loses the last day's times, and a day-bucketed ref prints as an unknown
-;;; column. Default timestamps only lose their wrapper. Negations stay for E7 because filters
-;;; and conditional aggregations handle NULLs differently on DateTime columns.
+;;; column. Default timestamps only lose their wrapper. Negations stay for E7: a `!=` filter
+;;; drops rows with no date on a DateTime column and keeps them on a Date column, and this pass
+;;; cannot tell the two apart.
 ;;; ============================================================
 
 (defn- next-day [literal]
