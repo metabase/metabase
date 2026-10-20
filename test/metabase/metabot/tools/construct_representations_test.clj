@@ -23,6 +23,7 @@
    [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
@@ -2622,14 +2623,14 @@
                     :dataset_query (lib/with-fields (table-query :orders) [(field-col :orders :id) (field-col :orders :total)])}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
-              run!    (fn [fk]
-                        (construct/execute-representations-query
-                         (query-data
-                          {"lib/type" "mbql/query"
-                           "stages"   [{"lib/type"    "mbql.stage/mbql"
-                                        "source-card" question-eid
-                                        "breakout"    [["field" {} fk]]
-                                        "aggregation" [["count" {}]]}]})))]
+              query   (fn [fk]
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                       "source-card" question-eid
+                                       "breakout"    [["field" {} fk]]
+                                       "aggregation" [["count" {}]]}]}))
+              run!    #(construct/execute-representations-query (query %))]
           (testing (str "a column on a table the card READS but does not project is rejected with advice that fits: "
                         "pick a projected column. The generic no-FK-path text would tell the agent to add a "
                         "`joins:` entry joining ORDERS to itself, and `:agent-error?` relays it verbatim.")
@@ -2638,15 +2639,17 @@
               (is (=? {:agent-error? true, :error :column-not-returned} (ex-data e)))
               (is (str/includes? (ex-message e) "does not return"))
               (is (not (str/includes? (ex-message e) "read_resource"))
-                  "the shared pipeline's message stays surface-neutral; the lookup advice is v1's hint")
-              (testing "and the resource URI v1's hint hands the agent actually resolves"
-                (let [uri (second (re-find #"`(metabase://[^`]+)`" (v1-hints/recovery-hint (ex-data e))))]
-                  (is (some? uri))
-                  (is (not (str/starts-with? uri "metabase://card/"))
-                      "there is no card URI type -- the dispatcher matches model/question only")
-                  (let [out (:structured-output (resources/read-resource {:uris [uri]}))]
-                    (is (not (str/includes? (str out) "Unsupported URI"))
-                        (str "the agent is sent to " uri)))))
+                  "the shared pipeline's message stays surface-neutral; the lookup advice is each surface's own")
+              (testing "and the URI that Metabot's recovery step and the Agent API's hint send the agent to resolves"
+                (doseq [advice [(:text (test-util/tool-failure construct/construct-notebook-query-tool
+                                                               {:query (query [db-name "PUBLIC" "ORDERS" "QUANTITY"])}
+                                                               #{"read_resource"}))
+                                (v1-hints/recovery-hint (ex-data e))]
+                        :let   [uri (second (re-find #"`(metabase://[^`]+)`" advice))]]
+                  (is (str/starts-with? uri "metabase://question/"))
+                  (is (str/includes? (:output (test-util/call-tool resources/read-resource-tool {:uris [uri]}))
+                                     "TOTAL")
+                      (str "the agent is sent to " uri))))
               (is (not (str/includes? (ex-message e) "joins:"))
                   "specifically not told to build a self-join")))
           (testing "while a genuinely unreachable table still gets the no-FK-path advice"
