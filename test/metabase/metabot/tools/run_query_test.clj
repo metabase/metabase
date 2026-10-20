@@ -768,6 +768,19 @@
               (is (= {:output (str "Query id " on-hidden " is a metric, and a metric does not run by "
                                    "its id. Tell the user you can't read its results.")}
                      (run-viewing! [{:type "metric", :id on-hidden}] (str on-hidden))))))))
+      (testing "a viewed metric that aggregates in a stage after the model it starts from names the base table"
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {model :id}  {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                   :type          :model}
+                         :model/Card {metric :id} {:dataset_query (-> (lib/query mp (lib.metadata/card mp model))
+                                                                      lib/append-stage
+                                                                      (lib/aggregate (lib/count)))
+                                                   :type          :metric}]
+            (is (= {:output (str "Query id " metric " is a metric, and a metric does not run by its id. "
+                                 "To get its values, build a notebook query with construct_notebook_query that has "
+                                 "the metric's base table as its source and the metric in `aggregation`, then run "
+                                 "that query with run_query.")}
+                   (run-viewing! [{:type "metric", :id metric}] (str metric)))))))
       (testing "a viewed metric the user can't read is refused like an id that names nothing"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection {hidden :id}        {}

@@ -127,19 +127,20 @@
 
 (defn- metric-refusal
   "The refusal for `query-id`, the id of `metric`, a metric the user can read.
-   It says what to aggregate the metric over: the model or question it is built on, or else its base table.
-   Where the user can't read the card it is built on, or query the table, it offers no way to its values."
+   It says what to aggregate the metric over: the source [[metabase.metabot.tools.util/metric-required-source]] names.
+   Where the user can't read that card, or query that table, it offers no way to its values."
   [query-id metric]
   ;; A metric is an aggregation, not a source, so no query with it as the source would run.
-  (let [source-card (some-> (:source_card_id metric) metabot.db/card)
+  (let [{:keys [kind card-id table-id]} (tools.u/metric-required-source metric)
+        source-card (when (= :card kind) (metabot.db/card card-id))
         source      (cond
                       (some-> source-card mi/can-read?)
                       (format "the %s it is built on as the `source-card`, whose portable entity id is %s,"
                               (name (:type source-card)) (:entity_id source-card))
 
                       ;; Reading the metric is collection-based and does not imply querying its table.
-                      (and (nil? (:source_card_id metric))
-                           (some->> (:table_id metric) (mi/can-query? :model/Table)))
+                      (and (= :table kind)
+                           (some->> table-id (mi/can-query? :model/Table)))
                       "the metric's base table as its source")]
     (refusal (str "Query id " query-id " is a metric, and a metric does not run by its id. "
                   (if source
