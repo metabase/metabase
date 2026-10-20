@@ -490,6 +490,8 @@ categories:
             url: "monitor/api-key-usage"
           - name: "Admin tools"
             url: "monitor/erroring-questions"
+          - name: "Panopticon"
+            url: "https://en.wikipedia.org/wiki/Panopticon"
       - name: "Authentication"
         url: "people-and-groups/start"
         pages:
