@@ -81,9 +81,7 @@
   ;; The queue that holds the work is in this process too, so the count does not need to be in the app DB.
   (atom {}))
 
-(defn add-pending-work!
-  "Count one more piece of work of the run `run-id` that has not ended. Public for [[with-task-run]]; other code tags
-  its work with [[with-run-id-meta]]."
+(defn- add-pending-work!
   [run-id]
   (swap! run-id->pending-work update run-id (fnil inc 0)))
 
@@ -123,7 +121,7 @@
     :status          :started
     :process_uuid    config/local-process-uuid}))
 
-(mu/defn complete-task-run!
+(mu/defn- complete-task-run!
   "Mark a task run as complete, deriving status from child tasks. [[with-task-run]] calls it after its body; for
   `:auto-complete false` runs, [[task-run-work-done!]] calls it after the last piece of work.
    Idempotent - only completes if status is still :started."
@@ -134,7 +132,7 @@
                         :failed)]
     (task-history.db/finish-started-task-run! run-id status (t/instant))))
 
-(mu/defn task-run-work-done!
+(mu/defn- task-run-work-done!
   "Call when one piece of work of the `:auto-complete false` run `run-id` ends: [[with-task-run]] after its body, and
   [[end-run-work!]] for a map from [[track-run-work!]]. The run stays started while it has work that has not
   ended, and the call for its last piece of work completes it with [[complete-task-run!]]. At that point every task of
@@ -184,6 +182,23 @@
          (finally
            (end-run-work! m#))))))
 
+(defn do-with-task-run
+  "Implementation of [[with-task-run]]."
+  [run-info thunk]
+  (if (or *run* (nil? run-info))
+    (thunk)
+    (let [auto-complete (boolean (get run-info :auto-complete true))
+          run-id        (create-task-run! run-info)]
+      (when-not auto-complete
+        (add-pending-work! run-id))
+      (binding [*run* {:id run-id :auto-complete? auto-complete}]
+        (try
+          (thunk)
+          (finally
+            (if auto-complete
+              (complete-task-run! run-id)
+              (task-run-work-done! run-id))))))))
+
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.
    `run-info` should contain :run_type, :entity_type, :entity_id.
@@ -196,17 +211,4 @@
    thread with [[track-run-work!]] is one more. The run completes after the last of them ends."
   {:style/indent 1}
   [run-info & body]
-  `(if (or *run* (nil? ~run-info))
-     (do ~@body)
-     (let [info#          ~run-info
-           auto-complete# (boolean (get info# :auto-complete true))
-           run-id#        (create-task-run! info#)]
-       (when-not auto-complete#
-         (add-pending-work! run-id#))
-       (binding [*run* {:id run-id# :auto-complete? auto-complete#}]
-         (try
-           ~@body
-           (finally
-             (if auto-complete#
-               (complete-task-run! run-id#)
-               (task-run-work-done! run-id#))))))))
+  `(do-with-task-run ~run-info (fn [] ~@body)))
