@@ -1,4 +1,4 @@
-import type { AndNode, NodePath, OrNode, RailNode } from "./railroad";
+import type { AndNode, NodePath, OrNode, RailNode, Stage } from "./railroad";
 
 export const PILL_HEIGHT = 30;
 const PILL_PADDING_X = 12;
@@ -9,6 +9,8 @@ const BRANCH_GAP = 26;
 const BRANCH_BUTTON_HEIGHT = 28;
 const CORNER_RADIUS = 8;
 const LEAD_TRACK = 20;
+const COUNT_ROW_HEIGHT = 18;
+const COUNT_GAP = 10;
 
 export type PillShape = {
   kind: "pill";
@@ -34,12 +36,20 @@ export type BranchButtonShape = {
   x: number;
   y: number;
 };
+export type CountShape = {
+  kind: "count";
+  stage: Stage;
+  x: number;
+  y: number;
+  anchor: "middle" | "start";
+};
 export type Shape =
   | PillShape
   | TrackShape
   | PlusShape
   | OrLabelShape
-  | BranchButtonShape;
+  | BranchButtonShape
+  | CountShape;
 
 export type Layout = { shapes: Shape[]; width: number; height: number };
 
@@ -48,9 +58,13 @@ type Box = { width: number; height: number; baseline: number };
 type LayoutContext = {
   measureLabel: (node: RailNode) => number;
   labelOf: (node: RailNode) => string;
+  showCounts: boolean;
   boxes: Map<RailNode, Box>;
   shapes: Shape[];
 };
+
+/** Counts sit on one row under the pills: this far below the track. */
+const countY = (trackY: number) => trackY + PILL_HEIGHT / 2 + COUNT_GAP;
 
 function measure(ctx: LayoutContext, node: RailNode): Box {
   const box = measureNode(ctx, node);
@@ -63,7 +77,7 @@ function measureNode(ctx: LayoutContext, node: RailNode): Box {
     case "cond":
       return {
         width: ctx.measureLabel(node) + PILL_PADDING_X + PILL_ICONS_WIDTH,
-        height: PILL_HEIGHT,
+        height: PILL_HEIGHT + (ctx.showCounts ? COUNT_ROW_HEIGHT : 0),
         baseline: PILL_HEIGHT / 2,
       };
     case "and": {
@@ -119,16 +133,27 @@ function draw(
   y: number,
 ) {
   switch (node.type) {
-    case "cond":
+    case "cond": {
+      const { width } = boxOf(ctx, node);
       ctx.shapes.push({
         kind: "pill",
         path,
         label: ctx.labelOf(node),
         x,
         y,
-        width: boxOf(ctx, node).width,
+        width,
       });
+      if (ctx.showCounts) {
+        ctx.shapes.push({
+          kind: "count",
+          stage: { kind: "pill", path },
+          x: x + width / 2,
+          y: countY(y + PILL_HEIGHT / 2),
+          anchor: "middle",
+        });
+      }
       return;
+    }
     case "and":
       drawAnd(ctx, node, path, x, y);
       return;
@@ -243,16 +268,31 @@ function drawOr(
     x: contentX + SERIES_GAP,
     y: y + height - BRANCH_BUTTON_HEIGHT,
   });
+  if (ctx.showCounts) {
+    ctx.shapes.push({
+      kind: "count",
+      stage: { kind: "merge", orPath: path },
+      x: rightRailX + CORNER_RADIUS,
+      y: countY(trackY),
+      anchor: "start",
+    });
+  }
 }
+
+type LayoutOptions = {
+  labelOf: (node: RailNode) => string;
+  measureLabel: (node: RailNode) => number;
+  showCounts?: boolean;
+};
 
 export function layoutRailroad(
   root: AndNode,
-  labelOf: (node: RailNode) => string,
-  measureLabel: (node: RailNode) => number,
+  { labelOf, measureLabel, showCounts = false }: LayoutOptions,
 ): Layout {
   const ctx: LayoutContext = {
     labelOf,
     measureLabel,
+    showCounts,
     boxes: new Map(),
     shapes: [],
   };

@@ -251,3 +251,41 @@ export function addRow(root: AndNode, clause: Lib.FilterClause): AndNode {
   }
   return normalize(and([or([and(root.children), and([cond(clause)])])]));
 }
+
+/** A point on the track where a row count makes sense: just past a pill, or where a fork's branches merge. */
+export type Stage =
+  | { kind: "pill"; path: NodePath }
+  | { kind: "merge"; orPath: NodePath };
+
+/**
+ * The filters a row must pass to reach `stage`: everything before it in
+ * series, and inside a fork only the branch the stage sits on.
+ */
+export function stageTree(root: AndNode, stage: Stage): AndNode {
+  const path = stage.kind === "pill" ? stage.path : stage.orPath;
+  return normalize(asAndNode(prefixAt(root, path)));
+}
+
+function prefixAt(node: RailNode, path: NodePath): RailNode {
+  const [index, ...rest] = path;
+  if (index === undefined) {
+    return node;
+  }
+  switch (node.type) {
+    case "and": {
+      const child = node.children[index];
+      return child
+        ? and([
+            ...node.children.slice(0, index),
+            asAndChild(prefixAt(child, rest)),
+          ])
+        : node;
+    }
+    case "or": {
+      const branch = node.branches[index];
+      return branch ? prefixAt(branch, rest) : node;
+    }
+    case "cond":
+      return node;
+  }
+}

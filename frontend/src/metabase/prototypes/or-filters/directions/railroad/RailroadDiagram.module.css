@@ -91,6 +91,12 @@
   stroke-width: 4;
 }
 
+.count {
+  fill: var(--mb-color-text-secondary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .branchButton {
   cursor: pointer;
 }

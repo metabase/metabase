@@ -1,19 +1,27 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type * as Lib from "metabase-lib";
+import { useGetAdhocQueryQuery } from "metabase/api";
+import * as Lib from "metabase-lib";
 
 import { getFilterLabel } from "../../harness/clauses";
 
 import S from "./RailroadDiagram.module.css";
 import {
   type BranchButtonShape,
+  type CountShape,
   PILL_HEIGHT,
   type PillShape,
   type PlusShape,
   layoutRailroad,
 } from "./layout";
-import type { AndNode, NodePath, RailNode } from "./railroad";
+import {
+  type AndNode,
+  type NodePath,
+  type RailNode,
+  stageTree,
+  writeRailTree,
+} from "./railroad";
 
 const PILL_RADIUS = PILL_HEIGHT / 2;
 const PILL_PADDING_X = 12;
@@ -36,12 +44,15 @@ type RailroadDiagramProps = RailroadDiagramHandlers & {
   query: Lib.Query;
   stageIndex: number;
   root: AndNode;
+  /** Draws the number of rows reaching each pill and each merge point. */
+  showCounts?: boolean;
 };
 
 export function RailroadDiagram({
   query,
   stageIndex,
   root,
+  showCounts = false,
   onRemove,
   onEdit,
   onInsert,
@@ -51,9 +62,11 @@ export function RailroadDiagram({
   const measureText = useLabelMeasurer();
   const labelOf = (node: RailNode) =>
     node.type === "cond" ? getFilterLabel(query, stageIndex, node.clause) : "";
-  const layout = layoutRailroad(root, labelOf, (node) =>
-    measureText(labelOf(node)),
-  );
+  const layout = layoutRailroad(root, {
+    labelOf,
+    measureLabel: (node) => measureText(labelOf(node)),
+    showCounts,
+  });
 
   return (
     <svg
@@ -94,6 +107,16 @@ export function RailroadDiagram({
           case "branch-button":
             return (
               <BranchButton key={index} shape={shape} onBranch={onBranch} />
+            );
+          case "count":
+            return (
+              <StageCount
+                key={index}
+                shape={shape}
+                query={query}
+                stageIndex={stageIndex}
+                root={root}
+              />
             );
         }
       })}
@@ -204,6 +227,37 @@ function BranchButton({ shape, onBranch }: BranchButtonProps) {
         {t`+ or`}
       </text>
     </g>
+  );
+}
+
+type StageCountProps = {
+  shape: CountShape;
+  query: Lib.Query;
+  stageIndex: number;
+  root: AndNode;
+};
+
+/** Rows that reach this point on the track: one count query per stage. */
+function StageCount({ shape, query, stageIndex, root }: StageCountProps) {
+  const { stage, x, y, anchor } = shape;
+  const countJsQuery = useMemo(() => {
+    const stageQuery = writeRailTree(query, stageIndex, stageTree(root, stage));
+    return Lib.toJsQuery(Lib.aggregateByCount(stageQuery, stageIndex));
+  }, [query, stageIndex, root, stage]);
+  const count = useGetAdhocQueryQuery({ ...countJsQuery, ignore_error: true });
+  const rowCount = count.data?.data?.rows?.[0]?.[0];
+  const label = count.isFetching || rowCount == null ? "…" : String(rowCount);
+
+  return (
+    <text
+      className={S.count}
+      x={x}
+      y={y}
+      textAnchor={anchor}
+      dominantBaseline="central"
+    >
+      {label}
+    </text>
   );
 }
 

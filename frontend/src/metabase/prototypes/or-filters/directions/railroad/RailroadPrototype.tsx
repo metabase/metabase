@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { NotebookCell } from "metabase/querying/notebook/components/NotebookCell";
-import { Box, Button, Group, Icon, Popover } from "metabase/ui";
+import { Box, Button, Group, Icon, Popover, Switch } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { toFilterClause } from "../../harness/clauses";
@@ -46,6 +46,7 @@ export function RailroadPrototype({
 }: FilterUiProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [picker, setPicker] = useState<OpenPicker>();
+  const [showCounts, setShowCounts] = useState(false);
   const root = readRailTree(query, stageIndex);
   const hasFilters = root.children.length > 0;
   const [onlyChild] = root.children;
@@ -84,6 +85,7 @@ export function RailroadPrototype({
           query={query}
           stageIndex={stageIndex}
           root={root}
+          showCounts={showCounts}
           onRemove={(path) =>
             onChange(writeRailTree(query, stageIndex, removeAt(root, path)))
           }
@@ -115,17 +117,27 @@ export function RailroadPrototype({
           </Button>
         </Group>
       )}
-      {hasFilters && !isSingleFork && (
-        <Button
-          mt="xs"
-          size="compact-sm"
-          variant="subtle"
-          c="text-secondary"
-          leftSection={<Icon name="add" />}
-          onClick={(event) => open({ kind: "row" }, event.currentTarget)}
-        >
-          {t`or`}
-        </Button>
+      {hasFilters && (
+        <Group mt="xs" justify="space-between">
+          {isSingleFork ? (
+            <span />
+          ) : (
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              c="text-secondary"
+              leftSection={<Icon name="add" />}
+              onClick={(event) => open({ kind: "row" }, event.currentTarget)}
+            >
+              {t`or`}
+            </Button>
+          )}
+          <Switch
+            label={t`Row counts`}
+            checked={showCounts}
+            onChange={(event) => setShowCounts(event.currentTarget.checked)}
+          />
+        </Group>
       )}
       <Popover
         opened={picker != null}
