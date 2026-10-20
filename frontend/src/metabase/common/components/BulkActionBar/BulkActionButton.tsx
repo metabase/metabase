@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 
 import { Button, type ButtonProps } from "metabase/ui";
 
-type BulkActionButtonProps = Omit<ButtonProps, "variant"> & {
+type BulkActionButtonProps = Omit<ButtonProps, "variant" | "c"> & {
   danger?: boolean;
 };
 
