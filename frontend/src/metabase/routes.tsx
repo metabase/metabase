@@ -37,6 +37,7 @@ import {
   QuestionHashRedirect,
   loadMetabotQueryBuilder,
   loadQueryBuilder,
+  loadSummarizeSidebarPrototype,
 } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { getReferenceRoutes } from "metabase/reference/routes";
@@ -99,6 +100,11 @@ const queryBuilder = () =>
 const metabotQueryBuilder = () =>
   loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
     Component: MetabotQueryBuilder,
+  }));
+
+const summarizeSidebarPrototype = () =>
+  loadSummarizeSidebarPrototype().then(({ SummarizeSidebarPrototypePage }) => ({
+    Component: SummarizeSidebarPrototypePage,
   }));
 
 /**
@@ -520,6 +526,15 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 children: [
                   { path: ":slug", lazy: queryBuilder },
                   { path: ":tableId/detail/:rowId", lazy: tableDetailPage },
+                ],
+              },
+
+              // Throwaway design prototype for the summarize sidebar's variants
+              {
+                path: "prototypes/summarize-sidebar",
+                children: [
+                  { index: true, lazy: summarizeSidebarPrototype },
+                  { path: ":variant", lazy: summarizeSidebarPrototype },
                 ],
               },
 

@@ -58,3 +58,6 @@ export { ViewHeading } from "./components/view/ViewSection";
 export const loadQueryBuilder = () => import("./containers/QueryBuilder");
 export const loadMetabotQueryBuilder = () =>
   import("./components/MetabotQueryBuilder/MetabotQueryBuilder");
+// Throwaway design prototype: delete with `prototypes/summarize-sidebar` once a variant ships.
+export const loadSummarizeSidebarPrototype = () =>
+  import("./prototypes/summarize-sidebar");
