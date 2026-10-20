@@ -136,7 +136,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
@@ -1022,25 +1023,6 @@
                              (str/join ", " (sort outside)))
                         {:status-code 400}))))))
 
-(defn data-app-card-reader
-  "The ID of a card in the data app's collection `collection-id` that reads the card with `card-id`, if one does."
-  [collection-id card-id]
-  (when (and (some? collection-id)
-             (perms/data-app-collection? collection-id))
-    (some (fn [other]
-            (when (some #(= {:model "Card" :id card-id} (select-keys (last %) [:model :id]))
-                        (serdes/serialization-dependencies "Card" other))
-              (:id other)))
-          (queries.db/other-cards-in-collection collection-id card-id))))
-
-(defn- check-data-app-card-stays
-  "Throws when the card with `id` leaves the data app's collection `from` while another card there reads it."
-  [id from]
-  ;; the next export would write the reader into a file every pull refuses
-  (when-let [reader (data-app-card-reader from id)]
-    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t leave the collection." reader)
-                    {:status-code 400}))))
-
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-visibility-permissions! card *copy-source-card*)
@@ -1055,6 +1037,7 @@
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields
+        maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
     (check-data-app-card <>)))
@@ -1129,8 +1112,6 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
-    (when (contains? changes :collection_id)
-      (check-data-app-card-stays (:id card) (:collection_id original)))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1292,10 +1273,7 @@
                                                 ;; coerced to `{}`. See #74615.
                                                 (m/update-existing :dataset_query #(lib-be/normalize-query nil % {:strict? true})))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                             ;; 1. This function is called when storing metadata.
-                                             ;; 2. The metadata for storage shouldn't have remaps.
-                                             ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
-                                             {:query     (assoc-in (:dataset_query card-data) [:middleware :disable-remaps?] true)
+                                             {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
                                               :entity-id (:entity_id card-data)
                                               :model?    (model? card-data)})
@@ -1531,13 +1509,11 @@
                                                         :result_metadata :collection_preview :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
-      ;; Invalidate the cache for card
-      (cache/invalidate-config! {:questions [(:id card-before-update)]
-                                 :with-overrides? true})
-      ;; ok, now save the Card
       (queries.db/update-card! (:id card-before-update)
                                (m/update-existing updated-fields :dataset_query
-                                                  #(lib/normalize ::queries.schema/card.dataset-query %))))
+                                                  #(lib/normalize ::queries.schema/card.dataset-query %)))
+      (cache/invalidate-config! {:questions [(:id card-before-update)]
+                                 :with-overrides? true}))
     ;; Update all transitively dependent cards if the database was changed (#74561)
     (cascade-database-change-to-dependents! card-before-update card-updates)
     ;; ok, now update dependent dashcard parameters
@@ -1722,8 +1698,7 @@
           ;; always re-derived from public_uuid on import
           :public_uuid_prefix]
    :transform
-   {:created_at             (serdes/date)
-    ;; database_id is usually derivable from dataset_query, but must be kept when the query
+   {;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
                               {::serdes/fk true

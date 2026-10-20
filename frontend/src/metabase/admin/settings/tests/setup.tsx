@@ -10,6 +10,7 @@ import {
   setupDatabasesEndpoints,
   setupEmailEndpoints,
   setupGroupsEndpoint,
+  setupLibraryEndpoints,
   setupNotificationChannelsEndpoints,
   setupPropertiesEndpoints,
   setupSettingEndpoint,
@@ -179,6 +180,7 @@ export const setup = async ({
   });
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
+  setupLibraryEndpoints();
   fetchMock.get("path:/api/ee/remote-sync/dirty", {
     data: [],
     metadata: {

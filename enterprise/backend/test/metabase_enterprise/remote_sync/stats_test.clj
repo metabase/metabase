@@ -89,7 +89,7 @@
   (with-remote-sync
     (mt/with-temp [:model/Collection {id :id} {:is_remote_synced true}
                    :model/Dashboard  _        {:collection_id id}]
-      (is (=? {:remote-sync-content-count 3}
+      (is (=? {:remote-sync-content-count 2}
               (stats/remote-sync-stats))))))
 
 (deftest transform-counts-test

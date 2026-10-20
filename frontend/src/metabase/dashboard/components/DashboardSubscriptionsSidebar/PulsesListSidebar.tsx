@@ -14,7 +14,7 @@ import {
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
-  Button,
+  ActionIcon,
   Card,
   Flex,
   Group,
@@ -83,28 +83,26 @@ function _PulsesListSidebar({
 
         <Flex align="center">
           <Tooltip label={createSubscriptionLabel}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
               aria-label={createSubscriptionLabel}
-              leftSection={<Icon name="add" />}
               mr="1rem"
               onClick={createSubscription}
-            />
+            >
+              <Icon name="add" />
+            </ActionIcon>
           </Tooltip>
 
           <Tooltip label={closeSidebarLabel}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
               aria-label={closeSidebarLabel}
-              leftSection={<Icon name="close" />}
               onClick={onCancel}
-            />
+            >
+              <Icon name="close" />
+            </ActionIcon>
           </Tooltip>
         </Flex>
       </div>

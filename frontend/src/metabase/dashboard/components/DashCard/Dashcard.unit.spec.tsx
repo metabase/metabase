@@ -17,6 +17,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import {
@@ -216,9 +217,11 @@ describe("DashCard", () => {
     jest.useRealTimers();
   });
 
-  it("should show a dashcard title", () => {
+  it("should show a dashcard title", async () => {
     setup();
-    expect(screen.getByText("My Card")).toBeVisible();
+    expect(await screen.findByText("My Card")).toBeVisible();
+    // The visualization loads lazily, so let it finish before the test ends.
+    await waitForLoaderToBeRemoved();
   });
 
   it("should show card's description in a tooltip", async () => {

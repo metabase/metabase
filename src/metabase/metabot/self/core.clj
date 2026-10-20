@@ -5,11 +5,11 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
-   [malli.error :as me]
-   [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -71,14 +71,14 @@
    [:mistral   {:optional true} [:maybe MistralProviderMetadata]]])
 
 (def ToolEntry
-  "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
+  "One tool as the agent loop and the adapters see it, built by `metabase.metabot.tools/->entries`.
+  `:fn` performs the whole call through `metabase.metabot.tools.runtime/invoke` and never throws."
   [:map {:closed true}
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema MalliSchema]
    [:declaration {:optional true} [:maybe [:fn delay?]]]
    [:fn [:fn fn?]]
-   [:decode {:optional true} [:maybe [:fn fn?]]]
    [:prompt {:optional true} [:maybe :string]]
    [:title-fn {:optional true} [:maybe [:fn fn?]]]
    [:system-instructions {:optional true} [:maybe :string]]
@@ -94,26 +94,19 @@
    [:data      {:optional true} [:maybe ::schema.v2/tool-io]]])
 
 (def ^:private ToolResult
-  "The raw return value of a tool's `:fn`, before it is trimmed for persistence or forwarded to
-  a provider (see [[collect-tool-result]])."
-  [:or
-   :string
-   :keyword
-   number?
-   :boolean
-   :nil
-   [:map {:closed true}
-    [:output            {:optional true} [:maybe :string]]
-    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
-    [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
-    [:terminal-error?   {:optional true} :boolean]
-    [:data-parts        {:optional true} [:sequential DataPart]]
-    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
-    [:instructions      {:optional true} [:maybe :string]]
-    [:status-code       {:optional true} [:maybe :int]]
-    [:error             {:optional true} [:maybe [:map {:closed true}
-                                                  [:message {:optional true} [:maybe :string]]
-                                                  [:type    {:optional true} [:maybe :string]]]]]]])
+  "What a tool's `:fn` returns: a `metabase.metabot.tools.runtime` outcome.
+
+  A success is the handler's result. A failure carries the text the model reads in `:output` plus the
+  machine-readable `:error`, so success is the absence of `:error` and nothing has to inspect
+  `:structured-output` to tell them apart."
+  [:map {:closed true}
+   [:output            :string]
+   [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
+   [:data-parts        {:optional true} [:sequential DataPart]]
+   [:error             {:optional true} [:map {:closed true}
+                                         [:class        [:enum :validation :recoverable :unrecoverable]]
+                                         [:code         :keyword]
+                                         [:user-message {:optional true} :string]]]])
 
 (mr/def ::decoded-json
   "A value decoded from JSON with `json/decode`, with string object keys at every depth.
@@ -397,10 +390,10 @@
           (nil? arguments) nil
           :else            {::non-object-arguments arguments}))
       (catch Exception e
-        (log/warn "Failed to parse tool arguments as JSON, passing raw string"
-                  {:tool    (:toolName (first chunks))
-                   :error   (.getMessage e)
-                   :raw-len (count raw)})
+        (log/debug "Failed to parse tool arguments as JSON, passing raw string"
+                   {:tool-call-id (:toolCallId (first chunks))
+                    :error        (.getMessage e)
+                    :raw-len      (count raw)})
         ;; Return a sentinel map so the model gets a repair message from [[reject-unparsed-arguments!]]
         ;; rather than a cryptic JSON parse stacktrace.
         {::raw-arguments raw}))))
@@ -488,11 +481,11 @@
                                       :function  (:toolName chunk)
                                       :arguments (parse-tool-arguments chunks)}
                                pm (assoc :provider-metadata pm)))
+    ;; A failed call carries its `:error` inside `:result`, not on the part.
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
                             :result      (:result chunk)
-                            :error       (:error chunk)
                             :duration-ms (::duration-ms chunk)}
     ;; A group opening with a continuation chunk (:tool-input-delta, :text-delta, ...) has lost its start chunk,
     ;; and with it the data the part needs (a tool call's name), so it cannot be assembled.
@@ -589,17 +582,15 @@
 
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
-  optional `:title-fn`. Stringified JSON is coerced and the tool's `:decode` is
-  applied first, when it has one, so the title describes the arguments the tool
-  will run with. A throwing title-fn or decode leaves the part untitled."
+  optional `:title-fn`. Stringified JSON is coerced first, so the title describes the arguments the
+  tool will run with. A throwing title-fn leaves the part untitled."
   [tools]
   (map (fn [part]
-         (let [{:keys [title-fn decode]} (when (= :tool-input (:type part))
-                                           (get tools (:function part)))]
+         (let [{:keys [title-fn]} (when (= :tool-input (:type part))
+                                    (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (cond-> (walk/keywordize-keys (coerce-stringified-json (:arguments part)))
-                                       decode decode))
+                           (title-fn (walk/keywordize-keys (coerce-stringified-json (:arguments part))))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
                              nil))]
@@ -735,7 +726,7 @@
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output
-  string. The full result map (`:resources`, `:data-parts`, …) stays off the
+  string. The full result map (`:structured-output`, `:data-parts`, …) stays off the
   wire — anything the client renders arrives as its own `:data` part."
   [result]
   (cond
@@ -892,10 +883,11 @@
               :tool-output
               (rf result
                   (format-sse-event
-                   (if-let [error (:error part)]
+                   (if-let [error (get-in part [:result :error])]
                      {:type       "tool-output-error"
                       :toolCallId (:id part)
-                      :errorText  (or (:message error) (str error))}
+                      ;; Not `:output`, which is written for the model; see `step-failure-text`.
+                      :errorText  (tools.error/step-failure-text error)}
                      {:type       "tool-output-available"
                       :toolCallId (:id part)
                       :output     (tool-output->wire-output (:result part))})))
@@ -963,44 +955,6 @@
             result)
       [(assoc ids :type :tool-output-available :result result)])))
 
-(defn- concise-tool-error
-  "Produce a concise error message for the LLM from a tool execution exception.
-  For malli validation errors, extracts the humanized map and summarizes it.
-  For other errors, uses the exception message."
-  [^Exception e]
-  (let [data (ex-data e)]
-    (if-let [humanized (:humanized data)]
-      ;; Malli validation error — produce a short summary the LLM can act on
-      (str "Invalid tool arguments: " (pr-str humanized))
-      ;; Other errors
-      (or (ex-message e) "Unknown error"))))
-
-(def ^:private stringified-scalar-transformer
-  "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
-  Restricted to the types models get wrong — strings, keywords and enums are left alone."
-  (mtx/transformer
-   {:name     :llm-stringified-scalars
-    :decoders (select-keys (mtx/-string-decoders)
-                           [:int :double :float :boolean 'int? 'double? 'float? 'boolean?
-                            'integer? 'nat-int? 'neg-int? 'pos-int? 'number? 'decimal?])}))
-
-(defn- tool-args-schema
-  "The schema for a tool's argument map, from its `[:=> [:cat args] out]` schema."
-  [tool]
-  (let [[_:=> [_:cat args] _out] (:schema tool)]
-    args))
-
-(defn- coerce-stringified-scalars
-  "Coerce string tool `arguments` to the scalar types the tool's schema declares.
-  Some models send numbers as JSON strings, e.g. `{\"limit\": \"15\"}`.
-  Values that can't be parsed and tools without a usable schema are left alone."
-  [tool arguments]
-  (or (try
-        (some-> (tool-args-schema tool)
-                (mc/decode arguments stringified-scalar-transformer))
-        (catch Exception _ nil))
-      arguments))
-
 (defn- json-type-name
   [v]
   (cond
@@ -1012,76 +966,40 @@
     (sequential? v) "an array"
     :else           "an unsupported value"))
 
-(defn- argument-error-text
-  [arguments field messages]
-  (let [texts (->> (tree-seq coll? seq messages) (filter string?) distinct vec)]
-    (condp = texts
-      ["disallowed key"]       (str "`" (name field) "` is not a supported argument.")
-      ["missing required key"] (str "`" (name field) "` is required.")
-      (str "`" (name field) "` " (str/join "; " texts)
-           (when (every? string? messages)
-             (str "; received " (json-type-name (get arguments field))))
-           "."))))
-
 (defn- non-object-arguments-message
   "The error for tool `arguments` that are not a JSON object, e.g. `[\"orders\"]`."
   [arguments]
   (str "Invalid tool arguments: expected an object of named arguments; received " (json-type-name arguments) "."))
 
-(defn- invalid-arguments-message
-  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
-  [schema arguments]
-  (when-let [error (mr/explain schema arguments)]
-    (let [humanized (me/humanize error)]
-      (if (map? humanized)
-        (str "Invalid tool arguments: "
-             (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
-                             (argument-error-text arguments field messages))))
-        ;; The error isn't per-field. Today that only happens when a tool's own `:decode` returns a non-map: a
-        ;; JSON array the model sent is rejected earlier by [[reject-unparsed-arguments!]].
-        (non-object-arguments-message arguments)))))
+(defn- unparsed-arguments-outcome
+  "The validation outcome for `arguments` that came off the stream as a [[parse-tool-arguments]]
+  sentinel rather than a JSON object, or nil when they parsed.
 
-(defn- reject-unparsed-arguments!
-  "Throw an agent error when `arguments` is a [[parse-tool-arguments]] sentinel rather than a JSON object."
+  Diagnosed here and not in `metabase.metabot.tools.runtime`, which otherwise owns every argument
+  check: the sentinel is an artifact of reading the stream, which is this namespace's job and
+  something the runtime never sees. The runtime's question is whether a parsed object matches the
+  tool's schema.
+
+  Returns an outcome rather than throwing so the class stays `:validation` — the model can repair
+  this by resending the call — instead of landing in `run-tool`'s catch as an `:internal` fault."
   [arguments]
   (when-let [unparsed (unparsed-arguments arguments)]
     (if (contains? unparsed :raw-arguments)
-      (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
-                      {:agent-error? true}))
-      (throw (ex-info (non-object-arguments-message (:non-object-arguments unparsed))
-                      {:agent-error? true})))))
-
-(defn- validate-tool-arguments!
-  [tool arguments]
-  (when-let [schema (tool-args-schema tool)]
-    (when-let [message (invalid-arguments-message schema arguments)]
-      (throw (ex-info message {:agent-error? true})))))
-
-(defn- tool-decode-fn
-  "Extract the `:decode` function from a tool definition map.
-  The decode function transforms tool arguments before the tool runs.
-  Returns `nil` if the tool has no decoder."
-  [tool]
-  (:decode tool))
-
-(defn- tool-call-fn
-  "Extract the callable function from a tool definition map."
-  [tool]
-  (:fn tool))
+      {:output "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+       :error  {:class :validation :code :invalid-json}}
+      {:output (non-object-arguments-message (:non-object-arguments unparsed))
+       :error  {:class :validation :code :invalid-arguments}})))
 
 (defn- run-tool
-  "Execute a tool and return output chunks. Handles errors gracefully.
+  "Execute a tool and return output chunks.
 
-  If the tool has a `:decode` metadata function, it is applied to the parsed
-  arguments before invocation. The decode function can coerce values and throw
-  `:agent-error?` exceptions for validation failures.
+  Everything about the call itself belongs to `metabase.metabot.tools.runtime/invoke`, which an
+  entry's `:fn` reaches: argument coercion, argument validation against the tool's schema, the scope
+  check, the call, the result check, and turning any failure into text for the right audience. It
+  does not throw, so a `tool_use` always gets a `tool_result`.
 
-  The arguments are then checked against the tool's declared schema in every
-  environment — `mu/defn` only instruments dev and test namespaces — and a
-  mismatch is returned to the model as a repair-oriented error.
-
-  A call to a tool outside `tools` gets an error listing the ones it can call. Its name is model output,
-  so logs and span data record it as \"unknown\".
+  A call to a tool outside `tools` gets an error listing the ones it can call. Its name is model
+  output, so logs and span data record it as \"unknown\".
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tools chunks]
@@ -1097,42 +1015,38 @@
                          (fn [chunk]
                            (cond-> chunk
                              (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-              results  (try
-                         (when-not tool
-                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
-                                                (str/join ", " (sort (keys tools))) ".")
-                                           {:agent-error? true})))
-                         (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                               ;; Before coercion: `coerce-stringified-json` would decode a double-encoded
-                               ;; `{::non-object-arguments "{...}"}` into an object and garble the message.
-                               _         (reject-unparsed-arguments! arguments)
-                               arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
-                               arguments (coerce-stringified-scalars tool arguments)
-                               decode    (tool-decode-fn tool)
-                               arguments (cond-> arguments decode decode)
-                               _         (validate-tool-arguments! tool arguments)]
-                           (log/debug "Executing tool" {:tool-name safe-name})
-                           (when (ait/capture-active?)
-                             (ait/record! {:ai/tool-args arguments}))
-                           (let [tool-fn (tool-call-fn tool)
-                                 result  (tool-fn arguments)]
-                             (log/debug "Tool returned" {:tool-name safe-name :result-type (type result)})
-                             (collect-tool-result tool-call-id tool-name result)))
-                         (catch Exception e
-                           (cond
-                             (nil? tool)
-                             (log/debugf "Tool call %s: unknown tool" tool-call-id)
-
-                             (:agent-error? (ex-data e))
-                             (log/debugf "Tool %s: agent validation error: %s" safe-name (ex-message e))
-
-                             :else
-                             (log/error e "Tool execution failed" {:tool-name safe-name}))
-                           [{:type         :tool-output-available
-                             :toolCallId   tool-call-id
-                             :toolName     tool-name
-                             :error        {:message (concise-tool-error e)
-                                            :type    (str (type e))}}]))]
+              outcome  (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             raw                 (::raw-arguments arguments)]
+                         ;; Valid JSON can set `::raw-arguments` too, to a value that isn't a string.
+                         (when (string? raw)
+                           (log/warn "Failed to parse tool arguments as JSON"
+                                     {:tool-name    safe-name
+                                      :tool-call-id tool-call-id
+                                      :raw-len      (count raw)}))
+                         (if-not tool
+                           (do (log/debugf "Tool call %s: unknown tool" tool-call-id)
+                               (tools.runtime/unknown-tool-outcome tool-name (keys tools)))
+                           ;; Checked before coercion: `coerce-stringified-json` would decode a
+                           ;; double-encoded `{::non-object-arguments "{…}"}` into an object and
+                           ;; garble the message.
+                           (or
+                            (unparsed-arguments-outcome arguments)
+                            (let [arguments (walk/keywordize-keys
+                                             (or (coerce-stringified-json arguments) {}))]
+                              (log/debug "Executing tool" {:tool-name safe-name})
+                              (when (ait/capture-active?)
+                                (ait/record! {:ai/tool-args arguments}))
+                              (try
+                                ((:fn tool) arguments)
+                                (catch Throwable e
+                                  ;; `invoke` does not throw. If something gets past it, pairing the
+                                  ;; call with a result still matters more than the diagnosis, so
+                                  ;; log and report the same shape a server fault reports.
+                                  (log/error e "Tool invocation escaped the runtime"
+                                             {:tool-name safe-name})
+                                  {:output "This call failed and the user was shown the error (:internal). Don't retry it."
+                                   :error  {:class :unrecoverable :code :internal}}))))))
+              results  (collect-tool-result tool-call-id tool-name outcome)]
           (when (ait/capture-active?)
             (ait/record! {:ai/tool-output results}))
           (mapv (assoc-ms (u/since-ms start-ms))
@@ -1182,12 +1096,14 @@
                    (vswap! active assoc toolCallId {:task task})))
 
                :error
-               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+               (let [cut-off (u/for-map [[id {:keys [task chunks]}] @active
+                                         :when (not task)
+                                         :let  [tool-name (:toolName (first chunks))]]
+                               [id (if (contains? tools tool-name) tool-name "unknown")])]
                  (vreset! errored? true)
                  (when (seq cut-off)
-                   (log/warn "Dropping tool calls that a stream error cut off"
-                             {:tool-calls (into {} (map (juxt identity #(get-in @active [% :chunks 0 :toolName]))) cut-off)})
-                   (vswap! active #(apply dissoc % cut-off))))
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % (keys cut-off)))))
 
                ;; otherwise: do nothing
                nil)

@@ -405,6 +405,10 @@ export function dataStudioActionFields(
     : fieldsUrl;
 }
 
+export function dataStudioActionDependencies(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/dependencies`;
+}
+
 export function dataStudioActionRun(actionId: WritebackActionId) {
   return `${dataStudioAction(actionId)}/run`;
 }

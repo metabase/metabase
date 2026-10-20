@@ -45,7 +45,6 @@
  [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
-  check-allowed-to-delete-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
   check-card-can-be-saved!
@@ -66,7 +65,6 @@
   update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
-  infer-metadata
   infer-metadata-with-model-overrides
   maybe-async-result-metadata
   refresh-metadata

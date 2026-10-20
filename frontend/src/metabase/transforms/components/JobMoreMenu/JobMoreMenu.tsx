@@ -66,7 +66,7 @@ function JobMenu({
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon onClick={handleIconClick}>
+        <ActionIcon variant="subtle" onClick={handleIconClick}>
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
