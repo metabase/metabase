@@ -61,7 +61,7 @@ export const LIVE_FILTER_PREVIEW_ONION_SKIN: SegmentedPrototypeSetting = {
   key: "live-filter-preview-onion-skin-style",
   label: "Onion skin",
   description:
-    "Compare the preview with the current result. Ghost: a grey copy of the current result behind the preview, on bar, line, area, combo and scatter charts. Difference: the increase and decrease stacked on the lower value, on bar, row and line charts with one series. Line charts become area charts.",
+    "Compare the preview with the current result. Ghost: a grey copy of the current result behind the preview, on bar, row, line, area and combo charts. Difference: the increase and decrease stacked on the lower value, on bar, row and line charts with one series. Line charts become area charts.",
   options: [
     { value: "off", label: "Off" },
     { value: "ghost", label: "Ghost" },

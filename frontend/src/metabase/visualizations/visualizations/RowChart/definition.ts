@@ -110,8 +110,10 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
       },
     }));
 
+    // Prototype: keep the other combined cards (the onion skin of the live
+    // filter preview), or their series get no settings, such as colors.
     return transformedSeries.length > 0
-      ? transformedSeries
+      ? [...transformedSeries, ...originalMultipleSeries.slice(1)]
       : originalMultipleSeries;
   },
   checkRenderable: (series: any[], settings: VisualizationSettings) => {

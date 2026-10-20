@@ -551,13 +551,7 @@ function usePreviewSeries(
   };
 }
 
-const ONION_SKIN_DISPLAYS = new Set([
-  "bar",
-  "line",
-  "area",
-  "combo",
-  "scatter",
-]);
+const ONION_SKIN_DISPLAYS = new Set(["bar", "row", "line", "area", "combo"]);
 
 /**
  * Adds `ghostSeries` behind `series` as a second, grey series of the same
@@ -606,6 +600,8 @@ function withOnionSkin(series: RawSeries, ghostSeries: RawSeries): RawSeries {
         name: t`Before`,
         visualization_settings: {
           ...settings,
+          // Bars of the preview cover most of the ghost bars behind them.
+          "graph.bar_overlap": 0.8,
           series_settings: {
             ...settings.series_settings,
             [ghostKey]: {
@@ -614,6 +610,7 @@ function withOnionSkin(series: RawSeries, ghostSeries: RawSeries): RawSeries {
               // Solid grey: chart series colours do not support transparency.
               color: staticVizOverrides["text-disabled"],
               "line.style": "dashed",
+              "bar.behind": true,
             },
             [previewName]: { color: previewColor },
           },

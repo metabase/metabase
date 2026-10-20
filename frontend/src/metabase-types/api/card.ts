@@ -162,6 +162,8 @@ export type SeriesSettings = {
   "line.missing"?: string;
   /** Prototype: draw only the area of an area series, without its line and markers. */
   "line.hidden"?: boolean;
+  /** Prototype: draw the bars of this series half-transparent, behind the bars of other series. */
+  "bar.behind"?: boolean;
   show_series_trendline?: boolean;
   "trendline.color"?: string;
   "trendline.style"?: LineStyle;
@@ -329,6 +331,9 @@ export type VisualizationSettings = {
 
   /** Stack compatible series as `stacked` or `normalized`; `null` disables stacking. */
   "stackable.stack_type"?: StackType;
+
+  /** Prototype: how much neighbouring bars of different series overlap, from 0 to 1 of a bar's width. */
+  "graph.bar_overlap"?: number;
 
   /** Show aggregate labels for stacked chart segments. */
   "graph.show_stack_values"?: StackValuesDisplay;
