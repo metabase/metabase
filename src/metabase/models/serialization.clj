@@ -1177,13 +1177,49 @@
     [:measure opts id]
     [:measure (export-mbql-map opts) id]))
 
+(defn card-template-tag-export-rename
+  "Exported name for a card template tag whose `#<id>-slug` name embeds a local card id: the id is swapped for the
+  `entity_id` of the tag's card, the slug is kept verbatim. Nil when the name doesn't embed an id."
+  [{tag-type :type, :keys [card-id], tag-name :name}]
+  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
+    (when-let [[_ _embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+      (when-let [card-entity-id (fk-elide (*export-fk* card-id :model/Card))]
+        (str "#" card-entity-id suffix)))))
+
+(defn card-template-tag-rename
+  "New name for a card template tag whose name embeds the `entity_id` of its (already remapped) `:card-id`, or a
+  different id: the embedded value is swapped for the id, the slug is kept verbatim. Nil when they already agree or
+  the name doesn't embed an id."
+  [{tag-type :type, :keys [card-id], tag-name :name}]
+  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
+    (let [entity-id-prefix (some->> (fk-elide (*export-fk* card-id :model/Card)) (str "#"))
+          entity-id-suffix (when (and entity-id-prefix (str/starts-with? tag-name entity-id-prefix))
+                             (subs tag-name (count entity-id-prefix)))]
+      (if (and entity-id-suffix (or (= "" entity-id-suffix) (str/starts-with? entity-id-suffix "-")))
+        (str "#" card-id entity-id-suffix)
+        (when-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+          (when (not= (parse-long embedded-id) card-id)
+            (str "#" card-id suffix)))))))
+
+(defn- export-card-template-tag-names
+  "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced card's local id, so
+  swap it for the card's `entity_id`, which [[repair-card-template-tag-names]] swaps back on import."
+  [query]
+  (lib/replace-template-tag-names
+   query
+   (into {}
+         (keep (fn [{tag-name :name, :as tag}]
+                 (when-let [new-name (card-template-tag-export-rename tag)]
+                   [tag-name new-name])))
+         (lib/all-template-tags query))))
+
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [x]
   (let [x (cond-> x
             (and (map? x) (= :mbql/query (:lib/type x)))
-            lib/prepare-for-serialization)]
+            (-> export-card-template-tag-names lib/prepare-for-serialization))]
     ;; if required UUIDs are already calculated don't recalculate when we recurse.
     (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
       (cond
@@ -1313,16 +1349,6 @@
   (-> x
       import-mbql-update-refs
       import-mbql-update-maps))
-
-(defn card-template-tag-rename
-  "New name for a card template tag whose `#<id>-slug` name embeds a different id than its (already
-  remapped) `:card-id`: the id is swapped, the slug is kept verbatim. Nil when they already agree or
-  the name doesn't embed an id."
-  [{tag-type :type, :keys [card-id], tag-name :name}]
-  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
-    (when-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
-      (when (not= (parse-long embedded-id) card-id)
-        (str "#" card-id suffix)))))
 
 (defn- repair-card-template-tag-names
   "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced

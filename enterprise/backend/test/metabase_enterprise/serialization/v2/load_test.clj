@@ -3,7 +3,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -1843,7 +1845,14 @@
             (reset! target1s target)
             (reset! target-eid (:entity_id target))
             (reset! native-eid "nativecardtagseid0001")
-            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))
+            (testing "the export names the referenced card by its entity_id, not its local id"
+              (let [exported-name (str "#" (:entity_id target) "-bh-population-model")]
+                (is (=? {:dataset_query {:stages [{:native        (format "SELECT * FROM {{%s}}" exported-name)
+                                                   :template-tags [{:name         exported-name
+                                                                    :display-name (u.humanization/name->human-readable-name
+                                                                                   :simple exported-name)}]}]}}
+                        (m/find-first #(= "nativecardtagseid0001" (:entity_id %)) @serialized)))))))
         (ts/with-db dest-db
           ;; pre-create some cards so the referenced card can't land on its source id
           (let [db    (ts/create! :model/Database :name "other-db")
@@ -1875,6 +1884,13 @@
                     (-> query :stages first :template-tags)))
             (testing "re-importing over the existing card (the update path) repairs the same way"
               (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+              (is (= query (stored-query))))
+            (testing "an export that names the referenced card by its source id loads the same way"
+              (serdes.load/load-metabase!
+               (ts/ingestion-in-memory (walk/postwalk #(cond-> %
+                                                         (string? %) (str/replace (str "#" @target-eid)
+                                                                                  (str "#" (:id @target1s))))
+                                                      @serialized)))
               (is (= query (stored-query))))))))))
 
 (deftest load-action-test

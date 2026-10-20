@@ -197,18 +197,32 @@
                             (some->> (serdes/card-template-tag-rename tag) (vector tag-name))))
                     tags)}))
 
+(defn- export-renames
+  "The renames of the card tags in `template-tags` whose `#<id>-slug` name embeds this instance's card id."
+  [template-tags]
+  (into {}
+        (keep (fn [[tag-name tag]]
+                (some->> (serdes/card-template-tag-export-rename tag) (vector tag-name))))
+        template-tags))
+
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :description :entity_id :name]
    :skip      []
    :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               :content       {:export identity
+               :content       {:export-with-context
+                               (fn [current _ content]
+                                 (let [renames (export-renames (:template_tags current))]
+                                   (cond-> content
+                                     (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames))))
                                :import-with-context
                                (fn [current _ content]
                                  (let [{:keys [renames]} (import-template-tags (:template_tags current))]
                                    (cond-> content
                                      (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames))))}
-               :template_tags {:export serdes/export-mbql
+               :template_tags {:export (fn [template-tags]
+                                         (serdes/export-mbql
+                                          (some-> template-tags (lib/rename-template-tags (export-renames template-tags)))))
                                :import (fn [template-tags]
                                          (let [{:keys [tags renames]} (import-template-tags template-tags)]
                                            (some-> tags (lib/rename-template-tags renames))))}}
