@@ -24,11 +24,11 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
 
-    H.sharingMenuButton().should("not.exist");
-
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
     });
+
+    H.sharingMenuButton().should("not.exist");
   });
 
   context("embedding disabled", () => {
@@ -108,9 +108,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
               ? "Results (csv, xlsx, json, png)"
               : "Download (csv, xlsx, json, png)",
           ).should("not.exist");
-          cy.findByRole("button", { name: "Export as PDF" }).should(
-            "not.exist",
-          );
+          if (object === "dashboard") {
+            cy.findByLabelText("Export to PDF").should("not.exist");
+          }
 
           cy.findByRole("tab", { name: "Parameters" }).click();
 
@@ -183,9 +183,18 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           "Embedding is not enabled for this object.",
         );
 
+        cy.intercept("GET", "/api/card/embeddable").as("embeddableCards");
+        cy.intercept("GET", "/api/dashboard/embeddable").as(
+          "embeddableDashboards",
+        );
         cy.signInAsAdmin();
         cy.visit(standalonePath);
-        cy.wait("@currentlyEmbeddedObject");
+        cy.wait(["@embeddableCards", "@embeddableDashboards"]).each(
+          (interception) => {
+            expect(interception.response.body).to.have.length(0);
+          },
+        );
+        cy.findByTestId("embedding-secret-key-setting").should("be.visible");
 
         // The hub's Security tab renders this section only when published
         // guest embeds exist, so unpublishing empties it rather than
