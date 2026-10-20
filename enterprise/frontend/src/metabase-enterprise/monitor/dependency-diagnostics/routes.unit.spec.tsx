@@ -177,7 +177,7 @@ describe("dependency diagnostics section counts", () => {
     expect(getCountCalls()).toHaveLength(1);
   });
 
-  it("keeps filtered and paginated lists independent of default counts", async () => {
+  it("counts the default lists, independent of the filtered and paginated list", async () => {
     setup({
       nodes: [
         createMockCardDependencyNode({
@@ -198,7 +198,22 @@ describe("dependency diagnostics section counts", () => {
     ).toBeVisible();
     const calls = getCountCalls();
     expect(calls).toHaveLength(1);
-    expect(new URL(calls[0].url).search).toBe("");
+    const countParams = new URL(calls[0].url).searchParams;
+    expect(
+      Object.fromEntries(
+        [...new Set(countParams.keys())].map((key) => [
+          key,
+          countParams.getAll(key),
+        ]),
+      ),
+    ).toEqual({
+      "breaking-types": ["table", "card", "transform"],
+      "breaking-card-types": ["question", "model"],
+      "breaking-include-personal-collections": ["true"],
+      "unreferenced-types": ["table", "card", "segment", "measure", "snippet"],
+      "unreferenced-card-types": ["question", "model", "metric"],
+      "unreferenced-include-personal-collections": ["true"],
+    });
     const listCalls = fetchMock.callHistory.calls(
       "path:/api/ee/dependencies/graph/breaking",
     );

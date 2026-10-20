@@ -13,16 +13,11 @@ import {
   useLazyListBreakingGraphNodesQuery,
   useLazyListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
-import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "metabase-enterprise/dependencies/constants";
 import type {
   DependencyFilterOptions,
   DependencySortOptions,
 } from "metabase-enterprise/dependencies/types";
-import {
-  getCardTypes,
-  getDependencyTypes,
-  isSameNode,
-} from "metabase-enterprise/dependencies/utils";
+import { isSameNode } from "metabase-enterprise/dependencies/utils";
 import type { DependencyEntry } from "metabase-types/api";
 
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
@@ -35,8 +30,8 @@ import type {
   DependencyDiagnosticsParamsOptions,
 } from "./types";
 import {
-  getAvailableGroupTypes,
   getFilterOptions,
+  getListFilterParams,
   getParamsWithoutDefaults,
   getSortOptions,
 } from "./utils";
@@ -65,14 +60,7 @@ export function DependencyDiagnostics({
       ? useLazyListBreakingGraphNodesQuery
       : useLazyListUnreferencedGraphNodesQuery;
 
-  const {
-    page = 0,
-    query,
-    groupTypes = getAvailableGroupTypes(mode),
-    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-    sortColumn,
-    sortDirection,
-  } = params;
+  const { page = 0, query, sortColumn, sortDirection } = params;
 
   const {
     data,
@@ -82,10 +70,8 @@ export function DependencyDiagnostics({
   } = useAbortableQuery(
     useLazyListGraphNodesQuery,
     {
-      types: getDependencyTypes(groupTypes),
-      "card-types": getCardTypes(groupTypes),
+      ...getListFilterParams(getFilterOptions(mode, params)),
       query,
-      "include-personal-collections": includePersonalCollections,
       "sort-column": sortColumn,
       "sort-direction": sortDirection,
       offset: page * PAGE_SIZE,

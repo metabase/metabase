@@ -2829,15 +2829,37 @@
     (mt/with-premium-features #{}
       (is (some? (mt/user-http-request :crowberto :get 402 "ee/dependencies/counts"))))))
 
+(def ^:private monitor-list-params
+  "The params the Monitor's Broken and Unreferenced tables send by default."
+  {:breaking     {:types                        ["table" "card" "transform"]
+                  :card-types                   ["question" "model"]
+                  :include-personal-collections true}
+   :unreferenced {:types                        ["table" "card" "segment" "measure" "snippet"]
+                  :card-types                   ["question" "model" "metric"]
+                  :include-personal-collections true}})
+
+(defn- list-total
+  "The `total` of the `query-type` list endpoint for `list-params`, plus any extra `params`."
+  [user query-type list-params & params]
+  (:total (apply mt/user-http-request user :get 200 (str "ee/dependencies/graph/" (name query-type))
+                 (concat (mapcat identity list-params) params))))
+
 (defn- default-dependency-list-total
   [user query-type & params]
-  (let [{:keys [types card-types include-personal-collections]}
-        (get @#'deps.api/monitor-default-params query-type)]
-    (:total (apply mt/user-http-request user :get 200 (str "ee/dependencies/graph/" (name query-type))
-                   :include-personal-collections include-personal-collections
-                   :types (mapv name types)
-                   :card-types (mapv name card-types)
-                   params))))
+  (apply list-total user query-type (monitor-list-params query-type) params))
+
+(defn- counts
+  "`/counts` for `list-params-by-type`, sending each list's params prefixed with its query type."
+  [user list-params-by-type]
+  (apply mt/user-http-request user :get 200 "ee/dependencies/counts"
+         (for [[query-type list-params] list-params-by-type
+               [k v] list-params
+               x [(keyword (str (name query-type) "-" (name k))) v]]
+           x)))
+
+(defn- monitor-counts
+  [user]
+  (counts user monitor-list-params))
 
 (deftest ^:synchronized counts-unreferenced-test
   (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
@@ -2861,12 +2883,33 @@
                      :model/Dashboard _ {:collection_id personal-child-id}]
         (testing "Counts include the UI's default entity types and personal items, but not archived items"
           (is (= (+ baseline 6)
-                 (:unreferenced (mt/user-http-request :crowberto :get 200 "ee/dependencies/counts")))))
-        (testing "Optional table filters and pagination do not change the badge population"
-          (is (= (+ baseline 6)
-                 (:unreferenced (mt/user-http-request :crowberto :get 200 "ee/dependencies/counts"
-                                                      :types "card" :query "no-matching-name"
-                                                      :include-personal-collections true :limit 1 :offset 1)))))))))
+                 (:unreferenced (monitor-counts :crowberto)))))))))
+
+(deftest ^:synchronized counts-params-test
+  (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
+    (let [cases [[{:types ["card"] :card-types ["question"]} 1]
+                 [{:types ["table"]} 1]
+                 [{:types ["card"] :include-personal-collections true} 3]
+                 [{:types ["card"] :include-personal-collections false} 2]]
+          baseline-breaking (list-total :crowberto :breaking (monitor-list-params :breaking))
+          baselines (mapv #(list-total :crowberto :unreferenced (first %)) cases)
+          baseline-defaults {:breaking     (list-total :crowberto :breaking {})
+                             :unreferenced (list-total :crowberto :unreferenced {})}]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Card _ {:type :question}
+                     :model/Card _ {:type :model}
+                     :model/Table _ {}
+                     :model/Card _ {:type :question :collection_id (personal-collection-id user-id)}]
+        (testing "Each list is counted with its own prefixed params"
+          (doseq [[[unreferenced-params increment] baseline] (map vector cases baselines)]
+            (testing (pr-str unreferenced-params)
+              (is (= {:breaking baseline-breaking :unreferenced (+ baseline increment)}
+                     (counts :crowberto {:breaking     (monitor-list-params :breaking)
+                                         :unreferenced unreferenced-params}))))))
+        (testing "Omitted params use the list endpoints' defaults: all unreferenced types, no personal items"
+          (is (= {:breaking     (:breaking baseline-defaults)
+                  :unreferenced (+ (:unreferenced baseline-defaults) 3)}
+                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/counts"))))))))
 
 (deftest ^:synchronized counts-breaking-sources-test
   (mt/with-premium-features #{:dependencies}
@@ -2905,7 +2948,7 @@
                                                     :error_type :missing-column}]
         (testing "Counts sources, including personal and archived sources still causing errors"
           (is (= (+ baseline 3)
-                 (:breaking (mt/user-http-request :crowberto :get 200 "ee/dependencies/counts")))))
+                 (:breaking (monitor-counts :crowberto)))))
         (testing "The count agrees with the default table total, including when the table is paginated"
           (is (= (+ baseline 3)
                  (default-dependency-list-total :crowberto :breaking :limit 1))))))))
@@ -2928,7 +2971,7 @@
             (is (= (+ baseline increment)
                    (default-dependency-list-total :crowberto :unreferenced :limit 1)))
             (is (= (+ baseline increment)
-                   (:unreferenced (mt/user-http-request :crowberto :get 200 "ee/dependencies/counts"))))))))))
+                   (:unreferenced (monitor-counts :crowberto))))))))))
 
 (deftest ^:synchronized counts-breaking-default-types-test
   (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
@@ -2951,7 +2994,7 @@
             (is (= (+ baseline increment)
                    (default-dependency-list-total :crowberto :breaking :limit 1)))
             (is (= (+ baseline increment)
-                   (:breaking (mt/user-http-request :crowberto :get 200 "ee/dependencies/counts"))))))))))
+                   (:breaking (monitor-counts :crowberto))))))))))
 
 (deftest ^:synchronized counts-visibility-test
   (mt/with-premium-features #{:dependencies}
@@ -2974,12 +3017,12 @@
           (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
           (testing "Non-admin counts are restricted to readable sources and items"
             (is (= {:breaking (inc baseline-breaking) :unreferenced (+ baseline-unreferenced 2)}
-                   (mt/user-http-request :rasta :get 200 "ee/dependencies/counts"))))
+                   (monitor-counts :rasta))))
           (perms/revoke-collection-permissions! (perms/all-users-group) visible-collection)
           (perms/grant-collection-read-permissions! (perms/all-users-group) hidden-collection)
           (testing "A readable source is not breaking if its only broken dependent is unreadable"
             (is (= {:breaking baseline-breaking :unreferenced (inc baseline-unreferenced)}
-                   (mt/user-http-request :rasta :get 200 "ee/dependencies/counts")))))))))
+                   (monitor-counts :rasta)))))))))
 
 (deftest data-analyst-can-access-dependency-graph-test
   (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}

@@ -3,7 +3,6 @@ import type {
   DependencySortColumn,
 } from "metabase-types/api";
 
-// Keep in sync with `monitor-default-params` in enterprise/backend/src/metabase_enterprise/dependencies/api.clj.
 export const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
   "table",
   "question",
@@ -26,7 +25,6 @@ export const BROKEN_DEPENDENTS_SORT_COLUMNS: DependencySortColumn[] = [
   "view-count",
 ];
 
-// Keep in sync with `monitor-default-params` in enterprise/backend/src/metabase_enterprise/dependencies/api.clj.
 export const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
   "table",
   "question",

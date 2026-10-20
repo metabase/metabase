@@ -611,14 +611,20 @@
   "Valid sort columns for /graph/broken and /graph/unreferenced endpoints."
   #{:name :location :dependents-with-errors :dependents-errors})
 
+(def ^:private types-arg
+  [:or
+   ::deps.dependency-types/dependency-types
+   [:sequential ::deps.dependency-types/dependency-types]])
+
+(def ^:private card-types-arg
+  [:or
+   (ms/enum-decode-keyword lib.schema.metadata/card-types)
+   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]])
+
 (def ^:private dependency-items-args
   [:map {:closed true}
-   [:types {:optional true} [:or
-                             ::deps.dependency-types/dependency-types
-                             [:sequential ::deps.dependency-types/dependency-types]]]
-   [:card-types {:optional true} [:or
-                                  (ms/enum-decode-keyword lib.schema.metadata/card-types)
-                                  [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
+   [:types {:optional true} types-arg]
+   [:card-types {:optional true} card-types-arg]
    [:query {:optional true} :string]
    [:include-personal-collections {:optional true} :boolean]
    [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
@@ -654,26 +660,51 @@
   (dependencies.db/dependency-item-ids
    (assoc item-params :sort-direction sort-direction :offset offset :limit limit)))
 
-;; The types mirror BROKEN_GROUP_TYPES and UNREFERENCED_GROUP_TYPES in
-;; enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/constants.ts.
-(def ^:private monitor-default-params
-  "Query params for the Monitor's default Broken and Unreferenced tables, including personal collections."
-  {:breaking     {:types                        [:table :card :transform]
-                  :card-types                   [:question :model]
-                  :include-personal-collections true}
-   :unreferenced {:types                        [:table :card :segment :measure :snippet]
-                  :card-types                   [:question :model :metric]
-                  :include-personal-collections true}})
+(def ^:private counted-list-args
+  "The list args `/counts` accepts for each list, prefixed with the list's query type."
+  {:types                        types-arg
+   :card-types                   card-types-arg
+   :include-personal-collections :boolean})
+
+(mu/defn- counts-arg-key :- :keyword
+  "The `/counts` param naming `query-type`'s list `arg`, e.g. `:breaking-types`."
+  [query-type :- [:enum :breaking :unreferenced]
+   arg        :- :keyword]
+  (keyword (str (name query-type) "-" (name arg))))
+
+(def ^:private counts-args
+  (into [:map {:closed true}]
+        (for [query-type [:breaking :unreferenced]
+              [arg schema] counted-list-args]
+          [(counts-arg-key query-type arg) {:optional true} schema])))
+
+(mu/defn- counted-list-params :- dependency-items-args
+  "The `query-type` list's args among the prefixed `/counts` `params`."
+  [query-type :- [:enum :breaking :unreferenced]
+   params     :- [:maybe counts-args]]
+  (into {}
+        (keep (fn [arg]
+                (let [value (get params (counts-arg-key query-type arg))]
+                  (when (some? value)
+                    [arg value]))))
+        (keys counted-list-args)))
 
 (api.macros/defendpoint :get "/counts" :- [:map {:closed true}
                                            [:breaking nat-int?]
                                            [:unreferenced nat-int?]]
-  "Returns row counts for the Monitor's default Broken and Unreferenced tables, including personal collections."
-  [_route-params _query-params _body _request]
+  "Returns the `total` of the `/graph/breaking` and `/graph/unreferenced` lists in one request.
+
+   Accepts each list's `types`, `card-types`, and `include-personal-collections` params, prefixed with the list's
+   name (e.g. `breaking-types`, `unreferenced-include-personal-collections`). Omitted params use the list's
+   defaults."
+  [_route-params
+   params :- counts-args
+   _body _request]
   (into {}
-        (map (fn [[query-type params]]
-               [query-type (dependencies.db/dependency-item-count (dependency-item-params query-type params))]))
-        monitor-default-params))
+        (map (fn [query-type]
+               [query-type (dependencies.db/dependency-item-count
+                            (dependency-item-params query-type (counted-list-params query-type params)))]))
+        [:breaking :unreferenced]))
 
 (def ^:private dependency-items-response
   [:map

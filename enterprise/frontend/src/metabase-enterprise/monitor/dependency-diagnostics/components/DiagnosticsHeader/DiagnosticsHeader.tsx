@@ -11,8 +11,12 @@ import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useGetDependencyCountsQuery } from "metabase-enterprise/api/dependencies";
 
+import { getDependencyCountsRequest } from "../utils";
+
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
-  const { currentData: counts, isError } = useGetDependencyCountsQuery();
+  const { currentData: counts, isError } = useGetDependencyCountsQuery(
+    getDependencyCountsRequest(),
+  );
   const tabs: PillTab[] = [
     {
       label: t`Broken dependencies`,
