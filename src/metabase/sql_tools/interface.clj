@@ -6,10 +6,13 @@
    `:sqlglot-java` through [[backend-hierarchy]].")
 
 (def backend-hierarchy
-  "The hierarchy every sql-tools multimethod dispatches in. `:sqlglot-java` derives from `:sqlglot`, so the Java
-  backend runs the `:sqlglot` methods; those pick the parser from the dispatch value they receive. A custom hierarchy,
-  since the global one only accepts namespaced keywords."
-  (derive (make-hierarchy) :sqlglot-java :sqlglot))
+  "The hierarchy every sql-tools multimethod dispatches in. `:sqlglot-java` and the two shadow backends derive from
+  `:sqlglot`, so they run the `:sqlglot` methods; those pick the parser from the dispatch value they receive. A custom
+  hierarchy, since the global one only accepts namespaced keywords."
+  (-> (make-hierarchy)
+      (derive :sqlglot-java :sqlglot)
+      (derive :sqlglot-shadow :sqlglot)
+      (derive :sqlglot-java-shadow :sqlglot)))
 
 (defn parser-driver-dispatch
   "Dispatch function for sql-tools multimethods. Returns the parser keyword (e.g. :macaw, :sqlglot)."

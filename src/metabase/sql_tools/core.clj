@@ -238,7 +238,7 @@
   they use GraalPy."
   []
   (let [backend (sql-tools.settings/current-parser-backend)]
-    (sql-parsing/parser (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot))))
+    (sqlglot/parser (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot))))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
