@@ -133,8 +133,6 @@ const initializeFromState = async (
   const referencedCardIds = columnRefs.map(
     (ref) => parseDataSourceId(ref.sourceId).sourceId,
   );
-  // A card whose columns can't be auto-mapped (e.g. a bar chart over a raw table)
-  // must still be loaded as a data source so the user can pick columns by hand
   const preloadedCardIds = Object.keys(
     initialState.preloadedDatasets ?? {},
   ).map(Number);
