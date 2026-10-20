@@ -8,7 +8,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -189,63 +188,30 @@
               :where    [:and [:= :s.run_id run-id] [:= :s.table_id table-id]]
               :order-by [[:f.position :asc] [:f.id :asc] [:s.attribute :asc]]}))
 
-(mr/def ::selection
-  [:map {:closed true}
-   [:suggestion-ids {:optional true} [:sequential {:min 1} ms/PositiveInt]]
-   [:table-ids      {:optional true} [:sequential {:min 1} ::lib.schema.id/table]]
-   [:exclude-human? {:optional true} :boolean]])
+(def ^:private open-statuses
+  "The statuses of suggestions that apply can still accept or reject."
+  #{:pending :rejected})
 
-(mu/defn decide-suggestions! :- :int
-  "Set `status` on the suggestions of run `run-id` that match `selection` and whose status is one of `from-statuses`.
-  An empty `selection` matches every suggestion of the run. Records `user-id` and the time. Returns the number of rows
-  updated."
-  [run-id                                          :- ms/PositiveInt
-   {:keys [suggestion-ids table-ids exclude-human?]} :- ::selection
-   from-statuses                                   :- [:set ::suggestion/status]
-   status                                          :- ::suggestion/status
-   user-id                                         :- ms/PositiveInt]
-  (apply t2/update! :model/MetadataGenerationSuggestion
-         (concat [:run_id run-id :status [:in from-statuses]]
-                 (when suggestion-ids [:id [:in suggestion-ids]])
-                 (when table-ids      [:table_id [:in table-ids]])
-                 (when exclude-human? [:source [:not= :human]])
-                 [{:status status :decided_by user-id :decided_at (mi/now)}])))
+(mu/defn open-suggestions-by-id :- [:sequential (ms/InstanceOf :model/MetadataGenerationSuggestion)]
+  "The pending and rejected suggestions of run `run-id` among `ids`, ordered by id."
+  [run-id :- ms/PositiveInt
+   ids    :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/MetadataGenerationSuggestion :run_id run-id :id [:in ids] :status [:in open-statuses]
+               {:order-by [[:id :asc]]})
+    []))
 
-(mu/defn suggestion :- [:maybe (ms/InstanceOf :model/MetadataGenerationSuggestion)]
-  "The suggestion `suggestion-id` of run `run-id`."
-  [run-id        :- ms/PositiveInt
-   suggestion-id :- ms/PositiveInt]
-  (t2/select-one :model/MetadataGenerationSuggestion :id suggestion-id :run_id run-id))
-
-(mu/defn edit-suggestion! :- :int
-  "Set `edited_value` of the suggestion `suggestion-id` while its status is pending, accepted or rejected. A value also
-  marks the suggestion accepted by `user-id`; nil clears the edit and leaves the status. Returns the number of rows
-  updated."
-  [suggestion-id :- ms/PositiveInt
-   value         :- [:maybe :string]
-   user-id       :- ms/PositiveInt]
-  (t2/update! :model/MetadataGenerationSuggestion
-              :id suggestion-id :status [:in #{:pending :accepted :rejected}]
-              (cond-> {:edited_value value}
-                value (assoc :status :accepted :decided_by user-id :decided_at (mi/now)))))
-
-;;; Apply
-
-(mu/defn accepted-table-ids :- [:set ::lib.schema.id/table]
-  "The ids of the tables that have accepted suggestions in run `run-id`, restricted to `table-ids` when it is non-nil."
+(mu/defn open-suggestions :- [:sequential (ms/InstanceOf :model/MetadataGenerationSuggestion)]
+  "The pending and rejected suggestions of run `run-id`, of the tables in `table-ids` when it is non-nil, ordered by
+  id."
   [run-id    :- ms/PositiveInt
    table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
-  (or (t2/select-fn-set :table_id :model/MetadataGenerationSuggestion
-                        {:where (cond-> [:and [:= :run_id run-id] [:= :status "accepted"]]
-                                  table-ids (conj [:in :table_id table-ids]))})
-      #{}))
+  (apply t2/select :model/MetadataGenerationSuggestion
+         (concat [:run_id run-id :status [:in open-statuses]]
+                 (when table-ids [:table_id [:in table-ids]])
+                 [{:order-by [[:id :asc]]}])))
 
-(mu/defn accepted-suggestions :- [:sequential (ms/InstanceOf :model/MetadataGenerationSuggestion)]
-  "The accepted suggestions of run `run-id` for `table-id`, ordered by id."
-  [run-id   :- ms/PositiveInt
-   table-id :- ::lib.schema.id/table]
-  (t2/select :model/MetadataGenerationSuggestion :run_id run-id :table_id table-id :status :accepted
-             {:order-by [[:id :asc]]}))
+;;; Apply
 
 (mu/defn active-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
   "A map of field id to the active Field, with the values readers see and `:can_write` hydrated, for `field-ids`."
@@ -274,9 +240,11 @@
     (t2/delete! :model/Dimension :id [:in ids])))
 
 (mu/defn set-suggestion-status! :- :int
-  "Set `status` on the suggestions with `ids`. Returns the number of rows updated."
-  [ids    :- [:sequential ms/PositiveInt]
-   status :- ::suggestion/status]
+  "Set `status` on the suggestions with `ids`, decided by `user-id` now. Returns the number of rows updated."
+  [ids     :- [:sequential ms/PositiveInt]
+   status  :- ::suggestion/status
+   user-id :- ms/PositiveInt]
   (if (seq ids)
-    (t2/update! :model/MetadataGenerationSuggestion :id [:in ids] {:status status})
+    (t2/update! :model/MetadataGenerationSuggestion :id [:in ids]
+                {:status status :decided_by user-id :decided_at (mi/now)})
     0))

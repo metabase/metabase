@@ -105,8 +105,8 @@
         (is (mr/validate ::suggestion/metadata-generation-suggestion row)))
       (testing "a decision records the user and time"
         (t2/update! :model/MetadataGenerationSuggestion suggestion-id
-                    {:status :accepted :decided_by user-id :decided_at (t/offset-date-time)})
-        (is (=? {:status :accepted :decided_by user-id :decided_at some?}
+                    {:status :applied :decided_by user-id :decided_at (t/offset-date-time)})
+        (is (=? {:status :applied :decided_by user-id :decided_at some?}
                 (t2/select-one :model/MetadataGenerationSuggestion suggestion-id))))
       (testing "a field has one suggestion per run and attribute"
         (is (thrown? Exception (t2/with-transaction [_conn] (insert-suggestion! run-id table-id field-id))))

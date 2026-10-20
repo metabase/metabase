@@ -1,9 +1,8 @@
 (ns metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion
   "A `metadata_generation_suggestion` is the value a metadata generation run proposes for one attribute of one field.
   `source` and `current_value` record the effective value at run time and the layer that gave it (decision
-  `ghy-4721-metadata-layer-precedence`), so apply can tell when the value changed after the run. `edited_value` is
-  the value a person chose in place of `proposed_value`; apply writes it as the person's value (decision
-  `ghy-4721-edited-suggestion-layer`)."
+  `ghy-4721-metadata-layer-precedence`), so apply can tell when the value changed after the run. Apply takes edited
+  values in its request; nothing writes `edited_value`."
   (:require
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
    [metabase.models.interface :as mi]
@@ -26,7 +25,7 @@
   [:enum :high :medium :low])
 
 (mr/def ::status
-  [:enum :pending :accepted :rejected :stale :applied])
+  [:enum :pending :rejected :stale :applied])
 
 (mr/def ::metadata-generation-suggestion
   [:map
