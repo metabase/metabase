@@ -32,6 +32,8 @@ export type SummaryDefinition = {
   rows: SummaryDimension[];
   columns: SummaryDimension[];
   values: SummaryValue[];
+  /** Shown as a pivot table, with groupings split into Rows and Columns, rather than grouped in one list. */
+  isPivot: boolean;
 };
 
 /** The query a summary is built on top of: the summarized question's query, minus raw-row presentation clauses. */

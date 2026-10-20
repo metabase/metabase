@@ -61,11 +61,40 @@
 
 /* laid out like the pivot table itself: Columns across the top, Rows down the side, Values in the body */
 .pivotFrame {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 8px;
   overflow: hidden;
+}
+
+.pivotHeaderCells,
+.pivotBody {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+
+/* Columns slides open from nothing when pivoting; a 0fr track animates to the content's height */
+.pivotHeader {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.pivotHeaderIsOpen {
+  grid-template-rows: 1fr;
+}
+
+.pivotHeaderCells {
+  min-height: 0;
+  overflow: hidden;
+
+  /* hidden once collapsed, so its input can't be tabbed into */
+  visibility: hidden;
+  transition: visibility 0s 0.25s;
+}
+
+.pivotHeaderIsOpen .pivotHeaderCells {
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .pivotCorner,
@@ -91,7 +120,6 @@
 }
 
 .pivotFormula {
-  grid-column: 1 / -1;
   padding: 0.5rem;
   border-bottom: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-primary);

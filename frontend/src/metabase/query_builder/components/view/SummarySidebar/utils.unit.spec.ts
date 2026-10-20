@@ -22,14 +22,18 @@ import {
   getFormulaClause,
   getItemLabels,
   getSummaryBase,
+  pivotSummary,
+  removeItem,
   replaceWithExpression,
   swapRowsAndColumns,
+  unpivotSummary,
 } from "./utils";
 
 const EMPTY_DEFINITION: SummaryDefinition = {
   rows: [],
   columns: [],
   values: [],
+  isPivot: false,
 };
 
 function createBase(): SummaryBase {
@@ -170,7 +174,7 @@ describe("dragging expression chips", () => {
   const [dimension] = definition.rows;
   const [value] = definition.values;
 
-  it("moves a custom column between Rows and Columns, keeping its formula", () => {
+  it("moves a custom column from Rows to Columns, keeping its formula and pivoting", () => {
     const item = {
       kind: "chip",
       wellId: "rows",
@@ -183,6 +187,7 @@ describe("dragging expression chips", () => {
       ...definition,
       rows: [],
       columns: [dimension],
+      isPivot: true,
     });
   });
 
@@ -278,23 +283,71 @@ describe("editing as a formula", () => {
   });
 });
 
+function dropColumn(
+  base: SummaryBase,
+  definition: SummaryDefinition,
+  columnName: string,
+  wellId: SummaryWellId,
+) {
+  return dropOnWell(
+    base,
+    definition,
+    { kind: "column", column: findColumn(base, columnName), label: "" },
+    wellId,
+  );
+}
+
+describe("pivoting", () => {
+  const base = createBase();
+
+  it("starts a summary grouped by a single list, and pivots on request", () => {
+    const definition = dropColumn(base, EMPTY_DEFINITION, "Quantity", "rows");
+
+    expect(definition.isPivot).toBe(false);
+    expect(pivotSummary(definition)).toEqual({ ...definition, isPivot: true });
+  });
+
+  it("pivots when a column is dropped on Columns", () => {
+    const definition = dropColumn(base, EMPTY_DEFINITION, "Tax", "columns");
+
+    expect(definition.isPivot).toBe(true);
+    expect(definition.columns).toHaveLength(1);
+  });
+
+  it("stays pivoted when Columns is emptied", () => {
+    const definition = dropColumn(base, EMPTY_DEFINITION, "Tax", "columns");
+
+    expect(removeItem(definition, definition.columns[0].id)).toEqual({
+      ...definition,
+      columns: [],
+    });
+  });
+
+  it("unpivots by grouping by the column groupings after the row groupings", () => {
+    const definition = dropColumn(
+      base,
+      dropColumn(base, EMPTY_DEFINITION, "Quantity", "rows"),
+      "Tax",
+      "columns",
+    );
+
+    expect(unpivotSummary(definition)).toEqual({
+      rows: [...definition.rows, ...definition.columns],
+      columns: [],
+      values: definition.values,
+      isPivot: false,
+    });
+  });
+});
+
 describe("swapRowsAndColumns", () => {
   it("moves the row groupings to columns and the column groupings to rows, keeping values", () => {
     const base = createBase();
-    const dropColumn = (
-      definition: SummaryDefinition,
-      columnName: string,
-      wellId: SummaryWellId,
-    ) =>
-      dropOnWell(
-        base,
-        definition,
-        { kind: "column", column: findColumn(base, columnName), label: "" },
-        wellId,
-      );
     const definition = dropColumn(
+      base,
       dropColumn(
-        dropColumn(EMPTY_DEFINITION, "Quantity", "rows"),
+        base,
+        dropColumn(base, EMPTY_DEFINITION, "Quantity", "rows"),
         "Tax",
         "columns",
       ),
@@ -306,6 +359,7 @@ describe("swapRowsAndColumns", () => {
       rows: definition.columns,
       columns: definition.rows,
       values: definition.values,
+      isPivot: true,
     });
   });
 });

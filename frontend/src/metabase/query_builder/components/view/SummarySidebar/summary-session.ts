@@ -15,6 +15,7 @@ const EMPTY_SUMMARY: SummaryDefinition = {
   rows: [],
   columns: [],
   values: [],
+  isPivot: false,
 };
 
 // Prototype-only, in-memory: the last edited summary, so reopening the sidebar on the
@@ -27,7 +28,7 @@ export function rememberSummarySession(session: SummarySession) {
 
 /**
  * The question that shows the summary: the source question while the summary is empty,
- * a pivot table once it has a grouping and a value, and the default display otherwise.
+ * a pivot table once a pivot has a grouping and a value, and the default display otherwise.
  * Returns `null` when an item no longer resolves against the base query.
  */
 export function getSummaryQuestion({
@@ -48,7 +49,7 @@ export function getSummaryQuestion({
   }
 
   const summaryQuestion = sourceQuestion.setQuery(summaryQuery);
-  if (!hasDimensions || !hasValues) {
+  if (!definition.isPivot || !hasDimensions || !hasValues) {
     return summaryQuestion.setDisplayIsLocked(false).setDefaultDisplay();
   }
 

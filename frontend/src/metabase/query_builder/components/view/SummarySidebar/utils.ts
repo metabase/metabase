@@ -562,6 +562,7 @@ export function replaceWithExpression(
   const replaceDimension = (dimension: SummaryDimension): SummaryDimension =>
     dimension.id === itemId ? { id: itemId, expression } : dimension;
   return {
+    ...definition,
     rows: definition.rows.map(replaceDimension),
     columns: definition.columns.map(replaceDimension),
     values: definition.values.map((value) =>
@@ -610,9 +611,27 @@ export function removeItem(
   itemId: string,
 ): SummaryDefinition {
   return {
+    ...definition,
     rows: definition.rows.filter(({ id }) => id !== itemId),
     columns: definition.columns.filter(({ id }) => id !== itemId),
     values: definition.values.filter(({ id }) => id !== itemId),
+  };
+}
+
+/** Turns the summary into a pivot table, keeping its groupings as rows. */
+export function pivotSummary(definition: SummaryDefinition): SummaryDefinition {
+  return { ...definition, isPivot: true };
+}
+
+/** Turns a pivot back into a plain summary, grouping by its column groupings after its row groupings. */
+export function unpivotSummary(
+  definition: SummaryDefinition,
+): SummaryDefinition {
+  return {
+    ...definition,
+    rows: [...definition.rows, ...definition.columns],
+    columns: [],
+    isPivot: false,
   };
 }
 
@@ -654,8 +673,23 @@ function findChipColumn(
   return value?.type === "column" ? value.column : null;
 }
 
-/** Applies a drag-and-drop of `item` onto `wellId`; returns the definition unchanged for unsupported drops. */
+/**
+ * Applies a drag-and-drop of `item` onto `wellId`; returns the definition unchanged for unsupported drops.
+ * Dropping on Columns makes the summary a pivot.
+ */
 export function dropOnWell(
+  base: SummaryBase,
+  definition: SummaryDefinition,
+  item: SummaryDragItem,
+  wellId: SummaryWellId,
+): SummaryDefinition {
+  const nextDefinition = applyDrop(base, definition, item, wellId);
+  return wellId === "columns" && nextDefinition !== definition
+    ? pivotSummary(nextDefinition)
+    : nextDefinition;
+}
+
+function applyDrop(
   base: SummaryBase,
   definition: SummaryDefinition,
   item: SummaryDragItem,

@@ -51,8 +51,8 @@ function getDropWellId(data: unknown): SummaryWellId | null {
 }
 
 /**
- * Summarizes the question as a pivot table, built by dragging columns and metrics into
- * Rows, Columns, and Values. Every change updates and reruns the question.
+ * Summarizes the question by dragging columns and metrics into Group by and Values, or into
+ * Rows, Columns, and Values once it's pivoted. Every change updates and reruns the question.
  */
 export function SummarySidebar({
   question,

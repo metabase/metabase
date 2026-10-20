@@ -7,6 +7,8 @@ import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   ActionIcon,
   Box,
+  Button,
+  Flex,
   Icon,
   Menu,
   Tooltip,
@@ -35,8 +37,10 @@ import {
   changeValueOperator,
   findDimension,
   getColumnOperatorOptions,
+  pivotSummary,
   removeItem,
   swapRowsAndColumns,
+  unpivotSummary,
 } from "./utils";
 
 const WELL_ICONS: Record<SummaryWellId, IconName> = {
@@ -44,6 +48,8 @@ const WELL_ICONS: Record<SummaryWellId, IconName> = {
   columns: "arrow_right",
   values: "sum",
 };
+
+const GROUP_BY_ICON: IconName = "list";
 
 /** A new formula being written in a well, starting from what was typed after `=`. */
 type SummaryFormulaDraft = {
@@ -60,8 +66,9 @@ type SummaryWellsProps = {
 };
 
 /**
- * The pivot, laid out like the table it produces: Columns across the top, Rows down the side, and
- * Values in the body. Each well is both a drop target and an input to type columns, metrics, or formulas into.
+ * The summary's groupings and values side by side, like the table it produces. Pivoting opens Columns
+ * across the top, so the wells are laid out like the pivot table: Columns across the top, Rows down the
+ * side, and Values in the body. Each well is both a drop target and an input to type columns, metrics, or formulas into.
  */
 export function SummaryWells({
   base,
@@ -83,6 +90,7 @@ export function SummaryWells({
     formulaEdit != null
       ? getItemWellId(definition, formulaEdit.itemId)
       : (formulaDraft?.wellId ?? null);
+  const { isPivot } = definition;
   const hasDimensions =
     definition.rows.length > 0 || definition.columns.length > 0;
 
@@ -108,10 +116,16 @@ export function SummaryWells({
     setFormulaDraft(null);
   };
 
+  const handleTogglePivot = () => {
+    handleFormulaEnd();
+    onChange(isPivot ? unpivotSummary(definition) : pivotSummary(definition));
+  };
+
   const wellProps = {
     base,
     database,
     definition,
+    isPivot,
     draggedItem,
     formulaWellId,
     onChange,
@@ -122,7 +136,7 @@ export function SummaryWells({
   // the formula editor spans the frame, under the well it writes to, since the cells are too narrow to type in
   const formulaRow = formulaWellId != null && (
     <Box className={S.pivotFormula}>
-      <WellCaption wellId={formulaWellId} />
+      <WellCaption wellId={formulaWellId} isPivot={isPivot} />
       <SummaryWellFormula
         base={base}
         database={database}
@@ -138,82 +152,117 @@ export function SummaryWells({
 
   return (
     <Box className={S.wells} data-testid="summary-wells">
+      <Flex justify="flex-end" mb="sm">
+        <Tooltip
+          label={
+            isPivot
+              ? t`Group by a single list of columns again`
+              : t`Split the values across columns, as a pivot table`
+          }
+        >
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            leftSection={<Icon name="pivot_table" />}
+            aria-pressed={isPivot}
+            onClick={handleTogglePivot}
+          >
+            {isPivot ? t`Unpivot` : t`Pivot`}
+          </Button>
+        </Tooltip>
+      </Flex>
       <Box className={S.pivotFrame}>
-        <Box className={S.pivotCorner}>
-          <Tooltip label={t`Swap rows and columns`}>
-            <ActionIcon
-              variant="subtle"
-              aria-label={t`Swap rows and columns`}
-              disabled={!hasDimensions}
-              onClick={() => onChange(swapRowsAndColumns(definition))}
-            >
-              <Icon name="sync" />
-            </ActionIcon>
-          </Tooltip>
-        </Box>
-        <SummaryWell
-          {...wellProps}
-          wellId="columns"
-          className={S.pivotColumns}
-          itemIds={definition.columns.map(({ id }) => id)}
+        <Box
+          className={cx(S.pivotHeader, {
+            [S.pivotHeaderIsOpen]: isPivot,
+          })}
+          data-testid="summary-pivot-header"
         >
-          {definition.columns.map((dimension) => (
-            <DimensionChip
-              key={dimension.id}
+          <Box className={S.pivotHeaderCells}>
+            <Box className={S.pivotCorner}>
+              <Tooltip label={t`Swap rows and columns`}>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={t`Swap rows and columns`}
+                  disabled={!isPivot || !hasDimensions}
+                  onClick={() => onChange(swapRowsAndColumns(definition))}
+                >
+                  <Icon name="sync" />
+                </ActionIcon>
+              </Tooltip>
+            </Box>
+            <SummaryWell
+              {...wellProps}
               wellId="columns"
-              dimension={dimension}
-              label={itemLabels.get(dimension.id) ?? ""}
-              isEditing={dimension.id === editingItemId}
-              onEditFormula={handleEditFormula}
-              onRemove={handleRemove}
-            />
-          ))}
-        </SummaryWell>
+              className={S.pivotColumns}
+              isDisabled={!isPivot}
+              itemIds={definition.columns.map(({ id }) => id)}
+            >
+              {definition.columns.map((dimension) => (
+                <DimensionChip
+                  key={dimension.id}
+                  wellId="columns"
+                  dimension={dimension}
+                  label={itemLabels.get(dimension.id) ?? ""}
+                  isEditing={dimension.id === editingItemId}
+                  onEditFormula={handleEditFormula}
+                  onRemove={handleRemove}
+                />
+              ))}
+            </SummaryWell>
+          </Box>
+        </Box>
         {formulaWellId === "columns" && formulaRow}
-        <SummaryWell
-          {...wellProps}
-          wellId="rows"
-          className={S.pivotRows}
-          itemIds={definition.rows.map(({ id }) => id)}
-        >
-          {definition.rows.map((dimension) => (
-            <DimensionChip
-              key={dimension.id}
-              wellId="rows"
-              dimension={dimension}
-              label={itemLabels.get(dimension.id) ?? ""}
-              isEditing={dimension.id === editingItemId}
-              onEditFormula={handleEditFormula}
-              onRemove={handleRemove}
-            />
-          ))}
-        </SummaryWell>
-        <SummaryWell
-          {...wellProps}
-          wellId="values"
-          itemIds={definition.values.map(({ id }) => id)}
-        >
-          {definition.values.map((value) => (
-            <ValueChip
-              key={value.id}
-              base={base}
-              value={value}
-              label={itemLabels.get(value.id) ?? ""}
-              isEditing={value.id === editingItemId}
-              onChangeOperator={(operatorShortName) =>
-                onChange(
-                  changeValueOperator(definition, value.id, operatorShortName),
-                )
-              }
-              onEditFormula={
-                canWriteWellFormula(database, "values")
-                  ? () => handleEditFormula(value.id)
-                  : undefined
-              }
-              onRemove={handleRemove}
-            />
-          ))}
-        </SummaryWell>
+        <Box className={S.pivotBody}>
+          <SummaryWell
+            {...wellProps}
+            wellId="rows"
+            className={S.pivotRows}
+            itemIds={definition.rows.map(({ id }) => id)}
+          >
+            {definition.rows.map((dimension) => (
+              <DimensionChip
+                key={dimension.id}
+                wellId="rows"
+                dimension={dimension}
+                label={itemLabels.get(dimension.id) ?? ""}
+                isEditing={dimension.id === editingItemId}
+                onEditFormula={handleEditFormula}
+                onRemove={handleRemove}
+              />
+            ))}
+          </SummaryWell>
+          <SummaryWell
+            {...wellProps}
+            wellId="values"
+            itemIds={definition.values.map(({ id }) => id)}
+          >
+            {definition.values.map((value) => (
+              <ValueChip
+                key={value.id}
+                base={base}
+                value={value}
+                label={itemLabels.get(value.id) ?? ""}
+                isEditing={value.id === editingItemId}
+                onChangeOperator={(operatorShortName) =>
+                  onChange(
+                    changeValueOperator(
+                      definition,
+                      value.id,
+                      operatorShortName,
+                    ),
+                  )
+                }
+                onEditFormula={
+                  canWriteWellFormula(database, "values")
+                    ? () => handleEditFormula(value.id)
+                    : undefined
+                }
+                onRemove={handleRemove}
+              />
+            ))}
+          </SummaryWell>
+        </Box>
         {formulaWellId !== "columns" && formulaRow}
       </Box>
     </Box>
@@ -258,10 +307,10 @@ function getItemWellId(
   return "values";
 }
 
-function getWellTitle(wellId: SummaryWellId) {
+function getWellTitle(wellId: SummaryWellId, isPivot: boolean) {
   switch (wellId) {
     case "rows":
-      return t`Rows`;
+      return isPivot ? t`Rows` : t`Group by`;
     case "columns":
       return t`Columns`;
     case "values":
@@ -269,11 +318,18 @@ function getWellTitle(wellId: SummaryWellId) {
   }
 }
 
-function WellCaption({ wellId }: { wellId: SummaryWellId }) {
+type WellCaptionProps = {
+  wellId: SummaryWellId;
+  isPivot: boolean;
+};
+
+function WellCaption({ wellId, isPivot }: WellCaptionProps) {
+  const iconName =
+    wellId === "rows" && !isPivot ? GROUP_BY_ICON : WELL_ICONS[wellId];
   return (
     <Box className={S.wellCaption}>
-      <Icon name={WELL_ICONS[wellId]} size={10} />
-      {getWellTitle(wellId)}
+      <Icon name={iconName} size={10} />
+      {getWellTitle(wellId, isPivot)}
     </Box>
   );
 }
@@ -284,6 +340,9 @@ type SummaryWellProps = {
   wellId: SummaryWellId;
   className?: string;
   definition: SummaryDefinition;
+  isPivot: boolean;
+  /** A well that's collapsed out of view takes no drops. */
+  isDisabled?: boolean;
   draggedItem: SummaryDragItem | null;
   formulaWellId: SummaryWellId | null;
   itemIds: string[];
@@ -300,6 +359,8 @@ function SummaryWell({
   wellId,
   className,
   definition,
+  isPivot,
+  isDisabled = false,
   draggedItem,
   formulaWellId,
   itemIds,
@@ -311,6 +372,7 @@ function SummaryWell({
   const { setNodeRef, isOver } = useDroppable({
     id: `summary-well:${wellId}`,
     data: { wellId },
+    disabled: isDisabled,
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const canDrop =
@@ -349,7 +411,7 @@ function SummaryWell({
       data-testid={`summary-well-${wellId}`}
       onClick={handleClick}
     >
-      <WellCaption wellId={wellId} />
+      <WellCaption wellId={wellId} isPivot={isPivot} />
       <Box className={S.wellItems}>
         {children}
         {!isFormulaTarget && (
