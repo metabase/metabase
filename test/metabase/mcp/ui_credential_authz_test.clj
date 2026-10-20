@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.permissions.core :as perms]
@@ -248,3 +249,27 @@
         (is (= 404 (:status (remap! both-scopes "not-a-tag")))))
       (testing "Gate 1: the handle is native, so remapping also needs agent:sql:run"
         (is (= 403 (:status (remap! ui.tu/query-scopes "category-tag-id"))))))))
+
+(deftest group-policy-without-mcp-refuses-every-route-test
+  (testing "A credential works only while its token still authenticates its user at the MCP endpoint: once the user's
+            groups no longer allow MCP, every iframe route is refused"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :rasta)
+              handle (ui.tu/store-query-handle! session-id user-id (venues-query))
+              routes [[:get  "embed-mcp/bootstrap" nil]
+                      [:post "embed-mcp/feedback" {}]
+                      [:post "embed-mcp/drills" {:handle handle :operation {:type "date-filter/clear"}}]
+                      [:get  (str "embed-mcp/queries/" handle) nil]
+                      [:post (str "embed-mcp/queries/" handle "/derive") {:operations [{:type "date-filter/clear"}]}]
+                      [:post (str "embed-mcp/queries/" handle "/run") {}]
+                      [:post (str "embed-mcp/queries/" handle "/pivot") {}]
+                      [:post (str "embed-mcp/queries/" handle "/query_metadata") {}]
+                      [:post (str "embed-mcp/queries/" handle "/parameter/remapping")
+                       {:parameter {:id "x"} :value 1}]]]
+          (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [])]
+            (doseq [[method url body] routes]
+              (testing (str (name method) " " url)
+                (is (= 403 (:status (ui.tu/ui-request! auth method nil url body)))))))
+          (testing "control: with MCP allowed, the same credential runs the handle"
+            (is (= 202 (:status (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/run") {}))))))))))

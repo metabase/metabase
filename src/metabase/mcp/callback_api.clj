@@ -17,6 +17,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.derive :as mcp.derive]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.message :as message]
@@ -396,6 +397,8 @@
          user
          (fn []
            (let [session-id (get-in request [:headers "mcp-session-id"])]
+             ;; The MCP endpoint refuses a user whose groups no longer allow MCP; so does the credential it minted.
+             (api/check-403 (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
              (check-session-header! session-id api/*current-user-id* (:sid claims))
              (respond-with (handler {:claims       claims
                                      :session-id   session-id
