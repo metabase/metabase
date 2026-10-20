@@ -9,6 +9,7 @@ import { ITEM_ROW_HEIGHT } from "../BaseItemTableRow";
 import { Columns } from "../Columns";
 import { EntityIconCheckBoxSkeleton } from "../EntityIconCheckBox";
 import { ItemCell, ItemNameCell, TBody } from "../TableElements";
+import { COLUMN_RESPONSIVE_PROPS } from "../column-layout";
 
 import S from "./SkeletonItemsTableBody.module.css";
 
@@ -32,17 +33,17 @@ const SKELETON_CELLS = {
     </ItemNameCell>
   ),
   description: () => (
-    <ItemCell hideAtContainerBreakpoint="sm">
+    <ItemCell {...COLUMN_RESPONSIVE_PROPS.description}>
       <SkeletonText />
     </ItemCell>
   ),
   lastEditedBy: () => (
-    <ItemCell hideAtContainerBreakpoint="sm">
+    <ItemCell {...COLUMN_RESPONSIVE_PROPS.lastEditedBy}>
       <SkeletonText />
     </ItemCell>
   ),
   lastEditedAt: () => (
-    <ItemCell hideAtContainerBreakpoint="md">
+    <ItemCell {...COLUMN_RESPONSIVE_PROPS.lastEditedAt}>
       <SkeletonText />
     </ItemCell>
   ),

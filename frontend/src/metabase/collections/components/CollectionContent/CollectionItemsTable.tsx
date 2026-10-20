@@ -405,7 +405,9 @@ const CollectionItemsTableContent = ({
           <DelayedLoadingAndErrorWrapper
             error={error}
             loading={isLoading}
-            loader={<ItemsTable skeleton items={[]} {...sharedTableProps} />}
+            loader={
+              <ItemsTable withSkeleton items={[]} {...sharedTableProps} />
+            }
           >
             <ItemsTable
               {...sharedTableProps}

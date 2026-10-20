@@ -30,13 +30,13 @@ const Item = ({
 export const ItemsTable = ({
   items,
   ItemComponent = Item,
-  skeleton = false,
+  withSkeleton = false,
   ...props
 }: {
   items: CollectionItem[];
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
 } & BaseItemsTableProps) => {
-  if (items.length === 0 && !skeleton) {
+  if (items.length === 0 && !withSkeleton) {
     return (
       <Flex pos="relative" justify="center" align="center" m="lg" p="4rem">
         <PinDropZone variant="unpin" />
@@ -47,9 +47,9 @@ export const ItemsTable = ({
   return (
     <div
       className={cx(CS.relative, S.container)}
-      aria-busy={skeleton || undefined}
+      aria-busy={withSkeleton || undefined}
     >
-      {skeleton && (
+      {withSkeleton && (
         <span role="status" className={visuallyHidden.visuallyHidden}>
           {t`Loading…`}
         </span>
@@ -57,7 +57,7 @@ export const ItemsTable = ({
       <PinDropZone variant="unpin" />
       <BaseItemsTable
         items={items}
-        skeleton={skeleton}
+        withSkeleton={withSkeleton}
         {...props}
         ItemComponent={ItemComponent}
       />

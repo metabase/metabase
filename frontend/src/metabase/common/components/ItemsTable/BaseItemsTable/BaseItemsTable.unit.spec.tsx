@@ -239,7 +239,7 @@ describe("BaseItemsTable", () => {
     ])(
       "renders one placeholder cell per header cell $description",
       ({ props }) => {
-        setup({ skeleton: true, items: [], ...props });
+        setup({ withSkeleton: true, items: [], ...props });
 
         const headerCells = within(
           screen.getByTestId("items-table-head"),
@@ -259,7 +259,7 @@ describe("BaseItemsTable", () => {
     );
 
     it("does not render the select all checkbox", () => {
-      setup({ skeleton: true, items: [], ...selectableProps });
+      setup({ withSkeleton: true, items: [], ...selectableProps });
 
       expect(screen.getByTestId("items-table-skeleton")).toBeInTheDocument();
       expect(

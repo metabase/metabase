@@ -127,7 +127,7 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   onClick?: (item: CollectionItem) => void;
   visibleColumnsMap: CollectionContentTableColumnsMap;
-  skeleton?: boolean;
+  withSkeleton?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
@@ -152,7 +152,7 @@ export const BaseItemsTable = ({
   ItemComponent = DefaultItemRenderer,
   visibleColumnsMap,
   onClick,
-  skeleton = false,
+  withSkeleton = false,
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = canSelectItems(collection, onToggleSelected);
@@ -176,7 +176,7 @@ export const BaseItemsTable = ({
       >
         <tr>
           {canSelect &&
-            (skeleton ? (
+            (withSkeleton ? (
               <ColumnHeader />
             ) : (
               <Columns.Select.Header
@@ -223,7 +223,7 @@ export const BaseItemsTable = ({
           <Columns.RightEdge.Header />
         </tr>
       </thead>
-      {skeleton ? (
+      {withSkeleton ? (
         <SkeletonItemsTableBody
           canSelect={canSelect}
           visibleColumnsMap={visibleColumnsMap}
