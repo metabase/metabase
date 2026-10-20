@@ -126,51 +126,60 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
         </Button>
       </Group>
 
-      <ChillFrame
-        isHidden={direction.canHideFilters && areFiltersHidden}
-        filterButton={
-          direction.canHideFilters ? (
-            <Button
-              size="compact-md"
-              variant="default"
-              leftSection={<Icon name="filter" />}
-              onClick={() => setAreFiltersHidden((hidden) => !hidden)}
-            >
-              {areFiltersHidden ? t`Show filters` : t`Hide filters`}
-            </Button>
-          ) : (
-            direction.FilterButton && (
-              <direction.FilterButton
-                query={query}
-                stageIndex={STAGE_INDEX}
-                variant="chill"
-                onChange={setQuery}
-              />
+      <Stack gap="sm">
+        <Title order={3}>{t`Chill mode`}</Title>
+        <ChillFrame
+          isHidden={direction.canHideFilters && areFiltersHidden}
+          filterButton={
+            direction.canHideFilters ? (
+              <Button
+                size="compact-md"
+                variant="default"
+                leftSection={<Icon name="filter" />}
+                onClick={() => setAreFiltersHidden((hidden) => !hidden)}
+              >
+                {areFiltersHidden ? t`Show filters` : t`Hide filters`}
+              </Button>
+            ) : (
+              direction.FilterButton && (
+                <direction.FilterButton
+                  query={query}
+                  stageIndex={STAGE_INDEX}
+                  variant="chill"
+                  onChange={setQuery}
+                />
+              )
             )
-          )
-        }
-      >
-        <direction.Component
-          query={query}
-          stageIndex={STAGE_INDEX}
-          variant="chill"
-          onChange={setQuery}
-        />
-      </ChillFrame>
+          }
+        >
+          <direction.Component
+            query={query}
+            stageIndex={STAGE_INDEX}
+            variant="chill"
+            onChange={setQuery}
+          />
+        </ChillFrame>
+      </Stack>
 
-      <NotebookFrame>
-        <direction.Component
-          query={query}
-          stageIndex={STAGE_INDEX}
-          variant="notebook"
-          onChange={setQuery}
-        />
-      </NotebookFrame>
+      <Stack gap="sm">
+        <Title order={3}>{t`Notebook mode`}</Title>
+        <NotebookFrame>
+          <direction.Component
+            query={query}
+            stageIndex={STAGE_INDEX}
+            variant="notebook"
+            onChange={setQuery}
+          />
+        </NotebookFrame>
+      </Stack>
 
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-        <QueryResults query={query} stageIndex={STAGE_INDEX} />
-        <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
-      </SimpleGrid>
+      <Stack gap="sm">
+        <Title order={3}>{t`Preview`}</Title>
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+          <QueryResults query={query} stageIndex={STAGE_INDEX} />
+          <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
+        </SimpleGrid>
+      </Stack>
     </Stack>
   );
 }
