@@ -488,7 +488,7 @@
             code (pipeline-error-code error)]
         (cond
           ;; `:agent-error?` *and* an `:error` key. The pipeline's `as-agent-input-error` stamps
-          ;; `:agent-error?` onto foreign exceptions from lib, toucan2 and JDBC as well, and those
+          ;; `:agent-error?` onto foreign exceptions from lib as well, and those
           ;; messages are not authored for anyone — only an `:error` code says "this sentence was
           ;; written for a model".
           (and agent-error? code)

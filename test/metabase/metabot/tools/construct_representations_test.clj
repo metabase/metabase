@@ -17,20 +17,26 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -202,6 +208,65 @@
           (let [d (ex-data e)]
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
+
+(defn- metadata-lookup-failures []
+  (let [message    "SELECT private_metadata failed: connection unavailable"
+        root-cause (RuntimeException. message)]
+    {"Toucan"         (ex-info message {:toucan2/context-trace []})
+     "nested Toucan"  (ex-info message {} (ex-info message {:toucan2/context-trace nil} root-cause))
+     "JDBC"           (SQLException. message)
+     "nested JDBC"    (ex-info message {} (RuntimeException. message (SQLException. message root-cause)))}))
+
+(def ^:private orders-id-query
+  {:lib/type "mbql/query"
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table ["Sample" "PUBLIC" "ORDERS"]
+               :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
+
+(deftest metadata-lookup-failures-propagate-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[label failure] (metadata-lookup-failures)]
+        (testing label
+          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+            (let [caught (try
+                           (construct/execute-representations-query orders-id-query)
+                           (catch Throwable e e))]
+              (is (identical? failure caught))
+              (is (nil? (:agent-error? (ex-data caught))))
+              (is (nil? (:status-code (ex-data caught)))))))))))
+
+(deftest metadata-validation-errors-are-agent-input-errors-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [failure (ex-info "Unknown field" {:error :unknown-field})]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (let [caught (try
+                         (construct/execute-representations-query orders-id-query)
+                         (catch clojure.lang.ExceptionInfo e e))]
+            (is (= {:error :unknown-field :agent-error? true :status-code 400} (ex-data caught)))
+            (is (= "Unknown field" (ex-message caught)))
+            (is (identical? failure (ex-cause caught)))))))))
+
+(deftest metadata-lookup-failures-end-metabot-turn-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[label failure] (metadata-lookup-failures)]
+        (testing label
+          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+            (let [entries (tools/entries [construct/construct-notebook-query-tool])
+                  outcome (tools.runtime/invoke entries
+                                                {:profile-id :nlq :metabot nil
+                                                 :user-scope #{"agent:notebook:create"}
+                                                 :tool-names (set (keys entries))}
+                                                "construct_notebook_query"
+                                                {:query orders-id-query
+                                                 :title "Order IDs" :description "IDs of orders."})]
+              (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
+                      :error  {:class :unrecoverable :code :internal}}
+                     outcome))
+              (is (= "Something went wrong."
+                     (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"

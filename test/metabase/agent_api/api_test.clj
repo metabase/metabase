@@ -14,6 +14,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.mcp.core :as mcp]
    [metabase.metabot.tools.core :as tools.core]
@@ -32,7 +33,9 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [oidc-provider.util :as oidc.util]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -313,6 +316,15 @@
                                          {:query (orders-query
                                                   :aggregation [(orders-field-ref "ID")])})]
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
+
+(deftest construct-query-metadata-lookup-failure-test
+  (let [query (orders-query :fields [(orders-field-ref "ID")])]
+    (doseq [failure [(SQLException. "Connection unavailable")
+                     (ex-info "SELECT private_metadata failed" {:toucan2/context-trace []})
+                     (ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable"))]]
+      (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+        (is (= {:message "Something went wrong"}
+               (mt/user-http-request :rasta :post 500 "agent/v2/construct-query" {:query query})))))))
 
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"

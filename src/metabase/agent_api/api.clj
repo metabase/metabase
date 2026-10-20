@@ -1828,8 +1828,26 @@
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
+(defn- wrap-database-errors
+  "Return a generic 500 for unhandled database failures, logging the original exception."
+  [handler]
+  (fn [request respond raise]
+    (let [raise (fn [e]
+                  (let [status-code   (:status-code (ex-data e))
+                        ;; Toucan also wraps deliberate client errors raised inside transactions.
+                        client-error? (and status-code (<= 400 status-code 499))]
+                    (if (and (not client-error?) (metabot-construct/database-error? e))
+                      (do
+                        (log/error e "Database failure in Agent API")
+                        (respond {:status 500 :body {:message (tru "Something went wrong")}}))
+                      (raise e))))]
+      (try
+        (handler request respond raise)
+        (catch Throwable e
+          (raise e))))))
+
 (def ^:private base-routes
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth wrap-database-errors))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
