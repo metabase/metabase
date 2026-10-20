@@ -2060,6 +2060,10 @@
    :api  #{metabase.prototype.core
            metabase.prototype.init}
    :uses #{app-db
+           events
+           lib
+           lib.be
+           lib.metadata
            lib.schema
            settings
            startup
@@ -2071,8 +2075,13 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
+                    :model/Glossary
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
                     :model/Table
-                    :model/TableUserSettings}}
+                    :model/TableUserSettings
+                    :model/User}}
 
   public-sharing
   {:team "UX West"

@@ -64,3 +64,56 @@
   (if (t2/exists? :model/TableUserSettings table-id)
     (t2/update! :model/TableUserSettings table-id {:display_name display-name})
     (t2/insert! :model/TableUserSettings {:table_id table-id, :display_name display-name})))
+
+(mu/defn set-field-description!
+  "Set the description of the Field with `field-id` as a user value, the same as an edit in the data model."
+  [field-id    :- ::lib.schema.id/field
+   description :- :string]
+  (if (t2/exists? :model/FieldUserSettings field-id)
+    (t2/update! :model/FieldUserSettings field-id {:description description})
+    (t2/insert! :model/FieldUserSettings {:field_id field-id, :description description})))
+
+(mu/defn first-admin-id :- [:maybe ::lib.schema.id/user]
+  "The id of the first active admin, or nil before the setup."
+  []
+  (t2/select-one-pk :model/User :is_superuser true :is_active true {:order-by [[:id :asc]]}))
+
+(defn upsert-segment!
+  "Insert or update the Segment named `segment-name` on the Table `table-id`. Returns its id."
+  [table-id segment-name {:keys [description definition creator-id]}]
+  (if-let [id (t2/select-one-pk :model/Segment :table_id table-id :name segment-name)]
+    (do (t2/update! :model/Segment id {:description description :definition definition :archived false})
+        id)
+    (t2/insert-returning-pk! :model/Segment {:table_id    table-id
+                                             :name        segment-name
+                                             :description description
+                                             :definition  definition
+                                             :creator_id  creator-id})))
+
+(defn upsert-measure!
+  "Insert or update the Measure named `measure-name` on the Table `table-id`. Returns its id."
+  [table-id measure-name {:keys [description definition creator-id]}]
+  (if-let [id (t2/select-one-pk :model/Measure :table_id table-id :name measure-name)]
+    (do (t2/update! :model/Measure id {:description description :definition definition :archived false})
+        id)
+    (t2/insert-returning-pk! :model/Measure {:table_id    table-id
+                                             :name        measure-name
+                                             :description description
+                                             :definition  definition
+                                             :creator_id  creator-id})))
+
+(defn upsert-glossary-entry!
+  "Insert or update the glossary entry for `term`."
+  [term definition creator-id]
+  (if-let [id (t2/select-one-pk :model/Glossary :term term)]
+    (t2/update! :model/Glossary id {:definition definition})
+    (t2/insert! :model/Glossary {:term term :definition definition :creator_id creator-id})))
+
+(defn upsert-ai-context!
+  "Insert or replace the AI context of the entity with `entity-type` (\"table\", \"segment\", ...) and `entity-id`."
+  [entity-type entity-id ai-context]
+  (if (t2/exists? :model/OsiAiContext :entity_type entity-type :entity_local_id entity-id)
+    (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-id {:ai_context ai-context})
+    (t2/insert! :model/OsiAiContext {:entity_type     entity-type
+                                     :entity_local_id entity-id
+                                     :ai_context      ai-context})))

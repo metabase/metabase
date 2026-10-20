@@ -7,6 +7,7 @@
    [metabase.prototype.dataset :as dataset]
    [metabase.prototype.db :as prototype.db]
    [metabase.prototype.seed :as seed]
+   [metabase.prototype.semantic-layer :as semantic-layer]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
@@ -97,4 +98,5 @@
                        (prototype.db/insert-prototype-database! details))]
         (when (or seeded? (not existing) (not= "complete" (:initial_sync_status database)))
           (sync-and-apply-metadata! database))
-        (apply-table-display-names! (:id database))))))
+        (apply-table-display-names! (:id database))
+        (semantic-layer/ensure-semantic-layer!)))))

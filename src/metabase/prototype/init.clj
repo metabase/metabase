@@ -1,5 +1,6 @@
 (ns metabase.prototype.init
   (:require
+   [metabase.prototype.semantic-layer]
    [metabase.prototype.settings]
    [metabase.prototype.setup :as prototype.setup]
    [metabase.startup.core :as startup]
