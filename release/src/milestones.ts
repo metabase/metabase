@@ -14,7 +14,13 @@ import {
   getLinkedIssues,
   getPRsFromCommitMessage,
 } from "./linked-issues";
-import type { Commit, GithubProps, Issue, Milestone, ReleaseProps } from "./types";
+import type {
+  Commit,
+  GithubProps,
+  Issue,
+  Milestone,
+  ReleaseProps,
+} from "./types";
 import {
   getLastReleaseTag,
   getMajorVersion,
@@ -27,7 +33,8 @@ import {
 
 function isBackport(pullRequest: Issue) {
   return (
-    pullRequest.title.includes("backport") || hasLabel(pullRequest, "was-backport")
+    pullRequest.title.includes("backport") ||
+    hasLabel(pullRequest, "was-backport")
   );
 }
 
@@ -43,14 +50,16 @@ const isNotNull = <T>(value: T | null): value is T => value !== null;
 const excludedLabels = [
   ...nonUserFacingLabels,
   ...hiddenLabels,
-  '.Already Fixed',
+  ".Already Fixed",
 ];
 
 function getExcludedLabels(issue: Issue) {
   if (!Array.isArray(issue.labels)) {
     return [];
   }
-  return issue.labels?.filter(label => label.name && excludedLabels.includes(label.name));
+  return issue.labels?.filter(
+    (label) => label.name && excludedLabels.includes(label.name),
+  );
 }
 
 function shouldExcludeIssueFromMilestone(issue: Issue) {
@@ -64,18 +73,22 @@ async function getIssuesWithExcludedTags({
   issueNumbers,
 }: GithubProps & { issueNumbers: number[] }) {
   const issues = await Promise.all(
-    issueNumbers.map((issueNumber) => getIssueWithCache({
-      github,
-      owner,
-      repo,
-      issueNumber,
-    }))
+    issueNumbers.map((issueNumber) =>
+      getIssueWithCache({
+        github,
+        owner,
+        repo,
+        issueNumber,
+      }),
+    ),
   );
 
-  return new Set(issues
-    .filter(isNotNull)
-    .filter((issue) => shouldExcludeIssueFromMilestone(issue))
-    .map((issue) => issue.number));
+  return new Set(
+    issues
+      .filter(isNotNull)
+      .filter((issue) => shouldExcludeIssueFromMilestone(issue))
+      .map((issue) => issue.number),
+  );
 }
 
 async function getIssuesWithOlderMilestones({
@@ -84,26 +97,37 @@ async function getIssuesWithOlderMilestones({
   repo,
   issueNumbers,
   releaseMilestone,
-}: GithubProps & { issueNumbers: number[], releaseMilestone: Milestone }) {
+}: GithubProps & { issueNumbers: number[]; releaseMilestone: Milestone }) {
   const issues = await Promise.all(
-    issueNumbers.map((issueNumber) =>  getIssueWithCache({
-      github,
-      owner,
-      repo,
-      issueNumber,
-    }))
+    issueNumbers.map((issueNumber) =>
+      getIssueWithCache({
+        github,
+        owner,
+        repo,
+        issueNumber,
+      }),
+    ),
   );
 
-  return new Set(issues
-    .filter(isNotNull)
-    .filter((issue) => {
-      if (issue.milestone && versionSort(issue.milestone.title, releaseMilestone.title) < 0) {
-        console.log(`  Issue #${issue.number} is in an older milestone`, issue.milestone.title);
-        return true;
-      }
+  return new Set(
+    issues
+      .filter(isNotNull)
+      .filter((issue) => {
+        if (
+          issue.milestone &&
+          versionSort(issue.milestone.title, releaseMilestone.title) < 0
+        ) {
+          console.log(
+            `  Issue #${issue.number} is in an older milestone`,
+            issue.milestone.title,
+          );
+          return true;
+        }
 
-      return false;
-    }).map((issue) => issue.number));
+        return false;
+      })
+      .map((issue) => issue.number),
+  );
 }
 
 async function getOriginalIssues({
@@ -112,7 +136,7 @@ async function getOriginalIssues({
   owner,
   issueNumber,
 }: GithubProps & { issueNumber: number }) {
-  console.log('checking', issueNumber);
+  console.log("checking", issueNumber);
   const issue = await getIssueWithCache({
     github,
     owner,
@@ -127,14 +151,14 @@ async function getOriginalIssues({
 
   // if this isn't a pull request, we don't need to trace further
   if (!issue.pull_request) {
-    console.log('  Found an issue');
+    console.log("  Found an issue");
     return [issue.number];
   }
 
   if (isBackport(issue)) {
     const sourcePRNumber = getBackportSourcePRNumber(issue.body);
     if (sourcePRNumber && sourcePRNumber !== issueNumber) {
-      console.log('  found backport PR for ', sourcePRNumber);
+      console.log("  found backport PR for ", sourcePRNumber);
       return getOriginalIssues({
         github,
         repo,
@@ -144,10 +168,10 @@ async function getOriginalIssues({
     }
   }
 
-  const linkedIssues = await getLinkedIssues(issue.body ?? '');
+  const linkedIssues = await getLinkedIssues(issue.body ?? "");
 
   if (linkedIssues) {
-    console.log('  found linked issues', linkedIssues);
+    console.log("  found linked issues", linkedIssues);
     return linkedIssues.map(Number);
   }
 
@@ -155,7 +179,18 @@ async function getOriginalIssues({
   return [issue.number];
 }
 
-async function setMilestone({ github, owner, repo, issueNumber, milestone, ignoreExistingMilestones }: GithubProps & { issueNumber: number, milestone: Milestone, ignoreExistingMilestones?: boolean }) {
+async function setMilestone({
+  github,
+  owner,
+  repo,
+  issueNumber,
+  milestone,
+  ignoreExistingMilestones,
+}: GithubProps & {
+  issueNumber: number;
+  milestone: Milestone;
+  ignoreExistingMilestones?: boolean;
+}) {
   // we can use this for both issues and PRs since they're the same for many purposes in github
   const issue = await getIssueWithCache({
     github,
@@ -165,7 +200,9 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone, ignor
   });
 
   if (!issue?.milestone) {
-    console.log(`Setting milestone ${milestone.title} for issue # ${issueNumber}`);
+    console.log(
+      `Setting milestone ${milestone.title} for issue # ${issueNumber}`,
+    );
     return github.rest.issues.update({
       owner,
       repo,
@@ -181,15 +218,20 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone, ignor
   const existingMilestone = issue.milestone;
 
   if (existingMilestone.number === milestone.number) {
-    console.log(`Issue ${issueNumber} is already tagged with this ${milestone.title} milestone`);
+    console.log(
+      `Issue ${issueNumber} is already tagged with this ${milestone.title} milestone`,
+    );
     return;
   }
 
-  const existingMilestoneIsNewer = versionSort(existingMilestone.title, milestone.title) > 0;
+  const existingMilestoneIsNewer =
+    versionSort(existingMilestone.title, milestone.title) > 0;
 
   // if existing milestone is newer, change it
   if (existingMilestoneIsNewer) {
-    console.log(`Changing milestone from ${existingMilestone.title} to ${milestone.title}`);
+    console.log(
+      `Changing milestone from ${existingMilestone.title} to ${milestone.title}`,
+    );
 
     await github.rest.issues.update({
       owner,
@@ -199,19 +241,23 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone, ignor
     });
   }
 
-
-  console.log(`${issueNumber} is already part of ${existingMilestone.title}, no updates made.`);
+  console.log(
+    `${issueNumber} is already part of ${existingMilestone.title}, no updates made.`,
+  );
   return;
 }
 
 // get the next open milestone (e.g. 0.57.8) for the given major version (e.g 57)
-export function getNextMilestone(
-  { openMilestones, majorVersion }:
-  { openMilestones: Milestone[], majorVersion: number | string }
-): Milestone | undefined {
+export function getNextMilestone({
+  openMilestones,
+  majorVersion,
+}: {
+  openMilestones: Milestone[];
+  majorVersion: number | string;
+}): Milestone | undefined {
   const milestonesForThisMajorVersion = openMilestones
-    .filter(milestone => milestone.title.startsWith(`0.${majorVersion}`))
-    .filter(milestone => ignorePatches(milestone.title))
+    .filter((milestone) => milestone.title.startsWith(`0.${majorVersion}`))
+    .filter((milestone) => ignorePatches(milestone.title))
     .sort((a, b) => versionSort(a.title, b.title));
 
   const nextMilestone = milestonesForThisMajorVersion[0];
@@ -226,29 +272,38 @@ export async function setMilestoneForCommits({
   branchName,
   commitMessages,
   ignoreExistingMilestones,
-}: GithubProps & { commitMessages: string[], branchName: string, ignoreExistingMilestones?: boolean }) {
+}: GithubProps & {
+  commitMessages: string[];
+  branchName: string;
+  ignoreExistingMilestones?: boolean;
+}) {
   // figure out milestone
   const branchVersion = getVersionFromReleaseBranch(branchName);
   const majorVersion = getMajorVersion(branchVersion);
-  const openMilestones = await getMilestones({ github, owner, repo, state: 'open' });
+  const openMilestones = await getMilestones({
+    github,
+    owner,
+    repo,
+    state: "open",
+  });
   const nextMilestone = getNextMilestone({ openMilestones, majorVersion });
 
   if (!nextMilestone) {
-    throw new Error(`No open milestone found for major version ${majorVersion}`);
+    throw new Error(
+      `No open milestone found for major version ${majorVersion}`,
+    );
   }
 
-  console.log('Next milestone:', nextMilestone.title);
+  console.log("Next milestone:", nextMilestone.title);
 
   // figure out issue or PR
   const PRsToCheck = uniq(
-    commitMessages
-      .flatMap(getPRsFromCommitMessage)
-      .filter(isNotNull)
+    commitMessages.flatMap(getPRsFromCommitMessage).filter(isNotNull),
   );
   if (!PRsToCheck.length) {
     // Not every commit on a release branch is a squash-merged PR (e.g. the
     // version-bump commit from cutting the branch). Nothing to backfill here.
-    console.log('No PRs found in commit messages, skipping milestone backfill');
+    console.log("No PRs found in commit messages, skipping milestone backfill");
     return;
   }
 
@@ -256,20 +311,26 @@ export async function setMilestoneForCommits({
 
   const issuesToTag = [];
 
-  for (const prNumber of PRsToCheck) { // for loop to avoid rate limiting
-    issuesToTag.push(...(await getOriginalIssues({
-      github,
-      owner,
-      repo,
-      issueNumber: prNumber,
-    })));
+  for (const prNumber of PRsToCheck) {
+    // for loop to avoid rate limiting
+    issuesToTag.push(
+      ...(await getOriginalIssues({
+        github,
+        owner,
+        repo,
+        issueNumber: prNumber,
+      })),
+    );
   }
 
   const uniqueIssuesToTag = uniq(issuesToTag);
 
-  console.log(`Tagging ${uniqueIssuesToTag.length} issues with milestone ${nextMilestone.title}`)
+  console.log(
+    `Tagging ${uniqueIssuesToTag.length} issues with milestone ${nextMilestone.title}`,
+  );
 
-  for (const issueNumber of uniqueIssuesToTag) { // for loop to avoid rate limiting
+  for (const issueNumber of uniqueIssuesToTag) {
+    // for loop to avoid rate limiting
     await setMilestone({
       github,
       owner,
@@ -281,10 +342,15 @@ export async function setMilestoneForCommits({
   }
 }
 
-const issueLink = (
-  { owner, repo, issueNumber }:
-  { owner: string, repo: string, issueNumber: number }
-) => `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
+const issueLink = ({
+  owner,
+  repo,
+  issueNumber,
+}: {
+  owner: string;
+  repo: string;
+  issueNumber: number;
+}) => `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
 export async function checkMilestoneForRelease({
   github,
@@ -292,7 +358,7 @@ export async function checkMilestoneForRelease({
   repo,
   version,
   commitHash,
-}: GithubProps & { version: string, commitHash: string }) {
+}: GithubProps & { version: string; commitHash: string }) {
   // Nothing to audit pre-release, for two reasons:
   //  - Patches don't have their own milestone — they share the parent minor's.
   //  - A major's `.0` is, by convention, only ever cut as a pre-release
@@ -319,21 +385,38 @@ export async function checkMilestoneForRelease({
   // Safety net: by convention, a `.0` should never be a standalone release.
   // If someone breaks that, this check exits early.
   if (!lastTag) {
-    console.log(`No prior release tag found for ${version}, skipping milestone check`);
+    console.log(
+      `No prior release tag found for ${version}, skipping milestone check`,
+    );
     return;
   }
 
-  const releaseMilestone = await findMilestone({ github, owner, repo, version });
+  const releaseMilestone = await findMilestone({
+    github,
+    owner,
+    repo,
+    version,
+  });
 
   if (!releaseMilestone) {
     throw new Error(`No open milestone found for ${version}`);
   }
 
   const closedMilestoneIssues = await getMilestoneIssues({
-    github, owner, repo, version, state: 'closed', milestoneStatus: 'open',
+    github,
+    owner,
+    repo,
+    version,
+    state: "closed",
+    milestoneStatus: "open",
   });
   const openMilestoneIssues = await getMilestoneIssues({
-    github, owner, repo, version, state: 'open', milestoneStatus: 'open',
+    github,
+    owner,
+    repo,
+    version,
+    state: "open",
+    milestoneStatus: "open",
   });
 
   const compareResponse = await github.rest.repos.compareCommitsWithBasehead({
@@ -347,7 +430,9 @@ export async function checkMilestoneForRelease({
   console.log(`Found ${commits.length} commits in release branch`);
   console.log(`Found ${closedMilestoneIssues.length} issues in milestone`);
 
-  const milestoneIssueSet = new Set(closedMilestoneIssues.map(issue => issue.number));
+  const milestoneIssueSet = new Set(
+    closedMilestoneIssues.map((issue) => issue.number),
+  );
   const commitIssueSet = new Set<number>();
 
   // make sure every commit in the release branch has a corresponding issue in the milestone
@@ -357,7 +442,7 @@ export async function checkMilestoneForRelease({
   for (const commit of commits) {
     const prNumbers = getPRsFromCommitMessage(commit.commit.message);
     if (!prNumbers) {
-      console.log('No PRs found in commit message', commit.commit.message);
+      console.log("No PRs found in commit message", commit.commit.message);
       continue;
     }
 
@@ -367,25 +452,28 @@ export async function checkMilestoneForRelease({
       if (issueNumbers.includes(prNumber)) {
         continue;
       }
-      issueNumbers.push(...(await getOriginalIssues({
-        github,
-        owner,
-        repo,
-        issueNumber: prNumber,
-      })));
+      issueNumbers.push(
+        ...(await getOriginalIssues({
+          github,
+          owner,
+          repo,
+          issueNumber: prNumber,
+        })),
+      );
     }
 
     const uniqueIssues = uniq(issueNumbers.filter(isNotNull));
     commitIssueMap[commit.sha] = uniqueIssues;
 
-    uniqueIssues.forEach(issueNumber => {
+    uniqueIssues.forEach((issueNumber) => {
       commitIssueSet.add(issueNumber);
       issueCommitMap[issueNumber] = commit.sha;
     });
   }
 
-  const allIssueNumbers = Array.from(commitIssueSet)
-    .concat(Array.from(milestoneIssueSet));
+  const allIssueNumbers = Array.from(commitIssueSet).concat(
+    Array.from(milestoneIssueSet),
+  );
 
   const issuesInOlderMilestones = await getIssuesWithOlderMilestones({
     github,
@@ -402,19 +490,19 @@ export async function checkMilestoneForRelease({
     issueNumbers: allIssueNumbers,
   });
 
-  const issuesInMilestoneNotInCommits = closedMilestoneIssues
-    .filter(issue =>
+  const issuesInMilestoneNotInCommits = closedMilestoneIssues.filter(
+    (issue) =>
       !commitIssueSet.has(issue.number) &&
       !issuesWithExcludedTags.has(issue.number) &&
-      !issuesInOlderMilestones.has(issue.number)
-    );
+      !issuesInOlderMilestones.has(issue.number),
+  );
 
-  const issuesInCommitsNotInMilestone = Array.from(commitIssueSet)
-    .filter(issueNumber => (
+  const issuesInCommitsNotInMilestone = Array.from(commitIssueSet).filter(
+    (issueNumber) =>
       !milestoneIssueSet.has(issueNumber) &&
       !issuesInOlderMilestones.has(issueNumber) &&
-      !issuesWithExcludedTags.has(issueNumber)
-    ));
+      !issuesWithExcludedTags.has(issueNumber),
+  );
 
   for (const issue of issuesInMilestoneNotInCommits) {
     await addIssueToProject({
@@ -423,8 +511,10 @@ export async function checkMilestoneForRelease({
       repo,
       issueNumber: issue.number,
       version,
-      comment: 'Issue in milestone, cannot find commit',
-    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
+      comment: "Issue in milestone, cannot find commit",
+    }).catch((e) =>
+      console.error(`error adding issue ${issue.number} to project`, e),
+    );
   }
 
   for (const issueNumber of issuesInCommitsNotInMilestone) {
@@ -434,8 +524,10 @@ export async function checkMilestoneForRelease({
       repo,
       issueNumber: issueNumber,
       version,
-      comment: 'Issue in release branch, needs milestone',
-    }).catch((e) => console.error(`error adding issue ${issueNumber} to project`, e));
+      comment: "Issue in release branch, needs milestone",
+    }).catch((e) =>
+      console.error(`error adding issue ${issueNumber} to project`, e),
+    );
   }
 
   for (const issue of openMilestoneIssues) {
@@ -445,8 +537,10 @@ export async function checkMilestoneForRelease({
       repo,
       issueNumber: issue.number,
       version,
-      comment: 'Issue still open in milestone',
-    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
+      comment: "Issue still open in milestone",
+    }).catch((e) =>
+      console.error(`error adding issue ${issue.number} to project`, e),
+    );
   }
 
   const logText = await generateLog({
@@ -492,43 +586,55 @@ async function generateLog({
   openMilestoneIssues,
   commitIssueMap,
 }: ReleaseProps & {
-  commits: Commit[],
-  lastTag: string,
-  commitHash: string,
-  issuesInMilestoneNotInCommits: Issue[],
-  issuesInCommitsNotInMilestone: number[],
-  issuesWithExcludedTags: Set<number>,
-  issuesInOlderMilestones: Set<number>,
-  milestoneIssueSet: Set<number>,
-  openMilestoneIssues: Issue[],
-  commitIssueMap: Record<string, number[]>,
+  commits: Commit[];
+  lastTag: string;
+  commitHash: string;
+  issuesInMilestoneNotInCommits: Issue[];
+  issuesInCommitsNotInMilestone: number[];
+  issuesWithExcludedTags: Set<number>;
+  issuesInOlderMilestones: Set<number>;
+  milestoneIssueSet: Set<number>;
+  openMilestoneIssues: Issue[];
+  commitIssueMap: Record<string, number[]>;
 }) {
   let log = `# ${version} Milestone Audit Log\n\n`;
 
   log += `Parsing from ${lastTag} to ${commitHash} \n`;
 
-  log += '## Summary:\n';
+  log += "## Summary:\n";
 
-  log += '\n‼️  Closed Issues in milestone but not in commits:' +
-    issuesInMilestoneNotInCommits.map(
-      issue => `\n   #${issue.number} (${issueLink({ owner, repo, issueNumber: issue.number })})`)
-      .join('');
+  log +=
+    "\n‼️  Closed Issues in milestone but not in commits:" +
+    issuesInMilestoneNotInCommits
+      .map(
+        (issue) =>
+          `\n   #${issue.number} (${issueLink({ owner, repo, issueNumber: issue.number })})`,
+      )
+      .join("");
 
-  log += '\n‼️  Issues in commits but not in milestone:' +
-    issuesInCommitsNotInMilestone.map(
-      issueNumber => `\n   #${issueNumber} (${issueLink({ owner, repo, issueNumber })})`)
-      .join('');
+  log +=
+    "\n‼️  Issues in commits but not in milestone:" +
+    issuesInCommitsNotInMilestone
+      .map(
+        (issueNumber) =>
+          `\n   #${issueNumber} (${issueLink({ owner, repo, issueNumber })})`,
+      )
+      .join("");
 
-  log += '\n‼️  Open issues in milestone:' +
-    openMilestoneIssues.map(
-      issue => `\n   #${issue.number} (${issueLink({ owner, repo, issueNumber: issue.number })})`)
-      .join('');
+  log +=
+    "\n‼️  Open issues in milestone:" +
+    openMilestoneIssues
+      .map(
+        (issue) =>
+          `\n   #${issue.number} (${issueLink({ owner, repo, issueNumber: issue.number })})`,
+      )
+      .join("");
 
-  log += '\n\n## Commits in release branch\n';
+  log += "\n\n## Commits in release branch\n";
 
   for (const hash in commitIssueMap) {
-    const msg = commits.find(commit => commit.sha === hash)?.commit.message;
-    log += `\n➡️  ${msg?.split('\n')[0]} [${hash.slice(0, 7)}]\n`;
+    const msg = commits.find((commit) => commit.sha === hash)?.commit.message;
+    log += `\n➡️  ${msg?.split("\n")[0]} [${hash.slice(0, 7)}]\n`;
 
     for (const issueNumber of commitIssueMap[hash]) {
       if (milestoneIssueSet.has(issueNumber)) {
@@ -543,9 +649,9 @@ async function generateLog({
           issueNumber,
         });
         const excludedTags = issue ? getExcludedLabels(issue) : [];
-        log += `   ✅ Issue #${issueNumber} has excluded tags: ${excludedTags.map(l => l.name).join(',')}\n`;
+        log += `   ✅ Issue #${issueNumber} has excluded tags: ${excludedTags.map((l) => l.name).join(",")}\n`;
       } else {
-        log +=`   ❌ Issue #${issueNumber} is not in milestone, but probably should be (${issueLink({ owner, repo, issueNumber })})\n`;
+        log += `   ❌ Issue #${issueNumber} is not in milestone, but probably should be (${issueLink({ owner, repo, issueNumber })})\n`;
       }
     }
   }
@@ -554,9 +660,9 @@ async function generateLog({
 }
 
 const releaseIssueProject = {
-  id: 'PVT_kwDOAKCINc4Ajw5A',
-  commentColId: 'PVTF_lADOAKCINc4Ajw5AzgcE7NA',
-  versionColId: 'PVTF_lADOAKCINc4Ajw5AzgcE7PY',
+  id: "PVT_kwDOAKCINc4Ajw5A",
+  commentColId: "PVTF_lADOAKCINc4Ajw5AzgcE7NA",
+  versionColId: "PVTF_lADOAKCINc4Ajw5AzgcE7PY",
 };
 
 async function addIssueToProject({
@@ -566,7 +672,7 @@ async function addIssueToProject({
   issueNumber,
   comment,
   version,
-}: GithubProps & { issueNumber: number, comment: string, version: string }) {
+}: GithubProps & { issueNumber: number; comment: string; version: string }) {
   console.log(`Possible problem issue: #${issueNumber} - ${comment}`);
 
   const issue = await getIssueWithCache({
@@ -587,13 +693,13 @@ async function addIssueToProject({
     },
   });
 
-  const response = await graphqlWithAuth(`mutation {
+  const response = (await graphqlWithAuth(`mutation {
     addProjectV2ItemById(input: {
       projectId: "${releaseIssueProject.id}",
       contentId: "${issue?.node_id}"
     })
     { item { id } }
-  }`) as { addProjectV2ItemById: { item: { id: string } } };
+  }`)) as { addProjectV2ItemById: { item: { id: string } } };
 
   const itemId = response.addProjectV2ItemById.item.id;
 

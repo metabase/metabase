@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupAuditInfoEndpoint,
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
@@ -121,6 +122,7 @@ function setup({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
   setupListSubscriptionsEndpoint([]);
+  setupBookmarksEndpoints([]);
   setupAuditInfoEndpoint({
     auditInfo: hasUsageAnalyticsAccess
       ? { dashboard_overview: AUDIT_DASHBOARD_ID }

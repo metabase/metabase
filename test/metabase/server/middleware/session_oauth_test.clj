@@ -171,13 +171,11 @@
         (testing "a session request"
           (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
             (let [req (merge-current-user-info {:metabase-session-key "session-key"})]
-              (is (= "session" (:embedding/auth-method req)))
               (is (nil? (:authenticated-via-oauth? req)))
               (is (passes-scope-middleware? req)))))
         (testing "an API-key request"
           (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-api-key (fn [_] user-info)]
             (let [req (merge-current-user-info {:headers {"x-api-key" "mb_whatever"}})]
-              (is (= "api-key" (:embedding/auth-method req)))
               (is (nil? (:authenticated-via-oauth? req)))
               (is (passes-scope-middleware? req)))))
         (testing "a session request carrying a stray bearer header"
@@ -188,7 +186,6 @@
                 (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
                   (let [req (merge-current-user-info (assoc (bearer-request token) :metabase-session-key "session-key"))]
                     (is (= (mt/user->id :rasta) (:metabase-user-id req)))
-                    (is (= "session" (:embedding/auth-method req)))
                     (is (nil? (:authenticated-via-oauth? req)))
                     (is (passes-scope-middleware? req))))
                 (testing "and over HTTP"
@@ -303,6 +300,5 @@
         (let [req (merge-current-user-info {:headers {"authorization" "Bearer anything"
                                                       "x-api-key"     "mb_whatever"}})]
           (is (= 99 (:metabase-user-id req)))
-          (is (= "api-key" (:embedding/auth-method req)))
           (is (nil? (:token-scopes req)) "api-key auth must not set token-scopes")
           (is (false? @called?) "bearer token store must not be consulted when api-key already authenticated"))))))

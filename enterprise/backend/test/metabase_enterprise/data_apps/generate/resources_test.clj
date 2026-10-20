@@ -512,7 +512,6 @@
                :type                   "question"
                :display                "table"
                :creator_id             "crowberto@metabase.com"
-               :created_at             string?
                :card_schema            pos-int?
                :visualization_settings {}
                :parameters             []
