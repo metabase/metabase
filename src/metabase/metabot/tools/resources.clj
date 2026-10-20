@@ -622,13 +622,22 @@
 (defn- fetch-table-fields [id-str]
   (table-details :table (parse-long id-str) true))
 
+(defn- field-values
+  [{:keys [field-id] :as args}]
+  (let [entity {:kind :field :id field-id}]
+    (tools/with-entity entity
+      (let [result (field-stats/field-values args)]
+        (when-not (:structured-output result)
+          (recoverable.common/not-found! entity))
+        result))))
+
 (defn- fetch-table-field [id-str field-id]
   (let [table-id (parse-long id-str)]
     (check-table-resource-database table-id)
-    (field-stats/field-values {:entity-type "table"
-                               :entity-id   table-id
-                               :field-id    field-id
-                               :limit       30})))
+    (field-values {:entity-type "table"
+                   :entity-id   table-id
+                   :field-id    field-id
+                   :limit       30})))
 
 (defn- fetch-table-derived [id-str query-params]
   (let [table-id   (parse-long id-str)
@@ -662,10 +671,10 @@
 (defn- fetch-card-field [type-str id-str field-id]
   (let [card-id (parse-long id-str)]
     (check-card-resource-database card-id)
-    (field-stats/field-values {:entity-type type-str
-                               :entity-id   card-id
-                               :field-id    field-id
-                               :limit       30})))
+    (field-values {:entity-type type-str
+                   :entity-id   card-id
+                   :field-id    field-id
+                   :limit       30})))
 
 (defn- fetch-card-sources [id-str query-params]
   (let [card (api/read-check :model/Card (parse-long id-str))]
@@ -691,10 +700,10 @@
 (defn- fetch-metric-dimension [id-str dim-id]
   (let [metric-id (parse-long id-str)]
     (check-card-resource-database metric-id)
-    (field-stats/field-values {:entity-type "metric"
-                               :entity-id   metric-id
-                               :field-id    dim-id
-                               :limit       30})))
+    (field-values {:entity-type "metric"
+                   :entity-id   metric-id
+                   :field-id    dim-id
+                   :limit       30})))
 
 ;; ----- Measure / Segment -----
 
@@ -1119,10 +1128,7 @@
        "<instructions>\n" instruction-text "\n</instructions>"))
 
 (defn- format-content
-  "One read's structured output as the LLM-ready string, by `:result-type`.
-
-  Every handler returns a `:structured-output`; a miss or a refusal is thrown rather than returned,
-  so there is no error branch here and no result shape that renders as an empty `<resource>`."
+  "Render a successful read's structured output as text by `:result-type`."
   [structured]
   (case (:result-type structured)
     ;; NOTE: keep in sync with agent/tools/metadata.clj/format-field-metadata-output
@@ -1214,12 +1220,7 @@
   (handle [_ {:keys [uri]} _ctx]
     (let [structured (:structured-output (dispatch uri))]
       (when-not structured
-        ;; Two handlers still report a miss by returning `{:output … :status-code 404}` rather than
-        ;; throwing — `entity-details/get-measure-details` and `get-segment-details`, whose other
-        ;; callers depend on that shape. Their text is dropped rather than forwarded: it was not
-        ;; written for a model, and `not-found!` already names the entity and says what to do next.
-        ;; This also closes the case where a result carrying only `:output` rendered as an empty
-        ;; `<resource>`, because the formatter read a `:formatted` key nothing ever set.
+        ;; Legacy table, card, metric, measure and segment helpers still return failures as text.
         (recoverable.common/not-found! (uri-entity (:segments (parse-uri uri)))))
       {:output            (format-content structured)
        :structured-output structured}))

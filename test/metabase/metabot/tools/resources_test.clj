@@ -13,6 +13,8 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
@@ -1394,6 +1396,73 @@
              in it must not be able to close that attribute early"
       (let [{:keys [output]} (read-uris {:uris ["metabase://table/\"><script>"]})]
         (is (str/includes? output "<resource uri=\"metabase://table/\\\"><script>\">"))))))
+
+(deftest read-missing-fields-test
+  (let [mp       (mt/metadata-provider)
+        query    (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        metadata (-> query qp/process-query :data :results_metadata :columns)]
+    (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query :result_metadata metadata}
+                   :model/Card {model-id :id} {:type :model :dataset_query query :result_metadata metadata}
+                   :model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate query (lib/count))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [[kind id child] [["table" (mt/id :products) "fields"]
+                                 ["question" question-id "fields"]
+                                 ["model" model-id "fields"]
+                                 ["metric" metric-id "dimensions"]]
+                field-id ["999999" "CATEGORY"]]
+          (let [uri (str "metabase://" kind "/" id "/" child "/" field-id)]
+            (testing uri
+              (let [{:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+                (is (= :recoverable class))
+                (is (str/includes? text (str "**Error:** Field " field-id
+                                             " was not found. It may not exist, or you may not have access to it.")))
+                (is (str/includes? text "Call `search`"))))))))))
+
+(deftest read-missing-field-parent-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[kind child] [["table" "fields"] ["question" "fields"]
+                          ["model" "fields"] ["metric" "dimensions"]]]
+      (let [uri (str "metabase://" kind "/999999/" child "/123")
+            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+        (is (= :recoverable class))
+        (is (str/includes? text (str "**Error:** " (str/capitalize kind) " 999999 was not found.")))))))
+
+(deftest read-field-refusal-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [status [403 404]]
+      (mt/with-dynamic-fn-redefs [field-stats/field-values
+                                  (fn [_] (throw (ex-info "Field lookup refused" {:status-code status})))]
+        (let [uri (str "metabase://table/" (mt/id :products) "/fields/999999")
+              {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+          (is (= :recoverable class))
+          (is (str/includes? text "**Error:** Field 999999 was not found.")))))))
+
+(deftest read-legacy-detail-failures-test
+  (mt/with-temp [:model/Card {question-id :id} {:type :question}
+                 :model/Card {model-id :id} {:type :model}
+                 :model/Card {metric-id :id} {:type :metric}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [failure (constantly {:output "Legacy detail not found" :status-code 404})]
+        (mt/with-dynamic-fn-redefs [entity-details/get-table-details failure
+                                    entity-details/get-metric-details failure
+                                    entity-details/get-measure-details failure
+                                    entity-details/get-segment-details failure]
+          (doseq [[kind id suffix] [["table" (mt/id :products) ""]
+                                    ["table" (mt/id :products) "/fields"]
+                                    ["question" question-id ""]
+                                    ["question" question-id "/fields"]
+                                    ["model" model-id ""]
+                                    ["model" model-id "/fields"]
+                                    ["metric" metric-id ""]
+                                    ["metric" metric-id "/dimensions"]
+                                    ["measure" 999999 ""]
+                                    ["segment" 999999 ""]]]
+            (let [uri (str "metabase://" kind "/" id suffix)]
+              (testing uri
+                (let [{:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+                  (is (= :recoverable class))
+                  (is (str/includes? text (str "**Error:** " (str/capitalize kind) " " id " was not found.")))
+                  (is (str/includes? text "Call `search`")))))))))))
 
 ;; ===== Behavioral tests for patterns where the dispatch contract isn't enough =====
 

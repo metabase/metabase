@@ -441,7 +441,8 @@
   (try
     (thunk)
     (catch Throwable e
-      (if (contains? refusal-status-codes (:status-code (ex-data e)))
+      (if (and (not (contains? (ex-data e) tools.error/error-key))
+               (contains? refusal-status-codes (:status-code (ex-data e))))
         (tools.error/throw-recoverable! ::recoverable.common/not-found
                                         (cond-> {} kind (assoc :kind kind) (some? id) (assoc :id id))
                                         {:cause e})
@@ -455,7 +456,7 @@
 
   `entity` is `{:kind <keyword> :id <id>}`. A 403 and a 404 — the two things `api/read-check` raises
   — both become the same recoverable error; see `recoverable.common/not-found!` for why they are not
-  distinguished. Every other exception passes through, so a genuine failure inside `body` stays
+  distinguished. Declared tool errors pass through unchanged. Other exceptions pass through, so a failure stays
   unrecoverable instead of being reported to the model as a missing entity."
   {:style/indent [:defn]}
   [entity & body]
