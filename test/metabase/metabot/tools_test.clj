@@ -10,6 +10,7 @@
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
    [metabase.notification.models :as models.notification]
@@ -347,7 +348,9 @@
           (mt/with-current-user (mt/user->id :crowberto)
             (doseq [schedule [{:frequency "weekly" :day_of_week "monday" :hour 9}
                               {:frequency "monthly" :day_of_month "first-monday" :hour 9}]]
-              (agent-tools/create-alert-tool {:card_id card-id :send_condition "has_result" :schedule schedule})
+              (tools.core/call agent-tools/create-alert-tool
+                               {:card_id card-id :send_condition "has_result" :schedule schedule}
+                               {:memory-atom shared/*memory-atom*})
               (agent-tools/slackbot-create-dashboard-subscription-tool {:dashboard_id dash-id :schedule schedule}))))
         (testing "alerts"
           (is (= #{"0 0 9 ? * 2 *" "0 0 9 ? * 2#1 *"}
