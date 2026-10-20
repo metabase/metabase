@@ -662,6 +662,64 @@ describe("MonitorLayout", () => {
     );
   });
 
+  it("shows Data app analytics in AI Auditing with the data-apps feature", async () => {
+    setup({ tokenFeatures: { audit_app: true, "data-apps": true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    const link = screen.getByRole("link", { name: "Data app analytics" });
+    expect(link).toHaveAttribute("href", Urls.monitorAiAuditingDataApps());
+    expect(
+      within(link).getByRole("img", { name: "app icon" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides Data app analytics without the data-apps feature", async () => {
+    setup({ tokenFeatures: { audit_app: true, "data-apps": false } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("link", { name: "CLI analytics" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Data app analytics" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("marks Data app analytics as the current page on its page", async () => {
+    setup({
+      initialRoute: Urls.monitorAiAuditingDataApps(),
+      tokenFeatures: { audit_app: true, "data-apps": true },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    const activeLink = screen.getByRole("link", { name: "Data app analytics" });
+    expect(screen.getAllByRole("link", { current: "page" })).toEqual([
+      activeLink,
+    ]);
+  });
+
+  it("tracks opening the Data app analytics section", async () => {
+    trackMonitorSectionClicked.mockClear();
+    setup({ tokenFeatures: { audit_app: true, "data-apps": true } });
+
+    await userEvent.click(
+      await screen.findByRole("link", { name: "Data app analytics" }),
+    );
+
+    expect(trackMonitorSectionClicked).toHaveBeenCalledWith(
+      "ai-auditing-data-apps",
+    );
+  });
+
   it("keeps MCP analytics available when the MCP server toggle is off", async () => {
     setup({
       tokenFeatures: { audit_app: true, ai_controls: true },

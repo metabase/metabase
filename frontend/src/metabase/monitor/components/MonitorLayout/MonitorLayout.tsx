@@ -67,6 +67,10 @@ function getActiveSection(pathname: string): ActiveSection {
       () => "ai-auditing-cli",
     )
     .with(
+      P.string.startsWith(Urls.monitorAiAuditingDataApps()),
+      () => "ai-auditing-data-apps",
+    )
+    .with(
       P.string.startsWith(Urls.monitorAiAuditingConversations()),
       () => "ai-auditing-conversations",
     )
@@ -96,6 +100,7 @@ export function MonitorLayout() {
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const hasAiControlsFeature = useHasTokenFeature("ai_controls");
   const hasSessionManagementFeature = useHasTokenFeature("session-management");
+  const hasDataAppsFeature = useHasTokenFeature("data-apps");
   const canAccessDependencyDiagnosticsPage = useSelector(
     canAccessDependencyDiagnostics,
   );
@@ -273,6 +278,18 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("ai-auditing-cli")}
           />
+          {hasDataAppsFeature && (
+            <AreaTab
+              label={t`Data app analytics`}
+              icon="app"
+              to={Urls.monitorAiAuditingDataApps()}
+              isSelected={activeSection === "ai-auditing-data-apps"}
+              showLabel={isNavbarOpened}
+              onClick={() =>
+                trackMonitorSectionClicked("ai-auditing-data-apps")
+              }
+            />
+          )}
         </AreaTabGroup>
       )}
     </>
