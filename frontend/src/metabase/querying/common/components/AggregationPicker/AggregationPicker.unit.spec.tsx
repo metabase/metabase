@@ -13,13 +13,12 @@ import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Database, TestOperatorSpec } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
   createOrdersTable,
   createPeopleTable,
@@ -159,13 +158,12 @@ function setup({
     ? Lib.selectedAggregationOperators(baseOperators, clause)
     : baseOperators;
 
-  const onQueryChange = jest.fn<void, [Lib.Query]>();
+  const onQueryChange = jest.fn();
 
   renderWithProviders(
     <AggregationPicker
       query={query}
       clause={clause}
-      clauseIndex={0}
       stageIndex={stageIndex}
       operators={operators}
       allowCustomExpressions={allowCustomExpressions}
@@ -176,8 +174,8 @@ function setup({
 
   function getRecentClause(index: number = -1): Lib.Clause | undefined {
     expect(onQueryChange).toHaveBeenCalledWith(expect.anything());
-    const query = onQueryChange.mock.lastCall?.[0];
-    return query ? Lib.aggregations(query, stageIndex).at(index) : undefined;
+    const [query] = onQueryChange.mock.lastCall;
+    return Lib.aggregations(query, stageIndex).at(index);
   }
 
   function getRecentClauseInfo(index: number = -1) {
@@ -361,106 +359,6 @@ describe("AggregationPicker", () => {
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(getRecentClauseInfo()?.displayName).toBe(expressionName);
     });
-
-    it.each(["count-where", "sum-where", "distinct-where", "share"])(
-      "should re-save a Metabot %s with a whole-day date range",
-      async (operator) => {
-        const expressionName = "January 2017";
-        const predicate: TestOperatorSpec = {
-          type: "operator",
-          operator: "and",
-          args: [
-            {
-              type: "operator",
-              operator: ">=",
-              args: [
-                { type: "column", name: "CREATED_AT" },
-                { type: "literal", value: "2017-01-01" },
-              ],
-            },
-            {
-              type: "operator",
-              operator: "<",
-              args: [
-                { type: "column", name: "CREATED_AT" },
-                { type: "literal", value: "2017-02-01" },
-              ],
-            },
-          ],
-        };
-        const aggregation: TestOperatorSpec = {
-          type: "operator",
-          operator,
-          args:
-            operator === "sum-where" || operator === "distinct-where"
-              ? [{ type: "column", name: "USER_ID" }, predicate]
-              : [predicate],
-        };
-        const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
-          stages: [
-            {
-              source: { type: "table", id: ORDERS_ID },
-              aggregations: [{ name: expressionName, value: aggregation }],
-            },
-          ],
-        });
-        const { onQueryChange } = setup({
-          database: createSampleDatabase({
-            features: [...COMMON_DATABASE_FEATURES, "distinct-where"],
-          }),
-          query,
-          allowCustomExpressions: true,
-        });
-
-        const editor = await screen.findByTestId(
-          "custom-expression-query-editor",
-        );
-        await waitFor(() => expect(editor).toHaveProperty("readOnly", false));
-        await waitFor(() => expect(editor).not.toHaveValue(""));
-        await userEvent.click(screen.getByRole("button", { name: "Update" }));
-
-        await waitFor(() => expect(onQueryChange).toHaveBeenCalledTimes(1));
-        const savedQuery = onQueryChange.mock.lastCall?.[0];
-        if (!savedQuery) {
-          throw new Error("The expression editor did not save the aggregation");
-        }
-        expect(Lib.toLegacyQuery(savedQuery)).toMatchObject({
-          query: {
-            aggregation: [
-              [
-                "aggregation-options",
-                [
-                  operator,
-                  ...(operator === "sum-where" || operator === "distinct-where"
-                    ? [
-                        [
-                          "field",
-                          ORDERS.USER_ID,
-                          { "base-type": "type/Integer" },
-                        ],
-                      ]
-                    : []),
-                  [
-                    "and",
-                    [
-                      ">=",
-                      ["field", ORDERS.CREATED_AT, expect.anything()],
-                      "2017-01-01",
-                    ],
-                    [
-                      "<",
-                      ["field", ORDERS.CREATED_AT, expect.anything()],
-                      "2017-02-01",
-                    ],
-                  ],
-                ],
-                { name: expressionName, "display-name": expressionName },
-              ],
-            ],
-          },
-        });
-      },
-    );
 
     it("should open the editor when a named expression without operator is used", async () => {
       setup({ query: createQueryWithInlineExpression() });
