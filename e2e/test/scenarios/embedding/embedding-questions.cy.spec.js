@@ -280,29 +280,23 @@ describe("issue 30535", () => {
       },
     });
 
-    H.createQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
-
-      H.visitQuestion(id);
-
-      H.openLegacyStaticEmbeddingModal({
-        resource: "question",
-        resourceId: id,
-        activeTab: "parameters",
-        previewMode: "preview",
-        unpublishBeforeOpen: false,
-      });
-    });
+    H.createQuestion(
+      { ...questionDetails, enable_embedding: true },
+      { wrapId: true },
+    );
   });
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
-    cy.document().then((doc) => {
-      const iframe = doc.querySelector("iframe");
+    cy.get("@questionId").then((questionId) => {
+      H.getEmbeddedPageUrl({
+        resource: { question: questionId },
+        params: {},
+      }).then((urlOptions) => {
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
-      cy.signOut();
-      cy.signInAsSandboxedUser();
-
-      cy.visit(iframe.src);
+        cy.visit(urlOptions);
+      });
     });
 
     cy.findByRole("grid").within(() => {
@@ -321,23 +315,13 @@ describe("issue 63687", () => {
   });
 
   it("should properly display pin map tiles without auth errors for a valid JWT token", () => {
-    H.createNativeQuestion(questionAsPinMapWithTiles, {
-      visitQuestion: true,
-      wrapId: true,
-    });
-
-    cy.get("@questionId").then((questionId) => {
-      H.openLegacyStaticEmbeddingModal({
-        resource: "question",
-        resourceId: questionId,
-        activeTab: "parameters",
-        unpublishBeforeOpen: false,
-      });
-    });
+    H.createNativeQuestion(questionAsPinMapWithTiles, { wrapId: true });
 
     cy.intercept("/api/embed/tiles/**").as("getTiles");
 
-    H.visitIframe();
+    cy.get("@questionId").then((questionId) => {
+      H.visitEmbeddedPage({ resource: { question: questionId }, params: {} });
+    });
 
     cy.wait("@getTiles").then(({ response: tileResponse }) => {
       expect(tileResponse?.statusCode).to.equal(200);
