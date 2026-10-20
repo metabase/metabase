@@ -10,7 +10,12 @@ import {
   setCurrentMcpQueryHandle,
 } from "metabase/embedding-sdk/mcp-app-queries";
 
-import { MCP_APPS_METADATA_KEY } from "../constants";
+import {
+  MCP_APPS_METADATA_KEY,
+  UI_CREDENTIAL_REFRESH_INTERVAL_MS,
+  UI_CREDENTIAL_REFRESH_RETRY_MS,
+  UI_CREDENTIAL_VALIDITY_MS,
+} from "../constants";
 
 import { useMcpApp } from "./useMcpApp";
 
@@ -277,7 +282,7 @@ describe("useMcpApp", () => {
     expect(result.current.hostError).toBeNull();
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(30 * 1000);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_RETRY_MS);
     });
 
     expect(app.callServerTool).toHaveBeenCalledTimes(2);
@@ -305,8 +310,8 @@ describe("useMcpApp", () => {
     expect(result.current.uiCredential).toBe("initial-credential");
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
-      await jest.advanceTimersByTimeAsync(30 * 1000);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_INTERVAL_MS);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_RETRY_MS);
     });
 
     expect(app.callServerTool).toHaveBeenCalledTimes(3);
@@ -314,7 +319,7 @@ describe("useMcpApp", () => {
     expect(result.current.uiCredential).toBe("initial-credential");
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(30 * 1000);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_RETRY_MS);
     });
 
     expect(app.callServerTool).toHaveBeenCalledTimes(4);
@@ -341,7 +346,7 @@ describe("useMcpApp", () => {
 
     await act(async () => app.ontoolresult(QUERY_RESULT));
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(30 * 1000);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_RETRY_MS);
     });
 
     expect(app.callServerTool).toHaveBeenCalledTimes(3);
@@ -349,7 +354,7 @@ describe("useMcpApp", () => {
     expect(result.current.uiCredential).toBe("initial-credential");
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(30 * 1000);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_RETRY_MS);
     });
 
     expect(app.callServerTool).toHaveBeenCalledTimes(4);
@@ -373,7 +378,7 @@ describe("useMcpApp", () => {
     expect(result.current.uiCredential).toBe("initial-credential");
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(4.5 * 60 * 1000);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_VALIDITY_MS);
     });
     expect(result.current.uiCredential).toBe("");
     expect(result.current.mcpSessionId).toBe("");
@@ -382,7 +387,7 @@ describe("useMcpApp", () => {
     expect(result.current.uiCredential).toBe("");
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(30 * 1000);
+      await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_RETRY_MS);
     });
     expect(result.current.hostError).toBe(
       "This visualization did not load. Ask your MCP client to show it again.",
@@ -390,6 +395,7 @@ describe("useMcpApp", () => {
   });
 
   it("measures credential validity from the successful request start", async () => {
+    const refreshDelayMs = 60 * 1000;
     jest.useFakeTimers();
     jest.spyOn(console, "error").mockImplementation();
 
@@ -411,14 +417,16 @@ describe("useMcpApp", () => {
     expect(app.callServerTool).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(60 * 1000);
+      await jest.advanceTimersByTimeAsync(refreshDelayMs);
       resolveRefresh(createAuthResult("delayed-credential"));
       await delayedRefresh;
     });
     expect(result.current.uiCredential).toBe("delayed-credential");
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(3.5 * 60 * 1000);
+      await jest.advanceTimersByTimeAsync(
+        UI_CREDENTIAL_VALIDITY_MS - refreshDelayMs,
+      );
     });
     expect(result.current.uiCredential).toBe("");
     expect(result.current.mcpSessionId).toBe("");
@@ -474,7 +482,7 @@ describe("useMcpApp", () => {
       setCurrentMcpQueryHandle(NEXT_QUERY_HANDLE);
 
       await act(async () => {
-        await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
+        await jest.advanceTimersByTimeAsync(UI_CREDENTIAL_REFRESH_INTERVAL_MS);
       });
 
       expect(app.callServerTool).toHaveBeenCalledTimes(2);
