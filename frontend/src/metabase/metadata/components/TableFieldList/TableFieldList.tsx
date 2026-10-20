@@ -6,7 +6,6 @@ import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { FieldList } from "metabase/metadata/components/FieldList";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { isTableReadOnly } from "metabase/metadata/utils/table";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 interface Props {
@@ -84,7 +83,7 @@ export const TableFieldList = ({
       activeFieldKey={activeFieldId}
       getFieldKey={getRawTableFieldId}
       getFieldHref={handleGetFieldHref}
-      readOnly={isTableReadOnly(table)}
+      readOnly={!table.can_write}
       onNameChange={handleNameChange}
       onDescriptionChange={handleDescriptionChange}
     />

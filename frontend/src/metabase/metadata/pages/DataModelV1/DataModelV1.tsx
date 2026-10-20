@@ -9,7 +9,6 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { isTableReadOnly } from "metabase/metadata/utils/table";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
@@ -240,7 +239,6 @@ export const DataModelV1 = () => {
         <SyncOptionsModal
           isOpen={isSyncModalOpen}
           tableId={table.id}
-          readOnly={isTableReadOnly(table)}
           onClose={closeSyncModal}
         />
       )}

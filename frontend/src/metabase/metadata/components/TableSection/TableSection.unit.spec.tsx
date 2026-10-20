@@ -129,7 +129,9 @@ describe("TableSection", () => {
       expect(
         screen.getByPlaceholderText("Give this table a name"),
       ).toHaveAttribute("readonly");
-      expect(screen.getByRole("button", { name: /Sorting/ })).toBeDisabled();
+      expect(
+        screen.queryByRole("button", { name: /Sorting/ }),
+      ).not.toBeInTheDocument();
       expect(
         screen.getByPlaceholderText("Give this field a name"),
       ).toBeDisabled();

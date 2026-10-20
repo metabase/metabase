@@ -52,11 +52,34 @@ type RemappingPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
+type FkRemappingFieldSelectProps = {
+  error?: boolean;
+  fieldName?: string;
+  readOnly?: boolean;
+};
+
+const FkRemappingFieldSelect = ({
+  error,
+  fieldName,
+  readOnly,
+}: FkRemappingFieldSelectProps) => (
+  <Select
+    data={[{ label: fieldName ?? t`Choose a field`, value: "choose-a-field" }]}
+    dropdownOpened={false}
+    error={error}
+    placeholder={t`Choose a field`}
+    readOnly={readOnly}
+    value="choose-a-field"
+    w="100%"
+    onClick={(event) => event.preventDefault()}
+  />
+);
+
 export const RemappingPicker = ({
   database,
   field,
   comboboxProps,
-  disabled,
+  readOnly,
   onTrackMetadataChange,
   ...props
 }: RemappingPicker) => {
@@ -248,24 +271,6 @@ export const RemappingPicker = ({
     }
   };
 
-  const fkRemappingFieldTrigger = (
-    <Select
-      data={[
-        {
-          label: fkRemappingField?.display_name ?? t`Choose a field`,
-          value: "choose-a-field",
-        },
-      ]}
-      disabled={disabled}
-      dropdownOpened={false}
-      error={isFkTargetTouched && !fkRemappingField}
-      placeholder={t`Choose a field`}
-      value="choose-a-field"
-      w="100%"
-      onClick={(event) => event.preventDefault()}
-    />
-  );
-
   return (
     <Stack gap={0}>
       <DisplayValuesPicker
@@ -276,7 +281,7 @@ export const RemappingPicker = ({
         onDropdownOpen={() => setIsChoosingDisplayValue(true)}
         onDropdownClose={() => setIsChoosingDisplayValue(false)}
         onChange={handleDisplayValueChange}
-        disabled={disabled}
+        readOnly={readOnly}
         {...props}
       />
 
@@ -286,14 +291,19 @@ export const RemappingPicker = ({
             <SubInputIllustration />
           </Flex>
 
-          {fkTargetTable && disabled && fkRemappingFieldTrigger}
+          {fkTargetTable && readOnly && (
+            <FkRemappingFieldSelect
+              fieldName={fkRemappingField?.display_name}
+              readOnly
+            />
+          )}
 
           {/**
            * FieldDataSelector won't work correctly when databases are present
            * but fkTargetTable is not. It would go to "schema" step of DataSelector
            * which does not exist in FieldDataSelector, hence this conditional render.
            */}
-          {fkTargetTable && !disabled && (
+          {fkTargetTable && !readOnly && (
             <FieldDataSelector
               databases={[database]}
               isInitiallyOpen={isChoosingInitialFkTarget}
@@ -305,7 +315,12 @@ export const RemappingPicker = ({
               // The target table is the one this picker fetched, so its fields
               // come from there rather than from the store.
               fields={fkTargetTable.fields ?? []}
-              triggerElement={fkRemappingFieldTrigger}
+              triggerElement={
+                <FkRemappingFieldSelect
+                  error={isFkTargetTouched && !fkRemappingField}
+                  fieldName={fkRemappingField?.display_name}
+                />
+              }
               onClose={() => {
                 setIsFkTargetTouched(true);
               }}
@@ -333,16 +348,18 @@ export const RemappingPicker = ({
                 onClose={() => setIsCustomMappingOpen(false)}
               />
 
-              <Group mt="sm">
-                <Button
-                  size="compact-md"
-                  variant="transparent"
-                  disabled={disabled || isLoadingFieldValues}
-                  onClick={() => setIsCustomMappingOpen(true)}
-                >
-                  {t`Edit mapping`}
-                </Button>
-              </Group>
+              {!readOnly && (
+                <Group mt="sm">
+                  <Button
+                    size="compact-md"
+                    variant="transparent"
+                    disabled={isLoadingFieldValues}
+                    onClick={() => setIsCustomMappingOpen(true)}
+                  >
+                    {t`Edit mapping`}
+                  </Button>
+                </Group>
+              )}
 
               {hasChanged && <NamingTip mt="lg" />}
             </>

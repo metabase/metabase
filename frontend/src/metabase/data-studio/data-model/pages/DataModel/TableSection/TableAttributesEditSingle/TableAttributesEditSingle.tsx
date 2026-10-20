@@ -10,7 +10,6 @@ import {
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
-import { isTableReadOnly } from "metabase/metadata/utils/table";
 import { Box, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -158,7 +157,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
   };
 
   const isOwnerSpecified = table.owner_email || table.owner_user_id;
-  const readOnly = isTableReadOnly(table);
+  const readOnly = !table.can_write;
 
   return (
     <TableSectionGroup title={t`Attributes`}>
@@ -167,7 +166,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           email={table.owner_email}
           label={t`Owner`}
           userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
-          disabled={readOnly}
+          readOnly={readOnly}
           onEmailChange={handleOwnerEmailChange}
           onUserIdChange={handleOwnerUserIdChange}
           className={S.gridLabelInput}
@@ -180,7 +179,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
 
         <LayerInput
           value={table.data_layer ?? "hidden"}
-          disabled={readOnly}
+          readOnly={readOnly}
           onChange={handleLayerChange}
           classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}
@@ -188,14 +187,15 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
 
         <EntityTypeInput
           value={table.entity_type ?? "entity/GenericTable"}
-          disabled={readOnly}
+          readOnly={readOnly}
           onChange={handleEntityTypeChange}
           classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}
         />
 
         <DataSourceInput
-          disabled={readOnly || table.data_source === "metabase-transform"}
+          disabled={table.data_source === "metabase-transform"}
+          readOnly={readOnly}
           value={table.data_source ?? "unknown"}
           onChange={handleDataSourceChange}
           classNames={{ input: S.input, label: S.label }}

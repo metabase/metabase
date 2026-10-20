@@ -10,14 +10,12 @@ import { SyncTableSchemaButton } from "../SyncTableSchemaButton";
 type SyncOptionsModalProps = {
   isOpen: boolean;
   tableId: TableId;
-  readOnly?: boolean;
   onClose: () => void;
 };
 
 export const SyncOptionsModal = ({
   isOpen,
   tableId,
-  readOnly,
   onClose,
 }: SyncOptionsModalProps) => {
   return (
@@ -42,22 +40,20 @@ export const SyncOptionsModal = ({
           <SyncTableSchemaButton tableId={tableId} />
         </Stack>
 
-        {!readOnly && (
-          <Stack gap="lg">
-            <Stack gap="xxs">
-              <Text fw="bold">{t`Scan field values`}</Text>
+        <Stack gap="lg">
+          <Stack gap="xxs">
+            <Text fw="bold">{t`Scan field values`}</Text>
 
-              <Text c="text-secondary" size="sm">
-                {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin settings */}
-                {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
-              </Text>
-            </Stack>
-
-            <RescanTableFieldsButton tableId={tableId} />
-
-            <DiscardTableFieldValuesButton tableId={tableId} />
+            <Text c="text-secondary" size="sm">
+              {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin settings */}
+              {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
+            </Text>
           </Stack>
-        )}
+
+          <RescanTableFieldsButton tableId={tableId} />
+
+          <DiscardTableFieldValuesButton tableId={tableId} />
+        </Stack>
       </Stack>
     </Modal>
   );

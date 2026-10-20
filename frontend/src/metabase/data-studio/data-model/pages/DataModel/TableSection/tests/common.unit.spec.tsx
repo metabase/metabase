@@ -11,6 +11,12 @@ import { createOrdersQuantityField } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
 
+function getShownListboxes() {
+  return screen
+    .queryAllByRole("listbox")
+    .filter((listbox) => !listbox.closest('[data-hidden="true"]'));
+}
+
 describe("TableSection", () => {
   it("should render the link to explore this table in the query builder", () => {
     const table = createMockTable();
@@ -158,16 +164,20 @@ describe("TableSection", () => {
       expect(
         screen.getByPlaceholderText("Give this table a description"),
       ).toHaveAttribute("readonly");
-      expect(
+      await userEvent.click(
         screen.getByPlaceholderText("Pick someone, or type an email"),
-      ).toBeDisabled();
-      expect(
+      );
+      expect(getShownListboxes()).toHaveLength(0);
+      await userEvent.click(
         screen.getByPlaceholderText("Select visibility layer"),
-      ).toBeDisabled();
-      expect(screen.getByPlaceholderText("Select entity type")).toBeDisabled();
-      expect(
+      );
+      expect(getShownListboxes()).toHaveLength(0);
+      await userEvent.click(screen.getByPlaceholderText("Select entity type"));
+      expect(getShownListboxes()).toHaveLength(0);
+      await userEvent.click(
         screen.getByPlaceholderText("Select a data source"),
-      ).toBeDisabled();
+      );
+      expect(getShownListboxes()).toHaveLength(0);
 
       await userEvent.click(
         screen.getByRole("button", { name: "More actions" }),
@@ -176,17 +186,19 @@ describe("TableSection", () => {
         await screen.findByRole("menuitem", { name: /Re-sync schema/ }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("menuitem", { name: /Re-scan field values/ }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("menuitem", { name: /Re-scan field values/ }),
+      ).toBeInTheDocument();
       expect(
-        screen.queryByRole("menuitem", { name: /Discard cached field values/ }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("menuitem", { name: /Discard cached field values/ }),
+      ).toBeInTheDocument();
     });
 
     it("shows the fields of a table that cannot be written as read-only", () => {
       setup({ table: READ_ONLY_TABLE, activeTab: "field" });
 
-      expect(screen.getByRole("button", { name: /Sorting/ })).toBeDisabled();
+      expect(
+        screen.queryByRole("button", { name: /Sorting/ }),
+      ).not.toBeInTheDocument();
       expect(
         screen.getByPlaceholderText("Give this field a name"),
       ).toBeDisabled();

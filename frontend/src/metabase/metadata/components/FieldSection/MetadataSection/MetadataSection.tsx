@@ -78,7 +78,7 @@ const MetadataSectionBase = ({
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
-        selectProps={{ disabled: readOnly }}
+        selectProps={{ readOnly }}
         semanticTypeError={semanticTypeError}
         onChange={handleChange}
       />

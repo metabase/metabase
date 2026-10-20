@@ -754,6 +754,13 @@ describe("scenarios > data studio > datamodel", () => {
         .should("eq", false);
     }
 
+    function verifySelectIsReadOnly(
+      select: Cypress.Chainable<JQuery<HTMLElement>>,
+    ) {
+      select.click();
+      cy.findByRole("listbox").should("not.exist");
+    }
+
     function verifyReadOnlyTablePage({ hasTabs }: { hasTabs: boolean }) {
       cy.log("table picker and table");
       TablePicker.getTable("Orders").should("be.visible");
@@ -763,34 +770,40 @@ describe("scenarios > data studio > datamodel", () => {
         .and("have.attr", "readonly");
       TableSection.getDescriptionInput().should("have.attr", "readonly");
       if (hasTabs) {
-        TableSection.get()
-          .findByPlaceholderText("Select visibility layer")
-          .should("be.disabled");
-        TableSection.get()
-          .findByPlaceholderText("Select entity type")
-          .should("be.disabled");
+        verifySelectIsReadOnly(
+          TableSection.get().findByPlaceholderText("Select visibility layer"),
+        );
+        verifySelectIsReadOnly(
+          TableSection.get().findByPlaceholderText("Select entity type"),
+        );
         TableSection.clickFieldsTab();
       }
-      TableSection.getSortButton().should("be.disabled");
+      TableSection.getSortButton().should("not.exist");
 
       cy.log("field metadata, FK target and remapping");
       TableSection.clickField("Product ID");
       FieldSection.getNameInput()
         .should("have.value", "Product ID")
         .and("have.attr", "readonly");
-      FieldSection.getSemanticTypeInput().should("be.disabled");
-      FieldSection.getSemanticTypeFkTarget()
-        .should("have.value", "Products → ID")
-        .and("be.disabled");
-      FieldSection.getVisibilityInput().should("be.disabled");
-      FieldSection.getFilteringInput().should("be.disabled");
-      FieldSection.getDisplayValuesInput()
-        .should("have.value", "Use foreign key")
-        .and("be.disabled");
-      FieldSection.getDisplayValuesFkTargetInput()
-        .should("have.value", "Title")
-        .and("be.disabled");
-      FieldSection.getFieldValuesButton().should("be.disabled");
+      verifySelectIsReadOnly(FieldSection.getSemanticTypeInput());
+      FieldSection.getSemanticTypeFkTarget().should(
+        "have.value",
+        "Products → ID",
+      );
+      verifySelectIsReadOnly(FieldSection.getSemanticTypeFkTarget());
+      verifySelectIsReadOnly(FieldSection.getVisibilityInput());
+      verifySelectIsReadOnly(FieldSection.getFilteringInput());
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use foreign key",
+      );
+      verifySelectIsReadOnly(FieldSection.getDisplayValuesInput());
+      FieldSection.getDisplayValuesFkTargetInput().should(
+        "have.value",
+        "Title",
+      );
+      verifySelectIsReadOnly(FieldSection.getDisplayValuesFkTargetInput());
+      FieldSection.getFieldValuesButton().should("be.enabled");
 
       cy.log("preview");
       FieldSection.getPreviewButton().click();
