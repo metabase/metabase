@@ -20,6 +20,7 @@ TARGET_VERSION=""
 METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
+GRACE_PERIOD="${GRACE_PERIOD:-3}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -251,7 +252,7 @@ migrate_down_step() {
   fi
 
   if grep -q "not rolled back" <<<"$output"; then
-    if only_unreleased_changesets "$output"; then
+    if changesets_in_grace_period "$output"; then
       return 2
     fi
     error "migrate down had changesets that were not rolled back (check logs above)"
@@ -259,26 +260,47 @@ migrate_down_step() {
   fi
 }
 
-only_unreleased_changesets() {
-  local ids id major status checked_major="" pending=""
-  ids=$(grep -o "not in the changelog file: .*" <<<"$1" | sed 's/.*: //' | tr ', ' '\n\n' | sed '/^$/d' | sort -u)
-  [[ -z "$ids" ]] && return 1
+fetch_master_history() {
+  local git_=(git -C "$REPO_ROOT")
+  if [[ "$("${git_[@]}" rev-parse --is-shallow-repository)" == "true" ]]; then
+    "${git_[@]}" fetch -q --no-tags --shallow-since="${GRACE_PERIOD} days ago" origin "+refs/heads/master:refs/cross-version/master" &&
+      "${git_[@]}" fetch -q --no-tags --deepen=1 origin "+refs/heads/master:refs/cross-version/master"
+  else
+    "${git_[@]}" fetch -q --no-tags origin "+refs/heads/master:refs/cross-version/master"
+  fi
+}
 
+changesets_in_grace_period() {
+  local ids id commit added now age_hours json=""
+  ids=$(grep "not in the changelog file:" <<<"$1" | sed 's/.*not in the changelog file://' |
+    grep -oE 'v[0-9]+\.[0-9A-Za-z:._-]+' | sort -u || true)
+  if [[ -z "$ids" ]]; then
+    warn "Could not read the changeset ids that were not rolled back"
+    return 1
+  fi
+
+  if ! fetch_master_history; then
+    warn "Could not fetch the master history"
+    return 1
+  fi
+
+  now=$(date +%s)
   for id in $ids; do
-    major=$(sed -nE 's/^v([0-9]+)\..*/\1/p' <<<"$id")
-    [[ -z "$major" ]] && return 1
-    if [[ "$major" != "$checked_major" ]]; then
-      pending=$("$SCRIPT_DIR/pending-changesets.sh" "$major")
-      checked_major=$major
+    commit="" added=""
+    read -r commit added < <(git -C "$REPO_ROOT" -c log.showRoot=false log --since="${GRACE_PERIOD} days ago" \
+      -S "$id" --format='%H %ct' refs/cross-version/master -- resources/migrations | tail -1) || true
+    if [[ -z "${commit:-}" ]]; then
+      warn "$id was not added to master in the last ${GRACE_PERIOD} day(s)"
+      return 1
     fi
-    status=$(awk -v id="$id" '$1 == id {print $2}' <<<"$pending")
-    case "$status" in
-      recent|overdue)
-        warn "$id is on master, but the latest v${major} release does not have it yet ($status)" ;;
-      *)
-        return 1 ;;
-    esac
+    age_hours=$(( (now - added) / 3600 ))
+    warn "$id was added to master ${age_hours}h ago in ${commit:0:11}, which is in the grace period of ${GRACE_PERIOD} day(s)"
+    json+="${json:+,}{\"id\":\"$id\",\"commit\":\"$commit\",\"age_hours\":$age_hours}"
   done
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "unreleased_migrations=[$json]" >> "$GITHUB_OUTPUT"
+  fi
 }
 
 skip_for_unreleased_changesets() {

@@ -1,58 +1,33 @@
-function downgradeMajors({ target, currentVersion }) {
-  const targetMajor = Number(target.match(/^v\d+\.(\d+)\.x$/)[1]);
-  const majors = [];
-  for (let major = targetMajor + 1; major <= currentVersion; major++) {
-    majors.push(major);
-  }
-  return majors;
+function findOverdueChangesets({ migrations, notifyAfterHours }) {
+  return migrations.filter(({ age_hours }) => age_hours >= notifyAfterHours);
 }
 
-function runPendingChangesetsScript(major) {
-  const { execFileSync } = require("child_process");
-  const path = require("path");
-  const script = path.join(
-    __dirname,
-    "../../cross-version/pending-changesets.sh",
-  );
-  return execFileSync(script, [String(major)], { encoding: "utf8" });
-}
-
-function findOverdueChangesets({
-  majors,
-  listPendingChangesets = runPendingChangesetsScript,
-}) {
-  return majors.flatMap((major) =>
-    listPendingChangesets(major)
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => line.split(" "))
-      .filter(([, state]) => state === "overdue")
-      .map(([id, , file]) => ({ id, file })),
-  );
-}
-
-function formatMessage({ changesets, runUrl }) {
+function formatMessage({ changesets, gracePeriodDays, runUrl }) {
   return [
-    ":warning: *Master has migrations that are not released yet which will cause cross-version tests to fail soon.*",
-    ...changesets.map(({ id, file }) => `• \`${id}\` (${file})`),
+    `:warning: *Master has migrations that no release has yet. Cross-version tests start to fail ${gracePeriodDays} days after a migration is added to master.*`,
+    ...changesets.map(
+      ({ id, commit, age_hours }) =>
+        `• \`${id}\` (added in ${commit.slice(0, 11)}, ${age_hours}h ago)`,
+    ),
     `Please backport and release these changes. <${runUrl}|Run>`,
   ].join("\n");
 }
 
 async function notifyOverdueChangesets({
   context,
-  majors,
+  migrations,
+  notifyAfterHours,
+  gracePeriodDays,
   channelName,
   findSlackMessage,
   sendSlackMessage,
-  listPendingChangesets,
 }) {
   const { owner, repo } = context.repo;
   const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
   const changesets = [];
   for (const changeset of findOverdueChangesets({
-    majors,
-    listPendingChangesets,
+    migrations,
+    notifyAfterHours,
   })) {
     const existing = await findSlackMessage({
       channelName,
@@ -66,13 +41,12 @@ async function notifyOverdueChangesets({
   if (changesets.length > 0) {
     await sendSlackMessage({
       channelName,
-      message: formatMessage({ changesets, runUrl }),
+      message: formatMessage({ changesets, gracePeriodDays, runUrl }),
     });
   }
 }
 
 module.exports = {
-  downgradeMajors,
   findOverdueChangesets,
   formatMessage,
   notifyOverdueChangesets,

@@ -1,57 +1,37 @@
 const {
-  downgradeMajors,
   findOverdueChangesets,
   formatMessage,
   notifyOverdueChangesets,
 } = require("./notify-unreleased-migrations");
 
-describe("downgradeMajors", () => {
-  it("lists the majors between the target and the current version", () => {
-    expect(downgradeMajors({ target: "v1.62.x", currentVersion: 65 })).toEqual([
-      63, 64, 65,
-    ]);
-  });
-
-  it("is empty when the target is the current version", () => {
-    expect(downgradeMajors({ target: "v1.65.x", currentVersion: 65 })).toEqual(
-      [],
-    );
-  });
-});
-
-const listPendingChangesets = (major) =>
-  ({
-    63: [
-      "v63.a overdue resources/migrations/063/a.yaml",
-      "v63.b recent resources/migrations/063/b.yaml",
-      "v63.c expired resources/migrations/063/c.yaml",
-      "",
-    ].join("\n"),
-    64: "v64.a overdue resources/migrations/064/a.yaml\n",
-  })[major] ?? "";
+const migrations = [
+  { id: "v63.a", commit: "aaaaaaaaaaaaaaaa", age_hours: 50 },
+  { id: "v63.b", commit: "bbbbbbbbbbbbbbbb", age_hours: 10 },
+  { id: "v64.a", commit: "cccccccccccccccc", age_hours: 48 },
+];
 
 describe("findOverdueChangesets", () => {
-  it("keeps only overdue changesets of all majors", () => {
+  it("keeps only the migrations that are at least notifyAfterHours old", () => {
     expect(
-      findOverdueChangesets({ majors: [63, 64, 65], listPendingChangesets }),
-    ).toEqual([
-      { id: "v63.a", file: "resources/migrations/063/a.yaml" },
-      { id: "v64.a", file: "resources/migrations/064/a.yaml" },
-    ]);
+      findOverdueChangesets({ migrations, notifyAfterHours: 48 }).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(["v63.a", "v64.a"]);
   });
 });
 
 describe("formatMessage", () => {
-  it("lists each changeset with its file", () => {
+  it("lists each changeset with its commit and age", () => {
     expect(
       formatMessage({
-        changesets: [{ id: "v63.a", file: "resources/migrations/063/a.yaml" }],
+        changesets: [migrations[0]],
+        gracePeriodDays: 3,
         runUrl: "https://run",
       }),
     ).toBe(
       [
         ":warning: *Master has migrations that no release has yet. Cross-version tests start to fail 3 days after a migration is added to master.*",
-        "• `v63.a` (resources/migrations/063/a.yaml)",
+        "• `v63.a` (added in aaaaaaaaaaa, 50h ago)",
         "Please backport and release these changes. <https://run|Run>",
       ].join("\n"),
     );
@@ -65,29 +45,32 @@ describe("notifyOverdueChangesets", () => {
     const sendSlackMessage = jest.fn(async () => ({}));
     await notifyOverdueChangesets({
       context,
-      majors: [63, 64],
+      migrations,
+      notifyAfterHours: 48,
+      gracePeriodDays: 3,
       channelName: "release",
       findSlackMessage: jest.fn(async ({ text }) =>
         text === "v63.a" ? { id: "1", body: "" } : null,
       ),
       sendSlackMessage,
-      listPendingChangesets,
     });
     expect(sendSlackMessage).toHaveBeenCalledTimes(1);
     const { message } = sendSlackMessage.mock.calls[0][0];
     expect(message).toContain("v64.a");
     expect(message).not.toContain("v63.a");
+    expect(message).not.toContain("v63.b");
   });
 
   it("does not send a message when all changesets have one", async () => {
     const sendSlackMessage = jest.fn();
     await notifyOverdueChangesets({
       context,
-      majors: [63, 64],
+      migrations,
+      notifyAfterHours: 48,
+      gracePeriodDays: 3,
       channelName: "release",
       findSlackMessage: jest.fn(async () => ({ id: "1", body: "" })),
       sendSlackMessage,
-      listPendingChangesets,
     });
     expect(sendSlackMessage).not.toHaveBeenCalled();
   });

@@ -19,6 +19,11 @@ on:
         description: "Target version (e.g., v1.58.7 or HEAD)"
         required: true
         type: string
+      grace_period:
+        description: "Time (in days) before a migration targeting a release version is expected to exist in that release branch."
+        required: false
+        type: string
+        default: 3
 
 jobs:
   generate-test-matrix:
@@ -72,6 +77,11 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.generate-test-matrix.outputs.matrix) }}
       fail-fast: false
+    env:
+      # Number of days we don't fail a cross version test that is missing a migration that was recently merged to master
+      # but targets a different version. For example: a migration for v63 is added to master but master is on v66. Cross
+      # version tests will fail until that is backported and released on v63 but we should give people time to do that.
+      GRACE_PERIOD: 3
 
     steps:
       - uses: actions/checkout@v7
@@ -114,25 +124,25 @@ jobs:
       - name: Notify Slack about migrations that need a backport or a release
         if: >-
           steps.run-test.outputs.skipped == 'true' &&
-          matrix.target == needs.generate-test-matrix.outputs.oldest-target &&
-          github.ref == 'refs/heads/master'
+          steps.run-test.outputs.unreleased_migrations != '' &&
+          matrix.target == needs.generate-test-matrix.outputs.oldest-target
         uses: actions/github-script@v9
         env:
-          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          UNRELEASED_MIGRATIONS: ${{ steps.run-test.outputs.unreleased_migrations }}
+          # TODO: update to 48 hours and send to #engineering-ci once this has been validated, also add conditional so this only runs on master
+          NOTIFY_AFTER_HOURS: 0
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          # engineering-ci
-          SLACK_CHANNEL: 'tbd'
+          SLACK_CHANNEL: 'xv-migration-failures'
         with:
           script: | # js
             const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const { downgradeMajors, notifyOverdueChangesets } = require('${{ github.workspace }}/.github/scripts/notify-unreleased-migrations');
+            const { notifyOverdueChangesets } = require('${{ github.workspace }}/.github/scripts/notify-unreleased-migrations');
 
             await notifyOverdueChangesets({
               context,
-              majors: downgradeMajors({
-                target: '${{ matrix.target }}',
-                currentVersion: Number(process.env.CURRENT_VERSION),
-              }),
+              migrations: JSON.parse(process.env.UNRELEASED_MIGRATIONS),
+              notifyAfterHours: Number(process.env.NOTIFY_AFTER_HOURS),
+              gracePeriodDays: Number(process.env.GRACE_PERIOD),
               channelName: process.env.SLACK_CHANNEL,
               findSlackMessage,
               sendSlackMessage,
@@ -163,6 +173,8 @@ jobs:
     if: inputs.source_version != ''
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
+    env:
+      GRACE_PERIOD: ${{ inputs.grace_period }}
 
     steps:
       - uses: actions/checkout@v7
