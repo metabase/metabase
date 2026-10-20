@@ -72,6 +72,19 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           "currentlyEmbeddedObject",
         );
 
+        if (object === "dashboard") {
+          H.createQuestion({
+            name: "Total Orders",
+            dashboard_id: ORDERS_DASHBOARD_ID,
+            database_id: SAMPLE_DATABASE.id,
+            query: {
+              "source-table": SAMPLE_DATABASE.ORDERS_ID,
+              aggregation: [["count"]],
+            },
+            display: "scalar",
+          });
+        }
+
         visitAndEnableSharing(object);
 
         H.modal().within(() => {
@@ -115,10 +128,16 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         });
 
         H.visitIframe();
+        cy.url().should("contain", `/embed/${object}/`);
 
         cy.findByTestId("embed-frame").within(() => {
           cy.findByRole("heading", { name: objectName });
           cy.findAllByRole("gridcell").contains("37.65");
+
+          if (object === "dashboard") {
+            cy.findByText("Total Orders");
+            cy.findByText("18,760");
+          }
         });
 
         cy.findByRole("contentinfo").within(() => {
@@ -172,49 +191,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         // guest embeds exist, so unpublishing empties it rather than
         // leaving a section with no rows.
         mainPage().findByTestId("embedded-resources").should("not.exist");
-      });
-    });
-
-    it("should be able to publish/embed a dashboard with a dashboard question saved within it", () => {
-      H.createQuestion({
-        name: "Total Orders",
-        dashboard_id: ORDERS_DASHBOARD_ID,
-        database_id: SAMPLE_DATABASE.id,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-        enable_embedding: true,
-      });
-
-      cy.request("PUT", "/api/setting/enable-embedding-modular", {
-        value: true,
-      });
-
-      cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
-        "embedObject",
-      );
-      cy.intercept("GET", "/api/dashboard/embeddable").as(
-        "currentlyEmbeddedObject",
-      );
-
-      visitAndEnableSharing("dashboard");
-
-      H.modal().within(() => {
-        cy.findByRole("tab", { name: "Look and Feel" }).click();
-        cy.button("Publish").click();
-
-        cy.wait("@embedObject");
-      });
-
-      H.visitIframe();
-      cy.url().should("contain", "/embed/dashboard/");
-
-      cy.findByTestId("embed-frame").within(() => {
-        cy.findByRole("heading", { name: "Orders in a dashboard" });
-        cy.findByText("Total Orders");
-        cy.findByText("18,760");
       });
     });
 
