@@ -74,7 +74,7 @@ To format the total displayed in the middle of the chart, click on the three dot
 
 You can configure whether to show:
 
-- The legend, and which side of the chart it appears on. Set **Legend position** to **Auto**, **Top**, **Bottom**, **Left**, **Right**, or **Off**. **Auto** picks a side that fits the card. Legend items that don't fit go into a **+ N more** list. Metabase hides the legend only when the card has no room for it on that side.
+- The legend. To move it, see [Legend position](#legend-position).
 - The total in the center of the chart. The format of the total can be changed in the [data settings](#data-settings).
 - The labels for the pie slices. The labels for the inner ring slices can be changed in the [data settings](#data-settings).
 
@@ -93,6 +93,18 @@ To make the chart more legible, you can group slices smaller than a certain perc
 ![Other slice](../images/pie-other-slice.png)
 
 Currently, you can't change the color or label of the **Other** slice.
+
+#### Legend position
+
+To move or hide the legend, go to the **Display** tab and set **Legend position** to:
+
+- **Auto**: Put the legend to the left of the chart on wide cards, or below the chart on tall cards. If the card has no room for the legend, Metabase hides it.
+- **Top**, **Bottom**, **Left**, or **Right**: Put the legend on that side. Metabase hides the legend only when the card has no room on that side.
+- **Off**: Hide the legend. Any slices you hid by clicking the legend show up again.
+
+Legend items that don't fit go into a **+ N more** list, except when **Auto** puts the legend below the chart. There, the legend wraps onto more rows instead.
+
+[Dashboard subscriptions](../../dashboards/subscriptions.md) and [alerts](../alerts.md) always show the legend, because a chart in an email, a Slack message, or a PDF has no tooltips.
 
 ## Limitations and alternatives
 
