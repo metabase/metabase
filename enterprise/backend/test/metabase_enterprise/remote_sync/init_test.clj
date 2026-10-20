@@ -19,7 +19,7 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each th/clean-remote-sync-state)
+(use-fixtures :each th/clean-remote-sync-state th/enable-custom-collections)
 
 (defn- capture-async-import! []
   (let [calls (atom [])]

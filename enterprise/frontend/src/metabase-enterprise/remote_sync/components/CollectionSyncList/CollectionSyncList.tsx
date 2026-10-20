@@ -11,7 +11,6 @@ import type {
 
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 import { CollectionSyncRow } from "../CollectionSyncRow";
-import { LibrarySyncRow } from "../LibrarySyncRow";
 import { TransformsSyncRow } from "../TransformsSyncRow";
 
 import S from "./CollectionSyncList.module.css";
@@ -22,10 +21,6 @@ interface CollectionSyncListProps {
   error: string | null;
   isLoading: boolean;
   showTransformsRow?: boolean;
-  /**
-   * When true and no library collection exists, show a placeholder row for library.
-   */
-  showLibraryPlaceholder?: boolean;
 }
 
 export const CollectionSyncList = ({
@@ -34,7 +29,6 @@ export const CollectionSyncList = ({
   error,
   isLoading,
   showTransformsRow,
-  showLibraryPlaceholder,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
@@ -70,12 +64,6 @@ export const CollectionSyncList = ({
       />
     ));
 
-    if (showLibraryPlaceholder) {
-      rowsItems.unshift(
-        <LibrarySyncRow key="library-placeholder" isReadOnly={isReadOnly} />,
-      );
-    }
-
     if (showTransformsRow) {
       const transformsRow = (
         <TransformsSyncRow key="transforms" isReadOnly={isReadOnly} />
@@ -84,26 +72,16 @@ export const CollectionSyncList = ({
         (collection) => collection.type === "library",
       );
 
-      // Insert transforms row after library collection or placeholder
+      // Insert transforms row after library collection
       if (libraryIndex !== -1) {
         rowsItems.splice(libraryIndex + 1, 0, transformsRow);
-      } else if (showLibraryPlaceholder) {
-        // Insert after library placeholder (at index 1)
-        rowsItems.splice(1, 0, transformsRow);
       } else {
         rowsItems.push(transformsRow);
       }
     }
 
     return rowsItems;
-  }, [
-    collections,
-    handleToggle,
-    isReadOnly,
-    showTransformsRow,
-    values,
-    showLibraryPlaceholder,
-  ]);
+  }, [collections, handleToggle, isReadOnly, showTransformsRow, values]);
 
   if (isLoading) {
     return (

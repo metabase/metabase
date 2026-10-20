@@ -105,7 +105,7 @@
   :default false)
 
 (defsetting remote-sync-collections-enabled
-  (deferred-tru "Whether git sync settings let admins choose collections to sync, besides the Library and transforms.")
+  (deferred-tru "Whether Git sync can sync collections besides the Library and transforms. When off, setting up read-write Git sync creates and syncs the Library and syncs transforms, turning it off stops syncing every other collection, and a pull refuses a repository that has other collections. Turn it on for an instance that pulls such a repository.")
   :type :boolean
   :visibility :admin
   :export? false
@@ -191,7 +191,8 @@
         (when updating-git-settings?
           (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
         (t2/with-transaction [_conn]
-          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms
+                     :remote-sync-collections-enabled]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
               (setting/set! k (k settings)))))))))

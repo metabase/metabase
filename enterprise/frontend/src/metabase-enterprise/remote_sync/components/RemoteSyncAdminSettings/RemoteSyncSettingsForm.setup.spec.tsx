@@ -1,7 +1,6 @@
 import fetchMock from "fetch-mock";
 
 import {
-  setupCreateLibraryEndpoint,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
   setupRootCollectionItemsEndpoint,
@@ -163,7 +162,6 @@ interface SetupOpts {
   isDevInstance?: boolean;
   upsellDismissed?: boolean;
   hasLibraryFeature?: boolean;
-  createdLibraryCollection?: Collection;
 }
 
 export const setup = ({
@@ -185,10 +183,8 @@ export const setup = ({
   isDevInstance = false,
   upsellDismissed = false,
   hasLibraryFeature = false,
-  createdLibraryCollection = createMockLibraryCollection(),
 }: SetupOpts = {}) => {
   PLUGIN_LIBRARY.isEnabled = hasLibraryFeature;
-  setupCreateLibraryEndpoint(createdLibraryCollection);
   setupEndpoints({
     remoteSyncEnabled,
     remoteSyncUrl,

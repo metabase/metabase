@@ -53,6 +53,7 @@
 
 (use-fixtures :each
   test-helpers/clean-remote-sync-state
+  test-helpers/enable-custom-collections
   (fn [f]
     (mt/with-premium-features #{:remote-sync}
       (f))))

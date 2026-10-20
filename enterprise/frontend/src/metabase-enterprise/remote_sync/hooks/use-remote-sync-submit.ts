@@ -4,13 +4,9 @@ import { t } from "ttag";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useGetSettingsQuery } from "metabase/settings";
-import { useCreateLibraryMutation } from "metabase-enterprise/api";
+import { useGetSettingsQuery, useSetting } from "metabase/settings";
 import { useUpdateRemoteSyncSettingsMutation } from "metabase-enterprise/api/remote-sync";
-import type {
-  LibraryCollection,
-  RemoteSyncConfigurationSettings,
-} from "metabase-types/api";
+import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 import { isRemoteSyncDependencyError } from "metabase-types/guards";
 
 import {
@@ -22,7 +18,6 @@ import {
   BRANCH_KEY,
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
-  SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
   TRANSFORMS_KEY,
   TYPE_KEY,
@@ -35,25 +30,23 @@ import type {
 
 interface UseRemoteSyncSubmitProps {
   initialValues: RemoteSyncSettingsFormState;
-  libraryCollection?: LibraryCollection;
   onSaveSuccess?: VoidFunction;
   variant: RemoteSyncSettingsVariant;
 }
 
 export const useRemoteSyncSubmit = ({
   initialValues,
-  libraryCollection,
   onSaveSuccess,
   variant,
 }: UseRemoteSyncSubmitProps) => {
   const isModalVariant = variant === "settings-modal";
   const { data: settingValues } = useGetSettingsQuery();
+  const areCollectionsEnabled =
+    useSetting("remote-sync-collections-enabled") ?? false;
   const [
     updateRemoteSyncSettings,
     { isLoading: isUpdating, error: updateError },
   ] = useUpdateRemoteSyncSettingsMutation();
-  const [createLibrary, { isLoading: isCreatingLibrary }] =
-    useCreateLibraryMutation();
   const [sendToast] = useToast();
   const {
     show: showBranchChangeConfirmation,
@@ -72,20 +65,7 @@ export const useRemoteSyncSubmit = ({
       };
 
       const isReadOnly = values[TYPE_KEY] === "read-only";
-      const wantsSyncLibrary = !isReadOnly && values[SYNC_LIBRARY_PENDING_KEY];
-      if (!libraryCollection && wantsSyncLibrary) {
-        try {
-          const newLibrary = await createLibrary().unwrap();
-          // A freshly created library always has a numeric id; only seeded collections use string ids.
-          collectionsMap[newLibrary.id as number] = true;
-        } catch (error) {
-          sendToast({
-            message: t`Failed to create Library`,
-            variant: "negative",
-          });
-          throw error;
-        }
-      }
+      const canChooseContent = !isReadOnly && areCollectionsEnabled;
 
       const initialCollections = initialValues[COLLECTIONS_KEY] ?? {};
       const changedCollections: Record<number, boolean> = {};
@@ -97,7 +77,6 @@ export const useRemoteSyncSubmit = ({
       }
       const hasCollectionChanges = Object.keys(changedCollections).length > 0;
 
-      // Listed key by key so the sync-library-pending form field, which is not a setting, stays out.
       const settingsToSave: RemoteSyncConfigurationSettings = {
         [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
         [URL_KEY]: values[URL_KEY],
@@ -105,8 +84,10 @@ export const useRemoteSyncSubmit = ({
         [TYPE_KEY]: values[TYPE_KEY],
         [BRANCH_KEY]: values[BRANCH_KEY],
         [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
-        ...(isReadOnly ? {} : { [TRANSFORMS_KEY]: values[TRANSFORMS_KEY] }),
-        ...(isReadOnly || !hasCollectionChanges
+        ...(canChooseContent
+          ? { [TRANSFORMS_KEY]: values[TRANSFORMS_KEY] }
+          : {}),
+        ...(!canChooseContent || !hasCollectionChanges
           ? {}
           : {
               [COLLECTIONS_KEY]: changedCollections,
@@ -175,8 +156,7 @@ export const useRemoteSyncSubmit = ({
       initialValues,
       updateRemoteSyncSettings,
       isModalVariant,
-      libraryCollection,
-      createLibrary,
+      areCollectionsEnabled,
       sendToast,
       onSaveSuccess,
       showBranchChangeConfirmation,
@@ -193,7 +173,6 @@ export const useRemoteSyncSubmit = ({
     handleSubmit,
     branchChangeModal,
     isUpdating,
-    isCreatingLibrary,
     unsyncedDependenciesError,
   };
 };

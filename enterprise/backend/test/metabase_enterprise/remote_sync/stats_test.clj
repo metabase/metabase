@@ -16,8 +16,9 @@
   [& body]
   `(mt/with-empty-h2-app-db!
      (mt/with-premium-features #{:remote-sync :transforms-basic}
-       (mt/with-temporary-setting-values [remote-sync-url        "file:///tmp/remote-sync-repo"
-                                          remote-sync-transforms true]
+       (mt/with-temporary-setting-values [remote-sync-url                 "file:///tmp/remote-sync-repo"
+                                          remote-sync-transforms          true
+                                          remote-sync-collections-enabled true]
          ~@body))))
 
 (deftest card-counts-test
@@ -112,7 +113,8 @@
 (deftest missing-feature-test
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{}
-      (mt/with-temporary-setting-values [remote-sync-url "file:///tmp/remote-sync-repo"]
+      (mt/with-temporary-setting-values [remote-sync-url                 "file:///tmp/remote-sync-repo"
+                                         remote-sync-collections-enabled true]
         (mt/with-temp [:model/Collection {id :id} {:is_remote_synced true}
                        :model/Card       _        {:collection_id id}]
           (is (= {} (stats/remote-sync-stats))))))))
