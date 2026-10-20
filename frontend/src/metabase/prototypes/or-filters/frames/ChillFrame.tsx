@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Box, Group, Paper, Text, Title } from "metabase/ui";
+import { Box, Flex, Group, Paper, Text, Title } from "metabase/ui";
 
 type ChillFrameProps = {
   filterButton?: ReactNode;
@@ -36,9 +36,9 @@ export function ChillFrame({
         {filterButton}
       </Group>
       {!isHidden && (
-        <Box px="lg" py="sm" mih={48}>
+        <Flex direction="column" justify="center" px="lg" py="sm" mih={48}>
           {children}
-        </Box>
+        </Flex>
       )}
     </Paper>
   );
