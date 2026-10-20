@@ -58,7 +58,8 @@ const RateCell = ({ rate, description }: RateCellProps) =>
     </Tooltip>
   );
 
-const ENTRANCE_COLUMN_IDS = ["entrances", "bounce_rate"];
+const ENTRANCE_COLUMN_IDS = ["entrances"];
+const BOUNCE_COLUMN_IDS = ["bounce_rate"];
 const EXIT_COLUMN_IDS = ["exit_rate"];
 
 const getColumns = (): TreeTableColumnDef<PathStepRow>[] => [
@@ -153,6 +154,7 @@ const PathStepsBody = ({ steps }: PathStepsPanelProps) => {
     <PathStepsTable
       steps={steps.steps}
       showsEntrances={steps.showsEntrances}
+      showsBounces={steps.showsBounces}
       showsExits={steps.showsExits}
     />
   );
@@ -161,22 +163,25 @@ const PathStepsBody = ({ steps }: PathStepsPanelProps) => {
 type PathStepsTableProps = {
   steps: PathStep[];
   showsEntrances: boolean;
+  showsBounces: boolean;
   showsExits: boolean;
 };
 
 const PathStepsTable = ({
   steps,
   showsEntrances,
+  showsBounces,
   showsExits,
 }: PathStepsTableProps) => {
   const data = useMemo(() => steps.map(toRow), [steps]);
   const columns = useMemo(() => {
     const hidden = [
       ...(showsEntrances ? [] : ENTRANCE_COLUMN_IDS),
+      ...(showsBounces ? [] : BOUNCE_COLUMN_IDS),
       ...(showsExits ? [] : EXIT_COLUMN_IDS),
     ];
     return getColumns().filter((column) => !hidden.includes(column.id));
-  }, [showsEntrances, showsExits]);
+  }, [showsEntrances, showsBounces, showsExits]);
   const instance = useTreeTableInstance<PathStepRow>({
     data,
     columns,

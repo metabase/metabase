@@ -1,6 +1,6 @@
 import type { PathsSpec } from "../../spec/types";
 
-import { canShowEntrances, canShowExits } from "./path-steps";
+import { canShowBounces, canShowEntrances, canShowExits } from "./path-steps";
 
 const EVENT = { flag: "ev_1" };
 
@@ -18,46 +18,33 @@ const createPaths = (opts: Partial<PathsSpec>): PathsSpec => ({
   ...opts,
 });
 
+const NONE = null;
+
 describe("path steps", () => {
   it.each([
-    { direction: "from", start: null, end: null, entrances: true, exits: true },
-    {
-      direction: "from",
-      start: EVENT,
-      end: null,
-      entrances: false,
-      exits: true,
-    },
-    { direction: "to", start: null, end: null, entrances: true, exits: true },
-    { direction: "to", start: null, end: EVENT, entrances: true, exits: false },
-    {
-      direction: "between",
-      start: EVENT,
-      end: null,
-      entrances: false,
-      exits: true,
-    },
-    {
-      direction: "between",
-      start: null,
-      end: EVENT,
-      entrances: true,
-      exits: false,
-    },
-    {
-      direction: "between",
-      start: EVENT,
-      end: EVENT,
-      entrances: false,
-      exits: false,
-    },
+    ["from", NONE, NONE, { entrances: true, bounces: true, exits: true }],
+    ["from", EVENT, NONE, { entrances: false, bounces: false, exits: true }],
+    ["to", NONE, NONE, { entrances: true, bounces: false, exits: true }],
+    ["to", NONE, EVENT, { entrances: true, bounces: false, exits: false }],
+    ["between", NONE, NONE, { entrances: true, bounces: false, exits: true }],
+    ["between", EVENT, NONE, { entrances: false, bounces: false, exits: true }],
+    ["between", NONE, EVENT, { entrances: true, bounces: false, exits: false }],
+    [
+      "between",
+      EVENT,
+      EVENT,
+      { entrances: false, bounces: false, exits: false },
+    ],
   ] as const)(
-    "shows entrances: $entrances and exits: $exits for $direction paths from $start.flag to $end.flag",
-    ({ direction, start, end, entrances, exits }) => {
+    "shows what %s paths from %j to %j can count: %j",
+    (direction, start, end, expected) => {
       const paths = createPaths({ direction, start, end });
 
-      expect(canShowEntrances(paths)).toBe(entrances);
-      expect(canShowExits(paths)).toBe(exits);
+      expect({
+        entrances: canShowEntrances(paths),
+        bounces: canShowBounces(paths),
+        exits: canShowExits(paths),
+      }).toEqual(expected);
     },
   );
 });

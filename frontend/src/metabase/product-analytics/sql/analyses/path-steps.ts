@@ -23,6 +23,15 @@ export const canShowEntrances = (paths: PathsSpec): boolean =>
   paths.direction === "to" || paths.start === null;
 
 /**
+ * Whether the paths cover every visit from its first step, so bounces can be
+ * counted. Paths that require an event leave out every visit that bounced
+ * anywhere else, and paths back from the end of a visit only reach the start
+ * of short ones.
+ */
+export const canShowBounces = (paths: PathsSpec): boolean =>
+  paths.direction === "from" && paths.start === null;
+
+/**
  * Whether a path's window can end at the last step of a visit, so that steps
  * in it can be exits. A window that ends at an ending event can't: only that
  * event could be the visit's last step.

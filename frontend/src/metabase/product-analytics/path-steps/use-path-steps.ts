@@ -7,6 +7,7 @@ import type { BaseQueryInput } from "../base-query";
 import { buildSql } from "../build-sql";
 import type { AnalysisSpec } from "../spec/types";
 import {
+  canShowBounces,
   canShowEntrances,
   canShowExits,
   planPathSteps,
@@ -32,6 +33,8 @@ export type PathSteps = {
   steps: PathStep[] | undefined;
   /** Whether the paths can start at a visit's first step; see `canShowEntrances`. */
   showsEntrances: boolean;
+  /** Whether the paths cover every visit from its first step; see `canShowBounces`. */
+  showsBounces: boolean;
   /** Whether the paths can end at a visit's last step; see `canShowExits`. */
   showsExits: boolean;
   isLoading: boolean;
@@ -78,6 +81,7 @@ export const usePathSteps = ({
   return {
     steps,
     showsEntrances: paths !== undefined && canShowEntrances(paths),
+    showsBounces: paths !== undefined && canShowBounces(paths),
     showsExits: paths !== undefined && canShowExits(paths),
     isLoading: isLoading || adhoc.isFetching,
     error: error ?? getDatasetError(adhoc),

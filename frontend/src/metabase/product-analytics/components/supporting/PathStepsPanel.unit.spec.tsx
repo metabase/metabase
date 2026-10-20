@@ -37,6 +37,7 @@ const setup = (opts: SetupOpts = {}) => {
       steps={{
         steps: [PRICING, SIGNUP],
         showsEntrances: true,
+        showsBounces: true,
         showsExits: true,
         isLoading: false,
         error: undefined,
@@ -83,8 +84,8 @@ describe("PathStepsPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides entrances when the paths start at an event", () => {
-    setup({ steps: [PRICING], showsEntrances: false });
+  it("hides entrances and bounces when the paths start at an event", () => {
+    setup({ steps: [PRICING], showsEntrances: false, showsBounces: false });
 
     expect(
       screen.queryByRole("columnheader", { name: "Entrances" }),
@@ -93,6 +94,15 @@ describe("PathStepsPanel", () => {
       screen.queryByRole("columnheader", { name: "Bounce rate" }),
     ).not.toBeInTheDocument();
     expect(getCellTexts()).toEqual([["/pricing", "40", "25%"]]);
+  });
+
+  it("keeps entrances but hides bounces when the paths require an event", () => {
+    setup({ steps: [PRICING], showsBounces: false });
+
+    expect(
+      screen.queryByRole("columnheader", { name: "Bounce rate" }),
+    ).not.toBeInTheDocument();
+    expect(getCellTexts()).toEqual([["/pricing", "10", "40", "25%"]]);
   });
 
   it("hides the exit rate when the paths end at an event", () => {
