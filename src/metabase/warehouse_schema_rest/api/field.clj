@@ -71,17 +71,6 @@
                  (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
   {:table_ids (schema.field/field-ids->table-ids field_ids)})
 
-(api.macros/defendpoint :post "/fk-target-table-ids" :- [:map
-                                                         [:table_ids [:sequential ms/PositiveInt]]]
-  "Get unique Table IDs of the Fields that a list of FK Field IDs point to."
-  [_route-params
-   _query-params
-   {:keys [field_ids]} :- [:map {:closed true}
-                           [:field_ids [:sequential ms/PositiveInt]]]]
-  (api/check-400 (<= (count field_ids) max-field-ids-for-table-id-lookup)
-                 (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
-  {:table_ids (schema.field/fk-field-ids->target-table-ids field_ids)})
-
 (defn- check-field-in-same-database!
   "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
    the target field does not exist or belongs to a different database. Uses a single query."

@@ -440,7 +440,6 @@
 
     key-in-col-metadata => key-in-opts"
   {:lib/join-alias :join-alias
-   :fk-field-id    :source-field
    :fk-join-alias  :source-field-join-alias
    :fk-field-name  :source-field-name})
 
@@ -456,11 +455,8 @@
                                   :effective-type (column-metadata-effective-type metadata)}
                                  (select-renamed-keys metadata field-ref-propagated-keys)
                                  (when-not inherited-column?
-                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
-        field-name        (or (lib.field.util/inherited-column-name metadata)
-                              (lib.field.util/nested-column-name metadata)
-                              ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) metadata))]
-    [:field options field-name]))
+                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))]
+    [:field options (lib.field.util/ref-name metadata)]))
 
 (mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref
   [{source :lib/source, :as metadata} :- ::lib.schema.metadata/column]

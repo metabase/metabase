@@ -66,6 +66,13 @@
       :name)
      column)))
 
+(mu/defn ref-name :- :string
+  "The name a `:field` ref to `column` uses. `column` SHOULD BE METADATA RELATIVE TO THE STAGE WHERE THE REF IS ADDED."
+  [column :- ::lib.schema.metadata/column]
+  (or (inherited-column-name column)
+      (nested-column-name column)
+      ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) column)))
+
 (mu/defn add-deduplicated-names :- [:or
                                     ;; zero-arity: transducer
                                     fn?

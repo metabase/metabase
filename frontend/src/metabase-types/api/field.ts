@@ -124,11 +124,11 @@ export interface GetFieldRequest {
   include_editable_data_model?: boolean;
 }
 
-export interface GetFkTargetTableIdsRequest {
+export interface GetFieldTableIdsRequest {
   field_ids: FieldId[];
 }
 
-export interface GetFkTargetTableIdsResponse {
+export interface GetFieldTableIdsResponse {
   table_ids: ConcreteTableId[];
 }
 

@@ -677,10 +677,7 @@
     (when col
       (merge-metadata [col (additional-metadata-from-source-card query stage-number col)]))))
 
-(mu/defn resolve-field-ref :- ::lib.metadata.calculation/visible-column
-  "Resolve metadata for a `:field` ref. This is part of the implementation
-  for [[metabase.lib.metadata.calculation/metadata-method]] a `:field` clause. Guaranteed to have
-  `:lib/source-column-alias` for wherever the hecc it comes from."
+(mu/defn- resolve-field-ref* :- ::lib.metadata.calculation/visible-column
   [query                                                                                                  :- ::lib.schema/query
    stage-number                                                                                           :- :int
    [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as #?(:clj field-ref :cljs _field-ref)] :- :mbql.clause/field]
@@ -747,3 +744,32 @@
                    (when-not (= resolved-source-field source-field)
                      (throw (ex-info "Resolved column has different :source-field"
                                      {:query query, :stage-number stage-number, :field-ref field-ref, :col <>})))))))))))
+
+(defn- implicit-join-fk-field-id
+  "The ID of the FK Field named by the `:source-field-name` (and `:source-field-join-alias`, or `:join-alias` for a ref
+  to a column joined through a column of an explicit join) of an implicit join `:field` ref's `opts`."
+  [query stage-number {:keys [source-field-name source-field-join-alias join-alias]}]
+  (when source-field-name
+    (let [fk-ref [:field
+                  (m/assoc-some {:lib/uuid (str (random-uuid)), :base-type :type/*}
+                                :join-alias (or source-field-join-alias join-alias))
+                  source-field-name]
+          fk-col (resolve-field-ref* query stage-number fk-ref)]
+      (when-not (::fallback-metadata? fk-col)
+        (:id fk-col)))))
+
+(mu/defn resolve-field-ref :- ::lib.metadata.calculation/visible-column
+  "Resolve metadata for a `:field` ref. This is part of the implementation
+  for [[metabase.lib.metadata.calculation/metadata-method]] a `:field` clause. Guaranteed to have
+  `:lib/source-column-alias` for wherever the hecc it comes from.
+
+  An implicit join ref names its FK column with `:source-field-name` and `:source-field-join-alias`, which are resolved
+  in the same stage."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   field-ref    :- :mbql.clause/field]
+  (let [opts (second field-ref)]
+    (if-some [fk-field-id (when-not (:source-field opts)
+                            (implicit-join-fk-field-id query stage-number opts))]
+      (resolve-field-ref* query stage-number (assoc-in field-ref [1 :source-field] fk-field-id))
+      (resolve-field-ref* query stage-number field-ref))))

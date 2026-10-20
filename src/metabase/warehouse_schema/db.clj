@@ -45,11 +45,6 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
-(mu/defn fk-target-field-id-rows
-  "The ID, ::warehouse-schema.schema/table ID, and FK target Field ID of the Fields with `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id :fk_target_field_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
 (mu/defn field-table-id
   "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]

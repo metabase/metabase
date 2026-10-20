@@ -6,7 +6,7 @@ import {
   skipToken,
   useExtractSourcesQuery,
   useGetDatabaseQuery,
-  useGetFkTargetTableIdsQuery,
+  useGetFieldTableIdsQuery,
 } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
@@ -56,7 +56,7 @@ type DecodedQuery =
       kind: "mbql";
       tableIds: number[];
       cardIds: number[];
-      fkFieldIds: number[];
+      fieldIds: number[];
     }
   | {
       kind: "native";
@@ -111,7 +111,7 @@ const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
       kind: "mbql",
       tableIds: uniqueNumbers(Lib.allSourceTableIds(query)),
       cardIds: uniqueNumbers(Lib.allSourceCardIds(query)),
-      fkFieldIds: uniqueNumbers(Lib.allImplicitJoinFkFieldIds(query)),
+      fieldIds: uniqueNumbers(Lib.allFieldIds(query)),
     };
   } catch {
     return { kind: "none" };
@@ -423,16 +423,16 @@ const SourcesSection = ({
 const MbqlSources = ({
   tableIds,
   cardIds,
-  fkFieldIds,
+  fieldIds,
   messageId,
 }: {
   tableIds: number[];
   cardIds: number[];
-  fkFieldIds: number[];
+  fieldIds: number[];
   messageId?: string;
 }) => {
-  const { data, isLoading, isError } = useGetFkTargetTableIdsQuery(
-    fkFieldIds.length > 0 ? { field_ids: fkFieldIds } : skipToken,
+  const { data, isLoading, isError } = useGetFieldTableIdsQuery(
+    fieldIds.length > 0 ? { field_ids: fieldIds } : skipToken,
   );
 
   if (isError) {
@@ -506,7 +506,7 @@ const DatasetQueryTablePills = ({
   const hasContent =
     decoded.tableIds.length > 0 ||
     decoded.cardIds.length > 0 ||
-    decoded.fkFieldIds.length > 0;
+    decoded.fieldIds.length > 0;
   if (!hasContent) {
     return null;
   }
@@ -515,7 +515,7 @@ const DatasetQueryTablePills = ({
     <MbqlSources
       tableIds={decoded.tableIds}
       cardIds={decoded.cardIds}
-      fkFieldIds={decoded.fkFieldIds}
+      fieldIds={decoded.fieldIds}
       messageId={messageId}
     />
   );

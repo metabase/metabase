@@ -56,14 +56,3 @@
        set
        sort
        vec))
-
-(defn fk-field-ids->target-table-ids
-  "Get sorted unique table IDs of the Fields that the readable FK Fields with IDs in `ids` point to."
-  [ids]
-  (field-ids->table-ids
-   (when (seq ids)
-     (into []
-           (comp (filter mi/can-read?)
-                 (keep :fk_target_field_id))
-           (u/prog1 (t2/hydrate (warehouse-schema.db/fk-target-field-id-rows ids) :table)
-             (prime-table-perms-for-fields! <>))))))

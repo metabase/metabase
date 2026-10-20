@@ -121,8 +121,8 @@ export function allSourceCardIds(query: Query): CardId[] {
   return ML.all_source_card_ids(query);
 }
 
-export function allImplicitJoinFkFieldIds(query: Query): FieldId[] {
-  return ML.all_implicit_join_fk_field_ids(query);
+export function allFieldIds(query: Query): FieldId[] {
+  return ML.all_field_ids(query);
 }
 
 export function canRun(query: Query, cardType: CardType): boolean {

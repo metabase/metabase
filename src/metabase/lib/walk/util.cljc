@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.set :as set]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.query :as lib.query]
@@ -183,27 +184,41 @@
        nil))
     @has-native-stage?))
 
-(mu/defn all-implicit-join-fk-field-ids :- [:set ::lib.schema.id/field]
-  "Set of the IDs of the FK Fields that the implicit joins in `query` go through."
-  [query :- ::lib.schema/query]
-  (let [fk-field-ids (volatile! (transient #{}))]
-    (lib.walk/walk-clauses query (fn [_query _path-type _path clause]
-                                   (match/match-one clause
-                                     [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name]
-                                     (vswap! fk-field-ids conj! (:source-field opts))
+(defn- walk-field-refs
+  "Call `(f query stage-path field-ref)` for every `:field` ref in `query`, with the path of the stage it is resolved in."
+  [query f]
+  (lib.walk/walk-clauses
+   query
+   (fn [query path-type path clause]
+     (when (lib.util/clause-of-type? clause :field)
+       (f query
+          (cond-> path
+            (= path-type :lib.walk/join) lib.walk/join-parent-stage-path)
+          clause))
+     nil)))
 
-                                     _ nil)
-                                   nil))
-    (persistent! @fk-field-ids)))
+(mu/defn all-field-ids :- [:set ::lib.schema.id/field]
+  "Set of the IDs of the Fields that the `:field` refs in `query` resolve to."
+  [query :- ::lib.schema/query]
+  (let [field-ids (volatile! (transient #{}))]
+    (walk-field-refs query (fn [query stage-path field-ref]
+                             (when-some [field-id (:id (lib.walk/apply-f-for-stage-at-path
+                                                        lib.field.resolution/resolve-field-ref query stage-path field-ref))]
+                               (vswap! field-ids conj! field-id))))
+    (persistent! @field-ids)))
 
 (mu/defn all-implicitly-joined-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Set of all Table IDs referenced via implicit joins in `query` or nil if no such IDs can be found."
   [query :- ::lib.schema/query]
-  (->> (lib.metadata/bulk-metadata query :metadata/column (all-implicit-join-fk-field-ids query))
-       (keep :fk-target-field-id)
-       (lib.metadata/bulk-metadata query :metadata/column)
-       (into #{} (keep :table-id))
-       not-empty))
+  (let [table-ids (volatile! (transient #{}))]
+    (walk-field-refs query (fn [query stage-path [_tag opts _name, :as field-ref]]
+                             (when (and (or (:source-field opts) (:source-field-name opts))
+                                        (not (:join-alias opts)))
+                               (when-some [table-id (:table-id (lib.walk/apply-f-for-stage-at-path
+                                                                lib.field.resolution/resolve-field-ref
+                                                                query stage-path field-ref))]
+                                 (vswap! table-ids conj! table-id)))))
+    (not-empty (persistent! @table-ids))))
 
 (defn- dimension-field-ids
   "The Field ID of a template tag `:dimension`, which is a `:field` ref to a Field of the Database, as a set."

@@ -5,8 +5,8 @@ import type {
   FieldId,
   FieldValue,
   GetFieldRequest,
-  GetFkTargetTableIdsRequest,
-  GetFkTargetTableIdsResponse,
+  GetFieldTableIdsRequest,
+  GetFieldTableIdsResponse,
   GetFieldValuesResponse,
   GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
@@ -37,13 +37,13 @@ export const fieldApi = Api.injectEndpoints({
       }),
       providesTags: (field) => (field ? provideFieldTags(field) : []),
     }),
-    getFkTargetTableIds: builder.query<
-      GetFkTargetTableIdsResponse,
-      GetFkTargetTableIdsRequest
+    getFieldTableIds: builder.query<
+      GetFieldTableIdsResponse,
+      GetFieldTableIdsRequest
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/field/fk-target-table-ids",
+        url: "/api/field/table-ids",
         body,
       }),
       providesTags: [listTag("field")],
@@ -184,7 +184,7 @@ export const fieldApi = Api.injectEndpoints({
 export const {
   useGetFieldQuery,
   useLazyGetFieldQuery,
-  useGetFkTargetTableIdsQuery,
+  useGetFieldTableIdsQuery,
   useGetFieldValuesQuery,
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
