@@ -38,7 +38,9 @@
 
 (def ^:private max-table-chars 10000)
 
-(def ^:private max-error-chars 1000)
+;; Quoting can write one character of a database error as a six-character escape, and the runtime cuts failure text
+;; at 4,000 characters, so the error is cut short enough that its quoted form always fits.
+(def ^:private max-error-chars 500)
 
 ;; TODO (Chris 2026-10-01) -- share one quoting function with metabase.mcp.v2.message/clean, which escapes the same
 ;; code points but can't be required from metabot.
@@ -141,6 +143,11 @@
    :recovery [{:uses #{}
                :text "Ask the user to continue in their own Metabot chat."}]})
 
+(def ^:private max-listed-query-ids
+  "How many of the conversation's query ids an unknown id lists, so that the recovery step after them fits under the
+   runtime's cut on failure text."
+  100)
+
 (tools/defrecoverable unknown-query-id!
   "The id names no query the conversation holds, nor, where the tool runs saved questions, one the user can read."
   {:payload [:map {:closed true}
@@ -148,7 +155,11 @@
              [:known-ids [:sequential :string]]
              [:hint      [:enum :notebook-query :sql-query :no-values]]]}
   [{:keys [query-id known-ids hint]}]
-  (let [unknown (str "No query with id " query-id ". Known query ids: [" (str/join ", " known-ids) "].")]
+  (let [more    (- (count known-ids) max-listed-query-ids)
+        unknown (str "No query with id " query-id ". Known query ids: ["
+                     (str/join ", " (take max-listed-query-ids known-ids)) "]"
+                     (when (pos? more) (str " and " more " more"))
+                     ".")]
     (case hint
       :notebook-query
       {:message  (str unknown " Only a query you built, or a saved question or model the user can read, runs by its"
