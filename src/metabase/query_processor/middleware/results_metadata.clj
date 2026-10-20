@@ -14,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.db :as query-processor.db]
+   [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
@@ -84,6 +85,9 @@
                  ;; `qp.card/process-query-for-card` when a `card-transform` rewrites the query) to tell us
                  ;; this run's output is not the Card's canonical shape.
                  (not (:qp/skip-result-metadata-persistence query))
+                 ;; A row-restricted run (sandbox, impersonation, DB routing) computes fingerprints over the rows the
+                 ;; current user sees. Persisting them would hand that subset's statistics to every reader of the Card.
+                 (not (row-restricted-metadata/row-restricted? query))
                  ;; Only update changed metadata; a non-default parameterized run writes only on
                  ;; parameter-independent column changes, not fingerprint drift (#83734, see also #72007).
                  (let [parameter-independent? (boolean (:qp/non-default-parameterized? query))]

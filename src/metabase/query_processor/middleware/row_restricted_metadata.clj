@@ -5,7 +5,9 @@
   rather than any particular caller's row set. When the current user's row access is restricted, the fingerprint
   reveals the bounds and statistics of the rows that are hidden from them, so it is removed from every result column.
 
-  Only `:cols` is affected. `:results_metadata` is computed from the returned rows and is unaffected."
+  `:results_metadata` is built after this middleware runs: with no fingerprint left on the cols, the insights step
+  computes one from the returned rows, so it describes the rows the user got. Such a run must not persist its
+  metadata on the Card, where every reader would see it; [[row-restricted?]] is the guard for that."
   (:require
    [metabase.util.match :as match]
    [metabase.util.performance :as perf]))
@@ -19,19 +21,18 @@
 
 (defn- impersonated?
   "Whether the query runs under a connection-impersonation role, which hands the database a role that filters rows.
-  [[metabase-enterprise.impersonation.middleware/apply-impersonation]] attaches the key for non-admin users only."
+  Set by [[metabase-enterprise.impersonation.middleware/apply-impersonation]]."
   [query]
   (some? (:impersonation/role query)))
 
 (defn- db-routed?
   "Whether the query runs against a destination database swapped in by DB routing. The fingerprint was synced from the
   router database, so it describes rows of a database the user does not query at all.
-  [[metabase-enterprise.database-routing.middleware/attach-destination-db-middleware]] attaches the key only when a
-  destination is resolved for the user."
+  Set by [[metabase-enterprise.database-routing.middleware/attach-destination-db-middleware]]."
   [query]
   (some? (:destination-database/id query)))
 
-(defn- row-restricted?
+(defn row-restricted?
   "Whether the current user sees only a subset of the rows the query's tables hold."
   [query]
   ;; Every signal is read from the preprocessed query rather than from the dynamic vars the execution middleware binds

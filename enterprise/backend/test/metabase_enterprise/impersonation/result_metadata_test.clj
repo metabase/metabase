@@ -11,7 +11,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn- col-fingerprints
   "`{col-name fingerprint}` for every col in a query `result`."
@@ -41,10 +42,15 @@
   (mt/with-premium-features #{:advanced-permissions}
     (testing "BOT-2115: saved card results for a user under an impersonation policy carry no fingerprint"
       (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
-        (impersonation.util-test/with-impersonations! (impersonation-def)
-          (let [result (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))]
-            (is (seq (mt/cols result)))
-            (is (every? nil? (vals (col-fingerprints result))))))))))
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
+        (let [persisted (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))]
+          (is (=? {:name "PRICE", :fingerprint {:global {:distinct-count 4}}} (last persisted)))
+          (impersonation.util-test/with-impersonations! (impersonation-def)
+            (let [result (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))]
+              (is (seq (mt/cols result)))
+              (is (every? nil? (vals (col-fingerprints result))))
+              (testing "the impersonated run does not persist its result_metadata on the Card (BOT-2115)"
+                (is (= persisted (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))))))))))))
 
 (deftest impersonated-cached-results-omit-fingerprints-test
   (mt/with-premium-features #{:advanced-permissions}

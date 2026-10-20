@@ -2469,14 +2469,25 @@
                      :model/DashboardCard {dashcard-id :id}   {:dashboard_id dashboard-id
                                                                :card_id      card-id}]
         (perms/grant-collection-read-permissions! &group collection-id)
-        (doseq [[path url] {"card"     (format "card/%d/query" card-id)
-                            "dashcard" (format "dashboard/%d/dashcard/%d/card/%d/query"
-                                               dashboard-id dashcard-id card-id)}]
-          (testing path
-            (let [result (mt/user-http-request :rasta :post 202 url)]
-              (is (true? (-> result :data :is_sandboxed)))
-              (is (seq (mt/cols result)))
-              (is (every? nil? (vals (col-fingerprints result)))))))))))
+        (testing "an admin run persists the card's result_metadata, fingerprints over the whole table included"
+          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id))
+          (is (=? [{:name "ID"} {:name "NAME"} {:name "CATEGORY_ID"} {:name "LATITUDE"} {:name "LONGITUDE"}
+                   {:name "PRICE", :fingerprint {:global {:distinct-count 4}}}]
+                  (t2/select-one-fn :result_metadata :model/Card :id card-id))))
+        (let [persisted (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+          (doseq [[path url] {"card"     (format "card/%d/query" card-id)
+                              "dashcard" (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                 dashboard-id dashcard-id card-id)}]
+            (testing path
+              (let [result (mt/user-http-request :rasta :post 202 url)]
+                (is (true? (-> result :data :is_sandboxed)))
+                (is (seq (mt/cols result)))
+                (is (every? nil? (vals (col-fingerprints result))))
+                (testing "the sandboxed run's results_metadata describes the rows the sandbox returned"
+                  (is (=? {:name "PRICE", :fingerprint {:global {:distinct-count 1}}}
+                          (last (-> result :data :results_metadata :columns)))))
+                (testing "and is not persisted on the Card, where every reader would see it (BOT-2115)"
+                  (is (= persisted (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))))))
 
 (deftest sandboxed-join-results-omit-fingerprints-test
   (testing "BOT-2115: when a sandboxed table is joined to an unrestricted one, no result col carries a fingerprint"
@@ -2554,6 +2565,6 @@
                              {:aggregation [[:count]]
                               :breakout    [$price $category_id]})
                            {:pivot-rows [0] :pivot-cols [1]}))]
-        (is (=? {:status :completed} result))
+        (is (=? {:status :completed, :data {:is_sandboxed true}} result))
         (is (seq (mt/cols result)))
         (is (every? nil? (vals (col-fingerprints result))))))))
