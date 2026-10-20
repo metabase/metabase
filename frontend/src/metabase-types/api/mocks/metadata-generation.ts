@@ -46,7 +46,6 @@ export const createMockMetadataGenerationStatusCounts = (
   opts?: Partial<MetadataGenerationStatusCounts>,
 ): MetadataGenerationStatusCounts => ({
   pending: 0,
-  accepted: 0,
   rejected: 0,
   stale: 0,
   applied: 0,
@@ -95,6 +94,7 @@ export const createMockMetadataGenerationApplyResult = (
   opts?: Partial<MetadataGenerationApplyResult>,
 ): MetadataGenerationApplyResult => ({
   written: 0,
+  rejected: 0,
   stale: 0,
   failed: 0,
   failures: [],

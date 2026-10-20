@@ -94,7 +94,6 @@ export type MetadataGenerationSuggestionId = number;
 
 export type MetadataGenerationSuggestionStatus =
   | "pending"
-  | "accepted"
   | "rejected"
   | "stale"
   | "applied";
@@ -134,7 +133,7 @@ export type MetadataGenerationSuggestion = {
   source: MetadataGenerationValueSource;
   current_value: string | null;
   proposed_value: string;
-  /** The value a person chose in place of `proposed_value`. Apply writes it as the person's value. */
+  /** Always `null`: edited values travel in the apply request and are not stored. */
   edited_value: string | null;
   confidence: MetadataGenerationConfidence | null;
   reasoning: string | null;
@@ -150,31 +149,20 @@ export type GetMetadataGenerationSuggestionsRequest = {
   table_id: ConcreteTableId;
 };
 
-export type MetadataGenerationDecision = "accept" | "unaccept" | "reject";
-
-export type MetadataGenerationDecisionRequest = {
-  run_id: MetadataGenerationRunId;
-  decision: MetadataGenerationDecision;
-  suggestion_ids?: MetadataGenerationSuggestionId[];
-  table_ids?: ConcreteTableId[];
-  all?: boolean;
-  include_human_set?: boolean;
-};
-
-export type EditMetadataGenerationSuggestionRequest = {
-  run_id: MetadataGenerationRunId;
-  suggestion_id: MetadataGenerationSuggestionId;
-  /** `null` clears the edit. */
-  value: string | null;
-};
-
-export type MetadataGenerationDecisionResponse = {
-  updated: number;
-};
-
+/**
+ * One review of a run. Give `accept` or `all`. `all` accepts every pending or rejected suggestion (of
+ * `table_ids`) except those in `except` or `reject`, and except those over a value a person set unless
+ * `include_human_set`. An edit replaces the proposed value and accepts its suggestion.
+ */
 export type ApplyMetadataGenerationRunRequest = {
   run_id: MetadataGenerationRunId;
+  accept?: MetadataGenerationSuggestionId[];
+  all?: boolean;
+  except?: MetadataGenerationSuggestionId[];
   table_ids?: ConcreteTableId[];
+  include_human_set?: boolean;
+  reject?: MetadataGenerationSuggestionId[];
+  edits?: Record<MetadataGenerationSuggestionId, string>;
 };
 
 export type MetadataGenerationApplyFailureReason =
@@ -193,6 +181,7 @@ export type MetadataGenerationApplyFailure = {
 
 export type MetadataGenerationApplyResult = {
   written: number;
+  rejected: number;
   stale: number;
   failed: number;
   failures: MetadataGenerationApplyFailure[];

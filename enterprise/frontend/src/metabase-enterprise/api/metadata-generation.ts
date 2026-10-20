@@ -1,18 +1,14 @@
 import type {
   ApplyMetadataGenerationRunRequest,
-  EditMetadataGenerationSuggestionRequest,
   GetMetadataGenerationSuggestionsRequest,
   ListMetadataGenerationRunsRequest,
   MetadataGenerationApplyResult,
-  MetadataGenerationDecisionRequest,
-  MetadataGenerationDecisionResponse,
   MetadataGenerationEstimate,
   MetadataGenerationRun,
   MetadataGenerationRunId,
   MetadataGenerationRunRequest,
   MetadataGenerationRunTable,
   MetadataGenerationSuggestion,
-  MetadataGenerationSuggestionStatus,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -20,54 +16,6 @@ import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 function provideRunTags(run: MetadataGenerationRun) {
   return [idTag("metadata-generation-run", run.id)];
-}
-
-const DECISION_RULES: Record<
-  MetadataGenerationDecisionRequest["decision"],
-  {
-    from: MetadataGenerationSuggestionStatus[];
-    to: MetadataGenerationSuggestionStatus;
-  }
-> = {
-  accept: { from: ["pending", "rejected"], to: "accepted" },
-  unaccept: { from: ["accepted", "rejected"], to: "pending" },
-  reject: { from: ["pending", "accepted"], to: "rejected" },
-};
-
-/** Apply `edit` to `suggestion` by the same rules as the backend: a value also accepts a pending or rejected suggestion. */
-export function applySuggestionEdit(
-  suggestion: MetadataGenerationSuggestion,
-  { value }: EditMetadataGenerationSuggestionRequest,
-): void {
-  suggestion.edited_value = value;
-  if (
-    value != null &&
-    (suggestion.status === "pending" || suggestion.status === "rejected")
-  ) {
-    suggestion.status = "accepted";
-  }
-}
-
-/** The status that `request` gives `suggestion`, by the same rules as the backend. */
-export function getDecidedStatus(
-  suggestion: MetadataGenerationSuggestion,
-  {
-    decision,
-    suggestion_ids,
-    table_ids,
-    include_human_set,
-  }: MetadataGenerationDecisionRequest,
-): MetadataGenerationSuggestionStatus {
-  const { from, to } = DECISION_RULES[decision];
-  const isSelected = suggestion_ids
-    ? suggestion_ids.includes(suggestion.id)
-    : (table_ids?.includes(suggestion.table_id) ?? true) &&
-      (decision === "reject" ||
-        include_human_set === true ||
-        suggestion.source !== "human");
-  return isSelected && from.includes(suggestion.status)
-    ? to
-    : suggestion.status;
 }
 
 export const metadataGenerationApi = EnterpriseApi.injectEndpoints({
@@ -170,91 +118,6 @@ export const metadataGenerationApi = EnterpriseApi.injectEndpoints({
         idTag("metadata-generation-run", run_id),
       ],
     }),
-    decideMetadataGenerationSuggestions: builder.mutation<
-      MetadataGenerationDecisionResponse,
-      MetadataGenerationDecisionRequest
-    >({
-      query: ({ run_id, ...body }) => ({
-        method: "POST",
-        url: `/api/ee/data-sensitivity/runs/${run_id}/decisions`,
-        body,
-      }),
-      invalidatesTags: (_, error, { run_id }) =>
-        invalidateTags(error, [idTag("metadata-generation-run", run_id)]),
-      onQueryStarted: async (
-        request,
-        { dispatch, getState, queryFulfilled },
-      ) => {
-        const patches = metadataGenerationApi.util
-          .selectCachedArgsForQuery(
-            getState(),
-            "listMetadataGenerationSuggestions",
-          )
-          .filter(({ run_id }) => run_id === request.run_id)
-          .map((args) =>
-            dispatch(
-              metadataGenerationApi.util.updateQueryData(
-                "listMetadataGenerationSuggestions",
-                args,
-                (draft) => {
-                  draft.forEach((suggestion) => {
-                    suggestion.status = getDecidedStatus(suggestion, request);
-                  });
-                },
-              ),
-            ),
-          );
-        try {
-          await queryFulfilled;
-        } catch {
-          patches.forEach((patch) => patch.undo());
-        }
-      },
-    }),
-    editMetadataGenerationSuggestion: builder.mutation<
-      MetadataGenerationSuggestion,
-      EditMetadataGenerationSuggestionRequest
-    >({
-      query: ({ run_id, suggestion_id, value }) => ({
-        method: "PUT",
-        url: `/api/ee/data-sensitivity/runs/${run_id}/suggestions/${suggestion_id}`,
-        body: { value },
-      }),
-      invalidatesTags: (_, error, { run_id }) =>
-        invalidateTags(error, [idTag("metadata-generation-run", run_id)]),
-      onQueryStarted: async (
-        request,
-        { dispatch, getState, queryFulfilled },
-      ) => {
-        const patches = metadataGenerationApi.util
-          .selectCachedArgsForQuery(
-            getState(),
-            "listMetadataGenerationSuggestions",
-          )
-          .filter(({ run_id }) => run_id === request.run_id)
-          .map((args) =>
-            dispatch(
-              metadataGenerationApi.util.updateQueryData(
-                "listMetadataGenerationSuggestions",
-                args,
-                (draft) => {
-                  const suggestion = draft.find(
-                    ({ id }) => id === request.suggestion_id,
-                  );
-                  if (suggestion) {
-                    applySuggestionEdit(suggestion, request);
-                  }
-                },
-              ),
-            ),
-          );
-        try {
-          await queryFulfilled;
-        } catch {
-          patches.forEach((patch) => patch.undo());
-        }
-      },
-    }),
     applyMetadataGenerationRun: builder.mutation<
       MetadataGenerationApplyResult,
       ApplyMetadataGenerationRunRequest
@@ -283,7 +146,5 @@ export const {
   useRetryFailedMetadataGenerationRunMutation,
   useListMetadataGenerationRunTablesQuery,
   useListMetadataGenerationSuggestionsQuery,
-  useDecideMetadataGenerationSuggestionsMutation,
-  useEditMetadataGenerationSuggestionMutation,
   useApplyMetadataGenerationRunMutation,
 } = metadataGenerationApi;

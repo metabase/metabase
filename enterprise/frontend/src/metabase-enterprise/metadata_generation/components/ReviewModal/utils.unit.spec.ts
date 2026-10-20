@@ -7,14 +7,16 @@ import {
 
 import {
   formatSuggestionValue,
+  getApplyRequestBody,
   getApplySummary,
   getBulkDecidable,
-  getHumanSetAcceptable,
   getRunTotals,
+  getSuggestionValue,
   getTableCheckboxState,
   getTableLabel,
-  isSuggestionChecked,
   isSuggestionDecidable,
+  setEdit,
+  setSelected,
 } from "./utils";
 
 describe("getRunTotals", () => {
@@ -25,7 +27,7 @@ describe("getRunTotals", () => {
         total: 5,
         counts: createMockMetadataGenerationStatusCounts({
           pending: 2,
-          accepted: 3,
+          applied: 3,
         }),
         human_set_pending: 1,
       }),
@@ -44,7 +46,7 @@ describe("getRunTotals", () => {
 
     expect(totals).toEqual({
       total: 9,
-      counts: { pending: 3, accepted: 3, rejected: 1, stale: 1, applied: 1 },
+      counts: { pending: 3, rejected: 1, stale: 1, applied: 4 },
       humanSetPending: 2,
     });
   });
@@ -60,21 +62,16 @@ describe("getRunTotals", () => {
 
 describe("decision state", () => {
   it.each([
-    ["pending", true, false],
-    ["accepted", true, true],
-    ["rejected", true, false],
-    ["stale", false, false],
-    ["applied", false, true],
-  ] as const)(
-    "a %s suggestion is decidable: %s, checked: %s",
-    (status, decidable, checked) => {
-      const suggestion = createMockMetadataGenerationSuggestion({ status });
-      expect(isSuggestionDecidable(suggestion)).toBe(decidable);
-      expect(isSuggestionChecked(suggestion)).toBe(checked);
-    },
-  );
+    ["pending", true],
+    ["rejected", true],
+    ["stale", false],
+    ["applied", false],
+  ] as const)("a %s suggestion is decidable: %s", (status, decidable) => {
+    const suggestion = createMockMetadataGenerationSuggestion({ status });
+    expect(isSuggestionDecidable(suggestion)).toBe(decidable);
+  });
 
-  it("leaves human-set suggestions out of the table checkbox and lists the unaccepted ones apart", () => {
+  it("leaves human-set and fixed suggestions out of the table checkbox", () => {
     const suggestions = [
       createMockMetadataGenerationSuggestion({ id: 1, source: "none" }),
       createMockMetadataGenerationSuggestion({ id: 2, source: "human" }),
@@ -86,52 +83,86 @@ describe("decision state", () => {
       createMockMetadataGenerationSuggestion({
         id: 4,
         source: "ai",
-        status: "accepted",
+        status: "applied",
       }),
       createMockMetadataGenerationSuggestion({
         id: 5,
-        source: "human",
+        source: "none",
         status: "stale",
-      }),
-      createMockMetadataGenerationSuggestion({
-        id: 6,
-        source: "human",
-        status: "accepted",
       }),
     ];
 
-    expect(getBulkDecidable(suggestions).map((s) => s.id)).toEqual([1, 3, 4]);
-    expect(getHumanSetAcceptable(suggestions).map((s) => s.id)).toEqual([2]);
+    expect(getBulkDecidable(suggestions).map((s) => s.id)).toEqual([1, 3]);
   });
 });
 
 describe("getTableCheckboxState", () => {
-  it("is indeterminate when some bulk-decidable suggestions are accepted", () => {
+  it("is indeterminate when some bulk-decidable suggestions are selected", () => {
     expect(
-      getTableCheckboxState([
-        createMockMetadataGenerationSuggestion({ id: 1, status: "accepted" }),
-        createMockMetadataGenerationSuggestion({ id: 2, status: "rejected" }),
-      ]),
+      getTableCheckboxState(
+        [
+          createMockMetadataGenerationSuggestion({ id: 1 }),
+          createMockMetadataGenerationSuggestion({ id: 2, status: "rejected" }),
+        ],
+        new Set([1]),
+      ),
     ).toEqual({ checked: false, indeterminate: true, disabled: false });
   });
 
-  it("is checked when every bulk-decidable suggestion is accepted, whatever the human-set ones", () => {
+  it("is checked when every bulk-decidable suggestion is selected, whatever the human-set ones", () => {
     expect(
-      getTableCheckboxState([
-        createMockMetadataGenerationSuggestion({ id: 1, status: "accepted" }),
-        createMockMetadataGenerationSuggestion({ id: 2, source: "human" }),
-        createMockMetadataGenerationSuggestion({ id: 3, status: "applied" }),
-      ]),
+      getTableCheckboxState(
+        [
+          createMockMetadataGenerationSuggestion({ id: 1 }),
+          createMockMetadataGenerationSuggestion({ id: 2, source: "human" }),
+          createMockMetadataGenerationSuggestion({ id: 3, status: "applied" }),
+        ],
+        new Set([1]),
+      ),
     ).toEqual({ checked: true, indeterminate: false, disabled: false });
   });
 
   it("is disabled when no suggestion is bulk-decidable", () => {
     expect(
-      getTableCheckboxState([
-        createMockMetadataGenerationSuggestion({ id: 1, source: "human" }),
-        createMockMetadataGenerationSuggestion({ id: 2, status: "stale" }),
-      ]),
+      getTableCheckboxState(
+        [
+          createMockMetadataGenerationSuggestion({ id: 1, source: "human" }),
+          createMockMetadataGenerationSuggestion({ id: 2, status: "stale" }),
+        ],
+        new Set(),
+      ),
     ).toEqual({ checked: false, indeterminate: false, disabled: true });
+  });
+});
+
+describe("review draft", () => {
+  it("adds and removes ids from the selection without changing the input", () => {
+    const selection = new Set([1]);
+    expect([...setSelected(selection, [2, 3], true)]).toEqual([1, 2, 3]);
+    expect([...setSelected(selection, [1], false)]).toEqual([]);
+    expect([...selection]).toEqual([1]);
+  });
+
+  it("sets and clears an edit, and the value shown follows it", () => {
+    const suggestion = createMockMetadataGenerationSuggestion({
+      id: 1,
+      proposed_value: "PII",
+    });
+    const edits = setEdit(new Map(), 1, "BIZ_CONF");
+    expect(getSuggestionValue(suggestion, edits)).toBe("BIZ_CONF");
+    expect(getSuggestionValue(suggestion, setEdit(edits, 1, null))).toBe("PII");
+  });
+
+  it("sends the selected ids and only the edits of selected suggestions", () => {
+    const edits = new Map([
+      [3, "type/Score"],
+      [4, "Not selected"],
+    ]);
+    expect(getApplyRequestBody(new Set([3, 1]), edits)).toEqual({
+      accept: [1, 3],
+      edits: { 3: "type/Score" },
+    });
+    expect(getApplyRequestBody(new Set([1]), edits)).toEqual({ accept: [1] });
   });
 });
 
@@ -184,6 +215,14 @@ describe("getApplySummary", () => {
     expect(
       getApplySummary(createMockMetadataGenerationApplyResult({ written: 1 })),
     ).toBe("1 value written");
+  });
+
+  it("lists the rejected count when there is one", () => {
+    expect(
+      getApplySummary(
+        createMockMetadataGenerationApplyResult({ written: 2, rejected: 1 }),
+      ),
+    ).toBe("2 values written, 1 rejected");
   });
 
   it("lists the written, stale and failed counts", () => {

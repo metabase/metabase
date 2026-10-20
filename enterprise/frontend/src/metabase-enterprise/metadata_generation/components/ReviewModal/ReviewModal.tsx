@@ -5,6 +5,7 @@ import cx from "classnames";
 import {
   type KeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -48,8 +49,6 @@ import {
 } from "metabase/ui";
 import {
   useApplyMetadataGenerationRunMutation,
-  useDecideMetadataGenerationSuggestionsMutation,
-  useEditMetadataGenerationSuggestionMutation,
   useGetMetadataGenerationRunQuery,
   useListMetadataGenerationRunTablesQuery,
   useListMetadataGenerationSuggestionsQuery,
@@ -59,7 +58,6 @@ import type {
   ConcreteTableId,
   FieldId,
   MetadataGenerationApplyResult,
-  MetadataGenerationDecisionRequest,
   MetadataGenerationRun,
   MetadataGenerationRunId,
   MetadataGenerationRunTable,
@@ -73,11 +71,14 @@ import { FieldDetailsPane } from "./FieldDetailsPane";
 import S from "./ReviewModal.module.css";
 import {
   DESCRIPTION_MAX_LENGTH,
-  type RunTotals,
+  type SuggestionEdits,
+  type SuggestionSelection,
   type TableCheckboxState,
   formatSuggestionValue,
   getApplyFailureReasonLabel,
+  getApplyRequestBody,
   getApplySummary,
+  getBulkDecidable,
   getFieldLabel,
   getRunTotals,
   getSuggestionStatusColor,
@@ -88,9 +89,10 @@ import {
   hasOpenDecisions,
   isFieldDataSensitivity,
   isHumanSet,
-  isSuggestionChecked,
   isSuggestionDecidable,
   isSuggestionEdited,
+  setEdit,
+  setSelected,
 } from "./utils";
 
 type ReviewModalProps = {
@@ -118,12 +120,18 @@ export function ReviewModal({
   });
   const [applyResult, setApplyResult] =
     useState<MetadataGenerationApplyResult | null>(null);
+  const draft = useReviewDraft(runId);
   const isEmpty = tables != null && tables.length === 0;
   const hasTables = tables != null && tables.length > 0;
 
   const handleClose = () => {
     setApplyResult(null);
     onClose();
+  };
+
+  const handleDiscard = () => {
+    draft.reset();
+    onDiscard?.();
   };
 
   return (
@@ -140,9 +148,9 @@ export function ReviewModal({
             {opened && hasTables && (
               <ReviewActions
                 runId={runId}
-                totals={getRunTotals(tables)}
+                draft={draft}
                 onApply={setApplyResult}
-                onDiscard={onDiscard}
+                onDiscard={onDiscard && handleDiscard}
               />
             )}
             <ActionIcon aria-label={t`Close`} onClick={handleClose}>
@@ -163,6 +171,7 @@ export function ReviewModal({
             <ReviewContent
               runId={runId}
               tables={tables}
+              draft={draft}
               applyResult={applyResult}
               onDismissApplyResult={() => setApplyResult(null)}
             />
@@ -237,53 +246,71 @@ function useRegenerate(
   return { regenerate, canRegenerate: run != null, isRegenerating };
 }
 
-type Decide = (
-  request: Omit<MetadataGenerationDecisionRequest, "run_id">,
-) => Promise<void>;
-
-type DecideState = {
-  decide: Decide;
-  /** True while a decision request runs. */
-  isDeciding: boolean;
-  /** The suggestions whose own decision request runs. */
-  decidingIds: ReadonlySet<MetadataGenerationSuggestionId>;
+type ReviewDraft = {
+  selection: SuggestionSelection;
+  edits: SuggestionEdits;
 };
 
-function useDecide(runId: MetadataGenerationRunId): DecideState {
-  const [decideSuggestions] = useDecideMetadataGenerationSuggestionsMutation();
-  const [requestCount, setRequestCount] = useState(0);
-  const [decidingIds, setDecidingIds] = useState<
-    ReadonlySet<MetadataGenerationSuggestionId>
-  >(new Set());
-  const { sendErrorToast } = useMetadataToasts();
+const EMPTY_DRAFT: ReviewDraft = { selection: new Set(), edits: new Map() };
 
-  const updateDecidingIds = (
-    ids: MetadataGenerationSuggestionId[] = [],
-    isAdding: boolean,
-  ) =>
-    setDecidingIds((current) => {
-      const next = new Set(current);
-      ids.forEach((id) => (isAdding ? next.add(id) : next.delete(id)));
-      return next;
-    });
+type ReviewDraftState = ReviewDraft & {
+  /** Ticks or unticks the suggestions with `ids`. */
+  select: (ids: MetadataGenerationSuggestionId[], isSelected: boolean) => void;
+  /** Sets the edited value of a suggestion, or clears it with `null`, and ticks the suggestion. */
+  edit: (id: MetadataGenerationSuggestionId, value: string | null) => void;
+  reset: () => void;
+};
 
-  const decide: Decide = async (request) => {
-    setRequestCount((count) => count + 1);
-    updateDecidingIds(request.suggestion_ids, true);
-    const { error } = await decideSuggestions({ run_id: runId, ...request });
-    updateDecidingIds(request.suggestion_ids, false);
-    setRequestCount((count) => count - 1);
-    if (error) {
-      sendErrorToast(getErrorMessage(error, t`Failed to save the decision`));
-    }
+/**
+ * The review of a run before apply: the ticked suggestions and the edited values. It lives only in this
+ * component, so no request is sent until apply, and a reload or another run starts from nothing.
+ */
+function useReviewDraft(runId: MetadataGenerationRunId): ReviewDraftState {
+  const [state, setState] = useState({ runId, ...EMPTY_DRAFT });
+  const draft = state.runId === runId ? state : EMPTY_DRAFT;
+
+  const update = useCallback(
+    (change: (draft: ReviewDraft) => ReviewDraft) =>
+      setState((current) => ({
+        runId,
+        ...change(current.runId === runId ? current : EMPTY_DRAFT),
+      })),
+    [runId],
+  );
+
+  const select = useCallback(
+    (ids: MetadataGenerationSuggestionId[], isSelected: boolean) =>
+      update((current) => ({
+        ...current,
+        selection: setSelected(current.selection, ids, isSelected),
+      })),
+    [update],
+  );
+
+  const edit = useCallback(
+    (id: MetadataGenerationSuggestionId, value: string | null) =>
+      update((current) => ({
+        selection: setSelected(current.selection, [id], true),
+        edits: setEdit(current.edits, id, value),
+      })),
+    [update],
+  );
+
+  const reset = useCallback(() => update(() => EMPTY_DRAFT), [update]);
+
+  return {
+    selection: draft.selection,
+    edits: draft.edits,
+    select,
+    edit,
+    reset,
   };
-
-  return { decide, isDeciding: requestCount > 0, decidingIds };
 }
 
 type ReviewContentProps = {
   runId: MetadataGenerationRunId;
   tables: MetadataGenerationRunTable[];
+  draft: ReviewDraftState;
   applyResult: MetadataGenerationApplyResult | null;
   onDismissApplyResult: () => void;
 };
@@ -291,6 +318,7 @@ type ReviewContentProps = {
 function ReviewContent({
   runId,
   tables,
+  draft,
   applyResult,
   onDismissApplyResult,
 }: ReviewContentProps) {
@@ -301,7 +329,6 @@ function ReviewContent({
   const [paneWidth, setPaneWidth] = useState(DEFAULT_PANE_WIDTH);
   const [hoveredSide, setHoveredSide] = useState<ResizeSide | null>(null);
   const dragStartWidth = useRef(0);
-  const decideState = useDecide(runId);
   const { humanSetPending } = getRunTotals(tables);
   const displayNames = useTableDisplayNames(runId);
 
@@ -355,7 +382,7 @@ function ReviewContent({
             key={selectedTable.table_id}
             runId={runId}
             table={selectedTable}
-            decideState={decideState}
+            draft={draft}
             detailFieldId={detailFieldId}
             hoveredSide={hoveredSide}
             onToggleFieldDetails={(fieldId) =>
@@ -483,7 +510,7 @@ function ResizeHandle({
 
 type ReviewActionsProps = {
   runId: MetadataGenerationRunId;
-  totals: RunTotals;
+  draft: ReviewDraftState;
   onApply: (result: MetadataGenerationApplyResult) => void;
   onDiscard?: () => void;
 };
@@ -491,7 +518,7 @@ type ReviewActionsProps = {
 /** The discard and apply actions of the modal header. */
 function ReviewActions({
   runId,
-  totals,
+  draft,
   onApply,
   onDiscard,
 }: ReviewActionsProps) {
@@ -502,7 +529,7 @@ function ReviewActions({
     { open: openDiscardConfirm, close: closeDiscardConfirm },
   ] = useDisclosure();
   const { sendErrorToast } = useMetadataToasts();
-  const { counts } = totals;
+  const selectedCount = draft.selection.size;
 
   const handleDiscard = () => {
     closeDiscardConfirm();
@@ -510,12 +537,16 @@ function ReviewActions({
   };
 
   const handleApply = async () => {
-    const { data, error } = await applyRun({ run_id: runId });
+    const { data, error } = await applyRun({
+      run_id: runId,
+      ...getApplyRequestBody(draft.selection, draft.edits),
+    });
     if (error) {
       sendErrorToast(
         getErrorMessage(error, t`Failed to apply the suggestions`),
       );
     } else if (data) {
+      draft.reset();
       onApply(data);
     }
   };
@@ -535,7 +566,7 @@ function ReviewActions({
       <ConfirmModal
         opened={isDiscardConfirmOpen}
         title={t`Discard all suggestions?`}
-        message={t`This sets aside every suggestion of this run, including the ones you accepted or edited.`}
+        message={t`This sets aside every suggestion of this run, including the ones you selected or edited.`}
         confirmButtonText={t`Discard`}
         onConfirm={handleDiscard}
         onClose={closeDiscardConfirm}
@@ -543,10 +574,10 @@ function ReviewActions({
       <Button
         variant="filled"
         loading={isApplying}
-        disabled={counts.accepted === 0}
+        disabled={selectedCount === 0}
         onClick={handleApply}
       >
-        {t`Apply ${counts.accepted} accepted`}
+        {t`Apply ${selectedCount} selected`}
       </Button>
     </>
   );
@@ -582,7 +613,7 @@ function ApplyResult({ result, onDismiss }: ApplyResultProps) {
       {result.failures.length > 0 && (
         <Stack gap={2}>
           <Text size="sm" c="text-secondary">
-            {t`Failed suggestions stay accepted, so you can apply them again after you fix the cause.`}
+            {t`Failed suggestions stay pending, so you can select and apply them again after you fix the cause.`}
           </Text>
           {result.failures.map((failure) => (
             <Text key={failure.suggestion_id} size="sm">
@@ -639,14 +670,13 @@ function TableList({
 }
 
 function getTableCountsLabel(table: MetadataGenerationRunTable): string {
-  const { accepted, stale, applied } = table.counts;
+  const { stale, applied } = table.counts;
   const parts = [
     ngettext(
       msgid`${table.total} suggestion`,
       `${table.total} suggestions`,
       table.total,
     ),
-    accepted > 0 && t`${accepted} accepted`,
     stale > 0 && t`${stale} stale`,
     applied > 0 && t`${applied} applied`,
   ].filter((part): part is string => Boolean(part));
@@ -656,7 +686,7 @@ function getTableCountsLabel(table: MetadataGenerationRunTable): string {
 type TableReviewProps = {
   runId: MetadataGenerationRunId;
   table: MetadataGenerationRunTable;
-  decideState: DecideState;
+  draft: ReviewDraftState;
   /** The field whose details pane is open. */
   detailFieldId: FieldId | null;
   /** The card border a resize grip is over, which it draws stronger. */
@@ -683,12 +713,12 @@ type SuggestionNode = SuggestionRowNode | GroupRowNode;
 function TableReview({
   runId,
   table,
-  decideState,
+  draft,
   detailFieldId,
   hoveredSide,
   onToggleFieldDetails,
 }: TableReviewProps) {
-  const { decide, decidingIds } = decideState;
+  const { selection, edits, select, edit } = draft;
   const [query, setQuery] = useState("");
   const {
     data: suggestions,
@@ -708,36 +738,42 @@ function TableReview({
     () =>
       getNodes(
         (suggestions ?? []).filter((suggestion) =>
-          matchesQuery(suggestion, query),
+          matchesQuery(suggestion, edits, query),
         ),
         isGrouped,
       ),
-    [suggestions, query, isGrouped],
+    [suggestions, edits, query, isGrouped],
   );
   const [sticky, setSticky] = useState<StickyHeader | null>(null);
   const tableCheckbox = useMemo(
-    () => getTableCheckboxState(suggestions ?? []),
+    () => getTableCheckboxState(suggestions ?? [], selection),
+    [suggestions, selection],
+  );
+  const bulkIds = useMemo(
+    () => getBulkDecidable(suggestions ?? []).map(({ id }) => id),
     [suggestions],
   );
   const columns = useMemo(
     () =>
       getColumns({
-        runId,
-        table,
         tableCheckbox,
+        bulkIds,
         isGrouped,
-        decide,
-        decidingIds,
+        selection,
+        edits,
+        select,
+        edit,
         detailFieldId,
         onToggleFieldDetails,
       }),
     [
-      runId,
-      table,
       tableCheckbox,
+      bulkIds,
       isGrouped,
-      decide,
-      decidingIds,
+      selection,
+      edits,
+      select,
+      edit,
       detailFieldId,
       onToggleFieldDetails,
     ],
@@ -922,6 +958,7 @@ function getNodes(
 
 function matchesQuery(
   suggestion: MetadataGenerationSuggestion,
+  edits: SuggestionEdits,
   query: string,
 ): boolean {
   const needle = query.trim().toLowerCase();
@@ -933,7 +970,10 @@ function matchesQuery(
     suggestion.field_display_name,
     getAttributeLabel(suggestion.attribute),
     formatSuggestionValue(suggestion.attribute, suggestion.current_value),
-    formatSuggestionValue(suggestion.attribute, getSuggestionValue(suggestion)),
+    formatSuggestionValue(
+      suggestion.attribute,
+      getSuggestionValue(suggestion, edits),
+    ),
   ];
   return haystack.some((text) => text?.toLowerCase().includes(needle));
 }
@@ -954,12 +994,14 @@ function getRowProps(row: Row<SuggestionNode>): Record<string, unknown> {
 }
 
 type ColumnOptions = {
-  runId: MetadataGenerationRunId;
-  table: MetadataGenerationRunTable;
   tableCheckbox: TableCheckboxState;
+  /** The suggestions that the table checkbox ticks and unticks. */
+  bulkIds: MetadataGenerationSuggestionId[];
   isGrouped: boolean;
-  decide: Decide;
-  decidingIds: ReadonlySet<MetadataGenerationSuggestionId>;
+  selection: SuggestionSelection;
+  edits: SuggestionEdits;
+  select: ReviewDraftState["select"];
+  edit: ReviewDraftState["edit"];
   detailFieldId: FieldId | null;
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
@@ -973,12 +1015,13 @@ function suggestionCell(render: SuggestionCell) {
 }
 
 function getColumns({
-  runId,
-  table,
   tableCheckbox,
+  bulkIds,
   isGrouped,
-  decide,
-  decidingIds,
+  selection,
+  edits,
+  select,
+  edit,
   detailFieldId,
   onToggleFieldDetails,
 }: ColumnOptions): TreeTableColumnDef<SuggestionNode>[] {
@@ -1001,7 +1044,7 @@ function getColumns({
       id: "accept",
       header: () => (
         <Tooltip
-          label={t`Accepts or clears every suggestion of this table, except those that would replace a value a person set.`}
+          label={t`Selects or clears every suggestion of this table, except those that would replace a value a person set.`}
         >
           <Box component="span" display="inline-flex">
             <Checkbox
@@ -1009,12 +1052,7 @@ function getColumns({
               checked={tableCheckbox.checked}
               indeterminate={tableCheckbox.indeterminate}
               disabled={tableCheckbox.disabled}
-              onChange={() =>
-                decide({
-                  decision: tableCheckbox.checked ? "unaccept" : "accept",
-                  table_ids: [table.table_id],
-                })
-              }
+              onChange={() => select(bulkIds, !tableCheckbox.checked)}
             />
           </Box>
         </Tooltip>
@@ -1033,8 +1071,8 @@ function getColumns({
         return (
           <AcceptCell
             suggestion={node.suggestion}
-            isDeciding={decidingIds.has(node.suggestion.id)}
-            decide={decide}
+            isChecked={selection.has(node.suggestion.id)}
+            select={select}
           />
         );
       },
@@ -1067,11 +1105,7 @@ function getColumns({
       minWidth: 440,
       cell: suggestionCell((suggestion) => (
         <Stack gap={4} align="flex-start" py="xs">
-          <ProposedValue
-            runId={runId}
-            suggestion={suggestion}
-            decide={decide}
-          />
+          <ProposedValue suggestion={suggestion} edits={edits} edit={edit} />
           {suggestion.status === "stale" && (
             <Tooltip label={getFixedStatusTooltip(suggestion)}>
               <Badge
@@ -1137,12 +1171,12 @@ function getColumns({
 
 type AcceptCellProps = {
   suggestion: MetadataGenerationSuggestion;
-  isDeciding: boolean;
-  decide: Decide;
+  isChecked: boolean;
+  select: ReviewDraftState["select"];
 };
 
 /** The row's checkbox; an applied suggestion shows a check instead, a stale one nothing. */
-function AcceptCell({ suggestion, isDeciding, decide }: AcceptCellProps) {
+function AcceptCell({ suggestion, isChecked, select }: AcceptCellProps) {
   const attributeLabel = getAttributeLabel(suggestion.attribute);
   const fieldLabel = getFieldLabel(suggestion);
 
@@ -1162,20 +1196,11 @@ function AcceptCell({ suggestion, isDeciding, decide }: AcceptCellProps) {
   if (!isSuggestionDecidable(suggestion)) {
     return null;
   }
-  if (isDeciding) {
-    return <Loader size="xs" aria-label={t`Saving`} />;
-  }
-  const isChecked = isSuggestionChecked(suggestion);
   return (
     <Checkbox
       aria-label={t`Accept ${attributeLabel} of ${fieldLabel}`}
       checked={isChecked}
-      onChange={() =>
-        decide({
-          decision: isChecked ? "unaccept" : "accept",
-          suggestion_ids: [suggestion.id],
-        })
-      }
+      onChange={() => select([suggestion.id], !isChecked)}
     />
   );
 }
@@ -1207,41 +1232,21 @@ function CurrentValue({
 }
 
 type ProposedValueProps = {
-  runId: MetadataGenerationRunId;
   suggestion: MetadataGenerationSuggestion;
-  decide: Decide;
+  edits: SuggestionEdits;
+  edit: ReviewDraftState["edit"];
 };
 
-function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
-  const [editSuggestion] = useEditMetadataGenerationSuggestionMutation();
-  const { sendErrorToast } = useMetadataToasts();
+function ProposedValue({ suggestion, edits, edit }: ProposedValueProps) {
   const { attribute, proposed_value } = suggestion;
-  const value = getSuggestionValue(suggestion);
-  const isEdited = isSuggestionEdited(suggestion);
+  const value = getSuggestionValue(suggestion, edits);
+  const isEdited = isSuggestionEdited(suggestion, edits);
   const canEdit = isSuggestionDecidable(suggestion);
   const attributeLabel = getAttributeLabel(attribute);
   const fieldLabel = getFieldLabel(suggestion);
 
-  const save = async (newValue: string | null) => {
-    const editedValue = newValue === proposed_value ? null : newValue;
-    if (editedValue === suggestion.edited_value) {
-      return;
-    }
-    const { error } = await editSuggestion({
-      run_id: runId,
-      suggestion_id: suggestion.id,
-      value: editedValue,
-    });
-    if (error) {
-      sendErrorToast(getErrorMessage(error, t`Failed to save the value`));
-      return;
-    }
-    // Saving a value accepts the suggestion on the backend. Going back to the
-    // AI proposal does not, so the row is checked here.
-    if (editedValue == null && !isSuggestionChecked(suggestion)) {
-      await decide({ decision: "accept", suggestion_ids: [suggestion.id] });
-    }
-  };
+  const save = (newValue: string | null) =>
+    edit(suggestion.id, newValue === proposed_value ? null : newValue);
 
   if (!canEdit) {
     return (
@@ -1250,8 +1255,7 @@ function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
         align="flex-start"
         data-testid="metadata-generation-proposed"
       >
-        <Text>{formatSuggestionValue(attribute, value)}</Text>
-        {isEdited && <EditedBadge suggestion={suggestion} />}
+        <Text>{formatSuggestionValue(attribute, proposed_value)}</Text>
       </Stack>
     );
   }
@@ -1294,22 +1298,6 @@ function keepKeysInEditor(event: KeyboardEvent<HTMLDivElement>) {
   if (event.key !== "Escape") {
     event.stopPropagation();
   }
-}
-
-function EditedBadge({
-  suggestion,
-}: {
-  suggestion: MetadataGenerationSuggestion;
-}) {
-  const proposal = formatSuggestionValue(
-    suggestion.attribute,
-    suggestion.proposed_value,
-  );
-  return (
-    <Tooltip label={t`AI proposal: ${proposal}`} maw="25rem" multiline>
-      <Badge variant="light" color="brand">{t`Edited`}</Badge>
-    </Tooltip>
-  );
 }
 
 /** Every proposed-value input has the same width, whatever its kind. */

@@ -4,6 +4,7 @@ import { getSemanticTypeName } from "metabase/common/utils/fields";
 import { getDataSensitivityLabel } from "metabase/metadata/components";
 import type { BadgeColor } from "metabase/ui";
 import {
+  type ApplyMetadataGenerationRunRequest,
   FIELD_DATA_SENSITIVITY_TYPES,
   type FieldDataSensitivity,
   type MetadataGenerationApplyFailureReason,
@@ -12,12 +13,12 @@ import {
   type MetadataGenerationRunTable,
   type MetadataGenerationStatusCounts,
   type MetadataGenerationSuggestion,
+  type MetadataGenerationSuggestionId,
   type MetadataGenerationSuggestionStatus,
 } from "metabase-types/api";
 
 const SUGGESTION_STATUSES: MetadataGenerationSuggestionStatus[] = [
   "pending",
-  "accepted",
   "rejected",
   "stale",
   "applied",
@@ -32,7 +33,6 @@ export type RunTotals = {
 export function getRunTotals(tables: MetadataGenerationRunTable[]): RunTotals {
   const counts: MetadataGenerationStatusCounts = {
     pending: 0,
-    accepted: 0,
     rejected: 0,
     stale: 0,
     applied: 0,
@@ -52,54 +52,84 @@ export function getRunTotals(tables: MetadataGenerationRunTable[]): RunTotals {
 /** Most characters of a description, the same cap the backend applies to generated and edited descriptions. */
 export const DESCRIPTION_MAX_LENGTH = 200;
 
+/** The suggestions a person ticked in the review. Nothing is sent until apply. */
+export type SuggestionSelection = ReadonlySet<MetadataGenerationSuggestionId>;
+
+/** The values a person chose in place of the proposed values, by suggestion. Nothing is sent until apply. */
+export type SuggestionEdits = ReadonlyMap<
+  MetadataGenerationSuggestionId,
+  string
+>;
+
 export function isSuggestionEdited(
   suggestion: MetadataGenerationSuggestion,
+  edits: SuggestionEdits,
 ): boolean {
-  return suggestion.edited_value != null;
+  return edits.has(suggestion.id);
 }
 
 /** The value apply writes: the edited value when a person edited it, else the proposed value. */
 export function getSuggestionValue(
   suggestion: MetadataGenerationSuggestion,
+  edits: SuggestionEdits,
 ): string {
-  return suggestion.edited_value ?? suggestion.proposed_value;
+  return edits.get(suggestion.id) ?? suggestion.proposed_value;
+}
+
+/** `selection` with `ids` added when `isSelected`, else removed. */
+export function setSelected(
+  selection: SuggestionSelection,
+  ids: MetadataGenerationSuggestionId[],
+  isSelected: boolean,
+): SuggestionSelection {
+  const next = new Set(selection);
+  ids.forEach((id) => (isSelected ? next.add(id) : next.delete(id)));
+  return next;
+}
+
+/** `edits` with the edit of `id` set to `value`, or removed when `value` is `null`. */
+export function setEdit(
+  edits: SuggestionEdits,
+  id: MetadataGenerationSuggestionId,
+  value: string | null,
+): SuggestionEdits {
+  const next = new Map(edits);
+  if (value == null) {
+    next.delete(id);
+  } else {
+    next.set(id, value);
+  }
+  return next;
+}
+
+/** The apply request body for the review: the selected suggestions, with the edits of selected suggestions only. */
+export function getApplyRequestBody(
+  selection: SuggestionSelection,
+  edits: SuggestionEdits,
+): Pick<ApplyMetadataGenerationRunRequest, "accept" | "edits"> {
+  const accept = [...selection].sort((a, b) => a - b);
+  const selectedEdits = [...edits].filter(([id]) => selection.has(id));
+  return selectedEdits.length > 0
+    ? { accept, edits: Object.fromEntries(selectedEdits) }
+    : { accept };
 }
 
 export function isHumanSet(suggestion: MetadataGenerationSuggestion): boolean {
   return suggestion.source === "human";
 }
 
-/** Pending, accepted and rejected suggestions can change; stale and applied ones cannot. */
+/** Pending and rejected suggestions can be applied; stale and applied ones cannot. */
 export function isSuggestionDecidable(
   suggestion: MetadataGenerationSuggestion,
 ): boolean {
-  return (
-    suggestion.status === "pending" ||
-    suggestion.status === "accepted" ||
-    suggestion.status === "rejected"
-  );
+  return suggestion.status === "pending" || suggestion.status === "rejected";
 }
 
-/** The row checkbox is checked for accepted suggestions and for applied ones, which were accepted. */
-export function isSuggestionChecked(
-  suggestion: MetadataGenerationSuggestion,
-): boolean {
-  return suggestion.status === "accepted" || suggestion.status === "applied";
-}
-
-/** The suggestions that the table checkbox ticks and unticks: the backend leaves out human-set ones. */
+/** The suggestions that the table checkbox ticks and unticks: human-set ones are left out. */
 export function getBulkDecidable(
   suggestions: MetadataGenerationSuggestion[],
 ): MetadataGenerationSuggestion[] {
   return suggestions.filter((s) => isSuggestionDecidable(s) && !isHumanSet(s));
-}
-
-export function getHumanSetAcceptable(
-  suggestions: MetadataGenerationSuggestion[],
-): MetadataGenerationSuggestion[] {
-  return suggestions.filter(
-    (s) => isSuggestionDecidable(s) && !isSuggestionChecked(s) && isHumanSet(s),
-  );
 }
 
 export type TableCheckboxState = {
@@ -110,9 +140,10 @@ export type TableCheckboxState = {
 
 export function getTableCheckboxState(
   suggestions: MetadataGenerationSuggestion[],
+  selection: SuggestionSelection,
 ): TableCheckboxState {
   const decidable = getBulkDecidable(suggestions);
-  const checkedCount = decidable.filter(isSuggestionChecked).length;
+  const checkedCount = decidable.filter(({ id }) => selection.has(id)).length;
   return {
     checked: decidable.length > 0 && checkedCount === decidable.length,
     indeterminate: checkedCount > 0 && checkedCount < decidable.length,
@@ -120,15 +151,13 @@ export function getTableCheckboxState(
   };
 }
 
-/** Pending and rejected suggestions both count as not accepted: apply skips both. */
-export function getNotAcceptedCount(
-  counts: MetadataGenerationStatusCounts,
-): number {
+/** Pending and rejected suggestions are still open: a later apply can accept them. */
+export function getOpenCount(counts: MetadataGenerationStatusCounts): number {
   return counts.pending + counts.rejected;
 }
 
 export function hasOpenDecisions(table: MetadataGenerationRunTable): boolean {
-  return getNotAcceptedCount(table.counts) > 0;
+  return getOpenCount(table.counts) > 0;
 }
 
 export function getTableLabel(table: MetadataGenerationRunTable): string {
@@ -173,8 +202,6 @@ export function getSuggestionStatusLabel(
   switch (status) {
     case "pending":
       return t`Pending`;
-    case "accepted":
-      return t`Accepted`;
     case "rejected":
       return t`Rejected`;
     case "stale":
@@ -190,7 +217,6 @@ export function getSuggestionStatusColor(
   switch (status) {
     case "pending":
       return "brand";
-    case "accepted":
     case "applied":
       return "positive";
     case "rejected":
@@ -225,6 +251,15 @@ export function getApplySummary(result: MetadataGenerationApplyResult): string {
       result.written,
     ),
   ];
+  if (result.rejected > 0) {
+    parts.push(
+      ngettext(
+        msgid`${result.rejected} rejected`,
+        `${result.rejected} rejected`,
+        result.rejected,
+      ),
+    );
+  }
   if (result.stale > 0) {
     parts.push(
       ngettext(
