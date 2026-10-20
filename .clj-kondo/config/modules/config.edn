@@ -2057,9 +2057,11 @@
 
   prototype
   {:team "Gadget"
-   :api  #{metabase.prototype.core
+   :api  #{metabase.prototype.api
+           metabase.prototype.core
            metabase.prototype.init}
-   :uses #{app-db
+   :uses #{api
+           app-db
            events
            lib
            lib.be
