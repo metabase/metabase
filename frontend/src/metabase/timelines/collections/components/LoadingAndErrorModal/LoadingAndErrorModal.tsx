@@ -2,7 +2,7 @@ import {
   LoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
 } from "metabase/common/components/LoadingAndErrorWrapper";
-import { MODAL_MIN_HEIGHT } from "metabase/timelines/common/constants";
+import S from "metabase/timelines/common/components/TimelineModal.module.css";
 import { Flex, Modal, NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
 
 type LoadingAndErrorModalProps = Pick<
@@ -18,11 +18,17 @@ export const LoadingAndErrorModal = ({
   error,
   onClose,
 }: LoadingAndErrorModalProps) => (
-  <Modal opened size="lg" onClose={onClose} {...NO_ANIMATION_MODAL_PROPS}>
+  <Modal
+    opened
+    size="lg"
+    classNames={{ content: S.content, body: S.body }}
+    onClose={onClose}
+    {...NO_ANIMATION_MODAL_PROPS}
+  >
     <Flex
       component={LoadingAndErrorWrapper}
       direction="column"
-      mih={MODAL_MIN_HEIGHT}
+      flex="1 1 auto"
       loading={loading}
       error={error}
     />
