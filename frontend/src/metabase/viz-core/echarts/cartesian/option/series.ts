@@ -633,7 +633,7 @@ const buildEChartsBarSeries = (
     z: Z_INDEXES.series,
     xAxisIndex,
     yAxisIndex,
-    barGap: 0,
+    barGap: `${-(settings["graph.bar_overlap"] ?? 0) * 100}%`,
     barMinHeight: 1,
     ...(isRowChart && {
       barCategoryGap: ROW_CHART_STYLE.barCategoryGap,
@@ -1129,6 +1129,10 @@ export const buildEChartsSeries = (
     : Object.values(seriesSettingsByDataKey).filter(
         (seriesSettings) => seriesSettings.display === "bar",
       ).length;
+  // Overlapping bars need less room side by side, so each bar can be wider.
+  const barSlotCount =
+    barSeriesCount -
+    (barSeriesCount - 1) * (settings["graph.bar_overlap"] ?? 0);
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
@@ -1175,7 +1179,7 @@ export const buildEChartsSeries = (
               : chartModel.stackModels.find((stackModel) =>
                   stackModel.seriesKeys.includes(seriesModel.dataKey),
                 );
-          return buildEChartsBarSeries(
+          const barSeries = buildEChartsBarSeries(
             chartModel.transformedDataset,
             chartModel.dataset,
             chartModel.xAxisModel,
@@ -1185,7 +1189,7 @@ export const buildEChartsSeries = (
             stackName,
             settings,
             yAxisIndex,
-            barSeriesCount,
+            barSlotCount,
             hasMultipleSeries,
             chartModel.dataDensity,
             chartWidth,
@@ -1195,6 +1199,18 @@ export const buildEChartsSeries = (
             panelIndex,
             chartModel.isRowChart,
           );
+          if (!seriesSettings["bar.behind"]) {
+            return barSeries;
+          }
+          // Overlapping bars of later series cover the bars of this series.
+          const putBehind = (option: BarSeriesOption): BarSeriesOption => ({
+            ...option,
+            z: Z_INDEXES.series - 1,
+            itemStyle: { ...option.itemStyle, opacity: 0.5 },
+          });
+          return Array.isArray(barSeries)
+            ? barSeries.map(putBehind)
+            : putBehind(barSeries);
         }
       }
     })

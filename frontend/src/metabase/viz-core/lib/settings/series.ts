@@ -219,6 +219,10 @@ export function seriesSetting({
       getHidden: () => true,
       getDefault: () => false,
     },
+    "bar.behind": {
+      getHidden: () => true,
+      getDefault: () => false,
+    },
     "line.missing": {
       get title() {
         return t`Replace missing values with`;
