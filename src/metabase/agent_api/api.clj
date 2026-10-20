@@ -1833,14 +1833,11 @@
   [handler]
   (fn [request respond raise]
     (let [raise (fn [e]
-                  (let [status-code   (:status-code (ex-data e))
-                        ;; Toucan also wraps deliberate client errors raised inside transactions.
-                        client-error? (and status-code (<= 400 status-code 499))]
-                    (if (and (not client-error?) (metabot-construct/database-error? e))
-                      (do
-                        (log/error e "Database failure in Agent API")
-                        (respond {:status 500 :body {:message (tru "Something went wrong")}}))
-                      (raise e))))]
+                  (if (metabot-construct/database-error? e)
+                    (do
+                      (log/error e "Database failure in Agent API")
+                      (respond {:status 500 :body {:message (tru "Something went wrong")}}))
+                    (raise e)))]
       (try
         (handler request respond raise)
         (catch Throwable e

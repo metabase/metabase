@@ -326,6 +326,22 @@
         (is (= {:message "Something went wrong"}
                (mt/user-http-request :rasta :post 500 "agent/v2/construct-query" {:query query})))))))
 
+(deftest construct-query-declared-errors-in-toucan-scopes-test
+  (let [query (orders-query :fields [(orders-field-ref "ID")])]
+    (doseq [[error message expected] [[:invalid-representations-query
+                                       "Representations query has an invalid structure."
+                                       "Representations query has an invalid structure."]
+                                      [:unknown-field
+                                       "Unknown field"
+                                       (str "Unknown field Call `read_resource` with `metabase://table/<numeric id>/fields` "
+                                            "to list this table's columns.")]]]
+      (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                  (fn [& _]
+                                    (t2/with-connection [_conn]
+                                      (throw (ex-info message {:status-code 400 :error error}))))]
+        (is (=? {:error (name error) :message expected}
+                (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
+
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
     (mt/with-no-data-perms-for-all-users!

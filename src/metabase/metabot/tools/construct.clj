@@ -653,12 +653,14 @@
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
 (defn database-error?
-  "Returns true if `e` or a cause is a JDBC exception or carries Toucan context."
+  "Returns true for JDBC or Toucan failures without an explicit 4xx status."
   [e]
-  (boolean
-   (some #(or (instance? SQLException %)
-              (contains? (ex-data %) :toucan2/context-trace))
-         (u/full-exception-chain e))))
+  (let [status-code (:status-code (ex-data e))]
+    (boolean
+     (and (not (and status-code (<= 400 status-code 499)))
+          (some #(or (instance? SQLException %)
+                     (contains? (ex-data %) :toucan2/context-trace))
+                (u/full-exception-chain e))))))
 
 (defn- as-agent-input-error
   "Return database failures unchanged; wrap other exceptions as agent-input errors.
