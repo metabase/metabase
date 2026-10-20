@@ -913,6 +913,34 @@
       (testing "and never as an opaque internal failure"
         (is (not (str/includes? msg "Internal error")))))))
 
+(deftest ^:parallel schema-failure-names-each-position-once-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [bad-filter   ["" {} ["field" {} (mt/id :orders :id)] 10]
+          not-a-clause "\"clause must be [operator-string, options-map, …args]\""
+          error-for    (fn [stage]
+                         (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                         {:query (numeric-orders-query stage)})))
+          invalid-at   (fn [detail]
+                         (str "\"Representations query has an invalid structure.\" Invalid at \"stages\": [0] "
+                              detail ". Fix the named paths, or call \"learn\" with \"query-dialect\" "
+                              "for the clause shapes."))]
+      (testing "a bad clause at index 0 keeps its position"
+        (is (= (invalid-at (str "\"filters\": [0] " not-a-clause))
+               (error-for {:filters [bad-filter]}))))
+      (testing "two bad clauses are named by their own positions"
+        (is (= (invalid-at (str "\"filters\": [0] " not-a-clause ", [1] " not-a-clause))
+               (error-for {:filters [bad-filter bad-filter]}))))
+      (testing "a value that fails both branches of an `:or` names only the positions the value has"
+        (is (= (invalid-at (str "\"joins\": [0] \"fields\": \"should be either \\\"all\\\" or \\\"none\\\"\", "
+                                "[0] \"should be a vector\", [0] " not-a-clause))
+               (error-for {:joins [{:lib/type   "mbql/join"
+                                    :alias      "P"
+                                    :stages     [{:lib/type "mbql.stage/mbql" :source-table (mt/id :products)}]
+                                    :conditions [["=" {}
+                                                  ["field" {} (mt/id :orders :product_id)]
+                                                  ["field" {:join-alias "P"} (mt/id :products :id)]]]
+                                    :fields     [{:x 1}]}]})))))))
+
 (deftest ^:parallel schema-failure-locates-the-offending-stage-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid   (str (random-uuid))

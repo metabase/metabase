@@ -158,30 +158,51 @@
   [items]
   (joined-message #(message/msg ["%s; %s"] %1 %2) items))
 
+(defn- humanized-message
+  "Render humanized `errors` for [[humanize-detail]] and [[mu-humanize-detail]].
+
+   `vector-of-messages?` says whether a vector of plain strings is one value's messages or an error per position."
+  [errors vector-of-messages?]
+  (cond
+    (map? errors)
+    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k)
+                                                          (humanized-message v vector-of-messages?)))
+                                 errors))
+
+    (and vector-of-messages? (sequential? errors) (every? string? errors))
+    (list-message errors)
+
+    (vector? errors)
+    (semicolon-list-message (keep-indexed (fn [i v]
+                                            (when (some? v)
+                                              (message/msg ["[%d] %s"] i (humanized-message v vector-of-messages?))))
+                                          errors))
+
+    (sequential? errors)
+    (list-message (map #(humanized-message % vector-of-messages?) errors))
+
+    :else
+    (message/msg ["%s"] (str errors))))
+
 (defn humanize-detail
   "Flatten a [[malli.error/humanize]] explanation into a one-line message of `path: expectation`, with the paths
    and expectations cleaned.
 
    Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
    multi-element collection names which element it is in; a run of plain strings is a single
-   value's alternative messages and joins without positions."
+   value's alternative messages and joins without positions. For [[metabase.util.malli.humanize/humanize]] output,
+   use [[mu-humanize-detail]]."
   [errors]
-  (cond
-    (map? errors)
-    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k) (humanize-detail v)))
-                                 errors))
+  (humanized-message errors true))
 
-    (and (sequential? errors) (every? string? errors))
-    (list-message errors)
+(defn mu-humanize-detail
+  "Flatten a [[metabase.util.malli.humanize/humanize]] explanation, as [[humanize-detail]] does Malli's own.
 
-    (sequential? errors)
-    (semicolon-list-message (keep-indexed (fn [i v]
-                                            (when (some? v)
-                                              (message/msg ["[%d] %s"] i (humanize-detail v))))
-                                          errors))
-
-    :else
-    (message/msg ["%s"] (str errors))))
+   That humanizer writes a single message as a plain string, so each of its vectors labels positions, plain strings
+   included. Several errors for the same value, such as the branches of an `:or`, come as a list and join without
+   positions of their own. The query pipeline's structural failures carry this kind of explanation."
+  [errors]
+  (humanized-message errors false))
 
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
