@@ -29,9 +29,9 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
     Component: BaselinePrototype,
   },
   {
-    id: "or-pills",
+    id: "normalized-nested-form",
     get name() {
-      return t`OR inside pills`;
+      return t`Normalized nested form`;
     },
     get description() {
       return t`Pills stay AND-ed at the top level. Click a pill to edit its OR rows in a dropdown.`;
@@ -41,7 +41,7 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "or-advanced-worksheet",
     get name() {
-      return t`Visual nesting in a big worksheet: rows`;
+      return t`Worksheet toggleable operators`;
     },
     get description() {
       return t`One "Advanced filter" pill opens a worksheet. Each group is a line; click its first connector to switch and/or. Subgroups nest up to three levels.`;
@@ -50,26 +50,26 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
     FilterButton: AdvancedWorksheetFilterButton,
   },
   {
-    id: "advanced-filter-modal",
+    id: "expression-bar",
     get name() {
-      return t`OR filters B3: Advanced filter modal`;
-    },
-    get description() {
-      return t`Today's pills and notebook step. The filter picker ends with "Advanced filter", which opens the expression bar in a modal.`;
-    },
-    Component: AdvancedFilterModalPrototype,
-    FilterButton: AdvancedFilterModalButton,
-  },
-  {
-    id: "expression-bar-inline",
-    get name() {
-      return t`Expression bar, inline apply`;
+      return t`Expression bar`;
     },
     get description() {
       return t`Expression bar with Cancel and Apply inside the bar. The header button hides and shows the filter strip.`;
     },
     Component: ExpressionBarInlinePrototype,
     canHideFilters: true,
+  },
+  {
+    id: "advanced-filter-modal",
+    get name() {
+      return t`Advanced filter modal with expression bar`;
+    },
+    get description() {
+      return t`Today's pills and notebook step. The filter picker ends with "Advanced filter", which opens the expression bar in a modal.`;
+    },
+    Component: AdvancedFilterModalPrototype,
+    FilterButton: AdvancedFilterModalButton,
   },
   {
     id: "railroad",
