@@ -11,9 +11,8 @@ _Monitor > API key usage_
 
 The API key usage page lets admins see how [API keys](../people-and-groups/api-keys.md) are used. Metabase records one row for every API request authenticated with an API key. Tabs on the page include:
 
-- **Usage**: Charts and a table that summarize API key activity over the date range you pick.
-- **Events**: One row per request, to see individual API calls.
-
+- [**Usage**](#usage): Charts and a table that summarize API key activity over the date range you pick.
+- [**Events**](#events): One row per request, to see individual API calls.
 
 ## Usage
 
@@ -23,7 +22,6 @@ The Usage tab shows a dashboard summarizing the calls that match your filters. C
 - **Calls over time**: A line chart of daily call volume.
 - **Calls by client**: A pie chart broken down by which tools make the calls, like curl or the Metabase CLI. See [How Metabase identifies clients](#how-metabase-identifies-clients).
 - **Calls by route**: A bar chart of which API endpoints get called most, like `/api/card/:id`. Less common routes are grouped together under **Other**.
-
 
 ## Events
 
@@ -51,7 +49,6 @@ You might also see two special values:
 - `(unmatched)`: The call went to an API path that doesn't exist, and Metabase returned a 404. Causes for this include typos, testing, and people probing for endpoints.
 - `(no-template)`: The call reached Metabase, but not a regular API endpoint. This includes health checks and requests Metabase declined before they got to an endpoint.
 
-
 ## How Metabase identifies clients
 
 Metabase reads the `User-Agent` header the caller sends, and sorts each call into one of these clients:
@@ -74,14 +71,13 @@ API key usage is for spotting patterns, not for auditing every request. When an 
 
 ## Turn on PII retention to see IP addresses
 
-The IP address column stays hidden unless you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which controls whether Metabase stores personally identifiable information alongside its analytics. PII retention is off by default. With PII retention on, Metabase also stores each call's full user agent, though the page doesn't show it.
-
+The IP address column stays hidden unless you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which controls whether Metabase stores personally identifiable information alongside its analytics. PII retention is off by default. With PII retention on, Metabase also stores each call's full user agent in its application database, though the page doesn't show it.
 
 ## How long Metabase keeps API key usage data
 
 Once a day, Metabase deletes call records older than [`MB_AI_USAGE_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_ai_usage_max_retention_days). The same setting controls retention for [AI usage auditing](../ai/usage-auditing.md) and [CLI analytics](./cli-analytics.md) data, so changing it affects all of them.
 
-Deleting an API key doesn't delete its usage history. Calls from a deleted key still count in the charts and show up on the Events tab, but without a key name, until they're old enough for Metabase to delete.
+Deleting an API key doesn't delete its usage history. Calls from a deleted key still count in the charts and show up on the Events tab, but with a blank API key column, since Metabase only knows the name while the key exists.
 
 ## Further reading
 
