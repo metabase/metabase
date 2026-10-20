@@ -106,6 +106,16 @@ describe("findInsights", () => {
     ).toEqual([]);
   });
 
+  it("reports a group that never converts", () => {
+    // People who already signed up can't sign up again.
+    expect(
+      findDescribed([
+        { values: { plan: "free" }, reached: 1000, converted: 0 },
+        { values: { plan: "(not set)" }, reached: 4000, converted: 1200 },
+      ]),
+    ).toEqual(["plan=free"]);
+  });
+
   it("leaves out a group whose effect comes from a narrower group inside it", () => {
     // Every iOS user is on Safari; Safari on macOS converts like everyone else.
     expect(

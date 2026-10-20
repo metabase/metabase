@@ -12,6 +12,11 @@
 -- second as an event applies to it, so checkout_completed carries the plan it
 -- bought. Events before a person's first identify() have none. For their
 -- current traits, use the FK to pa_identities_resolved instead.
+--
+-- person__identified is true from a person's first identify() on and false
+-- before. The traits can't stand in for it, since an identify() may send none
+-- of them. The double underscore keeps it apart from a trait called
+-- "identified".
 
 DROP TABLE IF EXISTS product_analytics.pa_events_resolved;
 
@@ -43,7 +48,9 @@ SELECT
     nullIf(h.identity_data['company'], '') AS person_company,
     nullIf(h.identity_data['role'], '') AS person_role,
     nullIf(h.identity_data['plan'], '') AS person_plan,
-    nullIf(h.identity_data['billing_cycle'], '') AS person_billing_cycle
+    nullIf(h.identity_data['billing_cycle'], '') AS person_billing_cycle,
+    -- ASOF LEFT JOIN fills a missing match with defaults, not NULLs
+    toBool(h.session_id != '') AS person__identified
 FROM stitched AS s
 ASOF LEFT JOIN product_analytics.pa_identity_history AS h
     ON h.website_id = s.website_id

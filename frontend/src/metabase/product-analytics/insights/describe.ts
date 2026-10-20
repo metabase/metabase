@@ -1,8 +1,11 @@
-import { c, msgid, ngettext } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import { formatNumber } from "metabase/utils/formatting";
 
-import type { Insight } from "./types";
+import { IDENTIFIED_COLUMN } from "../columns";
+import { NOT_SET_VALUE } from "../sql/analyses/funnel-insights";
+
+import type { Insight, InsightAttribute } from "./types";
 
 const MULTIPLIER_FROM = 2;
 // Below this, a whole-number percentage would hide the difference.
@@ -47,3 +50,53 @@ export const describeExcess = ({ excess }: Pick<Insight, "excess">): string => {
         count,
       );
 };
+
+type DescribedAttribute = Pick<
+  InsightAttribute,
+  "column" | "displayName" | "description"
+>;
+
+const isIdentified = (attribute: DescribedAttribute | undefined) =>
+  attribute?.column === IDENTIFIED_COLUMN;
+
+/** One value of an attribute, as a chart axis shows it. */
+export const describeValue = (
+  attribute: DescribedAttribute | undefined,
+  value: string,
+): string => {
+  if (isIdentified(attribute)) {
+    return value === "true" ? t`Identified` : t`Anonymous`;
+  }
+  return value;
+};
+
+/**
+ * One condition of an insight, like "Browser is Safari". Whether the person
+ * was identified reads as a state rather than a column and value.
+ */
+export const describeCondition = (
+  attribute: DescribedAttribute | undefined,
+  value: string,
+): string => {
+  if (isIdentified(attribute)) {
+    return value === "true" ? t`Person is identified` : t`Person is anonymous`;
+  }
+  const name = attribute?.displayName ?? t`Unknown column`;
+  return value === NOT_SET_VALUE
+    ? c("{0} is a column name").t`${name} is not set`
+    : c("{0} is a column name, {1} is one of its values")
+        .t`${name} is ${value}`;
+};
+
+/**
+ * What an attribute means, for an info tooltip: its column description, or a
+ * built-in one for whether the person was identified. `undefined` when there's
+ * nothing to add.
+ */
+export const describeAttribute = (
+  attribute: DescribedAttribute | undefined,
+): string | undefined =>
+  attribute?.description ??
+  (isIdentified(attribute)
+    ? t`Identified people have been linked to an account as of this step, usually by signing up or logging in. Anonymous people haven't been yet.`
+    : undefined);

@@ -73,7 +73,7 @@ Both passes return counts, not people, so the results are small enough to send t
 
 ### Attribute values
 
-For each candidate column, use **the first non-empty value we saw for the person, as long as we saw it by the time they reached step k**. Otherwise the value is `(not set)`.
+For each candidate column, use **the first non-empty value we saw for the person, as long as we saw it by the time they reached step k**. Otherwise the value is `(not set)`. Flags that only go from false to true use a variant of this rule instead (see [Whether someone was identified](#whether-someone-was-identified)).
 
 This rule:
 
@@ -148,6 +148,16 @@ The right rule is the **latest** value as of reaching step k. It doesn't fit the
 - A second pass over the events once the step times are known. It's simpler but scans the events twice.
 
 For the prototype this doesn't matter. The only trait in the generated data that changes is `plan`, which follows the funnel and shouldn't be an insight anyway.
+
+### Whether someone was identified
+
+`pa_events_resolved.person__identified` is true from a person's first `identify()` on, and false before. It comes from whether the `ASOF JOIN` found a history row, not from the traits, since an `identify()` can send none of the promoted ones. That makes every `person_*` column empty after it too.
+
+- **False, not NULL, in the table.** A plain per-event fact works everywhere else: Metabase's True/False filter picker, breakouts, cohorts by attribute (the latest value), and attribution that reads the value on a step's event. An earlier version stored NULL before `identify()` to suit the first-value rule, and made the column awkward everywhere else.
+- **Its own as-of rule in insights.** Under the first-value rule a `false` would be the first value for anyone who browsed anonymously, and stick. So each attribute has a rule (`AttributeAsOf` in `funnel-insights.ts`): `first-seen` for everything else, and `true-by-step` for this column, which is `"true"` if it was true on any event by the step and `"false"` otherwise. It's the first-value rule with `false` counted as empty and `"false"` as the fallback, so it fits the same `GROUP BY`. The values match the table's, so an insight maps straight onto a filter.
+- **Wins ties.** When it and a trait are empty for the same people, the search keeps whichever attribute comes first, and `candidates.ts` puts this one first.
+- **Labels:** "Person is identified" and "Person is anonymous" in titles, "Identified" and "Anonymous" on chart axes, with an info icon that explains them. Not "Signed up": `identify()` might also fire on a newsletter signup or an invite. Other columns get the info icon when they have a description in Metabase.
+- **The double underscore** keeps it apart from a trait called `identified` promoted as `person_identified`.
 
 ### Open questions
 
@@ -259,7 +269,7 @@ For each transition k and each candidate group S:
 
 ### Filters
 
-1. **Minimum group size:** `n_S ≥ max(100, 1% of N_k)`, and the same for the rest. Both sides also need at least 10 conversions and 10 drop-offs, so that the z-test below is reliable.
+1. **Minimum group size:** `n_S ≥ max(100, 1% of N_k)`, and the same for the rest. Both sides also need at least 5 conversions and 5 drop-offs expected at the transition's overall rate, so that the z-test below is reliable. The approximation depends on the counts expected under the null hypothesis, not the observed ones, so a group that converts 0% is still tested. An earlier version required 10 observed conversions, which hid the strongest effects, like people who had already signed up never signing up.
 2. **Significance:**
    - A two-sided, two-proportion z-test.
    - Benjamini–Hochberg at q = 0.10, with singles and pairs as separate families, each across all transitions. To apply it, sort the p-values in ascending order, find the largest i where `p_(i) ≤ (i / m) × q`, and keep the first i.
@@ -426,7 +436,7 @@ With the app's defaults, most journeys take longer than 7 days from the first pr
 - **iOS** is significant, but desktop Safari happens to come out low too (12 of 176), so "Safari converts worse" explains it and replaces it.
 - With `PA_PEOPLE=100000` both are found, but the admin effect disappears (see the known issue below).
 
-The top insight with the app's defaults is "Person Plan is not set" at pricing → trial: 12.3% vs 0.3%. It isn't leakage, since the plan really was known at that pricing view. It says the first step mixes prospects with people who'd already signed up: the generator only starts trials within 3 days of signup, so signed-up people almost never start one. That's exaggerated, but it's the insight doing its job. A funnel about converting prospects should only count pricing views by people who haven't signed up, for example "Viewed pricing and Person Plan is empty". All `person_*` columns are empty for the same people, so the search keeps one of them.
+The top insight with the app's defaults was "Person Plan is not set" at pricing → trial: 12.3% vs 0.3%. It now comes from `person__identified`, as "Person is anonymous" or "Person is identified", whichever is the narrower group. It isn't leakage, since the person really was identified (or not) at that pricing view. It says the first step mixes prospects with people who'd already signed up: the generator only starts trials within 3 days of signup, so signed-up people almost never start one. That's exaggerated, but it's the insight doing its job. A funnel about converting prospects should only count pricing views by people who haven't been identified, for example "Viewed pricing and Person Identified is false". All `person_*` columns are empty for the same people, so the tie rule keeps `person__identified` (see [Whether someone was identified](#whether-someone-was-identified)). With a signup step in place of trial, identified people convert at exactly 0%, which the minimum of 5 *expected* conversions lets through.
 
 **Known issue: chains of explanations.** An insight is left out if any other insight explains it, even one that's left out itself. Both outcomes of this rule show up in the generated data:
 
@@ -450,7 +460,7 @@ A fix needs both: some way to test a pair against an explanation with a third co
 | Setting | Value |
 |---|---|
 | Minimum group size | max(100 people, 1% of the transition's population), for the group and the rest |
-| Normal-approximation check | ≥ 10 conversions and ≥ 10 drop-offs on each side |
+| Normal-approximation check | ≥ 5 conversions and ≥ 5 drop-offs on each side, expected at the transition's rate |
 | False discovery rate (Benjamini–Hochberg) | q = 0.10, singles and pairs as separate families |
 | Pair interaction | folded into the pairs' Benjamini–Hochberg family |
 | Pair redundancy | covers < 95% of each parent |
@@ -468,8 +478,13 @@ A fix needs both: some way to test a pair against an explanation with a third co
 - `event_data` map keys as candidate columns. Real Track data keeps sparse properties there.
 - Binning numeric columns.
 - When two one-factor insights are mostly the same people (≥ 80% overlap, known from pass 2), show the stronger one and mention the other.
-- **Leave out columns that nearly determine conversion.** A column that almost perfectly separates who converted is recorded as part of converting, not something that predicts it. The minimum of 10 conversions and 10 drop-offs per side already drops groups at exactly 0% or 100%, but only by accident, and 98% gets through. Measure the whole column, since every value of a leaky column is an artifact (`plan = free` at 2% as much as `plan = pro` at 98%). Normalized mutual information does this at any base rate: the share of the uncertainty in `converted` that knowing the column removes. Leave the column out above roughly 0.8 and say so ("Left out *Plan*: it almost determines who converted"). This is a backstop: leaks are often far from perfect (with a 7-day window, many buyers count as drop-offs), so the as-of rule stays the main defense.
+- **Leave out columns that nearly determine conversion.** A column that almost perfectly separates who converted is recorded as part of converting, not something that predicts it. Measure the whole column, since every value of a leaky column is an artifact (`plan = free` at 2% as much as `plan = pro` at 98%). Normalized mutual information does this at any base rate: the share of the uncertainty in `converted` that knowing the column removes. Leave the column out above roughly 0.8 and say so ("Left out *Plan*: it almost determines who converted"). This is a backstop: leaks are often far from perfect (with a 7-day window, many buyers count as drop-offs), so the as-of rule stays the main defense.
   - **Not for one-sided groups.** "Person Plan is not set" at 37× has a normalized mutual information of 0.06: the identified fifth almost never converts, but the anonymous majority only converts at 12%, so the column predicts little overall. Numbers alone can't separate a structural 0% from a real one. A browser with a broken checkout would look the same, and that's the most useful insight there is. So don't leave groups out by ratio or rate.
-- **Name person `(not set)` for what it means.** For `person_*` columns, `(not set)` mostly means "not identified yet". Show it as one condition, such as "Hadn't signed up yet", not one per trait column.
-- **Latest value as of each step** for person traits that change (see [Known gap](#known-gap-traits-that-change)).
+- **Latest value as of each step** for person traits that change (see [Known gap](#known-gap-traits-that-change)). This would be a third `AttributeAsOf` rule, "the value on step k's event": `person_*` traits are stamped on every event, so that's the latest value as of the step. It's also PostHog's specific-step attribution for funnel breakouts, so breakouts could offer the same rules (first touchpoint, last touchpoint, specific step) through it.
 - **Per-trait settings for person properties:** as of the event or current, and whether a trait that never changes may apply to events before someone is identified (see [Open questions](#open-questions)).
+- **Turn an insight into a filter** ("Only count these people" / "Exclude these people" on the insight's step). Parked until the filter model is settled, since the action should add whichever filter we pick. Open points:
+  - **Which columns.** The insight uses the first value seen by step k, across all events. A step filter tests step k's own event. Those agree for `person__identified` and, apart from traits that change, the other `person_*` columns. They don't for sparse event properties: "Viewed pricing and UTM source is Google" matches nobody when only the landing pageview has a UTM.
+  - **Exclude and empty values.** Excluding "Browser is Safari" should keep people with no browser, so it's "is empty or is not Safari". Check whether Metabase's `!=` keeps NULLs. Excluding a pair is NOT (A AND B).
+  - **Naming and undo.** A step defined by a segment gains a filter, so its name has to say so. The insight disappears once applied, so it probably wants an undo.
+  - **Placement.** `Accordion.Control` is a `<button>`, so a ⋯ menu goes beside it in a row, not inside it.
+- **"Hadn't done X before this step."** A funnel like "Viewed pricing → Signed up" really wants "Viewed pricing, by people who hadn't signed up yet". That's an exclusion step placed before step 1, relative to each person's own step time. As far as we can tell, the usual tools offer exclusion steps only between steps, and cohorts relative to now or the date range, not to the step. It's based on events, so sparse properties don't matter, and it's cheap: one `minIf(ts, <event>)` per person in `funnel_people`, compared with the step time. The catch is the lookback: the people it matters most for did X before the date range, which `scoped_events` doesn't cover. `person__identified` doesn't have this problem, because the ASOF join sees the whole history.

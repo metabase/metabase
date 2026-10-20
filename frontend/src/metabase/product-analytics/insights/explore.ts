@@ -17,6 +17,7 @@ import {
   SEGMENT_SEPARATOR,
 } from "../sql/analyses/funnel-insights";
 
+import { describeValue } from "./describe";
 import type { InsightSegment } from "./segments";
 import type { InsightAttribute } from "./types";
 
@@ -50,13 +51,24 @@ export const getExploreCard = (
   },
 });
 
+const describeSegment = (
+  { label, values }: InsightSegment,
+  attributes: readonly InsightAttribute[],
+) =>
+  values.length > 0
+    ? values
+        .map((value, index) => describeValue(attributes[index], value))
+        .join(SEGMENT_SEPARATOR)
+    : label;
+
 /**
  * What the explore query returns for these segments, so the explore chart can
- * be drawn from counts already fetched.
+ * be drawn from counts already fetched. Values are labeled for reading, like
+ * "Anonymous" for a person who hasn't been identified.
  */
 export const getExploreData = (
   segments: readonly InsightSegment[],
-  attributes: readonly Pick<InsightAttribute, "displayName">[],
+  attributes: readonly InsightAttribute[],
   sql: string,
 ): DatasetData => {
   const segmentLabel = getExploreSegmentLabel(attributes);
@@ -82,7 +94,11 @@ export const getExploreData = (
   ];
   return {
     cols,
-    rows: segments.map(({ label, reached, rate }) => [label, reached, rate]),
+    rows: segments.map((segment) => [
+      describeSegment(segment, attributes),
+      segment.reached,
+      segment.rate,
+    ]),
     native_form: { query: sql },
     rows_truncated: 0,
     results_metadata: { columns: [] },

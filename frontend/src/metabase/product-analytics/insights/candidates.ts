@@ -7,7 +7,7 @@ import {
 import type { Field } from "metabase-types/api";
 
 import type { AnalysisContext } from "../analyses/types";
-import type { ColumnRoles } from "../columns";
+import { type ColumnRoles, IDENTIFIED_COLUMN } from "../columns";
 
 import type { InsightAttribute } from "./types";
 
@@ -49,7 +49,9 @@ type GetInsightAttributesArgs = {
 /**
  * The columns to look for insights in: low-cardinality string and boolean
  * columns from the event table, most interesting first. Role columns and the
- * columns the steps are defined by are left out.
+ * columns the steps are defined by are left out. Whether the person was
+ * identified comes first, so it wins ties with traits that are empty for the
+ * same people.
  *
  * The users table is left out too: it holds each person's current traits, so
  * joined onto events it shows a later state (a plan bought at checkout) as
@@ -64,6 +66,7 @@ export const getInsightAttributes = ({
   const roleColumns = new Set(Object.values(roles));
   const distinctCount = (field: Field) =>
     field.fingerprint?.global?.["distinct-count"] ?? MAX_DISTINCT_VALUES;
+  const isIdentified = (field: Field) => field.name === IDENTIFIED_COLUMN;
   return (context.table?.fields ?? [])
     .filter(isCandidateField)
     .filter(
@@ -71,6 +74,7 @@ export const getInsightAttributes = ({
     )
     .sort(
       (a, b) =>
+        Number(isIdentified(b)) - Number(isIdentified(a)) ||
         (b.dimension_interestingness ?? 0) -
           (a.dimension_interestingness ?? 0) ||
         distinctCount(a) - distinctCount(b),
@@ -81,5 +85,7 @@ export const getInsightAttributes = ({
       column: field.name,
       from: "events",
       displayName: field.display_name,
+      description: field.description ?? undefined,
+      asOf: isIdentified(field) ? "true-by-step" : "first-seen",
     }));
 };

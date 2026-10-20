@@ -140,6 +140,10 @@ export const useFunnelInsights = ({
     () => attributes.map(({ id }) => id),
     [attributes],
   );
+  const asOf = useMemo(
+    () => new Map(attributes.map(({ id, asOf }) => [id, asOf])),
+    [attributes],
+  );
 
   const insightsBase = useStableValue<BaseQueryInput>({
     ...base,
@@ -161,7 +165,7 @@ export const useFunnelInsights = ({
           spec,
           compiled.sql,
           compiled.columns,
-          planFunnelInsights(spec, query),
+          planFunnelInsights(spec, query, asOf),
         ).sql
       : undefined;
   const toQuery = (query: FunnelInsightsQuery, maxRows?: number) => {

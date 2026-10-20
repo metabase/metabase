@@ -15,14 +15,20 @@ import {
 } from "./stats";
 import type { Counts, GroupCounts, Insight, InsightCondition } from "./types";
 
+/**
+ * The z-test's normal approximation depends on the counts expected under the
+ * pooled rate, not the observed ones, so a group that converts 0% of the time
+ * can still be compared.
+ */
 const hasEnoughPeople = (
   counts: Counts,
+  pooledRate: number,
   minSize: number,
   options: InsightOptions,
 ): boolean =>
   counts.reached >= minSize &&
-  counts.converted >= options.minOutcomes &&
-  counts.reached - counts.converted >= options.minOutcomes;
+  counts.reached * pooledRate >= options.minExpectedOutcomes &&
+  counts.reached * (1 - pooledRate) >= options.minExpectedOutcomes;
 
 /**
  * The group compared with everyone else at its transition, or `null` when
@@ -35,9 +41,10 @@ export const evaluateGroup = (
 ): Insight | null => {
   const rest = subtractCounts(total, group);
   const minSize = getMinGroupSize(total.reached, options);
+  const pooledRate = rateOf(total);
   if (
-    !hasEnoughPeople(group, minSize, options) ||
-    !hasEnoughPeople(rest, minSize, options)
+    !hasEnoughPeople(group, pooledRate, minSize, options) ||
+    !hasEnoughPeople(rest, pooledRate, minSize, options)
   ) {
     return null;
   }
@@ -260,9 +267,14 @@ export const findInsights = (
     options,
   );
 
-  const ranked = _.sortBy(
-    [...singles, ...pairs],
-    (insight) => -Math.abs(insight.excess),
+  // Ties are groups of the same people, like several traits that are all
+  // empty before someone is identified. The earlier attribute ranks first.
+  const attributeOrder = ({ conditions }: Insight) =>
+    index.singleAttributes.indexOf(conditions[0].attributeId);
+  const ranked = [...singles, ...pairs].sort(
+    (a, b) =>
+      Math.abs(b.excess) - Math.abs(a.excess) ||
+      attributeOrder(a) - attributeOrder(b),
   );
   const explains = (other: Insight, insight: Insight) =>
     isExplainedBy(insight, other, index, options);

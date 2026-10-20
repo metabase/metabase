@@ -162,7 +162,8 @@ const checkIdentities = async (truth: GroundTruth) => {
       (SELECT countIf(distinct_id IS NOT NULL AND person_role IS NULL) FROM product_analytics.pa_events_resolved) AS identified_without_traits,
       (SELECT countIf(distinct_id IS NULL AND person_role IS NOT NULL) FROM product_analytics.pa_events_resolved) AS anonymous_with_traits,
       (SELECT countIf(event_name = 'checkout_completed' AND person_billing_cycle IS NULL) FROM product_analytics.pa_events_resolved) AS checkouts_without_cycle,
-      (SELECT countIf(event_name = 'trial_started' AND person_billing_cycle IS NOT NULL) FROM product_analytics.pa_events_resolved) AS trials_with_cycle
+      (SELECT countIf(event_name = 'trial_started' AND person_billing_cycle IS NOT NULL) FROM product_analytics.pa_events_resolved) AS trials_with_cycle,
+      (SELECT countIf(person__identified != (person_role IS NOT NULL)) FROM product_analytics.pa_events_resolved) AS identified_mismatches
   `);
   const rawRows = asNumber(stats?.raw_rows);
   const resolvedRows = asNumber(stats?.resolved_rows);
@@ -191,13 +192,18 @@ const checkIdentities = async (truth: GroundTruth) => {
     `events ${identifiedInEvents}, identities ${resolvedPeople}`,
   );
   check("no identity without events", orphans === 0, `${orphans} orphan rows`);
-  check("resolved traits are filled", missingTraits === 0, `${missingTraits} rows missing email or plan`);
+  check(
+    "resolved traits are filled",
+    missingTraits === 0,
+    `${missingTraits} rows missing email or plan`,
+  );
 
   const historyRows = asNumber(stats?.history_rows);
   const identifiedWithoutTraits = asNumber(stats?.identified_without_traits);
   const anonymousWithTraits = asNumber(stats?.anonymous_with_traits);
   const checkoutsWithoutCycle = asNumber(stats?.checkouts_without_cycle);
   const trialsWithCycle = asNumber(stats?.trials_with_cycle);
+  const identifiedMismatches = asNumber(stats?.identified_mismatches);
   check(
     "pa_identity_history holds one row per identify()",
     historyRows === expectedRaw,
@@ -217,6 +223,12 @@ const checkIdentities = async (truth: GroundTruth) => {
     "billing cycle is set from checkout on, not before",
     checkoutsWithoutCycle === 0 && trialsWithCycle === 0,
     `${checkoutsWithoutCycle} checkouts without, ${trialsWithCycle} trials with`,
+  );
+  // Every identify() here sends a role, so traits mark the identified events.
+  check(
+    "person__identified is true exactly from the first identify() on",
+    identifiedMismatches === 0,
+    `${identifiedMismatches} events`,
   );
 };
 const baseColumns = (spec: AnalysisSpec): BaseColumns => ({

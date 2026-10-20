@@ -1,4 +1,10 @@
-import { describeExcess, describeLift } from "./describe";
+import {
+  describeAttribute,
+  describeCondition,
+  describeExcess,
+  describeLift,
+  describeValue,
+} from "./describe";
 
 describe("describeLift", () => {
   it.each([
@@ -31,5 +37,67 @@ describe("describeExcess", () => {
     expect(describeExcess({ excess: -1.2 })).toBe(
       "About 1 fewer conversion than at everyone else's rate",
     );
+  });
+});
+
+describe("describeCondition", () => {
+  const browser = { column: "browser", displayName: "Browser" };
+  const identified = {
+    column: "person__identified",
+    displayName: "Person Identified",
+  };
+
+  it("names the column and its value", () => {
+    expect(describeCondition(browser, "Safari")).toBe("Browser is Safari");
+    expect(describeCondition(browser, "(not set)")).toBe("Browser is not set");
+  });
+
+  it("describes whether the person was identified as a state", () => {
+    expect(describeCondition(identified, "false")).toBe("Person is anonymous");
+    expect(describeCondition(identified, "true")).toBe("Person is identified");
+  });
+});
+
+describe("describeValue", () => {
+  it("keeps the values of most columns as they are", () => {
+    expect(
+      describeValue({ column: "browser", displayName: "Browser" }, "Safari"),
+    ).toBe("Safari");
+  });
+
+  it("names whether the person was identified", () => {
+    const identified = {
+      column: "person__identified",
+      displayName: "Person Identified",
+    };
+    expect(describeValue(identified, "false")).toBe("Anonymous");
+    expect(describeValue(identified, "true")).toBe("Identified");
+  });
+});
+
+describe("describeAttribute", () => {
+  it("uses the column's description", () => {
+    expect(
+      describeAttribute({
+        column: "role",
+        displayName: "Role",
+        description: "Set at signup",
+      }),
+    ).toBe("Set at signup");
+  });
+
+  it("explains whether the person was identified without a description", () => {
+    expect(
+      describeAttribute({
+        column: "person__identified",
+        displayName: "Person Identified",
+      }),
+    ).toMatch(/^Identified people have been linked to an account/);
+  });
+
+  it("has nothing to add for other columns", () => {
+    expect(
+      describeAttribute({ column: "browser", displayName: "Browser" }),
+    ).toBeUndefined();
   });
 });

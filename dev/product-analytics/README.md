@@ -20,7 +20,9 @@ A person's traits come in two forms:
   `person_plan` and `person_billing_cycle`, from the latest `identify()` at or
   before the event. Events before someone's first `identify()` have none.
   Insights use these, because a trait recorded later can't predict an
-  earlier step.
+  earlier step. `person__identified` is true from someone's first
+  `identify()` on and false before, whatever traits it sent. The double
+  underscore keeps it apart from a trait called `identified`.
 - **Current:** the columns of `pa_identities_resolved`, through the FK below.
   Use these for "what are my Pro customers doing" questions, not for insights.
 

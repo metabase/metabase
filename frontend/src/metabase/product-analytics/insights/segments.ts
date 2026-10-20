@@ -17,6 +17,8 @@ import type { Counts, GroupCounts, Insight } from "./types";
 export type InsightSegment = Counts & {
   /** The attributes' values, joined, or `OTHER_VALUE` for the small segments. */
   label: string;
+  /** The attributes' values, in order. Empty for the small segments. */
+  values: string[];
   rate: number;
 };
 
@@ -36,15 +38,16 @@ const isSegmentOf = (group: GroupCounts, attributeIds: readonly string[]) =>
     group.conditions.some((condition) => condition.attributeId === attributeId),
   );
 
+const valuesOf = (group: GroupCounts, attributeIds: readonly string[]) =>
+  attributeIds.map(
+    (attributeId) =>
+      group.conditions.find(
+        (condition) => condition.attributeId === attributeId,
+      )?.value ?? "",
+  );
+
 const labelOf = (group: GroupCounts, attributeIds: readonly string[]) =>
-  attributeIds
-    .map(
-      (attributeId) =>
-        group.conditions.find(
-          (condition) => condition.attributeId === attributeId,
-        )?.value,
-    )
-    .join(SEGMENT_SEPARATOR);
+  valuesOf(group, attributeIds).join(SEGMENT_SEPARATOR);
 
 /**
  * Conversion at the insight's transition by every combination of its
@@ -72,6 +75,7 @@ export const getInsightSegments = (
   const segments = _.chain(shown)
     .map((group) => ({
       label: labelOf(group, attributeIds),
+      values: valuesOf(group, attributeIds),
       reached: group.reached,
       converted: group.converted,
       rate: rateOf(group),
@@ -82,6 +86,9 @@ export const getInsightSegments = (
   // From the total, not the small segments: pairs only count the values pass 2 kept.
   const other = shown.reduce<Counts>(subtractCounts, total);
   return other.reached > 0
-    ? [...segments, { label: OTHER_VALUE, ...other, rate: rateOf(other) }]
+    ? [
+        ...segments,
+        { label: OTHER_VALUE, values: [], ...other, rate: rateOf(other) },
+      ]
     : segments;
 };

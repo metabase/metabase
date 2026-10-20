@@ -24,6 +24,42 @@ export const SEGMENT_SEPARATOR = " · ";
 export const EXPLORE_PEOPLE_COLUMN = "people";
 export const EXPLORE_CONVERSION_COLUMN = "conversion";
 
+/**
+ * How an attribute's value is taken as of reaching a step.
+ *
+ * - `first-seen`: the first non-empty value seen by then, or `NOT_SET_VALUE`.
+ *   For event properties, which are often only on some events.
+ * - `true-by-step`: `"true"` if it was true on any event by then, otherwise
+ *   `"false"`. For flags that only go from false to true, like whether the
+ *   person was identified. Under `first-seen`, an early false would stick.
+ *
+ * A rule for "the value on step k's event" would fit here too: it's the
+ * latest value of a person trait as of the step, and PostHog's specific-step
+ * attribution for breakouts.
+ */
+export type AttributeAsOf = "first-seen" | "true-by-step";
+
+/** Each attribute's rule, by id. Attributes not in it are `first-seen`. */
+export type AttributeAsOfRules = ReadonlyMap<string, AttributeAsOf>;
+
+/**
+ * Both rules take the first non-empty value seen by the step. They differ in
+ * what counts as a value and what an attribute is without one.
+ */
+const AS_OF_SQL: Record<
+  AttributeAsOf,
+  { value: (id: string) => string; fallback: string }
+> = {
+  "first-seen": {
+    value: (id) => `ifNull(toString(${id}), '')`,
+    fallback: NOT_SET_VALUE,
+  },
+  "true-by-step": {
+    value: (id) => `if(ifNull(${id}, false), 'true', '')`,
+    fallback: "false",
+  },
+};
+
 export type FunnelInsightsQuery =
   /** Counts per transition, for each attribute on its own. */
   | { kind: "singles"; attributes: readonly string[] }
@@ -91,11 +127,13 @@ const transitionCtes = (
   spec: AnalysisSpec,
   funnel: FunnelSpec,
   attributes: readonly string[],
+  asOf: AttributeAsOfRules,
 ): { ctes: Cte[]; warnings: string[] } => {
   const ids = attributes.map(attributeSql);
+  const asOfSql = (id: string) => AS_OF_SQL[asOf.get(id) ?? "first-seen"];
   const base = scopedEvents(spec, undefined, [
     ...funnelFlags(funnel),
-    ...ids.map((id) => ({ as: `${id}_v`, sql: `ifNull(toString(${id}), '')` })),
+    ...ids.map((id) => ({ as: `${id}_v`, sql: asOfSql(id).value(id) })),
   ]);
   const level = levelColumns(funnel);
   const n = funnel.steps.length;
@@ -139,7 +177,7 @@ const transitionCtes = (
       ids
         .map(
           (id) =>
-            `  if(${id}_first != '' AND ${id}_seen <= reached_at, ${id}_first, ${lit(NOT_SET_VALUE)}) AS ${id}`,
+            `  if(${id}_first != '' AND ${id}_seen <= reached_at, ${id}_first, ${lit(asOfSql(id).fallback)}) AS ${id}`,
         )
         .join(",\n"),
       "FROM funnel_people",
@@ -228,7 +266,8 @@ const exploreSelect = ({
     "  GROUP BY segment",
     ")",
     `GROUP BY ${label}`,
-    `ORDER BY ${label} = ${lit(OTHER_VALUE)}, ${EXPLORE_CONVERSION_COLUMN} ${isDescending ? "DESC" : "ASC"}, ${label}`,
+    // By the exact rate, not the rounded column, so it matches the insight's segments
+    `ORDER BY ${label} = ${lit(OTHER_VALUE)}, sum(segment_converted) / sum(segment_people) ${isDescending ? "DESC" : "ASC"}, ${label}`,
   ].join("\n");
 };
 
@@ -239,6 +278,7 @@ const exploreSelect = ({
 export const planFunnelInsights = (
   spec: AnalysisSpec,
   query: FunnelInsightsQuery,
+  asOf: AttributeAsOfRules,
 ): QueryPlan => {
   const funnel = spec.funnel;
   if (!funnel || funnel.steps.length < 2) {
@@ -248,7 +288,12 @@ export const planFunnelInsights = (
       warnings: ["The funnel needs at least two steps for insights."],
     };
   }
-  const { ctes, warnings } = transitionCtes(spec, funnel, attributesOf(query));
+  const { ctes, warnings } = transitionCtes(
+    spec,
+    funnel,
+    attributesOf(query),
+    asOf,
+  );
   const select = (() => {
     switch (query.kind) {
       case "singles":

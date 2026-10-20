@@ -1,10 +1,15 @@
 import type { ExtraColumn } from "../columns";
+import type { AttributeAsOf } from "../sql/analyses/funnel-insights";
 
 /** A table column the search splits people by. */
 export type InsightAttribute = Omit<ExtraColumn, "as"> & {
   /** The column's name on `events_base`. */
   id: string;
   displayName: string;
+  /** The column's description in Metabase, if it has one. */
+  description?: string;
+  /** How its value is taken as of reaching each step. */
+  asOf: AttributeAsOf;
 };
 
 export type InsightCondition = {

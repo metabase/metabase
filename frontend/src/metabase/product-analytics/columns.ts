@@ -24,6 +24,12 @@ export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
   url_path: "url_path",
 };
 
+/**
+ * The event table column that's true once the person has been identified, as
+ * of each event, and empty before.
+ */
+export const IDENTIFIED_COLUMN = "person__identified";
+
 /** How the event table reaches the users table its person column links to. */
 export type UsersTableLink = {
   tableId: TableId;

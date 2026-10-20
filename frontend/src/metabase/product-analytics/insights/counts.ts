@@ -10,6 +10,8 @@ export type CountIndex = {
   totals: ReadonlyMap<number, Counts>;
   /** Every group with at least one condition. */
   groups: readonly GroupCounts[];
+  /** The attributes the singles query grouped by, most preferred first. */
+  singleAttributes: readonly string[];
   /**
    * Conditions are matched in any order. A group the queries covered but
    * returned no row for has no people; one they didn't cover is undefined.
@@ -75,6 +77,7 @@ export const indexCounts = ({
     transitions: [...totals.keys()].sort((a, b) => a - b),
     totals,
     groups: rows.filter((row) => row.conditions.length > 0),
+    singleAttributes,
     get: (transition, conditions) => {
       if (conditions.length === 0) {
         return totals.get(transition);

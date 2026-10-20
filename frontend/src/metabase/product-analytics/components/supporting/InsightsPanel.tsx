@@ -13,6 +13,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { openInBlankWindow } from "metabase/utils/dom";
@@ -20,7 +21,12 @@ import { formatNumber } from "metabase/utils/formatting";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { CONVERSION_FORMAT } from "../../analyses/series-settings";
-import { describeExcess, describeLift } from "../../insights/describe";
+import {
+  describeAttribute,
+  describeCondition,
+  describeExcess,
+  describeLift,
+} from "../../insights/describe";
 import { isDescending } from "../../insights/segments";
 import type { Insight, InsightAttribute } from "../../insights/types";
 import type {
@@ -28,7 +34,6 @@ import type {
   FunnelInsightsState,
   FunnelTransition,
 } from "../../insights/use-funnel-insights";
-import { NOT_SET_VALUE } from "../../sql/analyses/funnel-insights";
 
 import S from "./InsightsPanel.module.css";
 import { SupportingPanel } from "./SupportingPanel";
@@ -245,17 +250,6 @@ const TransitionHeading = ({
   );
 };
 
-const describeCondition = (
-  attribute: InsightAttribute | undefined,
-  value: string,
-): string => {
-  const name = attribute?.displayName ?? t`Unknown column`;
-  return value === NOT_SET_VALUE
-    ? c("{0} is a column name").t`${name} is not set`
-    : c("{0} is a column name, {1} is one of its values")
-        .t`${name} is ${value}`;
-};
-
 type InsightItemProps = {
   insight: Insight;
   attributes: InsightAttribute[];
@@ -270,14 +264,16 @@ const InsightItem = ({
   getExplore,
 }: InsightItemProps) => {
   const isHigher = isDescending(insight);
-  const title = insight.conditions
-    .map(({ attributeId, value }) =>
-      describeCondition(
-        attributes.find(({ id }) => id === attributeId),
-        value,
-      ),
-    )
+  const conditions = insight.conditions.map(({ attributeId, value }) => ({
+    attribute: attributes.find(({ id }) => id === attributeId),
+    value,
+  }));
+  const title = conditions
+    .map(({ attribute, value }) => describeCondition(attribute, value))
     .join(t` and `);
+  const explanation = conditions
+    .flatMap(({ attribute }) => describeAttribute(attribute) ?? [])
+    .join(" ");
 
   return (
     <Accordion.Item value={insightKey(insight)}>
@@ -294,6 +290,11 @@ const InsightItem = ({
           <Text component="span" fw="bold">
             {title}
           </Text>
+          {explanation !== "" && (
+            <Tooltip label={explanation} multiline maw={280}>
+              <Icon name="info" c="text-secondary" />
+            </Tooltip>
+          )}
           <Text component="span" c={isHigher ? "success" : "error"}>
             {describeLift(insight)}
           </Text>

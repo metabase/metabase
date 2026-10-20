@@ -10,7 +10,10 @@
  * Usage: bun run dev/product-analytics/check-insights.ts
  */
 
+import _ from "underscore";
+
 import { buildSql } from "../../frontend/src/metabase/product-analytics/build-sql";
+import { IDENTIFIED_COLUMN } from "../../frontend/src/metabase/product-analytics/columns";
 import { indexCounts } from "../../frontend/src/metabase/product-analytics/insights/counts";
 import { DEFAULT_INSIGHT_OPTIONS } from "../../frontend/src/metabase/product-analytics/insights/options";
 import { planPairs } from "../../frontend/src/metabase/product-analytics/insights/plan-pairs";
@@ -26,6 +29,7 @@ import type {
   Insight,
 } from "../../frontend/src/metabase/product-analytics/insights/types";
 import {
+  type AttributeAsOf,
   type FunnelInsightsQuery,
   planFunnelInsights,
 } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-insights";
@@ -98,23 +102,29 @@ async function chRows(
   };
 }
 
-/** String columns with 2–200 distinct values, like the app's candidates. */
+/**
+ * String and boolean columns with 2–200 distinct values, like the app's
+ * candidates. Empty counts as a value, as in Metabase's fingerprint, so a
+ * column that's only ever true or empty qualifies. Whether the person was
+ * identified comes first, as in the app.
+ */
 async function candidateColumns(): Promise<string[]> {
   const { rows } = await chRows(
     `SELECT name FROM system.columns
      WHERE database = 'product_analytics' AND table = 'pa_events_resolved'
-       AND type LIKE '%String%' AND type NOT LIKE 'Map%'`,
+       AND (type LIKE '%String%' OR type LIKE '%Bool%') AND type NOT LIKE 'Map%'`,
   );
   const names = rows
     .map(([name]) => String(name))
     .filter((name) => !ROLE_COLUMNS.has(name));
   const { rows: distinct } = await chRows(
-    `SELECT ${names.map((name) => `uniqExact(nullIf(toString(${name}), ''))`).join(", ")} FROM ${TABLE}`,
+    `SELECT ${names.map((name) => `uniqExact(ifNull(toString(${name}), ''))`).join(", ")} FROM ${TABLE}`,
   );
-  return names.filter((_name, index) => {
+  const candidates = names.filter((_name, index) => {
     const count = Number(distinct[0]?.[index]);
     return count >= 2 && count <= MAX_DISTINCT;
   });
+  return _.sortBy(candidates, (name) => (name === IDENTIFIED_COLUMN ? 0 : 1));
 }
 
 const loadPlanted = async (): Promise<Planted> => {
@@ -132,6 +142,12 @@ const main = async () => {
   const columns = await candidateColumns();
   const ids = columns.map((_column, index) => `attr_${index + 1}`);
   const columnOf = new Map(ids.map((id, index) => [id, columns[index]]));
+  const asOf = new Map<string, AttributeAsOf>(
+    ids.map((id, index) => [
+      id,
+      columns[index] === IDENTIFIED_COLUMN ? "true-by-step" : "first-seen",
+    ]),
+  );
   const spec = defaultSpec("funnel");
   const baseSql = `SELECT person_id, session_id, event_id, created_at, event_name, url_path, ${columns.join(", ")},
   if(url_path = '/pricing', 1, 0) AS ev_1,
@@ -158,7 +174,7 @@ FROM ${TABLE}`;
           alias: columns[index],
         })),
       },
-      planFunnelInsights(spec, query),
+      planFunnelInsights(spec, query, asOf),
     ).sql;
   const run = async (query: FunnelInsightsQuery): Promise<GroupCounts[]> => {
     const started = performance.now();
