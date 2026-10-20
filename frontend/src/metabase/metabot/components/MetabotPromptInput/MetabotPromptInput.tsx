@@ -5,7 +5,7 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
@@ -226,9 +226,11 @@ export const MetabotPromptInput = forwardRef<
         },
       });
 
-      // The runtime handle is the editor widened with the members above; the
-      // public ref type only narrows it to what consumers may touch.
-      return editor as unknown as MetabotPromptInputRef;
+      // The runtime handle is the editor itself, widened with the members
+      // assigned and defined above. Assert that intersection (the editor does
+      // carry them at runtime); the public ref type then narrows it to what
+      // consumers may touch.
+      return editor as Editor & MetabotPromptInputRef;
     }, [editor]);
 
     // Sync external value changes to editor
