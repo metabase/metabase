@@ -114,8 +114,10 @@
   (when (= :postgres (mdb/db-type))
     (with-open [conn (.getConnection (mdb/data-source))]
       (try
-        (testing "initial partition"
+        (testing "no partitions"
           (drop-all-tables conn)
+          (is (not (partitions/fully-on-partitions?))))
+        (testing "initial partition"
           ;; initial partition, upper bound is exclusive
           (partitions/create-partition conn {:name "query_execution_2026_09"
                                              :from "1970-01-01"

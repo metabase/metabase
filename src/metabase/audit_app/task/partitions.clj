@@ -71,13 +71,13 @@
   []
   (and (= :postgres (mdb/db-type))
        (with-open [conn (.getConnection (mdb/data-source))]
-         (let [[oldest-partition] (sort (current-partitions conn))
-               [oldest] (next.jdbc/execute! conn [(str "SELECT min(started_at) AS min FROM "
-                                                       oldest-partition)])
-               oldest-date-time (some-> (:min oldest) t/instant
-                                        (t/local-date-time "UTC"))]
-           (or (nil? oldest-date-time)
-               (= oldest-partition (partition-for oldest-date-time)))))))
+         (when-let [oldest-partition (first (sort (current-partitions conn)))]
+           (let [[oldest] (next.jdbc/execute! conn [(str "SELECT min(started_at) AS min FROM "
+                                                         oldest-partition)])
+                 oldest-date-time (some-> (:min oldest) t/instant
+                                          (t/local-date-time "UTC"))]
+             (or (nil? oldest-date-time)
+                 (= oldest-partition (partition-for oldest-date-time))))))))
 
 ;;; and now for the side-effects...
 
