@@ -48,8 +48,7 @@ export const oauthClientManagementApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/oauth-client-management/revoke",
         body,
       }),
-      // Every client, since a revoke by criteria can end ones it doesn't name, and the
-      // Authorization logs, since each revoke is logged there
+      // every client, since criteria can revoke ones not named, and the Authorization logs, which record the revoke
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
           tag("oauth-client"),

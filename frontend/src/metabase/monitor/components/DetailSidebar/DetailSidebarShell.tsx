@@ -5,14 +5,11 @@ import { Flex, Stack } from "metabase/ui";
 import S from "./DetailSidebarShell.module.css";
 
 type DetailSidebarShellProps = {
-  /** The scrolling contents: the header and the sections below it. */
   children: ReactNode;
-  /** The actions pinned below them, outside the scroll. */
   footer?: ReactNode;
   "data-testid"?: string;
 };
 
-/** The frame every Monitor detail sidebar shares: a scrolling body with the actions pinned beneath it. */
 export const DetailSidebarShell = ({
   children,
   footer,

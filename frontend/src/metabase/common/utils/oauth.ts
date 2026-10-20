@@ -5,7 +5,6 @@ import {
   type OAuthClientEventType,
 } from "metabase-types/api";
 
-/** What to call an event in a client's history. Shared: the OSS Authorization logs page and Monitor both show it. */
 export function getOAuthEventTypeLabel(
   eventType: OAuthClientEventType,
 ): string {

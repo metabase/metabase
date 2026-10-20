@@ -17,7 +17,6 @@ const getClientColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   header: t`Client`,
   minWidth: 220,
   enableSorting: true,
-  // a name sorts A-Z on the first click; only the dates and counts below read better largest-first
   sortDescFirst: false,
   accessorFn: (client) => getOAuthClientName(client),
   cell: ({ row }) => {
@@ -81,14 +80,11 @@ const getLastUsedColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   width: 170,
   enableSorting: true,
   sortDescFirst: true,
-  // the endpoint sorts a never-used client by its registration, so the accessor is only ever read by the cell
   accessorFn: (client) => client.last_used_at ?? "",
   cell: ({ row }) =>
     row.original.last_used_at ? (
       <MonitorDateCell value={row.original.last_used_at} />
     ) : (
-      // the secondary text the `client_id` line in the Client column uses, so a client that has never been used
-      // reads as a note rather than as a value
       <Text size="sm" c="text-secondary" lh="1rem">
         {t`Never used`}
       </Text>
@@ -133,9 +129,7 @@ const getRevokedByColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   ),
 });
 
-// Users and Live tokens count only unrevoked tokens, so they read 0 for every revoked client, and a revoked
-// client's tokens stop resolving so its last use can never move again; the Revoked tab spends their width on who
-// revoked it and when instead.
+// a revoked client has no users or live tokens and can't be used again, so that tab shows the revoke instead
 export const getColumns = (
   isRevokedTab: boolean,
 ): TreeTableColumnDef<OAuthClientRow>[] =>

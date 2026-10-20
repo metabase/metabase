@@ -14,7 +14,6 @@ import { getRegistrationTypeLabel, getRevokerName } from "../utils";
 import S from "./OAuthClientDetailSidebar.module.css";
 import type { ClientDetailsProps } from "./types";
 
-/** One value per line, so a client with several redirect URIs or scopes stays readable. */
 const ListValue = ({ values }: { values: readonly string[] }) =>
   values.length === 0 ? (
     <Text size="md" c="text-primary">

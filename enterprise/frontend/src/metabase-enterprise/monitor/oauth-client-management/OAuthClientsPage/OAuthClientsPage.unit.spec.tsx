@@ -618,7 +618,7 @@ describe("OAuthClientsPage", () => {
         screen.getByTestId(`oauth-client-row-${CLIENT_ID}`),
       );
       await screen.findByTestId("oauth-client-detail-sidebar");
-      // the mock detail's scope, so this waits out the detail's re-render of the row's details
+      // a detail-only field, so this waits for the detail to land
       await within(sidebar()).findByText("mb:full");
     };
 

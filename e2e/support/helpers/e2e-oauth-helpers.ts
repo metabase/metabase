@@ -1,28 +1,15 @@
-/**
- * Drives Metabase's embedded OAuth server through its public `/oauth` endpoints the way a real MCP client does:
- * dynamic registration, the consent page and its decision, and the authorization-code exchange. Specs use these
- * rather than seeding `oauth_client` rows so that what they assert is what a client can and cannot do.
- * `metabase.oauth-server.test-util` is the Clojure counterpart and the same flow.
- *
- * The `/oauth` throttlers count only attempts that throw, and these endpoints answer a bad request with an error
- * response instead, so a passing spec spends no budget — but seed a handful of clients at most, since an unexpected
- * 500 does count against the per-IP registration window.
- */
+// Drives the real `/oauth` endpoints the way an MCP client does. Registration is throttled per IP, so seed a
+// handful of clients at most.
 
 export const OAUTH_REDIRECT_URI = "https://example.com/callback";
 
-/** An MCP baseline scope: what a real MCP client holds, reaching the tool surface and nothing else. */
 const OAUTH_DEFAULT_SCOPE = "agent:content:read";
 
-/**
- * The scope that makes a bearer token stand in for its user across the general REST API. A baseline-scope token is
- * refused there with a 403, which says nothing about whether the token is still live.
- */
+/** Lets a token act as its user on the REST API, where a baseline-scope token gets a 403 whether live or not. */
 export const OAUTH_FULL_ACCESS_SCOPE = "mb:full";
 
 const OAUTH_STATE = "test-state";
 
-/** The registration echoed back, plus the credentials that are readable only here. */
 export type RegisteredOAuthClient = {
   client_id: string;
   client_secret: string;
@@ -30,13 +17,6 @@ export type RegisteredOAuthClient = {
   scope: string;
 };
 
-/**
- * Register a confidential client through `POST /oauth/register` (RFC 7591), recording a `registered` event.
- *
- * Confidential — `client_secret_basic` — so the client can complete the flow without PKCE, and so
- * {@link exchangeOAuthCode} has a secret to authenticate with. Pass `{ scope: OAUTH_FULL_ACCESS_SCOPE }` for a
- * client whose token has to reach the general REST API.
- */
 export function registerOAuthClient(
   clientName: string,
   { scope = OAUTH_DEFAULT_SCOPE }: { scope?: string } = {},
@@ -48,15 +28,12 @@ export function registerOAuthClient(
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
       scope,
+      // confidential, so the flow can complete without PKCE
       token_endpoint_auth_method: "client_secret_basic",
     })
     .then(({ body }) => body);
 }
 
-/**
- * Approve `client` as the signed-in user, granting every scope it registered for and recording an `approved` event.
- * Yields the authorization code, which {@link exchangeOAuthCode} turns into an access token.
- */
 export function approveOAuthClient(
   client: RegisteredOAuthClient,
 ): Cypress.Chainable<string> {
@@ -69,17 +46,12 @@ export function approveOAuthClient(
   });
 }
 
-/** Deny `client` as the signed-in user, recording a `denied` event. Grants nothing, so there is no code. */
 export function denyOAuthClient(
   client: RegisteredOAuthClient,
 ): Cypress.Chainable<void> {
   return decideOAuthConsent(client, false).then(() => undefined);
 }
 
-/**
- * Exchange `code` for an access token at `POST /oauth/token`, authenticating as `client` over HTTP Basic the way a
- * confidential client does. Yields the access token.
- */
 export function exchangeOAuthCode(
   client: RegisteredOAuthClient,
   code: string,
@@ -103,7 +75,6 @@ export function exchangeOAuthCode(
     .then(({ body }) => body.access_token);
 }
 
-/** Approve `client` and exchange the code it yields, the whole authorization-code flow in one step. */
 export function grantOAuthToken(
   client: RegisteredOAuthClient,
 ): Cypress.Chainable<string> {
@@ -112,11 +83,7 @@ export function grantOAuthToken(
   );
 }
 
-/**
- * Drive the consent flow to a decision, as the real browser does: GET the consent page, lift the CSRF token and the
- * params signature out of its hidden fields, then POST the decision. Cypress carries the CSRF cookie the page set.
- * Yields the `Location` the decision redirects to, which both an approval and a denial have.
- */
+// GET the consent page for its CSRF token and params signature (Cypress keeps its CSRF cookie), then POST the decision
 function decideOAuthConsent(
   client: RegisteredOAuthClient,
   approved: boolean,
@@ -134,8 +101,7 @@ function decideOAuthConsent(
   return cy
     .request<string>("GET", authorizeUrl)
     .then(({ body }) => {
-      // What the page actually offered, not what the client registered for: the server decides what a request may
-      // be granted, and a `granted_scope` naming anything it did not offer is refused as tampering.
+      // what the page offered, not what was registered: granting anything unoffered is refused as tampering
       const offered = hiddenField(body, "scope");
 
       return cy.request({
@@ -143,9 +109,7 @@ function decideOAuthConsent(
         url: "/oauth/authorize/decision",
         followRedirect: false,
         headers: { "content-type": "application/x-www-form-urlencoded" },
-        // Encoded here rather than through Cypress's `form` option because `granted_scope` is the one field that
-        // repeats: it carries the ticked boxes, one entry per scope, which Ring reads back as the vector the
-        // endpoint expects. A single field holding "a b" would read as one unoffered scope and be refused.
+        // not Cypress's `form` option: `granted_scope` must repeat once per scope for Ring to read it as a vector
         body: new URLSearchParams([
           ["approved", String(approved)],
           ["csrf_token", hiddenField(body, "csrf_token")],
@@ -155,7 +119,6 @@ function decideOAuthConsent(
           ["response_type", "code"],
           ["scope", offered],
           ["state", OAUTH_STATE],
-          // A denial grants nothing, so it ticks nothing.
           ...(approved
             ? offered
                 .split(" ")
@@ -174,10 +137,7 @@ function decideOAuthConsent(
     });
 }
 
-/**
- * The `value` of the hidden form input named `name` on the consent page `html`. An empty value counts as missing:
- * posting a blank `csrf_token` or `params_sig` comes back as an opaque 403, so it fails here instead.
- */
+// Throws on an empty value too: posting a blank `csrf_token` or `params_sig` fails as an opaque 403
 function hiddenField(html: string, name: string): string {
   const tag = html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`));
   const value = tag?.[0].match(/value="([^"]+)"/);

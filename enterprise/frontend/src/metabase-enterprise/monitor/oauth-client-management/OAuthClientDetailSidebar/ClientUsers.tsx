@@ -40,7 +40,6 @@ const UserValue = ({ user }: { user: OAuthClientUser }) => (
 export const ClientUsers = ({ users }: ClientUsersProps) => (
   <Box data-testid="oauth-client-users">
     <SidebarSection title={t`Users`}>
-      {/* `users` absent means the detail has not landed: "nobody" is only ever said of a list that has */}
       <LoadingAndErrorWrapper loading={users === undefined} noWrapper>
         {users?.length === 0 ? (
           <Text c="text-secondary">{t`Nobody is connected through this client right now.`}</Text>

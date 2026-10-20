@@ -1,4 +1,4 @@
-/* A redirect URI or scope has no spaces to wrap at, and the value column is narrow. */
+/* redirect URIs and scopes have no spaces to wrap at */
 .wrapAnywhere {
   word-break: break-all;
 }

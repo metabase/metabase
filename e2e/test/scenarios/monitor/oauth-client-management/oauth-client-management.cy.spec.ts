@@ -6,14 +6,6 @@ const PATH = "/monitor/oauth-clients";
 const CLIENT_NAME = "E2E Revocable Client";
 const ADMIN_NAME = `${USERS.admin.first_name} ${USERS.admin.last_name}`;
 
-/**
- * End-to-end coverage for Monitor > OAuth clients, the page an admin revokes a client from.
- *
- * The client is seeded through the *real* `/oauth` endpoints — registered, approved, and its code exchanged for a
- * token — so the counts the page shows are counts of a token that actually exists, and the revoke is watched at the
- * only place that settles it: the token stops working. The page's own filtering, sorting, paging and copy are
- * covered far more cheaply by `OAuthClientsPage.unit.spec.tsx`.
- */
 describe("scenarios > monitor > oauth client management", () => {
   beforeEach(() => {
     H.restore();
@@ -21,14 +13,10 @@ describe("scenarios > monitor > oauth client management", () => {
   });
 
   it("revokes a client from the page and cuts off the token it issued", () => {
-    // The all-features token rather than the pro one the AI-auditing scenarios next door activate: no licence token
-    // issued to the suite today carries `session-management`, and this is the superset, so it is the one that will
-    // carry it first once they refresh.
+    // no other suite token carries `session-management` yet
     H.activateToken("bleeding-edge");
 
-    // Full access, not the MCP baseline scope a real client asks for: the scenario has to watch the token work and
-    // then stop, and the clearest thing a token can be watched doing is standing in for its user on the general
-    // REST API. That is the same observation the backend tests make of a revoke.
+    // full access, so the token can be watched working and then failing on the REST API
     H.registerOAuthClient(CLIENT_NAME, {
       scope: H.OAUTH_FULL_ACCESS_SCOPE,
     }).then((client) => {
@@ -48,8 +36,7 @@ describe("scenarios > monitor > oauth client management", () => {
     cy.signInAsAdmin();
 
     cy.log("An admin reaches the page from the Monitor nav");
-    // A leaf section rather than `/monitor`, which redirects to the first section this admin can see and lands in
-    // two hops; the second one commits after the click below and replaces it. Any Monitor page carries the same nav.
+    // not `/monitor`: its two-hop redirect can land after the click below and replace it
     cy.visit("/monitor/logs");
     cy.findByTestId("monitor-nav")
       .findByRole("link", { name: "OAuth clients" })
@@ -62,9 +49,7 @@ describe("scenarios > monitor > oauth client management", () => {
         .should("contain", CLIENT_NAME)
         .and("contain", clientId);
 
-      // The Active tab's columns are Client, Redirect URIs, Users, Live tokens, Last used, Registered, one gridcell
-      // each, and the counts render as bare numbers with nothing to anchor on but their position. The length
-      // assertion is what keeps the two indices below honest if the columns ever change.
+      // the counts can only be found by column index; the length check keeps the indices honest
       clientRow(clientId)
         .findAllByRole("gridcell")
         .should("have.length", 6)
@@ -105,8 +90,7 @@ describe("scenarios > monitor > oauth client management", () => {
     cy.findByTestId("oauth-client-detail-sidebar").should("not.exist");
 
     cy.log("The Revoked tab keeps it on record, with the admin who revoked it");
-    // A pattern, not the exact name: each tab's icon carries an aria-label, so the accessible name reads
-    // "history icon Revoked".
+    // a pattern: the tab icon's aria-label makes the name "history icon Revoked"
     cy.findByRole("tab", { name: /Revoked/ }).click();
     cy.get<string>("@clientId").then((clientId) => {
       clientRow(clientId)
@@ -134,7 +118,7 @@ describe("scenarios > monitor > oauth client management > access", () => {
 
   it("shows the upsell to an admin without the feature", () => {
     cy.signInAsAdmin();
-    // a valid token that lacks the feature, rather than no token at all
+    // a valid token without `session-management`
     H.activateToken("starter");
     cy.visit(PATH);
 
@@ -146,7 +130,6 @@ describe("scenarios > monitor > oauth client management > access", () => {
       .should("be.visible");
 
     cy.log("The page upsells rather than listing anyone's clients");
-    // The route stays on the page and serves the upsell, rather than turning the admin away to /unauthorized
     cy.location("pathname").should("eq", PATH);
     cy.findByTestId("monitor-main")
       .findByText("See which programs can act as your users, and cut one off")
@@ -166,13 +149,7 @@ describe("scenarios > monitor > oauth client management > access", () => {
 const clientRow = (clientId: string) =>
   cy.findByTestId(`oauth-client-row-${clientId}`);
 
-/**
- * Sign the test out, then `GET /api/user/current` with `accessToken` as the only credential.
- *
- * Clearing the cookies is the point, not a detail: the server prefers a session over a bearer, so with the admin's
- * cookie still set this request would answer 200 whether or not the token is any good. The test is left signed out —
- * sign back in before touching the UI again.
- */
+// Clears cookies first, since a session beats a bearer and would mask a dead token. Leaves the test signed out.
 function requestCurrentUserWithBearerOnly(accessToken: string) {
   cy.clearCookies();
   return cy.request<{ email: string }>({

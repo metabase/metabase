@@ -10,8 +10,6 @@ export const DEFAULT_TAB: OAuthClientsTab = "active";
 export const DEFAULT_SORT_COLUMN: OAuthClientSortColumn = "created_at";
 export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
-// The Revoked tab trades the Users, Live tokens and Last used columns for who revoked the client and when, so
-// neither tab can sort by a column the other one shows
 export const TAB_SORT_COLUMNS: Record<
   OAuthClientsTab,
   OAuthClientSortColumn[]

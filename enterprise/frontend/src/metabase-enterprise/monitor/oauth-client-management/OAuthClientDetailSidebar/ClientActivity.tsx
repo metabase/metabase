@@ -29,8 +29,6 @@ const EventValue = ({ event }: { event: OAuthAuthorization }) => (
 );
 
 export const ClientActivity = ({ clientId }: ClientActivityProps) => {
-  // The OSS Authorization logs endpoint, so the sidebar reads the same timeline that page does rather than one of
-  // its own — it already filters by client and joins the acting user.
   const { currentData, error } = useListOAuthAuthorizationsQuery({
     "client-id": clientId,
     limit: ACTIVITY_PAGE_SIZE,

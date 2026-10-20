@@ -17,7 +17,6 @@ import type { OAuthClientsUrlState } from "../OAuthClientsPage/types";
 
 type OAuthClientsFiltersProps = {
   state: OAuthClientsUrlState;
-  /** The user named by `state.user`, so the picker can show a name rather than an id. */
   selectedUser: UserOption | null;
   onChange: (patch: Partial<OAuthClientsUrlState>) => void;
 };
@@ -40,7 +39,6 @@ const EMPTY_DRAFT: FilterDraft = {
   lastUsed: null,
 };
 
-/** The URL-state patch a draft asks for: the picker carries a whole user, the URL carries its id. */
 const draftToPatch = (
   draft: FilterDraft,
   state: OAuthClientsUrlState,
@@ -63,9 +61,6 @@ export const OAuthClientsFilters = ({
   onChange,
 }: OAuthClientsFiltersProps) => {
   const [draft, setDraft] = useState<FilterDraft>(() => stateToDraft(state));
-  // `user-id` matches an unrevoked token and revoking a client stamps every token it held, so the filter could only
-  // ever come back empty on the Revoked tab; `last_used` likewise, since a revoked client's tokens stop resolving
-  // and nothing can move its last use after that. `registered` is offered on both: a revoked client was registered too.
   const isRevokedTab = state.tab === "revoked";
 
   const handleRegisteredChange = (registered: MonitorTimePreset | null) => {

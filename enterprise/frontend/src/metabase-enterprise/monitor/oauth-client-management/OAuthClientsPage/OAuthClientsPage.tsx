@@ -102,7 +102,7 @@ export const OAuthClientsPage = () => {
     onPageChange: goToPage,
   });
 
-  // The URL carries the filtered user as an id; the picker shows a name, so the one user it names is fetched
+  // the URL holds only the user's id, so fetch the user for the picker's label
   const { data: filteredUser } = useGetUserQuery(urlState.user ?? skipToken);
   const selectedUser: UserOption | null = useMemo(
     () =>

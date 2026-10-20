@@ -77,8 +77,6 @@ export function useClientRevocation({ onRevoked }: UseClientRevocationOptions) {
     });
   }, [confirmRevoke]);
 
-  // One client from its detail sidebar is the selected-clients flow with a selection of one, so the confirmation is
-  // the same single-client copy the list shows
   const revokeClient = useCallback(
     (client: OAuthClient) => revokeSelected([client]),
     [revokeSelected],

@@ -13,7 +13,6 @@ type TabChange<TTab extends string, TColumn extends string> = {
   sort_direction?: SortDirection;
 };
 
-/** The URL patch for switching tabs: back to the first page, and to the default sort if the new tab can't sort by the current column. */
 export const getTabChange = <
   TTab extends string,
   TColumn extends string,

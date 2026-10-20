@@ -50,7 +50,7 @@ const REVOKED_DETAIL = createMockOAuthClientDetail({
 
 type SetupOpts = {
   clientId?: OAuthClientId;
-  /** `null` when the list did not hand a row over, so the sidebar has only what it fetches */
+  /** `null`: no row from the list, only the fetched detail */
   clientFromPage?: OAuthClient | null;
   detail?: OAuthClientDetail | null;
   isDetailPending?: boolean;
@@ -118,7 +118,7 @@ describe("OAuthClientDetailSidebar", () => {
         screen.getByRole("heading", { name: "Claude Code" }),
       ).toBeInTheDocument();
       expect(screen.getByText(ACTIVE_CLIENT.client_id)).toBeInTheDocument();
-      // `scopes` and `contacts` are the detail's own, so they are not on the handed-over row
+      // detail-only fields, so they arrive after the row
       expect(await screen.findByText("mb:full")).toBeInTheDocument();
       expect(screen.getByText("agent:content:read")).toBeInTheDocument();
       expect(screen.getByText("ops@claude.ai")).toBeInTheDocument();

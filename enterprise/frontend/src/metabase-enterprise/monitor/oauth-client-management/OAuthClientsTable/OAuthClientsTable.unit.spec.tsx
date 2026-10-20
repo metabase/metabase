@@ -101,7 +101,6 @@ describe("OAuthClientsTable", () => {
     expect(
       within(await getRow(orphaned)).getByText(EMPTY_CELL_PLACEHOLDER),
     ).toBeInTheDocument();
-    // nothing on this tab has anything left to revoke
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 

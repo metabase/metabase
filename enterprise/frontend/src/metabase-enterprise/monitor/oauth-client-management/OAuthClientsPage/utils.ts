@@ -99,7 +99,7 @@ export const buildListParams = (
   "sort-direction": state.sort_direction,
 });
 
-// Any criterion but `ids` is about who holds the client's tokens, which the row doesn't carry, so it counts as a hit
+// criteria other than `ids` can't be checked against the row, so they count as a hit
 export const isOAuthClientRevokedBy = (
   client: OAuthClient,
   request: RevokeOAuthClientsRequest,
