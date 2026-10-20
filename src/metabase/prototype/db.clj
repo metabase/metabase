@@ -132,3 +132,25 @@
     {}
     (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]
                       {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
+
+(mu/defn active-table-ids :- [:sequential ::lib.schema.id/table]
+  "The ids of the active Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-pks-vec :model/Table :db_id database-id :active true
+                     {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn table-for-categories :- [:maybe :map]
+  "The Table with `table-id`, with the user values, for field categorization."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one [:model/Table :id :db_id :name :display_name :description] :id table-id
+                 {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn fields-for-categories :- [:sequential :map]
+  "The active, visible Fields of the Table with `table-id`, with the user values, in table order."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select [:model/Field :id :name :display_name :description :base_type :semantic_type]
+             :table_id table-id
+             :active true
+             :visibility_type [:not-in ["sensitive" "retired"]]
+             {:from     [(warehouse-schema-overlay/field-query)]
+              :order-by [[:position :asc] [:id :asc]]}))

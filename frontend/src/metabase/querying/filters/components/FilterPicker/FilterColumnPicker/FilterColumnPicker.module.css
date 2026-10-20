@@ -37,3 +37,24 @@
 [data-element-id="list-item"][data-hascursor="true"] .FrequentItemSeparator {
   background-color: var(--mb-color-text-primary-inverse);
 }
+
+/* Prototype: a sub-header of an LLM field category inside a table section. */
+.CategoryHeaderItem {
+  pointer-events: none;
+  margin-top: 0.5rem;
+}
+
+.CategoryHeaderItem [data-element-id="list-item-title"] {
+  margin-left: 0;
+}
+
+/* Between the item size (14px) and the table section title size (17px), so that users can scan the categories. */
+.CategoryHeader {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+}
+
+.CategorizedItem {
+  padding-left: 1rem;
+}

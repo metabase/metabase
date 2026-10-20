@@ -2067,6 +2067,7 @@
            lib.be
            lib.metadata
            lib.schema
+           metabot
            settings
            startup
            sync

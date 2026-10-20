@@ -36,6 +36,16 @@
   :export?    false
   :doc        false)
 
+(defsetting prototype-field-categories
+  "Prototype: the LLM categories of the Fields of each Table, as a list of `{:table_id :field_ids :categories}`.
+  `:field_ids` are the Fields that the categories cover. See [[metabase.prototype.field-categories]]."
+  :type       :json
+  :default    []
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)
+
 (defsetting prototype-semantic-layer-version
   "Prototype: the version of the semantic layer definitions on this instance. See
   [[metabase.prototype.semantic-layer]]."
