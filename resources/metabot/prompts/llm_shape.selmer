@@ -79,8 +79,8 @@ The following fields are available in this table.
 {% if table_related_tables_xml %}
 ### Related Tables
 Foreign key fields from related tables. Usage patterns:
-- Can be used directly in notebook queries (non-sql) as if they were part of the table.
-- For SQL queries: Use "fieldname" with explicit JOINs
+- Can be used directly in notebook queries as if they were part of the table.
+- They are not columns of the table itself; any other kind of query must join the related table through the listed foreign key.
 
 {{table_related_tables_xml|safe}}
 {% endif %}
@@ -133,8 +133,8 @@ The following fields are available in this model.
 
 ### Related Tables
 Foreign key fields from related tables. Usage patterns:
-- Can be used directly in notebook queries (non-sql) as if they were part of the model.
-- For SQL queries: Use "fieldname" with explicit JOINs
+- Can be used directly in notebook queries as if they were part of the model.
+- They are not columns of the model itself; any other kind of query must join the related table through the listed foreign key.
 
 {{model_related_tables_xml|safe}}
 {% endif %}

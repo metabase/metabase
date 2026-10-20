@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
@@ -83,6 +84,7 @@ function setup({
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 800 });
   setupListSubscriptionsEndpoint([]);
+  setupBookmarksEndpoints([]);
   if (isNotFound) {
     setupDashboardNotFoundEndpoint(dashboard);
   } else {
