@@ -17,6 +17,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openai-compatible :as openai-compatible]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
@@ -47,6 +48,7 @@
    #'moonshot/provider   :metabot.moonshot/request
    #'ollama/provider     :metabot.ollama/request
    #'openai/provider     :metabot.openai/request
+   #'openai-compatible/provider :metabot.openai-compatible/request
    #'openrouter/provider :metabot.openrouter/request
    #'vllm/provider       :metabot.vllm/request
    #'xai/provider        :metabot.xai/request
@@ -76,6 +78,7 @@
    ;; the shared msgid, which renders identically
    #'ollama/provider     "Ollama API error (HTTP 418)"
    #'openai/provider     "OpenAI API error (HTTP 418)"
+   #'openai-compatible/provider "OpenAI-compatible API error (HTTP 418)"
    #'openrouter/provider "OpenRouter API error (HTTP 418)"
    #'vllm/provider       "vLLM API error (HTTP 418)"
    #'xai/provider        "xAI API error (HTTP 418)"
@@ -234,6 +237,28 @@
                 auth      (adapter/bearer-auth proxyable {:method :get :path "/models" :ai-proxy? true})]
             (is (= :allow-private (:network-policy-floor auth)))
             (is (nil? (mr/explain adapter/Auth auth)))))))))
+
+(deftest ^:parallel credentials-accept-mini-model-metadata-test
+  (doseq [credentials [{:api-key "test-key" :base-url "https://api.anthropic.com"}
+                       {:api-key "test-key" :model-family "openai" :deployment-name "parakeet"}
+                       {:region "us-east-1" :model-id "anthropic.claude-sonnet-4-6"}
+                       {:project-id "parakeet-project" :location "us-central1"}]]
+    (testing (str "Credential fields: " (keys credentials))
+      (is (nil? (mr/explain self.core/LLMCredentials credentials)))
+      (doseq [mini-model [nil "parakeet-mini"]]
+        (is (nil? (mr/explain self.core/LLMCredentials (assoc credentials :mini-model mini-model)))))
+      (is (some? (mr/explain self.core/LLMCredentials (assoc credentials :mini-model 42))))
+      (is (some? (mr/explain self.core/LLMCredentials
+                             (assoc credentials :mini-model "parakeet-mini" :unexpected-field "value")))))))
+
+(deftest ^:parallel reasoning-capability-accepts-mini-model-metadata-test
+  (is (true? (claude/streams-reasoning? {:connection-key "anthropic"
+                                         :type           "anthropic"
+                                         :model          "claude-sonnet-4-6"
+                                         :credentials    {:api-key    "test-key"
+                                                          :base-url   "https://api.anthropic.com"
+                                                          :mini-model "claude-haiku-4-5-20251001"}
+                                         :ai-proxy?      false}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Descriptor headers

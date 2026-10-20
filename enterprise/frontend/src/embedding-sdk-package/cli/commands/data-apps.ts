@@ -1,17 +1,36 @@
 import type { Command } from "commander";
 
-import { syncResourcesAction } from "../actions/sync-resources";
+import { checkResources } from "../../data-app-resources/check";
+import { writeResources } from "../../data-app-resources/serialize";
+
+type AppRootOptions = { appRoot: string };
+
+/** Adds `name` as a data app command that runs from the app's directory unless `--app-root` says otherwise. */
+const addAppCommand = (parent: Command, name: string, description: string) =>
+  parent
+    .command(name)
+    .description(description)
+    .option("--app-root <path>", "data app directory", process.cwd());
 
 export function addDataAppsCommands(program: Command) {
   const dataAppsCommand = program
     .command("data-apps")
     .description("manage Metabase data apps");
 
-  dataAppsCommand
-    .command("sync-resources")
-    .description(
-      "synchronize data app query and action definitions into its collection",
-    )
-    .option("--app-root <path>", "data app directory", process.cwd())
-    .action(({ appRoot }: { appRoot: string }) => syncResourcesAction(appRoot));
+  addAppCommand(
+    dataAppsCommand,
+    "write-resources",
+    "regenerate the files of the data app's collection, serialized by Metabase, next to the collection's file",
+  ).action(async ({ appRoot }: AppRootOptions) => {
+    process.stdout.write(`${await writeResources(appRoot)}\n`);
+  });
+
+  addAppCommand(
+    dataAppsCommand,
+    "check-resources",
+    "check that the files of the data app's collection, under collections/data_apps/, back its query and action definitions",
+  ).action(async ({ appRoot }: AppRootOptions) => {
+    await checkResources(appRoot);
+    process.stdout.write("The app's collection files back every definition.\n");
+  });
 }

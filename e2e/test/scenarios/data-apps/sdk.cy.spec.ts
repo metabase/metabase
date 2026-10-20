@@ -26,16 +26,17 @@ describe("scenarios > data apps > SDK runtime", () => {
         displayName: APP_DISPLAY_NAME,
         testEnv: {
           ...TEST_ENV,
-          // A card that doesn't exist → the query resolves to an error, rather
-          // than to the refusal an unsynchronized table source would raise.
+          // A card that doesn't exist, so the query resolves to an error rather
+          // than to the refusal a query without a saved question would raise.
           errorQuery: {
             source: { type: "table", id: ORDERS_ID },
-            savedQuestionSourceId: 999999,
+            savedQuestionEntityId: "missingQuestionEntity",
           },
         },
       });
 
-    it("surfaces the useMetabaseQuery error state", () => {
+    it("surfaces the useMetabaseQuery error state, and re-runs the query when the app calls refetch", () => {
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
       setupQueryStatesApp();
 
       visitAppRoute("query-states");
@@ -44,15 +45,7 @@ describe("scenarios > data apps > SDK runtime", () => {
           "have.text",
           "error",
         );
-      });
-    });
 
-    it("re-runs the query when the app calls refetch", () => {
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      setupQueryStatesApp();
-
-      visitAppRoute("query-states");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         // The query has to have resolved before refetching means anything.
         cy.findByTestId("query-value", { timeout: 30000 })
           .invoke("text")

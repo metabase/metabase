@@ -76,12 +76,28 @@ describe("makeDistortionCallback", () => {
     expect(callback(win.XMLHttpRequest)).toBe(win.XMLHttpRequest);
   });
 
-  it("does not wrap fetch/XHR when allowed_hosts is empty (shared hard block stands)", () => {
+  it("allows only the analytics proxy when allowed_hosts is empty", async () => {
     const win = fakeWindow();
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    win.fetch = realFetch;
+
     const callback = makeDistortionCallback("sales", win, []);
-    // No wrapper is installed; the value passes through to the shared callback,
-    // whose default-deny block of fetch/XHR is covered by the shared module.
-    expect(callback(win.fetch)).toBe(win.fetch);
+
+    // Restore the fetch's type signature from the distortion callback
+    const distorted = callback(win.fetch) as typeof fetch;
+    await distorted("/api/analytics-proxy", { method: "POST" });
+
+    // Analytics proxy endpoint must not be blocked
+    expect(realFetch).toHaveBeenCalledWith("/api/analytics-proxy", {
+      method: "POST",
+      redirect: "manual",
+    });
+
+    await expect(distorted("/api/user/current")).rejects.toThrow(
+      /blocked fetch/,
+    );
+
+    expect(realFetch).toHaveBeenCalledTimes(1);
     expect(callback(win.XMLHttpRequest)).toBe(win.XMLHttpRequest);
   });
 

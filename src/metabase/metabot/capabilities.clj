@@ -7,6 +7,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]))
 
@@ -72,12 +73,20 @@
                    (premium-features/has-feature? :transforms-basic))
            :feature-transforms)
          (when (premium-features/has-feature? :semantic-search)
-           :feature-semantic-search)]))
+           :feature-semantic-search)
+         (when (metabot.settings/metabot-query-execution-enabled?)
+           :feature-query-execution)]))
+
+(defn- feature-capability?
+  [cap]
+  (str/starts-with? (name cap) "feature-"))
 
 (defn capability-set
   "Build the full set of capability keywords for a request: the backend-inferred feature capabilities
-  unioned with the (normalized) capabilities from the API."
+  unioned with the (normalized) capabilities from the API.
+  Feature capabilities come only from the backend, so a claimed `feature:*` capability is dropped."
   [capabilities]
   (into (feature-capabilities)
-        (map capability->keyword)
+        (comp (map capability->keyword)
+              (remove feature-capability?))
         capabilities))

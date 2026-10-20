@@ -49,7 +49,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -85,7 +86,8 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
+        dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
+                      maybe-populate-initially-published-at)]
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
@@ -406,19 +408,18 @@
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [;; those stats are inherently local state
+   :skip      [:initially_published_at
+               ;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
                :public_uuid_prefix]
-   :transform {:created_at             (serdes/date)
-               :initially_published_at (serdes/date)
-               :collection_id          (serdes/fk :model/Collection)
+   :transform {:collection_id          (serdes/fk :model/Collection)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :entity_id)} opts))
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by (juxt :dashboard_tab_id :row :col)} opts))}
    :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
    :defaults  {:archived                false
@@ -547,7 +548,8 @@
   ^:allow-subquery {:select [:report_dashboard.id
                              [(h2x/literal "Dashboard") :model]
                              [:report_dashboard.name :name]
-                             [:last_viewed_at :last_used_at]]
+                             [:last_viewed_at :last_used_at]
+                             :report_dashboard.collection_id]
                     :from :report_dashboard
                     :left-join [:pulse [:and
                                         [:= :pulse.archived false]
@@ -569,7 +571,4 @@
                               [:= :report_dashboard.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
                               [:= :report_dashboard.public_uuid nil])
-                            [:or
-                             (when (contains? (:collection-ids args) nil)
-                               [:is :report_dashboard.collection_id nil])
-                             [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+                            (staleness/collection-filter :report_dashboard.collection_id args)]})

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 interface Props {
@@ -77,22 +77,15 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
     }
   };
 
-  if (isLoading) {
-    return (
-      <ActionIcon disabled variant="transparent">
-        <Loader size="xs" />
-      </ActionIcon>
-    );
-  }
-
   return (
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
+        variant="subtle"
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}
         c={table.visibility_type != null ? "text-secondary" : undefined}
         className={className}
-        disabled={isLoading}
-        variant="transparent"
+        size="sm"
+        loading={isLoading}
         onClick={handleClick}
       >
         <Icon name={isHidden ? "eye_crossed_out" : "eye"} />

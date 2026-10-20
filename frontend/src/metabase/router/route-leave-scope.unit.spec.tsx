@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import {
   Outlet,
   Route,
@@ -46,7 +46,9 @@ describe("route-scoped leave hook", () => {
     });
     expect(await screen.findByTestId("a")).toBeInTheDocument();
 
-    navigate("/section/b");
+    act(() => {
+      navigate("/section/b");
+    });
 
     expect(await screen.findByTestId("b")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/section/b");
@@ -59,7 +61,9 @@ describe("route-scoped leave hook", () => {
     });
     expect(await screen.findByTestId("a")).toBeInTheDocument();
 
-    navigate("/other");
+    act(() => {
+      navigate("/other");
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(screen.queryByTestId("other")).not.toBeInTheDocument();

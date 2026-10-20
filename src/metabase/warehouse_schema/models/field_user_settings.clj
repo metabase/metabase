@@ -30,7 +30,8 @@
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."
@@ -178,8 +179,7 @@
                :semantic_type_set      false
                :fk_target_field_id_set false
                :data_sensitivity_set   false}
-   :transform {:created_at   (serdes/date)
-               ;; An export made before the flag existed has a label and no flag: the label is a person's.
+   :transform {;; An export made before the flag existed has a label and no flag: the label is a person's.
                :data_sensitivity_set {:export              identity
                                       :import-with-context (fn [ingested k v]
                                                              (if (contains? ingested k)

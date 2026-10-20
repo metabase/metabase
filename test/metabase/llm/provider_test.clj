@@ -154,7 +154,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"must start with"
          (llm.provider/validate-config! "openrouter" {:api-key "sk-or-v2-nope"})))
-    (is (nil? (llm.provider/validate-config! "openrouter" {:api-key "sk-or-v1-valid"}))))
+    (is (nil? (llm.provider/validate-config! "openrouter" {:api-key "sk-or-v1-valid"})))
+    (testing "and OpenAI's points a key from another server to the OpenAI-compatible type"
+      (is (= (str "Invalid API key for openai. It must start with 'sk-'. "
+                  "For another server that implements OpenAI's API, add an OpenAI-compatible API provider instead.")
+             (try (llm.provider/validate-config! "openai" {:api-key "company-gateway-key"})
+                  (catch clojure.lang.ExceptionInfo e (ex-message e)))))))
   (testing "a type with several required fields rejects the first one missing"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"API base URL is required for azure"
@@ -480,6 +485,16 @@
         (is (=? {:connection-key "metabase" :type "anthropic" :ai-proxy? true}
                 (llm.provider/resolve-model-ref "metabase/anthropic/claude-sonnet-4-6")))))))
 
+(deftest openai-compatible-connection-from-the-environment-test
+  (testing "an OpenAI-compatible server's base URL synthesizes a usable connection, which runs the model a reference names"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-openai-compatible-api-base-url "https://inference.internal/v1"]
+        (is (true? (llm.provider/connection-usable? "openai-compatible")))
+        (is (=? {:type        "openai-compatible"
+                 :model       "gpt-oss-120b"
+                 :credentials {:base-url "https://inference.internal/v1"}}
+                (llm.provider/resolve-model-ref "openai-compatible/gpt-oss-120b")))))))
+
 (deftest connections-shadowed-by-the-environment-test
   (testing "the environment shadows a stored connection with the same key field by field, not wholesale"
     (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
@@ -691,7 +706,12 @@
     (testing "a retired model id resolves to the model that now serves it"
       (is (= "qwen/qwen3.8-max-0902" (:model (llm.provider/resolve-model-ref "openrouter/qwen/qwen3.8-max")))))
     (testing "the same id under another provider type is not retired there"
-      (is (= "qwen/qwen3.8-max" (:model (llm.provider/resolve-model-ref "anthropic/qwen/qwen3.8-max")))))))
+      (is (= "qwen/qwen3.8-max" (:model (llm.provider/resolve-model-ref "anthropic/qwen/qwen3.8-max"))))))
+  (mt/with-temporary-setting-values [llm-providers [(connection "my-google" "google"
+                                                                {:service-account-key "{\"type\":\"db\"}"})]]
+    (testing "Google's dated Claude Haiku 4.5 resolves to the undated id Google documents"
+      (is (= "anthropic/claude-haiku-4-5"
+             (:model (llm.provider/resolve-model-ref "my-google/anthropic/claude-haiku-4-5@20251001")))))))
 
 (deftest canonical-model-ref-test
   (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
@@ -702,7 +722,12 @@
       (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max-0902")))
       (is (= "anthropic/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "anthropic/qwen/qwen3.8-max")))
       (is (= "nope/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "nope/qwen/qwen3.8-max")))
-      (is (nil? (llm.provider/canonical-model-ref nil))))))
+      (is (nil? (llm.provider/canonical-model-ref nil)))))
+  (mt/with-temporary-setting-values [llm-providers [(connection "my-google" "google"
+                                                                {:service-account-key "{\"type\":\"db\"}"})]]
+    (testing "a saved Google selection of the dated Claude Haiku 4.5 reads as the undated id"
+      (is (= "my-google/anthropic/claude-haiku-4-5"
+             (llm.provider/canonical-model-ref "my-google/anthropic/claude-haiku-4-5@20251001"))))))
 
 (deftest ^:parallel retired-models-map-straight-to-a-current-model-test
   (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
@@ -711,6 +736,16 @@
             successor                     (vals retired-models)]
       (testing type
         (is (not (contains? retired-models successor)))))))
+
+(deftest ^:parallel retired-models-map-to-an-offered-model-test
+  (testing "a retired model's successor is in its type's fixed catalog, so the connection form can show it"
+    ;; a type that fetches its models has no catalog to check offline
+    (let [checked (filter #(and (:models %) (seq (:retired-models %))) (llm.provider/provider-types))]
+      (is (seq checked) "a type with a fixed catalog retires a model, so the check below runs")
+      (doseq [{:keys [type models retired-models]} checked
+              successor                            (vals retired-models)]
+        (testing type
+          (is (contains? (set (map :id models)) successor)))))))
 
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
@@ -757,7 +792,7 @@
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
     (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-             "bedrock" "vllm" "ollama" "metabase"}
+             "bedrock" "vllm" "ollama" "openai-compatible" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -800,6 +835,7 @@
             ;; connecting adopts the model its probe exercised
             "vllm"       nil
             "ollama"     nil
+            "openai-compatible" nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -821,6 +857,7 @@
             ;; to fall back to
             "vllm"       nil
             "ollama"     nil
+            "openai-compatible" nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/mini-model "evilai")))))

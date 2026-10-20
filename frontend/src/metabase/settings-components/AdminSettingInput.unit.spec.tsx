@@ -96,6 +96,25 @@ describe("AdminSettingInput", () => {
     expect(input).toHaveValue("Metabased");
   });
 
+  it("should render a text input for an unset setting without a null value warning", async () => {
+    const consoleErrorSpy = jest.spyOn(console, "error");
+    setup({
+      title: "SMTP host",
+      name: "email-smtp-host",
+      inputType: "text",
+    });
+
+    const input = await screen.findByRole("textbox");
+    expect(input).toHaveValue("");
+    expect(
+      consoleErrorSpy.mock.calls.filter(([message]) =>
+        String(message).includes("should not be null"),
+      ),
+    ).toHaveLength(0);
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it("should render a select input", async () => {
     setup({
       title: "Humanization",

@@ -30,6 +30,7 @@ export interface AppBarProps {
   questionLineage?: ReactNode;
   onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
+  onOpenNavbar: () => void;
   onCloseNavbar: () => void;
 }
 
@@ -38,7 +39,7 @@ export const AppBar = (props: AppBarProps): JSX.Element => {
 
   return (
     <header
-      className={S.AppBarRoot}
+      className={S.appBarRoot}
       data-element-id="app-bar"
       data-testid="app-bar"
       data-with-border={props.detailView != null}

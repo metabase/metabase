@@ -2,6 +2,7 @@ import { trackSimpleEvent } from "metabase/analytics";
 
 export type MonitorSection =
   | "diagnostics"
+  | "content-diagnostics"
   | "erroring-questions"
   | "alerts"
   | "tasks"

@@ -4,24 +4,10 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
-   [metabase.permissions.core :as perms]
-   [metabase.util :as u]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(defn- default-group-ids
-  "The IDs of the groups visible only in simple mode: All Users and, on tenant instances, All tenant users."
-  []
-  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
-
-(defn- visible-groups-expr
-  "Matches the groups the admin UI shows in the mode selected by `advanced?`: Administrators, All Users, and All
-  tenant users in simple mode, every other group in group-level mode."
-  [advanced?]
-  (if advanced?
-    [:not-in :group_id (default-group-ids)]
-    [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
 
 (mu/defn all-groups
   "Every PermissionsGroup, in ID order."
@@ -44,7 +30,7 @@
                        {:select [:group_id]
                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
                         :where  [:= :user_id user-id]}]
-                      (visible-groups-expr advanced?)]}))
+                      (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn permission-exists?
   "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
@@ -71,7 +57,8 @@
 (mu/defn delete-hidden-group-permissions!
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
-  (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-expr advanced?)]}))
+  (t2/delete! :model/MetabotPermissions
+              {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn group-limits
   "Every MetabotGroupLimit, in group order."

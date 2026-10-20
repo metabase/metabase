@@ -40,6 +40,7 @@ const setup = (snapshot = "default") => {
   H.resetSnowplow();
   cy.signInAsAdmin();
   H.activateToken("pro-self-hosted");
+  H.updateSetting("remote-sync-collections-enabled", true);
   H.setupGitSync();
   H.interceptTask();
 };
@@ -869,7 +870,7 @@ describe("Remote Sync", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
       // Enable static embedding instance-wide so the Embed option is offered.
-      H.updateSetting("enable-embedding-static", true);
+      H.updateSetting("enable-embedding-modular", true);
       H.configureGitAndPullChanges("read-only");
 
       cy.visit("/");

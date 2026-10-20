@@ -23,6 +23,7 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.send :as pulse.send]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -130,6 +131,7 @@
   [:map {:closed true}
    [:attachment_only {:optional true} [:maybe :boolean]]
    [:include_pdf     {:optional true} [:maybe :boolean]]
+   [:subject         {:optional true} [:maybe ::pulse.schema/email-subject]]
    [:channel         {:optional true} [:maybe :string]]
    [:channels        {:optional true} [:maybe :string]]
    [:channel_id      {:optional true} [:maybe :string]]

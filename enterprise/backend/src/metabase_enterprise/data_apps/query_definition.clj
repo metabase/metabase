@@ -28,14 +28,12 @@
 
 (mr/def ::column
   [:map {:closed true :decode/normalize {:compile query-map-decoder}
-         ::sdk-metadata [:description :js-type :field-id :base-type :effective-type :default-temporal-bucket :id :metric-id]}
+         ::sdk-metadata [:description :display-name :js-type :table-id :source-name :base-type :effective-type
+                         :default-temporal-bucket :id :metric-id]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
-   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
-   [:source-name {:optional true} [:maybe string?]]
-   [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name {:optional true} [:maybe string?]]
-   [:index {:optional true} [:maybe pos-int?]]])
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::temporal-bucket
   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
@@ -60,8 +58,18 @@
    [:map {:closed true :decode/normalize {:compile query-map-decoder}}
     [:binning {:optional true} [:maybe ::binning]]]])
 
+(mr/def ::named-breakout
+  "A breakout whose result column is named, as `breakout(field, { name })` names it."
+  [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :breakout]]
+   [:name string?]
+   [:column [:ref ::column-with-binning]]])
+
 (mr/def ::breakout
-  [:ref ::column-with-binning])
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::column-with-binning]]
+   [:breakout [:ref ::named-breakout]]])
 
 (mr/def ::order-by
   [:merge
@@ -83,6 +91,13 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::operator]
    [:args {:default []} [:sequential [:ref ::expression]]]])
+
+(mr/def ::aggregation-operator-expression
+  "An aggregation can be named; a filter or a nested argument can't, so `name` is refused there rather than dropped."
+  [:merge
+   ::operator-expression
+   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+    [:name {:optional true} string?]]])
 
 (mr/def ::expression
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
@@ -109,9 +124,24 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
    [:id [:ref ::lib.schema.id/metric]]])
 
+(mr/def ::aggregation-expression
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::column]]
+   [:literal [:ref ::literal-expression]]
+   [:operator [:ref ::aggregation-operator-expression]]])
+
+(mr/def ::named-aggregation
+  "A measure or a metric whose result column is named, as `aggregations.measure` and `aggregations.metric` name it."
+  [:map {:closed true :decode/normalize {:compile query-map-decoder}
+         ::sdk-metadata [:columns]}
+   [:name string?]
+   [:value [:or [:ref ::measure] [:ref ::metric]]]])
+
 (mr/def ::aggregation
   [:or
-   [:ref ::expression]
+   [:ref ::aggregation-expression]
+   [:ref ::named-aggregation]
    [:ref ::measure]
    [:ref ::metric]])
 

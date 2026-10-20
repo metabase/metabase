@@ -5,7 +5,7 @@ import type { CustomVizPluginId } from "metabase-types/api";
 
 import { makeDistortionCallback } from "./distortions";
 
-export type SandboxMode = "hosted" | "blank";
+export type SandboxMode = "hosted" | "blank" | { iframeSrc: string };
 
 // Needed for React style declarations to be applied correctly.
 function isLiveTarget(target: object): boolean {
@@ -16,16 +16,25 @@ function isLiveTarget(target: object): boolean {
 // per-document CSP (allowing `'unsafe-eval'`).
 const SANDBOX_HOST_URL = "/api/ee/custom-viz-plugin/sandbox-host";
 
+function getSandboxIframeSrc(mode: SandboxMode): string | undefined {
+  if (mode === "hosted") {
+    return getSubpathSafeUrl(SANDBOX_HOST_URL);
+  }
+  // "blank" skips the sandbox-host endpoint and lets the library fall back to
+  // about:blank. Used in Storybook where no backend serves the endpoint.
+  if (mode === "blank") {
+    return undefined;
+  }
+  return mode.iframeSrc;
+}
+
 export async function createPluginSandbox(
   pluginId: CustomVizPluginId,
   mode: SandboxMode = "hosted",
 ) {
   let capturedFactory: unknown;
 
-  // "blank" skips the sandbox-host endpoint and lets the library fall back to
-  // about:blank. Used in Storybook where no backend serves the endpoint.
-  const iframeSrc =
-    mode === "hosted" ? getSubpathSafeUrl(SANDBOX_HOST_URL) : undefined;
+  const iframeSrc = getSandboxIframeSrc(mode);
 
   const env = await createVirtualEnvironment(window, {
     ...(iframeSrc ? { iframeSrc } : {}),
