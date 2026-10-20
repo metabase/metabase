@@ -254,6 +254,16 @@ To edit a card's:
 - **Underlying query**: click on the card's title while _not_ in dashboard editing mode. If the card displays multiple questions, pick the question you want to edit from the dropdown.
 - **Visualization settings**, see [changing a card's visualization settings](#changing-a-cards-visualization-settings).
 
+## Showing events on dashboard cards
+
+Time series cards can show [events](../exploration-and-organization/events-and-timelines.md) saved to the question.
+
+**To toggle events for a card**, click on the card's **three-dot menu** (**...**) and select **Events**.
+
+**To toggle events for all time series cards on the current tab**, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**.
+
+Toggling events on a dashboard only applies to your session. To change what everyone sees, edit the question's events and save the question. See [Events on dashboards](../exploration-and-organization/events-and-timelines.md#events-on-dashboards).
+
 ## Changing a card's visualization settings
 
 You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
