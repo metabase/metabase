@@ -11,11 +11,14 @@ import {
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesBrushSelectedEvent,
   type EChartsSeriesMouseEvent,
+  type EChartsTooltipModel,
   INDEX_KEY,
+  ROW_CHART_MIN_BAR_HEIGHT,
   X_AXIS_DATA_KEY,
   foldRowChartModel,
   getDatasetKey,
 } from "metabase/viz-core";
+import type { DatasetColumn } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatetimeColumn,
@@ -863,19 +866,89 @@ describe("getTooltipModel", () => {
 
 describe("row chart folded Other row", () => {
   const COUNT_KEY = "count";
-  const CATEGORIES = ["A", "B", "C", "D", "E"];
+  const SUM_KEY = "sum";
 
-  // Five rows in a chart tall enough for two: one kept row plus "Other (4)".
-  const getFoldedChartModel = () => {
-    const dataset: Datum[] = CATEGORIES.map((category, index) => ({
-      [X_AXIS_DATA_KEY]: category,
-      [COUNT_KEY]: 10 * (index + 1),
+  const categoryColumn = createMockColumn({
+    name: "CATEGORY",
+    display_name: "Category",
+    source: "breakout",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+  });
+  const countColumn = createMockColumn({
+    name: COUNT_KEY,
+    source: "aggregation",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+  });
+  const sumColumn = createMockColumn({
+    name: SUM_KEY,
+    source: "aggregation",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+  });
+
+  interface ExtraSeries {
+    dataKey: string;
+    values: number[];
+    visible?: boolean;
+  }
+
+  interface SetupOpts {
+    counts?: number[];
+    sums?: number[];
+    extraSeries?: ExtraSeries[];
+    dimensionColumn?: DatasetColumn;
+  }
+
+  // Categories C1, C2, … where C1 is kept and the rest fold into "Other".
+  const getFoldedChartModel = ({
+    counts = [50, 10, 30, 20, 40],
+    sums,
+    extraSeries = [],
+    dimensionColumn = categoryColumn,
+  }: SetupOpts = {}) => {
+    const dataset: Datum[] = counts.map((count, index) => ({
+      [X_AXIS_DATA_KEY]: `C${index + 1}`,
+      [COUNT_KEY]: count,
+      ...(sums && { [SUM_KEY]: sums[index] }),
+      ...Object.fromEntries(
+        extraSeries.map(({ dataKey, values }) => [dataKey, values[index]]),
+      ),
     }));
+    const seriesModels = [
+      createMockSeriesModel({ dataKey: COUNT_KEY, column: countColumn }),
+      ...(sums
+        ? [createMockSeriesModel({ dataKey: SUM_KEY, column: sumColumn })]
+        : []),
+      ...extraSeries.map(({ dataKey, visible = true }) =>
+        createMockSeriesModel({
+          dataKey,
+          visible,
+          column: createMockColumn({
+            name: dataKey,
+            source: "aggregation",
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+          }),
+        }),
+      ),
+    ];
+    const visibleSeriesCount = seriesModels.filter(
+      (seriesModel) => seriesModel.visible,
+    ).length;
+    // Two rows fit: unstacked, each row needs a band per visible series.
+    const chartHeight = 2 * ROW_CHART_MIN_BAR_HEIGHT * visibleSeriesCount;
     return foldRowChartModel(
       {
         ...createMockCartesianChartModel({
-          seriesModels: [createMockSeriesModel({ dataKey: COUNT_KEY })],
-          seriesIdToDataKey: { [COUNT_KEY]: COUNT_KEY },
+          dimensionModel: {
+            column: dimensionColumn,
+            columnIndex: 0,
+            columnByCardId: {},
+            columns: [dimensionColumn],
+          },
+          seriesModels,
           dataset,
           transformedDataset: dataset.map((datum, index) => ({
             ...datum,
@@ -892,7 +965,7 @@ describe("row chart folded Other row", () => {
           totalNumberOfLabels: 0,
         },
       },
-      48,
+      chartHeight,
       createMockVisualizationSettings(),
     );
   };
@@ -907,18 +980,114 @@ describe("row chart folded Other row", () => {
 
   const OTHER_INDEX = 1;
 
-  it("names the Other row in its tooltip", () => {
-    const chartModel = getFoldedChartModel();
-
-    const tooltipModel = getTooltipModel(
+  const getFoldedRowTooltip = (
+    chartModel: ReturnType<typeof getFoldedChartModel>,
+    seriesDataKey = COUNT_KEY,
+  ) =>
+    getTooltipModel(
       chartModel,
       createMockVisualizationSettings(),
       OTHER_INDEX,
       "row",
-      COUNT_KEY,
+      seriesDataKey,
     );
 
+  const getRowTexts = (tooltipModel: EChartsTooltipModel | null) =>
+    tooltipModel?.rows.map((row) => [row.name, ...row.values]);
+
+  it("names the Other row in its tooltip", () => {
+    const tooltipModel = getFoldedRowTooltip(getFoldedChartModel());
+
     expect(tooltipModel?.header).toBe("Other (4)");
+  });
+
+  it("lists the folded categories in chart order, with their total", () => {
+    const tooltipModel = getFoldedRowTooltip(getFoldedChartModel());
+
+    expect(getRowTexts(tooltipModel)).toEqual([
+      ["C2", "10"],
+      ["C3", "30"],
+      ["C4", "20"],
+      ["C5", "40"],
+    ]);
+    expect(tooltipModel?.footer).toEqual({ name: "Total", values: ["100"] });
+  });
+
+  it("lists every folded category, however many there are", () => {
+    // C1 is kept; C2 (1) … C15 (14) fold.
+    const foldedCounts = Array.from({ length: 14 }, (_, i) => i + 1);
+
+    const tooltipModel = getFoldedRowTooltip(
+      getFoldedChartModel({ counts: [100, ...foldedCounts] }),
+    );
+
+    expect(getRowTexts(tooltipModel)).toEqual(
+      foldedCounts.map((count) => [`C${count + 1}`, String(count)]),
+    );
+    expect(tooltipModel?.footer).toEqual({ name: "Total", values: ["105"] });
+  });
+
+  it("lists every series' values, the hovered series first, when there are several series", () => {
+    const chartModel = getFoldedChartModel({
+      counts: [50, 10, 30, 20, 40],
+      sums: [1, 400, 100, 300, 200],
+    });
+
+    const tooltipModel = getFoldedRowTooltip(chartModel, SUM_KEY);
+
+    expect(getRowTexts(tooltipModel)).toEqual([
+      ["", "name for sum", "name for count"],
+      ["C2", "400", "10"],
+      ["C3", "100", "30"],
+      ["C4", "300", "20"],
+      ["C5", "200", "40"],
+    ]);
+    expect(tooltipModel?.footer).toEqual({
+      name: "Total",
+      values: ["1,000", "100"],
+    });
+  });
+
+  it("leaves hidden series out of the Other tooltip", () => {
+    const chartModel = getFoldedChartModel({
+      sums: [1, 400, 100, 300, 200],
+      extraSeries: [
+        { dataKey: "avg", values: [5, 4, 3, 2, 1] },
+        { dataKey: "max", values: [9, 9, 9, 9, 9], visible: false },
+      ],
+    });
+
+    const tooltipModel = getFoldedRowTooltip(chartModel);
+
+    expect(tooltipModel?.rows[0].values).toEqual([
+      "name for count",
+      "name for sum",
+      "name for avg",
+    ]);
+  });
+
+  it("lists every visible series, however many there are", () => {
+    const chartModel = getFoldedChartModel({
+      sums: [1, 400, 100, 300, 200],
+      extraSeries: [
+        { dataKey: "avg", values: [5, 4, 3, 2, 1] },
+        { dataKey: "max", values: [9, 8, 7, 6, 5] },
+      ],
+    });
+
+    const tooltipModel = getFoldedRowTooltip(chartModel);
+
+    expect(getRowTexts(tooltipModel)).toEqual([
+      ["", "name for count", "name for sum", "name for avg", "name for max"],
+      ["C2", "10", "400", "4", "8"],
+      ["C3", "30", "100", "3", "7"],
+      ["C4", "20", "300", "2", "6"],
+      ["C5", "40", "200", "1", "5"],
+    ]);
+    expect(tooltipModel?.footer).toEqual({
+      name: "Total",
+      values: ["100", "1,000", "10", "26"],
+    });
   });
 
   it("reports hovering the Other row, so the rest of the chart dims", () => {
@@ -929,12 +1098,35 @@ describe("row chart folded Other row", () => {
     );
   });
 
-  it("does not drill into the Other row, like the legacy renderer", () => {
+  it("drills into the Other row by filtering to its folded categories", () => {
     const chartModel = getFoldedChartModel();
 
     expect(
       getSeriesClickData(chartModel, {}, createMouseEvent(OTHER_INDEX)),
+    ).toMatchObject({
+      column: countColumn,
+      value: 100,
+      dimensions: [{ column: categoryColumn, value: ["C2", "C3", "C4", "C5"] }],
+    });
+  });
+
+  it("does not drill into the Other row of a binned dimension, whose drills take one bin", () => {
+    const binnedColumn = createMockColumn({
+      ...categoryColumn,
+      base_type: "type/Float",
+      effective_type: "type/Float",
+      binning_info: { binning_strategy: "num-bins", num_bins: 100 },
+    });
+    const chartModel = getFoldedChartModel({ dimensionColumn: binnedColumn });
+
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(OTHER_INDEX)),
     ).toBeNull();
+  });
+
+  it("drills into a kept row by its own category", () => {
+    const chartModel = getFoldedChartModel();
+
     expect(
       getSeriesClickData(chartModel, {}, createMouseEvent(0)),
     ).not.toBeNull();

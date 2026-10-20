@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -123,6 +124,9 @@ describe("MoveDashboardStepContent", () => {
     await waitFor(() => {
       expect(onCompleted).toHaveBeenCalled();
     });
+    // Completing the step leaves work behind that this test cannot see, so
+    // flush it rather than letting it land in the next test.
+    await waitForRequestsToSettle();
   });
 
   it("creates a sample dashboard when Create button is clicked", async () => {
@@ -171,5 +175,8 @@ describe("MoveDashboardStepContent", () => {
     await waitFor(() => {
       expect(onCompleted).toHaveBeenCalled();
     });
+    // Completing the step leaves work behind that this test cannot see, so
+    // flush it rather than letting it land in the next test.
+    await waitForRequestsToSettle();
   });
 });
