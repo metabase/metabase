@@ -23,11 +23,13 @@ const AccountLayout = ({
 
   return (
     <div className={S.root}>
-      <AccountHeader
-        user={user}
-        path={path}
-        onChangeLocation={onChangeLocation}
-      />
+      <div className={S.header}>
+        <AccountHeader
+          user={user}
+          path={path}
+          onChangeLocation={onChangeLocation}
+        />
+      </div>
       <Box
         mx="auto"
         px={{ base: "sm", sm: "lg" }}

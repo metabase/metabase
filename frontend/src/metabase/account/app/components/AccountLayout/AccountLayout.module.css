@@ -1,6 +1,12 @@
 .root {
   height: 100%;
-  /* Always show the scrollbar so the centred content doesn't shift between short and long pages.
-     A scrollbar-gutter would leave a gap in the header's full-width border. */
-  overflow-y: scroll;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+/* Pull the header's full-width border out under the gutters. Overshooting is fine:
+   the root clips it, and scrollbar widths vary by OS. */
+.header {
+  margin-inline: -2rem;
 }
