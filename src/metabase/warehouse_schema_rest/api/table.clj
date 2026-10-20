@@ -314,14 +314,15 @@
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
-   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`.
+   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response if the current user has
+   data model editing permissions for the table. Defaults to `false`.
 
    Passing `include_editable_data_model=true` will check that the current user has data model editing permissions for
-   the table, even if the table is read-only right now, while `false` checks that they have data access perms for the
-   table. Defaults to `false`.
+   the table, even when Remote Sync makes the table read-only, while `false` checks that they can read the table.
+   Defaults to `false`.
 
-   These options are provided for use in the Admin Edit Metadata page."
+   These options are provided for use in the data model pages."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]

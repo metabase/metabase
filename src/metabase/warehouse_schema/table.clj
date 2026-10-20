@@ -45,8 +45,7 @@
 (defn check-data-model-perms
   "Return `table`, or throw a 403 unless the current user has data model editing permissions for it."
   [table]
-  (api/check-403 (seq (filter-tables-by-data-model-perms [table])))
-  table)
+  (api/check-403 (first (filter-tables-by-data-model-perms [table]))))
 
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
@@ -122,7 +121,8 @@
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
+      user can edit the data model of (default false)"
   metabase-enterprise.sandbox.api.table
   [ids opts]
   (batch-fetch-query-metadatas* ids opts))
