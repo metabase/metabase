@@ -21,6 +21,7 @@
   the collector reads it as JSON, so a parse→encode round trip is semantically lossless."
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn-mgr]
    [diehard.bulkhead :as dh.bh]
    [diehard.core :as dh]
    [metabase.analytics-interface.core :as analytics]
@@ -61,6 +62,14 @@
   ^{:doc "Process-wide bulkhead bounding concurrent forwards; see [[max-concurrent-forwards]]."}
   forward-bulkhead
   (dh.bh/bulkhead {:concurrency max-concurrent-forwards}))
+
+(defonce ^:private
+  ^{:doc "Reuses TCP/TLS connections to the collector across forwards. Sized to [[max-concurrent-forwards]]: the
+         bulkhead already caps forwards in flight, and every request goes to one host, so `:default-per-route` is the
+         actual cap. Wrapped in `delay` so the pool isn't created until the first forward."}
+  connection-manager
+  (delay (conn-mgr/make-reusable-conn-manager {:threads           max-concurrent-forwards
+                                               :default-per-route max-concurrent-forwards})))
 
 (defn- +throttle
   "Middleware that answers 429 for a source address over the rate limit, before request validation and the forward."
@@ -125,7 +134,8 @@
                                        ;; Each redirect hop would get its own full timeout, and the hop target is
                                        ;; chosen by the collector rather than by us. One request, one destination.
                                        :redirect-strategy  :none
-                                       :throw-exceptions   false}
+                                       :throw-exceptions   false
+                                       :connection-manager @connection-manager}
                                 token (assoc :headers {"x-track-cache" token})))]
       {:status (:status response)
        :body   (:body response)})

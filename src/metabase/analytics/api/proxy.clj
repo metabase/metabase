@@ -10,6 +10,7 @@
   (base64 blobs survive a parse→encode round-trip), and v1 pins `eventMethod: \"post\"` with a JSON content-type."
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn-mgr]
    [diehard.bulkhead :as dh.bh]
    [diehard.core :as dh]
    [metabase.analytics-interface.core :as analytics]
@@ -45,6 +46,14 @@
   forward-bulkhead
   (dh.bh/bulkhead {:concurrency max-concurrent-forwards}))
 
+(defonce ^:private
+  ^{:doc "Reuses TCP/TLS connections to the collector across forwards. Sized to [[max-concurrent-forwards]]: the
+         bulkhead already caps forwards in flight, and every request goes to one host, so `:default-per-route` is the
+         actual cap. Wrapped in `delay` so the pool isn't created until the first forward."}
+  connection-manager
+  (delay (conn-mgr/make-reusable-conn-manager {:threads           max-concurrent-forwards
+                                               :default-per-route max-concurrent-forwards})))
+
 (defn- +throttle
   "Middleware that answers 429 for a source address over the rate limit, before request validation and the forward."
   [handler]
@@ -79,7 +88,8 @@
                                :content-type       :json
                                :connection-timeout forward-timeout-ms
                                :socket-timeout     forward-timeout-ms
-                               :throw-exceptions   false})]
+                               :throw-exceptions   false
+                               :connection-manager @connection-manager})]
       {:status (:status response)
        :body   (:body response)})
     (catch Exception e
