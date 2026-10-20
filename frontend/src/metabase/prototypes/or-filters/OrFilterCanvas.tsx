@@ -99,33 +99,39 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
 
   return (
     <Stack gap="xl">
-      <Box>
+      <Stack gap="sm">
         <Title order={3}>{direction.name}</Title>
-        <Text c="text-secondary">{direction.description}</Text>
-      </Box>
+        <Paper p="lg" radius="md">
+          <Stack gap="lg">
+            <Box>
+              <Text c="text-secondary">{direction.description}</Text>
+            </Box>
 
-      <Group gap="sm" align="center">
-        <Text fw="bold" c="text-secondary">{t`Examples`}</Text>
-        {EXAMPLES.map(({ label, load }) => (
-          <Button
-            key={label}
-            size="sm"
-            variant="default"
-            onClick={() => setQuery(load(query, STAGE_INDEX))}
-          >
-            {label}
-          </Button>
-        ))}
-        <Button
-          ml="auto"
-          size="sm"
-          variant="subtle"
-          leftSection={<Icon name="close" />}
-          onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
-        >
-          {t`Clear filters`}
-        </Button>
-      </Group>
+            <Group gap="sm" align="center">
+              <Text fw="bold" c="text-secondary">{t`Examples`}</Text>
+              {EXAMPLES.map(({ label, load }) => (
+                <Button
+                  key={label}
+                  size="sm"
+                  variant="default"
+                  onClick={() => setQuery(load(query, STAGE_INDEX))}
+                >
+                  {label}
+                </Button>
+              ))}
+              <Button
+                ml="auto"
+                size="sm"
+                variant="subtle"
+                leftSection={<Icon name="close" />}
+                onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
+              >
+                {t`Clear filters`}
+              </Button>
+            </Group>
+          </Stack>
+        </Paper>
+      </Stack>
 
       <Stack gap="sm">
         <Title order={3}>{t`Chill mode`}</Title>
