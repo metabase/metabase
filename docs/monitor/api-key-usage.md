@@ -31,7 +31,7 @@ The Events tab lists each API call:
 - **Occurred at**: When the call came in.
 - **Route**: The API endpoint the call hit, like `/api/card/:id`. See [What the Route column records](#what-the-route-column-records).
 - **Method**: The HTTP method, like `GET` or `POST`.
-- **Status**: The HTTP status code of the response. See [A 202 status doesn't mean the request succeeded](#a-202-status-doesnt-mean-the-request-succeeded).
+- **Status**: The HTTP status code of the response.
 - **Duration (ms)**: How long the call took, in milliseconds.
 - **API key**: The name of the key that authenticated the call.
 - **Created by**: The person who created the API key. That's not necessarily whoever is making the calls: anyone with a copy of the key can use it.
