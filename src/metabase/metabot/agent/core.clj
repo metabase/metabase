@@ -298,10 +298,10 @@
 (defn- turn-input-parts
   "The AISDK parts for this call of the turn.
 
-  Only the first call builds the history, which renders the viewing context. A later call sends what the previous
-  call sent, exactly as sent, then the parts of the steps added since. It does not build the history again: that
-  reads the viewing context again and inverts links against a registry that grows within the turn, and Claude Opus,
-  Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything before it has changed.
+  Only the first call builds the history, with the `<context>` block [[init-agent]] rendered for the turn. A later
+  call sends what the previous call sent, exactly as sent, then the parts of the steps added since. It does not build
+  the history again: that inverts links against a registry that grows within the turn, and Claude Opus, Sonnet and
+  Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything before it has changed.
 
   `sent-steps` is the number of memory steps that `sent-parts` holds, or nil before the first call."
   [sent-parts sent-steps context memory tools link-registry]
@@ -529,7 +529,8 @@
 
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
-  does (see [[turn-input-parts]])."
+  does (see [[turn-input-parts]]). So is the `<context>` block of the user's message, which memory keeps so that
+  the turn can be stored with it."
   [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
@@ -555,7 +556,8 @@
                          (assoc :conversation-id conversation-id
                                 :tool-names (set (keys base-tools))
                                 :request-canceled-chan request-canceled-chan)
-                         (memory/add-client-ids (client-content-ids context)))
+                         (memory/add-client-ids (client-content-ids context))
+                         (as-> m (memory/set-context-block m (messages/render-context-block context m))))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.

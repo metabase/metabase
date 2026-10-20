@@ -293,6 +293,7 @@
                  :finished?             (not aborted?)
                  :error                 error-data
                  :turn-state            (some-> @memory-atom memory/turn-state)
+                 :context-block         (some-> @memory-atom memory/context-block)
                  :context-window-tokens window))
               (catch Exception e
                 (log/error "Failed to finalize assistant turn"

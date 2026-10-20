@@ -416,3 +416,23 @@
                   claims?    (str/includes? system "have already been loaded into this conversation")
                   preloaded? (boolean (some #(= "load_skill" (:function %)) parts))]
               (is (= claims? preloaded?) (pr-str {:claims? claims? :preloaded? preloaded?})))))))))
+
+(deftest build-message-history-uses-the-kept-context-block-test
+  (let [calls   (atom 0)
+        context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+        orig    (mt/original-fn #'user-context/enrich-context-for-template)
+        history (fn [block]
+                  (messages/build-message-history
+                   context
+                   (-> (memory/initialize [{:role :user :content "Hello"}] {})
+                       (memory/set-context-block block))))]
+    (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                (fn [ctx] (swap! calls inc) (orig ctx))]
+      (testing "the block memory keeps goes before the message, and no other block is rendered"
+        (is (= [{:role :user :content "<context>kept</context>\nHello"}]
+               (history "<context>kept</context>\n")))
+        (is (zero? @calls)))
+      (testing "a kept nil block means the message gets none"
+        (is (= [{:role :user :content "Hello"}]
+               (history nil)))
+        (is (zero? @calls))))))

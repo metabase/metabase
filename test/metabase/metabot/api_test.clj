@@ -151,7 +151,10 @@
                             :data_version 2}
                            {:total_tokens  pos-int?
                             :role          :assistant
-                            :data          [{:type "step-start"}
+                            ;; the <context> block sent before the user's message comes first, so the
+                            ;; next turn can send that message again with the same bytes
+                            :data          [{:type "data-context" :data #"(?s)<context>.*</context>\n"}
+                                            {:type "step-start"}
                                             {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version  2
                             ;; the provider truncated this turn, so the row records why it stopped
@@ -1172,12 +1175,14 @@
             (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                   (agent-request conversation-id "follow-up-prompt"
                                                  :parent_message_id parent-id))
-            (let [msgs (input-messages (last @requests))]
+            (let [[sent-prompt] (input-messages (first @requests))
+                  msgs          (input-messages (last @requests))]
               (is (= 2 (count @requests)))
-              (is (= [[:user "prior-user-prompt"]
+              (is (=? [:user #"(?s)<context>.*</context>\nprior-user-prompt"] sent-prompt))
+              (is (= [sent-prompt
                       [:assistant "prior-assistant-reply"]]
                      (take 2 msgs))
-                  "prior turn replayed with the right roles, order, and content")
+                  "prior turn replayed with the right roles, order, and content, the prompt as it was sent")
               (is (= 3 (count msgs))
                   "exactly prior user + prior assistant + new prompt — no duplicated turns")
               (is (= :user (first (nth msgs 2))))
