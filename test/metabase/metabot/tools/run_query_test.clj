@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
@@ -434,6 +435,16 @@
                                                              :query    {:source-table 1}
                                                              :stages   []}}}}
                           {:query_id "q1"}))))))))
+
+(deftest run-query-deleted-database-test
+  (testing "a notebook query whose database was deleted after it was built reads as not found, as a SQL query does"
+    (mt/with-temp [:model/Database {db-id :id}    {:engine :h2}
+                   :model/Table    {table-id :id} {:db_id db-id, :name "BIRDS", :schema "PUBLIC"}
+                   :model/Field    _              {:table_id table-id, :name "ID", :base_type :type/Integer}]
+      (let [mp    (lib-be/application-database-metadata-provider db-id)
+            query (lib/prepare-for-serialization (lib/query mp (lib.metadata/table mp table-id)))]
+        (t2/delete! :model/Database db-id)
+        (is (= database-not-found (run-tool! {"q1" query} {:query_id "q1"})))))))
 
 (defn- not-read-only
   "Chat's read-only refusal of q1, giving `problem` as the reason."

@@ -378,12 +378,17 @@
                   (some? api/*current-user-id*)
                   (not (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*))))))
 
+(defn- existing-database?
+  "Whether `database-id` names a database that exists."
+  [database-id]
+  (and (pos-int? database-id)
+       (metabot.db/database-exists? database-id)))
+
 (defn- readable-database?
   "Whether `database-id` names a database that exists and the current user can read. `can-read?` alone holds for any
    id when the user is an admin, so it can't tell a deleted database from a live one."
   [database-id]
-  (and (pos-int? database-id)
-       (metabot.db/database-exists? database-id)
+  (and (existing-database? database-id)
        (mi/can-read? :model/Database database-id)))
 
 (defn- token
@@ -548,6 +553,9 @@
       ;; Normalizing can surface a native stage under a spelling [[native-query?]] does not follow.
       (when (and inline-sql? (not native?))
         (check-sql-runnable! query-id (:database normalized) false allow-non-sql?))
+      ;; Normalizing does not look the database up, and the QP fails on a deleted one with an error of its own.
+      (when-not (existing-database? (:database normalized))
+        (database-not-found! {:query-id query-id}))
       ;; A saved question runs here as it does for the user anywhere else, SQL or not. The exception is SQL that
       ;; Metabot saved itself, which would otherwise be a way around every check here. A question keeps the mark
       ;; of its Metabot origin until someone edits its query or display.
