@@ -45,6 +45,7 @@
   remote-synced-collection
   remote-synced-collection?
   remote-synced-dependents
+  root-collection-type-by-id
   shared-tenant-collection?
   slugify
   transforms-ns

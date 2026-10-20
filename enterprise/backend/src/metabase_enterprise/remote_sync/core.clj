@@ -44,8 +44,8 @@
   [{:keys [location] :as collection}]
   (or (not (settings/custom-collection? collection))
       (settings/remote-sync-custom-collections-enabled)
-      (boolean (when-let [library (and location (collections/library-collection))]
-                 (some #{(:id library)} (collections/location-path->ids location))))))
+      (= collections/library-collection-type
+         (some-> location collections/location-path->ids first collections/root-collection-type-by-id))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
