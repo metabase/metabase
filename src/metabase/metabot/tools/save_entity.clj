@@ -176,7 +176,7 @@
   [{:keys [name description dataset_query display destination]}]
   (let [dashboard-id (:dashboard_id destination)
         dashboard    (tools/with-entity {:kind :dashboard :id dashboard-id}
-                       (api/read-check :model/Dashboard dashboard-id))]
+                       (api/check-not-archived (api/read-check :model/Dashboard dashboard-id)))]
     (check-writable! {:kind :dashboard :id dashboard-id} #(api/write-check dashboard))
     (let [card (queries/create-card!
                 {:name                   name

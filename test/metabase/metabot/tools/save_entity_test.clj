@@ -268,10 +268,12 @@
   (testing "a destination the user can't see, or that is in the trash, is reported as not found"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-model-cleanup [:model/Card]
-        (mt/with-temp [:model/Collection hidden      {}
-                       :model/Document   trashed-doc {:archived true :document document-ast}]
+        (mt/with-temp [:model/Collection hidden       {}
+                       :model/Dashboard  trashed-dash {:archived true}
+                       :model/Document   trashed-doc  {:archived true :document document-ast}]
           (doseq [[user target-type id] [[:rasta     "collection" (:id hidden)]
                                          [:crowberto "dashboard"  Integer/MAX_VALUE]
+                                         [:crowberto "dashboard"  (:id trashed-dash)]
                                          [:crowberto "document"   Integer/MAX_VALUE]
                                          [:crowberto "document"   (:id trashed-doc)]]
                   :let [entity (str (str/capitalize target-type) " " id)]]
@@ -280,7 +282,9 @@
                 (is (=? {:class :recoverable
                          :code  ::recoverable.common/not-found
                          :text  #(str/starts-with? % (str entity " was not found."))}
-                        (failure {:target_type target-type, (keyword (str target-type "_id")) id})))))))))))
+                        (failure {:target_type target-type, (keyword (str target-type "_id")) id}))))))
+          (testing "and nothing is saved there"
+            (is (not (t2/exists? :model/Card :dashboard_id (:id trashed-dash))))))))))
 
 (deftest read-only-destination-test
   (testing "a destination the user can see but not change is a declared error that offers another"
