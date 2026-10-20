@@ -51,7 +51,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (string? (rendered-source query)))
         (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields
-                                  (fn [_table-ids] {(mt/id :venues) #{}})]
+                                    (fn [_table-ids] {(mt/id :venues) #{}})]
           (is (nil? (rendered-source query))))))))
 
 (deftest transform-source-renders-an-unchecked-source-unresolved-test
