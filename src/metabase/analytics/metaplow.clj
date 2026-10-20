@@ -5,8 +5,9 @@
   drains the queue and POSTs each event to the collector's `/api/send` endpoint. The HTTP connection pool is sized to
   match the worker count so workers never contend for slots.
 
-  Delivery is bounded per event by [[retry-policy]] and across events by [[breaker]]. Neither failure mode logs above
-  debug; the `:metabase-metaplow/errors` counter, labelled by `:stage`, is the operational signal.
+  Delivery is bounded per event by [[retry-policy]] and across events by [[breaker]]. Failed sends log at debug only;
+  the `:metabase-metaplow/errors` counter, labelled by `:stage`, is the operational signal. The breaker's state
+  changes log at warn and info, at most about once a minute.
 
   Emission is gated by [[metabase.analytics.settings/metaplow-tracking-enabled]]. The public entry point used by the
   rest of the codebase is [[metabase.analytics.event/track-event!]], which fans out to both Snowplow and Metaplow."

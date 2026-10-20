@@ -50,7 +50,10 @@
   [handler]
   (fn [request respond raise]
     (try
-      ;; the source address is derived server-side, so it is not something the caller can rotate to get a fresh bucket
+      ;; The bucket key is only as good as the deployment: `ip-address` reads the source-address header
+      ;; (`X-Forwarded-For` by default) unless `MB_NOT_BEHIND_PROXY` is set, so it is the real client behind a proxy
+      ;; that overwrites that header, and something a caller can pick for itself on a directly-exposed instance. It
+      ;; is still the key every other unauthenticated endpoint here throttles on, and the only one available.
       (throttle/check throttler (request/ip-address request))
       (handler request respond raise)
       (catch ExceptionInfo e

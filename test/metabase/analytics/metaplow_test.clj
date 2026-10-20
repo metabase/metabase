@@ -245,7 +245,6 @@
   (mt/with-temporary-setting-values [metaplow-url "http://fake-metaplow/api/send"
                                      anon-tracking-enabled true]
     ;; a breaker of its own, so an unrelated test that left the process-wide one open can't make this one flake
-    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
     (with-redefs [metaplow/breaker (#'metaplow/new-breaker nil)]
       (testing "track-event! enqueues onto the real channel and a pipeline worker POSTs the payload"
         (let [received (promise)]
