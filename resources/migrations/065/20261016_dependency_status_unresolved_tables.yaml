@@ -1,0 +1,43 @@
+## A native query can name a table that sync hasn't found yet. The backfill flags such entities, so that the next sync
+## of their database recomputes them and records the table once it exists.
+## This changeset and the first of 20261016_remote_sync_object_user_settings.yaml were both merged as
+## v65.2026-10-16T00:00:00, so the first changeset here deletes that id and both run again under their own ids.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-20T00:00:00
+      author: ranquild
+      comment: Delete v65.2026-10-16T00:00:00, the id two changesets shared before they got their own ids
+      changes:
+        - sql:
+            sql: DELETE FROM ${databasechangelog.name} WHERE id = 'v65.2026-10-16T00:00:00'
+      rollback: []
+
+  - changeSet:
+      id: v65.2026-10-20T00:00:01
+      author: ranquild
+      comment: Add dependency_status.unresolved_tables, flagging entities that name tables matching nothing
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: dependency_status
+                columnName: unresolved_tables
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM ${databasechangelog.name} WHERE id = 'v65.u3r8zm'
+      changes:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: unresolved_tables
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity names tables that match no synced table, recomputed after each sync
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: unresolved_tables

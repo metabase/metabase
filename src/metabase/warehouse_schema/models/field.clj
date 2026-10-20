@@ -106,12 +106,6 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-(def ^:private transform-field-boolean
-  "Boolean column transform; a boolean computed in SQL (e.g. `COALESCE` over `json_unfolding`) comes back as a number
-  from MySQL."
-  {:in  identity
-   :out (fn [v] (if (number? v) (pos? v) v))})
-
 (def ^:private field-transforms
   {:base_type         transform-field-base-type
    :effective_type    transform-field-effective-type
@@ -123,13 +117,14 @@
    :fingerprint       transform-json-fingerprints
    :settings          mi/transform-json
    :nfc_path          mi/transform-json
-   :json_unfolding    transform-field-boolean})
+   :json_unfolding    mi/transform-boolean})
 
 (t2/deftransforms :model/Field field-transforms)
 
 (doto :model/Field
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -454,6 +449,9 @@
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
 
+(defmethod serdes/ingested-path "Field" [_ {:keys [table_id parent_id name]}]
+  (serdes/field->path (conj (or parent_id table_id) name)))
+
 (defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 
@@ -461,13 +459,20 @@
   [path]
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
         table               (serdes/load-find-local table-path)]
-    (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields)))))
+    (when table
+      (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields))))))
 
-(defmethod serdes/deserialization-dependencies "Field" [field]
-  (let [db-path (first (serdes/path field))]
-    #{[db-path]}))
+(def ^:private legacy-dimensions
+  "The Dimensions a Field file carried before they got files of their own."
+  (serdes/nested :model/Dimension :field_id {}))
 
-(defmethod serdes/make-spec "Field" [_model-name opts]
+(defmethod serdes/load-one! "Field" [ingested maybe-local]
+  (let [field (serdes/default-load-one! ingested maybe-local)]
+    (when (contains? ingested :dimensions)
+      ((:import-with-context legacy-dimensions) field :dimensions (:dimensions ingested)))
+    field))
+
+(defmethod serdes/make-spec "Field" [_model-name _opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
@@ -475,11 +480,9 @@
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
    :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
-   :transform {:created_at         (serdes/date)
-               :table_id           (serdes/fk :model/Table)
+   :transform {:table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
-               :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+               :parent_id          (serdes/fk :model/Field)}
    :defaults  {:active                     true
                :database_is_auto_increment false
                :database_required          false

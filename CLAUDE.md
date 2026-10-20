@@ -1,5 +1,15 @@
 # Metabase Development Guide
 
+## Do Not Edit `docs/` Alongside Code Changes
+
+**NEVER** change files under `docs/` as part of a code change, even if the change makes the docs out of date.
+A dedicated team of technical writers owns `docs/` and updates it. Edit `docs/` only when the task is
+explicitly a documentation task. If your code change affects documented behavior, say so in your summary
+or PR description so the writers can follow up.
+
+Exception: engineers maintain `docs/developers-guide/`. Update it alongside code changes when needed, for
+example the driver changelog for new driver multimethods or the API changelog for breaking API changes.
+
 # Skills
 
 For detailed guidance on writing and reviewing code and documentation, see the skills in [.claude/skills/](.claude/skills/):
@@ -99,6 +109,17 @@ interactive explorer with a dependency graph.
 - Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
   make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
 
+## Moving or Renaming Quartz Jobs
+
+Keep a job's `:saved-class` the same when you move its namespace or rename its type. Quartz stores that
+class name in the app DB, and `task/defjob` gives the class exactly that name, so a move changes nothing
+that is stored.
+A new job needs one too: compile without it, and the error prints the entry to paste.
+
+Changing a `:saved-class` deletes the jobs stored under the old name, and their triggers, at the next startup.
+The tests in `metabase.app-db.quartz-test` fail with instructions when a job's class name changes, or a job
+is added.
+
 ## Ratchets
 
 After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.
@@ -124,6 +145,12 @@ The test `metabase.core.module-cycles-test` fails until every cluster holds exac
 cluster, name the new half: the failure proposes a name and anchor to add. When two named clusters merge, find
 another way; the failure shows the requires joining them. When an anchor leaves every cycle, anchor its name on
 another member if the cluster survives, or remove the line.
+
+Ignores for `:discouraged-var` and `:discouraged-namespace` are budgeted per symbol, not per linter, in both
+files. Use `--seed :discouraged-var/clojure.core/println` to seed one symbol's budget, or a bare
+`--seed :discouraged-var` (or `:discouraged-namespace`) to seed every symbol configured under that linter.
+To learn which symbol an ignore covers, `./bin/mage kondo-ratchets` runs `clojure -M:kondo` over the files
+carrying one, so it needs the Clojure CLI as well as Babashka.
 
 ## Tool Preferences
 

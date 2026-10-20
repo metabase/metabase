@@ -63,8 +63,8 @@ const HEADING_ICON: Record<
   ExplorationHeadingKind,
   { name: IconProps["name"]; color: IconProps["c"] }
 > = {
-  root: { name: "insight", color: "brand" },
-  "sub-exploration": { name: "git_branch", color: "brand" },
+  root: { name: "insight", color: "core-brand" },
+  "sub-exploration": { name: "corner_down_right", color: "core-brand" },
   "metric-group": { name: "metric", color: "text-secondary" },
 };
 
@@ -154,7 +154,7 @@ function ExplorationTreeHeading({
         <Icon
           name={isExpanded ? "chevrondown" : "chevronright"}
           size={12}
-          c="text-tertiary"
+          c="text-disabled"
         />
       </Box>
       <ExplorationHeadingIcon
@@ -229,8 +229,7 @@ function ExplorationGroupMenu({
         return true;
       } catch {
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to update ${groupName}`,
         });
         return false;
@@ -266,8 +265,7 @@ function ExplorationGroupMenu({
       if (error) {
         sendToast({
           message: t`Failed to stop`,
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
         });
         return;
       }
@@ -285,8 +283,7 @@ function ExplorationGroupMenu({
       if (error) {
         sendToast({
           message: t`Failed to restart`,
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
         });
         return;
       }
@@ -309,8 +306,9 @@ function ExplorationGroupMenu({
     <Menu>
       <Menu.Target>
         <ActionIcon
+          variant="subtle"
           className={S.groupMenuTrigger}
-          size="1rem"
+          size="xs"
           c="icon-primary"
           aria-label={t`Group actions`}
           onClick={(e) => e.stopPropagation()}
@@ -386,7 +384,7 @@ function ExplorationTreeDocumentItem({
   }, [isSelected, shouldScrollSelectionRef]);
 
   const iconProps: IconProps = {
-    color: isSelected ? "brand" : "icon-secondary",
+    color: isSelected ? "core-brand" : "icon-secondary",
     name: typeof item.icon === "string" ? item.icon : item.icon.name,
   };
 
@@ -446,7 +444,7 @@ function ExplorationTreeItem({
   const pageId = item.data.page_id;
 
   const iconProps: IconProps = {
-    color: isSelected ? "brand" : "icon-secondary",
+    color: isSelected ? "core-brand" : "icon-secondary",
     name: typeof item.icon === "string" ? item.icon : item.icon.name,
   };
 
@@ -526,7 +524,11 @@ function ExplorationHeadingIcon({
     headingKind === "root" || headingKind === "sub-exploration";
   if (status === "error" && isThreadNode) {
     return (
-      <Icon name="warning_triangle_filled" c="error" aria-label={t`Failed`} />
+      <Icon
+        name="warning_triangle_filled"
+        c="feedback-negative"
+        aria-label={t`Failed`}
+      />
     );
   }
   if (headingKind == null) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { type FocusEvent, useCallback, useEffect, useRef } from "react";
 
 import {
   TIMELINE_BAND_HEIGHT,
@@ -89,6 +89,15 @@ export const TimelineEventStack = ({
   const handleMemberFocus = () => {
     cancelCollapse();
     onExpandedChange(true);
+  };
+
+  const handleMemberBlur = (event: FocusEvent<HTMLButtonElement>) => {
+    const isInsideDropdown =
+      event.relatedTarget instanceof Element &&
+      event.relatedTarget.closest(`.${S.bridgeDropdown}`) != null;
+    if (!isInsideDropdown) {
+      scheduleCollapse();
+    }
   };
 
   // React's mouse-leave tracking is unreliable across the members' portaled
@@ -188,7 +197,7 @@ export const TimelineEventStack = ({
             hidden={hidden}
             selectedEventIds={selectedEventIds}
             onFocus={handleMemberFocus}
-            onBlur={scheduleCollapse}
+            onBlur={handleMemberBlur}
             onGroupHover={onGroupHover}
             onOpenTimelines={onOpenTimelines}
             onSelectTimelineEvents={onSelectTimelineEvents}

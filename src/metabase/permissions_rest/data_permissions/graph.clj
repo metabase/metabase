@@ -592,6 +592,25 @@
         (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
                         {:status-code 400}))))))
 
+(defenterprise check-native-access-without-sandboxes!
+  "Throw a 400 if a group in `native-group-db-ids`, a set of `[group-id db-id]` pairs being granted native query
+  access, would also have a sandbox on that database once `graph` is applied. OSS impl is a no-op, since sandboxes are
+  an EE-only feature."
+  metabase-enterprise.sandbox.models.permissions.delete-sandboxes
+  [_graph _native-group-db-ids])
+
+(defn- check-native-access-compatible-with-sandboxes!
+  "Native queries bypass sandboxing, so a group can't be granted native access to a database it has a sandbox on.
+  Sandboxing a Table for a group that already has native access is fine: creating the sandbox revokes it."
+  [graph]
+  (check-native-access-without-sandboxes!
+   graph
+   (into #{}
+         (for [[group-id db-updates] graph
+               [db-id db-changes]    db-updates
+               :when                 (= :query-builder-and-native (:create-queries db-changes))]
+           [group-id db-id]))))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions implicitly via collection permissions."
@@ -621,6 +640,7 @@
          {:keys [to-delete to-insert]} (compute-diff desired-state current-perms tables-by-db)]
      (validate-blocked-permissions! graph)
      (check-transforms-permissions! graph current-perms)
+     (check-native-access-compatible-with-sandboxes! graph)
      (when (seq to-delete)
        (perms/batch-delete-permissions! to-delete))
      (when (seq to-insert)
@@ -638,12 +658,6 @@
        (assoc-in ks new-value)
        update-data-perms-graph!*)))
 
-(defenterprise reconcile-data-app-permissions!
-  "Update data app groups after ordinary permissions change, within the same permissions transaction."
-  metabase-enterprise.data-apps.permissions
-  [_database-ids]
-  nil)
-
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
   impersonations and sandboxes are consistent if necessary."
@@ -655,8 +669,7 @@
          (check-audit-db-permissions group-updates)
          (update-data-perms-graph!* group-updates)
          (delete-impersonations-if-needed-after-permissions-change! group-updates)
-         (delete-gtaps-if-needed-after-permissions-change! group-updates)
-         (reconcile-data-app-permissions! (into #{} (mapcat keys) (vals group-updates)))))))
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks        :- [:vector [:or :int :string :keyword]]

@@ -19,5 +19,10 @@
   ;; and only exists to serve azure-core's HTTP pipeline. MI's only HTTP call is a single POST to
   ;; the IMDS endpoint, which azure-core can serve via the JDK HttpClient transport instead.
   com.azure/azure-identity          {:mvn/version "1.18.2"
-                                     :exclusions [com.azure/azure-core-http-netty]}
-  com.azure/azure-core-http-jdk-httpclient {:mvn/version "1.0.3"}}}
+                                     :exclusions [com.azure/azure-core-http-netty
+                                                  ;; pinned in and resolved from /deps.edn
+                                                  com.fasterxml.jackson.core/jackson-core
+                                                  com.fasterxml.jackson.core/jackson-databind]}
+  com.azure/azure-core-http-jdk-httpclient {:mvn/version "1.0.3"}
+  ;; pinned: azure-core 1.57.1 (transitive via azure-identity) pulls reactor-core 3.7.14
+  io.projectreactor/reactor-core           {:mvn/version "3.8.7"}}}

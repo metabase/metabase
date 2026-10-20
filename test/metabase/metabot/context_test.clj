@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
@@ -15,6 +16,10 @@
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
+
+(defn- create-context
+  [context]
+  (context/create-context context {:metabot (metabot.config/resolve-metabot metabot.config/internal-metabot-id)}))
 
 (deftest database-tables-for-context-returns-stubs
   (testing "Used tables become lightweight stubs — id/type/name/schema/description only, never columns"
@@ -118,7 +123,7 @@
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection col-id :view)
-        (let [recently-viewed (-> (context/create-context {})
+        (let [recently-viewed (-> (create-context {})
                                   :user_recently_viewed)]
           (is (= 5 (count recently-viewed)))
           ;; Assert that collection is excluded even though it was viewed most recently
@@ -134,7 +139,7 @@
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
           (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
-            (let [ctx (context/create-context {})]
+            (let [ctx (create-context {})]
               (is (not (contains? ctx :user_recently_viewed))))))))))
 
 (deftest recent-views-disabled-strips-preexisting-test
@@ -173,8 +178,8 @@
                      :model/Card      {um :id}         {:type "model"    :name "unverified m"}
                      :model/Dashboard {ud :id}         {:name "unverified d"}
                      :model/Table     {table-id :id}   {}
-                     :model/Metabot   {metabot-eid :entity_id} {:name "test metabot"
-                                                                :use_verified_content true}]
+                     :model/Metabot   metabot {:name "test metabot"
+                                               :use_verified_content true}]
         (doseq [[id type] [[vq1 "card"] [vq2 "card"] [vm1 "card"] [vm2 "card"] [vd "dashboard"]]]
           (moderation/create-review! {:moderated_item_id   id
                                       :moderated_item_type type
@@ -205,9 +210,9 @@
               ud*     (as-pair "dashboard" ud)
               table*  (as-pair "table"     table-id)
               keys-of (fn [items] (set (map (juxt :type :id) items)))]
-          (testing "no metabot-id passed -> no filtering (even with :content-verification active)"
+          (testing "The default Metabot includes recent views"
             (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {}) :user_recently_viewed)
+              (let [items (-> (create-context {}) :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (= 5 (count items)))
                 (is (contains? ks uq*))
@@ -216,7 +221,7 @@
                 (is (contains? ks table*)))))
           (testing "use_verified_content=true -> filters recents to curated content"
             (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+              (let [items (-> (context/create-context {} {:metabot metabot})
                               :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (not (contains? ks table*)) "a plain table is not curated, so it is filtered out")
@@ -232,26 +237,20 @@
           (testing "filtering is gated on the setting, not the :content-verification feature — curated is
                     precomputed at ingestion, so recents still filter without the feature (matches search)"
             (mt/with-premium-features #{}
-              (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+              (let [items (-> (context/create-context {} {:metabot metabot})
                               :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (not (contains? ks uq*)))
                 (is (not (contains? ks um*)))
-                (is (not (contains? ks ud*))))))
-          (testing "metabot-id that does not resolve -> no filtering"
-            (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {} {:metabot-id "nonexistent-entity-id"})
-                              :user_recently_viewed)
-                    ks    (keys-of items)]
-                (is (contains? ks uq*))))))))))
+                (is (not (contains? ks ud*)))))))))))
 
 (deftest recent-views-most-recent-review-wins-test
   (testing "A card that was verified and later un-verified is correctly excluded"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:content-verification}
         (mt/with-temp [:model/Card    {card-id :id}      {:type "question" :name "flip-flop"}
-                       :model/Metabot {metabot-eid :entity_id} {:name "test metabot"
-                                                                :use_verified_content true}]
+                       :model/Metabot metabot {:name "test metabot"
+                                               :use_verified_content true}]
           ;; First verify, then un-verify. create-review! marks older rows as most_recent=false.
           (moderation/create-review! {:moderated_item_id   card-id
                                       :moderated_item_type "card"
@@ -262,7 +261,7 @@
                                       :moderator_id        (mt/user->id :crowberto)
                                       :status              nil})
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
-          (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+          (let [items (-> (context/create-context {} {:metabot metabot})
                           :user_recently_viewed)
                 ids   (set (map :id items))]
             (is (not (contains? ids card-id))
@@ -292,7 +291,7 @@
             raw      {:user_is_viewing [{:type  "adhoc"
                                          :query (lib/query  mp (lib.metadata/table mp (mt/id :orders)))}]
                       :current_time_with_timezone "2025-01-15T12:00:00+02:00"}
-            enriched (context/create-context raw)
+            enriched (create-context raw)
             uc-vars  (user-context/enrich-context-for-template enriched)
             viewing  (:viewing_context uc-vars)]
         (testing "viewing context is non-empty"

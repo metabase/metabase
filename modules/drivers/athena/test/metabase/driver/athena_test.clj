@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -21,7 +22,9 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,6 +39,69 @@
 (def ^:private upper-case-schema-columns
   [{:column_name "id", :type_name "string"}
    {:column_name "ts", :type_name "STRING"}])
+
+(defn- empty-metadata-result-set []
+  (reify ResultSet
+    (getMetaData [_]
+      (reify ResultSetMetaData
+        (getColumnCount [_] 0)))
+    (next [_] false)
+    (close [_])))
+
+(deftest ^:parallel get-columns-literal-patterns-test
+  (doseq [[schema table expected-schema expected-table]
+          [[nil nil nil nil]
+           ["database" "birds" "database" "birds"]
+           ["database_name" "birds_seen" "database\\_name" "birds\\_seen"]
+           ["db%name" "birds\\seen" "db\\%name" "birds\\\\seen"]]]
+    (let [called   (atom nil)
+          metadata (reify DatabaseMetaData
+                     (getSearchStringEscape [_] "\\")
+                     (getColumns [_ catalog schema-pattern table-pattern column-pattern]
+                       (reset! called [catalog schema-pattern table-pattern column-pattern])
+                       (empty-metadata-result-set)))]
+      (is (empty? (#'athena/get-columns metadata "AwsDataCatalog" schema table)))
+      (is (= ["AwsDataCatalog" expected-schema expected-table nil] @called)))))
+
+(deftest ^:parallel get-tables-literal-schema-test
+  (doseq [[schema expected] [[nil nil] ["database_name%" "database!_name!%"]]]
+    (let [called   (atom nil)
+          metadata (reify DatabaseMetaData
+                     (getSearchStringEscape [_] "!")
+                     (getTables [_ catalog schema-pattern table-pattern types]
+                       (reset! called [catalog schema-pattern table-pattern (vec types)])
+                       (empty-metadata-result-set)))]
+      (is (empty? (#'athena/get-tables metadata schema "AwsDataCatalog")))
+      (is (= ["AwsDataCatalog" expected "%" ["TABLE" "VIEW"]] @called)))))
+
+(driver/register! ::metadata-test :parent :athena)
+
+(defmethod sql-jdbc.execute/do-with-connection-with-options ::metadata-test
+  [_driver {:keys [connection]} _options f]
+  (f connection))
+
+(deftest ^:parallel describe-table-catalog-test
+  (doseq [[catalog dbname connection-catalog expected]
+          [[nil "database_name" "AwsDataCatalog" "AwsDataCatalog"]
+           ["" "database_name" "AwsDataCatalog" "AwsDataCatalog"]
+           [" " "database_name" "AwsDataCatalog" "AwsDataCatalog"]
+           [nil "database_name" "CustomCatalog" "CustomCatalog"]
+           ["ConfiguredCatalog" "database_name" "CustomCatalog" "ConfiguredCatalog"]
+           [nil nil "AwsDataCatalog" nil]
+           [nil "" "AwsDataCatalog" nil]]]
+    (testing (str "catalog=" (pr-str catalog) ", dbname=" (pr-str dbname))
+      (let [called (atom nil)
+            conn   (reify Connection
+                     (getMetaData [_] nil)
+                     (getCatalog [_] connection-catalog))]
+        (mt/with-dynamic-fn-redefs [driver.conn/effective-details
+                                    (constantly {:catalog catalog :dbname dbname})
+                                    athena/describe-table-fields
+                                    (fn [_metadata _database _driver _table catalog dbname]
+                                      (reset! called [catalog dbname])
+                                      #{})]
+          (driver/describe-table ::metadata-test {:connection conn} {:name "birds_seen" :schema nil})
+          (is (= [expected dbname] @called)))))))
 
 (deftest sync-test
   (testing "sync with nested fields"
@@ -250,7 +316,7 @@
 
 (deftest hard-coded-iam-credential-handling
   (testing "When not hosted"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
@@ -260,7 +326,7 @@
              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
              :CredentialsProvider)))))
   (testing "When hosted"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})

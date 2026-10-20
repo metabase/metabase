@@ -1,7 +1,6 @@
 // Enables hot reload in development and noop in production
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
-
 import { Api } from "metabase/api";
 import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";

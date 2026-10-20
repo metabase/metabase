@@ -31,12 +31,16 @@ const {
   DropStylesEntryScriptPlugin,
 } = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
 const {
-  RESOLVE_ALIASES,
-} = require("./frontend/build/shared/rspack/resolve-aliases");
+  LocaleCatalogManifest,
+} = require("./frontend/build/shared/rspack/plugins/LocaleCatalogManifest/locale-catalog-manifest");
+const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
-const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
+const {
+  SVGO_CONFIG,
+  SVGO_ASSET_CONFIG,
+} = require("./frontend/build/shared/rspack/svgo-config");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
@@ -197,9 +201,7 @@ const config = {
   // we override it for dev mode below
   devtool: "source-map",
 
-  externals: {
-    canvg: "canvg",
-  },
+  ...resolveConfig,
 
   // output to "dist"
   output: {
@@ -239,9 +241,21 @@ const config = {
         type: "javascript/auto",
       },
       {
-        test: /\.(svg|png)$/,
+        test: /\.svg$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
+        use: [{ loader: "svgo-loader", options: SVGO_ASSET_CONFIG }],
+      },
+      {
+        test: /\.png$/,
+        type: "asset/resource",
+        resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
       },
       {
         test: /\.css$/,
@@ -285,16 +299,6 @@ const config = {
         ],
       },
     ],
-  },
-  resolve: {
-    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
-    alias: RESOLVE_ALIASES,
-    fallback: {
-      buffer: require.resolve("buffer/"),
-      url: require.resolve("url/"),
-      events: require.resolve("events/"),
-      querystring: require.resolve("querystring-es3"),
-    },
   },
   optimization: {
     runtimeChunk: "single",
@@ -365,6 +369,7 @@ const config = {
     new OnScriptError(),
     ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
+    new LocaleCatalogManifest(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",

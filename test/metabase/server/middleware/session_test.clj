@@ -250,16 +250,21 @@
       (is (nil? (:metabase-user-id request'))))))
 
 (deftest current-user-info-for-api-key-test
-  (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
-                                  :user_id               (mt/user->id :lucky)
-                                  :creator_id            (mt/user->id :lucky)
-                                  :updated_by_id         (mt/user->id :lucky)
-                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
+  (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "An API Key"
+                                                 :user_id               (mt/user->id :lucky)
+                                                 :creator_id            (mt/user->id :lucky)
+                                                 :updated_by_id         (mt/user->id :lucky)
+                                                 ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
     (testing "A valid API key works, and user info is added to the request"
+      ;; `:api-key-id` and `:api-key-creator-id` are resolved for API-key auth only — the usage
+      ;; analytics hook in `metabase.server.middleware.log` reads both off the request rather than
+      ;; looking them up again.
       (let [req {:headers {"x-api-key" "mb_foobar123"}}]
         (testing "No premium features, do not include :is-group-manager?"
           (mt/with-premium-features #{}
-            (is (= (merge req {:metabase-user-id        (mt/user->id :lucky)
+            (is (= (merge req {:api-key-id              api-key-id
+                               :api-key-creator-id      (mt/user->id :lucky)
+                               :metabase-user-id        (mt/user->id :lucky)
                                :is-superuser?           false
                                :is-data-analyst?        false
                                :user-locale             nil
@@ -268,7 +273,9 @@
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
           (when config/ee-available?
             (mt/with-premium-features #{:advanced-permissions}
-              (is (= (merge req {:metabase-user-id        (mt/user->id :lucky)
+              (is (= (merge req {:api-key-id              api-key-id
+                                 :api-key-creator-id      (mt/user->id :lucky)
+                                 :metabase-user-id        (mt/user->id :lucky)
                                  :is-superuser?           false
                                  :is-data-analyst?        false
                                  :is-group-manager?       false
@@ -437,7 +444,8 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :auth-provider nil}
+                :metabase/authed-session-key-hash test-session-key-hashed
+                :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -454,7 +462,8 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :auth-provider nil}
+                :metabase/authed-session-key-hash test-session-key-hashed
+                :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -507,7 +516,8 @@
                   :is-group-manager? false,
                   :user-locale nil
                   :is-data-analyst? false
-                  :auth-provider nil}
+                  :metabase/authed-session-key-hash test-session-key-hashed
+                  :embedding/auth-method "session"}
                  (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
           (finally
             (t2/delete! :model/Session :id test-session-id)))
@@ -558,21 +568,21 @@
           (t2/delete! :model/Session :id test-session-id))))))
 
 (deftest auth-provider-via-left-join-test
-  (testing "session LEFT JOIN on auth_identity returns correct provider for each auth method"
+  (testing "a session's auth method is its auth_identity provider, or \"session\" without one"
     (mt/with-temporary-setting-values [mfa-enforcement :off]
       (mt/with-temp [:model/User {user-id :id} {}]
-        ;; "password" is excluded - its before-insert hook requires credentials, and it's already
-        ;; tested via auth-method-test in view_log_test.clj. "api-key" is tested above in
-        ;; current-user-info-for-api-key-test (different code path, no auth_identity).
-        (doseq [provider ["jwt" "saml" "google" "ldap" "oidc"
-                          "custom-oidc" "slack-connect" "support-access-grant"]]
-          (testing (str "provider: " provider)
-            (let [ai         (first (t2/insert-returning-instances! (t2/table-name :model/AuthIdentity)
-                                                                    {:user_id     user-id
-                                                                     :provider    provider
-                                                                     :provider_id (str user-id "-" provider)
-                                                                     :created_at  :%now
-                                                                     :updated_at  :%now}))
+        ;; table inserts skip the AuthIdentity before-insert hook, which requires credentials for "password".
+        ;; "api-key" is tested above in current-user-info-for-api-key-test (no auth_identity).
+        (doseq [provider ["password" "jwt" "saml" "google" "ldap" "oidc"
+                          "custom-oidc" "slack-connect" "support-access-grant" nil]]
+          (testing (str "provider: " (or provider "none"))
+            (let [ai          (when provider
+                                (first (t2/insert-returning-instances! (t2/table-name :model/AuthIdentity)
+                                                                       {:user_id     user-id
+                                                                        :provider    provider
+                                                                        :provider_id (str user-id "-" provider)
+                                                                        :created_at  :%now
+                                                                        :updated_at  :%now})))
                   session-key (session/generate-session-key)
                   session-id  (session/generate-session-id)]
               (try
@@ -582,11 +592,12 @@
                              :user_id           user-id
                              :auth_identity_id  (:id ai)
                              :created_at        :%now})
-                (is (= provider
-                       (:auth-provider (#'mw.session/current-user-info-for-session session-key nil))))
+                (is (= (or provider "session")
+                       (:embedding/auth-method (#'mw.session/current-user-info-for-session session-key nil))))
                 (finally
                   (t2/delete! :model/Session :id session-id)
-                  (t2/delete! :model/AuthIdentity :id (:id ai)))))))))))
+                  (when ai
+                    (t2/delete! :model/AuthIdentity :id (:id ai))))))))))))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
 (defn- user-bound-handler [request]
@@ -720,32 +731,6 @@
                       {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
                        :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
-
-(deftest auth-method-test
-  (testing "auth-method prefers route-based override on special routes"
-    (let [f #'mw.session/auth-method]
-      (are [session-info api-key-info oauth-info mcp-ui-info embedding-route expected]
-           (= expected (f session-info api-key-info oauth-info mcp-ui-info embedding-route))
-        ;; session-based auth on non-special routes
-        {:auth-provider "password"} nil nil nil nil            "password"
-        {:auth-provider "saml"}     nil nil nil nil            "saml"
-        {:auth-provider "jwt"}      nil nil nil nil            "jwt"
-        {:auth-provider "ldap"}     nil nil nil nil            "ldap"
-        {}                          nil nil nil nil            "session"
-        ;; api-key on non-special route
-        nil                         {}  nil nil nil            "api-key"
-        ;; oauth bearer on non-special route
-        nil                         nil {:metabase-user-id 1} nil nil "oauth"
-        ;; mcp-ui credential on non-special route
-        nil                         nil nil {:metabase-user-id 1} nil "mcp-ui"
-        ;; route override: special routes win over credentials
-        nil                         {}  nil nil "guest-embed"  "guest"   ; api-key + embed -> guest
-        nil                         nil nil nil "guest-embed"  "guest"   ; anon guest embed
-        nil                         nil nil nil "public"       "public"
-        nil                         nil nil nil "metabot"      "metabot"
-        nil                         nil nil nil "agent-api"    "agent-api"
-        ;; fully anonymous, non-special route
-        nil                         nil nil nil nil            nil))))
 
 (defn session-valid?
   [session-key]

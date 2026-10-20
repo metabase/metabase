@@ -2,7 +2,7 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:refer-clojure :exclude [get-in])
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+   [clj-yaml.core]
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]

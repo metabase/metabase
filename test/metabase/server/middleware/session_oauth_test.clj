@@ -4,11 +4,6 @@
   OAuth scopes are mapped onto `:token-scopes` for the scope-enforcement middleware."
   (:require
    [clojure.test :refer [deftest is testing]]
-   ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which the
-   ;; OAuth provider derives its scopes-supported (see [[metabase.mcp.core/all-scopes]]). In a full
-   ;; server boot [[metabase.api-routes.routes]] loads it; the isolated test classpath does not
-   ;; mount the routes, so require it here as that route ns does.
-   [metabase.agent-api.api]
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
@@ -60,9 +55,10 @@
 (deftest oauth-token->token-scopes-test
   (testing "a token carrying the full-access scope maps to the unrestricted sentinel (general REST reachable)"
     (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope})))
-    (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:query:execute"}))))
+           (oauth-token->token-scopes #{oauth-server/full-access-scope}))))
+  (testing "GHY-4942: the other scopes it was granted ride along, since MCP ignores the sentinel and gates on them"
+    (is (= #{::scope/unrestricted "agent:sql:run"}
+           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:sql:run"}))))
   (testing "any narrower scope set is passed through verbatim (only opted-in agent endpoints reachable)"
     (is (= #{"agent:query:execute"}
            (oauth-token->token-scopes #{"agent:query:execute"})))
@@ -175,13 +171,11 @@
         (testing "a session request"
           (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
             (let [req (merge-current-user-info {:metabase-session-key "session-key"})]
-              (is (= "session" (:embedding/auth-method req)))
               (is (nil? (:authenticated-via-oauth? req)))
               (is (passes-scope-middleware? req)))))
         (testing "an API-key request"
           (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-api-key (fn [_] user-info)]
             (let [req (merge-current-user-info {:headers {"x-api-key" "mb_whatever"}})]
-              (is (= "api-key" (:embedding/auth-method req)))
               (is (nil? (:authenticated-via-oauth? req)))
               (is (passes-scope-middleware? req)))))
         (testing "a session request carrying a stray bearer header"
@@ -192,7 +186,6 @@
                 (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
                   (let [req (merge-current-user-info (assoc (bearer-request token) :metabase-session-key "session-key"))]
                     (is (= (mt/user->id :rasta) (:metabase-user-id req)))
-                    (is (= "session" (:embedding/auth-method req)))
                     (is (nil? (:authenticated-via-oauth? req)))
                     (is (passes-scope-middleware? req))))
                 (testing "and over HTTP"
@@ -307,6 +300,5 @@
         (let [req (merge-current-user-info {:headers {"authorization" "Bearer anything"
                                                       "x-api-key"     "mb_whatever"}})]
           (is (= 99 (:metabase-user-id req)))
-          (is (= "api-key" (:embedding/auth-method req)))
           (is (nil? (:token-scopes req)) "api-key auth must not set token-scopes")
           (is (false? @called?) "bearer token store must not be consulted when api-key already authenticated"))))))

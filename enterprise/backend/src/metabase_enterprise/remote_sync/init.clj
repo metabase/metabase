@@ -42,6 +42,8 @@
 (defn- remote-sync-init []
   ;; Only stale rows: a fresh open row may belong to a worker on another node sharing this app DB.
   (remote-sync.task/supersede-stale-tasks!)
+  (settings/pin-remote-sync-collections-enabled!)
+  (events/convert-legacy-transforms-root!)
   (if (settings/remote-sync-enabled)
     (do
       (when (= :read-only (settings/remote-sync-type))
@@ -65,7 +67,10 @@
       (when (= :read-write (settings/remote-sync-type))
         (let [n (events/backfill-action-tracking!)]
           (when (pos? n)
-            (log/infof "Tracking %d existing actions for remote sync" n))))
+            (log/infof "Tracking %d existing actions for remote sync" n)))
+        (let [n (events/backfill-data-app-tracking!)]
+          (when (pos? n)
+            (log/infof "Tracking %d existing data apps for remote sync" n))))
       (when-not (collection/has-remote-synced-collection?)
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")

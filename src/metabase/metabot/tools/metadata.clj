@@ -149,7 +149,7 @@
   "List all data sources (metrics and models) available to the metabot instance."
   [_args :- [:map {:closed true}]]
   (add-output
-   (entity-details-tools/answer-sources {:metabot-id         shared/*metabot-id*
+   (entity-details-tools/answer-sources {:metabot            shared/*metabot*
                                          :with-field-values? false
                                          :with-measures?     true
                                          :with-segments?     true})

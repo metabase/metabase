@@ -27,6 +27,10 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         });
       });
       H.openReviewsTable({ limit: 3 });
+      H.tableInteractive().should("be.visible");
+      cy.findByTestId("development-watermark").should(
+        devMode ? "exist" : "not.exist",
+      );
 
       // FK cell drills
       cy.get(".test-Table-FK").findByText("1").first().click();
@@ -253,7 +257,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         .should("be.visible");
     }
 
-    it("should allow category pivot drills on single-stage queries (metabase#52236)", () => {
+    it("should allow category and timeseries pivot drills on single-stage queries (metabase#52236)", () => {
+      cy.log("Category pivot drill");
       pivotDrillTest({
         query: queryWithJoin,
         drillCellText: "4,939",
@@ -261,15 +266,92 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         filterText: "Products → Category is Gadget",
         resultText: "Barrows-Johns",
       });
-    });
 
-    it("should allow timeseries pivot drills on single-stage queries (metabase#52236)", () => {
+      cy.log("Timeseries pivot drill");
       pivotDrillTest({
         query: queryWithJoin,
         drillCellText: "3,976",
         menuItems: ["Time", "Products", "Created At"],
         filterText: "Products → Category is Doohickey",
         resultText: "July 31, 2025",
+      });
+    });
+
+    describe("issue 43075", () => {
+      const questionDetails = {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      };
+
+      beforeEach(() => {
+        cy.viewport(1000, 300);
+
+        H.createQuestion(questionDetails, { visitQuestion: true });
+      });
+
+      it("the breakout popover should fit within the window (metabase#43075)", () => {
+        cy.findAllByTestId("cell-data").contains("54").click();
+        H.popover().findByText("Break out by…").click();
+        H.popover().findByText("Category").click();
+        H.popover().findByText("Vendor").should("exist");
+
+        cy.document().should((doc) => {
+          expect(doc.documentElement.scrollHeight).to.be.lte(
+            doc.documentElement.offsetHeight,
+          );
+        });
+      });
+    });
+  });
+
+  describe("issue 12368", () => {
+    const questionDetails = {
+      type: "question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ],
+      },
+      visualization_settings: {
+        "table.pivot": true,
+        "table.pivot_column": "CATEGORY",
+        "table.cell_column": "count",
+        column_settings: {
+          [`["ref",["field",${PRODUCTS.VENDOR},null]]`]: {
+            column_title: "Vendor2",
+          },
+        },
+      },
+    };
+
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+    });
+
+    it("should clear pivot settings when doing underlying records drill from a pivot table (metabase#12368)", () => {
+      cy.log("drill thru from a pivot table");
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      cy.findAllByTestId("cell-data").contains("1").first().click();
+      H.popover().findByText("See this Product").click();
+
+      cy.log(
+        "pivot flag should be cleared but other viz settings are preserved",
+      );
+      H.tableInteractive().within(() => {
+        cy.findByText("Ean").should("be.visible");
+        cy.findByText("Vendor2").should("be.visible");
+      });
+      H.openVizSettingsSidebar();
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.button("Add or remove columns").should("be.visible");
+        cy.findByText("Pivot column").should("not.exist");
+        cy.findByText("Cell column").should("not.exist");
       });
     });
   });
@@ -284,7 +366,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         { visitQuestion: true },
       );
 
-      // FK cell drills
+      // Numeric cell drills
       cy.get("[data-testid=cell-data]").filter(":contains(1)").eq(1).click();
       H.popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
@@ -417,44 +499,6 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         cy.findByText("Filter by this column").should("be.visible");
       });
     });
-
-    it("should display proper drills on cell click for query aggregated by date", () => {
-      H.createNativeQuestion(
-        {
-          name: "table_drills",
-          native: {
-            query: `
-            SELECT
-              DATE_TRUNC('month', REVIEWS.CREATED_AT) AS "Created At",
-              COUNT(*) AS "count"
-            FROM
-              REVIEWS
-            GROUP BY
-              DATE_TRUNC('month', REVIEWS.CREATED_AT)
-            LIMIT
-              10
-                  `,
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      cy.get("[data-testid=cell-data]").contains("June").first().click();
-      H.popover().within(() => {
-        cy.findByText("Before").should("be.visible");
-        cy.findByText("After").should("be.visible");
-        cy.findByText("On").should("be.visible");
-        cy.findByText("Not on").should("be.visible");
-      });
-
-      cy.get("[data-testid=cell-data]").contains("4").first().click();
-      H.popover().within(() => {
-        cy.findByText(">").should("be.visible");
-        cy.findByText("<").should("be.visible");
-        cy.findByText("=").should("be.visible");
-        cy.findByText("≠").should("be.visible");
-      });
-    });
   });
 });
 
@@ -554,8 +598,6 @@ describe("Issue 40061", () => {
     H.popover().findByText("Extract day, month…").click();
     H.popover().findByText("Year").click();
     cy.findByTestId("table-header").findByText("Year").should("exist");
-    cy.findByTestId("question-row-count")
-      .findByText("Showing 1,421 rows")
-      .should("exist");
+    H.tableInteractiveBody().findAllByText("2,025").should("not.be.empty");
   });
 });

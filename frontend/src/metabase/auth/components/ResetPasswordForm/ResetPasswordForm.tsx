@@ -9,17 +9,12 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Stack } from "metabase/ui";
+import { Box, Stack, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { memoize } from "metabase/utils/memoize";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
 import type { ResetPasswordData } from "../../types";
-
-import {
-  PasswordFormMessage,
-  PasswordFormTitle,
-} from "./ResetPasswordForm.styled";
 
 const getResetPasswordSchema = () =>
   Yup.object({
@@ -60,10 +55,16 @@ export const ResetPasswordForm = ({
 
   return (
     <div>
-      <PasswordFormTitle>{t`New password`}</PasswordFormTitle>
-      <PasswordFormMessage>
+      <Title
+        order={1}
+        size="h3"
+        c="text-primary"
+        ta="center"
+        mb="lg"
+      >{t`New password`}</Title>
+      <Box c="text-primary" ta="center" mb="xl">
         {t`To keep your data secure, passwords ${passwordDescription}`}
-      </PasswordFormMessage>
+      </Box>
       <FormProvider
         initialValues={initialValues}
         validationSchema={getResetPasswordSchema()}

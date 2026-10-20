@@ -44,7 +44,7 @@
   whatever."
   [{:keys [lib/temporal-unit], :as column-metadata}]
   (if (and temporal-unit
-           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+           (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units temporal-unit))
     :type/Integer
     ((some-fn :effective-type :base-type) column-metadata)))
 

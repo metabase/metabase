@@ -1,7 +1,7 @@
 // WARNING: This file is referenced by CssVarsDeclarationPlugin.
 // If you move or rename it, update the path in css-vars-declaration-plugin.js.
 
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
@@ -88,6 +88,7 @@ export function getMetabaseSdkCssVariables({
         whitelabelColors,
         forceDynamicBrandRamp,
       })}
+      --mb-color-chart-axis: ${theme.fn.themeColor("chart-axis")};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}

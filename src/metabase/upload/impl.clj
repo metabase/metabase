@@ -566,10 +566,16 @@
           table-name              (some->> table-name (ddl.i/format-name driver))
           schema+table-name       (table-identifier {:schema schema :name table-name})
           {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
-          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async.
+          ;; `:data_source :upload` must be set *at insert time*: the `:model/Table` after-insert hook is what
+          ;; assigns permissions, and it reads the data source to decide that the uploader -- already checked to
+          ;; have unrestricted access to this schema (see `can-create-upload-error`) -- gets a table that inherits
+          ;; the schema's permissions rather than failing safe to `:blocked` the way a sync-discovered table would
+          ;; (UXW-3217). `mark-table-upload!` below re-asserts it along with the other upload columns.
           table                   (sync/create-table! db {:name         table-name
                                                           :schema       (not-empty schema)
-                                                          :display_name display-name})
+                                                          :display_name display-name
+                                                          :data_source  :upload})
           _set_is_upload          (upload.db/mark-table-upload! (:id table))
           _sync                   (scan-and-sync-table! db table)
           _set_names              (set-display-names! (:id table) columns)

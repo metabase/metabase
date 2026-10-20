@@ -262,7 +262,6 @@
 description: null
 entity_id: %s
 slug: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived: false
 type: null
 parent_id: null
