@@ -6,9 +6,11 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.settings.core :as setting]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -40,6 +42,21 @@
         (mt/with-dynamic-fn-redefs [impl/async-import! capture]
           (#'init/remote-sync-init)
           (is (empty? @calls)))))))
+
+(deftest pin-remote-sync-collections-enabled-test
+  (testing "First startup stores whether remote sync was already configured, so existing setups keep choosing collections"
+    (doseq [[url expected] [["https://github.com/foo/bar.git" true] [nil false]]]
+      (testing (pr-str url)
+        (mt/with-temporary-setting-values [:remote-sync-url                 url
+                                           :remote-sync-collections-enabled nil]
+          (settings/pin-remote-sync-collections-enabled!)
+          (is (= :database (setting/get-raw-value-source :remote-sync-collections-enabled)))
+          (is (= expected (settings/remote-sync-collections-enabled)))))))
+  (testing "Later startups keep stored value"
+    (mt/with-temporary-setting-values [:remote-sync-url                 nil
+                                       :remote-sync-collections-enabled true]
+      (settings/pin-remote-sync-collections-enabled!)
+      (is (true? (settings/remote-sync-collections-enabled))))))
 
 (deftest remote-sync-init-read-only-without-branch-throws-test
   (testing "Read-only with enabled sync but no branch throws"

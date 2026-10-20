@@ -218,7 +218,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is correct`}>
         <ActionIcon
           aria-label={t`Source is correct`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}
@@ -232,7 +232,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is wrong`}>
         <ActionIcon
           aria-label={t`Source is wrong`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}
@@ -293,7 +293,7 @@ const SourceFeedbackRow = ({
           <EntityIcon
             {...getIcon({ model: source.iconModel })}
             size="0.75rem"
-            c="brand"
+            c="core-brand"
           />
           <Text fz="md" lh="sm" fw="bold" truncate>
             {source.name}

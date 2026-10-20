@@ -95,6 +95,7 @@ const setup = ({
   isDashboard = false,
   width,
   height,
+  skip,
   providers = getTestStoreAndWrapper({ initialRoute: "/" }),
 }: {
   savedSettings?: VisualizationSettings;
@@ -108,6 +109,7 @@ const setup = ({
   isDashboard?: boolean;
   width?: number;
   height?: number;
+  skip?: boolean;
   providers?: ReturnType<typeof getTestStoreAndWrapper>;
 } = {}) => {
   setupTimelinesEndpoints(timelines);
@@ -122,6 +124,7 @@ const setup = ({
           isDashboard,
           width,
           height,
+          skip,
           ...props,
         }),
       { initialProps: { series, settings }, wrapper: providers.wrapper },
@@ -253,6 +256,21 @@ describe("useTimelineEvents", () => {
 
     expect(result.current.timelineEvents).toEqual([]);
     expect(getTimelineRequests()).toHaveLength(0);
+  });
+
+  it("loads nothing when skipped", () => {
+    const { result } = setup({ skip: true });
+
+    // A query that will fetch reports loading from its first render.
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.timelineEvents).toEqual([]);
+    expect(getTimelineRequests()).toHaveLength(0);
+  });
+
+  it("ignores the events it is given when skipped", () => {
+    const { result } = setup({ skip: true, timelineEvents: [SHOWN_EVENT] });
+
+    expect(result.current.timelineEvents).toEqual([]);
   });
 
   it("loads nothing when the host selects no timelines", () => {

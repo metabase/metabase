@@ -112,7 +112,7 @@ describe("scenarios > data apps > resources in production", () => {
         ),
     );
 
-  it("runs the saved question rather than the authored table query", () => {
+  it("runs the saved question rather than the authored table query, and both return the same rows", () => {
     publishApp().then(({ cardId }) => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
@@ -133,15 +133,12 @@ describe("scenarios > data apps > resources in production", () => {
           undefined,
         );
       });
-    });
-  });
 
-  // The swap is only safe if the saved question the author wrote returns what
-  // the definition does. The dev preview runs the definition; production runs
-  // the card. A deployed app cannot run the definition at all, so the two sides
-  // are captured separately rather than side by side.
-  it("returns the same rows from the saved question as from the authored query", () => {
-    publishApp().then(({ cardId }) => {
+      // The swap is only safe if the saved question the author wrote returns what
+      // the definition does. The dev preview runs the definition; production runs
+      // the card. A deployed app cannot run the definition at all, so the two sides
+      // are captured separately rather than side by side.
+      cy.log("the saved question returns the same rows as the authored query");
       cy.request("POST", "/api/dataset", {
         type: "query",
         database: SAMPLE_DB_ID,

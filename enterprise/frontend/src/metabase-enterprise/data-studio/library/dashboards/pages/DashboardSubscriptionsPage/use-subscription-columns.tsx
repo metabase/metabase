@@ -55,7 +55,7 @@ export function useSubscriptionColumns({
           row.original.filters ? (
             <Ellipsified>{row.original.filters}</Ellipsified>
           ) : (
-            <Text c="text-tertiary">{t`None`}</Text>
+            <Text c="text-disabled">{t`None`}</Text>
           ),
       },
       {

@@ -187,17 +187,11 @@ saved later when it is ready."
           (log/errorf "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
-  "Infer the default result_metadata to store for MBQL cards.
-
-  Ignores any that might be present already."
+  "Infer the default result_metadata to store for MBQL cards, as no user, ignoring any already present."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols
-                  ;; 1. This function is called when storing metadata.
-                  ;; 2. The metadata for storage shouldn't have remaps.
-                  ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
-                  (assoc-in query [:middleware :disable-remaps?] true))))))
+                 (qp.preprocess/query->expected-cols query)))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.

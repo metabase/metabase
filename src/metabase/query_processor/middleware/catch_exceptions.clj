@@ -1,9 +1,19 @@
 (ns metabase.query-processor.middleware.catch-exceptions
-  "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:refer-clojure :exclude [some get-in])
+  "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format.
+
+  The response carries only the client-facing part of each exception's ex-data (see [[metabase.util.api-error]]). The
+  error log line carries just the message, plus the ex-data keys listed under `:log/keys`, as log context:
+
+    (throw (ex-info (tru \"Field is not available\")
+                    {:status-code 400, :field-id id, :field-name field-name, :log/keys #{:field-id :field-name}}))
+
+  responds without either key and logs `field-id` and `field-name` alongside the message. Don't list the query or
+  values from it."
+  (:refer-clojure :exclude [some get-in not-empty select-keys])
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
@@ -14,11 +24,12 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some get-in]])
+   [metabase.util.performance :refer [some get-in not-empty select-keys]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -41,19 +52,31 @@
   [^InterruptedException _e]
   {:status :interrupted})
 
+(defn- response-ex-data
+  "The part of an exception's `data` sent to the client: what [[api-error/response-data]] sends, and `:status-code`,
+  which [[metabase.query-processor.streaming]] turns into the HTTP status."
+  [data]
+  (not-empty (merge (api-error/response-data data)
+                    (select-keys data [:status-code]))))
+
 (defmethod format-exception ExceptionInfo
   [e]
   ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
   ;; to be shown to the user. It is used by FE.
-  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)]
+  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)
+        response-data (response-ex-data data)]
+    (when-let [dropped (and config/is-dev?
+                            (not-empty (apply dissoc data (keys response-data))))]
+      (log/debugf "Query error response leaves out ex-data: %s" (pr-str dropped)))
     (merge
      ((get-method format-exception Throwable) e)
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
      (when is-curated
        {:error_is_curated is-curated})
-     ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
-     {:ex-data data})))
+     (when response-data
+       ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
+       {:ex-data response-data}))))
 
 (defmethod format-exception SQLException
   [^SQLException e]
@@ -151,6 +174,19 @@
     (catch Throwable e
       (assoc (Throwable->map e) :status :failed))))
 
+(defn- log-context
+  "The ex-data entries each exception in `e`'s chain lists under `:log/keys`, for the error log line. An inner
+  exception's entries win over an outer one's. Empty when a `:log/keys` is malformed, so that it can't mask `e`."
+  [e]
+  (try
+    (into {}
+          (map (fn [ex]
+                 (let [data (ex-data ex)]
+                   (select-keys data (:log/keys data)))))
+          (u/full-exception-chain e))
+    (catch Throwable _
+      {})))
+
 (mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
@@ -175,8 +211,9 @@
                   pool-saturated?     (qp.error-type/connection-pool-saturated?
                                        (:error_type formatted-exception))]
               (when-not (or query-canceled? pool-saturated?)
-                (log/errorf "Error processing query: %s"
-                            (or (:error formatted-exception) "Error running query")))
+                (log/with-thread-context (log-context e)
+                  (log/errorf "Error processing query: %s"
+                              (or (:error formatted-exception) "Error running query"))))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]

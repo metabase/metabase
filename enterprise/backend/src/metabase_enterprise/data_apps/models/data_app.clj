@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
-   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
@@ -11,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -40,8 +40,7 @@
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts mi/transform-json
-   :table_ids     mi/transform-json})
+   :allowed_hosts mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -100,13 +99,17 @@
 (t2/define-after-select :model/DataApp
   [app]
   (cond-> app
-    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
-    (contains? app :table_ids)     (update :table_ids #(or % []))))
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
 (defmethod mi/can-read? :model/DataApp
   ([app] (mi/can-read? :model/DataApp (:id app)))
   ([_model pk]
-   (data-app.access/can-read? {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} pk)))
+   (or api/*is-superuser?*
+       (and api/*current-user-id*
+            (nil? (:tenant_id @api/*current-user*))
+            (let [group-ids (user/group-ids api/*current-user-id*)]
+              (boolean (some (comp group-ids :permission_group_id)
+                             (data-apps.db/app-assignments [pk]))))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -152,11 +155,8 @@
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
-               :bundle_hash
-               ;; server-managed resources, recreated on import
-               :table_ids]
-   :transform {:created_at   (serdes/date)
-               ;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
+               :bundle_hash]
+   :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}
                :display_name {:as :name :export identity :import identity}

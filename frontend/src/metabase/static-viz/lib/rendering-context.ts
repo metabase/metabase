@@ -1,11 +1,11 @@
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
-import type { ColorPalette } from "metabase/ui/colors/types";
 import {
   DEFAULT_VISUALIZATION_THEME,
   type RenderingContext,
   getCartesianChartSize,
   getVisualizationTheme,
 } from "metabase/viz-core";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 import { createColorGetter } from "../lib/colors";
 
@@ -28,7 +28,7 @@ export const withCartesianChartSize = (
 };
 
 export const createStaticRenderingContext = (
-  colors?: ColorPalette,
+  colors?: ColorSettings,
 ): RenderingContext => {
   const getColor = createColorGetter(colors);
 
