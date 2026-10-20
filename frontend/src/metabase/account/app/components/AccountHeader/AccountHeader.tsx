@@ -28,7 +28,7 @@ export const AccountHeader = ({
     () => [
       { name: t`Profile`, value: "/account/profile" },
       ...(hasAuthenticationTab
-        ? [{ name: t`Authentication`, value: "/account/password" }]
+        ? [{ name: t`Authentication`, value: "/account/authentication" }]
         : []),
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },
