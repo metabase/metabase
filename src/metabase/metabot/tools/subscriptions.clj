@@ -1,15 +1,17 @@
 (ns metabase.metabot.tools.subscriptions
-  "Dashboard subscription tool wrapper."
+  "`create_dashboard_subscription` for the Chat profile, which subscribes a Slack channel that the model names, and
+  the subscription code that it shares with the Slack profile's variant."
   (:require
-   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.models.interface :as mi]
    [metabase.pulse.api :as pulse.api]
-   [metabase.util.malli :as mu]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -22,90 +24,95 @@
           :details      {:channel slack-channel}}
          (metabot.tools.u/schedule->schedule-map schedule)))
 
-(defn- create-dashboard-subscription*
-  "Private helper for create-dashboard-subscription (call that instead)."
-  [{:keys [dashboard-id slack-channel schedule]}]
-  (let [dashboard (some-> (metabot.db/dashboard dashboard-id)
-                          api/read-check
-                          (t2/hydrate [:dashcards :card]))
-        cards (for [{:keys [id card]} (:dashcards dashboard)
-                    :when (-> card :id int?)]
-                (-> card
-                    api/read-check
-                    (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id id
-                           :dashboard_id      dashboard-id
-                           :include_csv       false
-                           :include_xls       false)))
-        channel-name (some->> slack-channel
-                              channel.settings/find-cached-slack-channel-or-username
-                              ;; match existing code which stores display names like "#some-channel"
-                              :display-name)
-        pulse-data (-> dashboard
-                       (select-keys [:collection_id :collection_position :name :parameters])
-                       (assoc :dashboard_id  dashboard-id
-                              :creator_id    api/*current-user-id*
-                              :skip_if_empty false))]
-    (cond
-      (nil? dashboard)
-      {:error "no dashboard with this dashboard_id found"}
+(defn- pulse-card
+  "The question on a dashcard of the dashboard with `dashboard-id`, in the form that
+  [[pulse.api/create-pulse-with-perm-checks!]] takes."
+  [dashboard-id {:keys [id card]}]
+  (-> card
+      (select-keys [:id :name :collection_id :description :display :parameter_mappings])
+      (assoc :dashboard_card_id id
+             :dashboard_id      dashboard-id
+             :include_csv       false
+             :include_xls       false)))
 
-      (nil? channel-name)
-      {:error "no slack channel found with this name"}
+(defn- create-pulse!
+  "Create the pulse that sends the questions on `dashcards` of `dashboard` to the Slack `channel` on `schedule`, and
+  return it."
+  [{dashboard-id :id :as dashboard} dashcards channel schedule]
+  (tools.create-alert/do-with-refusal
+   ::no-subscription-permission
+   (tru "You don''t have permission to create a subscription for this dashboard.")
+   #(pulse.api/create-pulse-with-perm-checks!
+     (map (partial pulse-card dashboard-id) dashcards)
+     [(make-slack-channel schedule channel)]
+     (-> dashboard
+         (select-keys [:collection_id :collection_position :name :parameters])
+         (assoc :dashboard_id  dashboard-id
+                :creator_id    api/*current-user-id*
+                :skip_if_empty false)))))
 
-      :else
-      (do (pulse.api/create-pulse-with-perm-checks!
-           cards
-           [(make-slack-channel schedule channel-name)]
-           pulse-data)
-          {:output "success"}))))
+(defn create-dashboard-subscription!
+  "Subscribe the Slack `channel`, named the way Metabase's cached list of channels names it, to the dashboard with
+  `dashboard-id` on `schedule`, and return the tool result that reports it.
 
-(defn create-dashboard-subscription
-  "Create a dashboard subscription and send it to a slack channel."
-  [{:keys [dashboard-id slack-channel] :as args}]
-  (cond
-    (not (int? dashboard-id))
-    {:error "invalid dashboard_id"}
+  Throws the declared not-found error when the dashboard is missing or unreadable, and an unrecoverable error when
+  the user can read it but may not subscribe to it."
+  [{:keys [dashboard-id channel schedule]}]
+  (let [dashboard (tools/with-entity {:kind :dashboard :id dashboard-id}
+                    (-> (metabot.db/dashboard dashboard-id)
+                        api/read-check
+                        (t2/hydrate [:dashcards :card])))
+        dashcards (filter (comp int? :id :card) (:dashcards dashboard))]
+    (when-not (every? (comp mi/can-read? :card) dashcards)
+      (tools/unrecoverable!
+       ::dashboard-cards-not-readable
+       {:user-message (tru "You can''t subscribe to this dashboard, because you don''t have access to every question on it.")
+        :data         {:dashboard-id dashboard-id}}))
+    (let [pulse (create-pulse! dashboard dashcards channel schedule)]
+      {:output (str "Created subscription " (:id pulse) " to dashboard \"" (:name dashboard) "\" (id " dashboard-id
+                    "), posting to " channel ".")})))
 
-    (not (channel.settings/slack-configured?))
-    {:error "slack is not configured. Ask an admin to connect slack in Metabase settings."}
+(tools/defrecoverable unknown-slack-channel!
+  "`slack_channel` names no channel or user in Metabase's cached list of Slack channels and users."
+  {:payload [:map {:closed true} [:slack-channel :string]]}
+  [{:keys [slack-channel]}]
+  {:message  (str "Metabase can't post to " (pr-str slack-channel) ": it isn't a Slack channel or user that"
+                  " Metabase knows about. Metabase knows public channels, private channels that the Metabase app"
+                  " has been added to, and users. A channel created in the last few hours may not be there yet.")
+   :recovery [{:uses #{}
+               :text "Ask the user for the channel's exact name, as it appears in Slack."}]})
 
-    (empty? slack-channel)
-    {:error "slack_channel is required"}
+(def ^:private tool-description
+  (str "Create a dashboard subscription that sends regular updates to a Slack channel.\n"
+       "\n"
+       "Use when a user wants to receive or send regular updates on a dashboard's contents.\n"
+       "Requires a valid `dashboard_id`, a `slack_channel` name, and a `schedule`.\n"
+       "\n"
+       "Delivery is Slack-only: the `email` argument is not implemented and is ignored, and Slack must\n"
+       "be connected in Metabase settings. A call without `slack_channel` fails, so if the user asks to\n"
+       "be emailed a dashboard, tell them this tool can only deliver to Slack rather than accepting an\n"
+       "email address."))
 
-    :else
-    (try
-      (create-dashboard-subscription* args)
-      (catch Exception e
-        (-> (metabot.tools.u/handle-agent-error e)
-            (set/rename-keys {:output :error}))))))
+(defrecord CreateDashboardSubscriptionTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "create_dashboard_subscription"
+     :description tool-description
+     :scope       scope/agent-dashboard-subscribe
+     :args        [:map {:closed true}
+                   [:dashboard_id :int]
+                   [:email {:optional true} [:maybe :string]]
+                   [:slack_channel [:string {:min 1}]]
+                   [:schedule tools.create-alert/schedule-schema]]})
 
-(def ^:private subscription-schema
-  [:map {:closed true}
-   [:dashboard_id :int]
-   [:email {:optional true} [:maybe :string]]
-   [:slack_channel {:optional true} [:maybe :string]]
-   [:schedule tools.create-alert/schedule-schema]])
+  (handle [_ {:keys [dashboard_id slack_channel schedule]} _ctx]
+    (tools.create-alert/check-slack-configured!)
+    (create-dashboard-subscription!
+     {:dashboard-id dashboard_id
+      :channel      (or (:display-name (channel.settings/find-cached-slack-channel-or-username slack_channel))
+                        (unknown-slack-channel! {:slack-channel slack_channel}))
+      :schedule     schedule})))
 
-(mu/defn ^{:tool-name "create_dashboard_subscription"
-           :scope     scope/agent-dashboard-subscribe}
-  create-dashboard-subscription-tool
-  "Create a dashboard subscription that sends regular updates to a Slack channel.
-
-  Use when a user wants to receive or send regular updates on a dashboard's contents.
-  Requires a valid `dashboard_id`, a `slack_channel` name, and a `schedule`.
-
-  Delivery is Slack-only: the `email` argument is not implemented and is ignored, and Slack must
-  be connected in Metabase settings. A call without `slack_channel` fails, so if the user asks to
-  be emailed a dashboard, tell them this tool can only deliver to Slack rather than accepting an
-  email address."
-  [{:keys [dashboard_id email slack_channel schedule]} :- subscription-schema]
-  (try
-    (-> (create-dashboard-subscription
-         {:dashboard-id  dashboard_id
-          :email         email
-          :slack-channel slack_channel
-          :schedule      schedule})
-        (set/rename-keys {:error :output}))
-    (catch Exception e
-      (metabot.tools.u/handle-agent-or-api-error e))))
+(def create-dashboard-subscription-tool
+  "`create_dashboard_subscription` for the Chat profile."
+  (->CreateDashboardSubscriptionTool))

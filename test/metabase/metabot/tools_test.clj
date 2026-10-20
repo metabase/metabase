@@ -344,14 +344,16 @@
     (mt/with-model-cleanup [:model/Notification :model/Pulse]
       (mt/with-temp [:model/Card      {card-id :id} {}
                      :model/Dashboard {dash-id :id} {}]
-        (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
-          (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [ctx {:memory-atom (atom {:context {:slack_channel_id "C123"}})}]
             (doseq [schedule [{:frequency "weekly" :day_of_week "monday" :hour 9}
                               {:frequency "monthly" :day_of_month "first-monday" :hour 9}]]
               (tools.core/call agent-tools/create-alert-tool
                                {:card_id card-id :send_condition "has_result" :schedule schedule}
-                               {:memory-atom shared/*memory-atom*})
-              (agent-tools/slackbot-create-dashboard-subscription-tool {:dashboard_id dash-id :schedule schedule}))))
+                               ctx)
+              (tools.core/call agent-tools/slackbot-create-dashboard-subscription-tool
+                               {:dashboard_id dash-id :schedule schedule}
+                               ctx))))
         (testing "alerts"
           (is (= #{"0 0 9 ? * 2 *" "0 0 9 ? * 2#1 *"}
                  (->> (models.notification/notifications-for-card card-id)
