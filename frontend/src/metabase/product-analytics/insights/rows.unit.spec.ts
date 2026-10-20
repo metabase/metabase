@@ -1,4 +1,4 @@
-import { parseCountRows } from "./rows";
+import { parseCountRows, parseQuestionLabels } from "./rows";
 
 describe("parseCountRows", () => {
   it("reads totals and groups, treating an empty value as not grouped", () => {
@@ -36,5 +36,30 @@ describe("parseCountRows", () => {
     expect(
       parseCountRows(["k", "reached", "converted"], [[1, null, 3]], []),
     ).toEqual([]);
+  });
+});
+
+describe("parseQuestionLabels", () => {
+  it("reads each question's label", () => {
+    expect(
+      parseQuestionLabels(
+        ["k", "attr_1", "question_label", "reached", "converted"],
+        [
+          [1, "", "/pricing", 100, 20],
+          ["2", "Safari", "/", 40, 4],
+        ],
+      ),
+    ).toEqual(
+      new Map([
+        [1, "/pricing"],
+        [2, "/"],
+      ]),
+    );
+  });
+
+  it("is empty when the population has no labels", () => {
+    expect(
+      parseQuestionLabels(["k", "reached", "converted"], [[1, 100, 20]]),
+    ).toEqual(new Map());
   });
 });

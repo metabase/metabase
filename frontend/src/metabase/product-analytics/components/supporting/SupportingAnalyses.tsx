@@ -18,7 +18,18 @@ export const SupportingAnalyses = ({ supporting }: SupportingAnalysesProps) => {
     return <RetentionCurvesPanel cohorts={cohorts} />;
   }
   if (paths !== undefined) {
-    return <PathStepsPanel steps={paths} />;
+    return (
+      <>
+        <PathStepsPanel steps={paths.steps} />
+        {paths.insights !== undefined && (
+          <InsightsPanel
+            insights={paths.insights}
+            focus={undefined}
+            idleLabel={t`Start the paths at the start of a visit to see insights.`}
+          />
+        )}
+      </>
+    );
   }
   if (funnel === undefined) {
     return null;

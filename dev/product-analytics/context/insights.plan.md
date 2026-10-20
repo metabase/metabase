@@ -154,7 +154,7 @@ For the prototype this doesn't matter. The only trait in the generated data that
 `pa_events_resolved.person__identified` is true from a person's first `identify()` on, and false before. It comes from whether the `ASOF JOIN` found a history row, not from the traits, since an `identify()` can send none of the promoted ones. That makes every `person_*` column empty after it too.
 
 - **False, not NULL, in the table.** A plain per-event fact works everywhere else: Metabase's True/False filter picker, breakouts, cohorts by attribute (the latest value), and attribution that reads the value on a step's event. An earlier version stored NULL before `identify()` to suit the first-value rule, and made the column awkward everywhere else.
-- **Its own as-of rule in insights.** Under the first-value rule a `false` would be the first value for anyone who browsed anonymously, and stick. So each attribute has a rule (`AttributeAsOf` in `funnel-insights.ts`): `first-seen` for everything else, and `true-by-step` for this column, which is `"true"` if it was true on any event by the step and `"false"` otherwise. It's the first-value rule with `false` counted as empty and `"false"` as the fallback, so it fits the same `GROUP BY`. The values match the table's, so an insight maps straight onto a filter.
+- **Its own as-of rule in insights.** Under the first-value rule a `false` would be the first value for anyone who browsed anonymously, and stick. So each attribute has a rule (`AttributeAsOf` in `sql/analyses/insights.ts`): `first-seen` for everything else, and `true-by-step` for this column, which is `"true"` if it was true on any event by the step and `"false"` otherwise. It's the first-value rule with `false` counted as empty and `"false"` as the fallback, so it fits the same `GROUP BY`. The values match the table's, so an insight maps straight onto a filter.
 - **Wins ties.** When it and a trait are empty for the same people, the search keeps whichever attribute comes first, and `candidates.ts` puts this one first.
 - **Labels:** "Person is identified" and "Person is anonymous" in titles, "Identified" and "Anonymous" on chart axes, with an info icon that explains them. Not "Signed up": `identify()` might also fire on a newsletter signup or an invite. Other columns get the info icon when they have a description in Metabase.
 - **The double underscore** keeps it apart from a trait called `identified` promoted as `person_identified`.
@@ -413,13 +413,32 @@ The search reads rows of (question, attribute values, reached, converted). For f
 | Analysis | Population | Success |
 |---|---|---|
 | Funnel | reached step k | reached step k+1 |
+| Paths (bounces) | visits that landed on page k | had no other step |
 | Cohorts | started in the cohort | returned in period N |
 | Habit | active in the lookback | active ≥ X sub-periods |
 | Lifecycle | active in a period | active in the next period |
 
-Paths isn't a rate, so it's out of scope.
+Paths as a whole isn't a rate, but its bounces are (see [Bounces](#bounces)). Exits are too, but left out for now: every visit exits somewhere, so a group with shorter visits exits more from every page, and the "explained by" rule only compares insights within one question, so it can't fold those together.
 
-The contract per analysis is a CTE of (actor, question, as_of, converted). Shared code adds the attribute values as of `as_of`. Both passes and the search are shared. Build this abstraction when the second analysis is added, not before.
+### The shared framework
+
+Built with bounces, the second analysis:
+
+- **SQL** (`sql/analyses/insights.ts`): an analysis supplies an `InsightPopulation`, a CTE with one row per actor per question: `k`, `converted` and each attribute by its id, as of the question's moment. Optionally a `label` per question. The singles, pairs and explore queries run over it unchanged.
+- **Search:** what was a transition is a question. `search.ts`, `counts.ts` and `segments.ts` don't know what kind.
+- **Hook** (`insights/use-insights.ts`): takes an `InsightsAnalysis` adapter, saying when it applies, how to build its population, and how to head each question. `funnel-analysis.ts` and `bounce-analysis.ts` are the two.
+- **Wording** (`insights/outcomes.ts`): an `InsightOutcome` per analysis, for the panel and the explore chart ("2× as likely to bounce", "visits"), and whether a higher rate is better. A higher bounce rate is red.
+
+The as-of rule is the population's: a funnel takes the first value seen by the person by reaching step k; bounces take the value on the landing event.
+
+### Bounces
+
+- **When:** only for paths from the start of a visit, like the bounce rate in the steps table. Paths that require an event leave out every visit that bounced anywhere else.
+- **Questions:** the 5 most common landing pages (`MAX_LANDING_PAGES`), so the counts under each heading match the steps table's entrances and bounces for it.
+- **Who:** visits, not people. A person with several visits counts once per visit.
+- **Attributes as of landing:** the value on the visit's first step's event. A value from later in the visit would leak the outcome, and the funnel's per-person rule would give every visit the person's first-ever UTM tags.
+- **Bounce** means the visit had one step, after merging repeats and with the event kinds the paths count. A visit that viewed one page and then fired an event that isn't counted as a step still bounced.
+- In the generated data with the last 30 days, viewers bounce more from every app page and admins less. Nothing is planted for bounces, so there's no ground truth to check against yet.
 
 ## Implementation
 
@@ -446,12 +465,12 @@ The top insight with the app's defaults was "Person Plan is not set" at pricing 
 A fix needs both: some way to test a pair against an explanation with a third condition (or a cheap three-way count for the conditions in question), and then only kept insights explaining others. The "explained by" test also counts "no significant difference" as explained, so a small remainder can't save an insight even when its effect is the same size. "Admin" was explained by "desktop" that way, with only about 400 admins not on desktop.
 
 - **Test data:** `dev/product-analytics/generate.ts`, `sql/04_pa_events_resolved.sql`, `ground-truth.json`.
-- **Planner:** in `sql/analyses/funnel.ts`, extract `funnel_levels` into a builder that takes attribute columns. Add `planFunnelInsights(spec, attributes, pass)`, which returns `funnel_transitions` plus the pass 1, pass 2 and explore `SELECT`s. The "last definition wins" dedupe in `compose.ts` lets it replace `funnel_levels`.
+- **Planner:** in `sql/analyses/funnel.ts`, extract `funnel_levels` into a builder that takes attribute columns. `funnelInsightPopulation` in `sql/analyses/funnel-insights.ts` builds `funnel_transitions`; the pass 1, pass 2 and explore `SELECT`s are the shared ones in `sql/analyses/insights.ts`. The "last definition wins" dedupe in `compose.ts` lets it replace `funnel_levels`.
 - **New files under `insights/`:**
   - `candidates.ts`: column selection from table metadata.
   - `plan-pass-2.ts`: kept values and M from pass 1 and the budget.
   - `search.ts`: pure function, rows in and ranked insights out. Covers the z-test, Benjamini–Hochberg, the interaction test and the "explained by" rule. Unit-tested against the planted effects.
-- **Hook:** `insights/use-funnel-insights.ts` runs pass 1 then pass 2, reusing `useCompiledBase` from `use-analysis-query.ts`. Both passes raise the `/api/dataset` row limit to the pass 2 budget with `constraints`.
+- **Hook:** `insights/use-insights.ts` runs pass 1 then pass 2, reusing `useCompiledBase` from `use-analysis-query.ts`. Both passes raise the `/api/dataset` row limit to the pass 2 budget with `constraints`.
 - **UI:** `components/InsightsPanel.tsx`, a toggle in `AnalysisToolbar.tsx`, layout in `AnalysisWorkspace.tsx`, and the panel's open state in local storage.
 - **Explore:** build an ad-hoc native card and navigate with `Urls.serializedQuestion`.
 

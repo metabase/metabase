@@ -23,11 +23,13 @@ import {
   type FunnelPaths,
   useFunnelPaths,
 } from "../funnel-paths/use-funnel-paths";
+import { BOUNCE_INSIGHTS } from "../insights/bounce-analysis";
 import {
   getClickedStep,
   getClickedTransition,
 } from "../insights/clicked-transition";
 import { FUNNEL_INSIGHTS } from "../insights/funnel-analysis";
+import type { InsightsAnalysis } from "../insights/types";
 import { type Insights, useInsights } from "../insights/use-insights";
 import { type PathSteps, usePathSteps } from "../path-steps/use-path-steps";
 import type { AnalysisSpec, FunnelSpec } from "../spec/types";
@@ -69,6 +71,13 @@ export type FunnelSupport = {
   insights: InsightsSupport;
 };
 
+/** The steps across a paths analysis, and who bounces from its landing pages. */
+export type PathsSupport = {
+  steps: PathSteps;
+  /** Undefined unless the paths cover every visit from its first step. */
+  insights: Insights | undefined;
+};
+
 /** The retention curves below the cohort table, from the table's own result. */
 export type CohortsSupport = {
   /** The line chart, once the cohort query's result is in. */
@@ -80,20 +89,33 @@ export type CohortsSupport = {
 export type SupportingAnalyses = {
   /** Set while the analysis is a funnel. */
   funnel: FunnelSupport | undefined;
-  /** Set while the analysis is paths: the steps across them. */
-  paths: PathSteps | undefined;
+  /** Set while the analysis is paths. */
+  paths: PathsSupport | undefined;
   /** Set while the analysis is cohorts. */
   cohorts: CohortsSupport | undefined;
   /** The chart click actions that lead to a supporting analysis. */
   getClickActions: (clicked: ClickObject) => ClickAction[];
 };
 
+const getInsightsAnalysis = (
+  spec: AnalysisSpec | undefined,
+): InsightsAnalysis | undefined => {
+  switch (spec?.kind) {
+    case "funnel":
+      return FUNNEL_INSIGHTS;
+    case "paths":
+      return BOUNCE_INSIGHTS;
+    default:
+      return undefined;
+  }
+};
+
 /**
  * The supporting analyses below an analysis's primary chart, and the chart
  * click actions that bring one of them into view. Each kind of analysis
  * contributes its own: a funnel shows the paths between its steps and the
- * insights into who converts, paths show their steps' entrances and exits,
- * and cohorts show their retention curves.
+ * insights into who converts, paths show their steps' entrances and exits
+ * and the insights into who bounces, and cohorts show their retention curves.
  */
 export const useSupportingAnalyses = ({
   spec,
@@ -127,7 +149,7 @@ export const useSupportingAnalyses = ({
 
   const insights = useInsights({
     spec,
-    analysis: isFunnel ? FUNNEL_INSIGHTS : undefined,
+    analysis: getInsightsAnalysis(spec),
     tableId,
     base,
     context,
@@ -195,7 +217,12 @@ export const useSupportingAnalyses = ({
           insights: { insights, focus: insightsFocus },
         }
       : undefined,
-    paths: isPaths ? pathSteps : undefined,
+    paths: isPaths
+      ? {
+          steps: pathSteps,
+          insights: insights.state.status !== "idle" ? insights : undefined,
+        }
+      : undefined,
     cohorts: isCohorts
       ? {
           series: cohortsSeries,

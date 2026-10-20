@@ -1,5 +1,5 @@
 import type { AnalysisSpec, PathsSpec } from "../../spec/types";
-import type { QueryPlan } from "../compose";
+import type { Cte, QueryPlan } from "../compose";
 
 import { pathWindowCtes } from "./paths";
 
@@ -13,6 +13,18 @@ export const PATH_STEPS_COLUMNS = {
 } as const;
 
 const MAX_STEPS = 100;
+
+/** How many steps each visit in `ordered_steps` had. */
+export const VISIT_LENGTHS_CTE: Cte = {
+  name: "visit_lengths",
+  note: "how many steps each visit had",
+  deps: ["ordered_steps"],
+  body: [
+    "SELECT actor, visit, max(position) AS visit_length",
+    "FROM ordered_steps",
+    "GROUP BY actor, visit",
+  ].join("\n"),
+};
 
 /**
  * Whether a path's window can start at the first step of a visit, so that
@@ -58,16 +70,7 @@ export const planPathSteps = (spec: AnalysisSpec): QueryPlan => {
   return {
     ctes: [
       ...window.ctes,
-      {
-        name: "visit_lengths",
-        note: "how many steps each visit had",
-        deps: ["ordered_steps"],
-        body: [
-          "SELECT actor, visit, max(position) AS visit_length",
-          "FROM ordered_steps",
-          "GROUP BY actor, visit",
-        ].join("\n"),
-      },
+      VISIT_LENGTHS_CTE,
       {
         name: "window_steps",
         note: "each visit's steps inside its window, with the visit's length",
