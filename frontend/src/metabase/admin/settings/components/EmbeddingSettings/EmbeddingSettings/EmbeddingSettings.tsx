@@ -22,6 +22,7 @@ import { Box, Group, Icon, Stack, Text } from "metabase/ui";
 import { EmbeddingSdkSettings } from "../EmbeddingSdkSettings/EmbeddingSdkSettings";
 import S from "../EmbeddingSettings.module.css";
 import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
+import { SdkReact18Alert } from "../SdkReact18Alert/SdkReact18Alert";
 import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSettings";
 
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
@@ -31,6 +32,8 @@ function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
 
   return (
     <SettingsPageWrapper title={t`Embedding settings`}>
+      <SdkReact18Alert />
+
       {children}
 
       <RelatedSettingsSection
