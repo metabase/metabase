@@ -55,9 +55,9 @@ Put each test in one bucket:
 
 | Bucket | Meaning | Action |
 |---|---|---|
-| **A: Fully mocked** | `cy.intercept(..., { body })`, `req.reply(...)` or a fixture stubs the data that the test asserts on. The real backend only serves the page. | Move |
+| **A: Fully mocked** | `cy.intercept(..., { body })`, `req.reply(...)` or a fixture stubs the data that the test asserts on. The real backend only serves the page. A submit, a save or an Enter key is still A when the intercept stubs the response that it gets. | Move |
 | **B: Render-only** | The test visits a page, or seeds state through the API, and then asserts on the UI. No action has an effect that goes through the backend. Clicks that only navigate or open UI are still B. | Move |
-| **S: Contract seam** | A UI action sends a request, and the test checks how the UI shows the response. A backend test already pins that response. | Move the UI half, only when the user asks or the spec is slow or flaky |
+| **S: Contract seam** | A UI action sends a request, the real backend answers, and the test checks how the UI shows the response. A backend test or a framework rule already pins that response. | Move the UI half, only when the user asks or the spec is slow or flaky |
 | **N: Narrow** | True e2e, but over-split or doing more boots than the coverage needs. | Record it. Do not change it here. |
 | **C: True e2e** | The value comes from the integration. | Keep |
 
@@ -100,7 +100,7 @@ Look for coverage that is easy to miss: route-level harnesses (often one spec fo
 
 1. Find the endpoint that the UI action calls, and its backend test:
    `rg -n "<endpoint path>" test/ enterprise/backend/test/`
-2. Find the case that makes the same response: the same status, and the same body or `:errors` shape. Note the `file:line`.
+2. Find the case that makes the same response: the same status, and the same body or `:errors` shape. Note the `file:line`. A response that a shared framework function makes for all endpoints is pinned by that function: for example `api/check-404` without a message sends `404` with `"Not found."` (`src/metabase/api/common.clj`). Note the function, not a test for each endpoint.
 3. If it exists, the backend half is covered. Move the UI half: mock the same status and body, and assert what the user sees.
 4. If it does not exist, the test stays in C. Report the missing backend test. Do not write it: backend tests need reviewers from other teams. Add one only with explicit approval.
 

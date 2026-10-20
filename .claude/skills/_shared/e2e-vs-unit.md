@@ -12,6 +12,7 @@ A request to the backend alone is not sufficient. Keep the test if one of these 
 - The server must honor a URL: a URL parameter round trip, or browser back and forward that reloads data. Frontend-only navigation is not a reason: the router location covers it in Jest.
 - The assertion needs a real browser. jsdom does not do these: layout and measured sizes, CSS visibility and overflow, scroll and virtualization, focus and keyboard across iframes, clipboard, file downloads, `ResizeObserver`, canvas and SVG geometry, a click at chart coordinates, drag, hit-testing, drill-through from a rendered chart.
 - The test sends real traffic to a service that the CI stack runs (mail catcher, webhook tester), **and** no backend test sends the same traffic to a real local server.
+- The assertion needs the real build: a dynamic `import()` of an asset, a bundler loader rule (for example `.md` as raw text), code splitting, or a file that another team owns and can rename (for example `docs/`). Jest resolves modules differently and does not run the bundler. Split the test: a unit test can check the mapping and that the files exist, and one short e2e test keeps the load in the real build. If you do not keep that e2e test, report the gap.
 
 ### Signals for Jest + RTL (move)
 
