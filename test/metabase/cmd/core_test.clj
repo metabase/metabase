@@ -1,5 +1,6 @@
 (ns metabase.cmd.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [metabase.cmd.core :as cmd]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
@@ -71,3 +72,13 @@
 
        ["--full-stacktrace"]
        {:full-stacktrace true}))))
+
+(deftest ^:parallel all-documentation-test
+  (testing "`all-documentation` runs every `*-documentation` command"
+    (let [generators (set @#'cmd/doc-generators)]
+      (is (empty? (for [[symb varr] (ns-interns 'metabase.cmd.core)
+                        :when (and (:command (meta varr))
+                                   (str/ends-with? (name symb) "-documentation")
+                                   (not= symb 'all-documentation)
+                                   (not (generators varr)))]
+                    symb))))))

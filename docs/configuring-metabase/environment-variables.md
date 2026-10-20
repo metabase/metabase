@@ -1936,6 +1936,14 @@ The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a
 
 The display name for Metabot, shown throughout the Metabase UI.
 
+### `MB_METABOT_QUERY_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
+
+Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
+
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
 - Type: boolean
@@ -1961,6 +1969,13 @@ Whether to show Metabot illustrations in the UI.
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_METABOT_SQL_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether Metabot can also run SQL queries it wrote, for questions a notebook query can't express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.
 
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 
@@ -2150,6 +2165,17 @@ cron syntax string to schedule refreshing persisted models.
 - [Configuration file name](./config-file.md): `persisted-models-enabled`
 
 Allow persisting models into the source database.
+
+### `MB_PIVOT_MAX_RESULT_ROWS`
+
+- Type: integer
+- Default: `200000`
+- [Exported as](../installation-and-operation/serialization.md): `pivot-max-result-rows`.
+- [Configuration file name](./config-file.md): `pivot-max-result-rows`
+
+Maximum number of rows a pivot query can return. Overrides MB_AGGREGATED_QUERY_ROW_LIMIT for pivot queries.
+
+Applies to pivot queries only. When MB_USE_NATIVE_PIVOT_TABLES is on and the driver supports native pivots, this is a hard cap on the number of rows a pivot query returns. Otherwise it only approximates the cap, and larger pivots can exceed it. Must be less than 1048575.
 
 ### `MB_PREMIUM_EMBEDDING_TOKEN`
 

@@ -25,7 +25,7 @@
     (testing "the manifest names the app, its bundle, its version and the collection it owns"
       (is (=? {:name        "Sales Ops"
                :slug        "sales-ops"
-               :path        "./dist/index.js"
+               :path        "dist/index.js"
                :version     data-apps.config/supported-app-version
                :collection  collection-id
                :entity_id   string?
@@ -49,6 +49,15 @@
             (file-yaml result "data_apps/ops/data_app.yaml")))
     (testing "the collection is named after the slug, so apps sharing a display name don't share a collection file"
       (is (=? {:name "Data App: ops"} (file-yaml result "collections/data_apps/data_app__ops.yaml"))))))
+
+(deftest keeps-the-entity-ids-of-an-existing-app-test
+  (let [app-id        "existingAppIdxxxxxxxx"
+        collection-id "existingCollIdxxxxxxx"
+        result        (generate.app/generate {:name "Sales Ops" :entity_id app-id :collection_id collection-id})]
+    (is (=? {:entity_id app-id :collection collection-id}
+            (file-yaml result "data_apps/sales-ops/data_app.yaml")))
+    (is (=? {:entity_id collection-id}
+            (file-yaml result "collections/data_apps/data_app__sales_ops.yaml")))))
 
 (deftest derives-the-slug-from-the-name-test
   (are [app-name slug] (some? (file-yaml (generate.app/generate {:name app-name})
@@ -74,6 +83,17 @@
     (testing "an explicit slug is kept"
       (is (=? {:files [{:path "data_apps/ops/data_app.yaml"} {}]}
               (mt/user-http-request :crowberto :post 200 "apps/generate/app" {:name "Sales Ops" :slug "ops"}))))
+    (testing "an existing app's entity IDs are kept"
+      (let [{[app collection] :files} (mt/user-http-request :crowberto :post 200 "apps/generate/app"
+                                                            {:name          "Sales Ops"
+                                                             :entity_id     "existingAppIdxxxxxxxx"
+                                                             :collection_id "existingCollIdxxxxxxx"})]
+        (is (=? {:entity_id "existingAppIdxxxxxxxx" :collection "existingCollIdxxxxxxx"}
+                (yaml/parse-string (:yaml app))))
+        (is (=? {:entity_id "existingCollIdxxxxxxx"}
+                (yaml/parse-string (:yaml collection))))))
+    (testing "an entity ID that is not a NanoID is refused"
+      (mt/user-http-request :crowberto :post 400 "apps/generate/app" {:name "Sales Ops" :entity_id "not-an-id"}))
     (testing "only a superuser writes an app's repository"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "apps/generate/app" {:name "Sales Ops"}))))

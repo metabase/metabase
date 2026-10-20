@@ -173,11 +173,7 @@ export function PermissionsTable({
                   <Label display="inline" m={0}>
                     {name}{" "}
                     {hint && (
-                      <Tooltip
-                        label={hint}
-                        closeDelay={100}
-                        classNames={{ tooltip: CS.pointerEventsAuto }}
-                      >
+                      <Tooltip label={hint}>
                         <Icon
                           className={CS.cursorPointer}
                           name="info"
@@ -251,7 +247,9 @@ const EntityRow = memo(function EntityRow({
             // The hub overrides the link's default admin purple with its own
             // blue, both colors the design system already owns.
             style={
-              isEmbeddingHub ? { color: "var(--mb-color-brand)" } : undefined
+              isEmbeddingHub
+                ? { color: "var(--mb-color-core-brand)" }
+                : undefined
             }
           >
             {entityName}

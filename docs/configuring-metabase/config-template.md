@@ -268,10 +268,12 @@ config:
     metabot-limit-unit: tokens
     metabot-name: Metabot
     metabot-nlq-system-prompt: ''
+    metabot-query-execution-enabled: false
     metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
     metabot-show-illustrations: true
     metabot-slack-signing-secret: null
+    metabot-sql-execution-enabled: true
     metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
@@ -291,6 +293,7 @@ config:
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
+    pivot-max-result-rows: 200000
     premium-embedding-token: null
     query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000

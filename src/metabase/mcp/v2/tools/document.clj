@@ -536,7 +536,8 @@
   {:name           "document_write"
    :default-access :allowed
    :scope          metabot.scope/agent-content-write
-   :annotations    {:readOnlyHint false :destructiveHint false}
+   ;; `destructiveHint`: `archived: true` trashes the document, and a full-body rewrite orphans its comments.
+   :annotations    {:readOnlyHint false, :destructiveHint true}
    :args           document-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write

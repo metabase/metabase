@@ -298,7 +298,11 @@
                                          :session-id                    session-id
                                          :profile                       (some-> profile-id name)
                                          :duration-ms                   (some-> (:duration-ms part) long)
-                                         :result                        (if (:error part) "error" "success")
+                                         ;; A failed call carries `:error` on its result — success
+                                         ;; is the absence of it, as it is everywhere else.
+                                         :result                        (if (get-in part [:result :error])
+                                                                          "error"
+                                                                          "success")
                                          :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
                                                                                                (:function part)
                                                                                                "unknown")}
@@ -376,6 +380,61 @@
     (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
     :unavailable))
 
+(def ^:private context-overflow-message
+  "The overflow 400 text of providers that send no structured code for it.
+
+  Probed 2026-10-09 (https://github.com/metabase/metabase/pull/83989): OpenRouter \"This endpoint's maximum context
+  length is 200000 tokens\", DeepSeek \"This model's maximum context length is 1048576 tokens\", Mistral \"Prompt
+  1000015 > 262144 maximum context length\", Moonshot \"exceeded model token limit: 262144\". Documented: Moonshot
+  \"Input token length too long\" and \"prompt tokens + max_tokens exceeds the model specification\"
+  (https://platform.kimi.ai/docs/api/errors), Anthropic \"prompt is too long\"
+  (https://platform.claude.com/docs/en/build-with-claude/context-windows). Probed 2026-10-13: OpenRouter relays an
+  upstream overflow as that upstream's own text, \"prompt is too long: 250027 tokens > 200000 maximum\". Gemini on
+  Vertex: \"The input token count exceeds the maximum number of tokens allowed 1048576.\" with `INVALID_ARGUMENT`."
+  (re-pattern (str/join "|" ["maximum context length"                    ; OpenRouter, DeepSeek, Mistral
+                             "exceeded model token limit"                ; Moonshot
+                             "token length too long"                     ; Moonshot
+                             "exceeds the model specification"           ; Moonshot
+                             "prompt is too long"                        ; Anthropic; OpenRouter relaying it
+                             "input token count exceeds the maximum"]))) ; Gemini
+
+(defn- context-overflow-object?
+  "True when a provider's `error` object says the prompt does not fit the model's context window.
+
+  Reads the object of a 400 body or of an error streamed after a 200."
+  [{:keys [message code metadata]}]
+  (or ;; https://openrouter.ai/docs/api_reference/errors-and-debugging ("Typed error codes")
+   (= "context_length_exceeded" (:error_type metadata))
+   ;; https://docs.z.ai/api-reference/api-code (1261 "Prompt too long")
+   (= "1261" (str code))
+   (boolean (re-find context-overflow-message (str message)))
+   ;; OpenRouter sends an upstream's overflow as "Provider returned error", with no `error_type`. The upstream's own
+   ;; body is a JSON string in `metadata.raw` (probed 2026-10-13, https://github.com/metabase/metabase/pull/83989).
+   (boolean (re-find context-overflow-message (str (:raw metadata))))))
+
+(defn- context-overflow?
+  "True when a provider API error's ex-data is a 400 for a prompt that does not fit the model's context window."
+  [{:keys [status body]}]
+  (and (= status 400)
+       ;; Mistral puts its error at the top level, not under `error`.
+       (context-overflow-object? (or (:error body) body))))
+
+(defn- context-full-error
+  "The user-facing `{:message :error-code}` for a conversation too long for the model's context window."
+  []
+  {:error-code core/context-full-error-code
+   :message    (tru "This conversation has reached its maximum length and can''t continue. Please start a new chat.")})
+
+(defn context-overflow-error
+  "A user-facing `{:message :error-code}` for a request too long for the model's context window, or nil.
+
+  Returns the map when the provider rejected the request because the conversation does not fit the window.
+  Unlike [[provider-error]], this also applies on the managed provider: the conversation is full, not the account."
+  [e]
+  (let [data (ex-data e)]
+    (when (and (:api-error data) (context-overflow? data))
+      (context-full-error))))
+
 (defn provider-error
   "A user-facing `{:message :error-code}` for a provider failure we can explain better than the generic error, or nil.
   Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them.
@@ -410,12 +469,23 @@
                                        (tru "{0} is having problems right now. Try again in a few minutes." provider-name)
                                        (tru "The AI provider is having problems right now. Please try again in a few minutes."))}))))))
 
+(defn- streamed-error
+  "The user-facing `{:message :error-code}` for an `error` object streamed after a 200, or nil.
+
+  A context overflow gets [[context-full-error]]; there is no status to check. OpenRouter sends every failure after
+  its 200 inside the stream, with a typed `error.metadata.error_type`
+  (https://openrouter.ai/docs/api_reference/errors-and-debugging)."
+  [provider error]
+  (if (context-overflow-object? error)
+    (context-full-error)
+    (provider-error provider nil error)))
+
 (defn- provider-error-xf
-  "Transducer that replaces the error on a streamed `:error` part with [[provider-error]]'s, when it has one."
+  "Transducer that replaces the error on a streamed `:error` part with [[streamed-error]]'s, when it has one."
   [provider]
   (map (fn [part]
          (if-let [error (when (= :error (:type part))
-                          (provider-error provider nil (:error part)))]
+                          (streamed-error provider (:error part)))]
            (assoc part :error error)
            part))))
 

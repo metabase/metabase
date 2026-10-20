@@ -197,7 +197,7 @@ export const InviteToViewModal = ({
   }
 
   return (
-    <Modal opened title={title} onClose={onClose}>
+    <Modal density="relaxed" opened title={title} onClose={onClose}>
       {body}
     </Modal>
   );

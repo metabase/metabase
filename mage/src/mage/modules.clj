@@ -151,6 +151,7 @@
      custom-viz-plugin
      dashboards
      data-apps
+     dependencies
      documents
      api.eid-translation
      embedding
@@ -164,6 +165,7 @@
      events
      explorations
      formatter
+     funnysql
      geojson
      glossary
      indexed-entities

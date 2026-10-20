@@ -893,17 +893,45 @@
                           :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
                          error-chunk]))))
         (testing "without emitting any chunk of a half-streamed tool call"
-          (is (= [{:type :start :messageId "chatcmpl-5"}
-                  {:type :error :errorText message}]
-                 (into [] xf
-                       [{:id      "chatcmpl-5"
-                         :model   "kimi-k2.6"
-                         :choices [{:index 0
-                                    :delta {:tool_calls [{:index    0
-                                                          :id       "call-1"
-                                                          :type     "function"
-                                                          :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
-                        error-chunk]))))))))
+          (is (=? [{:type :start :messageId "chatcmpl-5"}
+                   {:type :error :errorText message}]
+                  (into [] xf
+                        [{:id      "chatcmpl-5"
+                          :model   "kimi-k2.6"
+                          :choices [{:index 0
+                                     :delta {:tool_calls [{:index    0
+                                                           :id       "call-1"
+                                                           :type     "function"
+                                                           :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
+                         error-chunk]))))))))
+
+(def ^:private openrouter-midstream-overflow-chunk
+  "OpenRouter's documented mid-stream error event for a context overflow.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  `error.code` 400, `error.message` \"Provider returned error\" and `error.metadata.error_type`
+  \"context_length_exceeded\" in place of the example's rate-limit values."
+  {:id       "gen-abc123"
+   :object   "chat.completion.chunk"
+   :created  1234567890
+   :model    "anthropic/claude-haiku-4.5"
+   :provider "Anthropic"
+   :error    {:code 400 :message "Provider returned error" :metadata {:error_type "context_length_exceeded"}}
+   :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]})
+
+(deftest ^:parallel chunks-xf-streamed-error-keeps-the-error-object-test
+  (testing "an error object sent partway through a stream rides on the error chunk, with its typed fields"
+    (is (= [{:type      :error
+             :errorText "Provider returned error"
+             :error     {:code     400
+                         :message  "Provider returned error"
+                         :metadata {:error_type "context_length_exceeded"}}}]
+           (filterv #(= :error (:type %)) (into [] (openrouter/openrouter->aisdk-chunks-xf)
+                                                [openrouter-midstream-overflow-chunk])))))
+  (testing "an error finish reason with no error object carries only the text"
+    (is (= [{:type :error :errorText "The model provider failed to complete the response"}]
+           (filterv #(= :error (:type %)) (into [] (openrouter/openrouter->aisdk-chunks-xf)
+                                                [{:choices [{:index 0 :delta {} :finish_reason "error"}]}]))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error finish reason tests

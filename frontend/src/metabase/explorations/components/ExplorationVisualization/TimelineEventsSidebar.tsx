@@ -37,7 +37,7 @@ export function TimelineEventsSidebar({
             events.length,
           )}
         </Text>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <Icon name="close" />
         </ActionIcon>
       </Group>

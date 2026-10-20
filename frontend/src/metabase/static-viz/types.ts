@@ -1,4 +1,3 @@
-import type { ColorPalette } from "metabase/ui/colors/types";
 import type { VisualizationGridSize } from "metabase/viz-core";
 import type {
   Card,
@@ -13,10 +12,11 @@ import type {
   TokenFeatures,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 export type RenderChartOptions = {
   tokenFeatures: TokenFeatures;
-  applicationColors: ColorPalette;
+  applicationColors: ColorSettings;
   customFormatting: FormattingSettings;
   startOfWeek: DayOfWeekId | null | undefined;
   // Explicit pixel dimensions for the chart. Use fitWithinBounds to have height include

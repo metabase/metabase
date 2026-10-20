@@ -5,6 +5,7 @@ import {
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
 } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { hasFeature } from "metabase/databases";
@@ -18,16 +19,6 @@ import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 interface Props {
   database: Database;
   disabled: boolean;
-}
-
-interface ErrorResponse {
-  data?: {
-    message?: string;
-  };
-}
-
-function isLackPermissionsError(response: ErrorResponse) {
-  return response?.data?.message?.startsWith("Lack permissions");
 }
 
 export function ModelCachingControl({ database, disabled }: Props) {
@@ -51,14 +42,13 @@ export function ModelCachingControl({ database, disabled }: Props) {
         await persistDatabase(databaseId).unwrap();
       }
     } catch (error) {
-      // Unjustified type cast. FIXME
-      const response = error as ErrorResponse;
-      if (isLackPermissionsError(response)) {
+      const message = findErrorMessage(error);
+      if (message?.startsWith("Lack permissions")) {
         setError(
           t`For models to be cached, the user should have create table permission or create schema permission in this database.`,
         );
       } else {
-        setError(response.data?.message || t`An error occurred`);
+        setError(message ?? t`An error occurred`);
       }
       throw error;
     }

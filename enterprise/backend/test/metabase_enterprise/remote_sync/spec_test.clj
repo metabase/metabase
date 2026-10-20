@@ -8,10 +8,13 @@
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 ;;; ------------------------------------------------ Spec Validation Tests ---------------------------------------------
 
@@ -27,16 +30,16 @@
 
 (deftest all-specs-have-valid-identity-test
   (testing "Every spec has a valid identity type"
-    (let [valid-identity-types #{:entity-id :path :hybrid}]
+    (let [valid-identity-types #{:entity-id :hybrid :user-settings}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-identity-types (:identity spec))
               (str "Invalid identity type: " (:identity spec))))))))
 
 (deftest path-based-specs-have-path-keys-test
-  (testing "Specs with :path or :hybrid identity have :path-keys"
+  (testing "Specs with :hybrid identity have :path-keys"
     (doseq [[model-key spec] spec/remote-sync-specs
-            :when (#{:path :hybrid} (:identity spec))]
+            :when (= :hybrid (:identity spec))]
       (testing (str "Spec for " model-key)
         (is (vector? (:path-keys spec))
             "path-keys should be a vector")
@@ -96,11 +99,9 @@
         (when-let [cf (:cascade-filter spec)]
           (is (map? cf)
               ":cascade-filter should be a map when present")))))
-  (testing "children-specs derives the correct children for Table"
-    (let [children (spec/children-specs :model/Table)]
-      (is (= 1 (count children)))
-      (is (= #{:model/Field}
-             (into #{} (map :model-key) children)))))
+  (testing "children-specs derives the cascading children of TableUserSettings"
+    (is (= #{:model/FieldUserSettings :model/Dimension}
+           (into #{} (map :model-key) (spec/children-specs :model/TableUserSettings)))))
   (testing "children-specs returns empty for models with no children"
     (is (empty? (spec/children-specs :model/Card)))))
 
@@ -110,7 +111,9 @@
   (testing "spec-for-model-type returns correct spec"
     (is (= :model/Card (:model-key (spec/spec-for-model-type "Card"))))
     (is (= :model/Dashboard (:model-key (spec/spec-for-model-type "Dashboard"))))
-    (is (= :model/Table (:model-key (spec/spec-for-model-type "Table"))))
+    (is (= :model/TableUserSettings (:model-key (spec/spec-for-model-type "TableUserSettings"))))
+    (is (nil? (spec/spec-for-model-type "Table")))
+    (is (nil? (spec/spec-for-model-type "Field")))
     (is (= :model/Measure (:model-key (spec/spec-for-model-type "Measure"))))
     (is (nil? (spec/spec-for-model-type "NonExistent")))))
 
@@ -127,8 +130,9 @@
       (is (set? types))
       (is (contains? types "Card"))
       (is (contains? types "Dashboard"))
-      (is (contains? types "Table"))
-      (is (contains? types "Field"))
+      (is (contains? types "TableUserSettings"))
+      (is (contains? types "FieldUserSettings"))
+      (is (contains? types "Dimension"))
       (is (contains? types "Segment"))
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
@@ -137,24 +141,22 @@
       (is (contains? types "Glossary"))
       (is (contains? types "Action"))
       (is (contains? types "DataApp"))
-      (is (= 17 (count types))))))
+      (is (= 18 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
     (mt/with-temporary-setting-values [remote-sync-transforms false]
       (let [entity-id-specs (spec/specs-by-identity-type :entity-id)
-            path-specs (spec/specs-by-identity-type :path)
+            user-settings-specs (spec/specs-by-identity-type :user-settings)
             hybrid-specs (spec/specs-by-identity-type :hybrid)]
         (testing "entity-id specs"
           (is (contains? entity-id-specs :model/Card))
           (is (contains? entity-id-specs :model/Dashboard))
           (is (contains? entity-id-specs :model/Collection))
-          (is (not (contains? entity-id-specs :model/Table)))
-          (is (not (contains? entity-id-specs :model/Field))))
-        (testing "path specs"
-          (is (contains? path-specs :model/Table))
-          (is (contains? path-specs :model/Field))
-          (is (not (contains? path-specs :model/Card))))
+          (is (not (contains? entity-id-specs :model/TableUserSettings))))
+        (testing "user settings specs"
+          (is (= #{:model/TableUserSettings :model/FieldUserSettings :model/Dimension}
+                 (set (keys user-settings-specs)))))
         (testing "hybrid specs"
           (is (contains? hybrid-specs :model/Segment))
           (is (contains? hybrid-specs :model/Measure))
@@ -585,18 +587,18 @@
     (is (nil? (spec/removal-conditions {})))))
 
 (deftest python-library-spec-conditions-test
-  (testing "PythonLibrary spec has :removal-conditions but no :conditions or :export-conditions"
+  (testing "PythonLibrary spec has :conditions and :removal-conditions but no :export-conditions"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
-      (is (nil? (:conditions spec))
-          "PythonLibrary should have no :conditions")
+      (is (= {:is_default false} (:conditions spec))
+          "PythonLibrary should track and export only libraries that aren't the default one")
       (is (nil? (:export-conditions spec))
           "PythonLibrary should have no :export-conditions")
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (:removal-conditions spec))
           "PythonLibrary should have :removal-conditions protecting builtin entity")))
-  (testing "export-conditions returns nil for PythonLibrary (no export filtering)"
+  (testing "export-conditions leaves the default library out of exports"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
-      (is (nil? (spec/export-conditions spec)))))
+      (is (= {:is_default false} (spec/export-conditions spec)))))
   (testing "removal-conditions returns the builtin protection for PythonLibrary"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}

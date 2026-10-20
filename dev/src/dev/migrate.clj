@@ -51,8 +51,6 @@
                           "or (rollback! :deployment <id>) to roll back everything after a deployment.")
                      {:direction direction})))
    (mdb/migrate! (mdb/data-source) direction)
-   ;; dev migration CLI; status goes to stdout for the human running it
-   #_{:clj-kondo/ignore [:discouraged-var]}
    (println (format "Migrated %s. Latest migration: %s" (name direction) (latest-migration)))))
 
 (defn- rollback-n-migrations!
@@ -110,8 +108,6 @@
           (catch Throwable e
             (.rollback conn)
             (throw e))))))
-  ;; dev migration CLI; status goes to stdout for the human running it
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (println (if boundary-deployment-id
              (format "Rolled back to deployment %s. Latest migration: %s" boundary-deployment-id (latest-migration))
              "No earlier deployment to roll back to; nothing to do."))
@@ -158,15 +154,11 @@
                :id               (migration-since target)
                :count            (maybe-parse-long target))]
        (rollback-n-migrations! n)
-       ;; dev migration CLI; status goes to stdout for the human running it
-       #_{:clj-kondo/ignore [:discouraged-var]}
        (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))))
 
 (defn migration-status
   "Print the latest migration ID."
   []
-  ;; dev migration CLI; status goes to stdout for the human running it
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Current migration:" (latest-migration)))
 
 (defn -main

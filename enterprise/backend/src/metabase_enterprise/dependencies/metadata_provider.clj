@@ -78,7 +78,7 @@
 
 (declare all-overrides setup-transform! setup-transforms!)
 
-(deftype OverridingMetadataProvider [delegate *overrides returned-columns-fn]
+(deftype OverridingMetadataProvider [delegate *overrides]
   lib.metadata.protocols/MetadataProvider
   (database [_this] (lib.metadata.protocols/database delegate))
   (metadatas [this metadata-spec]
@@ -121,25 +121,18 @@
                     (assoc-in m ks v))
                   % kvs)))
 
-(defn- returned-columns [^OverridingMetadataProvider mp queryable]
-  (let [returned-columns-fn (.returned-columns-fn mp)]
-    (or (and returned-columns-fn (returned-columns-fn mp queryable))
-        (deps.analysis/returned-columns (:engine (lib.metadata/database mp))
-                                        (lib/query mp queryable)))))
+(defn- returned-columns [mp queryable]
+  (deps.analysis/returned-columns (:engine (lib.metadata/database mp))
+                                  (lib/query mp queryable)))
 
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
-    ;; If the `updates` contain `:result-metadata`, we want to use that. Similarly, if the user provides a way to
-    ;; calculate `result-metadata`, we should use that function.  However, any `:result-metadata` from the inner-mp
-    ;; should be ignored.
-    {[:metadata/card id] (delay (let [temp (merge (when id
-                                                    (-> (inner-mp mp)
-                                                        (lib.metadata.protocols/card id)))
-                                                  updates)
-                                      result-metadata (or (:result-metadata updates)
-                                                          (and (.returned-columns-fn mp)
-                                                               (returned-columns mp temp)))]
-                                  (assoc temp :result-metadata result-metadata)))
+    ;; Only `:result-metadata` from the `updates` is used; any from the inner-mp is ignored.
+    {[:metadata/card id] (delay (-> (merge (when id
+                                             (-> (inner-mp mp)
+                                                 (lib.metadata.protocols/card id)))
+                                           updates)
+                                    (assoc :result-metadata (:result-metadata updates))))
      ;; This uses the outer OMP and so the overrides are visible!
      [::card-columns id] (delay (returned-columns mp (lib.metadata/card mp id)))}))
 
@@ -259,6 +252,9 @@
 (defmethod add-override :sandbox [^OverridingMetadataProvider mp _entity-type _id _updates]
   mp)
 
+(defmethod add-override :action [^OverridingMetadataProvider mp _entity-type _id _updates]
+  mp)
+
 (defmethod add-override :segment [^OverridingMetadataProvider mp _entity-type id updates]
   {[:metadata/segment id] (delay (merge (when id
                                           (lib.metadata/segment (inner-mp mp) id))
@@ -282,10 +278,8 @@
 
   Important note: all overrides must be added first, before this is used as a `MetadataProvider`.  The easiest way to
   do that is to pass in updated entities and/or dependent ids, which will be immediately added as overrides."
-  [{:keys [base-provider updated-entities dependent-ids returned-columns-fn]}]
-  (let [^OverridingMetadataProvider omp (->OverridingMetadataProvider base-provider
-                                                                      (atom {})
-                                                                      returned-columns-fn)]
+  [{:keys [base-provider updated-entities dependent-ids]}]
+  (let [^OverridingMetadataProvider omp (->OverridingMetadataProvider base-provider (atom {}))]
     (doseq [[entity-type updates] updated-entities
             updated-entity        updates]
       (add-override omp entity-type (:id updated-entity) updated-entity))

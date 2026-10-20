@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.run-query-test
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
@@ -127,9 +129,8 @@
       (is (= {:output "Query execution is turned off for Metabot."}
              (call-tool! {:state {:queries {"q1" (venues-by-id)}}} {:query_id "q1"})))))
   (testing "an unknown id lists the ids the model can use"
-    (is (= {:output (str "No query with id nope. Known query ids: [q1]. Only a saved question or model the user is "
-                         "viewing runs by its own id: to run another, build a notebook query with it as the "
-                         "source-card using construct_notebook_query, then run that query.")}
+    (is (= {:output (str "No query with id nope. Known query ids: [q1]. Only a query you built, or a saved question "
+                         "or model the user can read, runs by its id.")}
            (run-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
   (testing "a SQL query is refused with a pointer to construct_notebook_query while SQL execution is off"
     (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
@@ -420,9 +421,13 @@
                            item-type card-id item-type card-id)))))))
       (testing "a query the conversation holds says nothing about a saved version"
         (is (not (str/includes? (:output (run-tool! {"q1" (venues-count)} {:query_id "q1"})) "saved version"))))
-      (testing "a saved question the user is not viewing does not run by its id"
-        (is (=? {:output #"No query with id \d+\. Known query ids: \[\]\. .*"}
-                (run-viewing! [] (str notebook-card)))))
+      (testing "a saved question the user is not viewing runs by its id too"
+        (is (= ["| Count |" "| --- |" "| 100 |"]
+               (data-lines (:output (run-viewing! [] (str notebook-card)))))))
+      (testing "an id with anything but digits names no saved question"
+        (doseq [id [(str "+" notebook-card) (str notebook-card " ") (str "0" notebook-card)]]
+          (is (=? {:output #"No query with id .*\. Known query ids: \[\]\. .*"}
+                  (run-viewing! [] id)))))
       (testing "a viewed question the user can't read is refused like an id that names nothing"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection {hidden :id}      {}
@@ -563,7 +568,7 @@
       "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
       :postgres "SELECT U&\"pg_\\0073leep\"(10)"
 
-      "It calls pg_advisory_lock, which takes a lock, waits, or changes the session."
+      "It calls pg_advisory_lock, which takes a lock, waits, changes the session, or acts outside the database."
       :postgres "SELECT pg_advisory_lock(42)"
 
       "It calls query_to_xml, which runs SQL passed to it as text that this check cannot see into."
@@ -724,11 +729,16 @@
                 (run-viewing! [{:type "question", :id archived-card}] (str archived-card)))))
       (testing "a viewed metric is refused with how to query it, whatever type the client gives the item"
         (doseq [item-type ["metric" "question"]]
-          (is (= {:output (str "Query id " metric-card " is a metric the user is viewing, and a metric does not run by its "
+          (is (= {:output (str "Query id " metric-card " is a metric, and a metric does not run by its "
                                "id. To get its values, build a notebook query with construct_notebook_query that has "
                                "the metric's base table as its source and the metric in `aggregation`, then run that "
                                "query with run_query.")}
                  (run-viewing! [{:type item-type, :id metric-card}] (str metric-card))))))
+      (testing "a metric over a table the user can't query offers no way to its values"
+        (mt/with-no-data-perms-for-all-users!
+          (is (= {:output (str "Query id " metric-card " is a metric, and a metric does not run by its id. "
+                               "Tell the user you can't read its results.")}
+                 (run-viewing! [] (str metric-card))))))
       (testing "a viewed metric built on a model names that model as the source, when the user can read it"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection {open :id}         {}
@@ -749,13 +759,13 @@
                                                                                         [:query :aggregation] [[:count]])
                                                                :type          :metric}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) open)
-            (is (= {:output (str "Query id " on-open " is a metric the user is viewing, and a metric does not run by its id. "
+            (is (= {:output (str "Query id " on-open " is a metric, and a metric does not run by its id. "
                                  "To get its values, build a notebook query with construct_notebook_query that has the "
                                  "model it is built on as the `source-card`, whose portable entity id is " entity-id
                                  ", and the metric in `aggregation`, then run that query with run_query.")}
                    (run-viewing! [{:type "metric", :id on-open}] (str on-open))))
             (testing "and offers no way to its values when they can't"
-              (is (= {:output (str "Query id " on-hidden " is a metric the user is viewing, and a metric does not run by "
+              (is (= {:output (str "Query id " on-hidden " is a metric, and a metric does not run by "
                                    "its id. Tell the user you can't read its results.")}
                      (run-viewing! [{:type "metric", :id on-hidden}] (str on-hidden))))))))
       (testing "a viewed metric the user can't read is refused like an id that names nothing"
@@ -874,3 +884,22 @@
                     (call-sql-tool-in-conversation! {:state   {:queries {}}
                                                      :context {:user_is_viewing [{:type "question", :id card-id}]}}
                                                     {:query_id (str card-id)})))))))))
+
+(deftest run-query-follows-request-cancellation-test
+  (testing "a turn whose request is canceled runs nothing, and tells the model so in place of a query failure"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (=? {:output #"Query canceled.*"}
+              (call-tool-in-conversation! {:state                 {:queries {"q1" (venues-count)}}
+                                           :request-canceled-chan (doto (a/promise-chan) (a/>!! :canceled))}
+                                          {:query_id "q1"}))))))
+
+(deftest run-query-time-limit-test
+  (testing "a query that runs past the tool's time limit is stopped, and the model is told it timed out"
+    ;; The driver waits until its channel says to stop.
+    ;; The database timeout is shorter, so the run reads as timed out only if the tool passed its own limit.
+    (binding [qp.pipeline/*execute*              (fn [_driver _query _respond]
+                                                   (a/alts!! [qp.pipeline/*canceled-chan* (a/timeout 5000)])
+                                                   nil)
+              driver.settings/*query-timeout-ms* 200]
+      (is (=? {:output #"Query timed out.*"}
+              (run-tool! {"q1" (venues-count)} {:query_id "q1"}))))))

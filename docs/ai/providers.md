@@ -30,6 +30,7 @@ Supported models:
 | Claude Fable 5    | `claude-fable-5`             | 1,000,000               |
 | Claude Fable 5.1  | `claude-fable-5-1`           | 1,000,000               |
 | Claude Haiku 4.5  | `claude-haiku-4-5-20251001`  | 200,000                 |
+| Claude Haiku 5.5  | `claude-haiku-5-5`           | 1,000,000               |
 | Claude Opus 4.5   | `claude-opus-4-5-20251101`   | 200,000                 |
 | Claude Opus 4.6   | `claude-opus-4-6`            | 1,000,000               |
 | Claude Opus 4.7   | `claude-opus-4-7`            | 1,000,000               |
@@ -95,6 +96,7 @@ Supported models:
 | DeepSeek V4 Flash 0731 | `deepseek/deepseek-v4-flash-0731` | 1,048,576               |
 | DeepSeek V4 Pro 0423   | `deepseek/deepseek-v4-pro`        | 1,048,576               |
 | DeepSeek V4 Pro 0813   | `deepseek/deepseek-v4-pro-0813`   | 1,048,575               |
+| Gemini 3.8 Flash       | `google/gemini-3.8-flash`         | 1,048,576               |
 | Mistral Medium 3.5     | `mistralai/mistral-medium-3-5`    | 262,144                 |
 | Kimi K3                | `moonshotai/kimi-k3`              | 1,048,576               |
 | GPT-5.4                | `openai/gpt-5.4`                  | 922,000                 |
@@ -108,6 +110,7 @@ Supported models:
 | Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
+| GLM-5.3-Flash          | `z-ai/glm-5.3-flash`              | 1,048,575               |
 
 Credentials:
 
@@ -139,10 +142,11 @@ Credentials:
 
 Supported models:
 
-| Model   | Model ID  | Context window (tokens) |
-| ------- | --------- | ----------------------- |
-| GLM-5.2 | `glm-5.2` | 1,048,576               |
-| GLM-5.3 | `glm-5.3` | 1,048,576               |
+| Model         | Model ID        | Context window (tokens) |
+| ------------- | --------------- | ----------------------- |
+| GLM-5.2       | `glm-5.2`       | 1,048,576               |
+| GLM-5.3       | `glm-5.3`       | 1,048,576               |
+| GLM-5.3-Flash | `glm-5.3-flash` | 1,048,576               |
 
 Credentials:
 
@@ -175,10 +179,10 @@ Credentials:
 
 Supported models:
 
-| Model           | Model ID          |
-| --------------- | ----------------- |
-| DeepSeek Flash  | `deepseek-flash`  |
-| DeepSeek V4 Pro | `deepseek-v4-pro` |
+| Model           | Model ID          | Context window (tokens) |
+| --------------- | ----------------- | ----------------------- |
+| DeepSeek Flash  | `deepseek-flash`  | 1,048,576               |
+| DeepSeek V4 Pro | `deepseek-v4-pro` | 1,048,576               |
 
 Credentials:
 
@@ -210,20 +214,22 @@ Credentials:
 
 Supported models:
 
-| Model             | Model ID                              |
-| ----------------- | ------------------------------------- |
-| Claude Fable 5    | `anthropic/claude-fable-5`            |
-| Claude Fable 5.1  | `anthropic/claude-fable-5-1`          |
-| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5@20251001` |
-| Claude Opus 4.6   | `anthropic/claude-opus-4-6`           |
-| Claude Opus 5     | `anthropic/claude-opus-5`             |
-| Claude Opus 5.5   | `anthropic/claude-opus-5-5`           |
-| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6`         |
-| Claude Sonnet 5   | `anthropic/claude-sonnet-5`           |
-| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5`         |
-| Gemini 3.5 Flash  | `google/gemini-3.5-flash`             |
-| Gemini 3.6 Flash  | `google/gemini-3.6-flash`             |
-| Gemini 3.7 Flash  | `google/gemini-3.7-flash`             |
+| Model             | Model ID                      |
+| ----------------- | ----------------------------- |
+| Claude Fable 5    | `anthropic/claude-fable-5`    |
+| Claude Fable 5.1  | `anthropic/claude-fable-5-1`  |
+| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5`  |
+| Claude Haiku 5.5  | `anthropic/claude-haiku-5-5`  |
+| Claude Opus 4.6   | `anthropic/claude-opus-4-6`   |
+| Claude Opus 5     | `anthropic/claude-opus-5`     |
+| Claude Opus 5.5   | `anthropic/claude-opus-5-5`   |
+| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6` |
+| Claude Sonnet 5   | `anthropic/claude-sonnet-5`   |
+| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5` |
+| Gemini 3.5 Flash  | `google/gemini-3.5-flash`     |
+| Gemini 3.6 Flash  | `google/gemini-3.6-flash`     |
+| Gemini 3.7 Flash  | `google/gemini-3.7-flash`     |
+| Gemini 3.8 Flash  | `google/gemini-3.8-flash`     |
 
 Credentials:
 
@@ -277,6 +283,7 @@ Supported models:
 | Claude Fable 5       | `anthropic.claude-fable-5`    | 1,000,000               |
 | Claude Fable 5.1     | `anthropic.claude-fable-5-1`  | 1,000,000               |
 | Claude Haiku 4.5     | `anthropic.claude-haiku-4-5`  | 200,000                 |
+| Claude Haiku 5.5     | `anthropic.claude-haiku-5-5`  | 1,000,000               |
 | Claude Opus 4.7      | `anthropic.claude-opus-4-7`   | 1,000,000               |
 | Claude Opus 4.8      | `anthropic.claude-opus-4-8`   | 1,000,000               |
 | Claude Opus 5        | `anthropic.claude-opus-5`     | 1,000,000               |

@@ -84,7 +84,7 @@ describe("SDK Cartesian colors", () => {
       name: "V2 chart axis overriding a border color",
       theme: {
         version: 2,
-        colors: { border: "#123456", "chart-axis": "#456789" },
+        colors: { "border-neutral": "#123456", "chart-axis": "#456789" },
       },
       axisColor: "#456789",
     },
@@ -118,14 +118,17 @@ describe("SDK Cartesian colors", () => {
     },
     {
       name: "light V2",
-      theme: { version: 2, colors: { border: "#123456" } },
+      theme: { version: 2, colors: { "border-neutral": "#123456" } },
       gridlineColor: "rgba(18, 52, 86, 0.5)",
     },
     {
       name: "dark V2",
       theme: {
         version: 2,
-        colors: { border: "#123456", "background_page-primary": "#111111" },
+        colors: {
+          "border-neutral": "#123456",
+          "background_page-primary": "#111111",
+        },
       },
       gridlineColor: "#123456",
     },

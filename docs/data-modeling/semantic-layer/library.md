@@ -1,6 +1,6 @@
 ---
 title: Library
-summary: Create a source of truth for analytics with curated tables, metrics, SQL snippets, and glossary terms that your team can trust.
+summary: Create a source of truth for analytics with curated tables, metrics, dashboards, SQL snippets, and glossary terms that your team can trust.
 redirect_from:
   - /docs/latest/data-studio/library
 ---
@@ -23,12 +23,12 @@ The Library helps you create a source of truth for analytics by providing a cent
 
 The Library has two parts, both of which you manage in [Data Studio](../data-studio.md):
 
-- **[Semantic layer](#semantic-layer)**: Curated tables, metrics, and SQL snippets.
+- **[Semantic layer](#semantic-layer)**: Curated tables, metrics, dashboards, and SQL snippets.
 - **[Glossary](#glossary)**: Definitions of your business terms.
 
 Once you [create the Library](#create-the-library):
 
-- A **Library** section appears in the navigation sidebar of the main app, listing the tables and metrics in your semantic layer.
+- A **Library** section appears in the navigation sidebar of the main app, with the **Data**, **Metrics**, and **Dashboards** collections of your semantic layer.
 - The data picker in the query builder defaults to showing tables and metrics from the Library to encourage people to use your vetted content.
 - If you turn on Metabot's [Verified or curated content](../../ai/settings.md#verified-or-curated-content) setting, Metabot will only use content that's verified, in an official collection, or published to the Library.
 - You can [sync the Library to Git](#versioning-the-library) to version your semantic layer and glossary.
@@ -37,7 +37,7 @@ Once you [create the Library](#create-the-library):
 
 _Data Studio > Semantic layer_
 
-The semantic layer is a collection of curated tables (together with their [segments](segments.md) and [measures](measures.md)), [metrics](metrics.md), and [SQL snippets](../../questions/native-editor/snippets.md) that people and AI can use to build authoritative questions and dashboards.
+The semantic layer is a collection of curated tables (together with their [segments](segments.md) and [measures](measures.md)), [metrics](metrics.md), and [SQL snippets](../../questions/native-editor/snippets.md) that people and AI can use to build authoritative questions and dashboards. It also holds your [official dashboards](#dashboards).
 
 The semantic layer is what people see in the **Library** section of the main app's navigation sidebar, and in the data picker.
 
@@ -71,7 +71,7 @@ The **+ New** menu has options to:
 
 - **Published table**: [Publish a table](published-tables.md#publish-a-table-from-the-semantic-layer) to the Library.
 - **Metric**: [Create a metric](#metrics) in the Library.
-- **Dashboard**: Create a dashboard in the Library's **Dashboards** collection.
+- **Dashboard**: [Create a dashboard](#dashboards) in the Library's **Dashboards** collection.
 - **Snippet**: [Create a SQL snippet](#sql-snippets).
 - **Collection**: [Create a subcollection or snippet folder](#library-organization).
 
@@ -85,10 +85,12 @@ The semantic layer lives in a special collection called Library, which has four 
 
 - **Data**: For [published tables](published-tables.md).
 - **Metrics**: For [official metrics](#metrics).
-- **Dashboards**: For official dashboards. This collection holds only dashboards, so questions on these dashboards are saved to the dashboard itself rather than to a collection.
+- **Dashboards**: For [official dashboards](#dashboards).
 - **SQL snippets**: For all the [SQL snippets](#sql-snippets) on your instance.
 
 These root sections are predefined. You can't rename or archive them, but you can use [permissions](#library-permissions) to control who sees them.
+
+If you created the Library before Metabase 65, Metabase adds the **Dashboards** collection when you upgrade, and gives it the same permissions as the Library.
 
 Each of these sections can have subcollections. For example, if your Metabase has a lot of published tables, you might want to organize the **Library > Data** collection into "Sales", "Marketing", and "Product" subcollections.
 
@@ -121,6 +123,31 @@ To add an already existing metric to the Library, move the metric to the **Libra
 
 To create a new Library metric, go to **Data Studio > Semantic layer** and select **+ New > Metric**. See [creating metrics](./metrics.md#create-a-metric) for more on building metrics.
 
+## Dashboards
+
+Use **Library > Dashboards** for curated, official dashboards, like your company's KPI dashboard. People find these dashboards in the **Library** section of the main app's navigation sidebar.
+
+**Library > Dashboards** holds only dashboards and their [dashboard questions](../../questions/introduction.md#saving-questions-to-dashboards). To save a question there, you save it to one of its dashboards.
+
+A Library dashboard can also use questions saved in other collections. But if you [sync the Library to Git](#versioning-the-library), everything the dashboard uses must be in a synced collection. See [Items in synced collections must be self-contained](../../installation-and-operation/remote-sync.md#items-in-synced-collections-must-be-self-contained).
+
+![Dashboards section of the semantic layer in Data Studio](./images/library-dashboards-section.png)
+
+In Data Studio, the **Dashboards** section lists your Library dashboards. Click a dashboard to open it in the main app, where you edit it like any other dashboard.
+
+To create a new Library dashboard:
+
+1. Go to **Data Studio > Semantic layer**.
+2. Click **+ New** and select **Dashboard**.
+3. Enter a name. Optionally, pick a subcollection of **Dashboards**.
+4. Click **Create**.
+
+Metabase opens the new dashboard in edit mode, so you can add questions.
+
+To add an existing dashboard to the Library, move it to **Library > Dashboards** (or one of its subcollections).
+
+If you [duplicate a dashboard](../../dashboards/introduction.md#duplicating-a-dashboard) into **Library > Dashboards**, Metabase saves the copied questions to the new dashboard. Metabase doesn't copy metrics or models: the new dashboard uses the originals.
+
 ## SQL snippets
 
 [SQL snippets](../../questions/native-editor/snippets.md) are reusable bits of code. All snippets in your Metabase are available to the library, including snippets created elsewhere in your Metabase. You can also create snippet folders in the Library.
@@ -131,7 +158,7 @@ You can [sync Library content to version control](../../installation-and-operati
 
 ## Library permissions
 
-The semantic layer lives in a special collection called Library. Metabase uses the standard [collection permissions](../../permissions/collections.md) to determine who can view and edit items in the Library collection, with some caveats. Library collection permissions are only relevant to the Data and Metrics collections. Snippets permissions are handled by [permissions for snippet folders](../../permissions/snippets.md). Collection permissions don't apply to the [glossary](glossary.md#manage-the-glossary).
+The semantic layer lives in a special collection called Library. Metabase uses the standard [collection permissions](../../permissions/collections.md) to determine who can view and edit items in the Library collection, with some caveats. Library collection permissions are only relevant to the Data, Metrics, and Dashboards collections. Snippets permissions are handled by [permissions for snippet folders](../../permissions/snippets.md). Collection permissions don't apply to the [glossary](glossary.md#manage-the-glossary).
 
 ![Library collection permissions](./images/library-permissions.png)
 
@@ -147,6 +174,7 @@ To configure permissions for the library:
 
 - **Data** collection and its subcollections: The group can view tables in the Data collection, provided they have [data permissions](../../permissions/data.md) for the tables. But they can't add, edit, or remove tables. The Admin and Data Analyst groups are the _only_ groups that can publish tables to the Library.
 - **Metrics** collection and its subcollections: the group can add, edit, and archive metrics. Groups don't need access to Data Studio to curate metrics.
+- **Dashboards** collection and its subcollections: the group can add, edit, move, and archive dashboards, like in any other collection.
 
 ### View permissions
 
@@ -154,6 +182,7 @@ Controls whether a group can view the Library and its items.
 
 - **Data** and its subcollections: The group can view tables in the Data collection, provided they have [data permissions](../../permissions/data.md) for the tables.
 - **Metrics** and its subcollections: the group can view the metrics and use them in their queries.
+- **Dashboards** and its subcollections: the group can view the dashboards.
 
 ### No access
 
@@ -177,11 +206,16 @@ There are some caveats though, depending on which part of the Library you're wor
   - [Admins and data analysts](../../people-and-groups/managing.md) can always manage metrics in the Library and its subcollections;
   - If you give "Curate" permissions to **Library > Metrics** or its subcollections to a non-admin and non-analyst group, people in that group will be able to save or move metrics to those subcollections from the main app only. "Curate" permissions to **Library > Metrics** or subcollections do _not_ give access to Data Studio.
 
+- **Dashboards**:
+
+  - [Admins and data analysts](../../people-and-groups/managing.md) can always manage dashboards in the Library and its subcollections;
+  - If you give "Curate" permissions to **Library > Dashboards** or its subcollections to a non-admin and non-analyst group, people in that group will be able to save or move dashboards to those subcollections from the main app only. "Curate" permissions to **Library > Dashboards** or subcollections do _not_ give access to Data Studio.
+
 - **Snippets**
 
   - Snippet management is controlled by [snippet permissions](../../permissions/snippets.md) - not regular collection permissions.
 
-The root sections (Data, Metrics, SQL snippets) have fixed properties and can't be renamed or deleted. Subcollections you create follow the normal collection permission rules.
+The root sections (Data, Metrics, Dashboards, SQL snippets) have fixed properties and can't be renamed or deleted. Subcollections you create follow the normal collection permission rules.
 
 ## Permissions to use Library content
 
@@ -200,6 +234,11 @@ People who have View or Curate collection permissions to the **Library** subcoll
 - **Metrics**:
 
   - Only people who have View or Curate collection permissions to **Library > Metrics** or its subcollections will be able to use the metrics from the appropriate collections. Removing collection access to a **Library > Metrics** subcollection also blocks any usage of metric there.
+
+- **Dashboards**:
+
+  - Only people who have View or Curate collection permissions to **Library > Dashboards** or its subcollections will be able to see the dashboards in the appropriate collections.
+  - If a Library dashboard includes questions saved to other collections, people also need View or Curate access to those collections to see the questions.
 
 - **Snippets**:
 

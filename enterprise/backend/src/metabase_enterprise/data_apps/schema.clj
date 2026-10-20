@@ -113,8 +113,7 @@
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:description     {:optional true} ::description]
    [:version         {:optional true} ::version]
-   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app.insert
   "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, display name, and bundle path required."
@@ -150,14 +149,17 @@
     [:error :string]]])
 
 (mr/def ::app-request
-  "What a new data app's files are generated from."
+  "What a data app's files are generated from. An existing app passes the entity IDs of its `data_app.yaml` and of its
+  collection, so its files keep them."
   [:map {:closed true}
    [:name ::display-name]
    [:slug {:optional true} [:maybe ::slug]]
-   [:description {:optional true} ::description]])
+   [:description {:optional true} ::description]
+   [:entity_id {:optional true} [:maybe ms/NanoIdString]]
+   [:collection_id {:optional true} [:maybe ms/NanoIdString]]])
 
 (mr/def ::app-files
-  "A new data app's files, each at its path from the repository root."
+  "A data app's files, each at its path from the repository root."
   [:map {:closed true}
    [:files [:sequential [:map {:closed true}
                          [:path :string]

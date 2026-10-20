@@ -159,6 +159,7 @@ export const MetabotInlineSQLPrompt = ({
             flex={1}
             miw={0}
             fz="sm"
+            ff="var(--mb-default-font-family)"
             c={
               error?.type === "aborted" ? "text-secondary" : "feedback-negative"
             }
