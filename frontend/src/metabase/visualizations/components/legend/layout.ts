@@ -360,7 +360,7 @@ export function measureLegend({
     measureText(getOverflowLabel(overflowCount), font);
   const columnFitCount = getColumnFitCount(
     { itemWidths, config },
-    chartRoom.height - LEGEND_PADDING * 2,
+    chartRoom.height,
   );
   const columnVisibleCount = Math.max(columnFitCount, MIN_VISIBLE_COUNT);
   const columnWidth = getColumnWidth(
@@ -440,11 +440,13 @@ function getColumnFitCount(
   columnHeight: number,
 ): number {
   const rowPitch = config.fontSize * config.lineHeight + config.rowGap;
-  const maxRows = Math.floor((columnHeight + config.rowGap) / rowPitch);
-  // the last row is reserved for the "+ N more" label when items overflow
-  return itemWidths.length <= maxRows
-    ? itemWidths.length
-    : Math.max(maxRows - 1, 0);
+  const getMaxRows = (rowsHeight: number) =>
+    Math.floor((rowsHeight + config.rowGap) / rowPitch);
+  if (itemWidths.length <= getMaxRows(columnHeight - LEGEND_PADDING * 2)) {
+    return itemWidths.length;
+  }
+  // the last row is the "+ N more" label, which takes no focus outline
+  return Math.max(getMaxRows(columnHeight - LEGEND_PADDING) - 1, 0);
 }
 
 function getColumnWidth(
