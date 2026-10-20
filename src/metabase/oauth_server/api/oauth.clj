@@ -226,11 +226,10 @@
 
 (defn- may-consent?
   "Whether `request` may consent to an authorization request. Only a personal user that a login session authenticated
-   may. The consent endpoints treat any other request as anonymous, whatever credential it carries: an API key, an
-   OAuth bearer token, or an MCP UI credential would otherwise mint a token for a user who never saw the consent page."
+  may."
   [request]
   (boolean
-   (when-let [user-id (and (:authenticated-via-session? request)
+   (when-let [user-id (and (:metabase/authed-session-key-hash request)
                            (:metabase-user-id request))]
      (oauth-server.db/personal-user? user-id))))
 

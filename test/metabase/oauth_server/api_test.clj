@@ -2578,9 +2578,9 @@
       (is (empty? (authorization-code-user-ids client-id))))))
 
 (deftest api-key-cannot-consent-test
-  (testing "GHY-4287: an API key must never mint an OAuth token. It authenticates as a user the seat count does not
-            bill, so the consent endpoints treat it exactly like an anonymous request, for an admin's key and for a
-            non-admin's key alike."
+  (testing "GHY-4960: an API key must never mint an OAuth token, so the consent endpoints treat it exactly like an
+            anonymous request. These keys are bound to personal users, an admin and a non-admin, so the refusal
+            comes from the credential, not from the user type."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (doseq [[description user raw-key] [["an admin's API key" :crowberto "mb_consentadmin1"]

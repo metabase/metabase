@@ -106,8 +106,7 @@
                                                     [:map {:closed true}
                                                      [:metabase/authed-session-key-hash :string]]]]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired, plus
-  `:metabase/authed-session-key-hash`, the `key_hashed` value the row was matched on, and
-  `:authenticated-via-session?`."
+  `:metabase/authed-session-key-hash`, the `key_hashed` value the row was matched on."
   [session-key     :- [:maybe :string]
    anti-csrf-token :- [:maybe :string]]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
@@ -126,7 +125,6 @@
             ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
             (update :is-group-manager? boolean)
             (assoc :metabase/authed-session-key-hash session-key-hash
-                   :authenticated-via-session?       true
                    :embedding/auth-method            (or auth-provider "session")))))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
@@ -291,7 +289,7 @@
   `:mcp-ui-credentials` fns.
 
   `:metabase/authed-session-key-hash` is set only when it was the session that authenticated the request, and carries
-  the `key_hashed` value of the one that did. `:authenticated-via-session?` is set under the same condition."
+  the `key_hashed` value of the one that did."
   ([handler]
    (wrap-current-user-info handler nil))
   ([handler options]

@@ -444,7 +444,6 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :authenticated-via-session? true
                 :metabase/authed-session-key-hash test-session-key-hashed
                 :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
@@ -463,7 +462,6 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :authenticated-via-session? true
                 :metabase/authed-session-key-hash test-session-key-hashed
                 :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
@@ -518,7 +516,6 @@
                   :is-group-manager? false,
                   :user-locale nil
                   :is-data-analyst? false
-                  :authenticated-via-session? true
                   :metabase/authed-session-key-hash test-session-key-hashed
                   :embedding/auth-method "session"}
                  (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
