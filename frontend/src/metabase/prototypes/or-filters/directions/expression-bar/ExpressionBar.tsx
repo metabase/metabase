@@ -55,9 +55,9 @@ type ExpressionBarProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
-  /** Cancel/Apply live inside the bar instead of the "+" button and a row below. */
+  /** Cancel/Apply live inside the bar instead of a trailing "+" button. */
   hasInlineActions?: boolean;
-  /** Replaces the Cancel/Apply row, e.g. to put them in a modal footer. */
+  /** Renders Cancel/Apply elsewhere, e.g. in a modal footer. */
   renderActions?: (actions: {
     canApply: boolean;
     apply: () => void;
@@ -403,21 +403,6 @@ export function ExpressionBar({
           apply: commit,
           cancel: revert,
         })}
-        {isDirty && !hasInlineActions && !renderActions && (
-          <Group gap="xs">
-            <Button size="compact-sm" variant="subtle" onClick={revert}>
-              {t`Cancel`}
-            </Button>
-            <Button
-              size="compact-sm"
-              variant="filled"
-              disabled={!parsed.ok}
-              onClick={commit}
-            >
-              {t`Apply`}
-            </Button>
-          </Group>
-        )}
       </Group>
     </Stack>
   );

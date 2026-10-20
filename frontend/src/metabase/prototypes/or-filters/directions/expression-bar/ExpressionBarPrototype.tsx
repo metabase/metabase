@@ -6,22 +6,22 @@ import type { FilterUiProps } from "../../types";
 import { ExpressionBar } from "./ExpressionBar";
 
 /**
- * Direction B: one expression bar in place of the pills. The same editor
- * sits in the chill-mode strip and in the notebook step.
+ * Direction B2: one expression bar in place of the pills, with Cancel/Apply
+ * inside the bar. The same editor sits in the chill-mode strip and in the
+ * notebook step.
  */
-export function ExpressionBarPrototype({
+export function ExpressionBarInlinePrototype({
   query,
   stageIndex,
   variant,
   onChange,
-  hasInlineActions,
-}: FilterUiProps & { hasInlineActions?: boolean }) {
+}: FilterUiProps) {
   const bar = (
     <ExpressionBar
       query={query}
       stageIndex={stageIndex}
       onChange={onChange}
-      hasInlineActions={hasInlineActions}
+      hasInlineActions
     />
   );
 
@@ -34,9 +34,4 @@ export function ExpressionBarPrototype({
   }
 
   return <NotebookCell color="core-filter">{bar}</NotebookCell>;
-}
-
-/** Direction B2: B with Cancel/Apply inside the bar and a hideable strip. */
-export function ExpressionBarInlinePrototype(props: FilterUiProps) {
-  return <ExpressionBarPrototype {...props} hasInlineActions />;
 }

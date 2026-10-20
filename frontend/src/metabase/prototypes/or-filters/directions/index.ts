@@ -12,10 +12,7 @@ import {
 } from "./advanced-worksheet/AdvancedWorksheetPrototype";
 import { AndOrTogglePrototype } from "./and-or-toggle/AndOrTogglePrototype";
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
-import {
-  ExpressionBarInlinePrototype,
-  ExpressionBarPrototype,
-} from "./expression-bar/ExpressionBarPrototype";
+import { ExpressionBarInlinePrototype } from "./expression-bar/ExpressionBarPrototype";
 import { OrPillsPrototype } from "./or-pills/OrPillsPrototype";
 import { QbeGridPrototype } from "./qbe-grid/QbeGridPrototype";
 import { RailroadPrototype } from "./railroad/RailroadPrototype";
@@ -51,16 +48,6 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
     },
     Component: AdvancedWorksheetPrototype,
     FilterButton: AdvancedWorksheetFilterButton,
-  },
-  {
-    id: "expression-bar",
-    get name() {
-      return t`Expression bar`;
-    },
-    get description() {
-      return t`One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them.`;
-    },
-    Component: ExpressionBarPrototype,
   },
   {
     id: "advanced-filter-modal",
