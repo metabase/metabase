@@ -229,9 +229,12 @@
                                     " different id under each metric. Take each group's ids from its"
                                     " own metric's candidates.")}
                         {:uses #{"get_research_candidates"}
-                         :text (str "Call `get_research_candidates` with `metric_ids` ["
-                                    (str/join ", " (map :metric-id invalid-dimensions))
-                                    "] to see every candidate.")}))
+                         :text (str "Call `get_research_candidates` with `metric_ids` "
+                                    (->> (map :metric-id invalid-dimensions)
+                                         (partition-all explorations/research-candidates-max-metrics)
+                                         (map #(str "[" (str/join ", " %) "]"))
+                                         (str/join ", then with "))
+                                    " to see every candidate.")}))
         fits?   (fn [step]
                   (<= (count (str/join "\n" (cons message (map :text (conj steps step)))))
                       error-text-budget))]

@@ -219,6 +219,20 @@
         (is (str/includes? output (str "Dimension \"wrong-" m "\" is not a candidate of metric " m))))
       (is (str/includes? output "Call `get_research_candidates` with `metric_ids` [1, 2, 3, 4, 5]"))
       (is (str/includes? output "Candidate dimensions by metric:\n- Metric 1 (Metric 1): "))))
+  (testing "the lookup it suggests asks for no more metric_ids per call than the tool takes"
+    (let [output  (:output (add-groups-rejected-with
+                            {:invalid-dimensions (vec (for [m (range 1 22)]
+                                                        {:metric-id     m
+                                                         :metric-name   (str "Metric " m)
+                                                         :dimension-ids ["wrong"]
+                                                         :candidates    []}))}))
+          lookup  (re-find #"Call `get_research_candidates`[^\n]*" output)
+          batches (for [[_ ids] (re-seq #"\[([\d, ]+)\]" lookup)]
+                    (mapv parse-long (str/split ids #", ")))]
+      (is (= [(range 1 21) [21]] batches))
+      (mt/with-test-user :crowberto
+        (doseq [batch batches]
+          (is (nil? (:error (research-call "get_research_candidates" {:metric_ids batch}))))))))
   (testing "anything else that fails in validation still ends the turn"
     (is (= {:class :unrecoverable :code :internal}
            (:error (add-groups-rejected-with {:something "else"}))))))
