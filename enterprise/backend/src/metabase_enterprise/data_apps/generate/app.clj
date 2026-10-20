@@ -8,9 +8,7 @@
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.collections.core :as collections]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -44,12 +42,10 @@
                         (throw (ex-info (tru "Pass a slug: \"{0}\" is not a valid one." slug) {:status-code 400})))
         app-id        (or entity_id (u/generate-nano-id))
         collection-id (or collection_id (u/generate-nano-id))
-        created-at    (u.date/format (mi/current-timestamp))
         collection    {:name        (str "Data App: " slug)
                        :namespace   "data-apps"
                        :entity_id   collection-id
                        :slug        (collections/slugify (str "Data App: " slug))
-                       :created_at  created-at
                        :serdes/meta [{:model "Collection" :id collection-id
                                       :label (serialization/slugify-name (str "Data App: " slug))}]}
         app           (m/assoc-some {:version     data-app.config/supported-app-version
@@ -58,7 +54,6 @@
                                      :path        bundle-path
                                      :collection  collection-id
                                      :entity_id   app-id
-                                     :created_at  created-at
                                      :serdes/meta [{:model "DataApp" :id app-id :label slug}]}
                                     :description description)]
     {:files [(file app nil)

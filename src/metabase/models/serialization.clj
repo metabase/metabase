@@ -280,8 +280,8 @@
   "Return specification for serialization, should be a map of:
 
   - `:copy`: a vector of field names, to directly copy from db into output and ingest back with no changes.
-  - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
-    are always skipped, no need to mention them).
+  - `:skip`: a vector of field names, used in tests to check if all fields were specified (`:id`, `:created_at` and
+    `:updated_at` are always skipped, no need to mention them).
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
     on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
@@ -442,33 +442,23 @@
             reducible))
 
 (def stable-storage-order
-  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get
-  reproducible filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) across exports — otherwise re-exports swap which
-  entity lands in which file and produce large phantom git-sync diffs (GHY-3754).
-
-  Orders by `created_at` first so the *oldest* sibling keeps the unsuffixed file: adding a new same-named entity
-  appends a `_2` rather than displacing the existing file. `entity_id` (random NanoID) would not have this property —
-  a newcomer with a smaller id would steal the base file. `entity_id` is then a deterministic tiebreaker for entities
-  created in the same instant. Assumes the model serializes both columns; use [[stable-storage-order-by]] to gate on a
-  spec."
-  [[:created_at :asc] [:entity_id :asc]])
-
-(defn stable-storage-order-by
-  "[[stable-storage-order]] restricted to the columns `spec` actually serializes (via `:copy` or `:transform`).
-  Returns nil when the model serializes neither column."
-  [spec]
-  (let [serialized? (into (set (:copy spec)) (keys (:transform spec)))]
-    (not-empty (filterv (comp serialized? first) stable-storage-order))))
+  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get the same
+  filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) on every export and on every instance, by `entity_id` alone
+  since `created_at` is local to each instance; the `entity_id` columns compare byte by byte on every app DB."
+  [[:entity_id :asc]])
 
 (defn extract-order-columns
-  "The ascending order columns for `model-name`'s extract query: [[stable-storage-order]] restricted to the columns the
-  model's spec actually serializes.
+  "The ascending order columns for `model-name`'s extract query: [[stable-storage-order]] when the model's spec
+  serializes `entity_id`, else its primary key.
 
   Empty for a nested fetch (e.g. a Dashboard's DashboardCards): those are embedded as lists inside the parent's file
   rather than written to their own files, so they keep their natural order and are left untouched."
   [model-name opts]
   (when-not (::nested-fetch opts)
-    (mapv first (stable-storage-order-by (*make-spec* model-name opts)))))
+    (let [spec (*make-spec* model-name opts)]
+      (if (some #{:entity_id} (concat (:copy spec) (keys (:transform spec))))
+        (mapv first stable-storage-order)
+        [(primary-key model-name)]))))
 
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
@@ -1960,7 +1950,7 @@
   "Nested entities; `opts` may give `:sort-by`, `:key-field` and `:delete-children!`, a fn of the parent id."
   [model backward-fk opts]
   (let [model-name       (name model)
-        sorter           (:sort-by opts :created_at)
+        sorter           (:sort-by opts :entity_id)
         key-field        (:key-field opts :entity_id)
         delete-children! (:delete-children! opts #(models.db/delete-children! model backward-fk %))]
     {::nested             true

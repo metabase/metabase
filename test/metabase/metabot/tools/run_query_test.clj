@@ -565,7 +565,7 @@
       "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
       :postgres "SELECT U&\"pg_\\0073leep\"(10)"
 
-      "It calls pg_advisory_lock, which takes a lock, waits, or changes the session."
+      "It calls pg_advisory_lock, which takes a lock, waits, changes the session, or acts outside the database."
       :postgres "SELECT pg_advisory_lock(42)"
 
       "It calls query_to_xml, which runs SQL passed to it as text that this check cannot see into."
