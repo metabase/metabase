@@ -1086,6 +1086,33 @@
                                   {:uris [(str "metabase://question/" q-from-model-id "/sources")]})]
             (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
 
+(deftest metric-uris-refuse-a-question-or-a-model-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp       (mt/metadata-provider)
+          query    (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          field-id (mt/id :orders :quantity)]
+      (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
+                     :model/Card {model-id :id}    {:type :model :dataset_query query}]
+        (testing "each metric URI says what the card is and which URI serves it, and that URI reads"
+          (doseq [[card-type card-id]     [["question" question-id] ["model" model-id]]
+                  [metric-path card-path] [["" ""]
+                                           ["/dimensions" "/fields"]
+                                           [(str "/dimensions/" field-id) (str "/fields/" field-id)]]
+                  :let [card-uri (str "metabase://" card-type "/" card-id card-path)]]
+            (testing (str "metabase://metric/" card-id metric-path)
+              (is (= (str "Card " card-id " is a " card-type ", not a metric.\n"
+                          "Read `" card-uri "` instead.")
+                     (-> (read-uris {:uris [(str "metabase://metric/" card-id metric-path)]})
+                         :resources first :error)))
+              (is (not (error? (read-uris {:uris [card-uri]})))))))
+        (testing "a call that read nothing else is a failed call, so traces and tool-failure metrics
+                 count it"
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.core/all-items-failed}
+                  (test-util/tool-failure read-resource/read-resource-tool
+                                          {:uris [(str "metabase://metric/" question-id)]}
+                                          (:tool-names read-ctx)))))))))
+
 (defn- measure-definition
   "An MBQL5 measure definition: the sum of `field-id` over `table-id`."
   [table-id field-id]
