@@ -24,14 +24,18 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(def ^:private chart-id-schema
+  "A `chart_id` that `save_entity` takes. It is stamped onto `report_card.metabot_chart_id`, a varchar(36)."
+  [:string {:min 1 :max 36}])
+
 (def ^:private save-entity-schema
   [:map {:closed true}
-   ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
-   [:chart_id [:string {:min 1 :max 36}]]
+   [:chart_id chart-id-schema]
    ;; report_card.name is a varchar(254), which PostgreSQL and MySQL count in code points, not UTF-16 units
    [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
            :string
@@ -129,7 +133,9 @@
     (when-not query
       (recoverable.common/unknown-chart-id!
        {:chart-id  chart-id
-        :available (sort (for [[id held] charts :when (chart-query held)] id))}))
+        :available (sort (for [[id held] charts
+                               :when (and (mr/validate chart-id-schema id) (chart-query held))]
+                           id))}))
     ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
     ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
     ;; and keep the raw config under `:chart_config` instead

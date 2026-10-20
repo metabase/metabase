@@ -267,8 +267,12 @@
                            "To chart a query this conversation already holds, call `create_chart` with its"
                            " query id.")}
               (failure (chart-memory) args))))
-    (testing "a chart with no query behind it can't be saved, so it isn't offered"
-      (let [memory (doto (chart-memory) (swap! assoc-in [:state :charts "c-2"] {:chart_id "c-2" :queries [nil]}))]
+    (testing "a chart that save_entity couldn't take isn't offered: one with no query, or an ID over 36 characters"
+      (let [long-id (apply str (repeat 37 "a"))
+            memory  (doto (chart-memory)
+                      (swap! update-in [:state :charts] assoc
+                             "c-2"   {:chart_id "c-2" :queries [nil]}
+                             long-id {:chart_id long-id :queries [(venues-query)]}))]
         (is (str/includes? (:text (failure memory args)) "The chart ids that do: c-1.\n"))))
     (testing "and a conversation with no charts says so"
       (is (str/includes? (:text (failure (atom {}) args)) "No charts have been created in it yet.")))))
