@@ -63,3 +63,16 @@
                    :stages   [{:lib/type :mbql.stage/mbql :source-card 13371337}]}]
         (is (:unchecked? (shared.content-store/query-for-export query false)))
         (is (str/includes? (str (rendered-source query)) ":source-card 13371337"))))))
+
+(deftest transform-source-withholds-unchecked-legacy-native-sql-test
+  (testing "native SQL in the legacy format stays out when the check could not run"
+    (let [query {:database (mt/id)
+                 :type     :native
+                 :native   {:query         "SELECT * FROM {{snip}}"
+                            :template-tags {"snip" {:type         :snippet
+                                                    :name         "snip"
+                                                    :display-name "snip"
+                                                    :snippet-id   Integer/MAX_VALUE}}}}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (:unchecked? (shared.content-store/query-for-export query false)))
+        (is (nil? (rendered-source query)))))))
