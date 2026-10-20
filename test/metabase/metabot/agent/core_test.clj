@@ -24,6 +24,7 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -97,6 +98,15 @@
     (testing "a usage part without a finish reason (older adapters) is not truncation"
       (is (= :stop (#'agent/finish-reason 0 20 #{} [{:type :text} {:type :usage}]))))))
 
+(deftest legacy-terminal-tools-test
+  (let [terminal (for [[_profile-id profile] @@#'profiles/*profiles
+                       tool (:tools profile)
+                       :let [tool-name (:name (tools.legacy/declaration-of tool))]
+                       :when (and (contains? (:terminal-tools profile) tool-name)
+                                  (tools.legacy/legacy-tool? tool))]
+                   tool-name)]
+    (is (= (set terminal) @#'agent/legacy-terminal-tool-names))))
+
 (deftest terminal-tool-call-test
   (let [terminal #{"edit_sql_query" "create_sql_query" "replace_sql_query"}
         success  [{:type :tool-input :id "a" :function "edit_sql_query"}
@@ -120,17 +130,21 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
-    (testing (str "an unconverted tool's returned failure does not end the turn either. Every "
-                  "terminal tool catches its own exceptions and returns `{:output \"Query 3 not "
-                  "found\"}`, so there is no `:error` for the adapter to find — ending the turn on "
-                  "the absence of one would deliver that sentence to the user as the answer. The "
-                  "`:structured-output` it does not attach is what tells them apart until they are "
-                  "converted.")
-      (let [legacy-failure [{:type :tool-input :id "d" :function "edit_sql_query"}
-                            {:type :tool-output :id "d" :result {:output "Query 3 not found"}}]]
-        (is (not (#'agent/terminal-tool-call? terminal legacy-failure)))
-        (is (#'agent/should-continue? 0 20 terminal legacy-failure)
-            "the model gets another turn to fix the id")))
+    (testing "legacy terminal tools require structured output on success"
+      (doseq [tool-name ["create_sql_query" "document_construct_sql_chart" "document_construct_model_chart"]]
+        (let [parts [{:type :tool-input :id "d" :function tool-name}
+                     {:type :tool-output :id "d" :result {:output "Query construction failed"}}]]
+          (is (not (#'agent/terminal-tool-call? #{tool-name} parts)))
+          (is (#'agent/terminal-tool-call? #{tool-name}
+                                           (assoc-in parts [1 :result :structured-output] {:query-id "q1"}))))))
+    (testing "converted terminal tools can answer without structured output"
+      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"]]
+        (let [parts [{:type :tool-input :id "e" :function tool-name}
+                     {:type :tool-output :id "e" :result {:output "Done"}}]]
+          (is (#'agent/terminal-tool-call? #{tool-name} parts))
+          (is (not (#'agent/should-continue? 0 20 #{tool-name} parts)))
+          (is (not (#'agent/terminal-tool-call? #{tool-name}
+                                                (assoc-in parts [1 :result :error] {:class :recoverable :code :test/failure})))))))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 

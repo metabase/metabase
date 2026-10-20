@@ -11,13 +11,43 @@
   - `edit-sql-query`,
   - `replace-sql-query`."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.recoverable.common :as recoverable]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
+   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.quoting :as quoting]))
+
+(set! *warn-on-reflection* true)
+
+(tools/defrecoverable not-sql!
+  "The requested query does not contain SQL."
+  {:payload [:map {:closed true} [:query-id :string] [:available [:sequential :string]]]}
+  [{:keys [query-id available]}]
+  {:message (str "Query " (quoting/quoted query-id) " is not a SQL query. Available query IDs: "
+                 (if (seq available) (str/join ", " (map quoting/quoted available)) "none") ".")
+   :recovery [(if (seq available)
+                {:uses #{} :text "Choose one of the available SQL query IDs."}
+                {:uses #{"create_sql_query"}
+                 :text "Use `create_sql_query` to create a SQL query, then use its returned query ID."})]})
+
+(tools/defrecoverable sql-syntax-error!
+  "The proposed SQL failed syntax validation."
+  {:payload [:map {:closed true}
+             [:dialect [:maybe :string]]
+             [:error-message :string]]}
+  [{:keys [dialect error-message]}]
+  {:message (str "The SQL query has a syntax error"
+                 (when dialect (str " for dialect " (quoting/quoted dialect)))
+                 ". Parser details: " (quoting/quoted error-message))
+   :recovery [{:uses #{} :text (str "Fix the SQL syntax and retry. No changes were saved.\n\n" instructions/sql-dialect-checklist)}]})
 
 (mr/def ::action-result
   "Each of the _operations_ performs an _action_ manipulating a query.
@@ -59,6 +89,20 @@
                     {:agent-error?    true
                      :terminal-error? true
                      :database-id     database-id}))))
+
+(defn query-for-sql-edit!
+  "Return a stored SQL query, checking its ID, native query permission, and format."
+  [queries-state query-id]
+  (let [available (sort (for [[id query] queries-state :when (metabot.u/extract-sql-content query)] id))
+        query (or (get queries-state query-id)
+                  (recoverable/unknown-query-id! {:query-id query-id :available available}))]
+    (when-not (native-query-access? (:database query))
+      (tools/unrecoverable! ::no-native-permission
+                            {:user-message (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
+                             :data {:database-id (:database query)}}))
+    (when-not (metabot.u/extract-sql-content query)
+      (not-sql! {:query-id query-id :available available}))
+    query))
 
 (defn- maybe-normalize-query
   [query]

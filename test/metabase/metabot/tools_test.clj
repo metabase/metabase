@@ -10,6 +10,7 @@
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
    [metabase.notification.models :as models.notification]
@@ -325,16 +326,10 @@
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params)))
       (is (not-any? #(= :memory_atom (first %)) (rest params)))))
-  (testing "edit_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/edit-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params)))))
-  (testing "replace_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/replace-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params))))))
+  (doseq [tool [agent-tools/edit-sql-query-tool agent-tools/replace-sql-query-tool]]
+    (testing (str (:name (tools.core/declaration tool)) " schema does not expose state keys")
+      (let [params (:args (tools.core/declaration tool))]
+        (is (not-any? #(contains? #{:queries_state :charts_state} (first %)) (drop 2 params)))))))
 
 (deftest slackbot-schedules-keep-their-day-test
   (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)

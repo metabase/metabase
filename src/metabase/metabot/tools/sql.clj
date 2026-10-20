@@ -5,10 +5,12 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
@@ -26,16 +28,15 @@
     :else               ""))
 
 (defn- first-code-editor-buffer-id
-  []
-  (let [memory (shared/current-memory)]
-    (when memory
-      (let [viewing (get-in memory [:context :user_is_viewing] [])]
-        (some->> viewing
-                 (filter #(= "code_editor" (normalize-context-type (:type %))))
-                 first
-                 :buffers
-                 first
-                 :id)))))
+  ([]
+   (first-code-editor-buffer-id (shared/current-memory)))
+  ([memory]
+   (some->> (get-in memory [:context :user_is_viewing] [])
+            (filter #(= "code_editor" (normalize-context-type (:type %))))
+            first
+            :buffers
+            first
+            :id)))
 
 (defn- format-query-output
   "Format a query result for LLM consumption.
@@ -155,40 +156,44 @@
                          [:replace_all {:optional true} [:maybe :boolean]]]]]
    [:title :string]])
 
-(mu/defn ^{:tool-name    "edit_sql_query"
-           :scope        scope/agent-sql-edit
-           :capabilities #{:permission-write-sql-queries}}
-  edit-sql-query-tool
-  "Edit an existing SQL query using structured edits. Provide a short,
-  human-friendly `title` shown above the results."
-  [{:keys [query_id edits checklist title]} :- edit-sql-schema]
-  (try
-    (let [{:keys [validation-result action-result]}
-          (edit-sql-query-tools/edit-sql-query
-           {:query-id query_id
-            :edits edits
-            :checklist checklist
-            :queries-state (shared/current-queries-state)})
-          {:keys [valid? error-message dialect]} validation-result
-          {:keys [query-id query query-content]} action-result]
-      (if valid?
-        (let [structured (assoc action-result :result-type :query)
-              buffer-id  (first-code-editor-buffer-id)
-              instr      (instructions/edit-sql-query-instructions-for query-id (some? buffer-id))]
-          {:output (format-query-output structured instr)
-           :structured-output structured
-           :instructions instr
-           :data-parts [(if buffer-id
-                          (code-edit-part buffer-id query-content)
-                          (streaming/viz-part {:entity-id (str (random-uuid))
-                                               :query-id  query-id
-                                               :query     (links/->legacy-mbql query)
-                                               :title     title}))]})
-        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-          {:output (format-validation-error-output instr)
-           :instructions instr})))
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+(defn- sql-edit-result
+  [{:keys [validation-result action-result]} title instruction-fn ctx]
+  (let [{:keys [valid? dialect error-message]} validation-result]
+    (when-not valid?
+      (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))
+    (let [{:keys [query-id query query-content]} action-result
+          structured (assoc action-result :result-type :query)
+          buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+          instr (instruction-fn query-id (some? buffer-id))]
+      {:output (format-query-output structured instr)
+       :structured-output structured
+       :data-parts [(if buffer-id
+                      (code-edit-part buffer-id query-content)
+                      (streaming/viz-part {:entity-id (str (random-uuid))
+                                           :query-id query-id
+                                           :query (links/->legacy-mbql query)
+                                           :title title}))]})))
+
+(defrecord EditSqlQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name "edit_sql_query"
+     :description (str "Edit an existing SQL query using structured edits. Provide a short, "
+                       "human-friendly `title` shown above the results.")
+     :scope scope/agent-sql-edit
+     :metabot/capabilities #{:permission-write-sql-queries}
+     :args edit-sql-schema})
+  (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
+    (sql-edit-result (edit-sql-query-tools/edit-sql-query
+                      {:query-id query-id
+                       :edits edits
+                       :checklist checklist
+                       :queries-state (get-in (some-> (:memory-atom ctx) deref) [:state :queries] {})})
+                     title instructions/edit-sql-query-instructions-for ctx)))
+
+(def edit-sql-query-tool
+  "The tool that applies structured edits to a stored SQL query."
+  (->EditSqlQueryTool))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
@@ -201,37 +206,23 @@
    [:new_query :string]
    [:title :string]])
 
-(mu/defn ^{:tool-name    "replace_sql_query"
-           :scope        scope/agent-sql-edit
-           :capabilities #{:permission-write-sql-queries}}
-  replace-sql-query-tool
-  "Replace the SQL content of an existing query entirely. Provide a short,
-  human-friendly `title` shown above the results."
-  [{:keys [query_id new_query checklist title]} :- replace-sql-schema]
-  (try
-    (let [{:keys [validation-result action-result]}
-          (replace-sql-query-tools/replace-sql-query
-           {:query-id query_id
-            :sql new_query
-            :checklist checklist
-            :queries-state (shared/current-queries-state)})
-          {:keys [valid? dialect error-message]} validation-result
-          {:keys [query-id query query-content]} action-result]
-      (if valid?
-        (let [structured (assoc action-result :result-type :query)
-              buffer-id  (first-code-editor-buffer-id)
-              instr      (instructions/replace-sql-query-instructions-for query-id (some? buffer-id))]
-          {:output (format-query-output structured instr)
-           :structured-output structured
-           :instructions instr
-           :data-parts [(if buffer-id
-                          (code-edit-part buffer-id query-content)
-                          (streaming/viz-part {:entity-id (str (random-uuid))
-                                               :query-id  query-id
-                                               :query     (links/->legacy-mbql query)
-                                               :title     title}))]})
-        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-          {:output (format-validation-error-output instr)
-           :instructions instr})))
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+(defrecord ReplaceSqlQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name "replace_sql_query"
+     :description (str "Replace the SQL content of an existing query entirely. Provide a short, "
+                       "human-friendly `title` shown above the results.")
+     :scope scope/agent-sql-edit
+     :metabot/capabilities #{:permission-write-sql-queries}
+     :args replace-sql-schema})
+  (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
+    (sql-edit-result (replace-sql-query-tools/replace-sql-query
+                      {:query-id query-id
+                       :sql new-query
+                       :checklist checklist
+                       :queries-state (get-in (some-> (:memory-atom ctx) deref) [:state :queries] {})})
+                     title instructions/replace-sql-query-instructions-for ctx)))
+
+(def replace-sql-query-tool
+  "The tool that replaces the SQL in a stored query."
+  (->ReplaceSqlQueryTool))
