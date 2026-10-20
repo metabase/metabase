@@ -163,6 +163,7 @@ const FieldSectionBase = ({
         />
         <FormattingSection
           field={field}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
       </Stack>

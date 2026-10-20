@@ -254,11 +254,15 @@ describe("FieldSection", () => {
         screen.getByPlaceholderText("Give this field a name"),
       ).toHaveAttribute("readonly");
       expect(
+        within(screen.getByTestId("field-section")).getAllByRole("img")[0],
+      ).toHaveAttribute("aria-label", expect.stringMatching(/icon$/));
+      expect(
         screen.getByPlaceholderText("Give this field a description"),
       ).toHaveAttribute("readonly");
       expect(
-        screen.queryByLabelText("Cast to a specific data type"),
-      ).not.toBeInTheDocument();
+        screen.getByLabelText("Cast to a specific data type"),
+      ).toBeDisabled();
+      expect(screen.getByTestId("prefix")).toHaveAttribute("readonly");
       await assertSelectIsReadOnly(
         screen.getByPlaceholderText("Select a semantic type"),
       );

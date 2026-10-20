@@ -129,6 +129,8 @@ describe("TableSection", () => {
       expect(
         screen.getByPlaceholderText("Give this table a name"),
       ).toHaveAttribute("readonly");
+      expect(screen.getByLabelText("table2 icon")).toBeInTheDocument();
+      expect(screen.getByLabelText("Go to this table")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /Sorting/ }),
       ).not.toBeInTheDocument();

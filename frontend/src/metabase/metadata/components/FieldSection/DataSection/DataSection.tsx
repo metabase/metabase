@@ -134,18 +134,17 @@ const DataSectionBase = ({
                 )}
 
                 <Stack>
-                  {!readOnly && (
-                    <Switch
-                      checked={isCasting}
-                      classNames={{
-                        body: S.switchBody,
-                      }}
-                      flex="1"
-                      label={t`Cast to a specific data type`}
-                      mt="lg"
-                      onChange={handleCastingChange}
-                    />
-                  )}
+                  <Switch
+                    checked={isCasting}
+                    disabled={readOnly}
+                    classNames={{
+                      body: S.switchBody,
+                    }}
+                    flex="1"
+                    label={t`Cast to a specific data type`}
+                    mt="lg"
+                    onChange={handleCastingChange}
+                  />
                   {isCasting && (
                     <CoercionStrategyPicker
                       autoFocus={autoFocusCoercionPicker}

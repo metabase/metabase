@@ -814,6 +814,13 @@ describe("scenarios > data studio > datamodel", () => {
         .findByText("Sorry, you don’t have permission to see that.")
         .should("not.exist");
 
+      cy.log("formatting");
+      TableSection.clickField("Tax");
+      FieldSection.getNameInput().should("have.value", "Tax");
+      FieldSection.getPrefixInput().should("have.attr", "readonly");
+      FieldSection.getSuffixInput().should("have.attr", "readonly");
+      FieldSection.getMiniBarChartToggle().should("be.disabled");
+
       cy.log("field values");
       TablePicker.getTable("Products").click();
       TableSection.getNameInput().should("have.value", "Products");
@@ -822,6 +829,7 @@ describe("scenarios > data studio > datamodel", () => {
       }
       TableSection.clickField("Category");
       FieldSection.getNameInput().should("have.value", "Category");
+      FieldSection.getCoercionToggle().should("be.disabled");
       PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
       PreviewSection.get().findByText("Doohickey").should("be.visible");
     }
