@@ -1,0 +1,508 @@
+.sidebar {
+  background-color: var(--mb-color-background_page-tertiary);
+}
+
+/* sits in the tray like the wells: same 16px side margins, and a 12px gap to the first well.
+   takes whatever height the wells leave, but keeps enough to browse a few columns */
+.fieldListCard {
+  --field-list-gutter: var(--mantine-spacing-xs);
+
+  flex: 1 1 0;
+  min-height: 15rem;
+  margin: var(--mantine-spacing-lg) var(--mantine-spacing-lg) 0;
+}
+
+.fieldList {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* the same height with the tabs or the search field in it, so toggling search doesn't shift the list */
+.fieldListHeader {
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  height: 2rem;
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.fieldListTabs {
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.fieldListSearch {
+  flex: 1;
+}
+
+/* the xs input keeps the header at 32px, but its 11px text is smaller than the 14px results */
+.fieldListSearch .fieldListSearchInput {
+  font-size: var(--mantine-font-size-md);
+}
+
+/* one button for both modes: its search and close icons cross-fade in place */
+.searchToggle {
+  flex-shrink: 0;
+  overflow: visible;
+
+  /* a 40px target around the 32px button (inset from inside its 1px border); the 8px header gap
+     keeps it clear of the tabs and the field */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+  }
+}
+
+.searchToggleSearch,
+.searchToggleClose {
+  transition-property: opacity, scale, filter;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.searchToggleClose {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.searchToggle[data-searching="false"] .searchToggleClose,
+.searchToggle[data-searching="true"] .searchToggleSearch {
+  opacity: 0;
+  scale: 0.25;
+  filter: blur(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .searchToggleSearch,
+  .searchToggleClose {
+    transition-property: opacity;
+  }
+}
+
+/* bleeds into the card's padding so item icons align with the group headings and the header,
+   while the hover fill keeps a small inset from the card edge */
+.fieldListScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--field-list-gutter));
+}
+
+.fieldGroupName {
+  margin: 0.75rem 0 0.25rem;
+  padding-inline: var(--field-list-gutter);
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+}
+
+.fieldListEmpty {
+  padding: var(--mantine-spacing-sm) var(--field-list-gutter);
+  text-wrap: pretty;
+}
+
+.fieldItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem var(--field-list-gutter);
+  /* concentric with the card: its 16px corner minus the 6px gutter */
+  border-radius: 10px;
+  cursor: grab;
+  color: var(--mb-color-text-primary);
+  touch-action: none;
+  user-select: none;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &:hover .grabber,
+  &:focus-visible .grabber {
+    opacity: 1;
+  }
+}
+
+/* the global role="button" ring would be clipped by the scroll container at the panel edges */
+.fieldItem:focus-visible {
+  outline-offset: -2px;
+}
+
+.grabber {
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0;
+  color: var(--mb-color-text-secondary);
+  transition: opacity 100ms ease-out;
+}
+
+.isDragging {
+  opacity: 0.4;
+}
+
+/* as tall as its cards; scrolls only once the field list is down to its minimum */
+.wells {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg)
+    var(--mantine-spacing-lg);
+}
+
+/* the whole card is the well's input: it takes the hover and focus rings an input border would */
+.well {
+  flex-shrink: 0;
+  gap: var(--mantine-spacing-sm);
+  overflow: visible;
+  cursor: text;
+  transition-property: background-color, box-shadow, opacity;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+}
+
+.well:hover {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-border-neutral-strong);
+}
+
+.well:has(.wellFieldInput:focus, :global(.cm-focused)) {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-core-brand);
+}
+
+/* matches the focus rule's specificity, so an invalid formula's ring wins while it's focused */
+.well:has(.formulaBox.formulaBoxInvalid) {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-feedback-negative);
+}
+
+.well.wellAcceptsDrop {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-core-summarize);
+}
+
+.well.wellIsOver {
+  box-shadow:
+    var(--mantine-shadow-sm_outline),
+    0 0 0 2px var(--mb-color-core-summarize);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-summarize) 10%,
+    var(--mb-color-background_surface-primary)
+  );
+}
+
+.wellRejectsDrop {
+  opacity: 0.5;
+}
+
+/* a ghost of the well it adds: same corners and side margins, dashed until there's something in it */
+.addWellButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-md);
+  border: 1px dashed var(--mb-color-border-neutral-strong);
+  border-radius: var(--mantine-radius-lg);
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+  transition-property: color, background-color, border-color;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+
+  &:hover {
+    border-color: var(--mb-color-core-summarize);
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-background_surface-primary);
+  }
+}
+
+.wellTitle {
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+}
+
+/* every item is the chips' height, so the row stays top-aligned when a formula grows a name row */
+.wellField {
+  --well-field-height: 1.875rem;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-xs);
+  min-height: var(--well-field-height);
+}
+
+/* beats the design system's extra inset for a field with no pills beside it */
+.wellField .wellFieldInput,
+.wellField .wellFieldInput:only-child {
+  flex: 1 1 8rem;
+  min-width: 8rem;
+  height: var(--well-field-height);
+  margin: 0;
+  cursor: text;
+}
+
+/* the typeahead: a 6px list inset around 6px-radius options makes the 12px dropdown corners concentric.
+   scoped under .searchDropdown so these win over the design system's Combobox classes */
+.searchDropdown .searchOptions {
+  padding: var(--mantine-spacing-xs);
+}
+
+.searchDropdown .searchGroupLabel {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-sm)
+    var(--mantine-spacing-xxs);
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+
+  &::after {
+    display: none;
+  }
+}
+
+.searchDropdown .searchOption {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+  line-height: 1.25rem;
+}
+
+.searchOptionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.searchOption:hover .searchOptionIcon,
+.searchOption[data-combobox-selected] .searchOptionIcon {
+  color: inherit;
+}
+
+.searchOptionText {
+  flex: 1;
+  min-width: 0;
+}
+
+.matchedLabel {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.matchedLabelMatch {
+  font-weight: bold;
+}
+
+.searchOptionDescription {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.searchDropdown .searchEmpty {
+  padding: var(--mantine-spacing-sm);
+  font-size: var(--mantine-font-size-sm);
+  text-align: left;
+  color: var(--mb-color-text-secondary);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.25rem 0.25rem 0.25rem 0.5rem;
+  /* concentric with the well card: its 16px corner minus the 12px padding */
+  border-radius: var(--mantine-radius-xxs);
+  font-weight: bold;
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-core-summarize);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.chipLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chipButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.dragPreview {
+  composes: chip;
+  cursor: grabbing;
+  box-shadow: var(--mantine-shadow-sm_outline);
+}
+
+/* widen the 22px remove target to the chip's edge and half the gap to the next chip,
+   never into the neighbouring label button */
+.chipRemove {
+  overflow: visible;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -4px -7px -4px -2px;
+  }
+}
+
+.chipIsEditing {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 1px;
+}
+
+/* sits after the chips like the search field, wrapping to its own line only when there's no room */
+.formula {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.formulaBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--well-field-height);
+}
+
+.formulaError {
+  text-wrap: pretty;
+}
+
+.formulaEquals {
+  font-family: var(--mb-default-monospace-font-family), monospace;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.formulaEditor {
+  flex: 1;
+  min-width: 0;
+  padding: 0.125rem 0;
+
+  :global(.cm-editor) {
+    background-color: transparent;
+  }
+
+  :global(.cm-editor.cm-focused) {
+    outline: none;
+  }
+
+  /* the CodeMirror theme pads the content with the same specificity, and is injected later */
+  :global(.cm-editor .cm-content) {
+    padding: 0;
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+  }
+
+  :global(.cm-line) {
+    padding: 0;
+  }
+
+  :global(.cm-gutters) {
+    display: none;
+  }
+
+  /* one line, so opening a formula never changes the card's height */
+  :global(.cm-placeholder) {
+    max-width: 100%;
+    overflow: hidden;
+    vertical-align: top;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* base syntax highlighting renders nested spans; let the token colors win */
+.tokenFunction *,
+.tokenLiteral *,
+.tokenOperator *,
+.tokenColumn * {
+  color: inherit;
+}
+
+.tokenFunction {
+  font-weight: bold;
+  color: var(--mb-color-core-brand);
+}
+
+.tokenLiteral {
+  color: var(--mb-color-accent2);
+}
+
+.tokenOperator {
+  padding: 0 0.125rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.tokenColumn {
+  --token-color: var(--mb-color-accent0);
+
+  padding: 0.0625rem 0.25rem;
+  border-radius: 4px;
+  color: var(--token-color);
+  background-color: color-mix(in srgb, var(--token-color) 14%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--token-color) 40%, transparent);
+}
+
+.tokenColumn0 {
+  composes: tokenColumn;
+}
+
+.tokenColumn1 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent1);
+}
+
+.tokenColumn2 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent3);
+}
+
+.tokenColumn3 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent4);
+}
+
+.tokenColumn4 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent5);
+}
+
+.tokenColumn5 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent7);
+}

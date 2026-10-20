@@ -5,6 +5,7 @@ import { useListTablesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import {
   Navigate,
@@ -12,9 +13,11 @@ import {
   useParams,
   useSearchParams,
 } from "metabase/router";
-import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import type { Card, TableId } from "metabase-types/api";
 
+import { QuestionDataSource } from "../../components/view/ViewHeader/components/QuestionDataSource";
+import { ViewHeading } from "../../components/view/ViewSection";
 import { ViewSidebar } from "../../components/view/ViewSidebar";
 import { SIDEBAR_SIZES } from "../../constants";
 
@@ -138,7 +141,6 @@ function PrototypeSource({
     <PrototypeWorkspace
       sourceId={sourceId}
       sourceCard={sourceCardState.card}
-      sourceName={sourceCardState.sourceName}
       variantIndex={variantIndex}
     />
   );
@@ -147,12 +149,10 @@ function PrototypeSource({
 function PrototypeWorkspace({
   sourceId,
   sourceCard,
-  sourceName,
   variantIndex,
 }: {
   sourceId: TableId;
   sourceCard: Card;
-  sourceName: string;
   variantIndex: number;
 }) {
   const navigate = useNavigate();
@@ -171,6 +171,7 @@ function PrototypeWorkspace({
     cancelQuery,
     resetToSource,
   } = usePrototypeQuestion(sourceCard);
+  const sourceQuestion = useQuestionFromCard(sourceCard);
   const variant = VARIANTS[variantIndex];
   const { Sidebar } = variant;
 
@@ -188,14 +189,17 @@ function PrototypeWorkspace({
   return (
     <Box className={S.root}>
       <Flex className={S.toolbar} align="center" gap="md">
-        <Text fw="bold">{t`Summarize sidebar prototype`}</Text>
-        <Text c="text-secondary">{`${variant.name} · ${variant.axis}`}</Text>
+        {/* the heading the query builder gives an unsummarized question over this source */}
+        <ViewHeading c="text-secondary">
+          <QuestionDataSource question={sourceQuestion} />
+        </ViewHeading>
         <Button
           ml="auto"
+          flex="0 0 auto"
           leftSection={<Icon name="table" />}
           onClick={() => setIsPickingSource(true)}
         >
-          {sourceName}
+          {t`Change data`}
         </Button>
       </Flex>
       <Box className={S.content}>

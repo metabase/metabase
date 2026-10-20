@@ -15,7 +15,7 @@ import type { Card, TableId } from "metabase-types/api";
 export type SourceCardState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "loaded"; card: Card; sourceName: string };
+  | { status: "loaded"; card: Card };
 
 /** A raw, unsummarized question over the table or saved question `sourceId`, as the query builder opens it. */
 export function useSourceCard(sourceId: TableId): SourceCardState {
@@ -49,16 +49,15 @@ export function useSourceCard(sourceId: TableId): SourceCardState {
         dataset_query: Lib.toJsQuery(query),
         display: "table",
       }).card();
-      const { displayName } = Lib.displayInfo(query, -1, table);
       // the query builder opens with the metadata of every table the query can reach (e.g. through FKs)
       await dispatch(loadMetadataForCard(card));
-      return { card, sourceName: displayName };
+      return card;
     };
 
     load().then(
-      ({ card, sourceName }) => {
+      (card) => {
         if (!isCancelled) {
-          setState({ status: "loaded", card, sourceName });
+          setState({ status: "loaded", card });
         }
       },
       (error: unknown) => {
