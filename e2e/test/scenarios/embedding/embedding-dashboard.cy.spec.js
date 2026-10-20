@@ -25,7 +25,7 @@ describe("scenarios > embedding > static embedding dashboard", () => {
     });
   });
 
-  it("should not call `GET /api/database` and should return cache headers for the js bundle (metabase#63310, metabase#50373)", () => {
+  it("should not call `GET /api/database`, should return cache headers for the js bundle, and shouldn't overflow its container (metabase#63310, metabase#50373, metabase#40660)", () => {
     cy.intercept("GET", "/api/database").as("getDatabases");
     cy.intercept(
       {
@@ -58,9 +58,10 @@ describe("scenarios > embedding > static embedding dashboard", () => {
     );
     cy.log("GET /api/database should not be called");
     cy.get("@getDatabases.all").should("have.length", 0);
-  });
 
-  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
+    cy.log("Static dashboard content shouldn't overflow its container");
+    cy.signInAsAdmin();
+
     const questionDetails = {
       name: "Products",
       query: { "source-table": PRODUCTS_ID, limit: 2 },
