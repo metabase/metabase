@@ -34,6 +34,13 @@ interface LegendLayoutProps {
     index: number,
     isReversed?: boolean,
   ) => void;
+  /**
+   * With `onSelectSeries` also set, series titles render as links to the
+   * returned URL. It's called when a title is hovered or focused, not on render.
+   * Clicks still go to `onSelectSeries`; the URL serves middle-click and the
+   * browser's link menu, such as "Open in new tab".
+   */
+  getSeriesHref?: (index: number) => string | undefined;
   onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
   isReversed?: boolean;
 }
@@ -56,6 +63,7 @@ export const LegendLayout = ({
   children,
   onHoverChange,
   onSelectSeries,
+  getSeriesHref,
   onToggleSeriesVisibility,
   isReversed,
 }: LegendLayoutProps) => {
@@ -97,6 +105,7 @@ export const LegendLayout = ({
     size,
     onHoverChange,
     onSelectSeries,
+    getSeriesHref,
     onToggleSeriesVisibility,
     isReversed,
   };
