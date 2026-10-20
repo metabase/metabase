@@ -33,7 +33,7 @@ export function DataAppsNavbarSection({
           <SidebarLink
             key={dataApp.name}
             icon="app"
-            onItemSelect={onItemSelect}
+            onClick={onItemSelect}
             rel="noopener noreferrer"
             target="_blank"
             url={Urls.dataApp(dataApp.name)}
