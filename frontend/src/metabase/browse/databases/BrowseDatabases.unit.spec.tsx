@@ -188,5 +188,32 @@ describe("BrowseDatabases", () => {
 
       expect(screen.getByText("Add a database")).toBeInTheDocument();
     });
+
+    it("should open the add database page and track the click", async () => {
+      const { trackSimpleEvent } = jest.requireMock<{
+        trackSimpleEvent: jest.Mock<void, [{ event: string }]>;
+      }>("metabase/analytics");
+      setupDatabasesEndpoints(mockDatabases.slice(0, 2));
+      const { router } = renderWithProviders(
+        <Route path="/browse/databases" element={<BrowseDatabases />} />,
+        {
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: true }),
+          }),
+          withRouter: true,
+          initialRoute: "/browse/databases",
+        },
+      );
+
+      await userEvent.click(await screen.findByText("Add a database"));
+
+      expect(router?.location.pathname).toBe("/admin/databases/create");
+      const addDatabaseEvents = trackSimpleEvent.mock.calls.filter(
+        ([event]) => event.event === "database_add_clicked",
+      );
+      expect(addDatabaseEvents).toEqual([
+        [{ event: "database_add_clicked", triggered_from: "db-list" }],
+      ]);
+    });
   });
 });
