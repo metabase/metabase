@@ -207,3 +207,40 @@ export function getClause(tree: PillTree, path: PillPath) {
   );
   return node?.type === "clause" ? node.clause : undefined;
 }
+
+/** Adds `payload`'s rows as new OR rows of `tree`. */
+export function appendOrRows(tree: PillTree, payload: PillTree): PillTree {
+  return { ...tree, children: [...tree.children, ...payload.children] };
+}
+
+/**
+ * ANDs `payload` into row `rowIndex`: a one-row payload joins the row's
+ * clauses, a multi-row payload becomes an OR subgroup of the row.
+ */
+export function appendToRow(
+  tree: PillTree,
+  rowIndex: number,
+  payload: PillTree,
+): PillTree {
+  const [onlyRow, ...otherRows] = payload.children;
+  const nodes: PillNode[] =
+    onlyRow?.type === "group" && otherRows.length === 0
+      ? onlyRow.children
+      : [{ type: "group", children: payload.children }];
+  return updateGroup(tree, [rowIndex], (children) => [...children, ...nodes]);
+}
+
+export function moveRow(tree: PillTree, from: number, to: number): PillTree {
+  const children = [...tree.children];
+  const [row] = children.splice(from, 1);
+  children.splice(to, 0, row);
+  return { ...tree, children };
+}
+
+/** A one-clause tree, the shape a single dragged condition travels in. */
+export function toSingleClauseTree(clause: Lib.FilterClause): PillTree {
+  return {
+    type: "group",
+    children: [{ type: "group", children: [{ type: "clause", clause }] }],
+  };
+}

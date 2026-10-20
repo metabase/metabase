@@ -31,10 +31,10 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "or-pills",
     get name() {
-      return t`Normalized nested form`;
+      return t`Normalized nested form, with draggable pills`;
     },
     get description() {
-      return t`Pills stay AND-ed at the top level. Click a pill to edit its OR rows in a dropdown; subgroups alternate and/or and nest to any depth.`;
+      return t`Pills stay AND-ed at the top level. Click a pill to edit its OR rows in a dropdown. Drop a pill on another to OR them, drag pills in and out of the open dropdown, and drag rows to reorder.`;
     },
     Component: OrPillsPrototype,
   },

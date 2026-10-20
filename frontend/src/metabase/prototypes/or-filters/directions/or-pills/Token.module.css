@@ -19,3 +19,30 @@
 .token:hover {
   border-color: var(--mb-color-core-filter);
 }
+
+.draggable {
+  display: inline-flex;
+  touch-action: none;
+}
+
+.draggable[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+.draggable[data-over="true"] .token {
+  border: 1px dashed var(--mb-color-core-filter);
+  background-color: var(--mb-color-background_surface-selected);
+}
+
+.overlay {
+  cursor: grabbing;
+  box-shadow: var(--mantine-shadow-md);
+}
+
+.placeholder {
+  width: 8rem;
+  height: 1.875rem;
+  border: 1px dashed var(--mb-color-core-filter);
+  border-radius: 2rem;
+  background-color: var(--mb-color-background_surface-selected);
+}

@@ -1,9 +1,17 @@
-import { Fragment, forwardRef, useRef, useState } from "react";
+import { useDndContext, useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Fragment, type ReactNode, forwardRef, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
+  ActionIcon,
   Box,
   Button,
   Divider,
@@ -18,7 +26,13 @@ import * as Lib from "metabase-lib";
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 
 import S from "./GroupEditor.module.css";
-import { Token } from "./Token";
+import {
+  DraggableToken,
+  EDITOR_DROP_ID,
+  getRowId,
+  getTokenId,
+  parseDndId,
+} from "./dnd";
 import {
   type AddTarget,
   type GroupNode,
@@ -35,7 +49,9 @@ import {
 type GroupEditorProps = {
   query: Lib.Query;
   stageIndex: number;
+  /** The pill's draft, owned by the caller so drags can reach it. */
   tree: PillTree;
+  onChange: (tree: PillTree) => void;
   onUpdate: (tree: PillTree) => void;
   /** Ungroups the pill: every clause, at any depth, becomes a top-level filter. */
   onExpand: (tree: PillTree) => void;
@@ -50,11 +66,14 @@ type GroupEditorProps = {
 export function GroupEditor({
   query,
   stageIndex,
-  tree: initialTree,
+  tree,
+  onChange: setTree,
   onUpdate,
   onExpand,
 }: GroupEditorProps) {
-  const [tree, setTree] = useState(initialTree);
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: EDITOR_DROP_ID,
+  });
   // Only one thing is ever on screen: the single-clause editor, the rows, or
   // the picker that adds/replaces one clause (no picker stacked over the rows).
   const [view, setView] = useState<EditorView>({ type: "auto" });
@@ -65,18 +84,23 @@ export function GroupEditor({
       : undefined;
   if (singleClause) {
     return (
-      <SingleClauseEditor
-        query={query}
-        stageIndex={stageIndex}
-        clause={singleClause.clause}
-        column={singleClause.column}
-        onOr={() =>
-          setView({ type: "add", target: { kind: "subgroup", groupPath: [] } })
-        }
-        onUpdate={(clause) =>
-          onUpdate(replaceClause(tree, singleClause.path, clause))
-        }
-      />
+      <Box ref={setDropRef} className={S.dropZone} data-over={isOver}>
+        <SingleClauseEditor
+          query={query}
+          stageIndex={stageIndex}
+          clause={singleClause.clause}
+          column={singleClause.column}
+          onOr={() =>
+            setView({
+              type: "add",
+              target: { kind: "subgroup", groupPath: [] },
+            })
+          }
+          onUpdate={(clause) =>
+            onUpdate(replaceClause(tree, singleClause.path, clause))
+          }
+        />
+      </Box>
     );
   }
 
@@ -118,24 +142,40 @@ export function GroupEditor({
   }
 
   return (
-    <Box miw={420} ff="monospace">
+    <Box ref={setDropRef} miw={420} ff="monospace">
       <Stack gap="sm" px="md" pt="sm" pb="md">
         <Stack gap="xs">
-          {tree.children.map((row, rowIndex) =>
-            row.type === "group" ? (
-              <GroupLines
-                key={rowIndex}
-                query={query}
-                stageIndex={stageIndex}
-                group={row}
-                depth={1}
-                path={[rowIndex]}
-                lead={rowIndex === 0 ? t`Where` : getOperatorLabel("or")}
-                onAdd={(target) => setView({ type: "add", target })}
-                onReplace={(path) => setView({ type: "replace", path })}
-                onRemove={(path) => setTree(removeClause(tree, path))}
-              />
-            ) : null,
+          <SortableContext
+            items={tree.children.map((_row, rowIndex) => getRowId(rowIndex))}
+            strategy={verticalListSortingStrategy}
+          >
+            {tree.children.map((row, rowIndex) =>
+              row.type === "group" ? (
+                <SortableRow key={rowIndex} rowIndex={rowIndex}>
+                  {(handle) => (
+                    <GroupLines
+                      handle={handle}
+                      query={query}
+                      stageIndex={stageIndex}
+                      group={row}
+                      depth={1}
+                      path={[rowIndex]}
+                      lead={rowIndex === 0 ? t`Where` : getOperatorLabel("or")}
+                      onAdd={(target) => setView({ type: "add", target })}
+                      onReplace={(path) => setView({ type: "replace", path })}
+                      onRemove={(path) => setTree(removeClause(tree, path))}
+                    />
+                  )}
+                </SortableRow>
+              ) : null,
+            )}
+          </SortableContext>
+          {isOver && (
+            <Group gap="xs">
+              <Icon name="grabber" c="text-secondary" />
+              <Lead>{getOperatorLabel("or")}</Lead>
+              <Box className={S.placeholder} />
+            </Group>
           )}
         </Stack>
         <Box>
@@ -170,7 +210,66 @@ export function GroupEditor({
   );
 }
 
+type SortableRowProps = {
+  rowIndex: number;
+  children: (handle: ReactNode) => ReactNode;
+};
+
+/** A top-level OR row, dragged by its grabber; its subgroups travel with it. */
+function SortableRow({ rowIndex, children }: SortableRowProps) {
+  const { active } = useDndContext();
+  const isRowDrag = active != null && parseDndId(active.id)?.kind === "row";
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({ id: getRowId(rowIndex) });
+
+  const handle = (
+    <ActionIcon
+      ref={setActivatorNodeRef}
+      variant="subtle"
+      size="sm"
+      c="text-secondary"
+      className={S.handle}
+      aria-label={t`Drag to reorder`}
+      {...attributes}
+      {...listeners}
+    >
+      <Icon name="grabber" />
+    </ActionIcon>
+  );
+
+  return (
+    <Box
+      ref={setNodeRef}
+      className={S.sortableRow}
+      data-dragging={isDragging}
+      // A token or pill hovering a row joins it with "and".
+      data-over={isOver && !isRowDrag}
+      style={
+        isRowDrag
+          ? {
+              transform: CSS.Translate.toString(
+                transform && { ...transform, x: 0 },
+              ),
+              transition,
+            }
+          : undefined
+      }
+    >
+      {children(handle)}
+    </Box>
+  );
+}
+
 type GroupLinesProps = {
+  handle?: ReactNode;
   query: Lib.Query;
   stageIndex: number;
   group: GroupNode;
@@ -188,6 +287,7 @@ type GroupLinesProps = {
  * indented past its parent's lead), recursively.
  */
 function GroupLines({
+  handle,
   query,
   stageIndex,
   group,
@@ -211,7 +311,7 @@ function GroupLines({
   return (
     <>
       <Group gap="xs" wrap="wrap" className={S.row}>
-        <Icon name="grabber" c="text-secondary" />
+        {handle ?? <Icon name="grabber" c="text-secondary" />}
         {Array.from({ length: depth - 1 }, (_, index) => (
           <Lead key={index} />
         ))}
@@ -219,12 +319,13 @@ function GroupLines({
         {clauses.map(({ clause, index }, position) => (
           <Fragment key={index}>
             {position > 0 && <Connector label={getOperatorLabel(operator)} />}
-            <Token
+            <DraggableToken
+              dndId={getTokenId([...path, index])}
               onClick={() => onReplace([...path, index])}
               onRemove={() => onRemove([...path, index])}
             >
               {getFilterLabel(query, stageIndex, clause)}
-            </Token>
+            </DraggableToken>
           </Fragment>
         ))}
         <RowAddMenu
