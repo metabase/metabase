@@ -693,13 +693,12 @@
       (str/join ", " queries))))
 
 (tools/defrecoverable missing-query!
-  "A search needs at least one non-blank query."
+  "A search needs at least one query and no blank entries."
   {:payload [:map {:closed true}]}
   [_]
-  {:message "Provide at least one non-blank keyword or semantic query."
+  {:message "Provide at least one query. Every query must be non-blank."
    :recovery [{:uses #{"search"}
-               :text (str "Call `search` again with `keyword_queries` or `semantic_queries` "
-                          "describing what to find.")}]})
+               :text "Call `search` again with non-blank queries in `keyword_queries`."}]})
 
 (tools/defrecoverable unavailable-database!
   "The SQL search database does not exist or is unreadable."
@@ -728,8 +727,9 @@
      :scope scope/agent-search
      :metabot/title-fn search-display})
   (handle [_ {:keys [database_id semantic_queries keyword_queries] :as args} {:keys [metabot]}]
-    (when-not (some (complement str/blank?) (concat semantic_queries keyword_queries))
-      (missing-query! {}))
+    (let [queries (concat semantic_queries keyword_queries)]
+      (when (or (empty? queries) (some str/blank? queries))
+        (missing-query! {})))
     (when (contains? args :database_id)
       (check-search-database! database_id))
     (do-search default-types

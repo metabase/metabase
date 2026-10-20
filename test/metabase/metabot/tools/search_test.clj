@@ -28,6 +28,11 @@
    (binding [scope/*current-user-scope* #{scope/agent-search}]
      ((get-in (metabot.tools/->entries tool-list (atom {}) metabot profile-id) ["search" :fn]) args))))
 
+(def ^:private missing-query-result
+  {:error {:class :recoverable :code ::search/missing-query}
+   :output (str "Provide at least one query. Every query must be non-blank.\n"
+                "Call `search` again with non-blank queries in `keyword_queries`.")})
+
 (deftest ^:parallel search-requires-query-test
   (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]
     (doseq [[tool-var extra-args] [[#'search/search-tool {}]
@@ -36,9 +41,18 @@
             queries [{}
                      {:keyword_queries [] :semantic_queries []}
                      {:keyword_queries ["" "  "] :semantic_queries ["\n"]}]]
-      (is (= {:error {:class :recoverable :code ::search/missing-query}
-              :output (str "Provide at least one non-blank keyword or semantic query.\n"
-                           "Call `search` again with `keyword_queries` or `semantic_queries` describing what to find.")}
+      (is (= missing-query-result
+             (invoke-search [tool-var] (merge extra-args queries)))))))
+
+(deftest search-rejects-mixed-blank-queries-test
+  (mt/with-test-user :crowberto
+    (doseq [[tool-var extra-args] [[#'search/search-tool {}]
+                                   [#'search/sql-search-tool {:database_id (mt/id)}]
+                                   [#'search/nlq-search-tool {}]]
+            queries [{:keyword_queries ["" "orders"] :semantic_queries []}
+                     {:keyword_queries ["orders" "  "]}
+                     {:keyword_queries ["orders"] :semantic_queries [""]}]]
+      (is (= missing-query-result
              (invoke-search [tool-var] (merge extra-args queries)))))))
 
 (deftest sql-search-checks-database-test
@@ -71,8 +85,7 @@
                [#'search/sql-search-tool {:database_id (mt/id)} {:database-id (mt/id)}]
                [#'search/nlq-search-tool {} {:profile-id "nlq"}]]
               queries [{:keyword_queries ["orders"]}
-                       {:semantic_queries ["order revenue"]}
-                       {:keyword_queries ["" "orders"] :semantic_queries []}]]
+                       {:semantic_queries ["order revenue"]}]]
         (let [captured (atom nil)]
           (mt/with-dynamic-fn-redefs [search/search (fn [opts] (reset! captured opts) [])]
             (is (=? {:structured-output {:result-type :search :data [] :total_count 0}
