@@ -1,5 +1,6 @@
 .root {
   height: 100%;
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
+  /* Always show the scrollbar so the centred content doesn't shift between short and long pages.
+     A scrollbar-gutter would leave a gap in the header's full-width border. */
+  overflow-y: scroll;
 }
