@@ -124,7 +124,7 @@
                     {:status-code 400}))))
 
 (defsetting remote-sync-custom-collections-enabled
-  (deferred-tru "Whether remote sync can sync collections besides the Library, transforms, snippets and data apps. When off, no other collection can be marked as synced, and a pull refuses a repository that has other collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` on an instance that pulls such a repository. It can only be turned off once no other collection is synced.")
+  (deferred-tru "Whether remote sync can sync collections besides the Library, transforms, snippets and data apps. When off, no other collection can be marked as synced, and a pull or a serialization import refuses content with other synced collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` on an instance that pulls or imports such content. It can only be turned off once no other collection is synced.")
   :type :boolean
   :visibility :admin
   :export? false
