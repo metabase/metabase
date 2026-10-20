@@ -59,6 +59,23 @@
                  :lib/simple-display-name new-display-name)))
     metadata))
 
+(mu/defn- field-with-name :- [:maybe ::lib.schema.metadata/column]
+  "The Field in Table `table-id` named `field-name`: a top-level Field, else a nested one whose `parent.child` name
+  matches, else any Field with that leaf name."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- ::lib.schema.id/table
+   field-name            :- :string]
+  (let [fields-named (fn [field-name]
+                       (lib.metadata.protocols/metadatas
+                        (lib.metadata/->metadata-provider metadata-providerable)
+                        {:lib/type :metadata/column, :table-ids #{table-id}, :name #{field-name}}))
+        fields       (fields-named field-name)]
+    (or (m/find-first (comp nil? :parent-id) fields)
+        (when-some [leaf-name (second (re-matches #".*\.([^.]+)" field-name))]
+          (m/find-first #(= (lib.field.util/parent-qualified-name metadata-providerable %) field-name)
+                        (fields-named leaf-name)))
+        (first fields))))
+
 (mu/defn- field-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   "Metadata about the field from the metadata provider."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -71,9 +88,7 @@
 
                     (and (string? id-or-name)
                          (pos-int? table-id))
-                    (first (lib.metadata.protocols/metadatas
-                            (lib.metadata/->metadata-provider metadata-providerable)
-                            {:lib/type :metadata/column, :table-ids #{table-id}, :name #{id-or-name}})))]
+                    (field-with-name metadata-providerable table-id id-or-name))]
     (-> col
         (assoc :lib/source                :source/table-defaults
                :lib/source-column-alias   (:name col)
@@ -394,45 +409,20 @@
       (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
         (recur query previous-stage-number source-field-id))))
 
-(defn- resolve-name-in-implicit-join-this-stage
-  "You REALLY shouldn't be specifying `:source-field` in a field name ref, since it makes resolution 10x harder. There's
-  a 99.9% chance that using a field name ref with `:source-field` is a bad idea and broken, I even considered banning
-  it at the schema level, but decided to let it be for now since we should still be able to resolve it. we need to do
-  the lookup as follows:
-
-    Source Field (FK)
-    =>
-    Target Field (Field with `:fk-target-field-id` AKA the field the FK points to)
-    =>
-    Target Table (Table to implicitly join)
-    =>
-    Resolve in Target Table metadata"
-  [query source-field-id field-name]
-  (when-some [source-field (lib.metadata/field query source-field-id)]
-    (when-some [fk-target-field-id (:fk-target-field-id source-field)]
-      (when-some [target-field (lib.metadata/field query fk-target-field-id)]
-        (when-some [target-table (lib.metadata/table query (:table-id target-field))]
-          ;; TODO (Cam 8/7/25) -- seems sorta weird to be
-          ;; using [[resolve-in-previous-stage-metadata-without-updating-keys]] here since the
-          ;; source table is technically in the same stage, alto if you think about it you can sort
-          ;; of think of a table as being the Ur-source of the entire query... either way this
-          ;; actually still works since `returned-columns` for a table includes desired column
-          ;; aliases.
-          (resolve-in-previous-stage-returned-columns-without-updating-keys
-           query
-           (lib.metadata.calculation/returned-columns query target-table)
-           field-name))))))
+(mu/defn- implicit-join-target-table-id :- [:maybe ::lib.schema.id/table]
+  "The ID of the Table that the FK Field `source-field-id` points to."
+  [query           :- ::lib.schema/query
+   source-field-id :- ::lib.schema.id/field]
+  (some->> (lib.metadata/field query source-field-id)
+           :fk-target-field-id
+           (lib.metadata/field query)
+           :table-id))
 
 (mu/defn- resolve-in-implicit-join-current-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   [query           :- ::lib.schema/query
    source-field-id :- ::lib.schema.id/field
    id-or-name      :- ::id-or-name]
-  ;; don't resolve name refs using [[field-metadata]] here, because it can cause us to trip up when there are multiple
-  ;; fks to the same table. See
-  ;; [[metabase.lib.field.resolution-test/multiple-remaps-between-tables-test]]
-  (when-some [col (or (field-metadata query nil id-or-name)
-                      (resolve-name-in-implicit-join-this-stage query source-field-id id-or-name))]
-    ;; if we managed to resolve it then update metadata appropriately.
+  (when-some [col (field-metadata query (implicit-join-target-table-id query source-field-id) id-or-name)]
     (assoc col
            :lib/source :source/implicitly-joinable
            :fk-field-id source-field-id)))

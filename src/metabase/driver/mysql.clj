@@ -521,13 +521,12 @@
           [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]])))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
-  [driver [_ opts id-or-name :as mbql-clause]]
-  (let [stored-field  (when (integer? id-or-name)
-                        (driver-api/field (driver-api/metadata-provider) id-or-name))
+  [driver [_ opts _id-or-name :as mbql-clause]]
+  (let [json-field    (sql.qp.u/json-field opts)
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         honeysql-expr (parent-method driver mbql-clause)]
     (cond
-      (not (driver-api/json-field? stored-field))
+      (not json-field)
       honeysql-expr
 
       (::sql.qp/forced-alias opts)
@@ -543,7 +542,7 @@
 
       :else
       (perf/postwalk #(if (h2x/identifier? %)
-                        (sql.qp/json-query :mysql % stored-field)
+                        (sql.qp/json-query :mysql % json-field)
                         %)
                      honeysql-expr))))
 

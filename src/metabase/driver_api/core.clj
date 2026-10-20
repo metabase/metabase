@@ -381,6 +381,18 @@
   "::add/nfc-path"
   ::add/nfc-path)
 
+(def qp.add.coercion-strategy
+  "::add/coercion-strategy"
+  ::add/coercion-strategy)
+
+(def qp.add.database-type
+  "::add/database-type"
+  ::add/database-type)
+
+(def qp.add.parent-names
+  "::add/parent-names"
+  ::add/parent-names)
+
 (def qp.add.desired-alias
   "::add/desired-alias"
   ::add/desired-alias)

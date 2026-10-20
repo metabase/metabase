@@ -23,6 +23,14 @@
                               (conj (first nfc-path)))]
     (apply h2x/identifier (cons :field parent-components))))
 
+(defn json-field
+  "The `:nfc-path` and `:database-type` of the JSON column a `:field` clause with alias info refers to, as
+  [[metabase.driver.sql.query-processor/json-query]] takes them, or nil if it is not a JSON column."
+  [field-options]
+  (when-some [nfc-path (driver-api/qp.add.nfc-path field-options)]
+    {:nfc-path      nfc-path
+     :database-type (driver-api/qp.add.database-type field-options)}))
+
 (defn field-with-tz?
   "Given a clause, possibly a `:field` ref, return true iff its type is known to have timezone information."
   [arg]

@@ -439,19 +439,10 @@
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
 
     key-in-col-metadata => key-in-opts"
-  (merge
-   (u/index-by
-    identity
-    ;; include `:lib/transformation-added-base-type` if this is going to be a field ID ref, so we can
-    ;; remove `:base-type` if it wasn't included in the original query if we convert this ref back to legacy (mostly
-    ;; important for [[metabase.query-processor.middleware.annotate/super-broken-legacy-field-ref]] purposes). But if
-    ;; this will have a Field name then don't include the key because we don't want the convert code to strip out base
-    ;; types -- they're required for field name refs.
-    [:lib/transformation-added-base-type])
-   {:lib/join-alias :join-alias
-    :fk-field-id    :source-field
-    :fk-join-alias  :source-field-join-alias
-    :fk-field-name  :source-field-name}))
+  {:lib/join-alias :join-alias
+   :fk-field-id    :source-field
+   :fk-join-alias  :source-field-join-alias
+   :fk-field-name  :source-field-name})
 
 (defn- select-renamed-keys [m old->new]
   (-> m
@@ -466,13 +457,10 @@
                                  (select-renamed-keys metadata field-ref-propagated-keys)
                                  (when-not inherited-column?
                                    (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
-        id-or-name        (or (lib.field.util/inherited-column-name metadata)
-                              ;; For card-sourced columns (even via joins), use the string name
-                              ;; instead of a numeric field ID. QUE2-383
-                              (when (:lib/card-id metadata)
-                                (:lib/source-column-alias metadata))
-                              ((some-fn :id :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) metadata))]
-    [:field options id-or-name]))
+        field-name        (or (lib.field.util/inherited-column-name metadata)
+                              (lib.field.util/nested-column-name metadata)
+                              ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) metadata))]
+    [:field options field-name]))
 
 (mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref
   [{source :lib/source, :as metadata} :- ::lib.schema.metadata/column]

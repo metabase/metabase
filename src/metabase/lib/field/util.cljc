@@ -2,6 +2,7 @@
   "Some small field-related helper functions which are used from a few different namespaces."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -27,6 +28,15 @@
     (if-some [parent (when parent-id (lib.metadata/field metadata-providerable parent-id))]
       (str (parent-qualified-name metadata-providerable parent) \. own-name)
       own-name)))
+
+(mu/defn nested-column-name :- [:maybe :string]
+  "The `parent.child.leaf` name of a nested column (one with `:parent-id`) from its `:nfc-path`, which holds either the
+  full path (as sync stores it) or just the parent path (as [[metabase.lib.field.resolution]] computes it)."
+  [{:keys [parent-id nfc-path], :as column} :- ::lib.schema.metadata/column]
+  (when (and parent-id (seq nfc-path))
+    (let [own-name ((some-fn :lib/original-name :name) column)]
+      (str/join \. (cond-> (vec nfc-path)
+                     (not= (peek (vec nfc-path)) own-name) (conj own-name))))))
 
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
