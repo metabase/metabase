@@ -178,16 +178,17 @@ function CartesianChartInner(props: VisualizationProps) {
     return null;
   }, [props.hovered, props.highlighted, rawSeries, chartModel]);
 
-  const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
-    chartRef,
-    containerRef,
-    chartModel,
-    option,
-    renderingContext,
-    hovered,
-    props,
-    chartInstance,
-  );
+  const { onSelectSeries, getSeriesHref, onOpenQuestion, eventHandlers } =
+    useChartEvents(
+      chartRef,
+      containerRef,
+      chartModel,
+      option,
+      renderingContext,
+      hovered,
+      props,
+      chartInstance,
+    );
 
   const handleResize = useCallback((width: number, height: number) => {
     setChartSize({ width, height });
@@ -255,6 +256,7 @@ function CartesianChartInner(props: VisualizationProps) {
         fontFamily={renderingContext.fontFamily}
         measureText={renderingContext.measureText}
         onSelectSeries={onSelectSeries}
+        getSeriesHref={getSeriesHref}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
