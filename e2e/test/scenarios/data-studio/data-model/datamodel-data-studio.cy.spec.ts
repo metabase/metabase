@@ -758,26 +758,39 @@ describe("scenarios > data studio > datamodel", () => {
       cy.log("table picker and table");
       TablePicker.getTable("Orders").should("be.visible");
       TablePicker.getTable("Products").should("be.visible");
-      TableSection.getNameInput().should("have.value", "Orders");
+      TableSection.getNameInput()
+        .should("have.value", "Orders")
+        .and("have.attr", "readonly");
+      TableSection.getDescriptionInput().should("have.attr", "readonly");
       if (hasTabs) {
+        TableSection.get()
+          .findByPlaceholderText("Select visibility layer")
+          .should("be.disabled");
+        TableSection.get()
+          .findByPlaceholderText("Select entity type")
+          .should("be.disabled");
         TableSection.clickFieldsTab();
       }
+      TableSection.getSortButton().should("be.disabled");
 
       cy.log("field metadata, FK target and remapping");
       TableSection.clickField("Product ID");
-      FieldSection.getNameInput().should("have.value", "Product ID");
-      FieldSection.getSemanticTypeFkTarget().should(
-        "have.value",
-        "Products → ID",
-      );
-      FieldSection.getDisplayValuesInput().should(
-        "have.value",
-        "Use foreign key",
-      );
-      FieldSection.getDisplayValuesFkTargetInput().should(
-        "have.value",
-        "Title",
-      );
+      FieldSection.getNameInput()
+        .should("have.value", "Product ID")
+        .and("have.attr", "readonly");
+      FieldSection.getSemanticTypeInput().should("be.disabled");
+      FieldSection.getSemanticTypeFkTarget()
+        .should("have.value", "Products → ID")
+        .and("be.disabled");
+      FieldSection.getVisibilityInput().should("be.disabled");
+      FieldSection.getFilteringInput().should("be.disabled");
+      FieldSection.getDisplayValuesInput()
+        .should("have.value", "Use foreign key")
+        .and("be.disabled");
+      FieldSection.getDisplayValuesFkTargetInput()
+        .should("have.value", "Title")
+        .and("be.disabled");
+      FieldSection.getFieldValuesButton().should("be.disabled");
 
       cy.log("preview");
       FieldSection.getPreviewButton().click();

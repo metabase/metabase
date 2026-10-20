@@ -234,4 +234,55 @@ describe("FieldSection", () => {
       await assertErrorToast("Failed to update formatting of Quantity");
     });
   });
+
+  describe("read-only table", () => {
+    it("shows the field settings of a table that cannot be written as read-only", async () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: false } });
+
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).toHaveAttribute("readonly");
+      expect(
+        screen.getByPlaceholderText("Give this field a description"),
+      ).toHaveAttribute("readonly");
+      expect(
+        screen.getByRole("button", { name: /Field values/ }),
+      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: /Preview/ })).toBeEnabled();
+      expect(
+        screen.getByLabelText("Cast to a specific data type"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select a semantic type"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select a field visibility"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select field filtering"),
+      ).toBeDisabled();
+      expect(
+        await screen.findByPlaceholderText("Select display values"),
+      ).toBeDisabled();
+      expect(screen.getByTestId("prefix")).toBeDisabled();
+    });
+
+    it("keeps the field settings of a writable table editable", async () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: true } });
+
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).not.toHaveAttribute("readonly");
+      expect(
+        screen.getByRole("button", { name: /Field values/ }),
+      ).toBeEnabled();
+      expect(
+        screen.getByPlaceholderText("Select a semantic type"),
+      ).toBeEnabled();
+      expect(
+        await screen.findByPlaceholderText("Select display values"),
+      ).toBeEnabled();
+      expect(screen.getByTestId("prefix")).toBeEnabled();
+    });
+  });
 });

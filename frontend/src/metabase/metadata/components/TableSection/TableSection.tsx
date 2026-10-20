@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
+import { isTableReadOnly } from "metabase/metadata/utils/table";
 import {
   ActionIcon,
   Group,
@@ -51,6 +52,7 @@ const TableSectionBase = ({
   } = useTableUpdateHandlers({ table });
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const readOnly = isTableReadOnly(table);
   const {
     buttonsContainerRef,
     showButtonLabel,
@@ -96,6 +98,7 @@ const TableSectionBase = ({
                 </ActionIcon>
               </Tooltip>
             }
+            readOnly={readOnly}
             onNameChange={handleNameChange}
             onDescriptionChange={handleDescriptionChange}
           />
@@ -124,6 +127,7 @@ const TableSectionBase = ({
 
             {!isSorting && hasFields && (
               <ResponsiveButton
+                disabled={readOnly}
                 icon="sort_arrows"
                 showLabel={showButtonLabel}
                 onClick={() => setIsSorting(true)}

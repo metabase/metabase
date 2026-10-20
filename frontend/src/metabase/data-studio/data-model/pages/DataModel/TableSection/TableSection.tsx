@@ -12,6 +12,7 @@ import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton"
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
+import { isTableReadOnly } from "metabase/metadata/utils/table";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
@@ -76,6 +77,7 @@ const TableSectionBase = ({
   const [modalType, setModalType] = useState<TableModalType>();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const readOnly = isTableReadOnly(table);
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
@@ -160,6 +162,7 @@ const TableSectionBase = ({
                   nameIcon="table2"
                   nameMaxLength={254}
                   namePlaceholder={t`Give this table a name`}
+                  readOnly={readOnly}
                   onNameChange={handleNameChange}
                   onDescriptionChange={handleDescriptionChange}
                 />
@@ -218,6 +221,7 @@ const TableSectionBase = ({
               <Group gap="lg" justify="flex-start" wrap="nowrap">
                 {!isSorting && hasFields && (
                   <ResponsiveButton
+                    disabled={readOnly}
                     icon="sort_arrows"
                     showLabel
                     onClick={() => setIsSorting(true)}

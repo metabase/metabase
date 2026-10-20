@@ -7,6 +7,7 @@ import {
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { createOrdersQuantityField } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
 
@@ -138,6 +139,69 @@ describe("TableSection", () => {
       setup({ activeTab: "segments", segments: [] });
 
       expect(screen.getByText("No segments yet")).toBeInTheDocument();
+    });
+  });
+
+  describe("read-only table", () => {
+    const READ_ONLY_TABLE = createMockTable({
+      db: createMockDatabase(),
+      can_write: false,
+      fields: [createOrdersQuantityField()],
+    });
+
+    it("shows the details of a table that cannot be written as read-only", async () => {
+      setup({ table: READ_ONLY_TABLE });
+
+      expect(
+        screen.getByPlaceholderText("Give this table a name"),
+      ).toHaveAttribute("readonly");
+      expect(
+        screen.getByPlaceholderText("Give this table a description"),
+      ).toHaveAttribute("readonly");
+      expect(
+        screen.getByPlaceholderText("Pick someone, or type an email"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select visibility layer"),
+      ).toBeDisabled();
+      expect(screen.getByPlaceholderText("Select entity type")).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select a data source"),
+      ).toBeDisabled();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+      expect(
+        await screen.findByRole("menuitem", { name: /Re-sync schema/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Re-scan field values/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Discard cached field values/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the fields of a table that cannot be written as read-only", () => {
+      setup({ table: READ_ONLY_TABLE, activeTab: "field" });
+
+      expect(screen.getByRole("button", { name: /Sorting/ })).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).toBeDisabled();
+    });
+
+    it("keeps the details and fields of a writable table editable", () => {
+      setup({
+        table: { ...READ_ONLY_TABLE, can_write: true },
+        activeTab: "field",
+      });
+
+      expect(screen.getByRole("button", { name: /Sorting/ })).toBeEnabled();
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).toBeEnabled();
     });
   });
 });

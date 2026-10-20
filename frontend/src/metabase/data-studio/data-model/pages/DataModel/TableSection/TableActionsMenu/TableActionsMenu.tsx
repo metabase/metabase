@@ -13,6 +13,7 @@ import {
   trackDataStudioTableSchemaSyncStarted,
 } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { isTableReadOnly } from "metabase/metadata/utils/table";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Menu } from "metabase/ui";
@@ -32,6 +33,7 @@ export function TableActionsMenu({ table }: Props) {
 
   const tableIds = [table.id];
   const showSyncItems = !table.db?.is_attached_dwh;
+  const showFieldValuesItems = showSyncItems && !isTableReadOnly(table);
   const showReplaceItem = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
   const schemaViewerUrl = Urls.dataStudioSchemaViewer({
     databaseId: table.db_id,
@@ -105,13 +107,15 @@ export function TableActionsMenu({ table }: Props) {
           </Menu.Item>
 
           {showSyncItems && (
+            <Menu.Item
+              leftSection={<Icon name="sync" />}
+              onClick={handleSyncSchema}
+            >
+              {t`Re-sync schema`}
+            </Menu.Item>
+          )}
+          {showFieldValuesItems && (
             <>
-              <Menu.Item
-                leftSection={<Icon name="sync" />}
-                onClick={handleSyncSchema}
-              >
-                {t`Re-sync schema`}
-              </Menu.Item>
               <Menu.Item
                 leftSection={<Icon name="list" />}
                 onClick={handleRescan}

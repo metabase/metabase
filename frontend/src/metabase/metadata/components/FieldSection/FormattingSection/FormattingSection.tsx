@@ -5,6 +5,7 @@ import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Box } from "metabase/ui";
 import { ColumnSettings } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
@@ -17,10 +18,15 @@ import { TitledSection } from "../../TitledSection";
 
 interface Props {
   field: Field;
+  readOnly?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 }
 
-const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {
+const FormattingSectionBase = ({
+  field,
+  readOnly,
+  onTrackMetadataChange,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -55,15 +61,17 @@ const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {
 
   return (
     <TitledSection>
-      <ColumnSettings
-        column={field}
-        denylist={denyList}
-        extraData={{ forAdminSettings: true }}
-        inheritedSettings={inheritedSettings}
-        style={{ maxWidth: undefined }}
-        value={field.settings ?? {}}
-        onChange={handleChange}
-      />
+      <Box component="fieldset" disabled={readOnly} display="contents">
+        <ColumnSettings
+          column={field}
+          denylist={denyList}
+          extraData={{ forAdminSettings: true }}
+          inheritedSettings={inheritedSettings}
+          style={{ maxWidth: undefined }}
+          value={field.settings ?? {}}
+          onChange={handleChange}
+        />
+      </Box>
     </TitledSection>
   );
 };

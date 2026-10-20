@@ -6,6 +6,7 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { isTableReadOnly } from "metabase/metadata/utils/table";
 import { Group, Stack, type StackProps, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -40,6 +41,7 @@ const FieldSectionBase = ({
   ...stackProps
 }: FieldSectionBaseProps & StackProps) => {
   const id = getRawTableFieldId(field);
+  const readOnly = isTableReadOnly(table);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -100,6 +102,7 @@ const FieldSectionBase = ({
           nameMaxLength={254}
           namePlaceholder={t`Give this field a name`}
           namePrefix={parent?.display_name}
+          readOnly={readOnly}
           onDescriptionChange={handleDescriptionChange}
           onNameChange={handleNameChange}
         />
@@ -131,6 +134,7 @@ const FieldSectionBase = ({
             >{t`Preview`}</ResponsiveButton>
 
             <ResponsiveButton
+              disabled={readOnly}
               icon="gear_settings_filled"
               showLabel={showButtonLabel}
               onClick={onFieldValuesClick}
@@ -143,21 +147,25 @@ const FieldSectionBase = ({
       <Stack gap="xxl">
         <DataSection
           field={field}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <MetadataSection
           field={field}
           table={table}
           getFieldHref={getFieldHref}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <BehaviorSection
           field={field}
           databaseId={table.db_id}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <FormattingSection
           field={field}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
       </Stack>
