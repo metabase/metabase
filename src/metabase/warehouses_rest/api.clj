@@ -754,13 +754,16 @@
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]} :- [:map {:closed true}
                                              [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
-  (let [[db-perm-check field-perm-check] (if include_editable_data_model
-                                           [check-db-data-model-perms mi/can-write?]
-                                           [api/read-check mi/can-read?])]
-    (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
-    (sort-by (comp u/lower-case-en :name :table)
-             (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (t2/hydrate :table))))))
+  (let [db-perm-check (if include_editable_data_model check-db-data-model-perms api/read-check)
+        _             (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
+        fields        (-> (database/pk-fields {:id id})
+                          (t2/hydrate :table))
+        fields        (if include_editable_data_model
+                        (let [table-ids (into #{} (map :id) (schema.table/filter-tables-by-data-model-perms
+                                                             (distinct (map :table fields))))]
+                          (filter (comp table-ids :table_id) fields))
+                        (filter mi/can-read? fields))]
+    (sort-by (comp u/lower-case-en :name :table) fields)))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 

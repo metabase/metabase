@@ -72,7 +72,8 @@
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [include-sensitive-fields? (contains? (sensitive-fields-table-ids include-sensitive-fields? [table]) (:id table))
         hydration-keys            (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                           [:segments :definition_description] [:measures :definition_description] :metrics :collection]
+                                           [:segments :definition_description] [:measures :definition_description] :metrics :collection
+                                           :can_write]
                                     (premium-features/any-transforms-enabled?) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)

@@ -445,6 +445,9 @@
               (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id coll-id}
                 (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:visibility_type :sensitive}
                   (is (false? (mi/can-write? (t2/select-one :model/Table (mt/id :venues)))))
+                  (is (false? (:can_write (mt/user-http-request :crowberto :get 200
+                                                                (str "table/" (mt/id :venues) "/query_metadata")
+                                                                :include_editable_data_model true))))
                   (is (= (mt/id :venues)
                          (:id (mt/user-http-request :crowberto :get 200 (str "table/" (mt/id :venues))
                                                     :include_editable_data_model true))))
@@ -529,6 +532,26 @@
         (is (= pk-id
                (:fk_target_field_id (mt/user-http-request :crowberto :put 200 (str "field/" other-id)
                                                           {:semantic_type :type/FK :fk_target_field_id pk-id}))))))))
+
+(deftest idfields-data-model-read-only-test
+  (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id coll-id}
+        (doseq [features [#{} #{:advanced-permissions}]]
+          (mt/with-premium-features features
+            (testing (str "admins see primary keys of read-only tables, features: " features)
+              (is (contains? (field-ids (mt/user-http-request :crowberto :get 200 (str "database/" (mt/id) "/idfields")
+                                                              :include_editable_data_model true))
+                             (mt/id :venues :id))))))
+        (mt/with-premium-features #{:advanced-permissions}
+          (testing "users without data model permissions do not see primary keys"
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                           :create-queries :query-builder
+                                                           :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :none
+                                                                                                (mt/id :users)  :all}}}}}
+              (is (= #{(mt/id :users :id)}
+                     (field-ids (mt/user-http-request :rasta :get 200 (str "database/" (mt/id) "/idfields")
+                                                      :include_editable_data_model true)))))))))))
 
 ;;; ------------------------------------------------ Field Remote Sync Tests ------------------------------------------------
 

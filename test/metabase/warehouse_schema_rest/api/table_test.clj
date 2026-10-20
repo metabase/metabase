@@ -265,6 +265,7 @@
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    true
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -358,6 +359,7 @@
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    false
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -701,6 +703,7 @@
               (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
+               :can_write    false
                :name         "CATEGORIES"
                :display_name "Categories"
                :fields       [(merge
