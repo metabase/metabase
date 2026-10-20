@@ -689,21 +689,23 @@
 (defn- query-not-runnable-explanation
   "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
   description of where and why; nil when the query is runnable. Problems [[not-runnable-problem]]
-  explains are listed first, and the usual causes are added when it explains none."
-  [pmbql-query]
-  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-    (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-      (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
-        (cond-> (or (some->> errors
-                             (map #(str (repr/query-path (:in %)) ": "
-                                        (or (not-runnable-problem %) (me/error-message %))))
-                             distinct
-                             (take 3)
-                             seq
-                             (str/join "; "))
-                    (tru "the query does not match the query builder''s schema"))
-          (not-any? not-runnable-problem errors)
-          (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
+  explains are listed first, and the usual causes are added when it explains none.
+  `repaired-query` supplies the repair metadata used to locate stages in the original input."
+  ([pmbql-query] (query-not-runnable-explanation pmbql-query pmbql-query))
+  ([pmbql-query repaired-query]
+   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
+       (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
+         (cond-> (or (some->> errors
+                              (map #(str (repr/query-path (repr/original-query-path repaired-query (:in %))) ": "
+                                         (or (not-runnable-problem %) (me/error-message %))))
+                              distinct
+                              (take 3)
+                              seq
+                              (str/join "; "))
+                     (tru "the query does not match the query builder''s schema"))
+           (not-any? not-runnable-problem errors)
+           (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`"))))))))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -784,7 +786,7 @@
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
-            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
+            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query repaired)]
                             (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Failing paths: {0}."
                                                  why)
                                             {:agent-error? true
@@ -798,7 +800,7 @@
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
-            _validated'   (repr/validate-query exported-repr)
+            _validated'   (repr/validate-query exported-repr repaired)
             query-id      (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query

@@ -2156,3 +2156,30 @@
                       (catch clojure.lang.ExceptionInfo e e))]
           (is (= (str "Representations query has an invalid structure.\n" hint)
                  (tools.error/recoverable-text (tools.error/classify error) #{}))))))))
+
+(deftest error-locations-after-stage-split-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[stage-kvs error-code expected]
+              [[{"filters" {"op" ">"}}
+                :invalid-representations-query
+                "Invalid at stages[2].filters: invalid type. Fix the named paths."]
+               [{"expressions" {"Previous" ["offset" {} ["field" {} "count"] -1]}}
+                :query-not-runnable
+                "Failing paths: stages[2].expressions[0]:"]]]
+        (let [query (query-data
+                     {"lib/type" "mbql/query"
+                      "stages" [{"lib/type" "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                {"lib/type" "mbql.stage/mbql"
+                                 "aggregation" [["count" {}]]
+                                 "filters" [[">" {} ["aggregation" {} 0] 10]]}
+                                (merge {"lib/type" "mbql.stage/mbql"} stage-kvs)]})
+              error (try
+                      (tools/with-pipeline-errors (construct/execute-representations-query query))
+                      (catch clojure.lang.ExceptionInfo e e))
+              classified (tools.error/classify error)]
+          (is (= :recoverable (:class classified)))
+          (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
+                 (:code classified)))
+          (is (str/includes? (tools.error/recoverable-text classified #{}) expected)))))))

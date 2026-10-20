@@ -29,6 +29,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -2009,7 +2010,14 @@
   [query]
   (if-not (and (map? query) (vector? (get query "stages")))
     query
-    (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))))
+    (let [stages           (get query "stages")
+          original-indexes (or (::repr/original-stage-indexes (meta query)) (range (count stages)))
+          stage-groups     (mapv split-post-agg-filter-stage stages)
+          stage-indexes    (into [] (mapcat (fn [idx group] (repeat (count group) idx))
+                                            original-indexes stage-groups))]
+      (-> query
+          (assoc "stages" (into [] cat stage-groups))
+          (vary-meta assoc ::repr/original-stage-indexes stage-indexes)))))
 
 ;;; ============================================================
 ;;; Pass 3 -- auto-wire `source-field` for implicit joins
@@ -3110,6 +3118,8 @@
 
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
+
+  Returns metadata `::repr/original-stage-indexes` mapping each output stage to its input stage.
 
   Passes:
     1. ensure every clause vector has an options map at position 2;

@@ -226,21 +226,36 @@
   "Malli schema for a single MBQL stage in the portable representations form."
   [:schema {:registry registry} [:ref ::stage]])
 
+(defn original-query-path
+  "Translate a repaired query path to the stage indexes in the original input."
+  [query path]
+  (let [[stage-key stage-idx] path
+        original-idx (when (and (#{:stages "stages"} stage-key) (integer? stage-idx))
+                       (get (::original-stage-indexes (meta query)) stage-idx))]
+    (cond-> path
+      (some? original-idx) (assoc 1 original-idx))))
+
 (defn validate-query
   "Validate a string-keyed portable representations query against [[query-schema]] and return it
   unchanged.
 
-  Used as a sanity check between the repair and resolve passes."
-  [parsed]
-  (when-let [error (mr/explain query-schema parsed)]
-    (throw (ex-info (tru "Representations query has an invalid structure.")
-                    {:status-code   400
-                     :error         :invalid-representations-query
-                     :humanized     (mu.humanize/humanize error)
-                     :details       (pr-str (mu.humanize/humanize error))
-                     :schema        ::query
-                     :response/keys #{:humanized :details}})))
-  parsed)
+  Used as a sanity check between the repair and resolve passes. `repaired-query` supplies repair
+  metadata for locating errors in the original input; defaults to `parsed`."
+  ([parsed] (validate-query parsed parsed))
+  ([parsed repaired-query]
+   (when-let [error (mr/explain query-schema parsed)]
+     (let [humanized (mu.humanize/humanize
+                      (update error :errors (fn [errors]
+                                              (mapv #(update % :in (partial original-query-path repaired-query))
+                                                    errors))))]
+       (throw (ex-info (tru "Representations query has an invalid structure.")
+                       {:status-code   400
+                        :error         :invalid-representations-query
+                        :humanized     humanized
+                        :details       (pr-str humanized)
+                        :schema        ::query
+                        :response/keys #{:humanized :details}}))))
+   parsed))
 
 (defn query-path
   "Format a query location as a dotted path with bracketed indices, or `(root)` for an empty path."
