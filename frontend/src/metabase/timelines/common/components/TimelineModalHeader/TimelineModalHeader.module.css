@@ -21,6 +21,7 @@
   }
 }
 
-.header:has(.clickableTitle:hover) .backButton {
+.header:has(.clickableTitle:hover) .backButton,
+.header:has(.backButton:hover) .clickableTitle {
   color: var(--mb-color-text-brand);
 }
