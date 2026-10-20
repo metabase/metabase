@@ -175,9 +175,9 @@
                            ". Tool errors may only carry authored text; log the exception instead.")
                       {:where where})))))
 
-(def ^:private max-output-length
-  "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
-  so that a pathological payload cannot spend the turn's context on one failure."
+(def max-output-length
+  "Maximum rendered failure length, including recovery steps. Declarations that include excerpts
+  should budget against this cap so the runtime keeps their recovery steps intact."
   4000)
 
 (defn render

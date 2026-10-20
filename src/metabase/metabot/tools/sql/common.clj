@@ -49,6 +49,20 @@
                  ". Parser details: " (quoting/quoted error-message))
    :recovery [{:uses #{} :text (str "Fix the SQL syntax and retry. No changes were saved.\n\n" instructions/sql-dialect-checklist)}]})
 
+(tools/defrecoverable blank-sql!
+  "A replacement or edit would leave the query empty."
+  {:payload [:map {:closed true} [:query-id :string]]}
+  [{:keys [query-id]}]
+  {:message (str "Query " (quoting/quoted query-id) " would contain no SQL. No changes were saved.")
+   :recovery [{:uses #{} :text "Provide nonblank SQL, then retry the replacement or the complete edit list."}]})
+
+(defn check-nonblank-sql!
+  "Return SQL unless it is blank, which is recoverable before validation or query updates."
+  [query-id sql]
+  (when (str/blank? sql)
+    (blank-sql! {:query-id query-id}))
+  sql)
+
 (mr/def ::action-result
   "Each of the _operations_ performs an _action_ manipulating a query.
   Key of the action result represent

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.metabot.util :as metabot.u]
@@ -16,42 +17,183 @@
 (def ^:private edit-error-payload
   [:map {:closed true}
    [:query-id :string]
-   [:current-sql :string]
-   [:sql-before-edit :string]
+   [:sql :string]
+   [:earlier-edits? :boolean]
    [:edit-index :int]
-   [:old-string :string]
-   [:occurrences :int]])
+   [:old-string :string]])
 
-(defn- edit-context
-  [{:keys [current-sql sql-before-edit]}]
-  (str " No edits were saved. Current SQL: " (quoting/quoted current-sql)
-       (when (not= current-sql sql-before-edit)
-         (str " SQL before this edit (including earlier proposed edits): " (quoting/quoted sql-before-edit)))))
+(defn- match-spans
+  [pattern sql]
+  (let [matcher (re-matcher pattern sql)]
+    (loop [spans []]
+      (if (.find matcher)
+        (recur (conj spans [(.start matcher) (.end matcher)]))
+        spans))))
+
+(defn- closest-span
+  "Find stored text differing only in case and whitespace. This is a hint, never an edit."
+  [sql old-string]
+  (when-not (str/blank? old-string)
+    (let [characters (remove #(Character/isWhitespace (char %)) old-string)
+          pattern (re-pattern (str "(?iuU)" (str/join "\\s*" (map #(java.util.regex.Pattern/quote (str %)) characters))))]
+      (first (match-spans pattern sql)))))
+
+(defn- line-starts
+  [sql]
+  (int-array (cons 0 (map (comp inc first) (match-spans #"\n" sql)))))
+
+(defn- location
+  [^ints starts position]
+  (let [found (java.util.Arrays/binarySearch starts (int position))
+        index (if (neg? found) (- (- found) 2) found)]
+    {:line (inc index) :column (inc (- position (aget starts index)))}))
+
+(defn- bounded-quote
+  [s budget]
+  (loop [length (count s)]
+    (let [quoted (quoting/quoted (str (subs s 0 length) (when (< length (count s)) "...")))]
+      (if (<= (count quoted) budget)
+        quoted
+        (recur (quot length 2))))))
+
+(defn- excerpt-ranges
+  [length positions radius]
+  (reduce (fn [ranges position]
+            (let [start (max 0 (- position radius))
+                  end (min length (+ position radius))
+                  [previous-start previous-end] (peek ranges)]
+              (if (and previous-end (<= start previous-end))
+                (conj (pop ranges) [previous-start (max end previous-end)])
+                (conj ranges [start end]))))
+          [] (sort positions)))
+
+(defn- excerpt-text
+  [sql ranges]
+  (let [[parts end] (reduce (fn [[parts previous-end] [start end]]
+                              [(cond-> parts
+                                 (< previous-end start)
+                                 (conj (str "[... " (- start previous-end) " SQL characters omitted ...]"))
+                                 true (conj (subs sql start end)))
+                               end])
+                            [[] 0] ranges)]
+    (apply str (cond-> parts
+                 (< end (count sql))
+                 (conj (str "[... " (- (count sql) end) " SQL characters omitted ...]"))))))
+
+(defn- quoted-sql-context
+  "Budget the escaped text, not the raw SQL, so recovery survives the runtime's 4,000-character cap."
+  [sql spans budget]
+  (let [full (quoting/quoted sql)]
+    (if (<= (count full) budget)
+      full
+      (let [selected (if (> (count spans) 3)
+                       [(first spans) (nth spans (quot (count spans) 2)) (peek spans)]
+                       spans)
+            positions (if (seq selected) (mapcat identity selected) [0 (count sql)])]
+        (loop [low 0 high (long (max 0 (min (count sql) budget))) result ""]
+          (if (> low high)
+            result
+            (let [radius (quot (+ low high) 2)
+                  excerpt (quoting/quoted (excerpt-text sql (excerpt-ranges (count sql) positions radius)))]
+              (if (<= (count excerpt) budget)
+                (recur (inc radius) high excerpt)
+                (recur low (dec radius) result)))))))))
+
+(defn- line-runs
+  "Consecutive lines with the same number of matches share one range."
+  [lines]
+  (reduce (fn [runs group]
+            (let [line (first group)
+                  matches (count group)
+                  [start end previous-matches] (peek runs)]
+              (if (and end (= line (inc end)) (= matches previous-matches))
+                (conj (pop runs) [start line matches])
+                (conj runs [line line matches]))))
+          [] (partition-by identity lines)))
+
+(defn- match-lines
+  [starts spans]
+  (let [lines (map #(:line (location starts (first %))) spans)
+        full (str/join ", " lines)]
+    (if (<= (count full) 1400)
+      full
+      (loop [remaining (seq (line-runs lines)) text "" shown 0]
+        (if-let [[start end matches] (first remaining)]
+          (let [range? (not= start end)
+                part (str start (when range? (str "-" end))
+                          (when (or range? (> matches 1))
+                            (str " (" matches (if (= matches 1) " match" " matches")
+                                 (when range? " per line") ")")))
+                next-text (str text (when (seq text) ", ") part)]
+            (if (> (count next-text) 1400)
+              (str text "; " (- (count spans) shown) " further match locations omitted")
+              (recur (next remaining) next-text (+ shown (long (* matches (inc (- end start))))))))
+          text)))))
+
+(defn- edit-failure
+  [{:keys [query-id sql earlier-edits? edit-index old-string]} ambiguous? recovery]
+  (let [spans (if ambiguous?
+                (match-spans (re-pattern (java.util.regex.Pattern/quote old-string)) sql)
+                (some-> (closest-span sql old-string) vector))
+        starts (line-starts sql)
+        closest (first spans)
+        prefix (str "Edit " edit-index " for query " (bounded-quote query-id 128) ": "
+                    (if ambiguous? "text to replace found multiple times." "text to replace not found.")
+                    (when (and (not ambiguous?) closest)
+                      (str " Closest match ignoring case and whitespace at line " (:line (location starts (first closest)))
+                           ": " (bounded-quote (subs sql (first closest) (second closest)) 1024) " (not applied)."))
+                    (when ambiguous? (str " Match lines: " (match-lines starts spans) "."))
+                    " No edits were saved. "
+                    (when earlier-edits? "The SQL below includes earlier unsaved edits in this call. ")
+                    "SQL for this edit: ")
+        ;; Include every recovery alternative plus newline separators in this budget. Profiles can only remove steps.
+        budget (- tools.runtime/max-output-length (count prefix) (reduce + (map (comp inc count :text) recovery)))]
+    {:message (str prefix (quoted-sql-context sql spans budget))
+     :recovery recovery}))
 
 (tools/defrecoverable edit-not-found!
   "An edit's old text is absent from the SQL at that step."
   {:payload edit-error-payload}
-  [{:keys [query-id edit-index old-string] :as payload}]
-  {:message (str "Edit " edit-index " for query " (quoting/quoted query-id)
-                 ": text to replace not found: " (quoting/quoted old-string) "." (edit-context payload))
-   :recovery [{:uses #{} :text "Revise the edits against the current SQL and retry the complete edit list."}]})
+  [payload]
+  (edit-failure payload false
+                [{:uses #{} :text (str "Use the exact stored text, including case and whitespace. Revise the edits and "
+                                       "retry the complete edit list, including earlier edits in this call.")}
+                 {:uses #{"replace_sql_query"}
+                  :text "Or use `replace_sql_query` with the complete corrected SQL."}]))
 
 (tools/defrecoverable edit-ambiguous!
   "An edit's old text matches more than once without replace_all."
   {:payload edit-error-payload}
-  [{:keys [query-id edit-index old-string occurrences] :as payload}]
+  [payload]
+  (edit-failure payload true
+                [{:uses #{} :text (str "Include enough surrounding SQL to match once, or set replace_all to true "
+                                       "if every occurrence should change. Retry the complete edit list, including earlier edits.")}
+                 {:uses #{"replace_sql_query"}
+                  :text "Or use `replace_sql_query` with the complete corrected SQL."}]))
+
+(tools/defrecoverable empty-edits!
+  "An edit call contains no edits."
+  {:payload [:map {:closed true} [:query-id :string]]}
+  [{:keys [query-id]}]
+  {:message (str "Query " (quoting/quoted query-id) " needs at least one edit. No edits were saved.")
+   :recovery [{:uses #{} :text "Provide at least one edit with nonempty old_string and the intended new_string."}]})
+
+(tools/defrecoverable empty-old-string!
+  "An edit has an empty search string, which cannot identify stored text."
+  {:payload [:map {:closed true} [:query-id :string] [:edit-index :int]]}
+  [{:keys [query-id edit-index]}]
   {:message (str "Edit " edit-index " for query " (quoting/quoted query-id)
-                 ": text to replace found multiple times (" occurrences "): " (quoting/quoted old-string)
-                 "." (edit-context payload))
-   :recovery [{:uses #{} :text (str "Include enough surrounding SQL to match once, or set replace_all to true "
-                                    "if every occurrence should change. Retry the complete edit list against the current SQL.")}]})
+                 ": old_string must not be empty, even with replace_all. No edits were saved.")
+   :recovery [{:uses #{} :text "Set old_string to the exact stored SQL you want to replace, then retry the complete edit list."}]})
 
 (defn- apply-sql-edit
   [context sql [index {old-string :old_string new-string :new_string replace-all :replace_all}]]
+  (when (empty? old-string)
+    (empty-old-string! {:query-id (:query-id context) :edit-index (inc index)}))
   (let [pattern (re-pattern (java.util.regex.Pattern/quote old-string))
         occurrences (count (re-seq pattern sql))
-        payload (assoc context :sql-before-edit sql :edit-index (inc index)
-                       :old-string old-string :occurrences occurrences)]
+        payload {:query-id (:query-id context) :sql sql :edit-index (inc index) :old-string old-string
+                 :earlier-edits? (not= sql (:current-sql context))}]
     (cond
       (zero? occurrences) (edit-not-found! payload)
       (and (> occurrences 1) (not replace-all)) (edit-ambiguous! payload)
@@ -81,9 +223,14 @@
 
   (let [query-id (str query-id)
         query (metabot.tools.sql.common/query-for-sql-edit! queries-state query-id)
-        current-sql (metabot.u/extract-sql-content query)
-        new-sql (reduce (partial apply-sql-edit {:query-id query-id :current-sql current-sql})
-                        current-sql (map-indexed vector edits))
+        current-sql (do
+                      (when (empty? edits)
+                        (empty-edits! {:query-id query-id}))
+                      (metabot.u/extract-sql-content query))
+        new-sql (metabot.tools.sql.common/check-nonblank-sql!
+                 query-id
+                 (reduce (partial apply-sql-edit {:query-id query-id :current-sql current-sql})
+                         current-sql (map-indexed vector edits)))
         dialect (metabot.tools.sql.validation/query->dialect query)
         {:keys [valid? transpiled-sql] :as validation-result}
         (metabot.tools.sql.validation/validate-sql dialect new-sql)]

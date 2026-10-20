@@ -25,15 +25,15 @@
   [profile memory tool-name args]
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (let [entries (tools/->entries [#'tools/edit-sql-query-tool #'tools/replace-sql-query-tool
-                                   (if (= profile :sql)
-                                     #'tools/create-sql-query-code-edit-tool
-                                     #'tools/create-sql-query-tool)
-                                   #'tools/read-resource-tool]
-                                  (atom memory) nil profile)]
+                                    (if (= profile :sql)
+                                      #'tools/create-sql-query-code-edit-tool
+                                      #'tools/create-sql-query-tool)
+                                    #'tools/read-resource-tool]
+                                   (atom memory) nil profile)]
       ((get-in entries [tool-name :fn])
        (merge {:title "Birds"}
               (case tool-name
-                "create_sql_query" (merge {:sql_query "SELECT 1"} args)
+                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title]))
                 (merge {:query_id "q1" :checklist "Checked"}
                        (select-keys args (if (= tool-name "edit_sql_query")
                                            [:query_id :edits :title :checklist]
@@ -45,9 +45,9 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
           (let [result (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "create_sql_query"
-                                      {:database_id db-id
-                                       :sql_query   "SELECT 1"
-                                       :title       "Results"})
+                                        {:database_id db-id
+                                         :sql_query   "SELECT 1"
+                                         :title       "Results"})
                 output   (:output result)
                 query-id (get-in result [:structured-output :query-id])]
             (is (string? output))
@@ -85,8 +85,8 @@
                           scope/*current-user-scope*               (scope/user-metabot-perms->scopes
                                                                     scope/all-yes-permissions)]
                   (let [instructions (:output (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "create_sql_query" {:database_id db-id
-                                                                                              :sql_query   "SELECT 1"
-                                                                                              :title       "Results"}))]
+                                                                                                                                 :sql_query   "SELECT 1"
+                                                                                                                                 :title       "Results"}))]
                     (is (= [readable? (not readable?)]
                            [(str/includes? instructions "Run the query with `run_query`")
                             (str/includes? instructions "you cannot view the results directly yourself")]))))))))))))
@@ -103,11 +103,11 @@
                                                                  lib/->legacy-MBQL)}}})
                   result   (binding [shared/*memory-atom* memory]
                              (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "edit_sql_query"
-                                            {:query_id  query-id
-                                             :checklist "- [x] checked"
-                                             :edits     [{:old_string "SELECT *"
-                                                          :new_string "SELECT id"}]
-                                             :title     "Results"}))
+                                              {:query_id  query-id
+                                               :checklist "- [x] checked"
+                                               :edits     [{:old_string "SELECT *"
+                                                            :new_string "SELECT id"}]
+                                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with edited content and correct attributes"
@@ -132,10 +132,10 @@
                                                                  lib/->legacy-MBQL)}}})
                   result   (binding [shared/*memory-atom* memory]
                              (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "replace_sql_query"
-                                            {:query_id  query-id
-                                             :checklist "- [x] checked"
-                                             :new_query "SELECT 2"
-                                             :title     "Results"}))
+                                              {:query_id  query-id
+                                               :checklist "- [x] checked"
+                                               :new_query "SELECT 2"
+                                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with replaced content and correct attributes"
@@ -161,10 +161,10 @@
                                                  :context context})]
                                (binding [shared/*memory-atom* memory]
                                  (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "edit_sql_query"
-                                                {:query_id  query-id
-                                                 :checklist "- [x] checked"
-                                                 :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
-                                                 :title     "Results"}))))]
+                                                  {:query_id  query-id
+                                                   :checklist "- [x] checked"
+                                                   :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
+                                                   :title     "Results"}))))]
               (testing "no code-editor buffer -> a single generated_entity (native) part"
                 (let [parts  (:data-parts (run {}))
                       entity (:data (first parts))]
@@ -190,70 +190,21 @@
         (is (= {:class :unrecoverable :code :internal} (:error result)))
         (is (not (str/includes? (:output result) "boom")))))))
 
-(deftest unknown-query-id-test
-  (doseq [tool-name ["edit_sql_query" "replace_sql_query"]
-          available? [false true]]
-    (testing (str tool-name " / available queries: " available?)
-      (let [queries (if available? {"q2" (lib/native-query (mt/metadata-provider) "SELECT 2")
-                                      "q1" (lib/native-query (mt/metadata-provider) "SELECT 1")} {})
-            result (invoke-sql-tool :sql {:state {:queries queries}} tool-name
-                                    {:query_id "missing" :edits [] :new_query "SELECT 3"})]
-        (is (= {:class :recoverable :code ::recoverable/unknown-query-id} (:error result)))
-        (is (str/includes? (:output result) "Available query IDs:"))
-        (is (str/includes? (:output result) (if available? "\"q1\", \"q2\"" "none")))))))
-
-(deftest non-sql-query-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (doseq [tool-name ["edit_sql_query" "replace_sql_query"]]
-      (let [query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
-            result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} tool-name {:edits [] :new_query "SELECT 1"})]
-        (is (= {:class :recoverable :code ::sql.common/not-sql} (:error result)))
-        (is (str/includes? (:output result) "is not a SQL query"))))))
-
 (deftest sql-edit-mismatch-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (doseq [[code old-string edits sql-before-edit]
-            [[::sql.edit/edit-not-found "missing" [{:old_string "missing" :new_string "2"}] nil]
-             [::sql.edit/edit-ambiguous "id" [{:old_string "id" :new_string "bird_id"}] nil]
-             [::sql.edit/edit-not-found "missing" [{:old_string "birds" :new_string "owls"}
-                                                   {:old_string "missing" :new_string "2"}]
+    (doseq [[code edits sql-before-edit]
+            [[::sql.edit/edit-not-found [{:old_string "missing" :new_string "2"}] nil]
+             [::sql.edit/edit-ambiguous [{:old_string "id" :new_string "bird_id"}] nil]
+             [::sql.edit/edit-not-found [{:old_string "birds" :new_string "owls"}
+                                         {:old_string "missing" :new_string "2"}]
               "SELECT id, id FROM owls"]]]
       (let [sql "SELECT id, id FROM birds"
             query (lib/native-query (mt/metadata-provider) sql)
             result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} "edit_sql_query" {:edits edits})]
         (is (= {:class :recoverable :code code} (:error result)))
         (is (str/includes? (:output result) (str "Edit " (count edits))))
-        (is (str/includes? (:output result) (str "\"" old-string "\"")))
-        (is (str/includes? (:output result) (str "Current SQL: \"" sql "\"")))
-        (is (str/includes? (:output result) "No edits were saved"))
-        (when sql-before-edit
-          (is (str/includes? (:output result) sql-before-edit)))))))
-
-(deftest sql-syntax-error-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database db {:engine :postgres}]
-      (mt/with-db db
-        (doseq [tool-name ["edit_sql_query" "replace_sql_query"]]
-          (let [query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} tool-name
-                                        {:edits [{:old_string "1" :new_string "="}]
-                                         :new_query "SELECT ="})]
-            (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
-            (is (str/includes? (:output result) "syntax error"))
-            (is (str/includes? (:output result) "Fix the SQL syntax and retry"))))))))
-
-(deftest parser-error-is-quoted-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database db {:engine :postgres}]
-      (mt/with-db db
-        (mt/with-dynamic-fn-redefs [sql-tools/transpile-sql
-                                    (constantly {:status :error
-                                                 :error-message "Invalid expression\nSELECT \u001b[4m=\u001b[0m"})]
-          (let [query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} "replace_sql_query" {:new_query "SELECT ="})]
-            (is (= :recoverable (get-in result [:error :class])))
-            (is (str/includes? (:output result)
-                               "Parser details: \"Invalid expression\\nSELECT \\u001b[4m=\\u001b[0m\""))))))))
+        (is (str/includes? (:output result) (str "SQL for this edit: \"" (or sql-before-edit sql) "\"")))
+        (is (str/includes? (:output result) "No edits were saved"))))))
 
 (deftest sql-edit-context-is-quoted-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -262,8 +213,7 @@
           result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} "edit_sql_query"
                                   {:edits [{:old_string "missing\n\u001b[4m" :new_string "2"}]})]
       (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
-      (is (str/includes? (:output result) "\"missing\\n\\u001b[4m\""))
-      (is (str/includes? (:output result) "Current SQL: \"SELECT 'owl'\\n-- \\u001b[4mnotes\"")))))
+      (is (str/includes? (:output result) "SQL for this edit: \"SELECT 'owl'\\n-- \\u001b[4mnotes\"")))))
 
 (deftest sql-edit-permission-error-test
   (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
@@ -336,27 +286,6 @@
                 (is (str/includes? (:output result) "Don't retry"))
                 (is (some? (:structured-output result)))))))))))
 
-(deftest creation-syntax-error-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
-      (doseq [editor? [false true]]
-        (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id db-id :sql_query "SELECT ="})]
-          (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
-          (is (str/includes? (:output result) "syntax error"))
-          (is (str/includes? (:output result) "Fix the SQL syntax and retry")))))))
-
-(deftest creation-quotes-parser-details-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
-      (mt/with-dynamic-fn-redefs [sql-tools/transpile-sql
-                                  (constantly {:status :error
-                                               :error-message "Invalid expression\nSELECT \u001b[4m=\u001b[0m"})]
-        (doseq [editor? [false true]]
-          (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id db-id :sql_query "SELECT ="})]
-            (is (= :recoverable (get-in result [:error :class])))
-            (is (str/includes? (:output result)
-                               "Parser details: \"Invalid expression\\nSELECT \\u001b[4m=\\u001b[0m\""))))))))
-
 (deftest creation-delivers-query-to-the-profile-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
@@ -386,3 +315,203 @@
           (is (= {:class :unrecoverable :code :internal} (:error result)))
           (is (str/includes? (:output result) "Don't retry"))
           (is (not (str/includes? (:output result) "Foreign internal error"))))))))
+
+(deftest invalid-sql-edits-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [profile [:internal :sql]
+            query [(lib/native-query (mt/metadata-provider) "SELECT 1")
+                   (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) "SELECT 1"))]
+            [tool-name args code excerpt]
+            [["replace_sql_query" {:new_query ""} ::sql.common/blank-sql "would contain no SQL"]
+             ["replace_sql_query" {:new_query " \n\t"} ::sql.common/blank-sql "nonblank SQL"]
+             ["edit_sql_query" {:edits [{:old_string "SELECT 1" :new_string ""}]}
+              ::sql.common/blank-sql "No changes were saved"]
+             ["edit_sql_query" {:edits [{:old_string "SELECT 1" :new_string " \n"}]}
+              ::sql.common/blank-sql "nonblank SQL"]
+             ["edit_sql_query" {:edits []} ::sql.edit/empty-edits "at least one edit"]
+             ["edit_sql_query" {:edits [{:old_string "" :new_string "X"}]}
+              ::sql.edit/empty-old-string "old_string must not be empty"]
+             ["edit_sql_query" {:edits [{:old_string "" :new_string "X" :replace_all true}]}
+              ::sql.edit/empty-old-string "old_string must not be empty"]]]
+      (testing (str profile " / " args)
+        (let [result (invoke-sql-tool profile {:state {:queries {"q1" query}}} tool-name args)]
+          (is (= {:class :recoverable :code code} (:error result)))
+          (is (str/includes? (:output result) excerpt))
+          (is (nil? (:structured-output result)))
+          (is (empty? (:data-parts result))))))))
+
+(deftest sql-query-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          notebook (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          sql-query (lib/native-query mp "SELECT 1")]
+      (doseq [profile [:internal :sql]
+              tool-name ["edit_sql_query" "replace_sql_query"]
+              queries [{"notebook" notebook} {"notebook" notebook "sql" sql-query}]
+              id ["missing" "notebook"]]
+        (let [result (invoke-sql-tool profile {:state {:queries queries}} tool-name
+                                      {:query_id id :edits [] :new_query "SELECT 2"})
+              output (:output result)]
+          (is (= {:class :recoverable
+                  :code (if (= id "missing") ::recoverable/unknown-query-id ::sql.common/not-sql)}
+                 (:error result)))
+          (is (str/includes? output (if (= id "missing") "not found" "is not a SQL query")))
+          (if (contains? queries "sql")
+            (do
+              (is (str/includes? output "Available query IDs: \"sql\""))
+              (is (not (str/includes? output "create_sql_query"))))
+            (do
+              (is (str/includes? output "Available query IDs: none"))
+              (is (str/includes? output "create_sql_query")))))))))
+
+(deftest sql-syntax-error-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
+      (mt/with-db db
+        (doseq [profile [:internal :sql]
+                tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]
+                parser [(mt/original-fn #'sql-tools/transpile-sql)
+                        (constantly {:status :error :error-message "Invalid expression\nSELECT \u001b[4m=\u001b[0m"})]]
+          (mt/with-dynamic-fn-redefs [sql-tools/transpile-sql parser]
+            (let [memory (assoc editor-memory :state {:queries {"q1" (lib/native-query (mt/metadata-provider) "SELECT 1")}})
+                  result (invoke-sql-tool profile memory tool-name
+                                          {:database_id db-id :sql_query "SELECT ="
+                                           :edits [{:old_string "1" :new_string "="}] :new_query "SELECT ="})
+                  output (:output result)]
+              (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
+              (is (str/includes? output "syntax error"))
+              (is (str/includes? output "Fix the SQL syntax and retry"))
+              (is (str/includes? output "Parser details: \""))
+              (is (not (str/includes? output "\u001b")))
+              (when (str/includes? output "Invalid expression")
+                (is (str/includes? output "Parser details: \"Invalid expression\\nSELECT \\u001b[4m=\\u001b[0m\"")))
+              (doseq [text ["Common issues to check:" "DATE_TRUNC vs TRUNC" "Quote style for identifiers"
+                            "String concatenation operators" "Date/time literal syntax"
+                            "NULL handling differences" "Case sensitivity of identifiers"]]
+                (is (str/includes? output text))))))))))
+
+(deftest closest-sql-match-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [ticket-sql "SELECT\n  id,\n  name\nFROM venues\nWHERE\n  price > 2 AND category_id IN (1, 2)"
+          columns (str/join ",\n" (for [i (range 300)] (str "    column_" i)))
+          cte-sql (str "WITH recent AS (\n  SELECT\n" columns
+                       "\n  FROM orders\n  WHERE\n    status IN ('paid', 'shipped')\n)\nSELECT\n"
+                       columns "\nFROM recent\nWHERE\n  price > 2")]
+      (doseq [profile [:internal :sql]
+              [sql old-string stored-text line]
+              [[ticket-sql "where price > 2" "WHERE\n  price > 2" 5]
+               [ticket-sql "where price > 2 and category_id in (1,2)" "WHERE\n  price > 2 AND category_id IN (1, 2)" 5]
+               [ticket-sql "select id, name from venues where price > 2 and category_id in (1,2)" ticket-sql 1]
+               [cte-sql "status in ('paid','shipped')" "status IN ('paid', 'shipped')" 305]
+               [(str "SELECT 1\n-- " (apply str (repeat 1500 "\u200b")) "\nWHERE\n  price > 2")
+                "where price > 2" "WHERE\n  price > 2" 3]
+               [(str (apply str (repeat 222 "-- comment\n")) ticket-sql)
+                "where price > 2" "WHERE\n  price > 2" 227]]]
+        (let [memory {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+              result (invoke-sql-tool profile memory "edit_sql_query"
+                                      {:edits [{:old_string old-string :new_string "x"}]})
+              output (:output result)]
+          (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
+          (is (str/includes? output (str "Closest match ignoring case and whitespace at line " line ": "
+                                         (pr-str stored-text))))
+          (is (str/includes? output "not applied"))
+          (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL."))
+          (is (<= (count output) 4000))
+          (is (nil? (:structured-output result)))
+          (is (empty? (:data-parts result))))))))
+
+(deftest absent-sql-match-uses-available-budget-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [columns [300 1000 5000]]
+      (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range columns)] (str "  column_" i))) "\nFROM venues")
+            result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits [{:old_string "nope" :new_string "x"}]})
+            output (:output result)]
+        (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
+        (is (< 3900 (count output) 4001))
+        (is (str/includes? output "SQL characters omitted"))
+        (is (str/includes? output "SELECT\\n"))
+        (is (str/includes? output "FROM venues"))
+        (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL."))))))
+
+(deftest long-closest-sql-match-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range 600)] (str "  column_" i))) "\nFROM venues")
+          old-string (str/replace (subs sql 0 3000) #"\n  " " ")
+          result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                  "edit_sql_query" {:edits [{:old_string old-string :new_string "x"}]})
+          output (:output result)]
+      (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
+      (is (str/includes? output "Closest match ignoring case and whitespace at line 1: \"SELECT\\n  column_0"))
+      (is (str/includes? output "...\" (not applied)"))
+      (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL."))
+      (is (<= (count output) 4000)))))
+
+(deftest tiny-sql-context-budget-test
+  (is (<= (count (#'sql.edit/quoted-sql-context (apply str (repeat 100 "SELECT id\n")) [] 10)) 10)))
+
+(deftest ambiguous-sql-match-lines-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [sql "SELECT id, id\nFROM birds\nWHERE id > 2"
+          result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                  "edit_sql_query" {:edits [{:old_string "id" :new_string "bird_id"}]})]
+      (is (= ::sql.edit/edit-ambiguous (get-in result [:error :code])))
+      (is (str/includes? (:output result) "Match lines: 1, 1, 3"))
+      (is (str/includes? (:output result) "replace_all"))
+      (is (str/includes? (:output result) "replace_sql_query")))))
+
+(deftest long-sql-error-keeps-context-and-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[columns expected-length] [[300 4125] [150 2025]]
+            old-string ["nope" "where price > 2" "column_"]]
+      (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range columns)] (str "  column_" i)))
+                     "\nFROM venues\nWHERE\n  price > 2")
+            edits (cond-> []
+                    (= columns 150) (conj {:old_string "venues" :new_string "places"})
+                    true (conj {:old_string old-string :new_string "x"}))
+            result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits edits})
+            output (:output result)]
+        (is (= expected-length (count sql)))
+        (is (= :recoverable (get-in result [:error :class])))
+        (is (<= (count output) 4000))
+        (is (str/includes? output "No edits were saved"))
+        (is (str/includes? output "replace_sql_query"))
+        (when (not= old-string "column_")
+          (is (str/includes? output "price > 2")))
+        (when (= columns 300)
+          (is (str/includes? output "omitted")))
+        (when (= columns 150)
+          (is (str/includes? output "includes earlier unsaved edits"))
+          (is (not (str/includes? output "FROM venues"))))))))
+
+(deftest escaped-sql-context-keeps-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [old-string ["nope" "where price > 2" "\u001b"]]
+      (let [sql (str "SELECT 1\n-- " (apply str (repeat 1000 "\u001b\n")) "\nWHERE\n  price > 2")
+            result (invoke-sql-tool :internal {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits [{:old_string old-string :new_string "x"}]})]
+        (is (= :recoverable (get-in result [:error :class])))
+        (is (<= (count (:output result)) 4000))
+        (is (str/includes? (:output result) "replace_sql_query"))
+        (is (str/includes? (:output result) "SQL characters omitted"))
+        (is (not (str/includes? (:output result) "\u001b")))))))
+
+(deftest many-sql-match-lines-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[sql expected-lines]
+            [[(str "SELECT\n" (str/join ",\n" (repeat 1000 "id")) "\nFROM birds")
+              "Match lines: 2-1001 (1 match per line)."]
+             [(str "SELECT " (str/join ", " (repeat 1000 "id")) " FROM birds")
+              "Match lines: 1 (1000 matches)."]
+             [(str "SELECT\n" (str/join "\n" (repeat 5 "id, id,")) "\n-- gap\n"
+                   (str/join ",\n" (repeat 1000 "id")) "\nFROM birds")
+              "Match lines: 2-6 (2 matches per line), 8-1007 (1 match per line)."]]]
+      (let [result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits [{:old_string "id" :new_string "bird_id"}]})
+            output (:output result)]
+        (is (= ::sql.edit/edit-ambiguous (get-in result [:error :code])))
+        (is (str/includes? output expected-lines))
+        (is (not (str/includes? output "further match locations omitted")))
+        (is (str/includes? output "replace_sql_query"))
+        (is (<= (count output) 4000))))))

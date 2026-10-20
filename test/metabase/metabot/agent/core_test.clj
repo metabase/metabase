@@ -26,6 +26,7 @@
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -369,6 +370,46 @@
         (testing "a database the user can query natively is not denied"
           (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest blank-replacement-after-edit-test
+  (mt/as-admin
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (doseq [profile [:internal :sql]]
+          (let [context {:capabilities ["permission:write_sql_queries"]
+                         :user_is_viewing [{:type "code_editor"
+                                            :buffers [{:id "sql-buffer"
+                                                       :source {:language "sql" :database_id db-id}
+                                                       :cursor {:line 0 :column 0}}]}]}
+                call (fn [id name args]
+                       [{:type :tool-input :id id :function name
+                         :arguments (merge {:query_id "q1" :checklist "Checked" :title "Results"} args)}])
+                run-turn (fn [state responses]
+                           (let [calls (atom 0)]
+                             (mt/with-dynamic-fn-redefs
+                               [openrouter/openrouter
+                                (fn [_]
+                                  (mut/mock-llm-response
+                                   (get responses (dec (swap! calls inc)) [{:type :text :text "Done."}])))]
+                               (into [] (run-agent-loop {:messages [{:role :user :content "Update the SQL"}]
+                                                         :state state :profile-id profile :context context})))))
+                edited (run-turn {:queries {"q1" {:database db-id :type :native :native {:query "SELECT 1"}}}}
+                                 [(call "edit" "edit_sql_query" {:edits [{:old_string "1" :new_string "2"}]})])
+                state (some #(when (= "state" (:data-type %)) (:data %)) edited)
+                replaced (run-turn state [(call "blank" "replace_sql_query" {:new_query ""})
+                                          (call "retry" "replace_sql_query" {:new_query "SELECT 3"})])
+                blank-result (some #(when (and (= :tool-output (:type %)) (= "blank" (:id %)))
+                                      (:result %)) replaced)
+                final-state (some #(when (= "state" (:data-type %)) (:data %)) replaced)]
+            (testing (str profile " keeps an invalid replacement recoverable after an edit stores MBQL 5")
+              (is (= :mbql/query (keyword (get-in state [:queries "q1" :lib/type]))))
+              (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries "q1"]))))
+              (is (= :recoverable (get-in blank-result [:error :class])))
+              (is (str/includes? (:output blank-result) "would contain no SQL"))
+              (is (nil? (:structured-output blank-result)))
+              (is (= "SELECT 3" (metabot.u/extract-sql-content (get-in final-state [:queries "q1"]))))
+              (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
