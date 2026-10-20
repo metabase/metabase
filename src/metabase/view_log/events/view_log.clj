@@ -145,17 +145,16 @@
 
 (m/defmethod events/publish-event! ::card-query-view
   "Log a view for the cards read through ad-hoc `card__id` queries, which never fire `:event/card-read`: models, and
-  the saved questions a data app queries."
+  the saved questions a published data app queries. Only ad-hoc queries count, which keeps downloads out. Other
+  ad-hoc queries on a regular question are left out too: opening the question is logged as its card-read."
   [topic {:keys [card-id user-id context]}]
   (span/with-span!
     {:name    "view-log-card-query"
      :topic   topic
      :user-id user-id}
     (try
-      ;; Only ad-hoc queries, which keeps downloads out. Other ad-hoc queries on a regular question are left out too:
-      ;; opening the question is logged as its card-read. A data app's dev preview counts: its read is still a view.
       (when (and (= context :ad-hoc)
-                 (or (contains? analytics/data-app-clients (analytics/get-client))
+                 (or (analytics/data-app-client?)
                      (= :model (view-log.db/card-type card-id))))
         (increment-view-counts! :model/Card card-id)
         (record-views! (generate-view :model :model/Card

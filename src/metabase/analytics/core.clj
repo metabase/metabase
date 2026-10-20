@@ -39,8 +39,7 @@
  [metabase.analytics.quartz
   add-listeners-to-scheduler!]
  [metabase.analytics.sdk
-  data-app-client
-  data-app-clients
+  data-app-client?
   embedding-context?
   embedding-mw
   extract-hostname

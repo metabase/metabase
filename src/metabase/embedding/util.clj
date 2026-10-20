@@ -18,7 +18,7 @@
   [[metabase.server.middleware.data-app-scope]] confines a request to the `data-app` scope
   on the strength of it."
   [request]
-  (= (get-in request [:headers "x-metabase-client"]) analytics/data-app-client))
+  (analytics/data-app-client? (get-in request [:headers "x-metabase-client"])))
 
 (defn has-embedded-analytics-js-header?
   "Check if the client has indicated it is from modular embedding."

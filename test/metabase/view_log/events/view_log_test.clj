@@ -95,23 +95,25 @@
                    :model/Card preview      {:type :question :creator_id (u/id user)}
                    :model/Card sdk-question {:type :question :creator_id (u/id user)}
                    :model/Card download     {:type :question :creator_id (u/id user)}]
-      (doseq [[client card] [["data-app" published] ["data-app-preview" preview]]]
-        (testing (str "An ad-hoc card-query a " client " client runs on a question is recorded as a card view")
-          (sdk/with-client! [client]
-            (binding [sdk/*client-identifier* "product-reviews"]
-              (events/publish-event! :event/card-query {:card-id (u/id card) :user-id (u/id user) :context :ad-hoc})))
-          (is (partial= {:user_id                     (u/id user)
-                         :model                       "card"
-                         :model_id                    (u/id card)
-                         :context                     :question
-                         :has_access                  true
-                         :embedding_client            client
-                         :embedding_client_identifier "product-reviews"}
-                        (latest-view (u/id user) (u/id card))))))
-      (testing "Other embedding clients' ad-hoc card-queries on a question are still not recorded"
-        (sdk/with-client! ["embedding-sdk-react"]
-          (events/publish-event! :event/card-query {:card-id (u/id sdk-question) :user-id (u/id user) :context :ad-hoc}))
-        (is (nil? (latest-view (u/id user) (u/id sdk-question)))))
+      (testing "An ad-hoc card-query a published data app runs on a question is recorded as a card view"
+        (sdk/with-client! ["data-app"]
+          (binding [sdk/*client-identifier* "product-reviews"]
+            (events/publish-event! :event/card-query
+                                   {:card-id (u/id published) :user-id (u/id user) :context :ad-hoc})))
+        (is (partial= {:user_id                     (u/id user)
+                       :model                       "card"
+                       :model_id                    (u/id published)
+                       :context                     :question
+                       :has_access                  true
+                       :embedding_client            "data-app"
+                       :embedding_client_identifier "product-reviews"}
+                      (latest-view (u/id user) (u/id published)))))
+      (testing "Other clients' ad-hoc card-queries aren't recorded, a data app's dev preview included"
+        (doseq [[client card] [["data-app-preview" preview] ["embedding-sdk-react" sdk-question]]]
+          (testing client
+            (sdk/with-client! [client]
+              (events/publish-event! :event/card-query {:card-id (u/id card) :user-id (u/id user) :context :ad-hoc}))
+            (is (nil? (latest-view (u/id user) (u/id card)))))))
       (testing "A data app's non-ad-hoc card-query is not recorded"
         (sdk/with-client! ["data-app"]
           (events/publish-event! :event/card-query {:card-id (u/id download) :user-id (u/id user) :context :csv-download}))
@@ -321,27 +323,33 @@
 
 (deftest data-app-dataset-query-view-log-test
   (mt/with-premium-features #{:audit-app}
-    (testing "A question a data app reads through POST /api/dataset is recorded in the view_log, from the request headers"
-      (mt/with-temp [:model/Card question {:name          "Bird sightings"
-                                           :type          :question
-                                           :dataset_query (mt/mbql-query venues {:limit 1})}]
-        (doseq [[client preview-headers] [["data-app"         {}]
-                                          ["data-app-preview" {"x-metabase-embedded-preview" "true"}]]]
-          (testing client
-            (mt/user-http-request :crowberto :post 202 "dataset"
-                                  {:request-options {:headers (merge {"x-metabase-client"            "data-app"
-                                                                      "x-metabase-client-identifier" "bird-watch"}
-                                                                     preview-headers)}}
-                                  {:database (mt/id)
-                                   :type     :query
-                                   :query    {:source-table (str "card__" (u/id question))}})
-            (is (partial= {:user_id                     (mt/user->id :crowberto)
-                           :model                       "card"
-                           :model_id                    (u/id question)
-                           :context                     :question
-                           :embedding_client            client
-                           :embedding_client_identifier "bird-watch"}
-                          (latest-view (mt/user->id :crowberto) (u/id question))))))))))
+    (mt/with-temp [:model/Card published {:name          "Bird sightings"
+                                          :type          :question
+                                          :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Card preview   {:name          "Bird sightings preview"
+                                          :type          :question
+                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
+      (let [data-app-headers  {"x-metabase-client"            "data-app"
+                               "x-metabase-client-identifier" "bird-watch"}
+            read-as-data-app! (fn [card extra-headers]
+                                (mt/user-http-request
+                                 :crowberto :post 202 "dataset"
+                                 {:request-options {:headers (merge data-app-headers extra-headers)}}
+                                 {:database (mt/id)
+                                  :type     :query
+                                  :query    {:source-table (str "card__" (u/id card))}}))]
+        (testing "A question a published data app reads through POST /api/dataset is recorded from the request headers"
+          (read-as-data-app! published {})
+          (is (partial= {:user_id                     (mt/user->id :crowberto)
+                         :model                       "card"
+                         :model_id                    (u/id published)
+                         :context                     :question
+                         :embedding_client            "data-app"
+                         :embedding_client_identifier "bird-watch"}
+                        (latest-view (mt/user->id :crowberto) (u/id published)))))
+        (testing "A data app's dev preview reading a question is not recorded"
+          (read-as-data-app! preview {"x-metabase-embedded-preview" "true"})
+          (is (nil? (latest-view (mt/user->id :crowberto) (u/id preview)))))))))
 
 (deftest get-dashboard-view-log-test
   (mt/with-premium-features #{:audit-app}

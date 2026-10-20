@@ -44,18 +44,16 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
-(def data-app-client
-  "The [[*client*]] a data app reports. It must match `EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader` on the FE:
-  [[metabase.server.middleware.data-app-scope]] confines requests that carry it."
+(def ^:private data-app-client
+  "The [[*client*]] a published data app reports. It must match `EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader` on
+  the FE: [[metabase.server.middleware.data-app-scope]] confines requests that carry it."
   "data-app")
 
-(defn- preview-client
-  [client]
-  (str client "-preview"))
-
-(def data-app-clients
-  "The [[*client*]]s a data app reports: published, and in its dev preview."
-  #{data-app-client (preview-client data-app-client)})
+(defn data-app-client?
+  "Whether `client`, by default the current [[*client*]], is a published data app. A data app's dev preview reports
+  another client."
+  ([] (data-app-client? (get-client)))
+  ([client] (= data-app-client client)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client-identifier*
@@ -255,7 +253,7 @@
           route (embedding-route (:uri request))
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
           client (cond-> metabase-client-header
-                   preview? (some-> preview-client))]
+                   preview? (some-> (str "-preview")))]
       (binding [*client*            client
                 *client-identifier* identifier
                 *route*             route
