@@ -370,12 +370,15 @@ function useExpression({
   // looking populated while the widget still had no clause.
   const hasPropagatedInitialClause = useRef(false);
   useEffect(() => {
-    if (
-      !isFormatting &&
-      !hasPropagatedInitialClause.current &&
-      source.trim() !== ""
-    ) {
-      hasPropagatedInitialClause.current = true;
+    if (isFormatting || hasPropagatedInitialClause.current) {
+      return;
+    }
+    // Formatting has settled, so the initial clause (if any) is now in `source`.
+    // Mark it handled whether or not it had content, otherwise an editor that
+    // opened empty would treat the user's first keystroke as the initial clause
+    // and validate it at once, defeating the debounce on every later keystroke.
+    hasPropagatedInitialClause.current = true;
+    if (source.trim() !== "") {
       handleUpdate(source, true);
     }
   }, [isFormatting, source, handleUpdate]);
