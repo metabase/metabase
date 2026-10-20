@@ -1310,23 +1310,24 @@
   (str (u.date/add (u.date/parse literal) :day 1)))
 
 (defn- expand-day-comparison [[head opts ref & dates :as node]]
-  (cond
-    (= head "between")
-    ["and" opts [">=" {} ref (first dates)] ["<" {} ref (next-day (second dates))]]
+  (let [range-ref (update ref 1 dissoc "lib/uuid")]
+    (cond
+      (= head "between")
+      ["and" opts [">=" {} range-ref (first dates)] ["<" {} range-ref (next-day (second dates))]]
 
-    (contains? #{"=" "in"} head)
-    (let [ranges (mapv (fn [date] ["and" {} [">=" {} ref date] ["<" {} ref (next-day date)]]) dates)]
-      (if (= 1 (count ranges))
-        (assoc (first ranges) 1 opts)
-        (into ["or" opts] ranges)))
+      (contains? #{"=" "in"} head)
+      (let [ranges (mapv (fn [date] ["and" {} [">=" {} range-ref date] ["<" {} range-ref (next-day date)]]) dates)]
+        (if (= 1 (count ranges))
+          (assoc (first ranges) 1 opts)
+          (into ["or" opts] ranges)))
 
-    (= 1 (count dates))
-    (case head
-      "<=" ["<" opts ref (next-day (first dates))]
-      ">"  [">=" opts ref (next-day (first dates))]
-      node)
+      (= 1 (count dates))
+      (case head
+        "<=" ["<" opts ref (next-day (first dates))]
+        ">"  [">=" opts ref (next-day (first dates))]
+        node)
 
-    :else node))
+      :else node)))
 
 (defn- repair-day-and-default-comparison [node]
   (if (hoistable-comparison-node? node)

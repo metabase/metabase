@@ -1788,6 +1788,21 @@
             (is (= (lib/remove-lib-uuids (lib/aggregations before))
                    (lib/remove-lib-uuids (lib/aggregations after))))))))))
 
+(deftest conditional-date-range-with-column-uuid-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [[before :as hop] (legacy-json-wire
+                              {"aggregation"
+                               [["count-where" {}
+                                 ["between" {}
+                                  ["field" {"lib/uuid" "8b1a3b2c-0000-4000-8000-000000000001"}
+                                   ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                  ["absolute-datetime" {} "2017-01-01" "day"]
+                                  ["absolute-datetime" {} "2017-01-31" "day"]]]]})
+            after (assert-survives-json-hop! hop)]
+        (is (= (lib/remove-lib-uuids (lib/aggregations before))
+               (lib/remove-lib-uuids (lib/aggregations after))))))))
+
 (deftest conditional-aggregations-count-whole-days-test
   (mt/dataset test-data
     (mt/with-test-user :crowberto
