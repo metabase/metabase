@@ -127,7 +127,7 @@ jobs:
           github.ref_name == 'master' &&
           steps.run-test.outputs.skipped == 'true' &&
           steps.run-test.outputs.unreleased_migrations != '' &&
-          matrix.target == needs.generate-test-matrix.outputs.oldest-target   
+          matrix.target == needs.generate-test-matrix.outputs.oldest-target
         uses: actions/github-script@v9
         env:
           UNRELEASED_MIGRATIONS: ${{ steps.run-test.outputs.unreleased_migrations }}

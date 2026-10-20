@@ -1,6 +1,7 @@
 const {
   findOverdueCommits,
   formatMessage,
+  hoursUntilFailure,
   notifyOverdueChangesets,
 } = require("./notify-unreleased-migrations");
 
@@ -23,12 +24,33 @@ describe("findOverdueCommits", () => {
   });
 });
 
+describe("hoursUntilFailure", () => {
+  it("counts from the oldest commit", () => {
+    expect(
+      hoursUntilFailure({
+        commits: [{ age_hours: 30 }, { age_hours: 50 }],
+        gracePeriodDays: 3,
+      }),
+    ).toBe(22);
+  });
+
+  it("is not negative", () => {
+    expect(
+      hoursUntilFailure({ commits: [{ age_hours: 80 }], gracePeriodDays: 3 }),
+    ).toBe(0);
+  });
+});
+
 describe("formatMessage", () => {
   it("lists each commit with a link, its migrations and its age", () => {
     expect(
       formatMessage({
         commits: [
-          { commit: "aaaaaaaaaaaaaaaa", age_hours: 50, ids: ["v63.a", "v63.b"] },
+          {
+            commit: "aaaaaaaaaaaaaaaa",
+            age_hours: 50,
+            ids: ["v63.a", "v63.b"],
+          },
         ],
         gracePeriodDays: 3,
         owner: "metabase",
@@ -37,9 +59,9 @@ describe("formatMessage", () => {
       }),
     ).toBe(
       [
-        ":warning: *Master has migrations that no release has yet. Cross-version tests start to fail 3 days after a migration is added to master.*",
+        ":warning: *Cross-version tests (<https://run|run>) skipped since unreleased migrations for existing release branches have been added to master*",
         `• <${commitUrl("aaaaaaaaaaaaaaaa")}|aaaaaaaaaaa> added: \`v63.a\`, \`v63.b\` (50h ago)`,
-        "Please backport and release these changes. <https://run|Run>",
+        "Please backport and release these migrations. Cross-version tests will start failing in 22h.",
       ].join("\n"),
     );
   });
@@ -63,7 +85,9 @@ describe("notifyOverdueChangesets", () => {
   it("sends one message with all overdue commits when a commit has no message yet", async () => {
     const sendSlackMessage = jest.fn(async () => ({}));
     const getRecentSlackMessages = await notify({
-      recentMessages: [`• <${commitUrl("aaaaaaaaaaaaaaaa")}|aaaaaaaaaaa> added`],
+      recentMessages: [
+        `• <${commitUrl("aaaaaaaaaaaaaaaa")}|aaaaaaaaaaa> added`,
+      ],
       sendSlackMessage,
     });
     expect(getRecentSlackMessages).toHaveBeenCalledTimes(1);

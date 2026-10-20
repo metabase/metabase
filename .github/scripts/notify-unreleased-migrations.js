@@ -16,14 +16,19 @@ function commitUrl({ owner, repo, commit }) {
   return `https://github.com/${owner}/${repo}/commit/${commit}`;
 }
 
+function hoursUntilFailure({ commits, gracePeriodDays }) {
+  const oldest = Math.max(...commits.map(({ age_hours }) => age_hours));
+  return Math.max(0, gracePeriodDays * 24 - oldest);
+}
+
 function formatMessage({ commits, gracePeriodDays, owner, repo, runUrl }) {
   return [
-    `:warning: *Master has migrations that no release has yet. Cross-version tests start to fail ${gracePeriodDays} days after a migration is added to master.*`,
+    `:warning: *Cross-version tests (<${runUrl}|run>) skipped since unreleased migrations for existing release branches have been added to master*`,
     ...commits.map(
       ({ commit, age_hours, ids }) =>
         `• <${commitUrl({ owner, repo, commit })}|${commit.slice(0, 11)}> added: ${ids.map((id) => `\`${id}\``).join(", ")} (${age_hours}h ago)`,
     ),
-    `Please backport and release these changes. <${runUrl}|Run>`,
+    `Please backport and release these migrations. Cross-version tests will start failing in ${hoursUntilFailure({ commits, gracePeriodDays })}h.`,
   ].join("\n");
 }
 
@@ -67,5 +72,6 @@ async function notifyOverdueChangesets({
 module.exports = {
   findOverdueCommits,
   formatMessage,
+  hoursUntilFailure,
   notifyOverdueChangesets,
 };
