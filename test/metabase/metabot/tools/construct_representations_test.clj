@@ -2511,6 +2511,26 @@
               (is (= [[0 67] [1 3443]]
                      (take 2 (mt/rows (qp/process-query query))))))))))))
 
+(deftest table-based-metric-breakout-on-a-related-table-column-test
+  (testing "a table-based metric broken out by a column one foreign key away runs on the metric's table"
+    (mt/with-temp [:model/Card {metric-eid :entity_id} {:name          "Order count"
+                                                        :type          :metric
+                                                        :dataset_query (lib/aggregate (table-query :orders) (lib/count))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              query   (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" [db-name "PUBLIC" "ORDERS"]
+                                          "breakout"     [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                          "aggregation"  [["metric" {} metric-eid]]}]}))
+                          (get-in [:structured-output :query]))]
+          (is (=? {:source-field (mt/id :orders :product_id)}
+                  (get-in query [:stages 0 :breakout 0 1])))
+          (is (= [["Doohickey" 3976] ["Gadget" 4939] ["Gizmo" 4784] ["Widget" 5061]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest card-computed-dimension-by-machine-name-executes-on-source-card-stage-test
   (testing (str "A card-based metric's dimensions table falls back to the machine name for a column the card\n"
                 "computes, which has no portable FK, and the prompt tells the LLM to use that name on the metric's\n"

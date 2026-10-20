@@ -231,7 +231,7 @@ To use a metric:
 2. Reference the metric as `["metric", {}, "<portable_entity_id>"]` in `aggregation`.
 3. Filters/breakouts on the same stage reference dimensions from the metric's **Dimensions** table. Read the `Source table` column first — a metric reaches FK-related tables as well as its own source, so names like `id` and `created_at` appear more than once, and where a dimension comes from decides how to reference it:
    - **On the metric's own source** — copy the `Reference` column verbatim. It is a portable FK, and it is valid on a `source-card` stage as well as a `source-table` one.
-   - **On an FK-related table** — the `Reference` drops straight into `breakout:` when that table is reachable by a single foreign key from the metric's source; when it is not, the tool says so and you add an explicit join. See "Explicit joins" and "Implicit joins" above.
+   - **On an FK-related table** — the `Reference` drops straight into `breakout:` when that table is reachable by a single foreign key from the metric's source, on a `source-table` and a `source-card` stage alike. When it is not, the tool says so: add an explicit `joins` entry (see "Joins (explicit)") on the same stage, keep the metric's own source, and break out on the join-aliased field.
    - **Computed by the card itself** (an expression or aggregation column, which has no portable FK) — listed by its output machine name; use that.
 
 Table-based metric — `base_table_fully_qualified_name="brex_enriched.fct_cards"`:

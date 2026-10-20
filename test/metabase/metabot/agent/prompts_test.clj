@@ -68,9 +68,10 @@
         (testing "and the marker for a metric whose source cannot be offered"
           (is (str/includes? doc "source_unavailable")))
         (testing "and states the rule that makes the choice between them conditional"
-          ;; Positive assertion: checking that old wording is absent goes vacuous the first time anyone
-          ;; rephrases it, and would pass on a surface teaching the base table unconditionally in other words.
-          (is (str/includes? doc "only works on the source it was defined on")))))
+          (is (str/includes? doc "only works on the source it was defined on")))
+        (testing "and breaks a metric out through an implicit join, the way the query runs"
+          (is (str/includes? doc "on a `source-table` and a `source-card` stage alike"))
+          (is (not (str/includes? doc "cannot resolve an implicit join against a metric aggregation"))))))
     (testing "the discovery snippet does not send the agent to the base table unconditionally"
       ;; Not one of the surfaces above -- it is a shared prompt snippet, and it kept the pre-fix wording
       ;; ("reference it ... on its base table") through the change that made that wrong for card-based metrics.

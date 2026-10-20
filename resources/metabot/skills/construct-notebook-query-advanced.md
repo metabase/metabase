@@ -184,7 +184,7 @@ To use a metric:
 2. Reference the metric as `["metric", {}, "<portable_entity_id>"]` in `aggregation`.
 3. Filters/breakouts on the same stage reference dimensions from the metric's **Dimensions** table. Read the `Source table` column first — a metric reaches FK-related tables as well as its own source, so names like `id` and `created_at` appear more than once, and where a dimension comes from decides how to reference it:
    - **On the metric's own source** — copy the `Reference` column verbatim. It is a portable FK, and it is valid on a `source-card` stage as well as a `source-table` one.
-   - **On an FK-related table** — the `Reference` drops straight into `breakout:` when that table is reachable by a single foreign key from the metric's source; when it is not, the tool says so and you add an explicit join. See "Breaking out a metric by a dimension on another table" below.
+   - **On an FK-related table** — the `Reference` drops straight into `breakout:` when that table is reachable by a single foreign key from the metric's source, on a `source-table` and a `source-card` stage alike. When it is not, the tool says so: add an explicit `joins` entry (see "Joins (explicit)") on the same stage, keep the metric's own source, and break out on the join-aliased field.
    - **Computed by the card itself** (an expression or aggregation column, which has no portable FK) — listed by its output machine name; use that.
 
 Table-based metric — `base_table_fully_qualified_name="PUBLIC.ORDERS"`:
@@ -210,30 +210,6 @@ Card-based metric — `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
 When a `<metric>` tag carries `source_card_portable_entity_id`, the card underneath it has a base table too — but that table is **not** a valid source for this metric, and sourcing it instead of the card fails with an `Incompatible metric` error. Use whichever attribute the tag carries, even when you know the underlying table. (Not every metric defined over a card carries that attribute: some are only usable on their base table, and those carry `base_table_fully_qualified_name` instead. The tag is always the authority.)
 
 Metrics are aggregations, **not sources** — never put a *metric's* own `portable_entity_id` in `source-table` or `source-card`. (`source_card_portable_entity_id` is a different id: the card the metric sits on, which is exactly what belongs in `source-card`.) The `metabase://metric/<id>` URIs are for reading metadata via `read_resource`, not for embedding in queries.
-
-### Breaking out a metric by a dimension on another table
-
-To group a metric by a field that lives on a **different** table, add an explicit `joins` entry and break out on the join-aliased field. Do **not** break out (or order) a metric by a field reached only through an implicit foreign-key reference — the query processor cannot resolve an implicit join against a metric aggregation and rejects the query with a 400. Source the metric's base table, reference the metric in `aggregation`, join the dimension table, and break out on the joined column:
-
-```json
-{"lib/type": "mbql.stage/mbql",
- "source-table": ["Sample Database", null, "ORDERS"],
- "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]],
- "joins": [{"alias": "Products",
-            "strategy": "left-join",
-            "stages": [{"lib/type": "mbql.stage/mbql",
-                        "source-table": ["Sample Database", null, "PRODUCTS"]}],
-            "conditions": [["=", {},
-                            ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
-                            ["field", {"join-alias": "Products"},
-                             ["Sample Database", null, "PRODUCTS", "ID"]]]]}],
- "breakout": [["field", {"join-alias": "Products"},
-               ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]}
-```
-
-When the breakout dimension lives on the metric's **own** source, no join is needed — just break out on a portable FK as in the example above.
-
-For a card-based metric the same recipe applies with `source-card: "<source_card_portable_entity_id>"` in place of `source-table`; the `joins` and `breakout` clauses are unchanged.
 
 ## Using measures and segments
 
