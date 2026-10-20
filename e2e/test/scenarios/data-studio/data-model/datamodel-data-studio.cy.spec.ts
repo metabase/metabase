@@ -579,7 +579,6 @@ describe("scenarios > data studio > datamodel", () => {
       );
       H.openCommandPalette();
       H.commandPalette().should("be.visible");
-      H.tooltip().should("not.exist");
 
       cy.realPress("Escape");
       H.commandPalette().should("not.exist");

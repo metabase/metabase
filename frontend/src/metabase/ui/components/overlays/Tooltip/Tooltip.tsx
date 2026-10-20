@@ -57,6 +57,9 @@ const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
         {...rest}
         {...tooltipProps}
         label={<div {...labelProps}>{label}</div>}
+        // Mantine still opens a disabled tooltip invisibly on hover, and an
+        // open tooltip takes the next Escape keypress for itself.
+        opened={rest.disabled ? false : rest.opened}
         mod={[{ hoverable: isHoverable }, mod]}
         portalProps={resolvedPortalProps}
         transitionProps={resolvedTransitionProps}
