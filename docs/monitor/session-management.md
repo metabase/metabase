@@ -5,7 +5,9 @@ summary: View and revoke specific sessions or all sessions.
 
 # Session management tools
 
-Use session management to see who's signed in to your Metabase, and sign people out if necessary.
+{% include plans-blockquote.html feature="Session management" %} 
+
+Admins can use session management to see who's signed in to your Metabase, and sign people out if necessary.
 
 To open the session management tools:
 
@@ -14,7 +16,7 @@ To open the session management tools:
 
 ## View and filter sessions
 
-Metabase displays a list of all active sessions. Switch to ended sessions by clicking **Ended** at the top of the list. Switch back to active sessions by clicking **Active**.
+Session management tabs include: **Active** and **Ended**.
 
 Ended sessions are kept for 30 days and show the reason for why they ended (like a timeout or an admin revoking the session).
 
