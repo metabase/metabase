@@ -2829,6 +2829,21 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
+(deftest ^:parallel split-post-agg-refuses-when-order-by-is-a-string-test
+  (testing "a string `order-by` beside a post-agg filter gets the same refusal, not a validation error"
+    (is (=? {:error :post-agg-filter-with-trailing-clauses}
+            (try
+              (repair/repair trivial-mp {"lib/type" "mbql/query"
+                                         "database" "Sample"
+                                         "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                      "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}]]
+                                                      "filters"      [[">" {} ["aggregation" {} 0] 10]]
+                                                      "order-by"     "TOTAL"}]})
+              nil
+              (catch clojure.lang.ExceptionInfo e
+                (ex-data e)))))))
+
 (deftest ^:parallel split-post-agg-refuses-when-raw-column-order-by-test
   (testing (str "specifically the pre-agg `order-by [desc TOTAL]` case the reviewer flagged "
                 "as silent-intent-destruction in the prior implementation: TOTAL doesn't "

@@ -1968,11 +1968,10 @@
   columns that don't survive the split, and silently relocating them produces either a
   hard-to-diagnose 'no matching field' error or, worse, a different-row-count query. When
   any of those keys is present we refuse and ask the LLM to author two stages explicitly. An
-  `order-by` or `fields` that is not a list is left for validation to report."
+  `order-by` or `fields` that `seq` can't read, such as a number, is left for validation to report."
   [stage]
   (let [aggs              (get stage "aggregation")
-        same-stage-uuids  (when (and (vector? aggs) (every? clause-like? aggs))
-                            (collect-stage-agg-uuids stage))]
+        same-stage-uuids  (when (vector? aggs) (collect-stage-agg-uuids stage))]
     (if-not (seq same-stage-uuids)
       [stage]
       (let [filters             (get stage "filters")
@@ -1982,7 +1981,7 @@
           (empty? offending-filters)
           [stage]
 
-          (some #(and (contains? stage %) (not (sequential? (get stage %)))) ["order-by" "fields"])
+          (some #(not (seqable? (get stage %))) ["order-by" "fields"])
           [stage]
 
           (or (seq (get stage "order-by"))
