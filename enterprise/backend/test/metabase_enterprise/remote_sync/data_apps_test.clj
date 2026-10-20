@@ -359,7 +359,7 @@
                 (let [app (t2/select-one :model/DataApp :name "shop")]
                   (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
                   (group-access/add-groups! app [(:id group)])
-                  (deps.test/synchronously-run-backfill!)
+                  (deps.test/synchronously-run-dependency-job!)
                   (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :venues)}]}]
                           (group-access/permission-warnings app))))))))))))
 

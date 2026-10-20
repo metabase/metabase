@@ -24,6 +24,7 @@ export * from "./dependencies";
 export * from "./document";
 export * from "./email";
 export * from "./embed";
+export * from "./embedding-sdk";
 export * from "./embedding-theme";
 export * from "./entity-id";
 export * from "./erd";

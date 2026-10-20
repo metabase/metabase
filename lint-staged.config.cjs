@@ -24,8 +24,13 @@ module.exports = {
   ],
   "e2e/test/scenarios/**/*.{js,ts}": ["node e2e/validate-e2e-test-files.js"],
   "enterprise/frontend/src/embedding-sdk-package/README.md": ["oxfmt --write"],
-  "+(.storybook|enterprise/frontend/src/embedding-sdk-shared/.storybook)/**/*.{js,jsx,ts,tsx,css}":
-    ["oxfmt --write"],
+  "+(frontend|enterprise/frontend|e2e)/**/*.{mjs,cjs,mts,cts}": [
+    "oxfmt --write",
+  ],
+  "!(frontend|enterprise|e2e)/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css}": [
+    "oxfmt --write",
+  ],
+  "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css}": ["oxfmt --write"],
   "**/*": [
     /**
      * Run mage token-scan for each staged file individually.

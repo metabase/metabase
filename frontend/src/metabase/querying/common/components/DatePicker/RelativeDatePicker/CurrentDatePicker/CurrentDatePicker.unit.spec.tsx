@@ -1,7 +1,7 @@
 import _userEvent from "@testing-library/user-event";
 
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -102,7 +102,12 @@ describe("CurrentDatePicker", () => {
   it("should select the focused interval on Enter", async () => {
     const { onChange } = setup();
 
-    screen.getByRole("radio", { name: "Month" }).focus();
+    // Focusing the chip opens its tooltip, so the state that opens it has to
+    // be set inside act().
+    act(() => {
+      screen.getByRole("radio", { name: "Month" }).focus();
+    });
+
     await userEvent.keyboard("{Enter}");
 
     expect(onChange).toHaveBeenCalledWith(CURRENT_MONTH_VALUE);
