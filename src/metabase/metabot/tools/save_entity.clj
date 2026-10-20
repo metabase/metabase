@@ -32,8 +32,11 @@
   [:map {:closed true}
    ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
    [:chart_id [:string {:min 1 :max 36}]]
-   ;; report_card.name is a varchar(254)
-   [:name [:string {:min 1 :max 254}]]
+   ;; report_card.name is a varchar(254), which PostgreSQL and MySQL count in code points, not UTF-16 units
+   [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
+           :string
+           [:fn {:error/message "must be 1 to 254 Unicode code points"}
+            (fn [^String s] (<= 1 (.codePointCount s 0 (.length s)) 254))]]]
    [:description :string]
    [:destination
     [:multi {:dispatch :target_type}

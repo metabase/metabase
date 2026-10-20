@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.json-schema :as mjs]
    [metabase.api-scope.core :as api-scope]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -9,6 +10,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
@@ -18,7 +20,10 @@
    [metabase.queries.core :as queries]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- venues-query []
   (lib/query (mt/metadata-provider)
@@ -236,11 +241,21 @@
             (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
                                            (assoc chart-args :destination {:target_type "document"})))))
   (testing "a name has to fit report_card.name, a varchar(254)"
-    (is (=? #"Invalid tool arguments: `name` should be at most 254 characters.*"
+    (is (=? #"Invalid tool arguments: `name` must be 1 to 254 Unicode code points.*"
             (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
                                            (assoc chart-args
                                                   :name        (apply str (repeat 255 "x"))
                                                   :destination {:target_type "collection"}))))))
+
+(deftest ^:parallel name-length-counts-code-points-test
+  (let [args-schema   (:args (tools.core/declaration save-entity/save-entity-tool))
+        ^String ducks (apply str (repeat 128 "\uD83E\uDD86"))]
+    (testing "128 emoji are 256 UTF-16 units but 128 code points, which is what PostgreSQL and MySQL count"
+      (is (= [256 128] [(.length ducks) (.codePointCount ducks 0 (.length ducks))]))
+      (is (mr/validate args-schema (assoc chart-args :name ducks :destination {:target_type "collection"}))))
+    (testing "and the LLM is told the same limit"
+      (is (= {:type "string" :minLength 1 :maxLength 254}
+             (get-in (mjs/transform args-schema) [:properties :name]))))))
 
 (deftest ^:parallel unknown-chart-test
   (let [args (assoc chart-args :chart_id "c-9" :destination {:target_type "collection" :collection_id nil})]
