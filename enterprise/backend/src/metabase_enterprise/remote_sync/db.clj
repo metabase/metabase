@@ -297,6 +297,11 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
 
+(mu/defn card-counts-by-type :- [:map-of :keyword :int]
+  "The number of Cards with `card-ids`, by `:type`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-fn->fn :type :count [:model/Card :type [:%count.* :count]] :id [:in card-ids] {:group-by [:type]}))
+
 (mu/defn published-table-ids :- [:set ::lib.schema.id/table]
   "The ids of the Tables published in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
