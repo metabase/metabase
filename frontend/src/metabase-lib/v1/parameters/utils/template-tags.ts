@@ -81,7 +81,7 @@ export function getTemplateTagParameters(
         tag.type !== "table" &&
         tag.type !== "snippet" &&
         ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
-          tag.dimension != null ||
+          tag["field-id"] != null ||
           (tag["widget-type"] && tag["widget-type"] !== "none")),
     )
     .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));

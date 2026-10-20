@@ -2049,16 +2049,13 @@
                      (assoc :name tag-name) ; prefer the tag name used as a map key in case it's unset in the tag itself or differs
                      (update :type keyword)
                      (m/update-existing :widget-type #(some-> % keyword))
-                     (m/update-existing :dimension #(some-> % legacy-ref->mbql5))
                      lib.schema.template-tag/dimension->field-id)))
              (gobject/getKeys tags-object)))
 
-(defn- template-tag-cljs->js [{:keys [field-id], :as tag}]
+(defn- template-tag-cljs->js [tag]
   (-> tag
       (update :type name)
       (m/update-existing :widget-type #(some-> % u/qualified-name))
-      (cond-> field-id (-> (dissoc :field-id)
-                           (assoc :dimension [:field field-id nil])))
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn- template-tags-cljs->js

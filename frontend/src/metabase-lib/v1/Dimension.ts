@@ -21,8 +21,8 @@ export class TemplateTagDimension {
   field() {
     try {
       const tag = this.tag();
-      if (tag != null && tag.type === "dimension" && tag.dimension != null) {
-        const fieldId = tag.dimension[1];
+      const fieldId = tag?.["field-id"];
+      if (tag != null && tag.type === "dimension" && fieldId != null) {
         return this._metadata.field(fieldId);
       }
       return null;

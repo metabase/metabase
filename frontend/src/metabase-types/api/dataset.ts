@@ -1,6 +1,5 @@
 import type {
   CacheStrategy,
-  LocalFieldReference,
   Parameter,
   ParameterValueOrArray,
   VisualizerColumnValueSource,
@@ -243,7 +242,7 @@ export interface TemplateTag {
   "snippet-name"?: string;
 
   // Field filter and time grouping specific
-  dimension?: LocalFieldReference;
+  "field-id"?: FieldId;
   alias?: string;
 
   // Field filter specific

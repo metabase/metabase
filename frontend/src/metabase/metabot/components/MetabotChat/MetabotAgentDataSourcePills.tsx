@@ -5,6 +5,7 @@ import { msgid, ngettext, t } from "ttag";
 import {
   skipToken,
   useExtractSourcesQuery,
+  useGetAdhocQueryMetadataQuery,
   useGetDatabaseQuery,
   useGetFieldTableIdsQuery,
 } from "metabase/api";
@@ -17,6 +18,7 @@ import {
   getCollectionLocationLabel,
   getDatabaseLocationLabel,
 } from "metabase/metabot/utils/source-location";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { EntitySmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/EntitySmartLink";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
 import {
@@ -37,6 +39,7 @@ import { getName } from "metabase/utils/name";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
+  DatabaseId,
   DatasetQuery,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
@@ -54,9 +57,10 @@ type SourceRef = { id: number; model: "table" | "card" };
 type DecodedQuery =
   | {
       kind: "mbql";
+      datasetQuery: DatasetQuery;
+      databaseId: DatabaseId | null;
       tableIds: number[];
       cardIds: number[];
-      fieldIds: number[];
     }
   | {
       kind: "native";
@@ -109,9 +113,10 @@ const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
 
     return {
       kind: "mbql",
+      datasetQuery,
+      databaseId: Lib.databaseID(query),
       tableIds: uniqueNumbers(Lib.allSourceTableIds(query)),
       cardIds: uniqueNumbers(Lib.allSourceCardIds(query)),
-      fieldIds: uniqueNumbers(Lib.allFieldIds(query)),
     };
   } catch {
     return { kind: "none" };
@@ -421,21 +426,37 @@ const SourcesSection = ({
 };
 
 const MbqlSources = ({
+  datasetQuery,
+  databaseId,
   tableIds,
   cardIds,
-  fieldIds,
   messageId,
 }: {
+  datasetQuery: DatasetQuery;
+  databaseId: DatabaseId | null;
   tableIds: number[];
   cardIds: number[];
-  fieldIds: number[];
   messageId?: string;
 }) => {
+  const { isLoading: isMetadataLoading, isError: isMetadataError } =
+    useGetAdhocQueryMetadataQuery(datasetQuery);
+  const getMetadataProvider = useMetadataProviderFactory();
+  const fieldIds = useMemo(
+    () =>
+      isMetadataLoading
+        ? []
+        : uniqueNumbers(
+            Lib.allFieldIds(
+              Lib.fromJsQuery(getMetadataProvider(databaseId), datasetQuery),
+            ),
+          ),
+    [isMetadataLoading, getMetadataProvider, databaseId, datasetQuery],
+  );
   const { data, isLoading, isError } = useGetFieldTableIdsQuery(
     fieldIds.length > 0 ? { field_ids: fieldIds } : skipToken,
   );
 
-  if (isError) {
+  if (isMetadataError || isError) {
     return null;
   }
 
@@ -445,7 +466,7 @@ const MbqlSources = ({
     <SourcesSection
       messageId={messageId}
       sources={toSourceRefs(allTableIds, cardIds)}
-      isLoading={isLoading}
+      isLoading={isMetadataLoading || isLoading}
     />
   );
 };
@@ -503,19 +524,17 @@ const DatasetQueryTablePills = ({
     );
   }
 
-  const hasContent =
-    decoded.tableIds.length > 0 ||
-    decoded.cardIds.length > 0 ||
-    decoded.fieldIds.length > 0;
+  const hasContent = decoded.tableIds.length > 0 || decoded.cardIds.length > 0;
   if (!hasContent) {
     return null;
   }
 
   return (
     <MbqlSources
+      datasetQuery={decoded.datasetQuery}
+      databaseId={decoded.databaseId}
       tableIds={decoded.tableIds}
       cardIds={decoded.cardIds}
-      fieldIds={decoded.fieldIds}
       messageId={messageId}
     />
   );
