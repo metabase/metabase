@@ -24,7 +24,7 @@
 
 (deftest tools-declare-registered-scopes-granted-to-nlq-users-test
   (testing "every exploration tool declares a registered :scope, so the per-tool scope check applies
-            (a tool with no :scope skips wrap-with-scope-check entirely), AND an NLQ-yes user is
+            (a tool with no :scope skips the runtime's scope check entirely), AND an NLQ-yes user is
             granted that scope — so adding the gate does not filter the tools away from the
             NLQ-gated :explorations profile that offers them"
     (doseq [tool [tools.explorations/list-research-metrics-tool
@@ -127,9 +127,7 @@
                    output))))))))
 
 (deftest add-research-groups-summary-tolerates-unnamed-dimensions-test
-  (testing (str "groups are validated against the unresolved catalog, so a dimension can pass "
-                "validation and still be absent from the hydrated payload (its metric's query "
-                "can't break out on it) — the summary skips what it can't name rather than "
+  (testing (str "the summary skips a dimension id that no group in the payload holds, rather than "
                 "throwing away the whole tool call")
     (let [payload (assoc (picker-payload 1)
                          :groups [{:metric_id 0 :dimension_ids ["d0" "unresolved"]}])]

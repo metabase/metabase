@@ -271,10 +271,7 @@
                                    d     (:dimensions g)]
                                [(:id d) i]))
         group-names (mapv :name dimension_groups)
-        ;; Nil for a dimension the payload doesn't group: groups are validated against the
-        ;; unresolved catalog, so a dimension can pass validation and still be dropped from the
-        ;; hydrated metrics because their query can't actually break out on it. The summary skips
-        ;; what it can't name rather than failing the whole tool call.
+        ;; Nil for an id that no group holds, which the summary skips rather than fail the call.
         group-name  (fn [dimension-id] (some-> (group-idx dimension-id) group-names))]
     (te/lines
      (str "Added " (count groups) " group(s) to the research plan:")
