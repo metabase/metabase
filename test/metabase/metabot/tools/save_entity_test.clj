@@ -234,7 +234,13 @@
   (testing "a document destination needs a document_id"
     (is (=? #"Invalid tool arguments: `destination` .*"
             (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
-                                           (assoc chart-args :destination {:target_type "document"}))))))
+                                           (assoc chart-args :destination {:target_type "document"})))))
+  (testing "a name has to fit report_card.name, a varchar(254)"
+    (is (=? #"Invalid tool arguments: `name` should be at most 254 characters.*"
+            (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
+                                           (assoc chart-args
+                                                  :name        (apply str (repeat 255 "x"))
+                                                  :destination {:target_type "collection"}))))))
 
 (deftest ^:parallel unknown-chart-test
   (let [args (assoc chart-args :chart_id "c-9" :destination {:target_type "collection" :collection_id nil})]

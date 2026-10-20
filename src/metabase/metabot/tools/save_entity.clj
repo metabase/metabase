@@ -32,7 +32,8 @@
   [:map {:closed true}
    ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
    [:chart_id [:string {:min 1 :max 36}]]
-   [:name :string]
+   ;; report_card.name is a varchar(254)
+   [:name [:string {:min 1 :max 254}]]
    [:description :string]
    [:destination
     [:multi {:dispatch :target_type}
