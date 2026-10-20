@@ -89,3 +89,36 @@ export function withPillsExample(
     quantityClause,
   );
 }
+
+/**
+ * Three levels, as in the Option C Figma:
+ * `[Total] > 100 AND [Quantity] > 3 AND ([Tax] > 2 OR ([Discount] is empty AND [Subtotal] < 50))`.
+ */
+export function withNestedExample(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const total = findColumn(query, stageIndex, "Total");
+  const quantity = findColumn(query, stageIndex, "Quantity");
+  const tax = findColumn(query, stageIndex, "Tax");
+  const discount = findColumn(query, stageIndex, "Discount");
+  const subtotal = findColumn(query, stageIndex, "Subtotal");
+  if (!total || !quantity || !tax || !discount || !subtotal) {
+    return query;
+  }
+  const subgroup = Lib.expressionClause("or", [
+    Lib.numberFilterClause({ operator: ">", column: tax, values: [2] }),
+    Lib.expressionClause("and", [
+      Lib.defaultFilterClause({ operator: "is-null", column: discount }),
+      Lib.numberFilterClause({ operator: "<", column: subtotal, values: [50] }),
+    ]),
+  ]);
+  return [
+    Lib.numberFilterClause({ operator: ">", column: total, values: [100] }),
+    Lib.numberFilterClause({ operator: ">", column: quantity, values: [3] }),
+    subgroup,
+  ].reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
+    clearFilters(query, stageIndex),
+  );
+}

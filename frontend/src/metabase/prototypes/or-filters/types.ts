@@ -20,4 +20,6 @@ export type FilterDirection = {
   name: string;
   description: string;
   Component: ComponentType<FilterUiProps>;
+  /** Replaces the chill header's static "Filter" button. */
+  FilterButton?: ComponentType<FilterUiProps>;
 };

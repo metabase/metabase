@@ -157,7 +157,7 @@ type ClauseTokenProps = {
   onRemove: () => void;
 };
 
-function ClauseToken({
+export function ClauseToken({
   query,
   stageIndex,
   clause,
@@ -209,7 +209,7 @@ type AddButtonProps = {
   onAdd: (filterable: Lib.Filterable) => void;
 };
 
-function AddButton({
+export function AddButton({
   query,
   stageIndex,
   label,

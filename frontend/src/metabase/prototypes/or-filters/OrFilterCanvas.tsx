@@ -20,6 +20,7 @@ import { QueryResults } from "./harness/QueryResults";
 import {
   clearFilters,
   withDnfExample,
+  withNestedExample,
   withOrExample,
   withPillsExample,
 } from "./harness/examples";
@@ -86,6 +87,13 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
           <Button
             size="compact-sm"
             variant="default"
+            onClick={() => setQuery(withNestedExample(query, STAGE_INDEX))}
+          >
+            {t`Load nested example`}
+          </Button>
+          <Button
+            size="compact-sm"
+            variant="default"
             onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
           >
             {t`Clear filters`}
@@ -93,7 +101,18 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
         </Group>
       </Group>
 
-      <ChillFrame>
+      <ChillFrame
+        filterButton={
+          direction.FilterButton && (
+            <direction.FilterButton
+              query={query}
+              stageIndex={STAGE_INDEX}
+              variant="chill"
+              onChange={setQuery}
+            />
+          )
+        }
+      >
         <direction.Component
           query={query}
           stageIndex={STAGE_INDEX}

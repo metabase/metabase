@@ -4,11 +4,12 @@ import { t } from "ttag";
 import { Box, Button, Group, Icon, Paper, Text, Title } from "metabase/ui";
 
 type ChillFrameProps = {
+  filterButton?: ReactNode;
   children: ReactNode;
 };
 
 /** A fake query-builder view header, so the strip is judged where it lives. */
-export function ChillFrame({ children }: ChillFrameProps) {
+export function ChillFrame({ filterButton, children }: ChillFrameProps) {
   return (
     <Paper withBorder radius="md" p={0}>
       <Group
@@ -24,13 +25,15 @@ export function ChillFrame({ children }: ChillFrameProps) {
           <Title order={3}>{t`Orders`}</Title>
         </Box>
         <Group gap="xs">
-          <Button
-            size="compact-md"
-            variant="default"
-            leftSection={<Icon name="filter" />}
-          >
-            {t`Filter`}
-          </Button>
+          {filterButton ?? (
+            <Button
+              size="compact-md"
+              variant="default"
+              leftSection={<Icon name="filter" />}
+            >
+              {t`Filter`}
+            </Button>
+          )}
           <Button
             size="compact-md"
             variant="default"
