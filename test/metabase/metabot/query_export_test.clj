@@ -2,7 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.query-export :as query-export]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -37,3 +41,25 @@
                                                   :type     :native
                                                   :native   {:query "SELECT 1"}}))
                            "SELECT 1"))))))
+
+(deftest transform-source-withholds-a-sandbox-hidden-field-test
+  (testing "a source query that names a field that the user's sandbox hides is withheld, since
+           exporting it would resolve that field's id to a name"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                    (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (string? (rendered-source query)))
+        (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields
+                                  (fn [_table-ids] {(mt/id :venues) #{}})]
+          (is (nil? (rendered-source query))))))))
+
+(deftest transform-source-renders-an-unchecked-source-unresolved-test
+  (testing "a source query whose permissions cannot be calculated still renders, but unresolved, so
+           it names nothing that the user may not see"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [query {:lib/type :mbql/query
+                   :database (mt/id)
+                   :stages   [{:lib/type :mbql.stage/mbql :source-card 13371337}]}]
+        (is (:unchecked? (shared.content-store/query-for-export query false)))
+        (is (str/includes? (str (rendered-source query)) ":source-card 13371337"))))))
