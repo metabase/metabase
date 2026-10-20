@@ -3349,7 +3349,7 @@
                          [{:model "Card" :id (:entity_id @source1s)}])))
         (testing "loading remaps the goal onto the destination card's id"
           (ts/with-db dest-db
-            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
             (let [source1d (t2/select-one :model/Card :name "Target Revenue")
                   card1d   (t2/select-one :model/Card :name "Revenue")]
               (is (pos-int? (:id source1d)))
