@@ -190,11 +190,12 @@
                       (#{:question} (:type card)) (get :dataset-query))))))
 
 (defn metric-query
-  "Return a query based on the metric with ID `metric-id`."
+  "Return a query based on the metric with ID `metric-id`, or nil when that card is not a metric."
   [metric-id]
   (when-let [card (get-card metric-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
-      (lib/query mp (lib.metadata/metric mp metric-id)))))
+      (some->> (lib.metadata/metric mp metric-id)
+               (lib/query mp)))))
 
 (defn table-query
   "Return a query based on the table with ID `table-id`."

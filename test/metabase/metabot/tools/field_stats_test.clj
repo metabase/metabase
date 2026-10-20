@@ -2,6 +2,8 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.field-stats-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
    [metabase.test :as mt]
@@ -156,6 +158,16 @@
           (is (=? {:structured-output {:table_reference "User"}}
                   (metabot.tools.field-stats/field-values
                    {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))))))
+
+(deftest field-values-of-a-card-that-is-not-a-metric-test
+  (testing "a question asked for as a metric is reported as no metric, not as a failure inside lib"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}]
+        (mt/as-admin
+          (is (= {:output (str "No metric found with ID " question-id) :status-code 404}
+                 (metabot.tools.field-stats/field-values
+                  {:entity-type "metric", :entity-id question-id, :field-id (mt/id :orders :quantity), :limit 5}))))))))
 
 (deftest field-values-unknown-entity-type-test
   (testing "an unrecognized entity-type -- e.g. because the schema that constrains it isn't enforced in
