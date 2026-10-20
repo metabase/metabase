@@ -12,7 +12,8 @@ import type { ConcreteTableId, TableId } from "metabase-types/api";
 
 type EventTablePickerProps = {
   tableId: ConcreteTableId | undefined;
-  isLoading: boolean;
+  /** Opens the picker on mount, for a page that has no table yet. */
+  isInitiallyOpened?: boolean;
   onChange: (tableId: ConcreteTableId) => void;
   size?: ButtonProps["size"];
   fullWidth?: boolean;
@@ -20,12 +21,12 @@ type EventTablePickerProps = {
 
 export const EventTablePicker = ({
   tableId,
-  isLoading,
+  isInitiallyOpened = false,
   onChange,
   size = "lg",
   fullWidth = false,
 }: EventTablePickerProps) => {
-  const [isOpened, setIsOpened] = useState(false);
+  const [isOpened, setIsOpened] = useState(isInitiallyOpened);
   const [isBrowsing, setIsBrowsing] = useState(false);
   const table = useGetTableQuery(
     tableId !== undefined ? { id: tableId } : skipToken,
@@ -72,7 +73,7 @@ export const EventTablePicker = ({
           fw="bold"
           fullWidth={fullWidth}
           justify={fullWidth ? "flex-start" : undefined}
-          loading={isLoading || table.isLoading}
+          loading={table.isLoading}
           leftSection={<Icon name="database" />}
         >
           {label}

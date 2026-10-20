@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import {
-  Alert,
   Box,
   Button,
   Divider,
@@ -47,8 +46,6 @@ type SegmentPaletteProps = {
   tableId: ConcreteTableId | undefined;
   table: Table | undefined;
   usersTable: UsersTable | undefined;
-  isTableLoading: boolean;
-  tableError: string | undefined;
   /** Absent when the table is fixed, as it is for a saved analysis. */
   onTableChange?: (tableId: ConcreteTableId) => void;
   /** A click on a people segment, which adds it as a filter. */
@@ -60,14 +57,13 @@ type SegmentPaletteProps = {
 /**
  * The panel on the far left, beside the setup panel: the event table, then
  * its segments and the linked people table's, each draggable onto the setup
- * panel's slots. The toolbar's segments button shows and hides it.
+ * panel's slots. Until a table is picked, it's only the table picker, opened.
+ * The toolbar's segments button shows and hides it.
  */
 export const SegmentPalette = ({
   tableId,
   table,
   usersTable,
-  isTableLoading,
-  tableError,
   onTableChange,
   onSelectPeopleSegment,
   isHinted = false,
@@ -108,7 +104,7 @@ export const SegmentPalette = ({
           {onTableChange !== undefined ? (
             <EventTablePicker
               tableId={tableId}
-              isLoading={isTableLoading}
+              isInitiallyOpened={tableId === undefined}
               onChange={onTableChange}
               size="md"
               fullWidth
@@ -121,33 +117,32 @@ export const SegmentPalette = ({
               </Text>
             </Group>
           )}
-          {tableError !== undefined && (
-            <Alert color="error" icon={<Icon name="warning" />}>
-              {tableError}
-            </Alert>
-          )}
         </Stack>
-        <Divider />
-        <ScrollArea flex={1} mih={0}>
-          <Stack gap="xl" pt="md" pb="lg">
-            <PaletteSection
-              title={t`Event segments`}
-              source="event"
-              table={table}
-              emptyMessage={t`No segments on this table yet.`}
-            />
-            <PaletteSection
-              title={peopleTitle}
-              source="people"
-              table={usersTable?.table}
-              samples={
-                usersTable === undefined ? getSamplePeopleSegments() : []
-              }
-              emptyMessage={t`No segments on this table yet.`}
-              onSelect={onSelectPeopleSegment}
-            />
-          </Stack>
-        </ScrollArea>
+        {tableId !== undefined && (
+          <>
+            <Divider />
+            <ScrollArea flex={1} mih={0}>
+              <Stack gap="xl" pt="md" pb="lg">
+                <PaletteSection
+                  title={t`Event segments`}
+                  source="event"
+                  table={table}
+                  emptyMessage={t`No segments on this table yet.`}
+                />
+                <PaletteSection
+                  title={peopleTitle}
+                  source="people"
+                  table={usersTable?.table}
+                  samples={
+                    usersTable === undefined ? getSamplePeopleSegments() : []
+                  }
+                  emptyMessage={t`No segments on this table yet.`}
+                  onSelect={onSelectPeopleSegment}
+                />
+              </Stack>
+            </ScrollArea>
+          </>
+        )}
       </Stack>
     </Resizable>
   );

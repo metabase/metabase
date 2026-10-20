@@ -20,7 +20,7 @@
 
 /* While the toolbar button that closes the palette is hovered. */
 .root[data-hinted="true"] {
-  border-color: var(--mb-color-border-brand);
+  border-color: var(--mb-color-border-strong);
 }
 
 .section {

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -11,10 +11,27 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionId } from "metabase-types/api";
+import type {
+  CollectionId,
+  IconName,
+  ProductAnalyticsKind,
+} from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
 
+type AnalysisKindItem = {
+  kind: ProductAnalyticsKind;
+  icon: IconName;
+  getName: () => string;
+};
+
+const ANALYSIS_KIND_ITEMS: AnalysisKindItem[] = [
+  { kind: "funnel", icon: "funnel", getName: () => t`Funnel` },
+  { kind: "paths", icon: "sankey", getName: () => t`Paths` },
+  { kind: "habit", icon: "history", getName: () => t`Habit` },
+  { kind: "lifecycle", icon: "refresh", getName: () => t`Lifecycle` },
+  { kind: "cohorts", icon: "grid", getName: () => t`Cohorts` },
+];
 export interface NewItemMenuProps {
   className?: string;
   collectionId?: CollectionId;
@@ -35,6 +52,8 @@ export const NewItemMenuView = ({
   hasDatabaseWithJsonEngine,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
+  // Picking "Event analysis" swaps the menu for the kinds of analysis.
+  const [isPickingAnalysisKind, setIsPickingAnalysisKind] = useState(false);
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -64,8 +83,8 @@ export const NewItemMenuView = ({
       items.push(
         <Menu.Item
           key="event-analysis"
-          component={ForwardRefLink}
-          to={Urls.newEventAnalysis()}
+          closeMenuOnClick={false}
+          onClick={() => setIsPickingAnalysisKind(true)}
           leftSection={<Icon name="funnel" />}
         >
           {t`Event analysis`}
@@ -154,11 +173,24 @@ export const NewItemMenuView = ({
   }
 
   return (
-    <Menu position="bottom-end">
+    <Menu position="bottom-end" onOpen={() => setIsPickingAnalysisKind(false)}>
       <Menu.Target>
         <Box>{trigger}</Box>
       </Menu.Target>
-      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+      <Menu.Dropdown>
+        {isPickingAnalysisKind
+          ? ANALYSIS_KIND_ITEMS.map(({ kind, icon, getName }) => (
+              <Menu.Item
+                key={kind}
+                component={ForwardRefLink}
+                to={Urls.newEventAnalysis(kind)}
+                leftSection={<Icon name={icon} />}
+              >
+                {getName()}
+              </Menu.Item>
+            ))
+          : menuItems}
+      </Menu.Dropdown>
     </Menu>
   );
 };

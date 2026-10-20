@@ -4,8 +4,10 @@ import type {
   ProductAnalyticsKind,
 } from "metabase-types/api";
 
-export function newEventAnalysis(): string {
-  return "/event-analysis/new";
+/** A new analysis of a kind, which starts by picking its table. */
+export function newEventAnalysis(kind: ProductAnalyticsKind): string {
+  const params = new URLSearchParams({ kind });
+  return `/event-analysis/new?${params.toString()}`;
 }
 
 /** A new analysis opened on a kind's tab, for a table. */
@@ -14,7 +16,7 @@ export function eventAnalysis(
   tableId: ConcreteTableId,
 ): string {
   const params = new URLSearchParams({ kind, table: String(tableId) });
-  return `${newEventAnalysis()}?${params.toString()}`;
+  return `/event-analysis/new?${params.toString()}`;
 }
 
 export function savedEventAnalysis(cardId: CardId): string {

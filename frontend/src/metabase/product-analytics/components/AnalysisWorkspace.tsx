@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -15,7 +15,6 @@ import { buildAnalysisCard } from "../analysis-card";
 import { useDrillActions } from "../drills/use-drill-actions";
 import { useDrillQueries } from "../drills/use-drill-queries";
 import { type AnalysisFilters, withPeopleFilter } from "../filters";
-import { setLastTableId } from "../last-table";
 import { SegmentDragProvider } from "../segments/drag-context";
 import type { PaletteSegment } from "../segments/types";
 import type { StoredSettings } from "../settings/types";
@@ -43,33 +42,24 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   tableId: ConcreteTableId | undefined;
   savedCard?: Card;
   savedSettings?: StoredSettings;
-  /** For a new analysis, where the title's kind opens a menu of the kinds. */
-  onKindChange?: (kind: AnalysisKind) => void;
-  /** Opens that menu on arrival, when the URL names no kind yet. */
-  isKindMenuOpenInitially?: boolean;
   /** For a new analysis, where the palette picks the table. */
   onTableChange?: (tableId: ConcreteTableId) => void;
-  isTableLoading?: boolean;
-  tableError?: string;
 };
 
 /**
  * The event analysis page: the title and toolbar across the top, then the
  * segment palette, the setup panel and the result side by side. A new
- * analysis picks its kind from the title. The result's column scrolls, with
- * the kind's supporting analyses below the primary chart. A saved analysis
- * opens on its result, with both side panels collapsed.
+ * analysis shows only the palette's table picker until a table is picked.
+ * The result's column scrolls, with the kind's supporting analyses below the
+ * primary chart. A saved analysis opens on its result, with both side panels
+ * collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
   tableId,
   savedCard,
   savedSettings,
-  onKindChange,
-  isKindMenuOpenInitially,
   onTableChange,
-  isTableLoading = false,
-  tableError,
 }: AnalysisWorkspaceProps<K>) => {
   const navigate = useNavigate();
   const isNew = savedSettings === undefined;
@@ -130,12 +120,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     queries: drillQueries,
     getExtraActions: supporting.getClickActions,
   });
-
-  useEffect(() => {
-    if (tableId !== undefined) {
-      setLastTableId(tableId);
-    }
-  }, [tableId]);
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? getNewAnalysisTitle(kind, tableName);
@@ -201,8 +185,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             kind={kind}
             tableName={tableName}
             savedName={savedCard?.name}
-            onKindChange={onKindChange}
-            isKindMenuOpenInitially={isKindMenuOpenInitially}
           />
           <AnalysisToolbar
             widgets={widgets}
@@ -237,14 +219,22 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               tableId={tableId}
               table={table}
               usersTable={usersTable}
-              isTableLoading={isTableLoading}
-              tableError={tableError}
-              onTableChange={onTableChange}
+              onTableChange={
+                onTableChange &&
+                ((id) => {
+                  // Picking the first table reveals the setup, even if its
+                  // toolbar button was toggled off while there was none.
+                  if (tableId === undefined && panel === null) {
+                    setPanel("setup");
+                  }
+                  onTableChange(id);
+                })
+              }
               onSelectPeopleSegment={handleAddPeopleFilter}
               isHinted={hintedPanel === "palette"}
             />
           )}
-          {panel && (
+          {tableId !== undefined && panel && (
             <SettingsPanel
               key={kind}
               panel={panel}
@@ -252,36 +242,33 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               isHinted={hintedPanel === panel}
             />
           )}
-          <Stack
-            flex={1}
-            miw={0}
-            gap="lg"
-            pr="lg"
-            style={{ overflowY: "auto" }}
-          >
-            <AnalysisResult
-              title={config.question}
-              display={display}
-              vizSettings={vizSettings}
-              dataset={query.dataset}
-              datasetQuery={query.datasetQuery}
-              isLoading={query.isLoading}
-              error={
-                query.error ??
-                (tableId === undefined
-                  ? t`Choose a table to analyze.`
-                  : undefined)
-              }
-              warnings={query.warnings}
-              missing={missing}
-              setupLabel={config.setupLabel}
-              onOpenSetup={
-                panel !== "setup" ? () => setPanel("setup") : undefined
-              }
-              clickActionsMode={drillActions.mode}
-            />
-            <SupportingAnalyses supporting={supporting} />
-          </Stack>
+          {tableId !== undefined && (
+            <Stack
+              flex={1}
+              miw={0}
+              gap="lg"
+              pr="lg"
+              style={{ overflowY: "auto" }}
+            >
+              <AnalysisResult
+                title={config.question}
+                display={display}
+                vizSettings={vizSettings}
+                dataset={query.dataset}
+                datasetQuery={query.datasetQuery}
+                isLoading={query.isLoading}
+                error={query.error}
+                warnings={query.warnings}
+                missing={missing}
+                setupLabel={config.setupLabel}
+                onOpenSetup={
+                  panel !== "setup" ? () => setPanel("setup") : undefined
+                }
+                clickActionsMode={drillActions.mode}
+              />
+              <SupportingAnalyses supporting={supporting} />
+            </Stack>
+          )}
         </Group>
       </Stack>
       {questionToCreate !== undefined && (
