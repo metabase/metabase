@@ -255,6 +255,7 @@
 
 (def ^:private one-minute-ms (* 60 1000))
 (def ^:private one-hour-ms (* 60 one-minute-ms))
+(def ^:private max-client-id-length 255)
 
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
@@ -301,8 +302,11 @@
     0))
 
 (defn- do-with-token-throttling
+  "Apply the token throttles to `f`.
+   Requests without a client ID, or with one longer than 255 characters, use only the IP bucket."
   [ip-address client-id f]
-  (let [client-key (when client-id [client-id ip-address])
+  (let [client-id  (when (and client-id (<= (count client-id) max-client-id-length)) client-id)
+        client-key (when client-id [client-id ip-address])
         response   (if client-id
                      (with-throttling-429 [token-client-throttler client-key
                                            token-ip-throttler     ip-address]
@@ -656,7 +660,7 @@
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
             [:refresh_token {:optional true} [:maybe :string]]
-            [:client_id     {:optional true} [:maybe :string]]
+            [:client_id     {:optional true} [:maybe [:string {:max max-client-id-length}]]]
             [:client_secret {:optional true} [:maybe :string]]
             [:scope         {:optional true} [:maybe :string]]
             [:code_verifier {:optional true} [:maybe :string]]

@@ -951,11 +951,7 @@
         (dotimes [_ 10]
           (is (= "invalid_grant"
                  (:error (token-request! params :expected-status 400 :authorization authorization)))))
-        (let [response (client/client-full-response
-                        :post 429 "oauth/token"
-                        {:request-options {:headers {"content-type"  "application/x-www-form-urlencoded"
-                                                     "authorization" authorization}}}
-                        params)]
+        (let [response (token-request! params :expected-status 429 :authorization authorization :full-response? true)]
           (is (= "too_many_requests" (get-in response [:body :error])))
           (is (some-> (get-in response [:headers "Retry-After"]) parse-long pos-int?)))))))
 
@@ -971,6 +967,28 @@
                                     :client_id  (str (random-uuid))
                                     :code       "bogus-code"}
                                    :expected-status 429))))))
+
+(deftest token-overlong-body-client-id-rejected-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (let [response (token-request! {:grant_type "authorization_code"
+                                    :client_id  (apply str (repeat 256 "a"))
+                                    :code       "bogus-code"}
+                                   :expected-status 400 :full-response? true)]
+      (is (some? (get-in response [:body :errors :client_id])))
+      (is (empty? @(:attempts @#'api.oauth/token-client-throttler))))))
+
+(deftest token-overlong-basic-client-id-uses-only-ip-throttle-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (let [authorization (basic-auth-header (apply str (repeat 256 "a")) "wrong-secret")
+          ip-address    "198.51.100.5"]
+      (dotimes [_ 11]
+        (is (= "invalid_request"
+               (:error (token-request! {:grant_type "authorization_code"
+                                        :client_id  "different-body-client"
+                                        :code       "bogus-code"}
+                                       :authorization authorization :ip-address ip-address :expected-status 400)))))
+      (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+      (is (= (repeat 11 ip-address) (map first @(:attempts @#'api.oauth/token-ip-throttler)))))))
 
 (deftest token-requests-without-client-id-use-only-ip-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
