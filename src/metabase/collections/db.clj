@@ -245,6 +245,18 @@
                      :archive_operation_id [:= archive-operation-id]
                      :archived [:= true]))
 
+(mu/defn archived-collections-without-operation-with-location-like :- [:sequential [:map
+                                                                                    [:id ::lib.schema.id/collection]
+                                                                                    [:location :string]
+                                                                                    [:archived_directly [:maybe :boolean]]]]
+  "The `:id`, `:location` and `:archived_directly` of the archived Collections without an archive operation, i.e.
+  archived elsewhere, whose location matches the SQL `pattern`."
+  [pattern :- :string]
+  (t2/select [:model/Collection :id :location :archived_directly]
+             :location [:like pattern]
+             :archive_operation_id nil
+             :archived [:= true]))
+
 (mu/defn collection-ids-of-type
   "The IDs of the Collections among `collection-ids` of `type`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
@@ -326,23 +338,21 @@
                           [:not :archived]]}))
 
 (mu/defn unarchive-descendant-collections!
-  "Unarchive the Collections of the archive operation with `archive-operation-id` that were not archived directly,
-  moving them from `orig-children-location` to `new-children-location` and setting `remote-synced?`, returning the
-  number updated."
-  [orig-children-location :- :string
+  "Unarchive the Collections with `collection-ids`, moving them from `orig-children-location` to
+  `new-children-location` and setting `remote-synced?`, returning the number updated."
+  [collection-ids         :- [:set ::lib.schema.id/collection]
+   orig-children-location :- :string
    new-children-location  :- :string
-   remote-synced?         :- :boolean
-   archive-operation-id   :- :string]
-  (t2/query-one {:update :collection
-                 :set    {:location             [:replace :location orig-children-location new-children-location]
-                          :is_remote_synced     remote-synced?
-                          :archive_operation_id nil
-                          :archived_directly    nil
-                          :archived             false}
-                 :where  [:and
-                          [:like :location (str orig-children-location "%")]
-                          [:= :archive_operation_id archive-operation-id]
-                          [:not= :archived_directly true]]}))
+   remote-synced?         :- :boolean]
+  (if (empty? collection-ids)
+    0
+    (t2/query-one {:update :collection
+                   :set    {:location             [:replace :location orig-children-location new-children-location]
+                            :is_remote_synced     remote-synced?
+                            :archive_operation_id nil
+                            :archived_directly    nil
+                            :archived             false}
+                   :where  [:in :id collection-ids]})))
 
 (mu/defn move-descendant-collections!
   "Move the Collections under `orig-children-location` to `new-children-location` and set `remote-synced?`,

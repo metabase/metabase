@@ -1728,15 +1728,28 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (collections.db/collection-ids-with-location-like (str (children-location collection) "%")))
 
+(mu/defn- archived-along-descendant-ids :- [:set ms/PositiveInt]
+  "The IDs of the descendants of the archived `collection` that were archived along with it: those of its archive
+  operation, or, for a collection archived elsewhere (without one), the archived descendants without one that were
+  not archived directly and are not inside a descendant that was."
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (let [pattern (str (children-location collection) "%")]
+    (if-let [archive-operation-id (:archive_operation_id collection)]
+      (set (collections.db/archived-collection-ids-in-operation-with-location-like pattern archive-operation-id))
+      (let [candidates       (collections.db/archived-collections-without-operation-with-location-like pattern)
+            archived-apart   (into #{} (comp (filter :archived_directly) (map :id)) candidates)]
+        (into #{}
+              (comp (remove :archived_directly)
+                    (remove #(some archived-apart (location-path->ids (:location %))))
+                    (map :id))
+              candidates)))))
+
 (mu/defn perms-for-unarchiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to unarchive a `collection`. Since unarchiving is
   *recursive* (all descendants archived together get unarchived), we require write ('curate')
   permissions for the collection and all descendants being unarchived."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (let [archive-operation-id (:archive_operation_id collection)
-        descendant-ids (collections.db/archived-collection-ids-in-operation-with-location-like
-                        (str (children-location collection) "%")
-                        archive-operation-id)]
+  (let [descendant-ids (archived-along-descendant-ids collection)]
     (set
      (cons (perms/collection-readwrite-path (u/the-id collection))
            (map perms/collection-readwrite-path descendant-ids)))))
@@ -1805,9 +1818,7 @@
    updates :- [:map {:closed true}
                [:parent_id {:optional true} [:maybe ms/PositiveInt]]
                [:archived  {:optional true} :boolean]]]
-  (assert (:archive_operation_id collection))
-  (let [archive-operation-id    (:archive_operation_id collection)
-        current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
+  (let [current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
         new-parent-id           (if (contains? updates :parent_id)
                                   (:parent_id updates)
                                   current-parent-id)
@@ -1818,10 +1829,8 @@
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
         new-children-location   (children-location (assoc collection :location new-location))
-        affected-collection-ids (cons (u/the-id collection)
-                                      (collections.db/archived-collection-ids-in-operation-with-location-like
-                                       (str (children-location collection) "%")
-                                       archive-operation-id))]
+        descendant-ids          (archived-along-descendant-ids collection)
+        affected-collection-ids (cons (u/the-id collection) descendant-ids)]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
     (if (contains? updates :parent_id)
@@ -1840,10 +1849,10 @@
                                           :archive_operation_id nil
                                           :archived_directly    nil
                                           :archived             false})
-      (collections.db/unarchive-descendant-collections! orig-children-location
+      (collections.db/unarchive-descendant-collections! descendant-ids
+                                                        orig-children-location
                                                         new-children-location
-                                                        (boolean new-parent-is-remote-synced?)
-                                                        (:archive_operation_id collection))
+                                                        (boolean new-parent-is-remote-synced?))
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids false)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids false)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids false)
@@ -2286,8 +2295,7 @@
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
-  {:copy [:archive_operation_id
-          :archived
+  {:copy [:archived
           :archived_directly
           :authority_level
           :description
@@ -2298,7 +2306,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:archive_operation_id]
    :transform {;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
@@ -2509,7 +2517,9 @@
             :let [parent-id (coll-id->parent-id (:id coll))
                   archived-directly? (:archived_directly coll)
                   parent-archived? (get parent-id->archived? parent-id false)
-                  descendant-ids (get op-id->descendant-ids (:archive_operation_id coll) [])
+                  descendant-ids (if (:archive_operation_id coll)
+                                   (get op-id->descendant-ids (:archive_operation_id coll) [])
+                                   (archived-along-descendant-ids coll))
                   perm-paths (set (cons (perms/collection-readwrite-path (u/the-id coll))
                                         (map perms/collection-readwrite-path descendant-ids)))]]
         (assoc coll :can_restore (boolean (and (:archived coll)
