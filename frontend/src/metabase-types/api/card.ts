@@ -160,6 +160,8 @@ export type SeriesSettings = {
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
+  /** Prototype: draw only the area of an area series, without its line and markers. */
+  "line.hidden"?: boolean;
   show_series_trendline?: boolean;
   "trendline.color"?: string;
   "trendline.style"?: LineStyle;

@@ -777,10 +777,13 @@ const buildEChartsLineAreaSeries = (
     seriesModel.dataKey,
   );
 
+  const isLineHidden = seriesSettings["line.hidden"] === true;
   const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
-  const lineWidth = seriesSettings["line.size"]
-    ? LINE_SIZE[seriesSettings["line.size"]]
-    : LINE_SIZE.M;
+  const lineWidth = isLineHidden
+    ? 0
+    : seriesSettings["line.size"]
+      ? LINE_SIZE[seriesSettings["line.size"]]
+      : LINE_SIZE.M;
 
   return {
     emphasis: {
@@ -852,7 +855,7 @@ const buildEChartsLineAreaSeries = (
       color: renderingContext.getColor("background_page-primary"),
       borderColor: seriesModel.color,
       borderWidth: lineWidth,
-      opacity: isSymbolVisible ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip
+      opacity: isSymbolVisible && !isLineHidden ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip
     },
   };
 };

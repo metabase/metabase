@@ -56,13 +56,18 @@ export const LIVE_FILTER_PREVIEW_ANIMATION_MS: NumberPrototypeSetting = {
   max: 3000,
 };
 
-export const LIVE_FILTER_PREVIEW_ONION_SKIN: BooleanPrototypeSetting = {
-  type: "boolean",
-  key: "live-filter-preview-onion-skin-current",
+export const LIVE_FILTER_PREVIEW_ONION_SKIN: SegmentedPrototypeSetting = {
+  type: "segmented",
+  key: "live-filter-preview-onion-skin-style",
   label: "Onion skin",
   description:
-    "Show a grey ghost of the current result behind the preview. Only for bar, line, area, combo and scatter charts.",
-  defaultValue: false,
+    "Compare the preview with the current result. Ghost: a grey copy of the current result behind the preview, on bar, line, area, combo and scatter charts. Difference: the increase and decrease stacked on the lower value, on bar, row and line charts with one series. Line charts become area charts.",
+  options: [
+    { value: "off", label: "Off" },
+    { value: "ghost", label: "Ghost" },
+    { value: "difference", label: "Difference" },
+  ],
+  defaultValue: "off",
 };
 
 /**
