@@ -24,7 +24,7 @@ interface TableProps extends VisualizationProps {
 }
 
 function TableComponent(props: TableProps) {
-  const { series, settings, isShowingDetailsOnlyColumns, isDashboard } = props;
+  const { series, settings, isShowingDetailsOnlyColumns } = props;
 
   const question = useSyncedQuestion(series);
 
@@ -68,7 +68,7 @@ function TableComponent(props: TableProps) {
   const areAllColumnsHidden = data.cols.length === 0;
 
   if (areAllColumnsHidden) {
-    return <AllFieldsHiddenMessage isDashboard={isDashboard} />;
+    return <AllFieldsHiddenMessage />;
   }
 
   return (
@@ -97,7 +97,7 @@ function useSyncedQuestion(series: VisualizationProps["series"]) {
   }, [series, buildQuestionRef]);
 }
 
-function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
+function AllFieldsHiddenMessage() {
   return (
     <div
       className={cx(
@@ -108,7 +108,7 @@ function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
         CS.flex,
         CS.flexColumn,
         CS.layoutCentered,
-        { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
+        CS.textSlate,
       )}
     >
       <img

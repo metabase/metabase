@@ -1,7 +1,7 @@
 .CopyButton {
   cursor: pointer;
   position: relative;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     color: var(--mb-color-core-brand);
@@ -18,7 +18,7 @@
 }
 
 .InfoIcon {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);

@@ -10,7 +10,7 @@ export function Error({ message }: Props) {
   return (
     <Stack
       align="center"
-      color="text-disabled"
+      color="text-secondary"
       h="100%"
       justify="center"
       p="xxl"

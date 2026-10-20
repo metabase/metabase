@@ -25,7 +25,7 @@ export function ToolNameCell({ tool }: ToolNameCellProps) {
           <ActionIcon
             variant="subtle"
             size="xs"
-            c="text-disabled"
+            c="text-secondary"
             aria-label={c("{0} is an MCP tool name").t`About ${tool.name}`}
           >
             <Icon name="info" size={INFO_ICON_SIZE} />

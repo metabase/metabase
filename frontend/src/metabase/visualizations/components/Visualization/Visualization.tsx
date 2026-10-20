@@ -880,7 +880,6 @@ class Visualization extends PureComponent<
               error={errorMessageOverride ?? error}
               icon={errorIcon}
               isSmall={small}
-              isDashboard={!!isDashboard}
             />
           ) : genericError ? (
             <SmallGenericError bordered={false} />

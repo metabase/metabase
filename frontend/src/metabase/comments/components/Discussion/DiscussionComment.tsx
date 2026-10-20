@@ -92,7 +92,7 @@ export function DiscussionComment({
         aria-current={isTarget ? "location" : undefined}
         data-testid="discussion-comment-deleted"
       >
-        <Text size="md" c="text-disabled" fs="italic">
+        <Text size="md" c="text-secondary" fs="italic">
           {t`This comment was deleted.`}
         </Text>
         <DiscussionActionPanel

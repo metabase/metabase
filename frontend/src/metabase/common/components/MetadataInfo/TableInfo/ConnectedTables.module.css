@@ -2,7 +2,7 @@
   cursor: pointer;
 
   .label {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-secondary);
   }
 
   &:hover .label,

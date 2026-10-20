@@ -28,7 +28,7 @@ const defaultOption = {
   // Unjustified type cast. FIXME
   icon: "empty" as IconName,
   // Unjustified type cast. FIXME
-  iconColor: "text-disabled" as ColorName,
+  iconColor: "text-secondary" as ColorName,
 };
 
 export const PermissionsSelect = memo(function PermissionsSelect({
@@ -90,7 +90,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
 
       {warning && (
         <Tooltip label={warning}>
-          <Icon name="warning" size={18} mr="xxs" c="text-disabled" />
+          <Icon name="warning" size={18} mr="xxs" c="text-secondary" />
         </Tooltip>
       )}
 
@@ -98,7 +98,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
         style={{ visibility: isDisabled ? "hidden" : "visible" }}
         name="chevrondown"
         size={16}
-        c="text-disabled"
+        c="text-secondary"
       />
     </Flex>
   );

@@ -176,7 +176,7 @@ export function TableAttributesEditBulk({
       <Stack gap="lg">
         <Group
           align="center"
-          c="text-disabled"
+          c="text-secondary"
           gap={10}
           flex="1"
           fs="lg"

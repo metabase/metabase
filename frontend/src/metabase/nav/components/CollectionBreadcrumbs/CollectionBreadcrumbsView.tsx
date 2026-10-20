@@ -35,7 +35,7 @@ type CollectionBreadcrumbsViewProps = {
 
 const BreadcrumbSeparator = () => (
   <Box
-    c="text-disabled"
+    c="text-secondary"
     fz="0.8em"
     fw="bold"
     mx="0.5rem"

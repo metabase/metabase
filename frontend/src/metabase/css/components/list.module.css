@@ -8,7 +8,7 @@
 }
 
 .ListItem :global(.Icon) {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 }
 
 .ListSectionHeader {

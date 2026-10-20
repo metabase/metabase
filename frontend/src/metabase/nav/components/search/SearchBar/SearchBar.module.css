@@ -40,10 +40,10 @@
 .closeButton {
   align-items: center;
   justify-content: center;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
-    color: var(--mb-color-text-secondary);
+    color: var(--mb-color-text-primary);
   }
 }
 

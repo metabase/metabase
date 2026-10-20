@@ -21,8 +21,8 @@ export function NotebookStepHeader({
         <IconButtonWrapper
           className={cx(
             CS.mlAuto,
-            CS.textLight,
-            CS.textMediumHover,
+            CS.textSecondary,
+            CS.textDarkHover,
             S.StepHeader,
           )}
           onClick={onRevert}

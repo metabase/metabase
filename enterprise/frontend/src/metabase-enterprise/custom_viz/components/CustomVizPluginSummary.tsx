@@ -26,17 +26,17 @@ export function CustomVizPluginSummary({ plugin }: Props) {
           {(plugin.bundle_hash || plugin.metabase_version) && (
             <Group gap="xxs">
               {plugin.bundle_hash && (
-                <Text size="sm" c="text-disabled">
+                <Text size="sm" c="text-secondary">
                   {t`Bundle: ${plugin.bundle_hash.slice(0, 8)}`}
                 </Text>
               )}
               {plugin.bundle_hash && plugin.metabase_version && (
-                <Text size="sm" c="text-disabled">
+                <Text size="sm" c="text-secondary">
                   &bull;
                 </Text>
               )}
               {plugin.metabase_version && (
-                <Text size="sm" c="text-disabled">
+                <Text size="sm" c="text-secondary">
                   {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page */}
                   {t`Requires Metabase ${plugin.metabase_version}`}
                 </Text>

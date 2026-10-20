@@ -65,8 +65,8 @@ export const NotebookStepPreview = ({
             name="close"
             onClick={onClose}
             className={cx(
-              CS.textLight,
-              CS.textMediumHover,
+              CS.textSecondary,
+              CS.textDarkHover,
               CS.cursorPointer,
               CS.ml1,
             )}

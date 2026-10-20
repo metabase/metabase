@@ -48,7 +48,7 @@ export const PermissionsSidebarContent = memo(
               ta="left"
               onClick={onBack}
             >
-              <Icon name="arrow_left" mr="sm" c="text-disabled" />
+              <Icon name="arrow_left" mr="sm" c="text-secondary" />
               {title}
             </Flex>
           ) : (
