@@ -19,9 +19,22 @@
   [[:position :asc] [:%lower.name :asc]])
 
 (mu/defn field
-  "The ::warehouse-schema.schema/field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  "The ::warehouse-schema.schema/field with `field-id`, or nil. `{:ai-proposals? true}` reads the preview of
+  [[warehouse-schema-overlay/field-query]]."
+  ([field-id :- ::lib.schema.id/field]
+   (field field-id nil))
+  ([field-id :- ::lib.schema.id/field
+    opts     :- [:maybe [:map {:closed true} [:ai-proposals? {:optional true} :boolean]]]]
+   (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query opts)]})))
+
+(mu/defn ai-proposal-previews
+  "The preview of [[warehouse-schema-overlay/field-query]] for `field-ids`: per Field, its `:id`, `:ai_proposals`
+  and the columns of [[warehouse-schema-overlay/field-ai-columns]]."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (when (seq field-ids)
+    (map #(select-keys % (into [:id :ai_proposals] (keys warehouse-schema-overlay/field-ai-columns)))
+         (t2/select :model/Field :id [:in field-ids]
+                    {:from [(warehouse-schema-overlay/field-query {:ai-proposals? true})]}))))
 
 (mu/defn field-in-path
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under

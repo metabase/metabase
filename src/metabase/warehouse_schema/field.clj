@@ -18,9 +18,12 @@
            (isa? semantic-type :type/Enum))))
 
 (defn get-field
-  "Get `Field` with ID."
-  [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (warehouse-schema.db/field id))
+  "Get `Field` with ID. `preview-ai-proposals?` needs `include-editable-data-model?`: the Field reads its pending AI
+  proposals as if accepted, see [[warehouse-schema.db/field]]."
+  [id {:keys [include-editable-data-model? preview-ai-proposals?]}]
+  (api/check-400 (or (not preview-ai-proposals?) include-editable-data-model?)
+                 "preview_ai_proposals requires include_editable_data_model")
+  (let [field (-> (api/check-404 (warehouse-schema.db/field id {:ai-proposals? (boolean preview-ai-proposals?)}))
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
                 (-> (field/hydrate-target-with-write-perms field)

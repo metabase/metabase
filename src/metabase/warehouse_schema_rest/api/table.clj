@@ -323,18 +323,23 @@
    Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
    data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
+   Passing `preview_ai_proposals=true` together with `include_editable_data_model=true` makes the fields read their
+   pending AI proposals as if accepted, with an `ai_proposals` map per field (see `GET /api/field/:id`).
+
    These options are provided for use in the Admin Edit Metadata page."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
+   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model preview_ai_proposals]}
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+       [:preview_ai_proposals        {:default false} [:maybe ms/BooleanValue]]]]
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
-                                               :include-editable-data-model? include_editable_data_model}))
+                                               :include-editable-data-model? include_editable_data_model
+                                               :preview-ai-proposals?        preview_ai_proposals}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

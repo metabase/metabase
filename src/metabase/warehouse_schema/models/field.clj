@@ -132,7 +132,9 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  (-> field
+      (dissoc :is_defective_duplicate :unique_field_helper)
+      warehouse-schema-overlay/fold-ai-proposals))
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
