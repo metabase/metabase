@@ -610,10 +610,10 @@
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
 (defn assert-remote-syncable
-  "Check that a remote-synced Collection is one remote sync can sync."
+  "Throws when `collection` is remote-synced but remote sync can't sync it."
   [{:keys [is_remote_synced] :as collection}]
   (when (and is_remote_synced (not (remote-sync/collection-syncable? collection)))
-    (let [msg (tru "Remote sync can only sync the Library and transforms. Turn on custom collections to sync other collections.")]
+    (let [msg (tru "Remote sync syncs only the Library, transforms, snippets and data apps unless remote-sync-custom-collections-enabled is on.")]
       (throw (ex-info msg {:status-code 400, :errors {:is_remote_synced msg}})))))
 
 (defenterprise check-library-content

@@ -79,7 +79,7 @@
             instances))))
 
 (defenterprise collection-syncable?
-  "Whether `collection` can be remote-synced. Always false on OSS."
+  "Whether `collection` can be remote-synced, never on OSS."
   metabase-enterprise.remote-sync.core
   [_collection]
   false)

@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
@@ -105,30 +106,45 @@
   :encryption :no
   :default false)
 
-(defn- custom-collections-synced?
-  "Whether a remote-synced top-level Collection of the default namespace other than the Library exists."
-  []
-  (boolean (seq (remote-sync.db/custom-remote-synced-root-collection-ids collection/library-collection-type))))
+(def ^:private syncable-namespaces
+  "The Collection namespaces remote sync syncs without custom collections."
+  #{(name collection/transforms-ns) (name collection/snippets-ns) (name collection/data-actions-ns) (name collection/data-apps-ns)})
 
-(defsetting remote-sync-collections-enabled
-  (deferred-tru "Whether remote sync can sync collections besides the Library and transforms. When off, no other collection can be marked as synced, and a pull refuses a repository that has other collections. Turn it on for an instance that pulls such a repository. It can only be turned off once no other collection is synced.")
+(defn custom-collection?
+  "Whether `collection` is one remote sync syncs only with custom collections on: outside the namespaces it syncs and not of a Library type."
+  [collection]
+  (not (or (contains? syncable-namespaces (some-> (:namespace collection) name))
+           (contains? collection/library-collection-types (:type collection)))))
+
+(defn check-custom-collections-unsynced!
+  "Throws when turning off custom collections, with `enabled?` false, while a top-level custom collection is remote-synced."
+  [enabled?]
+  (when (and (not enabled?) (some custom-collection? (remote-sync.db/remote-synced-root-collections)))
+    (throw (ex-info (tru "Stop syncing the collections besides the Library, transforms, snippets and data apps before turning off remote-sync-custom-collections-enabled.")
+                    {:status-code 400}))))
+
+(defsetting remote-sync-custom-collections-enabled
+  (deferred-tru "Whether remote sync can sync collections besides the Library, transforms, snippets and data apps. When off, no other collection can be marked as synced, and a pull refuses a repository that has other collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` on an instance that pulls such a repository. It can only be turned off once no other collection is synced.")
   :type :boolean
   :visibility :admin
   :export? false
   :encryption :no
   :default false
   :setter (fn [new-value]
-            (let [enabled? (boolean (if (string? new-value) (setting/string->boolean new-value) new-value))]
-              (when (and (not enabled?) (custom-collections-synced?))
-                (throw (ex-info (tru "Stop syncing the collections besides the Library before turning off custom collections.")
-                                {:status-code 400})))
-              (setting/set-value-of-type! :boolean :remote-sync-collections-enabled new-value))))
+            (check-custom-collections-unsynced! (boolean (if (string? new-value) (setting/string->boolean new-value) new-value)))
+            (setting/set-value-of-type! :boolean :remote-sync-custom-collections-enabled new-value)))
 
-(defn pin-remote-sync-collections-enabled!
-  "Stores [[remote-sync-collections-enabled]] when nothing has set it yet, enabled only where remote sync is already configured or other collections are synced."
+(defmethod startup/def-startup-validation! ::remote-sync-custom-collections-enabled
+  [_]
+  (when (and (remote-sync-enabled)
+             (= :env (setting/get-raw-value-source :remote-sync-custom-collections-enabled)))
+    (check-custom-collections-unsynced! (remote-sync-custom-collections-enabled))))
+
+(defn pin-remote-sync-custom-collections-enabled!
+  "Stores [[remote-sync-custom-collections-enabled]] when nothing has set it yet, enabled only where remote sync is already configured."
   []
-  (when (= :default (setting/get-raw-value-source :remote-sync-collections-enabled))
-    (remote-sync-collections-enabled! (or (remote-sync-enabled) (custom-collections-synced?)))))
+  (when (= :default (setting/get-raw-value-source :remote-sync-custom-collections-enabled))
+    (remote-sync-custom-collections-enabled! (remote-sync-enabled))))
 
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
