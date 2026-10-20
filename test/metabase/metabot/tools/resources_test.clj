@@ -1299,6 +1299,34 @@
       (let [{:keys [output]} (read-uris {:uris ["metabase://user/recent-items"]})]
         (is (str/includes? output "<list type=\"recent-items\""))))))
 
+(deftest read-user-recents-links-test
+  (let [mp (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+    (doseq [[entity-model attributes type]
+            [[:model/Card {:type :question :dataset_query query} "question"]
+             [:model/Card {:type :model :dataset_query query} "model"]
+             [:model/Card {:type :metric :dataset_query (lib/aggregate query (lib/count))} "metric"]
+             [:model/Table {:db_id (mt/id)} "table"]
+             [:model/Dashboard {} "dashboard"]
+             [:model/Collection {} "collection"]
+             [:model/Document {:document {:type "doc" :content []}} "document"]]]
+      (testing type
+        (mt/with-temp [:model/User {user-id :id} {:is_superuser true}
+                       entity-model {id :id} (assoc attributes :name "Recent item")
+                       :model/RecentViews _ {:user_id user-id
+                                             :model (if (= entity-model :model/Card) "card" type)
+                                             :model_id id
+                                             :context "view"}]
+          (mt/with-current-user user-id
+            (let [{:keys [output resources]} (read-uris {:uris ["metabase://user/recent-items"]})
+                  items (get-in resources [0 :content :structured-output :items])
+                  uri (str "metabase://" type "/" id)]
+              (is (=? [{:type type :id id :name "Recent item" :timestamp string? :uri uri}] items))
+              (is (str/includes? output (str "type=\"" type "\"")))
+              (is (str/includes? output (str "uri=\"" uri "\"")))
+              (is (=? {:resources [{:content {:structured-output map?}}]}
+                      (read-uris {:uris (mapv :uri items)}))))))))))
+
 (deftest read-list-shape-test
   (testing "list responses carry total/page/pages/showing/truncated attrs in the rendered XML"
     (mt/with-current-user (mt/user->id :crowberto)

@@ -482,9 +482,9 @@
                     [])
         items   (mapv (fn [{:keys [id name model timestamp]}]
                         (let [type (case model
-                                     "card"    "question"
-                                     "dataset" "model"
-                                     (or model "item"))]
+                                     :card    "question"
+                                     :dataset "model"
+                                     (clojure.core/name (or model :item)))]
                           {:type      type
                            :id        id
                            :name      name
