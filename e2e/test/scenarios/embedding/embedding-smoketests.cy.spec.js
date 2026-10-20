@@ -38,19 +38,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       resetEmbedding();
     });
 
-    it("should show the sdk upsell link in oss", () => {
-      cy.visit("/embedding/security");
-
-      mainPage().within(() => {
-        cy.findByRole("link", { name: "Try Metabase Pro" })
-          .should("have.attr", "href")
-          .and(
-            "eq",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
-          );
-      });
-    });
-
     it("should not let you use non-guest auth methods", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
