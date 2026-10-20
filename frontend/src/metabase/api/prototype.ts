@@ -11,6 +11,12 @@ export type PrototypeFilterUsage = {
   ratio: number;
 };
 
+// Prototype: the response of GET /api/prototype/field-categories.
+export type PrototypeFieldCategories = {
+  table_id: TableId;
+  categories: { name: string; field_ids: FieldId[] }[];
+};
+
 export const prototypeApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listPrototypeFilterUsage: builder.query<PrototypeFilterUsage[], void>({
@@ -19,7 +25,19 @@ export const prototypeApi = Api.injectEndpoints({
         url: "/api/prototype/filter-usage",
       }),
     }),
+    listPrototypeFieldCategories: builder.query<
+      PrototypeFieldCategories[],
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/prototype/field-categories",
+      }),
+    }),
   }),
 });
 
-export const { useListPrototypeFilterUsageQuery } = prototypeApi;
+export const {
+  useListPrototypeFilterUsageQuery,
+  useListPrototypeFieldCategoriesQuery,
+} = prototypeApi;
