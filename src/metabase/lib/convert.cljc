@@ -19,6 +19,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
@@ -314,7 +315,7 @@
 
 (defmethod ->mbql5 :mbql.stage/native
   [stage]
-  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->mbql5))))
+  (m/update-existing stage :template-tags update-vals lib.schema.template-tag/dimension->field-id))
 
 (defmethod ->mbql5 :mbql/join
   [join]
@@ -748,9 +749,20 @@
                 (update-list->legacy-boolean-expression :filters :filter))
             (disj stage-keys :aggregation :breakout :filters :expressions))))
 
+(defn- field-id->dimension
+  "Replace the `:field-id` of a template tag with the legacy `:dimension` `:field` ref."
+  [{:keys [field-id], :as tag}]
+  (cond-> tag
+    field-id (-> (dissoc :field-id)
+                 (assoc :dimension [:field {:lib/uuid (str (random-uuid))} field-id]))))
+
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
+      (m/update-existing :template-tags (fn [tags]
+                                          (if (map? tags)
+                                            (update-vals tags field-id->dimension)
+                                            (mapv field-id->dimension tags))))
       (update-vals ->legacy-MBQL)
       ;; a native stage becomes
       ;;

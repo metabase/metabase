@@ -144,6 +144,10 @@
     {:source-field (fully-qualified-name :guard vector?)}
     (assoc &match :source-field (import-field-fk resolver fully-qualified-name))
 
+    ;; template tags and table template tag source filters refer to a Field by `:field-id`
+    {:field-id (fully-qualified-name :guard vector?)}
+    (assoc &match :field-id (import-field-fk resolver fully-qualified-name))
+
     {:database (fully-qualified-name :guard string?)}
     (-> &match
         (assoc :database (if (= fully-qualified-name "database/__virtual")
@@ -273,6 +277,10 @@
     ;; example relevant clause - [:field 2 {:source-field 1}]
     {:source-field (id :guard pos-int?)}
     (assoc &match :source-field (export-field-fk resolver id))
+
+    ;; template tags and table template tag source filters refer to a Field by `:field-id`
+    {:field-id (id :guard pos-int?)}
+    (assoc &match :field-id (export-field-fk resolver id))
 
     [:dimension (dim :guard vector?)]
     [:dimension (mbql-id->fully-qualified-name resolver dim)]

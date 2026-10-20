@@ -139,10 +139,6 @@
                 param-display-name)
            {:type qp.error-type/multiple-conflicting-default-values}))
 
-(mu/defn- field-ref->field-id :- ::lib.schema.id/field
-  [field-ref :- :mbql.clause/field]
-  (last field-ref))
-
 (mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
@@ -212,10 +208,9 @@
 
 (mu/defmethod parse-tag :dimension :- ::params.types/field-filter
   [metadata-providerable              :- ::lib.schema.metadata/metadata-providerable
-   {:keys [dimension alias], :as tag} :- ::lib.schema.template-tag/template-tag
-   params                             :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
-  (let [field-id (field-ref->field-id dimension)
-        field    (or (lib.metadata/field metadata-providerable field-id)
+   {:keys [field-id alias], :as tag} :- ::lib.schema.template-tag/template-tag
+   params                            :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
+  (let [field    (or (lib.metadata/field metadata-providerable field-id)
                      (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                      {:field-id field-id, :type qp.error-type/invalid-parameter})))
         value    (field-filter-value tag params)]
@@ -297,7 +292,7 @@
 
 (mu/defmethod parse-tag :temporal-unit :- ::params.types/temporal-unit
   [metadata-providerable                      :- ::lib.schema.metadata/metadata-providerable
-   {:keys [required dimension alias] :as tag} :- ::lib.schema.template-tag/template-tag
+   {:keys [required field-id alias] :as tag}  :- ::lib.schema.template-tag/template-tag
    params                                     :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
                                (when (> (count matching-params) 1)
@@ -317,10 +312,9 @@
       (throw (ex-info (tru "Error: invalid value specified for temporal-unit parameter.")
                       {:value param-value
                        :expected valid-temporal-units})))
-    (let [field (let [field-id (field-ref->field-id dimension)]
-                  (or (lib.metadata/field metadata-providerable field-id)
-                      (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
-                                      {:field-id field-id, :type qp.error-type/invalid-parameter}))))
+    (let [field (or (lib.metadata/field metadata-providerable field-id)
+                    (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                                    {:field-id field-id, :type qp.error-type/invalid-parameter})))
           value (or (:value matching-param)
                     (when (and nil-value? (not required))
                       lib/parsed-param-no-value-placeholder)

@@ -910,11 +910,9 @@
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (concat
         ;; Extract field dependencies from dimension template tags
-        (for [{tag-type :type, [dim-tag _opts id] :dimension} (:template-tags base-stage)
-              :when                                           (and (= tag-type :dimension)
-                                                                   (= dim-tag :field)
-                                                                   (integer? id))]
-          {:type :field, :id id})
+        (for [{tag-type :type, field-id :field-id} (:template-tags base-stage)
+              :when                                (and (= tag-type :dimension) field-id)]
+          {:type :field, :id field-id})
         ;; Extract snippet dependencies from snippet template tags (with recursion)
         (mapcat
          (fn [{tag-type :type, snippet-id :snippet-id}]

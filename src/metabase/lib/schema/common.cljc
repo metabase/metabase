@@ -341,7 +341,7 @@
                            :query :source-table :source-card :fields :filter :filters :breakout :aggregation
                            :limit :order-by :offset :page :args :native :aggregation-idents :breakout-idents
                            :expression-idents :source-metadata :source-query :type :database :lib/options
-                           :expressions :pivot :joins :ident :lib/expression-name :lib/join-alias :fk-field-id
+                           :expressions :pivot :joins :ident :lib/expression-name :lib/join-alias :fk-field-id :field-id
                            :binning :field-ref :model/inner-ident :source :source-alias :unit
                            :metabase.lib.join/join-alias :metabase.lib.field/binning
                            :metabase.lib.field/temporal-unit :metabase.lib.field/original-effective-type

@@ -88,6 +88,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -2048,14 +2049,16 @@
                      (assoc :name tag-name) ; prefer the tag name used as a map key in case it's unset in the tag itself or differs
                      (update :type keyword)
                      (m/update-existing :widget-type #(some-> % keyword))
-                     (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))
+                     (m/update-existing :dimension #(some-> % legacy-ref->mbql5))
+                     lib.schema.template-tag/dimension->field-id)))
              (gobject/getKeys tags-object)))
 
-(defn- template-tag-cljs->js [tag]
+(defn- template-tag-cljs->js [{:keys [field-id], :as tag}]
   (-> tag
       (update :type name)
       (m/update-existing :widget-type #(some-> % u/qualified-name))
-      (m/update-existing :dimension #(some-> % ref->legacy-ref))
+      (cond-> field-id (-> (dissoc :field-id)
+                           (assoc :dimension [:field field-id nil])))
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn- template-tags-cljs->js

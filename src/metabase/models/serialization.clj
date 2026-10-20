@@ -1123,7 +1123,7 @@
        (:source_card :source-card)   (cond-> m
                                        (pos-int? v)
                                        (update k *export-fk* :model/Card))
-       :source-field                 (cond-> m
+       (:source-field :field-id)     (cond-> m
                                        (pos-int? v)
                                        (update k *export-field-fk*))
        ::mb.viz/param-mapping-source (update m k *export-field-fk*)
@@ -1212,7 +1212,7 @@
        (:source-table :source_table) (cond-> m
                                        (vector? v)      (update k *import-table-fk*)
                                        (portable-id? v) (assoc :source-table (str "card__" (*import-fk* v 'Card))))
-       :source-field                 (cond-> m
+       (:source-field :field-id)     (cond-> m
                                        (vector? v)
                                        (update k *import-field-fk*))
        :source-card                  (cond-> m
@@ -1441,6 +1441,7 @@
                     (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-field) (vector? v))      nil
+                    (and (= k :field-id)     (vector? v))      nil
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
                     (and (= k :table-id)     (vector? v))      nil
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
@@ -1450,6 +1451,7 @@
                     (and (= k :source-table) (raw-ref-id? allow-int-ids? v))     #{[{:model "Table" :id v}]}
                     (and (= k :source-card)  (raw-ref-id? allow-int-ids? v))     #{[{:model "Card" :id v}]}
                     (and (= k :source-field) (raw-ref-id? allow-int-ids? v))     #{[{:model "Field" :id v}]}
+                    (and (= k :field-id)     (raw-ref-id? allow-int-ids? v))     #{[{:model "Field" :id v}]}
                     (and (= k :snippet-id)   (raw-ref-id? allow-int-ids? v))     #{[{:model "NativeQuerySnippet" :id v}]}
                     (and (= k :table-id)     (raw-ref-id? allow-int-ids? v))     #{[{:model "Table" :id v}]}
                     (and (#{:card_id :card-id} k) (raw-ref-id? allow-int-ids? v)) #{[{:model "Card" :id v}]}

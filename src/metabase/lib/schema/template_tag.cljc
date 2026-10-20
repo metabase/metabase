@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.template-tag
-  (:refer-clojure :exclude [empty? every? mapv])
+  (:refer-clojure :exclude [empty? every? mapv some])
   (:require
    [malli.core :as mc]
    [medley.core :as m]
@@ -7,7 +7,7 @@
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [empty? every? mapv]]))
+   [metabase.util.performance :refer [empty? every? mapv some]]))
 
 (mr/def ::widget-type
   "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
@@ -63,7 +63,7 @@
     [:type [:= :temporal-unit]]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
-    [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
+    [:field-id    {:optional true} ::id/field]]])
 
 (mr/def ::field-filter.options
   "Options appended to the filter clause a Field Filter template tag generates. These get merged into the parameter
@@ -79,15 +79,15 @@
 ;;     :name         "date"
 ;;     :display-name "Date"
 ;;     :type         :dimension,
-;;     :dimension    [:field 4 nil]
+;;     :field-id     4
 ;;     :widget-type  :date/all-options}
 (mr/def ::field-filter
   [:merge
    [:ref ::value.common]
    [:map
     [:type        [:= :dimension]]
-    ;; field filters can have missing dimension before it is set
-    [:dimension   {:optional true} [:ref :mbql.clause/field]]
+    ;; field filters can have missing field before it is set
+    [:field-id    {:optional true} ::id/field]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
@@ -97,7 +97,18 @@
     [:options {:optional true} [:maybe ::field-filter.options]]]])
 
 (mr/def ::disallow-dimension
-  (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))
+  (common/disallowed-keys {:field-id ":field-id is only allowed for :type :dimension and :temporal-unit template tags"}))
+
+(defn dimension->field-id
+  "Replace the legacy `:dimension` `:field` ref of a template tag with the `:field-id` of the Field it refers to. Legacy
+  `:dimension` refs always refer to a Field by ID."
+  [tag]
+  (if-some [dimension (:dimension tag)]
+    (-> tag
+        (dissoc :dimension)
+        (m/assoc-some :field-id (when (sequential? dimension)
+                                  (some #(when (pos-int? %) %) (rest dimension)))))
+    tag))
 
 ;; Example:
 ;;
@@ -198,7 +209,7 @@
   [:and
    {:decode/normalize (fn [tag]
                         (when-some [tag (common/normalize-map tag)]
-                          (cond-> tag
+                          (cond-> (dimension->field-id tag)
                             (:type tag) (update :type common/normalize-keyword))))
     :decode/api       common/remove-internal-keys
     :encode/serialize common/remove-internal-keys}

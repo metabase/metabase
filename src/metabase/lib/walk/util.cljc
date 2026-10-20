@@ -220,11 +220,6 @@
                                  (vswap! table-ids conj! table-id)))))
     (not-empty (persistent! @table-ids))))
 
-(defn- dimension-field-ids
-  "The Field ID of a template tag `:dimension`, which is a `:field` ref to a Field of the Database, as a set."
-  [[_tag _opts id-or-name]]
-  (if (pos-int? id-or-name) #{id-or-name} #{}))
-
 (mu/defn all-template-tags-id->field-ids :- [:maybe
                                              [:map-of
                                               ::lib.schema.template-tag/id
@@ -237,10 +232,10 @@
   [query :- ::lib.schema/query]
   (not-empty
    (into {}
-         (comp (filter :dimension)
+         (comp (filter :field-id)
                (filter :id)
                (map (fn [template-tag]
-                      [(:id template-tag) (dimension-field-ids (:dimension template-tag))])))
+                      [(:id template-tag) #{(:field-id template-tag)}])))
          (all-template-tags query))))
 
 (mu/defn all-template-tag-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
@@ -248,8 +243,7 @@
   [query :- ::lib.schema/query]
   (not-empty
    (into #{}
-         (comp (keep :dimension)
-               (mapcat dimension-field-ids))
+         (keep :field-id)
          (all-template-tags query))))
 
 (mu/defn all-template-tag-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
@@ -424,20 +418,19 @@
   "Return `query` with every Field ID reference remapped by `id->new-id` (a function; a map works). Covers `:field`
   refs everywhere they appear (filters, aggregations, breakouts, expressions, order-by, join conditions and fields,
   nested stages), the `:source-field`/`:fk-field-id` options inside `:field` refs, and native `:template-tags`
-  `:dimension` refs. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
+  `:field-id`s. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
   [query      :- ::lib.schema/query
    id->new-id :- ifn?]
-  (let [remap #(remap-field-clause-ids id->new-id %)]
+  (let [remap     #(remap-field-clause-ids id->new-id %)
+        remap-tag (fn [tag]
+                    (cond-> tag
+                      (:field-id tag) (update :field-id #(or (id->new-id %) %))))]
     (-> query
         (lib.walk/walk-clauses (fn [_query _path-type _path clause]
                                  (remap clause)))
         (lib.walk/walk-stages (fn [_query _path stage]
                                 (cond-> stage
-                                  (:template-tags stage)
-                                  (update :template-tags update-vals
-                                          (fn [tag]
-                                            (cond-> tag
-                                              (:dimension tag) (update :dimension remap))))))))))
+                                  (:template-tags stage) (update :template-tags (partial perf/mapv remap-tag))))))))
 
 (mu/defn replace-table-ids :- ::lib.schema/query
   "Return `query` with every source Table ID remapped by `id->new-id` (a function; a map works). Covers
