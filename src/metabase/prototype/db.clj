@@ -117,3 +117,18 @@
     (t2/insert! :model/OsiAiContext {:entity_type     entity-type
                                      :entity_local_id entity-id
                                      :ai_context      ai-context})))
+
+(defn saved-query-dataset-queries
+  "The `dataset_query` JSON strings of all MBQL cards that are not archived. Prototype: reads the table directly,
+  with no permission check, so the prototype module does not need the Card model."
+  []
+  (t2/select-fn-vec :dataset_query [:report_card :dataset_query]
+                    :archived false :query_type "query"))
+
+(mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "Map of field id to table id for `field-ids`."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (if (empty? field-ids)
+    {}
+    (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]
+                      {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))

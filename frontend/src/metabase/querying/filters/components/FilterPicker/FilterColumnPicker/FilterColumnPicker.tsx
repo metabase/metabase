@@ -3,6 +3,10 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
+  type PrototypeFilterUsage,
+  useListPrototypeFilterUsageQuery,
+} from "metabase/api";
+import {
   AccordionList,
   type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
@@ -34,6 +38,11 @@ import type {
 import S from "./FilterColumnPicker.module.css";
 
 type Item = ColumnListItem | SegmentListItem | ExpressionClauseItem;
+
+// Prototype: an item of the "Frequently used" section shows the table of its column.
+type FrequentColumnListItem = ColumnListItem & { tableDisplayName: string };
+
+const FREQUENTLY_USED_LIMIT = 10;
 
 type Section = BaseSection<Item> & {
   key?: string;
@@ -91,6 +100,7 @@ export function FilterColumnPicker({
   const { locale } = useLocale();
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText !== "";
+  const { data: filterUsage } = useListPrototypeFilterUsageQuery();
 
   const sections = useMemo(
     () =>
@@ -100,6 +110,7 @@ export function FilterColumnPicker({
         withColumnGroupIcon,
         withCustomExpression,
         isSearching,
+        filterUsage,
         tc,
       }),
     [
@@ -108,20 +119,33 @@ export function FilterColumnPicker({
       withColumnGroupIcon,
       withCustomExpression,
       isSearching,
+      filterUsage,
       tc,
     ],
   );
 
   const renderItemName = useCallback(
-    (item: Item) =>
-      searchText
+    (item: Item) => {
+      const name = searchText
         ? // When searching, show the untranslated display name to match the search text
           item.displayName
         : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
             displayName: item.displayName,
             tc,
             locale,
-          }),
+          });
+      return isFrequentColumnListItem(item) ? (
+        <span className={S.FrequentItemName}>
+          {name}
+          <span className={S.FrequentItemSeparator} />
+          <span className={S.FrequentItemTableName}>
+            {item.tableDisplayName}
+          </span>
+        </span>
+      ) : (
+        name
+      );
+    },
     [tc, locale, searchText],
   );
 
@@ -155,6 +179,9 @@ export function FilterColumnPicker({
   return (
     <DelayGroup>
       <AccordionList<Item, Section>
+        // Prototype: the usage stats load after the first render. Mount the list again when they
+        // load, so that it opens the "Frequently used" section.
+        key={filterUsage ? "with-filter-usage" : "without-filter-usage"}
         className={cx(S.StyledAccordionList, className)}
         sections={sections}
         onChange={handleSelect}
@@ -163,6 +190,7 @@ export function FilterColumnPicker({
         itemIsSelected={checkItemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
+        renderItemLabel={renderItemLabel}
         renderItemDescription={omitDescription}
         renderItemIcon={(item) =>
           withColumnItemIcon ? renderItemIcon(query, item) : null
@@ -186,6 +214,7 @@ function getSections({
   withColumnGroupIcon,
   withCustomExpression,
   isSearching,
+  filterUsage,
   tc,
 }: {
   query: Lib.Query;
@@ -193,9 +222,11 @@ function getSections({
   withColumnGroupIcon: boolean;
   withCustomExpression: boolean;
   isSearching: boolean;
+  filterUsage: PrototypeFilterUsage[] | undefined;
   tc: (content: string | null | undefined) => string | null | undefined;
 }): Section[] {
   const withMultipleStages = stageIndexes.length > 1;
+  const groupedColumnItems: FrequentColumnListItem[] = [];
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const columnGroups = Lib.groupColumns(columns);
@@ -216,6 +247,17 @@ function getSections({
           longDisplayName: columnInfo.longDisplayName,
         };
       });
+      const groupName = tc(
+        withMultipleStages
+          ? getGroupName(groupInfo, stageIndex)
+          : groupInfo.displayName,
+      );
+      groupedColumnItems.push(
+        ...columnItems.map((item) => ({
+          ...item,
+          tableDisplayName: groupName ?? "",
+        })),
+      );
       const segments = groupInfo.isSourceTable
         ? Lib.availableSegments(query, stageIndex)
         : [];
@@ -229,11 +271,7 @@ function getSections({
       });
 
       return {
-        name: tc(
-          withMultipleStages
-            ? getGroupName(groupInfo, stageIndex)
-            : groupInfo.displayName,
-        ),
+        name: groupName,
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
         items: [...segmentItems, ...columnItems],
       };
@@ -260,11 +298,69 @@ function getSections({
     alwaysSortLast: true,
   };
 
+  const frequentlyUsedSection =
+    filterUsage && !isSearching
+      ? getFrequentlyUsedSection(query, groupedColumnItems, filterUsage)
+      : null;
+
   return [
+    frequentlyUsedSection,
     ...columnSections,
     withCustomExpression && isSearching ? expressionClausesSection : null,
     withCustomExpression ? expressionClauseAction : null,
   ].filter(isNotNull);
+}
+
+// Prototype: the columns that saved questions filter on most often, by the ratio of
+// questions that filter on the column to questions that use its table.
+function getFrequentlyUsedSection(
+  query: Lib.Query,
+  columnItems: FrequentColumnListItem[],
+  filterUsage: PrototypeFilterUsage[],
+): Section | null {
+  const ratioByFieldId = new Map(
+    filterUsage.map((usage) => [usage.field_id, usage.ratio]),
+  );
+  const seenKeys = new Set<string>();
+  const items = columnItems
+    .flatMap((item) => {
+      const { fieldId } = Lib.fieldValuesSearchInfo(query, item.column);
+      const ratio = fieldId !== null ? ratioByFieldId.get(fieldId) : undefined;
+      const key = `${fieldId}:${item.tableDisplayName}`;
+      if (ratio === undefined || seenKeys.has(key)) {
+        return [];
+      }
+      seenKeys.add(key);
+      return [{ item, ratio }];
+    })
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, FREQUENTLY_USED_LIMIT)
+    .map(({ item }) => item);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    key: "frequently-used",
+    name: t`Frequently used`,
+    icon: "star",
+    items,
+  };
+}
+
+function isFrequentColumnListItem(item: Item): item is FrequentColumnListItem {
+  return (
+    "tableDisplayName" in item && typeof item.tableDisplayName === "string"
+  );
+}
+
+function renderItemLabel(item: Item) {
+  return item.displayName;
+}
+
+function omitDescription() {
+  return undefined;
 }
 
 function renderItemIcon(query: Lib.Query, item: Item) {
@@ -288,8 +384,4 @@ function renderItemIcon(query: Lib.Query, item: Item) {
 
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
-}
-
-function omitDescription() {
-  return undefined;
 }
