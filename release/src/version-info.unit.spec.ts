@@ -1,7 +1,15 @@
 import fetch from "node-fetch";
 
 import type { VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getSupportedMajorVersions, getSupportedMajors, getVersionInfoUrl, isLtsVersion, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
+import {
+  generateVersionInfoJson,
+  getSupportedMajorVersions,
+  getSupportedMajors,
+  getVersionInfoUrl,
+  isLtsVersion,
+  updateVersionInfoLatest,
+  updateVersionInfoLatestJson,
+} from "./version-info";
 
 jest.mock("node-fetch", () => ({
   __esModule: true,
@@ -28,12 +36,14 @@ describe("version-info", () => {
         existingVersionInfo: oldJson,
       });
 
-      expect(generatedJson.older).toEqual([{
-        version: "v0.3.0",
-        released: expect.any(String),
-        patch: false,
-        highlights: ["see https://www.metabase.com/changelog/3#metabase-30"],
-      }]);
+      expect(generatedJson.older).toEqual([
+        {
+          version: "v0.3.0",
+          released: expect.any(String),
+          patch: false,
+          highlights: ["see https://www.metabase.com/changelog/3#metabase-30"],
+        },
+      ]);
     });
 
     it("should leave old latest version intact", () => {
@@ -138,10 +148,12 @@ describe("version-info", () => {
     });
 
     it("should throw if new version is not in older versions", () => {
-      expect(() => updateVersionInfoLatestJson({
-        newLatestVersion: "v0.2.1",
-        existingVersionInfo: oldJson,
-      })).toThrow();
+      expect(() =>
+        updateVersionInfoLatestJson({
+          newLatestVersion: "v0.2.1",
+          existingVersionInfo: oldJson,
+        }),
+      ).toThrow();
     });
 
     it("should remove the new latest version from the older versions", () => {
@@ -213,7 +225,6 @@ describe("version-info", () => {
     });
 
     it("should remove rollout % on old latest version", () => {
-
       const updatedJson = updateVersionInfoLatestJson({
         newLatestVersion: "v0.2.4",
         existingVersionInfo: oldJson,
@@ -326,7 +337,11 @@ describe("version-info", () => {
 
   describe("getSupportedMajorVersions", () => {
     const fileWith = (major_version_support: any) =>
-      ({ latest: {}, older: [], major_version_support }) as unknown as VersionInfoFile;
+      ({
+        latest: {},
+        older: [],
+        major_version_support,
+      }) as unknown as VersionInfoFile;
 
     it("returns majors whose eol is today or later, newest first", () => {
       const versionInfo = fileWith([
@@ -346,7 +361,9 @@ describe("version-info", () => {
         { major: 89, released: "2026-04-01", lts: true, eol: "2026-06-05" },
       ]);
 
-      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([89]);
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([
+        89,
+      ]);
     });
 
     it("ignores the lts flag — support is computed from eol only", () => {
@@ -355,7 +372,9 @@ describe("version-info", () => {
         { major: 54, released: "2025-04-15", lts: true, eol: "2025-06-01" },
       ]);
 
-      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([60]);
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([
+        60,
+      ]);
     });
 
     it("de-duplicates repeated majors", () => {
@@ -364,7 +383,9 @@ describe("version-info", () => {
         { major: 60, released: "2026-04-01", lts: true, eol: "2027-12-01" },
       ]);
 
-      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([60]);
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([
+        60,
+      ]);
     });
 
     it("throws when major_version_support is missing or empty", () => {

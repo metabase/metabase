@@ -54,8 +54,6 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
-(defn get-route "Returns [[*route*]]." [] *route*)
-
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
 
@@ -63,8 +61,6 @@
   [value & body]
   `(binding [*auth-method* ~value]
      ~@body))
-
-(defn get-auth-method "Returns [[*auth-method*]]." [] *auth-method*)
 
 (defn extract-hostname
   "Extracts the hostname from a URL string. Returns nil if the URL is nil or unparseable."
@@ -175,15 +171,16 @@
    [:sandbox_details             {:optional true} [:maybe [:sequential [:map {::mr/deliberately-open true}]]]]])
 
 (mu/defn include-sdk-info :- :map
-  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
-   into the `view_log` or `query_execution` table. Falls back to the original value."
+  "Embeds the sdk information into the map for usage analytics."
   [m :- sdk-info-row]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
       (update :embedding_client_identifier (fn [identifier] (or *client-identifier* identifier)))
       (update :embedding_route (fn [route] (or *route* route)))
       (update :embedding_sdk_version (fn [version] (or *version* version)))
-      (update :auth_method (fn [method] (or *auth-method* method)))
+      (update :auth_method (fn [method] (if (= "guest-embed" *route*)
+                                          "guest"
+                                          (or *route* *auth-method* method))))
       (assoc :metabase_version (:tag config/mb-version-info))
       (merge (hostname-fields) (pii-fields))))
 

@@ -41,11 +41,27 @@ import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount
 /**
  * EAJS has no eval-permissive page CSP in production, so its plugin sandbox
  * uses the hosted donor document (served with a per-document eval CSP). The
- * react-sdk npm package runs on the customer's own page and inherits its
- * CSP, so "blank" (about:blank) works there.
+ * react-sdk npm package runs on the customer's own page: it uses the donor
+ * page the host app passes as `customVisualizationsSandboxUrl`, or
+ * else "blank" (about:blank), which inherits the page CSP.
  */
-export function getSdkSandboxMode(): SandboxMode {
-  return isEmbeddingEajs() ? "hosted" : "blank";
+export function getSdkSandboxMode(sandboxUrl?: string): SandboxMode {
+  if (isEmbeddingEajs()) {
+    return "hosted";
+  }
+  return sandboxUrl ? { iframeSrc: sandboxUrl } : "blank";
+}
+
+function getSandboxUrl(): string | undefined {
+  return ensureMetabaseProviderPropsStore().getState().props
+    ?.customVisualizationsSandboxUrl;
+}
+
+function useSdkSandboxMode(): SandboxMode {
+  const { state } = useMetabaseProviderPropsStore();
+  const sandboxUrl = state?.props?.customVisualizationsSandboxUrl;
+  // `sandboxMode` is an effect dependency downstream, so keep it stable
+  return useMemo(() => getSdkSandboxMode(sandboxUrl), [sandboxUrl]);
 }
 
 /**
@@ -155,7 +171,7 @@ export function initializeSdkCustomVizPlugin() {
       }
       return eeLoadCustomVizPlugin(plugin, {
         ...options,
-        sandboxMode: getSdkSandboxMode(),
+        sandboxMode: getSdkSandboxMode(getSandboxUrl()),
       });
     },
 
@@ -167,13 +183,14 @@ export function initializeSdkCustomVizPlugin() {
         return { status: "unavailable" };
       }
       return eeLoadCustomVizPluginForDisplay(dispatch, display, {
-        sandboxMode: getSdkSandboxMode(),
+        sandboxMode: getSdkSandboxMode(getSandboxUrl()),
         onMessage: logUnavailableCustomVizMessage,
       });
     },
 
     useAutoLoadCustomVizPlugin: (display: string | undefined) => {
       const allowlist = useAllowlist();
+      const sandboxMode = useSdkSandboxMode();
       const allowed =
         // Regular (non-custom) displays are always allowed.
         !isCustomVizDisplay(display) || isCustomVizAllowed(display, allowlist);
@@ -185,7 +202,7 @@ export function initializeSdkCustomVizPlugin() {
       }, [display, allowed]);
 
       return eeUseAutoLoadCustomVizPlugin(allowed ? display : undefined, {
-        sandboxMode: getSdkSandboxMode(),
+        sandboxMode,
         onMessage: logUnavailableCustomVizMessage,
       });
     },
