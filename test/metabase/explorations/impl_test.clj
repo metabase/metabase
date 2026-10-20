@@ -381,12 +381,17 @@
              (research-groups-problems [{:metric_id 1 :dimension_ids ["region-1" "region-2"]}
                                         {:metric_id 2 :dimension_ids ["plan-1"]}
                                         {:metric_id 1 :dimension_ids ["nope"]}]))))
-    (testing "one kind at a time: unknown metrics first, then empty replacements, then dimensions"
-      (is (= {:unknown-metric-ids [999]}
-             (research-groups-problems [{:metric_id 1 :replace_default_dimensions true}
-                                        {:metric_id 999}])))
-      (is (= {:replace-without-dimensions [2]}
-             (research-groups-problems [{:metric_id 1 :dimension_ids ["nope"]}
+    (testing "every kind of problem at once, with no further checks on a metric that isn't there"
+      (is (= {:unknown-metric-ids         [999 1000]
+              :replace-without-dimensions [2]
+              :invalid-dimensions         [{:metric-id     1
+                                            :metric-name   "Revenue"
+                                            :dimension-ids ["wrong"]
+                                            :candidates    [{:id "region-1" :name "Region"}
+                                                            {:id "plan-1" :name "Plan"}]}]}
+             (research-groups-problems [{:metric_id 999 :dimension_ids ["anything"]}
+                                        {:metric_id 1 :dimension_ids ["wrong"]}
+                                        {:metric_id 1000 :replace_default_dimensions true}
                                         {:metric_id 2 :replace_default_dimensions true}]))))
     (testing "dimension the catalog still lists but query resolution drops"
       ;; `plan-1` survives the cheap catalog but its target no longer resolves against the

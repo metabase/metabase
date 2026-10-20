@@ -161,41 +161,38 @@
     (research-call "add_research_groups" {:groups [{:metric_id 1}]})))
 
 (deftest add-research-groups-names-every-bad-id-test
-  (testing "unknown metrics"
-    (is (= {:output (str "Metrics 999, 1000 were not found. They may not exist, or you may not have"
+  (testing "every problem in one error, so the model fixes them all in one retry"
+    (is (= {:output (str "None of the groups were added:\n"
+                         "- Metrics 999, 1000 were not found. They may not exist, or you may not have"
                          " access to them.\n"
-                         "Call `list_research_metrics` to find metrics available for research, and"
-                         " take their ids from `get_research_candidates`.")
-            :error  {:class :recoverable :code ::tools.explorations/unknown-metric}}
-           (add-groups-rejected-with {:unknown-metric-ids [999 1000]}))))
-  (testing "a replacement of the automatic dimensions with none"
-    (is (= {:output (str "`replace_default_dimensions` replaces the automatically-selected dimensions"
-                         " with the group's `dimension_ids`, but the group for metric 1 has none.\n"
+                         "- The group for metric 2 sets `replace_default_dimensions` with no"
+                         " `dimension_ids`.\n"
+                         "- Dimensions \"region-2\", \"nope\" are not candidates of metric 1 (Revenue)."
+                         " Its candidates are \"region-1\" (Region), \"plan-1\" (Plan).\n"
+                         "- Dimension \"plan-1\" is not a candidate of metric 3 (Churn). It has no"
+                         " candidate dimensions.\n"
+                         "Call `list_research_metrics` to find metrics that are available for"
+                         " research, and take their ids from `get_research_candidates`.\n"
                          "Pass the dimension ids to slice by, or drop `replace_default_dimensions` to"
-                         " keep the automatic selection.")
-            :error  {:class :recoverable :code ::tools.explorations/replace-needs-dimensions}}
-           (add-groups-rejected-with {:replace-without-dimensions [1]}))))
-  (testing "dimensions that aren't candidates of their group's metric, with each metric's own"
-    (is (= {:output (str "These dimension ids are not candidate dimensions of their group's metric:\n"
-                         "- Metric 1 (Revenue): \"region-2\", \"nope\". Its candidates are"
-                         " \"region-1\" (Region), \"plan-1\" (Plan).\n"
-                         "- Metric 2 (Churn): \"plan-1\". It has no candidate dimensions.\n"
+                         " keep the automatic selection.\n"
                          "A dimension id belongs to one metric, so the same dimension has a different"
                          " id under each metric. Take each group's ids from its own metric's"
                          " candidates.\n"
-                         "Call `get_research_candidates` with `metric_ids` [1, 2] to see every"
+                         "Call `get_research_candidates` with `metric_ids` [1, 3] to see every"
                          " candidate.")
-            :error  {:class :recoverable :code ::tools.explorations/not-a-candidate-dimension}}
+            :error  {:class :recoverable :code ::tools.explorations/invalid-research-groups}}
            (add-groups-rejected-with
-            {:invalid-dimensions [{:metric-id     1
-                                   :metric-name   "Revenue"
-                                   :dimension-ids ["region-2" "nope"]
-                                   :candidates    [{:id "region-1" :name "Region"}
-                                                   {:id "plan-1" :name "Plan"}]}
-                                  {:metric-id     2
-                                   :metric-name   "Churn"
-                                   :dimension-ids ["plan-1"]
-                                   :candidates    []}]}))))
+            {:unknown-metric-ids         [999 1000]
+             :replace-without-dimensions [2]
+             :invalid-dimensions         [{:metric-id     1
+                                           :metric-name   "Revenue"
+                                           :dimension-ids ["region-2" "nope"]
+                                           :candidates    [{:id "region-1" :name "Region"}
+                                                           {:id "plan-1" :name "Plan"}]}
+                                          {:metric-id     3
+                                           :metric-name   "Churn"
+                                           :dimension-ids ["plan-1"]
+                                           :candidates    []}]}))))
   (testing "a long candidate list is counted rather than spelled out"
     (is (str/includes? (:output (add-groups-rejected-with
                                  {:invalid-dimensions
@@ -235,14 +232,15 @@
             (is (nil? (:error outcome)))
             (is (str/starts-with? (:output outcome)
                                   "Added 1 group(s) to the research plan:\n- Order count, by: "))))
-        (testing "a bad metric or dimension id is the model's to fix, not the end of the turn"
-          (is (= {:class :recoverable :code ::tools.explorations/unknown-metric}
-                 (:error (research-call "add_research_groups"
-                                        {:groups [{:metric_id Integer/MAX_VALUE}]}))))
-          (is (= {:class :recoverable :code ::tools.explorations/not-a-candidate-dimension}
-                 (:error (research-call "add_research_groups"
-                                        {:groups [{:metric_id     metric-id
-                                                   :dimension_ids ["not-a-dimension"]}]})))))))))
+        (testing "a bad metric and a bad dimension are the model's to fix, both in one error"
+          (let [{:keys [output error]} (research-call "add_research_groups"
+                                                      {:groups [{:metric_id Integer/MAX_VALUE}
+                                                                {:metric_id     metric-id
+                                                                 :dimension_ids ["not-a-dimension"]}]})]
+            (is (= {:class :recoverable :code ::tools.explorations/invalid-research-groups} error))
+            (is (str/includes? output (str "Metric " Integer/MAX_VALUE " was not found.")))
+            (is (str/includes? output (str "Dimension \"not-a-dimension\" is not a candidate of metric "
+                                           metric-id " (Order count).")))))))))
 
 ;;; ------------------------------------ plan edits the client applies ------------------------------------
 
