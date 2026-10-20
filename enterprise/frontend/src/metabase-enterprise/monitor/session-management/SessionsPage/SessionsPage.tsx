@@ -51,7 +51,10 @@ export const SessionsPage = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<RouteParams>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
+  const [urlState, { patchUrlState, searchString }] = useUrlState(
+    location,
+    urlStateConfig,
+  );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelection = useCallback(() => setRowSelection({}), []);
 
@@ -151,10 +154,10 @@ export const SessionsPage = () => {
           id === undefined
             ? Urls.monitorSessions()
             : Urls.monitorSessionDetail(id),
-        search: location.search,
+        search: searchString,
       });
     },
-    [navigate, location.search],
+    [navigate, searchString],
   );
 
   const handleSidebarClose = useCallback(
