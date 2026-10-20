@@ -281,6 +281,25 @@
         (is (= {:class :unrecoverable :code :internal}
                (construct-tool-failure-for-thrown e)))))))
 
+(deftest construct-notebook-query-tool-malformed-aggregation-test
+  (testing "an `aggregation:` that is not a list of clauses is an error the model can fix, not the end of the turn"
+    (let [source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[label stage] {"a number"                                   {:aggregation 42}
+                               "an empty clause, sorted by an empty clause" {:aggregation [[]]
+                                                                             :order-by    [["desc" {} []]]}}]
+          (testing label
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                     :text  #"^Representations query has an invalid structure\."}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query"
+                                                           :stages   [(merge {:lib/type     "mbql.stage/mbql"
+                                                                              :source-table source-table}
+                                                                             stage)]}
+                                             :title       "Orders"
+                                             :description "Orders by count."})))))))))
+
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"
     (let [entries (agent-tools/->entries [#'agent-tools/create-sql-query-tool

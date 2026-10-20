@@ -924,6 +924,17 @@
         (is (str/includes? msg "1"))
         (is (str/includes? msg "fields"))))))
 
+(deftest ^:parallel malformed-aggregation-names-the-offending-path-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (doseq [[label stage] {"a number"                                   {:aggregation 42}
+                           "an empty clause, sorted by an empty clause" {:aggregation [[]]
+                                                                         :order-by    [["desc" {} []]]}}]
+      (testing label
+        (is (str/starts-with? (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                              {:query (numeric-orders-query stage)}))
+                              (str "\"Representations query has an invalid structure.\" "
+                                   "Invalid at \"stages\": [0] \"aggregation\": ")))))))
+
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest repair-forgiven-shortcuts-still-execute-test
   (testing "GHY-4313: the shortcuts the repair layer exists to forgive are not schema failures"

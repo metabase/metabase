@@ -374,6 +374,17 @@
         (is (=? {:error "unknown-stage-key"} response))
         (is (re-find #"aggregation" (:message response)))))))
 
+(deftest construct-query-rejects-malformed-aggregation-test
+  (testing "an `aggregation:` that is not a list of clauses is a 400 naming the invalid structure, not a 500"
+    (doseq [[label query] {"a number"
+                           (assoc-in (orders-query) [:stages 0 :aggregation] 42)
+                           "an empty clause, sorted by an empty clause"
+                           (orders-query :aggregation [[]] :order-by [["desc" {} []]])}
+            endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
+      (testing (str endpoint ", " label)
+        (is (=? {:error "invalid-representations-query"}
+                (mt/user-http-request :rasta :post 400 endpoint {:query query})))))))
+
 (deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
                 "is dropped by the request schema, so a caller still sending the old shape is served.")

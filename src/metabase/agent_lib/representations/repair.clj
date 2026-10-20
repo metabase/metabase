@@ -1586,11 +1586,11 @@
 
 (defn- rewrite-order-by-inline-aggs-in-stage
   "Apply the inline-agg-in-`order-by` rewrite to a single string-keyed stage map. Returns the
-  updated stage. No-op when the stage has no `order-by` or no `aggregation`."
+  updated stage. No-op when the stage has no `order-by`, or no `aggregation` list of clauses."
   [stage]
   (let [aggs    (get stage "aggregation")
         ord     (get stage "order-by")]
-    (if-not (and (vector? aggs) (seq aggs) (vector? ord) (seq ord))
+    (if-not (and (vector? aggs) (seq aggs) (every? clause-like? aggs) (vector? ord) (seq ord))
       stage
       ;; Build a structural-key → index lookup over the aggregations once.
       (let [agg-key->idx (into {}
@@ -1966,8 +1966,9 @@
   any of those keys is present we refuse and ask the LLM to author two stages explicitly."
   [stage]
   (let [aggs              (get stage "aggregation")
-        same-stage-uuids  (collect-stage-agg-uuids stage)]
-    (if-not (and (vector? aggs) (seq aggs) (seq same-stage-uuids))
+        same-stage-uuids  (when (and (vector? aggs) (every? clause-like? aggs))
+                            (collect-stage-agg-uuids stage))]
+    (if-not (seq same-stage-uuids)
       [stage]
       (let [filters             (get stage "filters")
             offending-filter?   (fn [f] (form-references-stage-agg? f same-stage-uuids))
