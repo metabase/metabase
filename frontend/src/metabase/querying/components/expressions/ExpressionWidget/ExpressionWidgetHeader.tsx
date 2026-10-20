@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Flex, Icon } from "metabase/ui";
+import { Flex, PopoverBackButton, Text } from "metabase/ui";
 
 import ExpressionWidgetHeaderS from "./ExpressionWidgetHeader.module.css";
 
@@ -18,15 +18,19 @@ export const ExpressionWidgetHeader = ({
 }: Props): JSX.Element => {
   return (
     <Flex className={ExpressionWidgetHeaderS.Header}>
-      <Button
-        className={ExpressionWidgetHeaderS.HeaderButton}
-        variant="subtle"
-        leftSection={onBack ? <Icon name="chevronleft" /> : undefined}
-        onClick={onBack}
-        disabled={!onBack}
-      >
-        {title}
-      </Button>
+      {onBack ? (
+        <PopoverBackButton
+          c="text-secondary"
+          aria-label={title}
+          onClick={onBack}
+        >
+          {title}
+        </PopoverBackButton>
+      ) : (
+        <Text c="text-secondary" fw="bold">
+          {title}
+        </Text>
+      )}
     </Flex>
   );
 };

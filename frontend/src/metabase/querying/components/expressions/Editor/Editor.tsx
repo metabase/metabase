@@ -1,7 +1,7 @@
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -21,13 +21,7 @@ import {
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
-import {
-  ActionIcon,
-  Button,
-  Tooltip as ButtonTooltip,
-  Flex,
-  Icon,
-} from "metabase/ui";
+import { ActionIcon, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
@@ -43,6 +37,7 @@ import { LayoutMain, LayoutSidebar } from "../Layout";
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
+import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
@@ -68,11 +63,15 @@ export type EditorProps = {
   onCloseEditor?: () => void;
   initialExpressionClause?: Lib.DefinedClauseName | null;
 
-  /** Off outside a popover: the guard swallows clicks page-wide. */
-  withPopoverExitGuard?: boolean;
+  /**
+   * Set when the editor is on the page, not in a popover. It drops the exit
+   * guard, which swallows clicks page-wide, and puts the sidebar in the host's
+   * slot when there is one.
+   */
+  inline?: boolean;
 
-  /** Put the sidebar in the host's slot when it offers one, not in the layout. */
-  withHostedSidebar?: boolean;
+  /** Rendered in the inline toolbar. */
+  shortcutsMenu?: ReactNode;
   initialSource?: string;
 
   onChange: (
@@ -109,8 +108,8 @@ export function Editor(props: EditorProps) {
     hasHeader,
     onCloseEditor,
     initialExpressionClause,
-    withPopoverExitGuard = true,
-    withHostedSidebar = false,
+    inline = false,
+    shortcutsMenu,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -122,7 +121,7 @@ export function Editor(props: EditorProps) {
     useState<ExpressionSidebarName | null>(null);
 
   const sidebarHost = useExpressionSidebarHost();
-  const host = withHostedSidebar ? sidebarHost : null;
+  const host = inline ? sidebarHost : null;
 
   const openSidebar = host ? host.openSidebar : localSidebar;
   const setOpenSidebar = host ? host.setOpenSidebar : setLocalSidebar;
@@ -148,8 +147,7 @@ export function Editor(props: EditorProps) {
   });
 
   const { showModal, closeModal } = useCloseModal({
-    allowPopoverExit:
-      !withPopoverExitGuard || source === "" || !hasSourceChanged,
+    allowPopoverExit: inline || source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -229,6 +227,8 @@ export function Editor(props: EditorProps) {
     setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
+  const canFormat = source.trim() !== "" && error == null && isValidated;
+
   const sidebarTitle =
     openSidebar === "columns"
       ? t`Available columns`
@@ -253,7 +253,12 @@ export function Editor(props: EditorProps) {
 
   return (
     <>
-      <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+      <LayoutMain
+        className={cx(S.wrapper, {
+          [S.formatting]: isFormatting,
+          [S.inline]: inline,
+        })}
+      >
         <CodeMirror
           id={id}
           ref={ref}
@@ -281,45 +286,65 @@ export function Editor(props: EditorProps) {
         />
         <Errors error={isSnippetActive ? null : error} source={source} />
 
-        {source.trim() === "" && !isFormatting && error == null && (
+        {!inline && source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
         )}
 
-        <Flex className={S.toolbar} gap="sm" pt="sm" pr="sm" direction="column">
-          <ButtonTooltip label={t`Function browser`}>
-            <Button
-              aria-label={t`Function browser`}
-              onClick={() => toggleSidebar("functions")}
-              size="sm"
-              variant={openSidebar === "functions" ? "filled" : "subtle"}
-              className={S.toolbarButton}
-              leftSection={<Icon name="function" />}
-            />
-          </ButtonTooltip>
-          <ButtonTooltip label={t`Available columns`}>
-            <Button
-              aria-label={t`Available columns`}
-              onClick={() => toggleSidebar("columns")}
-              size="sm"
-              variant={openSidebar === "columns" ? "filled" : "subtle"}
-              className={S.toolbarButton}
-              leftSection={<Icon name="list" />}
-            />
-          </ButtonTooltip>
-          {source.trim() !== "" && error == null && isValidated && (
-            <ButtonTooltip label={t`Auto-format`}>
+        {inline ? (
+          <InlineToolbar
+            canFormat={
+              source.trim() !== "" &&
+              error == null &&
+              (isValidated || !hasSourceChanged) &&
+              !isFormatting
+            }
+            openSidebar={openSidebar}
+            shortcutsMenu={shortcutsMenu}
+            onFormat={formatExpression}
+            onToggleSidebar={toggleSidebar}
+          />
+        ) : (
+          <Flex
+            className={S.toolbar}
+            gap="sm"
+            pt="sm"
+            pr="sm"
+            direction="column"
+          >
+            <ButtonTooltip label={t`Function browser`}>
               <ActionIcon
-                variant="subtle"
-                aria-label={t`Auto-format`}
-                onClick={formatExpression}
-                className={S.toolbarButton}
-                disabled={isFormatting || error != null}
+                aria-label={t`Function browser`}
+                aria-pressed={openSidebar === "functions"}
+                onClick={() => toggleSidebar("functions")}
+                variant={openSidebar === "functions" ? "filled" : "subtle"}
               >
-                <Icon name="format_code" />
+                <Icon name="function" />
               </ActionIcon>
             </ButtonTooltip>
-          )}
-        </Flex>
+            <ButtonTooltip label={t`Available columns`}>
+              <ActionIcon
+                aria-label={t`Available columns`}
+                aria-pressed={openSidebar === "columns"}
+                onClick={() => toggleSidebar("columns")}
+                variant={openSidebar === "columns" ? "filled" : "subtle"}
+              >
+                <Icon name="list" />
+              </ActionIcon>
+            </ButtonTooltip>
+            {canFormat && (
+              <ButtonTooltip label={t`Auto-format`}>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={t`Auto-format`}
+                  onClick={formatExpression}
+                  disabled={isFormatting}
+                >
+                  <Icon name="format_code" />
+                </ActionIcon>
+              </ButtonTooltip>
+            )}
+          </Flex>
+        )}
 
         {portal}
       </LayoutMain>

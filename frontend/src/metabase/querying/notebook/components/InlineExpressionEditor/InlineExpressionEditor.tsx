@@ -8,6 +8,7 @@ import type * as Lib from "metabase-lib";
 import { Editor } from "../../../components/expressions/Editor";
 import type { EditorChangeMeta } from "../../../components/expressions/Editor/Editor";
 import { Layout, LayoutFooter } from "../../../components/expressions/Layout";
+import { ShortcutsMenu } from "../../../components/expressions/ShortcutsMenu";
 
 import S from "./InlineExpressionEditor.module.css";
 
@@ -24,7 +25,7 @@ export type InlineExpressionEditorProps = {
   /** Absent while the pill is a draft */
   clause?: Lib.Expressionable;
 
-  onCommit: (clause: Lib.ExpressionClause) => void;
+  onCommit: (clause: Lib.ExpressionClause, name?: string) => void;
   initialSource?: string;
   onSourceChange?: (source: string, isValid: boolean) => void;
 
@@ -51,8 +52,12 @@ export function InlineExpressionEditor({
   const [error, setError] = useState<ExpressionError | null>(null);
   const [hasExpression, setHasExpression] = useState(clause != null);
 
-  // Used to remount the editor, which re-formats from the clause in the query.
+  // Used to remount the editor, which re-formats from `editorClause`.
   const [revertCount, setRevertCount] = useState(0);
+
+  // A combine or extract result, shown before the query prop catches up.
+  const [shortcutClause, setShortcutClause] = useState<Lib.ExpressionClause>();
+  const editorClause = shortcutClause ?? clause;
 
   const handleChange = useCallback(
     (
@@ -73,11 +78,24 @@ export function InlineExpressionEditor({
   );
 
   const handleRevert = useCallback(() => {
+    setShortcutClause(undefined);
     setError(null);
     setHasExpression(true);
     onSourceChange?.("", true);
     setRevertCount((count) => count + 1);
   }, [onSourceChange]);
+
+  const applyShortcut = useCallback(
+    (clause: Lib.ExpressionClause, name: string) => {
+      onCommit(clause, name);
+      setShortcutClause(clause);
+      setError(null);
+      setHasExpression(true);
+      onSourceChange?.("", true);
+      setRevertCount((count) => count + 1);
+    },
+    [onCommit, onSourceChange],
+  );
 
   const isValid = error == null && hasExpression;
   const isSaved = clause != null;
@@ -94,8 +112,8 @@ export function InlineExpressionEditor({
         key={revertCount}
         id="expression-content"
         expressionMode={expressionMode}
-        clause={clause}
-        initialClause={clause}
+        clause={editorClause}
+        initialClause={editorClause}
         initialSource={revertCount === 0 ? initialSource : undefined}
         onChange={handleChange}
         query={query}
@@ -106,8 +124,18 @@ export function InlineExpressionEditor({
         reportTimezone={reportTimezone}
         error={error}
         readOnly={readOnly}
-        withPopoverExitGuard={false}
-        withHostedSidebar
+        shortcutsMenu={
+          expressionMode === "expression" &&
+          !readOnly && (
+            <ShortcutsMenu
+              query={query}
+              stageIndex={stageIndex}
+              availableColumns={availableColumns}
+              onSubmit={applyShortcut}
+            />
+          )
+        }
+        inline
       />
 
       {!readOnly && (

@@ -12,9 +12,10 @@ import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { ListSearchField } from "metabase/common/components/ListSearchField";
 import { Markdown } from "metabase/common/components/Markdown";
 import type { HelpText } from "metabase/querying/expressions";
-import { Box, Flex, Icon, Input, Text } from "metabase/ui";
+import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { HighlightExpressionSource } from "../HighlightExpression";
@@ -69,19 +70,17 @@ export function FunctionBrowser({
 
   return (
     <Flex
-      pt="sm"
       direction="column"
       className={S.wrapper}
       data-testid="expression-editor-function-browser"
     >
-      <Input
-        size="sm"
-        mb="sm"
-        mx="lg"
+      <ListSearchField
+        p="sm"
+        className={S.search}
         placeholder={getSearchPlaceholder(expressionMode)}
         value={filter}
         onChange={handleFilterChange}
-        leftSection={<Icon name="search" />}
+        onResetClick={() => setFilter("")}
       />
       <Flex
         component="dl"

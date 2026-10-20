@@ -24,6 +24,7 @@ type ColumnInputProps = {
   label: string;
   value: Lib.ColumnMetadata | null;
   onChange: (column: Lib.ColumnMetadata | null) => void;
+  withPortal?: boolean;
 };
 
 export function ColumnInput({
@@ -33,6 +34,7 @@ export function ColumnInput({
   label,
   value,
   onChange,
+  withPortal = false,
 }: ColumnInputProps) {
   const theme = useMantineTheme();
   const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
@@ -117,7 +119,9 @@ export function ColumnInput({
         closeOnClickOutside
         width="target"
         returnFocus
-        withinPortal={!open} // FIXME: portal situation not good
+        // A portaled dropdown counts as an outside click for a host popover
+        // that does not gate its close on the overlay stack.
+        withinPortal={withPortal || !open}
       >
         <Popover.Target>
           <Button

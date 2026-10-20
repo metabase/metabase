@@ -101,6 +101,21 @@ async function typeExpression(source: string) {
   return input;
 }
 
+async function combineColumns() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Shortcuts" }),
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: /Combine columns/ }),
+  );
+  await userEvent.click(
+    within(await screen.findByTestId("expression-shortcut")).getByRole(
+      "button",
+      { name: "Done" },
+    ),
+  );
+}
+
 describe("Notebook Editor > Expression Step", () => {
   it("should save an expression as soon as it compiles, without waiting for a name", async () => {
     const { getRecentQuery, getExpressionNames } = setup();
@@ -350,5 +365,47 @@ describe("Notebook Editor > Expression Step", () => {
     expect(
       screen.queryByTestId("inline-expression-editor"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("shortcuts", () => {
+    it("should name a new column after the combined columns", async () => {
+      const { getRecentQuery, getExpressionNames } = setup();
+
+      await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+      await combineColumns();
+
+      expect(getExpressionNames(getRecentQuery())).toEqual([
+        expect.stringMatching(/^Combined /),
+      ]);
+    });
+
+    it("should replace a default name", async () => {
+      const { getRecentQuery, getExpressionNames } = setup({
+        query: createQueryWithExpression("New column"),
+      });
+
+      await userEvent.click(screen.getByText("New column"));
+      await combineColumns();
+
+      expect(getExpressionNames(getRecentQuery())).toEqual([
+        expect.stringMatching(/^Combined /),
+      ]);
+    });
+
+    it("should keep a name the user chose", async () => {
+      const { getRecentQuery, getExpressionNames } = setup({
+        query: createQueryWithExpression("Net total"),
+      });
+
+      await userEvent.click(screen.getByText("Net total"));
+      await combineColumns();
+
+      const query = getRecentQuery();
+      const [expression] = Lib.expressions(query, 0);
+      expect(getExpressionNames(query)).toEqual(["Net total"]);
+      expect(Lib.expressionParts(query, 0, expression)).toMatchObject({
+        operator: "concat",
+      });
+    });
   });
 });

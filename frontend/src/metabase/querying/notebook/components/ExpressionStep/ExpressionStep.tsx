@@ -101,6 +101,10 @@ export const ExpressionStep = ({
     [tc, query, stageIndex],
   );
 
+  // Names that a shortcut gave. They are still defaults, so the next shortcut
+  // can replace them. A rename by the user takes the name out of this set.
+  const autoNamesRef = useRef(new Set<string>());
+
   const commitQuery = useCallback(
     (nextQuery: Lib.Query) => {
       queryRef.current = nextQuery;
@@ -110,7 +114,7 @@ export const ExpressionStep = ({
   );
 
   const handleCommit = useCallback(
-    (clause: Lib.ExpressionClause) => {
+    (clause: Lib.ExpressionClause, nextName?: string) => {
       const editor = openEditorRef.current;
       if (editor == null) {
         return;
@@ -122,9 +126,17 @@ export const ExpressionStep = ({
       const existing =
         target.kind === "clause" ? currentExpressions[target.index] : undefined;
 
-      const name = existing
+      const existingName = existing
         ? Lib.displayInfo(currentQuery, stageIndex, existing).displayName
-        : t`New column`;
+        : undefined;
+      const canRename =
+        existingName === undefined ||
+        isDefaultName(existingName) ||
+        autoNamesRef.current.has(existingName);
+      const name =
+        nextName !== undefined && canRename
+          ? nextName
+          : (existingName ?? t`New column`);
       const uniqueName = getUniqueClauseName(
         currentQuery,
         stageIndex,
@@ -132,6 +144,9 @@ export const ExpressionStep = ({
         name,
       );
       const namedClause = Lib.withExpressionName(clause, uniqueName);
+      if (nextName !== undefined && canRename) {
+        autoNamesRef.current.add(uniqueName);
+      }
 
       if (existing) {
         commitQuery(
@@ -170,6 +185,15 @@ export const ExpressionStep = ({
         expression,
         name,
       );
+      const oldName = Lib.displayInfo(
+        currentQuery,
+        stageIndex,
+        expression,
+      ).displayName;
+      if (uniqueName === oldName) {
+        return;
+      }
+      autoNamesRef.current.delete(oldName);
       commitQuery(
         Lib.replaceClause(
           currentQuery,
@@ -345,6 +369,12 @@ export const ExpressionStep = ({
 };
 
 const noop = () => {};
+
+// "New column", or "New column (2)" after the unique-name suffix.
+const isDefaultName = (name: string) => {
+  const base = t`New column`;
+  return name.startsWith(base) && /^( \(\d+\))?$/.test(name.slice(base.length));
+};
 
 const pendingKey = (target: EditorTarget) =>
   target.kind === "clause" ? `clause:${target.index}` : `draft:${target.id}`;

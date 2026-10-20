@@ -92,11 +92,13 @@ export function ExpressionPill({
       data-testid={isActive ? "selected-expression-pill" : "expression-pill"}
     >
       {hasUnsavedChanges && (
-        <Tooltip label={t`Invalid expressions aren't saved to your question.`}>
+        <Tooltip
+          label={t`Invalid or empty expressions aren't saved to your question.`}
+        >
           <span
             className={S.unsavedIndicator}
             data-testid="unsaved-indicator"
-            aria-label={t`Invalid expressions aren't saved to your question.`}
+            aria-label={t`Invalid or empty expressions aren't saved to your question.`}
           />
         </Tooltip>
       )}

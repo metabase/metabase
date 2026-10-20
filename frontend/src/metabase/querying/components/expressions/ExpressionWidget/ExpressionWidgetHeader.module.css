@@ -1,23 +1,7 @@
 .Header {
-  color: var(--mb-color-text-secondary);
-  padding: 1rem 1.5rem;
+  padding: 0 var(--mantine-spacing-md);
   border-bottom: 1px solid var(--mb-color-border-neutral);
   display: flex;
   align-items: center;
   height: 3rem;
-
-  .HeaderButton[data-variant="subtle"] {
-    --mb-button-padding-x: 0px;
-
-    color: var(--mb-color-text-disabled);
-
-    &:not(:disabled):hover {
-      color: var(--mb-color-core-brand);
-    }
-
-    &:disabled {
-      opacity: 1;
-      cursor: default;
-    }
-  }
 }

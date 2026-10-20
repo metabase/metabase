@@ -32,6 +32,7 @@ export function AvailableColumnsBrowser({
       // tracking a selection.
       hasInitialFocus={false}
       checkIsColumnSelected={notSelected}
+      width="100%"
       onSelect={(column) => onColumnClick?.(column)}
       data-testid="expression-editor-columns-browser"
     />

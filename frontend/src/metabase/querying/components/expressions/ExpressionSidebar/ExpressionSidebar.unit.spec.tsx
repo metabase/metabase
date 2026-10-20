@@ -34,7 +34,7 @@ function setup({ hosted }: { hosted: boolean }) {
         expressionMode="expression"
         availableColumns={Lib.expressionableColumns(query, 0)}
         onChange={jest.fn()}
-        withHostedSidebar={hosted}
+        inline
       />
     </Layout>
   );

@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { AccordionList } from "metabase/common/components/AccordionList";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { getExample } from "metabase/querying/drills/utils/column-extract-drill";
-import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
+import { Box, Text, Title } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
@@ -145,12 +147,22 @@ function ExtractionPicker({
 }) {
   const info = Lib.displayInfo(query, stageIndex, column);
 
-  const extractions = useMemo(
-    () =>
-      Lib.columnExtractions(query, column).map((extraction) => ({
-        extraction,
-        info: Lib.displayInfo(query, stageIndex, extraction),
-      })),
+  const sections = useMemo(
+    () => [
+      {
+        items: Lib.columnExtractions(query, column).map(
+          (extraction): ExtractionItem => {
+            const info = Lib.displayInfo(query, stageIndex, extraction);
+            return {
+              name: info.displayName,
+              example: getExample(info) ?? "",
+              info,
+              extraction,
+            };
+          },
+        ),
+      },
+    ],
     [query, stageIndex, column],
   );
 
@@ -160,52 +172,30 @@ function ExtractionPicker({
         title={t`Select part of '${info.longDisplayName}' to extract`}
         onBack={onCancel}
       />
-      <Box p="sm">
-        <Stack gap={0}>
-          {extractions.map((extraction) => (
-            <ExtractColumnButton
-              key={extraction.info.tag}
-              title={extraction.info.displayName}
-              example={getExample(extraction.info) ?? ""}
-              onClick={() => onSelect(extraction.info, extraction.extraction)}
-            />
-          ))}
-        </Stack>
+      <Box py="sm">
+        <AccordionList<ExtractionItem>
+          sections={sections}
+          alwaysExpanded
+          width="100%"
+          maxHeight={Infinity}
+          style={{ color: color("core-brand") }}
+          renderItemName={(item) => item.name}
+          renderItemDescription={() => undefined}
+          renderItemExtra={(item) => (
+            <Text size="sm" px="sm" className={styles.example}>
+              {item.example}
+            </Text>
+          )}
+          onChange={(item) => onSelect(item.info, item.extraction)}
+        />
       </Box>
     </>
   );
 }
 
-function ExtractColumnButton({
-  title,
-  example,
-  onClick,
-}: {
-  title: string;
+type ExtractionItem = {
+  name: string;
   example: string;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      variant="subtle"
-      type="button"
-      p="sm"
-      mb="xxs"
-      className={styles.button}
-      classNames={{
-        inner: styles.inner,
-        label: styles.label,
-      }}
-      onClick={onClick}
-    >
-      <Flex align="center" justify="space-between" gap="1rem">
-        <Text color="text-primary" className={styles.content} fw="bold" p={0}>
-          {title}
-        </Text>
-        <Text color="text-disabled" size="sm" className={styles.example}>
-          {example}
-        </Text>
-      </Flex>
-    </Button>
-  );
-}
+  info: Lib.ColumnExtractionInfo;
+  extraction: Lib.ColumnExtraction;
+};

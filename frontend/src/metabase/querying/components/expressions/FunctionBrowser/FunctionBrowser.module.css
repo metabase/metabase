@@ -3,6 +3,10 @@
   min-height: 0;
 }
 
+.search {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
 .results {
   flex: 1;
   min-height: 0;

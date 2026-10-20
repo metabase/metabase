@@ -21,8 +21,13 @@
   right: 0;
 }
 
-.toolbarButton {
-  aspect-ratio: 1;
+.inlineToolbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm);
 }
 
 .editor {
@@ -31,6 +36,10 @@
   box-sizing: border-box;
   color: var(--mb-color-text-primary);
   margin-right: calc(28px + var(--mantine-spacing-sm));
+
+  .inline & {
+    margin-right: calc(4 * 32px + 4 * var(--mantine-spacing-sm));
+  }
 
   :global(.cm-gutters) {
     border-top-left-radius: var(--mantine-radius-xs);

@@ -40,6 +40,7 @@ import bookmark_filled_component from "./bookmark_filled.svg?component";
 import boxplot_component from "./boxplot.svg?component";
 import breakout_component from "./breakout.svg?component";
 import broken_link_component from "./broken_link.svg?component";
+import broom_component from "./broom.svg?component";
 import bubble_component from "./bubble.svg?component";
 import bug_component from "./bug.svg?component";
 import burger_component from "./burger.svg?component";
@@ -165,6 +166,7 @@ import list_component from "./list.svg?component";
 import location_component from "./location.svg?component";
 import lock_component from "./lock.svg?component";
 import lock_filled_component from "./lock_filled.svg?component";
+import magic_wand_component from "./magic_wand.svg?component";
 import mail_component from "./mail.svg?component";
 import mail_at_component from "./mail_at.svg?component";
 import mail_filled_component from "./mail_filled.svg?component";
@@ -348,6 +350,7 @@ export const Icons: Record<IconName, React.VFC> = {
   boxplot: boxplot_component,
   breakout: breakout_component,
   broken_link: broken_link_component,
+  broom: broom_component,
   bubble: bubble_component,
   burger: burger_component,
   cake: cake_component,
@@ -469,6 +472,7 @@ export const Icons: Record<IconName, React.VFC> = {
   location: location_component,
   lock: lock_component,
   lock_filled: lock_filled_component,
+  magic_wand: magic_wand_component,
   mail: mail_component,
   mail_at: mail_at_component,
   mail_filled: mail_filled_component,
