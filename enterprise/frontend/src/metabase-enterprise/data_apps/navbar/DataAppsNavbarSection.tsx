@@ -2,12 +2,12 @@ import { t } from "ttag";
 
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import {
+  PaddedSidebarLink,
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
-
-import { DataAppNavbarLink } from "./DataAppNavbarLink";
 
 export function DataAppsNavbarSection({
   onItemSelect,
@@ -30,11 +30,16 @@ export function DataAppsNavbarSection({
         aria-label={t`Data apps`}
       >
         {dataApps.map((dataApp) => (
-          <DataAppNavbarLink
+          <PaddedSidebarLink
             key={dataApp.name}
-            dataApp={dataApp}
-            onItemSelect={onItemSelect}
-          />
+            icon="app"
+            onClick={onItemSelect}
+            rel="noopener noreferrer"
+            target="_blank"
+            url={Urls.dataApp(dataApp.name)}
+          >
+            {dataApp.display_name}
+          </PaddedSidebarLink>
         ))}
       </CollapseSection>
     </SidebarSection>
