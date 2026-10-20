@@ -187,8 +187,7 @@
                        (get-in redo [:structured-output :query-json])))))))))))
 
 (deftest top-level-and-filter-split-into-separate-filters-end-to-end-test
-  (testing (str "An LLM-authored `filters: [[\"and\" ...]]` comes out as separate filters, so the\n"
-                "notebook shows each one individually instead of one merged custom expression (BOT-1446).")
+  (testing "A top-level `and` becomes separate filters in the constructed MBQL 5 query."
     (with-mp-and-stubs!
       (fn []
         (let [q (get-in (construct/execute-representations-query
