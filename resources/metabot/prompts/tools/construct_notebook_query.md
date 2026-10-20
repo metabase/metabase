@@ -68,15 +68,15 @@ Filters — one entry per condition; entries are ANDed together:
 
 ```json
 "filters": [[">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
-            ["=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "STATUS"]], "paid"]]
+            ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]
 ```
 
-Combine conditions inside a single entry only when they need OR logic — use `or` (with `and` nested inside it if needed), e.g. "paid, or over 100":
+Combine conditions inside a single entry only when they need OR logic – use `or` (with `and` nested inside it if needed), e.g. "quantity at most 5, or total over 100":
 
 ```json
 "filters": [["or", {},
   [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
-  ["=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "STATUS"]], "paid"]]]
+  ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]]
 ```
 
 Aggregation (on a field, plus `count`):
