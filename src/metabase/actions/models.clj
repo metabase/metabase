@@ -41,12 +41,15 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
-(derive :model/QueryAction :hook/search-index)
+(doto :model/QueryAction
+  (derive :hook/search-index)
+  (derive :hook/dependencies))
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
@@ -635,14 +638,13 @@
   {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
    :skip      [;; always re-derived from public_uuid on import
                :public_uuid_prefix]
-   :transform {:created_at             (serdes/date)
-               :type                   (serdes/kw)
+   :transform {:type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :collection_id          (serdes/fk :model/Collection)
                :model_id               (serdes/fk :model/Card)
-               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
-               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
+               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by :name} opts))
+               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by :name} opts))
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}

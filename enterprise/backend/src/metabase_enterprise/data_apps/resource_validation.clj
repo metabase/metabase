@@ -253,23 +253,25 @@
                  (tru "{0} names collection {1}, but the app already has a collection, and a data app''s collection cannot be changed."
                       manifest-path collection-entity-id))])
      (for [{:keys [id entity_id] collection-namespace :namespace} collections
-           :let  [message (cond
+           :let  [path    (or (file-of "Collection" entity_id) manifest-path)
+                  message (cond
                             (not= :data-apps (keyword collection-namespace))
-                            (tru "Collection {0} already exists outside the data-apps namespace, so it can''t become a data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
-                                 entity_id)
+                            (tru "{0} defines collection {1}, which already exists outside the data-apps namespace, so it can''t become a data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
+                                 path entity_id)
 
                             (not (owned? id))
-                            (tru "Collection {0} already exists and is another data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
-                                 entity_id))]
+                            (tru "{0} defines collection {1}, which already exists and is another data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
+                                 path entity_id))]
            :when message]
-       (problem (or (file-of "Collection" entity_id) manifest-path) message))
+       (problem path message))
      (for [[model rows] [["Card"   (data-apps.db/cards-by-entity-ids (entity-ids-of "Card"))]
                          ["Action" (data-apps.db/actions-by-entity-ids (entity-ids-of "Action"))]]
            {:keys [entity_id collection_id]} rows
-           :when (not (in-collection? collection_id))]
-       (problem (file-of model entity_id)
-                (tru "{0} {1} already exists outside this data app''s collection, so the app can''t load it. Move it back if it belongs to this app."
-                     model entity_id))))))
+           :when (not (in-collection? collection_id))
+           :let  [path (file-of model entity_id)]]
+       (problem path
+                (tru "{0} defines {1} {2}, which already exists outside this data app''s collection, so the app can''t load it. Move it back if it belongs to this app."
+                     path model entity_id))))))
 
 (defn- model-of [entity]
   (:model (last (:serdes/meta entity))))
@@ -334,8 +336,9 @@
                     (assoc resource :manifest path))]
     (for [[[model entity-id] defined-by] (group-by (juxt :model (comp :entity_id :entity)) resources)
           :when (< 1 (count (into #{} (map :manifest) defined-by)))
-          {:keys [path]} defined-by]
-      (problem path (tru "{0} {1} is defined by more than one data app: {2}." model entity-id (str/join ", " (map :path defined-by)))))))
+          ;; each app that names a collection finds every file of it, so a file can be here once per app
+          :let  [paths (distinct (map :path defined-by))]]
+      (problem (first paths) (tru "{0} {1} is defined by more than one data app: {2}." model entity-id (str/join ", " paths))))))
 
 (defn- shared-entity-id-problems
   "Two manifests can't carry one entity ID: a load keeps one app, and the other's collection is left with no owner."
@@ -410,17 +413,19 @@
 
 (defn problems
   "The problems with the data apps among the entity files `files` (`{:path :entity}`, every entity file of the
-  snapshot), each as `{:file :message}`. An app whose resources have a problem can't be loaded as the author meant
-  it, so an import that sees one fails naming the file."
+  snapshot), each once, as `{:file :message}` with a message that names the file. An app whose resources have a
+  problem can't be loaded as the author meant it, so an import that sees one fails listing the messages."
   [files]
   (let [manifests (manifests-among files)
         defined   (defined-dependencies files)]
-    (concat
-     (shared-entity-id-problems manifests)
-     (shared-slug-problems manifests)
-     (taken-slug-problems manifests)
-     (shared-collection-problems manifests)
-     (shared-resource-problems manifests files)
-     (child-collection-problems manifests files)
-     (other-content-problems manifests files)
-     (mapcat #(app-problems defined % files) manifests))))
+    (distinct
+     (concat
+      (shared-entity-id-problems manifests)
+      (shared-slug-problems manifests)
+      (taken-slug-problems manifests)
+      (shared-collection-problems manifests)
+      (shared-resource-problems manifests files)
+      (child-collection-problems manifests files)
+      (other-content-problems manifests files)
+      ;; apps that name one collection each find the problems of its files
+      (mapcat #(app-problems defined % files) manifests)))))

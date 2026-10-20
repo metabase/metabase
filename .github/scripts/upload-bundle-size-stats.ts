@@ -30,7 +30,9 @@ async function main() {
     // saved on a successful upload, so this point is re-attempted on the next
     // master build and nothing is silently dropped.
     const message = error instanceof Error ? error.message : String(error);
-    console.log(`::warning::Bundle-size upload failed after retries; leaving run green: ${message}`);
+    console.log(
+      `::warning::Bundle-size upload failed after retries; leaving run green: ${message}`,
+    );
     setOutput("uploaded", "false");
   }
 }

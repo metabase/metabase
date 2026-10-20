@@ -1,36 +1,45 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback } from "react";
+import cx from "classnames";
+import { type ReactNode, useCallback } from "react";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Box, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
-import {
-  ActionCardContainer,
-  ActionHeader,
-  ActionRunButtonContainer,
-  ActionSubtitle,
-  ActionSubtitlePart,
-  ActionTitle,
-  CodeBlock,
-  ImplicitActionCardContentRoot,
-} from "./ModelActionListItem.styled";
+import S from "./ModelActionListItem.module.css";
 
-interface Props {
-  action: WritebackAction;
-  actionUrl: string;
-  canRun: boolean;
-  canEdit: boolean;
-  canArchive: boolean;
-  onArchive: (action: WritebackAction) => void;
+interface CodeBlockProps {
+  children: ReactNode;
 }
 
-function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
+function CodeBlock({ children }: CodeBlockProps) {
+  return (
+    <Box
+      component="pre"
+      className={cx(CS.textMonospace, CS.textPreWrap)}
+      p="lg"
+      m={0}
+      fz="xs"
+      c="text-primary-inverse"
+      bg="text-primary"
+      bdrs="xs"
+    >
+      {children}
+    </Box>
+  );
+}
+
+interface QueryActionCardContentProps {
+  action: WritebackQueryAction;
+}
+
+function QueryActionCardContent({ action }: QueryActionCardContentProps) {
   const question = Question.create({ dataset_query: action.dataset_query });
   if (!question.isNative()) {
     return (
@@ -48,20 +57,29 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
 
 function ImplicitActionCardContent() {
   return (
-    <ImplicitActionCardContentRoot>
-      <div>{t`Auto tracking schema`}</div>
-    </ImplicitActionCardContentRoot>
+    <Flex align="center" p="lg" bg="background_page-tertiary" bdrs="xs">
+      <Text c="text-secondary">{t`Auto tracking schema`}</Text>
+    </Flex>
   );
 }
 
-function ModelActionListItem({
+interface ModelActionListItemProps {
+  action: WritebackAction;
+  actionUrl: string;
+  canRun: boolean;
+  canEdit: boolean;
+  canArchive: boolean;
+  onArchive: (action: WritebackAction) => void;
+}
+
+export function ModelActionListItem({
   action,
   actionUrl,
   canRun,
   canEdit,
   canArchive,
   onArchive,
-}: Props) {
+}: ModelActionListItemProps) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
   const [
@@ -79,22 +97,30 @@ function ModelActionListItem({
 
   return (
     <>
-      <ActionHeader>
+      <Flex align="flex-end" justify="space-between">
         <div>
-          <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
-          <ActionSubtitle>
+          <Box
+            component={Link}
+            className={cx(CS.textDefault, CS.textBrandHover)}
+            to={actionUrl}
+            fz="1rem"
+            fw={700}
+          >
+            {action.name}
+          </Box>
+          <Text mt="xxs" size="sm" fw={700} lh="0.875rem" c="text-secondary">
             {action.type === "implicit" && (
-              <ActionSubtitlePart>{t`Basic action`}</ActionSubtitlePart>
+              <span className={S.dotSeparated}>{t`Basic action`}</span>
             )}
             {action.public_uuid && (
-              <ActionSubtitlePart>{t`Public action form`}</ActionSubtitlePart>
+              <span className={S.dotSeparated}>{t`Public action form`}</span>
             )}
             {action.creator && (
-              <ActionSubtitlePart>
+              <span className={S.dotSeparated}>
                 {t`Created by ${action.creator.common_name}`}
-              </ActionSubtitlePart>
+              </span>
             )}
-          </ActionSubtitle>
+          </Text>
         </div>
         <Menu position="bottom-end">
           <Menu.Target>
@@ -123,8 +149,8 @@ function ModelActionListItem({
             )}
           </Menu.Dropdown>
         </Menu>
-      </ActionHeader>
-      <ActionCardContainer>
+      </Flex>
+      <Box pos="relative" mt="md">
         {action.type === "query" ? (
           <QueryActionCardContent action={action} />
         ) : action.type === "implicit" ? (
@@ -132,19 +158,13 @@ function ModelActionListItem({
         ) : null}
         {canRun && (
           <>
-            <ActionRunButtonContainer>
+            <Box pos="absolute" top="0.5rem" right="0.5rem">
               <Tooltip label={t`Run`}>
-                <ActionIcon
-                  variant="subtle"
-                  bg="background_page-primary"
-                  c="text-primary"
-                  aria-label={t`Run`}
-                  onClick={openExecuteModal}
-                >
+                <ActionIcon aria-label={t`Run`} onClick={openExecuteModal}>
                   <Icon name="play" />
                 </ActionIcon>
               </Tooltip>
-            </ActionRunButtonContainer>
+            </Box>
             <ActionExecuteModal
               opened={executeModalOpened}
               actionId={action.id}
@@ -152,11 +172,8 @@ function ModelActionListItem({
             />
           </>
         )}
-      </ActionCardContainer>
+      </Box>
       {confirmationModal}
     </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModelActionListItem;

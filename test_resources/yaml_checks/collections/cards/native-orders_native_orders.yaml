@@ -1,7 +1,6 @@
 name: Native Orders
 description: A native SQL query
 entity_id: native-orders
-created_at: '2026-01-01T00:00:00.000000Z'
 creator_id: test@metabase.com
 display: table
 archived: false
@@ -69,9 +68,7 @@ visualization_settings:
   column_settings: null
 card_schema: 23
 serdes/meta:
-- id: native-orders
-  label: native_orders
-  model: Card
+- model: Card
 archived_directly: false
 dashboard_id: null
 document_id: null

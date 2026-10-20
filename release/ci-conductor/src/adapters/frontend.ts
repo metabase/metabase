@@ -63,7 +63,9 @@ export function normalizeFrontendJunit(
     `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} ${ignorePassingTests ? "failing " : ""}test(s)`,
   );
   for (const test of failures) {
-    log(`  ${test.status ?? 'failure'}: ${test.path || "(no describe path)"} / ${test.name}`);
+    log(
+      `  ${test.status ?? "failure"}: ${test.path || "(no describe path)"} / ${test.name}`,
+    );
   }
   return failures;
 }

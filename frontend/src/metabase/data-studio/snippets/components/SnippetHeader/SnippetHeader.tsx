@@ -111,7 +111,7 @@ function SnippetNameInput({ readOnly, snippet }: SnippetNameInputProps) {
     if (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to update snippet name`),
-        icon: "warning",
+        variant: "negative",
       });
     } else {
       sendToast({

@@ -122,6 +122,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
         >
           <Tooltip withinPortal={false} label={t`View as table`}>
             <ActionIcon
+              variant="subtle"
               data-testid="visualizer-view-as-table-button"
               onClick={() => {
                 trackVisualizerViewAsTableClicked();

@@ -24,7 +24,7 @@ export function getHeaderLabel(
     case "transform":
       return t`Transforms that use ${nodeLabel}`;
     case "snippet":
-      return t`Snippets that use ${nodeLabel}`;
+      return t`SQL snippets that use ${nodeLabel}`;
     case "dashboard":
       return t`Dashboards that use ${nodeLabel}`;
     case "document":
@@ -35,5 +35,7 @@ export function getHeaderLabel(
       return t`Segments that use ${nodeLabel}`;
     case "measure":
       return t`Measures that use ${nodeLabel}`;
+    case "action":
+      return t`Data actions that use ${nodeLabel}`;
   }
 }

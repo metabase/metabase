@@ -204,7 +204,7 @@ export const NotificationsAdminPage = () => {
         trackAlertsManagementAlertsDeleted(triggeredFrom, "failure", count);
         dispatch(
           addUndo({
-            icon: "warning",
+            variant: "negative",
             message: t`Could not delete alerts.`,
           }),
         );
@@ -266,7 +266,7 @@ export const NotificationsAdminPage = () => {
         trackAlertsManagementOwnerChanged("failure", count);
         dispatch(
           addUndo({
-            icon: "warning",
+            variant: "negative",
             message: t`Could not change owner.`,
           }),
         );

@@ -194,7 +194,7 @@ export const DatabaseCachingEditor = () => {
         } catch {
           dispatch(
             addUndo({
-              icon: "warning",
+              variant: "negative",
               message: t`Could not reset the caching policies.`,
             }),
           );
@@ -250,8 +250,6 @@ export const DatabaseCachingEditor = () => {
                 <Tooltip label={t`Reset all to default`}>
                   <ActionIcon
                     size="lg"
-                    c="icon-primary"
-                    bd="1px solid var(--mb-color-border-neutral)"
                     aria-label={t`Reset all to default`}
                     onClick={handleResetAllToDefault}
                   >

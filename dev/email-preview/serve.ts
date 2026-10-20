@@ -49,12 +49,16 @@ const server = Bun.serve({
 
 const url = `http://localhost:${server.port}/`;
 console.log(`📧 Email template preview → ${url}`);
-console.log(`   Templates: src/metabase/channel/email/*.hbs (edits reload live)`);
+console.log(
+  `   Templates: src/metabase/channel/email/*.hbs (edits reload live)`,
+);
 
 if (!process.env.EMAIL_DEV_NO_OPEN) {
   const opener =
-    process.platform === "darwin" ? "open"
-    : process.platform === "win32" ? "start"
-    : "xdg-open";
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "start"
+        : "xdg-open";
   Bun.spawn([opener, url], { stdout: "ignore", stderr: "ignore" });
 }

@@ -647,7 +647,9 @@
   (binding [js.svg/*chart-size* {:width       w-px
                                  :height      h-px
                                  :scale       common/chart-supersample
-                                 :fit-within? true}]
+                                 :fit-within? true
+                                 :grid-size   (when (and (:size_x dashcard) (:size_y dashcard))
+                                                {:width (:size_x dashcard) :height (:size_y dashcard)})}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
