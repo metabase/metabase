@@ -1658,10 +1658,26 @@
                                             :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
                                             :state         "test-state")]
           (is (= {:error             "invalid_scope"
-                  :error_description (str "The requested scopes are not accepted by the requested resource "
-                                          "http://localhost:3000" (mcp/mcp-canonical-path)
-                                          ". The current site URL is http://localhost:3000. Send the URL of the MCP server.")}
-                 (:body response))))))))
+                  :error_description (str "The requested scopes are not accepted by the requested resource. "
+                                          "The MCP server's resource URL is http://localhost:3000"
+                                          (mcp/mcp-canonical-path) ".")}
+                 (:body response))))
+        (testing "GHY-4969: the error_description never echoes the client's resource, which may hold characters
+                  RFC 6749 forbids there (it allows only printable ASCII)"
+          (let [resource  "https://example.com/‮evilé"
+                client-id (:client_id (create-test-client! {:scopes ["agent:content:read"]}))
+                response  (authorize-request! 400
+                                              :client_id     client-id
+                                              :scope         "agent:content:read"
+                                              :redirect_uri  "https://example.com/callback"
+                                              :response_type "code"
+                                              :resource      resource
+                                              :state         "test-state")
+                desc      (get-in response [:body :error_description])]
+            (is (= "invalid_scope" (get-in response [:body :error])))
+            (is (string? desc))
+            (is (not (str/includes? desc "evil")))
+            (is (re-matches #"[\x20-\x21\x23-\x5B\x5D-\x7E]*" desc))))))))
 
 (deftest authorize-drops-unregistered-scopes-test
   (testing "GHY-4542: a scope that is not registered via `defscope` is dropped from the request rather than
@@ -2126,7 +2142,9 @@
                           {:scope "agent:content:read agent:query:run"}
                           "agent:content:write")]
             (is (= {:error             "invalid_scope"
-                    :error_description "No resource was requested, so no MCP scopes can be granted."}
+                    :error_description (str "No resource was requested, so no MCP scopes can be granted. "
+                                            "Send the MCP server's resource URL, which is http://localhost:3000"
+                                            (mcp/mcp-canonical-path) ".")}
                    (:body response)))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope

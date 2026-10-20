@@ -157,14 +157,15 @@
   "The resource parameter must be an absolute URI without a fragment.")
 
 (defn- narrowed-away-scope-description
+  "The `error_description` for an authorization request in which no requested scope is accepted by `resources`."
   [resources]
-  (if (empty? resources)
-    "No resource was requested, so no MCP scopes can be granted."
-    (format "The requested scopes are not accepted by the requested resource %s. The current site URL is %s. Send the URL of the MCP server."
-            (if (string? resources)
-              resources
-              (str/join ", " resources))
-            (system/site-url))))
+  ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
+  (let [mcp-resource (str (system/site-url) (mcp/mcp-canonical-path))]
+    (if (empty? resources)
+      (str "No resource was requested, so no MCP scopes can be granted. "
+           "Send the MCP server's resource URL, which is " mcp-resource ".")
+      (str "The requested scopes are not accepted by the requested resource. "
+           "The MCP server's resource URL is " mcp-resource "."))))
 
 (defn- authorization-server-metadata-url
   "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
@@ -524,7 +525,7 @@
                                        {:oauth-error       "invalid_scope"
                                         :error-description (no-supported-scopes-description)})))]
     (or (narrow-scope-to-resource (:resource parsed) registered)
-        (throw (ex-info (format "no requested scope is accepted by the named resource %s" (pr-str (:resource parsed)))
+        (throw (ex-info "no requested scope is accepted by the named resource"
                         {:oauth-error       "invalid_scope"
                          :error-description (narrowed-away-scope-description (:resource parsed))
                          :resource          (:resource parsed)})))))
