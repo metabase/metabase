@@ -36,7 +36,8 @@
 
 (defenterprise filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which the current user does not have data model editing permissions.
-  Admin-only on OSS."
+  Admin-only on OSS. Requests with `include_editable_data_model` skip the read check and rely on this filter alone, so
+  it must keep nothing the user cannot edit."
   metabase-enterprise.advanced-permissions.common
   [tables]
   (if (mi/superuser?) tables (empty tables)))
