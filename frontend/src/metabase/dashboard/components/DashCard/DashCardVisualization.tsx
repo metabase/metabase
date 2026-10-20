@@ -446,18 +446,19 @@ export function DashCardVisualization({
     [onChangeCardAndRun, findCardById],
   );
 
-  const getCardHref = useMemo(
-    () =>
-      getHref &&
-      ((nextCard?: SeriesCard) => {
-        if (!nextCard) {
-          return getHref();
-        }
-        const previousCard = findCardById(nextCard.id);
-        return previousCard ? getHref({ nextCard, previousCard }) : undefined;
-      }),
-    [getHref, findCardById],
-  );
+  const getCardHref = useMemo(() => {
+    if (!getHref) {
+      return;
+    }
+
+    return (nextCard?: SeriesCard) => {
+      if (!nextCard) {
+        return getHref();
+      }
+      const previousCard = findCardById(nextCard.id);
+      return previousCard ? getHref({ nextCard, previousCard }) : undefined;
+    };
+  }, [getHref, findCardById]);
 
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
