@@ -812,7 +812,9 @@ describe("scenarios > data studio > datamodel", () => {
       H.commitToRepo();
       H.configureGitAndPullChanges("read-write");
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-      H.updateEnterpriseSettings({ "remote-sync-type": "read-only" });
+      cy.request("POST", "/api/ee/remote-sync/export", { branch: "main" });
+      H.pollForTask({ taskName: "export" });
+      H.configureGitAndPullChanges("read-only");
 
       [ORDERS_ID, PRODUCTS_ID].forEach(verifyTableIsNotWritable);
     });
