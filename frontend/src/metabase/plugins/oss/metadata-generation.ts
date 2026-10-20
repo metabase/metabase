@@ -4,7 +4,7 @@ import type { DatabaseId, Table } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
 
-export type MetadataGenerationDatabasePaneProps = {
+export type MetadataGenerationDatabaseButtonProps = {
   databaseId: DatabaseId;
 };
 
@@ -14,13 +14,14 @@ export type MetadataGenerationTableButtonProps = {
 
 type MetadataGenerationPlugin = {
   isEnabled: boolean;
-  DatabasePane: ComponentType<MetadataGenerationDatabasePaneProps>;
+  /** The "Generate metadata" button of the database details panel. */
+  DatabaseButton: ComponentType<MetadataGenerationDatabaseButtonProps>;
   TableButton: ComponentType<MetadataGenerationTableButtonProps>;
 };
 
 const getDefaultPluginMetadataGeneration = (): MetadataGenerationPlugin => ({
   isEnabled: false,
-  DatabasePane: () => null,
+  DatabaseButton: () => null,
   TableButton: () => null,
 });
 

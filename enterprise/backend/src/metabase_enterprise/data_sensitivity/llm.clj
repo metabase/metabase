@@ -431,8 +431,10 @@
       s)))
 
 (mu/defn parse-response :- ::parsed
-  "Turn the model's `{:fields [...]}` into one entry per input field, keyed by name. Entries naming an unknown field
-  are counted and ignored; fields with no entry are dropped. When a name appears twice the first entry wins.
+  "Turn the model's `{:fields [...]}` into one entry per input field, keyed by name. The entries may have string or
+  keyword keys: the structured call keywordizes only the top-level names of the tool arguments, and nested objects
+  stay as the model wrote them. Entries naming an unknown field are counted and ignored; fields with no entry are
+  dropped. When a name appears twice the first entry wins.
 
   Only the proposals of `attributes` (default [[default-attributes]]) are read. With `:data_sensitivity`, an invalid
   category drops the field and `UNSURE` abstains; without it, every entry is `:labeled`. An invalid semantic type, or
@@ -450,50 +452,52 @@
          counts       (volatile! zero-counts)
          count!       (fn [k] (vswap! counts update k inc))
          parsed       (reduce
-                       (fn [acc {:keys [name reasoning data_sensitivity confidence semantic_type description]}]
-                         (cond
-                           (not (contains? known name))
-                           (do (count! :dropped-unknown) acc)
+                       (fn [acc entry]
+                         (let [{:keys [name reasoning data_sensitivity confidence semantic_type description]}
+                               (update-keys entry keyword)]
+                           (cond
+                             (not (contains? known name))
+                             (do (count! :dropped-unknown) acc)
 
-                           (contains? acc name)
-                           acc
+                             (contains? acc name)
+                             acc
 
-                           :else
-                           (let [{:keys [base_type effective_type] :as field} (get known name)
-                                 semantic-type (cond
-                                                 (or (not (attributes :semantic_type))
-                                                     (nil? semantic_type)
-                                                     (= no-semantic-type semantic_type))
-                                                 nil
+                             :else
+                             (let [{:keys [base_type effective_type] :as field} (get known name)
+                                   semantic-type (cond
+                                                   (or (not (attributes :semantic_type))
+                                                       (nil? semantic_type)
+                                                       (= no-semantic-type semantic_type))
+                                                   nil
 
-                                                 (not (contains? semantic-type-set semantic_type))
-                                                 (do (count! :semantic-dropped) nil)
+                                                   (not (contains? semantic-type-set semantic_type))
+                                                   (do (count! :semantic-dropped) nil)
 
-                                                 (not (semantic-type-fits? (keyword semantic_type)
-                                                                           (or effective_type base_type)))
-                                                 (do (count! :semantic-misfit) nil)
+                                                   (not (semantic-type-fits? (keyword semantic_type)
+                                                                             (or effective_type base_type)))
+                                                   (do (count! :semantic-misfit) nil)
 
-                                                 :else
-                                                 (keyword semantic_type))
-                                 base          (cond-> {:confidence    confidence
-                                                        :semantic-type semantic-type
-                                                        :reasoning     reasoning}
-                                                 description? (assoc :description
-                                                                     (proposed-description field description count!)))]
-                             (assoc acc name
-                                    (cond
-                                      (not sensitivity?)
-                                      (assoc base :data-sensitivity nil :status :labeled)
+                                                   :else
+                                                   (keyword semantic_type))
+                                   base          (cond-> {:confidence    confidence
+                                                          :semantic-type semantic-type
+                                                          :reasoning     reasoning}
+                                                   description? (assoc :description
+                                                                       (proposed-description field description count!)))]
+                               (assoc acc name
+                                      (cond
+                                        (not sensitivity?)
+                                        (assoc base :data-sensitivity nil :status :labeled)
 
-                                      (= unsure data_sensitivity)
-                                      (assoc base :data-sensitivity nil :status :abstain)
+                                        (= unsure data_sensitivity)
+                                        (assoc base :data-sensitivity nil :status :abstain)
 
-                                      (contains? category-set data_sensitivity)
-                                      (assoc base :data-sensitivity (keyword data_sensitivity) :status :labeled)
+                                        (contains? category-set data_sensitivity)
+                                        (assoc base :data-sensitivity (keyword data_sensitivity) :status :labeled)
 
-                                      :else
-                                      (do (count! :dropped-invalid)
-                                          (assoc base :data-sensitivity nil :status :dropped)))))))
+                                        :else
+                                        (do (count! :dropped-invalid)
+                                            (assoc base :data-sensitivity nil :status :dropped))))))))
                        {}
                        (:fields response))
          entries      (into {} (map (fn [{:keys [name]}]
