@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Group, Icon, Paper, Text, Title } from "metabase/ui";
+import { Box, Group, Paper, Text, Title } from "metabase/ui";
 
 type ChillFrameProps = {
   filterButton?: ReactNode;
@@ -33,24 +33,7 @@ export function ChillFrame({
           </Text>
           <Title order={3}>{t`Orders`}</Title>
         </Box>
-        <Group gap="xs">
-          {filterButton ?? (
-            <Button
-              size="compact-md"
-              variant="default"
-              leftSection={<Icon name="filter" />}
-            >
-              {t`Filter`}
-            </Button>
-          )}
-          <Button
-            size="compact-md"
-            variant="default"
-            leftSection={<Icon name="sum" />}
-          >
-            {t`Summarize`}
-          </Button>
-        </Group>
+        {filterButton}
       </Group>
       {!isHidden && (
         <Box px="lg" py="sm" mih={48}>
