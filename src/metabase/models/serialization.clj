@@ -1947,10 +1947,13 @@
                                        :import #(*import-fk* % model)))))
 
 (defn nested
-  "Nested entities; `opts` may give `:sort-by`, `:key-field` and `:delete-children!`, a fn of the parent id."
+  "Nested entities; `opts` may give `:sort-by`, or `:sort-by-parent`, a fn of the parent returning the `:sort-by` fn,
+  `:key-field` and `:delete-children!`, a fn of the parent id."
   [model backward-fk opts]
   (let [model-name       (name model)
-        sorter           (:sort-by opts :entity_id)
+        sorter           (if-let [sort-by-parent (:sort-by-parent opts)]
+                           sort-by-parent
+                           (constantly (:sort-by opts :entity_id)))
         key-field        (:key-field opts :entity_id)
         delete-children! (:delete-children! opts #(models.db/delete-children! model backward-fk %))]
     {::nested             true
@@ -1963,8 +1966,8 @@
                             ;; `nil? data` check is for `extract-one` case in tests; make sure to add empty vectors in
                             ;; `extract-query` implementations for nested collections
                             (try
-                              (->> (sort-by sorter data)
-                                   (mapv #(extract-one model-name opts %)))
+                              (->> (sort-by (sorter current) data)
+                                   (mapv #(extract-one model-name (dissoc opts :sort-by-parent) %)))
                               (catch Exception e
                                 (throw (ex-info (format "Error extracting nested %s" model)
                                                 {:model     model

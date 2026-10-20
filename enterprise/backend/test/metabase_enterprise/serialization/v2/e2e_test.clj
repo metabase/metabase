@@ -501,16 +501,22 @@
                                    dashboard-name :name}    {:name          "Test Dashboard"
                                                              :collection_id coll-id}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    0
                                                              :visualization_settings (link-card-viz-setting "collection" coll-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    1
                                                              :visualization_settings (link-card-viz-setting "database" db-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    2
                                                              :visualization_settings (link-card-viz-setting "table" table-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    3
                                                              :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    4
                                                              :visualization_settings (link-card-viz-setting "card" card-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    5
                                                              :visualization_settings (link-card-viz-setting "dataset" model-id)}]
             (testing "extract and store"
               (let [extraction          (serdes/with-cache (into [] (extract/extract {})))
@@ -630,16 +636,20 @@
                                   tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-1
-                                                                    :dashboard_tab_id tab-id-1}
+                                                                    :dashboard_tab_id tab-id-1
+                                                                    :row              0}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-2
-                                                                    :dashboard_tab_id tab-id-1}
+                                                                    :dashboard_tab_id tab-id-1
+                                                                    :row              1}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-1
-                                                                    :dashboard_tab_id tab-id-2}
+                                                                    :dashboard_tab_id tab-id-2
+                                                                    :row              0}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-2
-                                                                    :dashboard_tab_id tab-id-2}]
+                                                                    :dashboard_tab_id tab-id-2
+                                                                    :row              1}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
               (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
             (testing "ingest and load"
