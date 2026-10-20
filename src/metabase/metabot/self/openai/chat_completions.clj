@@ -59,6 +59,10 @@
                                    ;; Joined in part order: the wire has a single field per
                                    ;; message, so order is the only fidelity available.
                                    reasoning  (apply str (keep :reasoning_content group))
+                                   ;; A member has :thinking_blocks only when the LiteLLM replay hook
+                                   ;; made it (see [[metabase.metabot.self.litellm/thinking-message]]).
+                                   ;; The blocks stay in part order.
+                                   thinking   (into [] (mapcat :thinking_blocks) group)
                                    ;; Vector (chunk-array) content exists only when the reasoning
                                    ;; replay hook of [[parts->cc-messages]] produced it — today
                                    ;; only Mistral's think chunks. Every other provider's members
@@ -73,7 +77,8 @@
                                ;; :content should be always there, even if empty/nil
                                [(cond-> {:role "assistant" :content content}
                                   (seq tool-calls)      (assoc :tool_calls tool-calls)
-                                  (not-empty reasoning) (assoc :reasoning_content reasoning))])
+                                  (not-empty reasoning) (assoc :reasoning_content reasoning)
+                                  (seq thinking)        (assoc :thinking_blocks thinking))])
                              group))))
         messages))
 
@@ -103,8 +108,10 @@
                   ;; Mistral (think chunks — see
                   ;; [[metabase.metabot.self.mistral/think-message]]), Moonshot
                   ;; (top-level reasoning_content — see
-                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) and Ollama
-                  ;; (the same, renamed to reasoning on the way out) do. Z.AI and
+                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]), Ollama
+                  ;; (the same, renamed to reasoning on the way out) and LiteLLM
+                  ;; (signed thinking_blocks, see
+                  ;; [[metabase.metabot.self.litellm/thinking-message]]) do. Z.AI and
                   ;; vLLM define no such channel yet; when they grow one, each gets its
                   ;; own hook fn here rather than more shared code.
                   :reasoning   (when reasoning-part->message

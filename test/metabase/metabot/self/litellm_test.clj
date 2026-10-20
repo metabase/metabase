@@ -32,7 +32,7 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest ^:parallel request-body-no-default-model-test
-  (testing "the model is never defaulted — a proxy serves whichever aliases its operator configured"
+  (testing "there is no default model. A proxy serves the aliases that its operator sets"
     (is (nil? (:model (litellm/litellm-request-body {:input input}))))))
 
 (deftest ^:parallel request-body-system-and-stream-test
@@ -47,7 +47,7 @@
       (is (= {:include_usage true} (:stream_options body))))))
 
 (deftest ^:parallel request-body-sends-no-temperature-test
-  (testing "no temperature is sent, whether or not the caller names one — the alias may front an upstream that
+  (testing "the body has no temperature, if the caller gives one or not. The alias can be on an upstream that
            rejects it, so the upstream's own default rules"
     (is (not (contains? (litellm/litellm-request-body {:model "gpt-6-luna" :input input})
                         :temperature)))
@@ -57,7 +57,7 @@
                         :temperature)))))
 
 (deftest ^:parallel request-body-sends-no-default-max-tokens-test
-  (testing "no max_tokens is sent when the caller names none — an alias can front an upstream whose output
+  (testing "the body has no max_tokens when the caller gives none. An alias can be on an upstream whose output
            limit is below the chat cap"
     (is (not (contains? (litellm/litellm-request-body {:model "gpt-6-luna" :input input})
                         :max_tokens))))
@@ -148,6 +148,52 @@
                :usage         {:promptTokens 12 :completionTokens 2}}
               (first (filter #(= :usage (:type %)) parts)))))))
 
+(deftest ^:parallel thinking-signature-capture-and-replay-test
+  (testing "the thinking signature of an Anthropic upstream in `delta.thinking_blocks` goes into the provider
+           metadata of the reasoning part"
+    (is (=? [{:type :start}
+             {:type :reasoning :text "hmm"}
+             {:type :reasoning :provider-metadata {:anthropic {:signature "sig-abc"}}}
+             {:type :tool-input :id "call_1"}]
+            (into [] (comp (litellm/litellm->aisdk-chunks-xf) (self.core/lite-aisdk-xf))
+                  [{:id "chatcmpl-1" :model "claude-sonnet" :choices [{:index 0 :delta {:role "assistant" :content ""}}]}
+                   {:choices [{:index 0 :delta {:reasoning_content "hmm"
+                                                :thinking_blocks [{:type "thinking" :thinking "hmm"}]}}]}
+                   {:choices [{:index 0 :delta {:reasoning_content ""
+                                                :thinking_blocks [{:type "thinking" :thinking "" :signature "sig-abc"}]}}]}
+                   {:choices [{:index 0 :delta {:tool_calls [{:id "call_1" :index 0 :type "function"
+                                                              :function {:name "get-time" :arguments "{}"}}]}}]}
+                   {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}]))))
+  (testing "the signed block goes back as `thinking_blocks` on the assistant message with the tool call"
+    (let [msgs (:messages (litellm/litellm-request-body
+                           {:model "claude-sonnet"
+                            :input [{:role :user :content "time?"}
+                                    {:type :reasoning :id "r1" :text "hmm"}
+                                    {:type :reasoning :id "r1" :text ""
+                                     :provider-metadata {:anthropic {:signature "sig-abc"}}}
+                                    {:type :tool-input :id "call_1" :function "get-time" :arguments {}}
+                                    {:type :tool-output :id "call_1" :result {:time "noon"}}]}))]
+      (is (=? {:role            "assistant"
+               :thinking_blocks [{:type "thinking" :thinking "hmm" :signature "sig-abc"}]
+               :tool_calls      [{:id "call_1"}]}
+              (second msgs)))))
+  (testing "reasoning without a signature (from a non-Anthropic upstream) does not go back"
+    (is (not-any? :thinking_blocks
+                  (:messages (litellm/litellm-request-body
+                              {:model "gpt-6-luna"
+                               :input [{:role :user :content "q"}
+                                       {:type :reasoning :id "r1" :text "hmm"}
+                                       {:type :text :text "a"}]})))))
+  (testing "with :reasoning? false, a signed block does not go back"
+    (is (not-any? :thinking_blocks
+                  (:messages (litellm/litellm-request-body
+                              {:model      "claude-sonnet"
+                               :reasoning? false
+                               :input      [{:role :user :content "q"}
+                                            {:type :reasoning :id "r1" :text "hmm"
+                                             :provider-metadata {:anthropic {:signature "sig-abc"}}}
+                                            {:type :text :text "a"}]}))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; litellm-raw
 ;;; ──────────────────────────────────────────────────────────────────
@@ -172,7 +218,7 @@
             (captured-chat-request! {:model "gpt-6-luna" :input input :credentials keyed-credentials})))))
 
 (deftest litellm-auth-omits-authorization-without-a-key-test
-  (testing "a proxy with no master key is a complete configuration — no Authorization header, no missing-key error"
+  (testing "a proxy with no master key is a complete configuration. There is no Authorization header and no missing-key error"
     (let [req (captured-chat-request! {:model "gpt-6-luna" :input input :credentials credentials})]
       (is (= "http://litellm.internal:4000/chat/completions" (:url req)))
       (is (not (contains? (:headers req) "Authorization"))))))
@@ -279,7 +325,7 @@
    {:id "openai/gpt-6-luna" :object "model" :created 1677610602 :owned_by "openai"}])
 
 (deftest list-models-passes-the-catalog-through-test
-  (testing "every alias is offered — there is no whitelist — in the order the proxy lists them"
+  (testing "all aliases are shown, in the order of the proxy list. There is no whitelist"
     (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                (is (=? {:method  :get
                                                         :url     "http://litellm.internal:4000/models"
@@ -289,6 +335,29 @@
       (is (= {:models [{:id "gpt-6-luna" :display_name "gpt-6-luna"}
                        {:id "openai/gpt-6-luna" :display_name "openai/gpt-6-luna"}]}
              (litellm/list-models {:credentials keyed-credentials}))))))
+
+(deftest list-models-probe-reports-the-initial-model-test
+  (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data catalog}})]
+    (testing "without a probe, the result has no connection-info"
+      (is (not (contains? (litellm/list-models {:credentials credentials}) :connection-info))))
+    (testing "a probe with no model starts on the first alias in the catalog"
+      (is (= {:probed-model "gpt-6-luna"}
+             (:connection-info (litellm/list-models {:credentials credentials :probe? true})))))
+    (testing "a proposed model that the proxy still serves comes before the first alias"
+      (is (= {:probed-model "openai/gpt-6-luna"}
+             (:connection-info (litellm/list-models {:credentials credentials :probe? true
+                                                     :proposed-model "openai/gpt-6-luna"})))))
+    (testing "if the proxy does not serve the proposed model, the probe uses the first alias"
+      (is (= {:probed-model "gpt-6-luna"}
+             (:connection-info (litellm/list-models {:credentials credentials :probe? true
+                                                     :proposed-model "gone"})))))
+    (testing "a requested model stays as the caller gives it"
+      (is (= {:probed-model "my-alias"}
+             (:connection-info (litellm/list-models {:credentials credentials :probe? true
+                                                     :model "my-alias"}))))))
+  (testing "an empty catalog gives no probed model"
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data []}})]
+      (is (= {:models []} (litellm/list-models {:credentials credentials :probe? true}))))))
 
 (deftest list-models-sends-no-authorization-without-a-key-test
   (testing "a keyless connection lists the catalog without an Authorization header"
@@ -317,7 +386,7 @@
              (litellm/list-models {:credentials credentials}))))))
 
 (deftest list-models-does-not-fall-back-to-the-single-provider-settings-test
-  (testing "the connection's credentials are the only source — a setting configuring another connection
+  (testing "the credentials of the connection are the only source. A setting for a different connection
            is not a fallback"
     (mt/with-temporary-setting-values [llm.settings/llm-litellm-api-base-url "http://saved:4000"
                                        llm.settings/llm-litellm-api-key      "saved-key"]
@@ -349,7 +418,7 @@
       (is (= {:models []} (litellm/list-models {:credentials credentials}))))))
 
 (deftest list-models-fails-closed-on-a-2xx-that-is-not-json-test
-  (testing "a 2xx whose body is not JSON — a proxy's HTML page — is a server that answered, so it reads as a bad
+  (testing "a 2xx body that is not JSON (for example, an HTML page of a proxy) shows that a server answered, so it reads as a bad
            address rather than an unreachable one. The stub throws what `:as :json` throws: clj-http parses a
            2xx whatever its content type."
     (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
