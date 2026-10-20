@@ -224,6 +224,44 @@
       (is (str/includes? output "Call `get_research_candidates` with `metric_ids` [1, 2, 3, 4, 5]"))
       (is (str/includes? output "Candidate dimensions by metric:\n- Metric 1 (Metric 1): ")))))
 
+(defn- uuids
+  "Dimension ids in UUID form, numbered from `from` (inclusive) to `to` (exclusive)."
+  [from to]
+  (mapv #(format "00000000-0000-4000-8000-%012d" %) (range from to)))
+
+(deftest add-research-groups-cuts-long-failure-lists-test
+  (testing "more bad ids than fit are cut short and counted, and the steps survive"
+    (let [output   (:output (add-groups-rejected-with
+                             {:invalid-dimensions (vec (for [m (range 1 21)]
+                                                         {:metric-id     m
+                                                          :metric-name   (str "Metric " m)
+                                                          :dimension-ids (uuids 1 6)
+                                                          :candidates    []}))}))
+          listed   (count (re-seq #"\"00000000-0000-4000-8000-\d{12}\"" output))
+          [_ more] (re-find #"\n- …and (\d+) more invalid dimension ids on metrics [\d, ]+20\.\n" output)]
+      (is (>= 3000 (count output)))
+      (is (= 100 (+ listed (parse-long more))))
+      (is (str/includes? output "\nA dimension id belongs to one metric"))
+      (is (str/includes? output (str "\nCall `get_research_candidates` with `metric_ids` "
+                                     "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,"
+                                     " 20] to see every candidate.")))))
+  (testing "a metric whose bad ids don't all fit gets a line with the ones that do"
+    (let [output   (:output (add-groups-rejected-with
+                             {:invalid-dimensions [{:metric-id     1
+                                                    :metric-name   "Metric 1"
+                                                    :dimension-ids (uuids 1 61)
+                                                    :candidates    []}
+                                                   {:metric-id     2
+                                                    :metric-name   "Metric 2"
+                                                    :dimension-ids (uuids 61 121)
+                                                    :candidates    []}]}))
+          listed   (count (re-seq #"\"00000000-0000-4000-8000-\d{12}\"" output))
+          [_ more] (re-find #"\n- …and (\d+) more invalid dimension ids on metric 2\.\n" output)]
+      (is (>= 3000 (count output)))
+      (is (= 120 (+ listed (parse-long more))))
+      (is (str/includes? output " are not candidates of metric 2 (Metric 2).\n- …and "))
+      (is (str/includes? output "\nCall `get_research_candidates` with `metric_ids` [1, 2] to see every candidate.")))))
+
 (deftest add-research-groups-suggests-lookups-within-the-limit-test
   (testing "the lookup that it suggests asks for no more metric_ids per call than the tool takes"
     (let [output  (:output (add-groups-rejected-with
@@ -238,7 +276,19 @@
       (is (= [(range 1 21) [21]] batches))
       (mt/with-test-user :crowberto
         (doseq [batch batches]
-          (is (nil? (:error (research-call "get_research_candidates" {:metric_ids batch})))))))))
+          (is (nil? (:error (research-call "get_research_candidates" {:metric_ids batch}))))))))
+  (testing "and names at most two batches, so that the step stays short"
+    (let [output (:output (add-groups-rejected-with
+                           {:invalid-dimensions (vec (for [m (range 1 61)]
+                                                       {:metric-id     m
+                                                        :metric-name   (str "Metric " m)
+                                                        :dimension-ids ["wrong"]
+                                                        :candidates    []}))}))]
+      (is (>= 3000 (count output)))
+      (is (str/includes? output (str "\nCall `get_research_candidates` with `metric_ids` ["
+                                     (str/join ", " (range 1 21)) "], then with ["
+                                     (str/join ", " (range 21 41)) "], and so on for the other"
+                                     " metrics, 20 at a time, to see every candidate."))))))
 
 (defn- orders-count
   "The query of a minimal metric: a count of orders."

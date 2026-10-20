@@ -157,15 +157,62 @@
   "That the `noun`s with `ids` were not found, without saying whether they exist."
   [noun ids]
   (if (next ids)
-    (str noun "s " (str/join ", " ids) " were not found. They may not exist, or you may not have"
-         " access to them.")
+    (str noun "s " (summarize-names (map str ids)) " were not found. They may not exist, or you may"
+         " not have access to them.")
     (str noun " " (first ids) " was not found. It may not exist, or you may not have access to it.")))
 
 (def ^:private error-text-budget
-  "How long the text of [[invalid-research-groups!]] may get once it lists candidates.
-  The runtime cuts a failure's text at 4,000 characters, and the bad ids and the steps come before
-  the candidates, so this budget leaves them room to spare."
+  "How long the text of [[invalid-research-groups!]] may get, its recovery steps included.
+  The runtime cuts a failure's text at 4,000 characters. The steps are counted first, so that they
+  always fit; the bad ids fill what is left, and then the candidates."
   3000)
+
+(defn- invalid-dimensions-line
+  "The line that says `ids` are not candidates of the metric that `entry` describes."
+  [{:keys [metric-id metric-name]} ids]
+  (str "- " (if (next ids) "Dimensions " "Dimension ")
+       (str/join ", " (map pr-str ids))
+       (if (next ids) " are not candidates" " is not a candidate")
+       " of metric " metric-id " (" metric-name ")."))
+
+(defn- left-over-line
+  "The line that counts the bad ids in `left-over` and names their metrics."
+  [left-over]
+  (let [n       (count (mapcat :dimension-ids left-over))
+        metrics (map (comp str :metric-id) left-over)]
+    (str "- …and " n " more invalid dimension " (if (= 1 n) "id" "ids") " on "
+         (if (next metrics) "metrics " "metric ") (summarize-names metrics) ".")))
+
+(defn- invalid-dimensions-lines
+  "The lines for `invalid-dimensions` with only its first `k` bad ids listed, and a last line that
+  counts the rest."
+  [invalid-dimensions k]
+  (let [[listed left-over] (reduce (fn [[listed left-over k] {ids :dimension-ids :as entry}]
+                                     (let [n (min k (count ids))]
+                                       [(cond-> listed
+                                          (pos? n) (conj (invalid-dimensions-line entry (take n ids))))
+                                        (cond-> left-over
+                                          (< n (count ids)) (conj (update entry :dimension-ids
+                                                                          #(drop n %))))
+                                        (- k n)]))
+                                   [[] [] k]
+                                   invalid-dimensions)]
+    (cond-> listed
+      (seq left-over) (conj (left-over-line left-over)))))
+
+(defn- lookup-step
+  "The step that tells the model to look up the candidates of the metrics in `invalid-dimensions`.
+  It names their ids in batches that `get_research_candidates` accepts, two batches at most, so
+  that it stays short."
+  [invalid-dimensions]
+  (let [per-call explorations/research-candidates-max-metrics
+        batches  (partition-all per-call (map :metric-id invalid-dimensions))]
+    {:uses #{"get_research_candidates"}
+     :text (str "Call `get_research_candidates` with `metric_ids` "
+                (str/join ", then with " (map #(str "[" (str/join ", " %) "]") (take 2 batches)))
+                (when (nthnext batches 2)
+                  (str ", and so on for the other metrics, " per-call " at a time,"))
+                " to see every candidate.")}))
 
 (defn- candidates-step
   "A recovery step that lists up to `per-metric` candidates of each metric in `invalid-dimensions`."
@@ -197,57 +244,50 @@
                                               [:id   :string]
                                               [:name :string]]]]]]]]}
   [{:keys [unknown-metric-ids replace-without-dimensions invalid-dimensions]}]
-  (let [message (te/lines
-                 "None of the groups were added:"
-                 (when (seq unknown-metric-ids)
-                   (str "- " (not-found-sentence "Metric" unknown-metric-ids)))
-                 (when (seq replace-without-dimensions)
-                   (str "- " (if (next replace-without-dimensions)
-                               (str "The groups for metrics " (str/join ", " replace-without-dimensions)
-                                    " set")
-                               (str "The group for metric " (first replace-without-dimensions) " sets"))
-                        " `replace_default_dimensions` with no `dimension_ids`."))
-                 (for [{:keys [metric-id metric-name dimension-ids]} invalid-dimensions]
-                   (str "- " (if (next dimension-ids) "Dimensions " "Dimension ")
-                        (str/join ", " (map pr-str dimension-ids))
-                        (if (next dimension-ids) " are not candidates" " is not a candidate")
-                        " of metric " metric-id " (" metric-name ").")))
-        steps   (cond-> []
-                  (seq unknown-metric-ids)
-                  (conj {:uses #{"list_research_metrics" "get_research_candidates"}
-                         :text (str "Call `list_research_metrics` to find metrics that are available"
-                                    " for research, and take their ids from `get_research_candidates`.")})
+  (let [head      (te/lines
+                   "None of the groups were added:"
+                   (when (seq unknown-metric-ids)
+                     (str "- " (not-found-sentence "Metric" unknown-metric-ids)))
+                   (when (seq replace-without-dimensions)
+                     (str "- " (if (next replace-without-dimensions)
+                                 (str "The groups for metrics "
+                                      (summarize-names (map str replace-without-dimensions)) " set")
+                                 (str "The group for metric " (first replace-without-dimensions) " sets"))
+                          " `replace_default_dimensions` with no `dimension_ids`.")))
+        steps     (cond-> []
+                    (seq unknown-metric-ids)
+                    (conj {:uses #{"list_research_metrics" "get_research_candidates"}
+                           :text (str "Call `list_research_metrics` to find metrics that are available"
+                                      " for research, and take their ids from `get_research_candidates`.")})
 
-                  (seq replace-without-dimensions)
-                  (conj {:uses #{}
-                         :text (str "Pass the dimension ids to slice by, or drop"
-                                    " `replace_default_dimensions` to keep the automatic selection.")})
+                    (seq replace-without-dimensions)
+                    (conj {:uses #{}
+                           :text (str "Pass the dimension ids to slice by, or drop"
+                                      " `replace_default_dimensions` to keep the automatic selection.")})
 
-                  (seq invalid-dimensions)
-                  (conj {:uses #{}
-                         :text (str "A dimension id belongs to one metric, so the same dimension has a"
-                                    " different id under each metric. Take each group's ids from its"
-                                    " own metric's candidates.")}
-                        {:uses #{"get_research_candidates"}
-                         :text (str "Call `get_research_candidates` with `metric_ids` "
-                                    (->> (map :metric-id invalid-dimensions)
-                                         (partition-all explorations/research-candidates-max-metrics)
-                                         (map #(str "[" (str/join ", " %) "]"))
-                                         (str/join ", then with "))
-                                    " to see every candidate.")}))
-        fits?   (fn [step]
-                  (<= (count (str/join "\n" (cons message (map :text (conj steps step)))))
-                      error-text-budget))]
+                    (seq invalid-dimensions)
+                    (conj {:uses #{}
+                           :text (str "A dimension id belongs to one metric, so the same dimension has a"
+                                      " different id under each metric. Take each group's ids from its"
+                                      " own metric's candidates.")}
+                          (lookup-step invalid-dimensions)))
+        text-size (fn [message steps] (count (str/join "\n" (cons message (map :text steps)))))
+        room      (- error-text-budget (text-size head steps) 1)
+        n-bad     (count (mapcat :dimension-ids invalid-dimensions))
+        fits?     #(<= (count (str/join "\n" (invalid-dimensions-lines invalid-dimensions %))) room)
+        listed    (if (fits? n-bad) n-bad (or (last (take-while fits? (range n-bad))) 0))
+        message   (te/lines head (invalid-dimensions-lines invalid-dimensions listed))]
     {:message  message
      :recovery (cond-> steps
                  (seq invalid-dimensions)
-                 (into (take 1 (filter fits? (map #(candidates-step invalid-dimensions %)
-                                                  (range summary-max-names 0 -1))))))}))
+                 (into (take 1 (filter #(<= (text-size message (conj steps %)) error-text-budget)
+                                       (map #(candidates-step invalid-dimensions %)
+                                            (range summary-max-names 0 -1))))))}))
 
 (defn- research-groups-payload
   "Validate `groups` and hydrate the FE picker payload for them.
    The payload has the snake_case keys that the client reads. Invalid groups raise
-   [[invalid-research-groups!]], which names every problem."
+   [[invalid-research-groups!]], which names their problems."
   [groups]
   (explorations/exploration-data->api
    (try
