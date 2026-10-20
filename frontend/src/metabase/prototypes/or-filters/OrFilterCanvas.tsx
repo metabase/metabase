@@ -22,6 +22,7 @@ import { QueryResults } from "./harness/QueryResults";
 import {
   clearFilters,
   withDnfExample,
+  withFourLevelsExample,
   withNestedExample,
   withOrExample,
   withPillsExample,
@@ -67,6 +68,12 @@ const EXAMPLES: Example[] = [
       return t`A and B and (C or (D and E))`;
     },
     load: withNestedExample,
+  },
+  {
+    get label() {
+      return t`A or (B and (C or (D and E)))`;
+    },
+    load: withFourLevelsExample,
   },
 ];
 

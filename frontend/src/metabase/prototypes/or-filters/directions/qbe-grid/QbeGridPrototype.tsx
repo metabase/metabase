@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import { NotebookCell } from "metabase/querying/notebook/components/NotebookCell";
@@ -9,7 +10,9 @@ import {
   Button,
   Group,
   Icon,
+  Menu,
   Popover,
+  ScrollArea,
   Stack,
   Text,
   UnstyledButton,
@@ -196,13 +199,13 @@ function GridEditor({ query, stageIndex, grid, onCommit }: GridEditorProps) {
               </th>
             ))}
             <th>
-              <Popover
+              <Menu
                 opened={isColumnPickerOpened}
                 position="bottom-start"
-                transitionProps={{ duration: 0 }}
+                shadow="md"
                 onChange={setIsColumnPickerOpened}
               >
-                <Popover.Target>
+                <Menu.Target>
                   <Button
                     size="compact-sm"
                     variant="subtle"
@@ -213,26 +216,24 @@ function GridEditor({ query, stageIndex, grid, onCommit }: GridEditorProps) {
                   >
                     {t`column`}
                   </Button>
-                </Popover.Target>
-                <Popover.Dropdown p="xs">
-                  <Stack gap={0} className={S.columnList}>
+                </Menu.Target>
+                <Menu.Dropdown miw={240}>
+                  <Menu.Label>{t`Add a column`}</Menu.Label>
+                  <ScrollArea.Autosize mah={320} type="auto">
                     {availableColumns.map((column) => (
-                      <Button
+                      <Menu.Item
                         key={column.key}
-                        variant="subtle"
-                        size="compact-md"
-                        justify="flex-start"
-                        onClick={() => {
-                          onCommit(addColumn(grid, column));
-                          setIsColumnPickerOpened(false);
-                        }}
+                        leftSection={
+                          <Icon name={getColumnIcon(column.column)} size={14} />
+                        }
+                        onClick={() => onCommit(addColumn(grid, column))}
                       >
                         {column.key}
-                      </Button>
+                      </Menu.Item>
                     ))}
-                  </Stack>
-                </Popover.Dropdown>
-              </Popover>
+                  </ScrollArea.Autosize>
+                </Menu.Dropdown>
+              </Menu>
             </th>
             <th />
           </tr>

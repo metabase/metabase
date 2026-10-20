@@ -76,7 +76,7 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "expression-bar-inline",
     get name() {
-      return t`OR filters B2: Expression bar, inline apply`;
+      return t`Expression bar, inline apply`;
     },
     get description() {
       return t`Expression bar with Cancel and Apply inside the bar. The header button hides and shows the filter strip.`;
@@ -107,7 +107,7 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
   {
     id: "qbe-grid",
     get name() {
-      return t`OR filters D: Query-by-example grid`;
+      return t`Query-by-example grid`;
     },
     get description() {
       return t`Columns are data columns, rows are segments joined by or, cells on a row are and-ed. Duplicate a row to build the next segment.`;

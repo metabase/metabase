@@ -37,7 +37,7 @@ type GroupEditorProps = {
   stageIndex: number;
   tree: PillTree;
   onUpdate: (tree: PillTree) => void;
-  /** Ungroups the pill: each row becomes its own top-level filter. */
+  /** Ungroups the pill: every clause, at any depth, becomes a top-level filter. */
   onExpand: (tree: PillTree) => void;
 };
 
@@ -157,7 +157,7 @@ export function GroupEditor({
           variant="subtle"
           size="compact-md"
           px={0}
-          // Changes the logic: OR rows become AND-ed top-level pills.
+          // Changes the logic: every clause becomes an AND-ed top-level pill.
           onClick={() => onExpand(tree)}
         >
           {t`Expand`}

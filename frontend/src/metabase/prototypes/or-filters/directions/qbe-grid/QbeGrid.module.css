@@ -70,8 +70,3 @@
   text-align: right;
   width: 1%;
 }
-
-.columnList {
-  max-height: 20rem;
-  overflow: auto;
-}

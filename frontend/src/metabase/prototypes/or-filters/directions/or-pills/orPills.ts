@@ -109,8 +109,9 @@ export function writePillTree(
 }
 
 /**
- * Ungroups a pill: removes `filter` and adds each row as its own top-level
- * filter. Top-level filters are AND-ed, so this changes the query's logic.
+ * Ungroups a pill completely: removes `filter` and adds every clause in the
+ * tree, at any depth, as its own top-level filter. Top-level filters are
+ * AND-ed, so this changes the query's logic.
  */
 export function expandPillTree(
   query: Lib.Query,
@@ -119,15 +120,10 @@ export function expandPillTree(
   tree: PillTree,
 ): Lib.Query {
   const withoutPill = Lib.removeClause(query, stageIndex, filter);
-  return tree.children
-    .flatMap((row) => {
-      const clause = toNodeClause(row, 1);
-      return clause ? [clause] : [];
-    })
-    .reduce(
-      (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
-      withoutPill,
-    );
+  return flattenPillTree(tree).reduce(
+    (nextQuery, { clause }) => Lib.filter(nextQuery, stageIndex, clause),
+    withoutPill,
+  );
 }
 
 /** Every clause in reading order, each with the connector that precedes it. */

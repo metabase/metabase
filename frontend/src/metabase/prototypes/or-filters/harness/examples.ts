@@ -150,3 +150,47 @@ export function withTwoGroupsExample(
   ]);
   return Lib.filter(clearFilters(query, stageIndex), stageIndex, orClause);
 }
+
+/**
+ * Four levels in one pill, connectors alternating from OR:
+ * `[Total] > 100 OR ([Tax] > 2 AND ([Discount] > 1 OR ([Subtotal] < 50 AND [Quantity] > 3)))`.
+ */
+export function withFourLevelsExample(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const total = findColumn(query, stageIndex, "Total");
+  const tax = findColumn(query, stageIndex, "Tax");
+  const discount = findColumn(query, stageIndex, "Discount");
+  const subtotal = findColumn(query, stageIndex, "Subtotal");
+  const quantity = findColumn(query, stageIndex, "Quantity");
+  if (!total || !tax || !discount || !subtotal || !quantity) {
+    return query;
+  }
+  const orClause = Lib.expressionClause("or", [
+    Lib.numberFilterClause({ operator: ">", column: total, values: [100] }),
+    Lib.expressionClause("and", [
+      Lib.numberFilterClause({ operator: ">", column: tax, values: [2] }),
+      Lib.expressionClause("or", [
+        Lib.numberFilterClause({
+          operator: ">",
+          column: discount,
+          values: [1],
+        }),
+        Lib.expressionClause("and", [
+          Lib.numberFilterClause({
+            operator: "<",
+            column: subtotal,
+            values: [50],
+          }),
+          Lib.numberFilterClause({
+            operator: ">",
+            column: quantity,
+            values: [3],
+          }),
+        ]),
+      ]),
+    ]),
+  ]);
+  return Lib.filter(clearFilters(query, stageIndex), stageIndex, orClause);
+}
