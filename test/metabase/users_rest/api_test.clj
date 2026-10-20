@@ -2114,9 +2114,12 @@
                                               :last_name "User"
                                               :email "ssouser@test.com"
                                               :sso_source "google"}]
-      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
-                                         google-auth-enabled   true]
-        (mt/user-http-request :crowberto :post 404
+      (mt/with-premium-features #{}
+        (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                           google-auth-enabled   true]
+          (mt/user-http-request :crowberto :post 404
+                                (format "user/%d/password-reset-url" user-id)))
+        (mt/user-http-request :crowberto :post 200
                               (format "user/%d/password-reset-url" user-id)))
       (mt/user-http-request :crowberto :post 200
                             (format "user/%d/password-reset-url" user-id)))))
