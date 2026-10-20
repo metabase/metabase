@@ -1,15 +1,7 @@
 (ns metabase-enterprise.internal-stats.core
   (:require
-   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]))
-
-(defenterprise remote-sync-configuration
-  "Whether Git sync and transform sync are configured, without checking token features."
-  :feature :none
-  []
-  {:enabled?    (remote-sync.settings/remote-sync-enabled)
-   :transforms? (boolean (setting/get-value-of-type :boolean :remote-sync-transforms))})
 
 (defenterprise embedding-settings
   "Boolean values that report on the state of different embedding configurations."
