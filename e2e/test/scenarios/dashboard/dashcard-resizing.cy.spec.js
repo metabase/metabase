@@ -668,6 +668,7 @@ describe("issue 31628", () => {
       .then((ids) => cy.get(`[data-dashcard-key="${ids[index]}"]`));
 
   const scalarContainer = (card) => card.findByTestId("scalar-container");
+  const scalarValue = (card) => card.findByTestId("scalar-value");
   const previousValue = (card) => card.findByTestId("scalar-previous-value");
 
   const moveMouseAway = () => {
@@ -738,7 +739,7 @@ describe("issue 31628", () => {
     H.getDashboardCards().should("have.length", cards.length);
 
     cy.log("scalar 1x2: should truncate value and show value tooltip on hover");
-    scalarContainer(card("scalar1x2")).then(($element) =>
+    scalarValue(card("scalar1x2")).then(($element) =>
       H.assertIsEllipsified($element[0]),
     );
     //TODO: Need to hover on the actual text, not just the container. This is a weird one
@@ -747,7 +748,7 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     cy.log("scalar 2x2: should not truncate value");
-    scalarContainer(card("scalar2x2")).then(($element) =>
+    scalarValue(card("scalar2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
     cy.log("scalar 2x2: should keep the title visible without hovering");
@@ -762,7 +763,7 @@ describe("issue 31628", () => {
     cy.log(
       "scalar 6x3: should not truncate value and should not show value tooltip on hover",
     );
-    scalarContainer(card("scalar6x3")).then(($element) =>
+    scalarValue(card("scalar6x3")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
     scalarContainer(card("scalar6x3")).realHover();
@@ -770,7 +771,7 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     cy.log("smart scalar 2x2: should not truncate value");
-    scalarContainer(card("smart2x2")).then(($element) =>
+    scalarValue(card("smart2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
     cy.log("smart scalar 2x2: should keep the title visible without hovering");
@@ -829,7 +830,7 @@ describe("issue 31628", () => {
       cy.log(
         `${key}: should not truncate value and should not show value tooltip on hover`,
       );
-      scalarContainer(card(key)).then(($element) =>
+      scalarValue(card(key)).then(($element) =>
         H.assertIsNotEllipsified($element[0]),
       );
       scalarContainer(card(key)).realHover();

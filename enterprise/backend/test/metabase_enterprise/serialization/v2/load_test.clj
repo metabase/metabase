@@ -228,7 +228,7 @@
                 table (ts/create! :model/Table :name "customers" :db_id (:id db))
                 age   (ts/create! :model/Field :name "age" :table_id (:id table))]
             (t2/insert! :model/FieldUserSettings {:field_id (:id age) :ai_description "local" :description "local"})
-            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
             (is (=? {:ai_semantic_type :type/Quantity :ai_description "ai description" :ai_data_sensitivity :PII
                      :description nil}
                     (t2/select-one :model/FieldUserSettings :field_id (:id age))))))))))
@@ -258,7 +258,7 @@
               table (ts/create! :model/Table :name "customers" :db_id (:id db))
               age   (ts/create! :model/Field :name "age" :table_id (:id table))
               email (ts/create! :model/Field :name "email" :table_id (:id table))]
-          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
           (testing "a label exported with no flag imports as set by a person"
             (is (=? {:data_sensitivity :PII :data_sensitivity_set true}
                     (t2/select-one :model/FieldUserSettings :field_id (:id age)))))
@@ -1146,7 +1146,9 @@
                                                                    :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}])))
             (reset! serialized (into [] (serdes.extract/extract {})))
             (let [card (-> @serialized (by-model "Card") first)
-                  dash (-> @serialized (by-model "Dashboard") first)]
+                  dash (->> (by-model @serialized "Dashboard")
+                            (filter #(= (:entity_id @dash1s) (:entity_id %)))
+                            first)]
               (testing "exported :parameter_mappings are properly converted"
                 (is (= [{:parameter_id "12345678"
                          :target       [:dimension [:field ["my-db" nil "orders" "subtotal"]
@@ -1314,7 +1316,6 @@
                              [:collection_id                [:= (:entity_id @coll1s)]]
                              [:name                         [:= "Some events"]]
                              [:creator_id                   [:= "tom@bost.on"]]
-                             [:created_at                   :string]
                              [:entity_id                    [:= (:entity_id timeline1)]]
                              [:description {:optional true} [:maybe :string]]
                              [:events                       [:sequential
@@ -1326,7 +1327,6 @@
                                                               [:archived {:optional true}    :boolean]
                                                               [:description {:optional true} [:maybe :string]]
                                                               [:creator_id                   :string]
-                                                              [:created_at                   :string]
                                                               [:timestamp                    :string]
                                                               [:icon {:optional true}        [:maybe :string]]]]]
                              [:icon {:optional true}          [:maybe :string]]]
@@ -1537,8 +1537,8 @@
           (testing "existing FieldValues are properly found and updated"
             (is (= (set (:values @fv1s)) (set (:values @fv1d)))))
           (testing "new FieldValues are properly added"
-            (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
-                   (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))
+            (is (= (dissoc @fv2s :id :field_id :created_at :updated_at :last_used_at)
+                   (dissoc @fv2d :id :field_id :created_at :updated_at :last_used_at)))))))))
 
 (deftest table-publishing-round-trip-test
   ;; Tests that is_published and collection_id survive a round-trip through serialization.

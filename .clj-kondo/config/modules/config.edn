@@ -1523,6 +1523,7 @@
               collections
               documents
               driver
+              embedding
               events
               explorations
               interestingness
@@ -3931,6 +3932,7 @@
            lib.metadata
            lib.metric
            lib.schema
+           lib.types
            measures
            models
            native-query-snippets
@@ -3962,6 +3964,7 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/QueryAction
@@ -4452,7 +4455,6 @@
            app-db
            appearance
            collections
-           dependencies
            lib
            lib.schema
            logger

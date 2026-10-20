@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -274,6 +275,35 @@
                              (getNumThreadsAwaitingCheckoutDefaultUser [_] 2)))))
         (is (true? (full? (reify com.mchange.v2.c3p0.PooledDataSource
                             (getNumThreadsAwaitingCheckoutDefaultUser [_] 3)))))))))
+
+(deftest failed-checkout-destroys-empty-pool-test
+  (testing "When a checkout fails, do-with-resolved-connection destroys the pool only if the pool has no Connections"
+    (doseq [[num-connections destroyed?] [[0 true] [1 false]]]
+      (let [db-id       Integer/MAX_VALUE
+            cache-key   [db-id :default]
+            data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException. "password authentication failed")))
+                          (getNumConnectionsDefaultUser [_] num-connections))
+            pool-spec   {:datasource data-source}
+            destroyed   (atom [])
+            pool-cache  @#'sql-jdbc.conn/pool-cache-key->connection-pool]
+        (swap! pool-cache assoc cache-key pool-spec)
+        (try
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                      (fn [_driver _db-or-id-or-spec _options] data-source)
+                                      sql-jdbc.conn/destroy-pool!
+                                      (fn [id spec] (swap! destroyed conj [id spec]))]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Unable to connect to the database"
+                 (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+            (is (= (if destroyed? [[db-id pool-spec]] [])
+                   @destroyed))
+            (is (= (not destroyed?)
+                   (contains? @pool-cache cache-key))))
+          (finally
+            (swap! pool-cache dissoc cache-key)))))))
 
 (deftest connection-pool-full-checkout-queue-returns-503-test
   (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"

@@ -2,9 +2,8 @@ import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
-import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { FormSelect } from "metabase/forms/components/FormSelect";
+import { FormField, FormSelect } from "metabase/forms";
 
 type FormSelectWidgetProps = ActionFormFieldProps & {
   actions?: ReactNode;

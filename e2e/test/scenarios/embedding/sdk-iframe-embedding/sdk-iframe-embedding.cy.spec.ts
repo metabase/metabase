@@ -22,65 +22,6 @@ describe("scenarios > embedding > modular embedding", () => {
     });
   });
 
-  it("uses the embedding-simple client request header", () => {
-    H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-    });
-
-    cy.wait("@getDashCardQuery").then(({ request }) => {
-      expect(request?.headers?.["x-metabase-client"]).to.equal(
-        "embedding-simple",
-      );
-    });
-  });
-
-  it("displays a dashboard", () => {
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-          },
-        },
-      ],
-    });
-
-    cy.wait("@getDashCardQuery");
-
-    frame.within(() => {
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      cy.findByText("Orders").should("be.visible");
-      H.assertTableRowsCount(2000);
-    });
-  });
-
-  it("displays a question", () => {
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-question",
-          attributes: {
-            questionId: ORDERS_QUESTION_ID,
-          },
-        },
-      ],
-    });
-
-    cy.wait("@getCardQuery");
-
-    frame.within(() => {
-      H.assertSdkInteractiveQuestionOrdersUsable();
-    });
-  });
-
   it("table visualization should span the full width of the container (metabase#69831)", () => {
     cy.signInAsAdmin();
     H.createQuestion({
@@ -343,6 +284,12 @@ describe("scenarios > embedding > modular embedding", () => {
         ],
       });
 
+      cy.wait("@getDashCardQuery").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-simple",
+        );
+      });
+
       frame.within(() => {
         cy.findByText("Orders in a dashboard").should("be.visible");
         cy.findByText("Orders").should("be.visible");
@@ -554,6 +501,11 @@ describe("scenarios > embedding > modular embedding", () => {
     });
 
     it("should send an modular embedding usage event", () => {
+      let proxyCallCount = 0;
+      cy.intercept("POST", "/api/analytics-proxy", () => {
+        proxyCallCount++;
+      }).as("analyticsProxy");
+
       cy.signOut();
       cy.visit("http://localhost:4000");
       const frame = H.loadSdkIframeEmbedTestPage({
@@ -733,6 +685,10 @@ describe("scenarios > embedding > modular embedding", () => {
           },
         ],
       });
+
+      cy.wrap(null).then(() => {
+        expect(proxyCallCount).to.eq(0);
+      });
     });
 
     it("should send locale_used=true when locale is configured", () => {
@@ -813,32 +769,6 @@ describe("scenarios > embedding > modular embedding", () => {
             ],
           },
         ],
-      });
-    });
-
-    it("should not send SDK tracker events through the analytics proxy", () => {
-      let proxyCallCount = 0;
-      cy.intercept("POST", "/api/analytics-proxy", () => {
-        proxyCallCount++;
-      }).as("analyticsProxy");
-
-      cy.signOut();
-      cy.visit("http://localhost:4000");
-      H.loadSdkIframeEmbedTestPage({
-        origin: "http://different-than-metabase-instance.com",
-        elements: [
-          {
-            component: "metabase-dashboard",
-            attributes: { dashboardId: ORDERS_DASHBOARD_ID },
-          },
-        ],
-        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
-      }).within(() => {
-        cy.findByText("Orders in a dashboard").should("be.visible");
-      });
-
-      cy.wrap(null).then(() => {
-        expect(proxyCallCount).to.eq(0);
       });
     });
 

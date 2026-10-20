@@ -8,6 +8,7 @@ import {
   useRefreshTokenStatusMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import { getUserIsAdmin } from "metabase/current-user";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
@@ -141,112 +142,109 @@ export function MetabaseAIProviderSetup({
 
   return (
     <>
-      {isConfigured ? (
-        <MetabaseManagedProviderCard
-          isLoadingPricing={isLoadingMetabaseManagedAiPricing}
-          pricing={metabaseManagedAiPricing}
-          hasDeprecatedMetabaseAiProvider={hasDeprecatedMetabaseAiProvider}
-          hasMetabaseManagedAiProviderFeature={
-            hasMetabaseManagedAiProviderFeature
-          }
-          offerMetabaseManagedAi={offerMetabaseManagedAi}
-        />
-      ) : (
-        <>
-          <Stack gap="lg">
-            <Text>{
-              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
-              t`The simplest way to get started with AI in Metabase. We pick a benchmarked, cost effective model for you, and billing is managed through your Metabase account.`
-            }</Text>
-            {isLoadingMetabaseManagedAiPricing ? (
-              <PricingCallout>
-                <Skeleton h="1rem" w="14rem" />
-                <Skeleton h="1rem" w="18rem" />
-              </PricingCallout>
-            ) : metabaseManagedAiPricing ? (
-              <MetabasePricingText pricing={metabaseManagedAiPricing} />
-            ) : null}
-          </Stack>
-
-          {match({
-            hasDeprecatedMetabaseAiProvider,
-            hasMetabaseManagedAiProviderFeature,
-            offerMetabaseManagedAi,
-            isAdmin,
-          })
-            .with(
-              {
-                hasDeprecatedMetabaseAiProvider: true,
-                hasMetabaseManagedAiProviderFeature: false,
-                offerMetabaseManagedAi: true,
-              },
-              () => (
-                <Text>
-                  {t`You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing.`}
-                </Text>
-              ),
-            )
-            .with({ hasDeprecatedMetabaseAiProvider: true }, () => null)
-            .with({ hasMetabaseManagedAiProviderFeature: true }, () => null)
-            .with({ isAdmin: false }, () => (
-              <Text fw="bold">
-                {t`Please ask an Admin user to enable this for you.`}
-              </Text>
-            ))
-            .otherwise(() => (
-              <Checkbox
-                checked={hasAcceptedTerms}
-                disabled={isMutating}
-                onChange={(event) =>
-                  setHasAcceptedTerms(event.currentTarget.checked)
-                }
+      <Stack gap="xl">
+        {isConfigured ? (
+          <MetabaseManagedProviderCard
+            isLoadingPricing={isLoadingMetabaseManagedAiPricing}
+            pricing={metabaseManagedAiPricing}
+            hasDeprecatedMetabaseAiProvider={hasDeprecatedMetabaseAiProvider}
+            hasMetabaseManagedAiProviderFeature={
+              hasMetabaseManagedAiProviderFeature
+            }
+            offerMetabaseManagedAi={offerMetabaseManagedAi}
+          />
+        ) : (
+          <>
+            <Stack gap="lg">
+              <Text>{
                 // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
-                label={jt`I agree with the Metabase AI Service ${(
-                  <Anchor
-                    key="metabase-ai-terms-link"
-                    href={METABASE_MANAGED_AI_TERMS_URL}
-                    target="_blank"
-                  >
-                    {t`Terms of Service`}
-                  </Anchor>
-                )}`}
-              />
-            ))}
+                t`The simplest way to get started with AI in Metabase. We pick a benchmarked, cost effective model for you, and billing is managed through your Metabase account.`
+              }</Text>
+              {isLoadingMetabaseManagedAiPricing ? (
+                <PricingCallout>
+                  <Skeleton h="1rem" w="14rem" />
+                  <Skeleton h="1rem" w="18rem" />
+                </PricingCallout>
+              ) : metabaseManagedAiPricing ? (
+                <MetabasePricingText pricing={metabaseManagedAiPricing} />
+              ) : null}
+            </Stack>
 
-          {(onCancel || connectAction) && (
-            <Flex justify="end">
-              <Group gap="sm">
-                {onCancel && (
-                  <Button disabled={isMutating} onClick={onCancel}>
-                    {t`Back`}
-                  </Button>
-                )}
-                {connectAction && (
-                  <Button
-                    variant="filled"
-                    loading={isMutating}
-                    disabled={isMutating || needsTermsAcceptance}
-                    onClick={connectAction}
-                  >
-                    {t`Connect`}
-                  </Button>
-                )}
-              </Group>
-            </Flex>
+            {match({
+              hasDeprecatedMetabaseAiProvider,
+              hasMetabaseManagedAiProviderFeature,
+              offerMetabaseManagedAi,
+              isAdmin,
+            })
+              .with(
+                {
+                  hasDeprecatedMetabaseAiProvider: true,
+                  hasMetabaseManagedAiProviderFeature: false,
+                  offerMetabaseManagedAi: true,
+                },
+                () => (
+                  <Text>
+                    {t`You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing.`}
+                  </Text>
+                ),
+              )
+              .with({ hasDeprecatedMetabaseAiProvider: true }, () => null)
+              .with({ hasMetabaseManagedAiProviderFeature: true }, () => null)
+              .with({ isAdmin: false }, () => (
+                <Text fw="bold">
+                  {t`Please ask an Admin user to enable this for you.`}
+                </Text>
+              ))
+              .otherwise(() => (
+                <Checkbox
+                  checked={hasAcceptedTerms}
+                  disabled={isMutating}
+                  onChange={(event) =>
+                    setHasAcceptedTerms(event.currentTarget.checked)
+                  }
+                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+                  label={jt`I agree with the Metabase AI Service ${(
+                    <Anchor
+                      key="metabase-ai-terms-link"
+                      href={METABASE_MANAGED_AI_TERMS_URL}
+                      target="_blank"
+                    >
+                      {t`Terms of Service`}
+                    </Anchor>
+                  )}`}
+                />
+              ))}
+          </>
+        )}
+        {metabaseManagedAiPurchaseError && (
+          <Text size="sm" c="feedback-negative">
+            {metabaseManagedAiPurchaseError}
+          </Text>
+        )}
+        {createLlmProviderError && (
+          <Text size="sm" c="feedback-negative">
+            {createLlmProviderError}
+          </Text>
+        )}
+      </Stack>
+      {!isConfigured && (onCancel || connectAction) && (
+        <FormFooter pageProps={{ mt: "xl" }}>
+          {onCancel && (
+            <Button disabled={isMutating} onClick={onCancel}>
+              {t`Back`}
+            </Button>
           )}
-        </>
-      )}
-
-      {metabaseManagedAiPurchaseError && (
-        <Text size="sm" c="feedback-negative">
-          {metabaseManagedAiPurchaseError}
-        </Text>
-      )}
-
-      {createLlmProviderError && (
-        <Text size="sm" c="feedback-negative">
-          {createLlmProviderError}
-        </Text>
+          {connectAction && (
+            <Button
+              variant="filled"
+              loading={isMutating}
+              disabled={isMutating || needsTermsAcceptance}
+              onClick={connectAction}
+            >
+              {t`Connect`}
+            </Button>
+          )}
+        </FormFooter>
       )}
 
       <MetabotSettingUpModal

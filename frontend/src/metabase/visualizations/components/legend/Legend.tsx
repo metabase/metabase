@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
-import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Flex, Popover, Text, rem } from "metabase/ui";
 import type { HoveredObject } from "metabase/viz-core";
 
@@ -33,6 +33,7 @@ interface LegendProps {
     index: number,
     isReversed?: boolean,
   ) => void;
+  getSeriesHref?: (index: number) => string | undefined;
   onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
   isReversed?: boolean;
 }
@@ -47,10 +48,11 @@ export const Legend = ({
   size = "sm",
   onHoverChange,
   onSelectSeries,
+  getSeriesHref,
   onToggleSeriesVisibility,
   isReversed,
 }: LegendProps) => {
-  const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
+  const items = isReversed ? [...originalItems].reverse() : originalItems;
 
   const overflowIndex = visibleIndex + visibleLength;
   const visibleItems = items.slice(visibleIndex, overflowIndex);
@@ -59,7 +61,7 @@ export const Legend = ({
 
   return (
     <Flex
-      className={cx({ [S.horizontalRoot]: !isVertical }, className)}
+      className={cx({ [CS.overflowHidden]: !isVertical }, className)}
       aria-label={t`Legend`}
       direction={isVertical ? "column" : "row"}
       align={isVertical ? "stretch" : "center"}
@@ -84,6 +86,7 @@ export const Legend = ({
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
+            getSeriesHref={getSeriesHref}
             onToggleSeriesVisibility={onToggleSeriesVisibility}
           />
         );
@@ -97,8 +100,12 @@ export const Legend = ({
           <Popover.Target>
             <Text
               component="div"
-              className={S.overflowLabel}
-              c="text-secondary"
+              className={cx(
+                CS.textSecondary,
+                CS.textBrandHover,
+                CS.cursorPointer,
+                CS.textNoWrap,
+              )}
               fz={typography}
               lh={typography}
             >
@@ -116,6 +123,7 @@ export const Legend = ({
                 size={size}
                 onHoverChange={onHoverChange}
                 onSelectSeries={onSelectSeries}
+                getSeriesHref={getSeriesHref}
                 onToggleSeriesVisibility={onToggleSeriesVisibility}
                 isReversed={isReversed}
               />

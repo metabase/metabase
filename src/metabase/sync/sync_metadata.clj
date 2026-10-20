@@ -8,7 +8,6 @@
    4.  Sync FKs and indexes
    5.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
@@ -94,7 +93,6 @@
     (if abort-cause
       (sync-util/set-initial-database-sync-aborted! database abort-cause)
       (sync-util/set-initial-database-sync-complete! database))
-    (dependencies.hooks/after-database-sync (:id database))
     results))
 
 (mu/defn sync-db-metadata!

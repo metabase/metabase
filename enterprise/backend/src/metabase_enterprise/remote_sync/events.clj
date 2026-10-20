@@ -11,7 +11,7 @@
 
    Tracked model types:
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
-   - Table and TableUserSettings (when published in a remote-synced collection)
+   - TableUserSettings, keyed by its Table (when the Table is published in a remote-synced collection)
    - FieldUserSettings and Dimension, keyed by their Field (when its Table is published in a remote-synced collection)
    - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
@@ -19,8 +19,10 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
@@ -137,6 +139,119 @@
     (when (seq action-ids)
       (remote-sync.db/delete-rsos-of-models! "Action" action-ids))))
 
+(defn- transforms-folder-ids
+  "The IDs of the transforms-namespace Collections."
+  []
+  (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
+
+(defn- transforms-rsos
+  "The RemoteSyncObjects of transforms content: every model that syncs with transforms, and the transforms folders."
+  []
+  (concat (remote-sync.db/rsos-of-types (vec (spec/models-for-setting :remote-sync-transforms)))
+          (when-let [folder-ids (seq (transforms-folder-ids))]
+            (remote-sync.db/rsos-of-models "Collection" (vec folder-ids)))))
+
+(defn- untracked-row
+  "A 'create' RemoteSyncObject row for `instance` of `model-type`."
+  [model-type instance timestamp]
+  (merge {:model_type        model-type
+          :model_id          (:id instance)
+          :status            "create"
+          :status_changed_at timestamp}
+         (spec/build-sync-object-fields (spec/spec-for-model-type model-type) instance)))
+
+(defn- untracked-transforms-rows
+  "A 'create' row for each piece of transforms content that an export writes and that has no row yet."
+  [timestamp]
+  (let [exportable (update-vals (spec/exportable-entities) set)
+        untracked? (fn [model-type tracked instance]
+                     (and (contains? (get exportable model-type) (:id instance))
+                          (not (contains? tracked (:id instance)))))]
+    (concat
+     (for [model-type (sort (spec/models-for-setting :remote-sync-transforms))
+           :let       [model-spec (spec/spec-for-model-type model-type)
+                       tracked    (remote-sync.db/tracked-model-ids model-type)]
+           instance   (remote-sync.db/instances-where (:model-key model-spec) (spec/export-conditions model-spec))
+           :when      (untracked? model-type tracked instance)]
+       (untracked-row model-type instance timestamp))
+     (let [tracked (remote-sync.db/tracked-model-ids "Collection")]
+       (for [folder (remote-sync.db/collections-with-names-in-namespace (name collections/transforms-ns))
+             :when  (untracked? "Collection" tracked folder)]
+         (untracked-row "Collection" folder timestamp))))))
+
+(defn- removed-rsos-by-existence
+  "`removed` RemoteSyncObjects split into those whose entity still exists (`true`) and those whose entity is gone
+  (`false`)."
+  [removed]
+  (let [existing (into {}
+                       (for [[model-type rsos] (group-by :model_type removed)]
+                         [model-type (remote-sync.db/existing-ids (:model-key (spec/spec-for-model-type model-type))
+                                                                  (mapv :model_id rsos))]))]
+    (group-by #(contains? (existing (:model_type %)) (:model_id %)) removed)))
+
+(defn enable-transforms-tracking!
+  "Tracks the transforms content: a 'removed' row becomes an update again, or a delete when its entity is gone, and
+  exported content without a row gets a 'create' row."
+  []
+  (let [timestamp              (t/offset-date-time)
+        {live true gone false} (removed-rsos-by-existence (filterv #(= "removed" (:status %)) (transforms-rsos)))
+        rows                   (vec (untracked-transforms-rows timestamp))]
+    (when (seq live)
+      (remote-sync.db/set-rsos-status! (mapv :id live) "update" timestamp))
+    (when (seq gone)
+      (remote-sync.db/set-rsos-status! (mapv :id gone) "delete" timestamp))
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))))
+
+(defn disable-transforms-tracking!
+  "Stops tracking the transforms content: rows never pushed are dropped, and pushed ones become 'removed', so the next
+  push deletes their files while the content stays."
+  []
+  (let [timestamp (t/offset-date-time)
+        rsos      (transforms-rsos)
+        created   (filterv #(= "create" (:status %)) rsos)
+        pushed    (filterv #(#{"synced" "update"} (:status %)) rsos)]
+    (when (seq created)
+      (remote-sync.db/delete-rsos! (mapv :id created)))
+    (when (seq pushed)
+      (remote-sync.db/set-rsos-status! (mapv :id pushed) "removed" timestamp))))
+
+(def ^:private legacy-transforms-root-id
+  "The model_id of the Collection RemoteSyncObject that stood for all of transforms before they were tracked per row."
+  -1)
+
+(defn- do-with-transforms-tracking-lock
+  "Calls `thunk` in one transaction, holding the cluster lock that serializes changes to the transforms tracking."
+  [thunk]
+  (cluster-lock/with-cluster-lock ::transforms-tracking
+    (t2/with-transaction [_conn]
+      (thunk))))
+
+(defn convert-legacy-transforms-root!
+  "Replaces the legacy Transforms root RemoteSyncObject with per-row tracking, once across the cluster: a pending
+  'create' or 'update' tracks the transforms content, a pending 'delete' marks it removed, and the root row goes."
+  []
+  (when (remote-sync.db/rso "Collection" legacy-transforms-root-id)
+    (do-with-transforms-tracking-lock
+     (fn []
+       (when-let [{:keys [status]} (remote-sync.db/rso "Collection" legacy-transforms-root-id)]
+         (case status
+           ("create" "update") (enable-transforms-tracking!)
+           "delete"            (disable-transforms-tracking!)
+           nil)
+         (remote-sync.db/delete-rso-of! "Collection" legacy-transforms-root-id))))))
+
+(defn sync-transforms-tracking!
+  "Brings the transforms tracking in line with [[settings/remote-sync-transforms]] on a read-write instance, which is
+  the only kind that publishes."
+  []
+  (when (= :read-write (settings/remote-sync-type))
+    (do-with-transforms-tracking-lock
+     (fn []
+       (if (settings/remote-sync-transforms)
+         (enable-transforms-tracking!)
+         (disable-transforms-tracking!))))))
+
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
 (defn- resolve-status
@@ -200,8 +315,9 @@
   "Re-checks `model-id`'s eligibility against current DB state. The eligibility that got us here was computed
    from an event payload, which a concurrent change may have invalidated in the meantime."
   [model-spec model-id]
-  (boolean (when-let [instance (remote-sync.db/instance (:model-key model-spec) model-id)]
-             (spec/check-eligibility model-spec instance))))
+  (boolean (when-let [instance (remote-sync.db/instance (spec/source-model model-spec) model-id)]
+             (and (spec/check-eligibility model-spec instance)
+                  (spec/row-exists? model-spec model-id)))))
 
 (defn- create-or-update-sync-object-from-spec!
   "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
@@ -268,22 +384,32 @@
       (when-let [ak (:archived-key child-spec)]
         {ak false})))
 
+(defn- user-settings-child-ids
+  "The ids of the Fields of the Table with `table-id` that have the `child-spec` user settings."
+  [child-spec table-id]
+  (case (:model-key child-spec)
+    :model/FieldUserSettings (remote-sync.db/field-ids-with-user-settings [table-id])
+    :model/Dimension         (remote-sync.db/field-ids-with-dimensions [table-id])))
+
 (defn- cascade-to-children!
   "When a parent model becomes eligible/ineligible, cascade to its children.
    For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
    For ineligible: query existing RSOs by model_table_id and mark as removed."
   [model-spec model-id status eligible?]
-  (doseq [child-spec (spec/children-specs (:model-key model-spec))]
-    (let [fk     (:parent-fk child-spec)
-          filter (cascade-filter child-spec)]
-      (if eligible?
-        ;; Eligible branch: query actual entities and create RSOs for eligible children
-        (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
-          (when (spec/check-eligibility child-spec child)
-            (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
-        ;; Ineligible branch: mark existing child RSOs as removed
-        (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
-          (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
+  (doseq [child-spec (spec/children-specs (:model-key model-spec))
+          child-id   (cond
+                       (and eligible? (= :user-settings (:identity child-spec)))
+                       (user-settings-child-ids child-spec model-id)
+
+                       eligible?
+                       (for [child (remote-sync.db/eligible-children (:model-key child-spec) (:parent-fk child-spec)
+                                                                     model-id (cascade-filter child-spec))
+                             :when (spec/check-eligibility child-spec child)]
+                         (:id child))
+
+                       :else
+                       (map :model_id (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)))]
+    (create-or-update-sync-object-from-spec! child-spec child-id (if eligible? status "removed"))))
 
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
@@ -291,7 +417,8 @@
   [model-spec topic {:keys [object]}]
   (let [model-type     (:model-type model-spec)
         model-id       (:id object)
-        eligible?      (spec/check-eligibility model-spec object)
+        eligible?      (and (spec/check-eligibility model-spec object)
+                            (spec/row-exists? model-spec model-id))
         existing-entry (remote-sync.db/rso model-type model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
@@ -331,7 +458,7 @@
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)]
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection)]
   (register-events-for-spec! model-spec))
 
 ;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
@@ -421,58 +548,3 @@
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
-
-;;; ------------------------------------------- User Settings Tracking -------------------------------------------------
-
-(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
-(def ^:private field-spec (get spec/remote-sync-specs :model/Field))
-
-(defn- hydrate-table-user-settings-details
-  "The RemoteSyncObject details of the Table with `table-id`, as its own `:table_id`/`:table_name`."
-  [table-id]
-  (let [details (spec/hydrate-model-details table-spec table-id)]
-    (assoc details :table_id (:id details) :table_name (:name details))))
-
-(defn- hydrate-field-details
-  "The RemoteSyncObject details of the Field with `field-id`."
-  [field-id]
-  (spec/hydrate-model-details field-spec field-id))
-
-(defn- sync-user-settings!
-  "Track `model-type` `id` as updated when `eligible?` and `exists?` holds for it, else mark it removed when tracked."
-  [model-type id eligible? exists? hydrate-details]
-  (cond
-    (and eligible? (exists? id))
-    (create-or-update-remote-sync-object-entry! model-type id "update" hydrate-details)
-
-    (remote-sync.db/rso-exists? model-type id)
-    (create-or-update-remote-sync-object-entry! model-type id "removed" hydrate-details)))
-
-(events/derive! :event/field-update ::field-update-event)
-(events/derive! ::field-update-event :metabase/event)
-
-(methodical/defmethod events/publish-event! ::field-update-event
-  [_topic {:keys [object]}]
-  (let [eligible? (spec/check-eligibility field-spec object)]
-    (sync-user-settings! "FieldUserSettings" (:id object) eligible?
-                         remote-sync.db/field-user-settings-exist? hydrate-field-details)
-    (sync-user-settings! "Dimension" (:id object) eligible?
-                         remote-sync.db/dimension-exists-for-field? hydrate-field-details)))
-
-(defn- handle-table-event!
-  "The generic Table handler plus the Table's TableUserSettings; one handler, since a second primary method on the
-  same events would displace the generic one."
-  [topic {:keys [object] :as event}]
-  (handle-model-event-from-spec table-spec topic event)
-  (sync-user-settings! "TableUserSettings" (:id object) (spec/check-eligibility table-spec object)
-                       remote-sync.db/table-user-settings-exist? hydrate-table-user-settings-details))
-
-(let [event-kws (spec/event-keywords table-spec)
-      parent-kw (:parent event-kws)]
-  (events/derive! parent-kw :metabase/event)
-  (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
-    (events/derive! event-kw parent-kw))
-  (methodical/add-primary-method!
-   #'events/publish-event!
-   parent-kw
-   (fn [topic event] (handle-table-event! topic event))))

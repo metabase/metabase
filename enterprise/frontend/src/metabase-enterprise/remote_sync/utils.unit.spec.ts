@@ -225,8 +225,12 @@ describe("remote_sync utils", () => {
   });
 
   describe("isTableChildModel", () => {
-    it("should return true for field model", () => {
-      expect(isTableChildModel("field")).toBe(true);
+    it("should return true for field user settings model", () => {
+      expect(isTableChildModel("fieldusersettings")).toBe(true);
+    });
+
+    it("should return true for dimension model", () => {
+      expect(isTableChildModel("dimension")).toBe(true);
     });
 
     it("should return true for segment model", () => {
@@ -241,8 +245,8 @@ describe("remote_sync utils", () => {
       expect(isTableChildModel("card")).toBe(false);
     });
 
-    it("should return false for table model", () => {
-      expect(isTableChildModel("table")).toBe(false);
+    it("should return false for table user settings model", () => {
+      expect(isTableChildModel("tableusersettings")).toBe(false);
     });
 
     it("should return false for dashboard model", () => {

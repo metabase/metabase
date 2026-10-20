@@ -1582,6 +1582,7 @@
   metadata-provider?
   metadata-providerable?]
  [metabase.lib.metadata.result-metadata
+  match-returned-columns
   normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
