@@ -2811,6 +2811,63 @@
                     (is (= [[nil 67] ["Doohickey" 12682] ["Gadget" 2270] ["Gizmo" 3532] ["Widget" 209]]
                            (mt/rows (qp/process-query query))))))))))))))
 
+(deftest source-card-stage-with-explicit-joins-gets-no-implicit-join-repair-test
+  (testing "a `source-card:` stage with an explicit join is left as written, and lib resolves its fields"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [native (mt/native-query {:query "SELECT ID, CATEGORY FROM PRODUCTS"})]
+        (mt/with-temp [:model/Card {native-eid :entity_id} {:name            "Native products"
+                                                            :type            :question
+                                                            :dataset_query   native
+                                                            :result_metadata (get-in (qp/process-query native)
+                                                                                     [:data :cols])}
+                       :model/Card {products-eid :entity_id} {:name          "Products"
+                                                              :type          :question
+                                                              :dataset_query (table-query :products)}]
+          (doseq [card-type [:question :model]]
+            (mt/with-temp [:model/Card {orders-eid :entity_id} {:name          "Orders"
+                                                                :type          card-type
+                                                                :dataset_query (table-query :orders)}
+                           :model/Card {people-eid :entity_id} {:name          "People"
+                                                                :type          card-type
+                                                                :dataset_query (table-query :people)}]
+              (let [db-name       (t2/select-one-fn :name :model/Database :id (mt/id))
+                    column        (fn [table column-name] [db-name "PUBLIC" table column-name])
+                    build         (fn [source-eid source-column join-stage]
+                                    (let [join {"alias"      "P"
+                                                "strategy"   "left-join"
+                                                "stages"     [(assoc join-stage "lib/type" "mbql.stage/mbql")]
+                                                "conditions" [["=" {}
+                                                               ["field" {} source-column]
+                                                               ["field" {"join-alias" "P"} (column "PRODUCTS" "ID")]]]}]
+                                      (-> (construct/execute-representations-query
+                                           (query-data
+                                            {"lib/type" "mbql/query"
+                                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                          "source-card" source-eid
+                                                          "joins"       [join]
+                                                          "breakout"    [["field" {} (column "PRODUCTS" "CATEGORY")]]
+                                                          "aggregation" [["count" {}]]}]}))
+                                          (get-in [:structured-output :query]))))
+                    source-field? #(contains? (get-in % [:stages 0 :breakout 0 1]) :source-field)]
+                (testing (str "orders as a " (name card-type) ", joined to a native question")
+                  (let [query (build orders-eid (column "ORDERS" "QUANTITY") {"source-card" native-eid})]
+                    (is (not (source-field? query)))
+                    (is (= [[nil 67] ["Doohickey" 12682] ["Gadget" 2270] ["Gizmo" 3532] ["Widget" 209]]
+                           (mt/rows (qp/process-query query))))))
+                (testing (str "people as a " (name card-type) ", joined to a native question")
+                  (let [query (build people-eid (column "PEOPLE" "ID") {"source-card" native-eid})]
+                    (is (not (source-field? query)))
+                    (is (= [[nil 2300] ["Doohickey" 42] ["Gadget" 53] ["Gizmo" 51] ["Widget" 54]]
+                           (mt/rows (qp/process-query query))))))
+                (doseq [[join-label join-source] [["question" {"source-card" products-eid}]
+                                                  ["table" {"source-table" [db-name "PUBLIC" "PRODUCTS"]}]]]
+                  (testing (str "orders as a " (name card-type) ", joined to a grouped " join-label)
+                    (is (not (source-field? (build orders-eid
+                                                   (column "ORDERS" "QUANTITY")
+                                                   (assoc join-source
+                                                          "breakout"    [["field" {} (column "PRODUCTS" "ID")]]
+                                                          "aggregation" [["count" {}]])))))))))))))))
+
 (deftest gate-checks-only-the-first-stage-test
   (testing (str "The gate inspects stage 0 only -- where a source is chosen. A metric ref on a later stage is left\n"
                 "to the QP: the source there is the previous stage's output, not something the LLM can edit the way\n"
