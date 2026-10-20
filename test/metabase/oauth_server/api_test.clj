@@ -1658,7 +1658,9 @@
                                             :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
                                             :state         "test-state")]
           (is (= {:error             "invalid_scope"
-                  :error_description "The requested scopes are not accepted by the requested resource."}
+                  :error_description (str "The requested scopes are not accepted by the requested resource "
+                                          "http://localhost:3000" (mcp/mcp-canonical-path)
+                                          ". The current site URL is http://localhost:3000. Send the URL of the MCP server.")}
                  (:body response))))))))
 
 (deftest authorize-drops-unregistered-scopes-test
@@ -2124,7 +2126,7 @@
                           {:scope "agent:content:read agent:query:run"}
                           "agent:content:write")]
             (is (= {:error             "invalid_scope"
-                    :error_description "The requested scopes are not accepted by the requested resource."}
+                    :error_description "No resource was requested, so no MCP scopes can be granted."}
                    (:body response)))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope

@@ -156,8 +156,15 @@
 (def ^:private invalid-target-description
   "The resource parameter must be an absolute URI without a fragment.")
 
-(def ^:private narrowed-away-scope-description
-  "The requested scopes are not accepted by the requested resource.")
+(defn- narrowed-away-scope-description
+  [resources]
+  (if (empty? resources)
+    "No resource was requested, so no MCP scopes can be granted."
+    (format "The requested scopes are not accepted by the requested resource %s. The current site URL is %s. Send the URL of the MCP server."
+            (if (string? resources)
+              resources
+              (str/join ", " resources))
+            (system/site-url))))
 
 (defn- authorization-server-metadata-url
   "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
@@ -459,8 +466,12 @@
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
-  Narrows MCP tokens to only MCP scopes, and all others to anything but MCP scopes. Mixed resources throw
-  invalid_scope. Returns nil if there are no scopes valid to the resource."
+  An MCP token has one or more MCP `resources` listed and only MCP `resources`. Anything else (including missing
+  `resources`) is a REST token. An MCP `resource` matches the current site URL and an MCP path.
+
+  Narrows MCP tokens to only MCP scopes, and REST tokens to anything but MCP scopes. Narrowing is the way we deal with
+  mutually exclusive scopes and surfaces. Mixed resources throw invalid_scope. Returns `nil` if there are no scopes
+  valid to the resource."
   [resources scope]
   (let [mcp-endpoints (into #{}
                             (map #(canonical-resource-uri (str (system/site-url) %)))
@@ -513,9 +524,9 @@
                                        {:oauth-error       "invalid_scope"
                                         :error-description (no-supported-scopes-description)})))]
     (or (narrow-scope-to-resource (:resource parsed) registered)
-        (throw (ex-info "no requested scope is accepted by the named resource"
+        (throw (ex-info (format "no requested scope is accepted by the named resource %s" (pr-str (:resource parsed)))
                         {:oauth-error       "invalid_scope"
-                         :error-description narrowed-away-scope-description
+                         :error-description (narrowed-away-scope-description (:resource parsed))
                          :resource          (:resource parsed)})))))
 
 (defn- authorization-consent-response

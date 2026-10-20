@@ -52,13 +52,12 @@
   "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource, with every
    [[metabase.mcp.core/v2-scopes]] as `:scopes_supported`."
   [resource-path]
-  ;; Every v2 scope so it works even with incorrect clients
   (let [site-url (system/site-url)]
     {:status  200
      :headers {"Content-Type" "application/json"}
      :body    {:resource                  (str site-url resource-path)
                :authorization_servers     [site-url]
-               :scopes_supported          (vec (mcp/v2-scopes))
+               :scopes_supported          (vec (mcp/v2-scopes)) ;; all mcp scopes; this is what clients will request
                :bearer_methods_supported  ["header"]}}))
 
 ;; One endpoint per MCP path, kept in sync with [[metabase.mcp.paths/endpoint-paths]]. Each advertises its own
