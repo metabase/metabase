@@ -357,6 +357,21 @@
         {:column "count" :value 5 :dimensions [{:column "TOTAL" :value "abc"}]}
         {:column "TOTAL" :value "abc"}))))
 
+(deftest auto-binned-drills-filter-the-bin-the-chart-shows-test
+  (testing "on an Auto bin breakout, zoom-in.binning and underlying-records filter on the bin the QP made"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [query (orders-count-binned-by "TOTAL")
+            width (-> (mt/with-test-user :rasta (mt/process-query query)) mt/cols first :binning_info :bin_width)
+            point {:column "count" :value 4115 :dimensions [{:column "TOTAL" :value 40.0}]}
+            bin   [[:>= {} [:field {} (mt/id :orders :total)] 40.0]
+                   [:< {} [:field {} (mt/id :orders :total)] (+ 40.0 width)]]]
+        (is (= 20.0 width) "the QP resolves Auto bin to a nice width")
+        (testing "zoom-in.binning"
+          (is (=? bin (zoom-filters! query point {}))))
+        (testing "underlying-records"
+          (is (=? bin (lib/filters (derived-query! query [{:type    "drill-thru" :drill "underlying-records"
+                                                           :context point}])))))))))
+
 (deftest zoom-in-geographic-on-binned-lat-lon-test
   (testing "the binned lat/lon zoom acts on both coordinates and names no column, so it applies with no dimension"
     (mt/with-model-cleanup [:model/McpQueryHandle]

@@ -164,11 +164,18 @@
 
 (defn- click-context
   "The drill context for the click `context`. Each column is named by the name it has in `query`'s results, and
-   resolves to the returned column of that name."
+   resolves to the returned column of that name, with an Auto bin resolved to the width the query processor uses."
   [query {:keys [column row dimensions] :as context}]
   (let [columns (into {} (map (juxt :lib/deduplicated-name identity)) (lib/returned-columns query))
+        ;; The QP rounds an Auto bin's width, and Lib resolves a `:default` column's width without rounding, so a
+        ;; drill would filter on a range that is not the clicked bin.
+        binned  (fn [col]
+                  (if-let [width (when (= :default (:strategy (lib/binning col)))
+                                   (lib/default-bin-width query -1 col))]
+                    (lib/with-binning col {:strategy :bin-width :bin-width width})
+                    col))
         resolve (fn [column-name]
-                  (or (get columns column-name)
+                  (or (some-> (get columns column-name) binned)
                       (throw (bad-request (tru "The query returns no column named {0}." (pr-str column-name))))))
         ;; Lib fails on a string for a number with a ClassCastException, which would answer a 500.
         checked (fn [col v]
