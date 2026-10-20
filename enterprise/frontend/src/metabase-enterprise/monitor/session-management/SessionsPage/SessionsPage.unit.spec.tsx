@@ -8,14 +8,19 @@ import {
   setupRevokeSessionsErrorEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { defer } from "metabase/utils/promise";
 import type {
   RevokeSessionsResponse,
   Session,
@@ -55,7 +60,10 @@ type SetupOpts = {
   initialRoute?: string;
   revokeResponse?: RevokeSessionsResponse;
   revokeError?: Parameters<typeof setupRevokeSessionsErrorEndpoint>[0];
+  loadSessionRoute?: () => Promise<SessionRoute>;
 };
+
+type SessionRoute = { element: null };
 
 const setup = ({
   sessions = [ANN_SESSION, BOB_SESSION, CARL_SESSION],
@@ -65,6 +73,7 @@ const setup = ({
   initialRoute = PATHNAME,
   revokeResponse = createMockRevokeSessionsResponse(),
   revokeError,
+  loadSessionRoute = async () => ({ element: null }),
 }: SetupOpts = {}) => {
   if (listFails) {
     setupListSessionsErrorEndpoint();
@@ -90,7 +99,7 @@ const setup = ({
         </MonitorContent>
       }
     >
-      <Route path=":sessionId" />
+      <Route path=":sessionId" lazy={loadSessionRoute} />
     </Route>,
     {
       withRouter: true,
@@ -104,6 +113,13 @@ const setup = ({
 };
 
 const getSidebar = () => screen.findByTestId("session-detail-sidebar");
+
+const searchSessions = async (query: string) => {
+  await userEvent.type(screen.getByLabelText("Search sessions"), query, {
+    advanceTimers: jest.advanceTimersByTime,
+  });
+  act(() => jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION));
+};
 
 const getConfirmModal = () => screen.findByTestId("confirm-modal");
 
@@ -152,6 +168,10 @@ const getRevokeBodies = () =>
 describe("SessionsPage", () => {
   beforeEach(() => {
     mockGetBoundingClientRect({ height: 800, width: 1000 });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe("list", () => {
@@ -325,6 +345,28 @@ describe("SessionsPage", () => {
       });
       expect(router?.location.pathname).toBe(`${PATHNAME}/ann-session`);
       expect(await getSidebar()).toBeInTheDocument();
+    });
+
+    it("keeps the sidebar open and the search when a session is opened right after searching (GDGT-3380)", async () => {
+      jest.useFakeTimers();
+      const sessionRoute = defer<SessionRoute>();
+      const { router } = setup({
+        loadSessionRoute: () => sessionRoute.promise,
+      });
+      await waitForLoaderToBeRemoved();
+
+      await searchSessions("ann");
+
+      await userEvent.click(screen.getByTestId("session-row-ann-session"), {
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      act(() => jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY));
+      await act(async () => sessionRoute.resolve({ element: null }));
+
+      expect(router?.location.pathname).toBe(`${PATHNAME}/ann-session`);
+      expect(router?.location.search).toBe("?query=ann");
+      expect(screen.getByLabelText("Search sessions")).toHaveValue("ann");
+      expect(screen.getByTestId("session-detail-sidebar")).toBeInTheDocument();
     });
   });
 
