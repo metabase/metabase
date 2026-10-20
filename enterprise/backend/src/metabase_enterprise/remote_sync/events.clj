@@ -19,8 +19,10 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
@@ -136,6 +138,119 @@
       (remote-sync.db/delete-rsos-of-models! "Collection" coll-ids))
     (when (seq action-ids)
       (remote-sync.db/delete-rsos-of-models! "Action" action-ids))))
+
+(defn- transforms-folder-ids
+  "The IDs of the transforms-namespace Collections."
+  []
+  (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
+
+(defn- transforms-rsos
+  "The RemoteSyncObjects of transforms content: every model that syncs with transforms, and the transforms folders."
+  []
+  (concat (remote-sync.db/rsos-of-types (vec (spec/models-for-setting :remote-sync-transforms)))
+          (when-let [folder-ids (seq (transforms-folder-ids))]
+            (remote-sync.db/rsos-of-models "Collection" (vec folder-ids)))))
+
+(defn- untracked-row
+  "A 'create' RemoteSyncObject row for `instance` of `model-type`."
+  [model-type instance timestamp]
+  (merge {:model_type        model-type
+          :model_id          (:id instance)
+          :status            "create"
+          :status_changed_at timestamp}
+         (spec/build-sync-object-fields (spec/spec-for-model-type model-type) instance)))
+
+(defn- untracked-transforms-rows
+  "A 'create' row for each piece of transforms content that an export writes and that has no row yet."
+  [timestamp]
+  (let [exportable (update-vals (spec/exportable-entities) set)
+        untracked? (fn [model-type tracked instance]
+                     (and (contains? (get exportable model-type) (:id instance))
+                          (not (contains? tracked (:id instance)))))]
+    (concat
+     (for [model-type (sort (spec/models-for-setting :remote-sync-transforms))
+           :let       [model-spec (spec/spec-for-model-type model-type)
+                       tracked    (remote-sync.db/tracked-model-ids model-type)]
+           instance   (remote-sync.db/instances-where (:model-key model-spec) (spec/export-conditions model-spec))
+           :when      (untracked? model-type tracked instance)]
+       (untracked-row model-type instance timestamp))
+     (let [tracked (remote-sync.db/tracked-model-ids "Collection")]
+       (for [folder (remote-sync.db/collections-with-names-in-namespace (name collections/transforms-ns))
+             :when  (untracked? "Collection" tracked folder)]
+         (untracked-row "Collection" folder timestamp))))))
+
+(defn- removed-rsos-by-existence
+  "`removed` RemoteSyncObjects split into those whose entity still exists (`true`) and those whose entity is gone
+  (`false`)."
+  [removed]
+  (let [existing (into {}
+                       (for [[model-type rsos] (group-by :model_type removed)]
+                         [model-type (remote-sync.db/existing-ids (:model-key (spec/spec-for-model-type model-type))
+                                                                  (mapv :model_id rsos))]))]
+    (group-by #(contains? (existing (:model_type %)) (:model_id %)) removed)))
+
+(defn enable-transforms-tracking!
+  "Tracks the transforms content: a 'removed' row becomes an update again, or a delete when its entity is gone, and
+  exported content without a row gets a 'create' row."
+  []
+  (let [timestamp              (t/offset-date-time)
+        {live true gone false} (removed-rsos-by-existence (filterv #(= "removed" (:status %)) (transforms-rsos)))
+        rows                   (vec (untracked-transforms-rows timestamp))]
+    (when (seq live)
+      (remote-sync.db/set-rsos-status! (mapv :id live) "update" timestamp))
+    (when (seq gone)
+      (remote-sync.db/set-rsos-status! (mapv :id gone) "delete" timestamp))
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))))
+
+(defn disable-transforms-tracking!
+  "Stops tracking the transforms content: rows never pushed are dropped, and pushed ones become 'removed', so the next
+  push deletes their files while the content stays."
+  []
+  (let [timestamp (t/offset-date-time)
+        rsos      (transforms-rsos)
+        created   (filterv #(= "create" (:status %)) rsos)
+        pushed    (filterv #(#{"synced" "update"} (:status %)) rsos)]
+    (when (seq created)
+      (remote-sync.db/delete-rsos! (mapv :id created)))
+    (when (seq pushed)
+      (remote-sync.db/set-rsos-status! (mapv :id pushed) "removed" timestamp))))
+
+(def ^:private legacy-transforms-root-id
+  "The model_id of the Collection RemoteSyncObject that stood for all of transforms before they were tracked per row."
+  -1)
+
+(defn- do-with-transforms-tracking-lock
+  "Calls `thunk` in one transaction, holding the cluster lock that serializes changes to the transforms tracking."
+  [thunk]
+  (cluster-lock/with-cluster-lock ::transforms-tracking
+    (t2/with-transaction [_conn]
+      (thunk))))
+
+(defn convert-legacy-transforms-root!
+  "Replaces the legacy Transforms root RemoteSyncObject with per-row tracking, once across the cluster: a pending
+  'create' or 'update' tracks the transforms content, a pending 'delete' marks it removed, and the root row goes."
+  []
+  (when (remote-sync.db/rso "Collection" legacy-transforms-root-id)
+    (do-with-transforms-tracking-lock
+     (fn []
+       (when-let [{:keys [status]} (remote-sync.db/rso "Collection" legacy-transforms-root-id)]
+         (case status
+           ("create" "update") (enable-transforms-tracking!)
+           "delete"            (disable-transforms-tracking!)
+           nil)
+         (remote-sync.db/delete-rso-of! "Collection" legacy-transforms-root-id))))))
+
+(defn sync-transforms-tracking!
+  "Brings the transforms tracking in line with [[settings/remote-sync-transforms]] on a read-write instance, which is
+  the only kind that publishes."
+  []
+  (when (= :read-write (settings/remote-sync-type))
+    (do-with-transforms-tracking-lock
+     (fn []
+       (if (settings/remote-sync-transforms)
+         (enable-transforms-tracking!)
+         (disable-transforms-tracking!))))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 

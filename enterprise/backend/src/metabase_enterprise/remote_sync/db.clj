@@ -14,7 +14,7 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :entity_id :collection_id :model_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :is_default :entity_id :collection_id :model_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
@@ -31,9 +31,8 @@
    [:removal-conditions    Conditions]])
 
 (def ^:private ModelId
-  "A `:model_id`: the primary key of the referenced entity, or the `-1` sentinel
-  (`metabase-enterprise.remote-sync.settings/transforms-root-id`) standing in for the virtual Transforms root
-  Collection."
+  "A `:model_id`: the primary key of the referenced entity, or `-1` for the legacy Transforms root Collection row that
+  startup converts."
   [:maybe [:or ms/PositiveInt [:= -1]]])
 
 (mu/defn eligible-children
@@ -58,6 +57,14 @@
   [model-key  :- :keyword
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
+
+(mu/defn existing-ids :- [:set ms/PositiveInt]
+  "The IDs among `ids` of the existing instances of `model-key`."
+  [model-key :- :keyword
+   ids       :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select-pks-set model-key :id [:in ids])
+    #{}))
 
 (mu/defn instances-where
   "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
@@ -290,6 +297,11 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
 
+(mu/defn card-counts-by-type :- [:map-of :keyword :int]
+  "The number of Cards with `card-ids`, by `:type`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-fn->fn :type :count [:model/Card :type [:%count.* :count]] :id [:in card-ids] {:group-by [:type]}))
+
 (mu/defn published-table-ids :- [:set ::lib.schema.id/table]
   "The ids of the Tables published in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
@@ -473,6 +485,19 @@
   [collections :- [:sequential ::collections.schema/collection]]
   (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))
 
+(mu/defn collection-content-exists? :- :boolean
+  "Whether a Card, Dashboard, Document, Timeline, or Action is in the Collections with `collection-ids`, or a Table is
+  published to one."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (boolean
+   (or (t2/exists? :model/Card :collection_id [:in collection-ids])
+       (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
+       (t2/exists? :model/Document :collection_id [:in collection-ids])
+       (t2/exists? :model/Timeline :collection_id [:in collection-ids])
+       (t2/exists? :model/Action :collection_id [:in collection-ids])
+       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."
   [collections :- [:sequential ::collections.schema/collection]]
@@ -567,22 +592,31 @@
   (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
 
 (mu/defn dirty-rso-exists?
-  "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
+  "Whether a RemoteSyncObject is not synced, counting those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/exists? :model/RemoteSyncObject
               {:where [:and
                        [:not= :status "synced"]
                        (when (seq excluded-model-types)
-                         [:not-in :model_type excluded-model-types])]}))
+                         [:or
+                          [:not-in :model_type excluded-model-types]
+                          [:in :status ["removed" "delete"]]])]}))
 
 (mu/defn dirty-rsos
-  "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced."
+  "The RemoteSyncObjects that are not synced, including those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/select :model/RemoteSyncObject
              {:where [:and
                       [:not= :status "synced"]
                       (when (seq excluded-model-types)
-                        [:not-in :model_type excluded-model-types])]}))
+                        [:or
+                         [:not-in :model_type excluded-model-types]
+                         [:in :status ["removed" "delete"]]])]}))
+
+(mu/defn rsos-of-types
+  "The RemoteSyncObjects of `model-types`."
+  [model-types :- [:sequential :string]]
+  (t2/select :model/RemoteSyncObject :model_type [:in model-types]))
 
 (mu/defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."

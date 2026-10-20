@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
@@ -38,6 +39,7 @@ type SetupOpts = {
 function setup({ search }: SetupOpts) {
   setupDashboardEndpoints(DASHBOARD);
   setupListSubscriptionsEndpoint([]);
+  setupBookmarksEndpoints([]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION), DASHBOARDS_COLLECTION],
   });

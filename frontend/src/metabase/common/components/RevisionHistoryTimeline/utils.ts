@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import type { Revision, User } from "metabase-types/api";
+import {
+  PLUGIN_MODERATION,
+  type RevisionOrModerationEvent,
+} from "metabase/plugins";
+import type { ModerationReview, Revision, User } from "metabase-types/api";
 
 export function getTimelineEvents({
   revisions = [],
@@ -28,4 +32,24 @@ export function getTimelineEvents({
       revision: r,
     };
   });
+}
+
+export function getActivityTimelineEvents({
+  revisions,
+  moderationReviews = [],
+  currentUser,
+}: {
+  revisions: Revision[] | undefined;
+  moderationReviews?: ModerationReview[];
+  currentUser: User | null;
+}): RevisionOrModerationEvent[] {
+  return [
+    ...getTimelineEvents({ revisions, currentUser }),
+    ...PLUGIN_MODERATION.getModerationTimelineEvents(
+      moderationReviews,
+      currentUser,
+    ),
+  ].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  );
 }
