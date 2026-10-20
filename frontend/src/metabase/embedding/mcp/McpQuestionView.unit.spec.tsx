@@ -336,14 +336,11 @@ describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", ()
     };
 
     const pickDisplay = async (display: string) =>
-      userEvent.click(await screen.findByRole("button", { name: display }));
+      userEvent.click(await screen.findByRole("radio", { name: display }));
 
     const expectDisplay = async (display: string) =>
       waitFor(() => {
-        expect(screen.getByRole("button", { name: display })).toHaveAttribute(
-          "data-variant",
-          "filled",
-        );
+        expect(screen.getByRole("radio", { name: display })).toBeChecked();
       });
 
     const applyOf = (
