@@ -18,6 +18,7 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -29,6 +30,8 @@
    (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections :row-lock))
 
