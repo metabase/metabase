@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { memo, useState } from "react";
-import { match } from "ts-pattern";
 
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -14,10 +13,6 @@ import { LEGEND_SIZES, type LegendSize } from "./layout";
 // Before the real URL is computed, a non-empty href keeps the title a
 // focusable link, so focusing it can trigger that computation.
 const HREF_PLACEHOLDER = "#";
-
-type SeriesHref =
-  | { status: "pending" }
-  | { status: "resolved"; href: string | undefined };
 
 export interface LegendItemData {
   key: string;
@@ -58,16 +53,7 @@ const LegendItemInner = ({
   const isLink = isClickable && getSeriesHref !== undefined;
   // Building the URL is expensive, so it waits until the title is hovered or
   // focused.
-  const [seriesHref, setSeriesHref] = useState<SeriesHref>({
-    status: "pending",
-  });
-  const href = match(seriesHref)
-    .with({ status: "pending" }, () => HREF_PLACEHOLDER)
-    .with(
-      { status: "resolved" },
-      ({ href }) => href && Urls.getSubpathSafeUrl(href),
-    )
-    .exhaustive();
+  const [href, setHref] = useState<string | undefined>(HREF_PLACEHOLDER);
 
   const handleDotClick = (event: React.MouseEvent) => {
     onToggleSeriesVisibility?.(event, index);
@@ -86,7 +72,8 @@ const LegendItemInner = ({
   };
 
   const handleUpdateHref = () => {
-    setSeriesHref({ status: "resolved", href: getSeriesHref?.(index) });
+    const url = getSeriesHref?.(index);
+    setHref(url && Urls.getSubpathSafeUrl(url));
   };
 
   const handleItemMouseEnter = (event: React.MouseEvent) => {
