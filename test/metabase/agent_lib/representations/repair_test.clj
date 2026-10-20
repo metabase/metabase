@@ -2023,7 +2023,11 @@
         (let [d (ex-data e)]
           (is (= :no-fk-path (:error d)))
           (is (true? (:agent-error? d)))
-          (is (re-find #"no foreign key" (ex-message e))))))))
+          (is (= (str "Field [\"Sample\" \"PUBLIC\" \"PRODUCTS\" \"CATEGORY\"] is on table \"PRODUCTS\", which has no foreign key "
+                      "from the source table \"ORDERS\", so it cannot be reached implicitly. "
+                      "To group or filter by a column from that table, add an explicit `joins:` entry "
+                      "and reference the field using the join alias. Otherwise use a field from the source table.")
+                 (ex-message e))))))))
 
 (deftest ^:parallel implicit-join-ambiguous-fk-test
   (testing (str "throws :ambiguous-fk when multiple FKs exist, and does NOT enumerate the "

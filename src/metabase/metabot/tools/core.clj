@@ -430,7 +430,7 @@
 
 ;;; ------------------------------------------------ Converters ----------------------------------------------------
 
-(def ^:private refusal-status-codes
+(def refusal-status-codes
   "The statuses that mean \"you may not see this\" or \"this is not here\". `api/read-check` raises a
   403 for the first and a 404 for the second, and the converters collapse them."
   #{403 404})
