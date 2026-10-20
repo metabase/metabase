@@ -18,7 +18,7 @@
    [metabase.util.json :as json]))
 
 (def ^:private research-scopes
-  "The scopes of a user granted Metabot and NLQ, the users the Research profile is offered to."
+  "The scopes of a user granted Metabot and NLQ, the users that the Research profile is offered to."
   (scope/user-metabot-perms->scopes {:permission/metabot     :yes
                                      :permission/metabot-nlq :yes}))
 
@@ -42,8 +42,9 @@
                 "scope is granted to an NLQ-yes user")))))))
 
 (defn- research-call
-  "Call `tool-name` the way the Research profile's agent does, as a user holding `research-scopes`,
-  and return the outcome: the `:output` the model reads, plus `:error` when the call failed."
+  "Call `tool-name` the way that the Research profile's agent does, and return the outcome.
+  The call runs as a user with `research-scopes`. The outcome is the `:output` that the model reads,
+  plus `:error` when the call failed."
   [tool-name args]
   (binding [scope/*current-user-scope* research-scopes]
     (let [entries (metabot.tools/->entries (:tools (profiles/get-profile :explorations))
@@ -62,7 +63,7 @@
     (doseq [args [{} {:q nil} {:q ""} {:metric_ids nil} {:metric_ids []} {:q "  " :metric_ids []}]]
       (testing (pr-str args)
         (is (= {:output (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate"
-                             " dimensions of metrics you have already chosen.\n"
+                             " dimensions of metrics that you have already chosen.\n"
                              "Call `list_research_metrics` to choose metric ids.\n"
                              "Call `search` with `entity_types` [\"metric\"] to find metrics by topic.")
                 :error  {:class :recoverable :code ::tools.explorations/needs-metric-ids-or-q}}
@@ -217,7 +218,7 @@
         (is (str/includes? output (str "Dimension \"wrong-" m "\" is not a candidate of metric " m))))
       (is (str/includes? output "Call `get_research_candidates` with `metric_ids` [1, 2, 3, 4, 5]"))
       (is (str/includes? output "Candidate dimensions by metric:\n- Metric 1 (Metric 1): "))))
-  (testing "the lookup it suggests asks for no more metric_ids per call than the tool takes"
+  (testing "the lookup that it suggests asks for no more metric_ids per call than the tool takes"
     (let [output  (:output (add-groups-rejected-with
                             {:invalid-dimensions (vec (for [m (range 1 22)]
                                                         {:metric-id     m
@@ -254,7 +255,7 @@
         (testing "the metric is listed, with candidate dimensions"
           (is (some #(= metric-id (:id %)) listed))
           (is (seq candidates)))
-        (testing "every dimension get_research_candidates offers is accepted"
+        (testing "every dimension that get_research_candidates offers is accepted"
           (let [outcome (research-call "add_research_groups"
                                        {:groups [{:metric_id     metric-id
                                                   :dimension_ids (mapv :id candidates)}]})]
@@ -351,7 +352,7 @@
         (is (= {:timeline_ids [releases launches]}
                (streamed-tool-output
                 (research-call "select_research_timelines" {:timeline_ids [releases launches]})))))
-      (testing "names every id that isn't a timeline the user can list, which the FE would skip"
+      (testing "names every id that isn't a timeline that the user can list, which the FE would skip"
         (is (= {:output (str "Timelines " archived ", " Integer/MAX_VALUE " were not found. They may"
                              " not exist, or you may not have access to them.\n"
                              "Call `list_timelines` and use ids from its result.")

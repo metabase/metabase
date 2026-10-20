@@ -105,7 +105,7 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message  (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate dimensions of"
-                  " metrics you have already chosen.")
+                  " metrics that you have already chosen.")
    :recovery [{:uses #{"list_research_metrics"}
                :text "Call `list_research_metrics` to choose metric ids."}
               {:uses #{"search"}
@@ -382,7 +382,7 @@
    [:timeline_ids [:sequential {:min 1 :error/message "must list at least one timeline id"} :int]]])
 
 (tools/defrecoverable unknown-timeline!
-  "Timeline ids in `select_research_timelines` that are not timelines the user can see."
+  "Timeline ids in `select_research_timelines` that are not timelines that the user can see."
   {:payload [:map {:closed true}
              [:timeline-ids [:sequential {:min 1} :int]]]}
   [{:keys [timeline-ids]}]
@@ -394,14 +394,14 @@
   tools/Tool
   (declaration [_]
     {:name        "select_research_timelines"
-     :description (str "Add timelines to the research plan, by the ids `list_timelines` returns."
+     :description (str "Add timelines to the research plan, by the ids that `list_timelines` returns."
                        " Timelines already in the plan stay; to drop one, use"
                        " `remove_from_research_plan`.")
      :scope       scope/agent-explorations-write
      :args        select-exploration-timelines-schema})
 
   (handle [_ {:keys [timeline_ids]} _ctx]
-    ;; The client silently drops an id it can't list, so an unchecked one would read as added.
+    ;; The client silently drops an id that it can't list, so an unchecked one would read as added.
     (let [visible (into #{} (map :id) (timeline/list-timelines))]
       (when-let [unknown (not-empty (into [] (comp (remove visible) (distinct)) timeline_ids))]
         (unknown-timeline! {:timeline-ids unknown})))

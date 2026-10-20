@@ -350,7 +350,7 @@
                                               {:groups [{:metric_id 1} {:metric_id 2}]})))))))))
 
 (defn- research-groups-problems
-  "The `ex-data` [[explorations.impl/research-groups]] throws for `groups`."
+  "The `ex-data` that [[explorations.impl/research-groups]] throws for `groups`."
   [groups]
   (try
     (explorations.impl/research-groups {:groups groups})
