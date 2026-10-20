@@ -27,7 +27,7 @@ import {
 } from "metabase/querying/filters/components/FilterPicker/FilterPreviewContext";
 import { useSetting } from "metabase/settings";
 import { Box, Center, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
-import { staticVizOverrides } from "metabase/ui/colors";
+import { colors, staticVizOverrides } from "metabase/ui/colors";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import {
   type ChartAnimation,
@@ -36,7 +36,16 @@ import {
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset, PrototypeDataInfo, RawSeries } from "metabase-types/api";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
+import type {
+  CardDisplayType,
+  Dataset,
+  DatasetColumn,
+  DatasetData,
+  PrototypeDataInfo,
+  RawSeries,
+  RowValue,
+} from "metabase-types/api";
 
 const POPOVER_PREVIEW_WIDTH = 440;
 const POPOVER_CHART_HEIGHT = 280;
@@ -505,24 +514,26 @@ function usePreviewSeries(
   }, [rawSeries]);
   const shownSeries = rawSeries ?? lastRawSeries;
 
-  const [isOnionSkinEnabled] = usePrototypeSetting(
-    LIVE_FILTER_PREVIEW_ONION_SKIN,
-  );
-  const ghostSeries = useMemo(
+  const [onionSkinStyle] = usePrototypeSetting(LIVE_FILTER_PREVIEW_ONION_SKIN);
+  const currentSeries = useMemo(
     (): RawSeries | undefined =>
-      question != null && !isQuestionQuery && isOnionSkinEnabled && result?.data
+      question != null &&
+      !isQuestionQuery &&
+      onionSkinStyle !== "off" &&
+      result?.data
         ? [{ card: question.card(), data: result.data }]
         : undefined,
-    [question, isQuestionQuery, isOnionSkinEnabled, result],
+    [question, isQuestionQuery, onionSkinStyle, result],
   );
 
-  const seriesWithGhost = useMemo(
-    () =>
-      shownSeries && ghostSeries && ghostSeries !== shownSeries
-        ? withOnionSkin(shownSeries, ghostSeries)
-        : shownSeries,
-    [shownSeries, ghostSeries],
-  );
+  const seriesWithGhost = useMemo(() => {
+    if (!shownSeries || !currentSeries || currentSeries === shownSeries) {
+      return shownSeries;
+    }
+    return onionSkinStyle === "difference"
+      ? withDifference(shownSeries, currentSeries)
+      : withOnionSkin(shownSeries, currentSeries);
+  }, [shownSeries, currentSeries, onionSkinStyle]);
 
   const errorMessage =
     !isQuestionQuery && error
@@ -611,6 +622,175 @@ function withOnionSkin(series: RawSeries, ghostSeries: RawSeries): RawSeries {
     },
     { ...main, card: { ...main.card, name: previewName } },
   ];
+}
+
+const DIFFERENCE_DISPLAYS: Partial<Record<string, CardDisplayType>> = {
+  bar: "bar",
+  row: "row",
+  // Stacked areas fill the space between the two values.
+  line: "area",
+};
+
+const INCREASE_COLUMN = "onion_skin_increase";
+const DECREASE_COLUMN = "onion_skin_decrease";
+
+/**
+ * Shows `series` and `currentSeries` as one stacked chart: for each dimension
+ * value, the lower of the two values, and on top of it the increase (green) or
+ * the decrease (red) from the current value to the preview value. A dimension
+ * value that only one of the results has counts as 0 in the other. Only for bar,
+ * row and line charts with one dimension and one metric.
+ */
+function withDifference(
+  series: RawSeries,
+  currentSeries: RawSeries,
+): RawSeries {
+  const [preview] = series;
+  const [current] = currentSeries;
+  const display =
+    preview != null ? DIFFERENCE_DISPLAYS[preview.card.display] : undefined;
+  if (
+    preview == null ||
+    current == null ||
+    display == null ||
+    series.length !== 1 ||
+    currentSeries.length !== 1
+  ) {
+    return series;
+  }
+
+  const { cols } = preview.data;
+  const dimensionColumns = cols.filter(
+    (column) => column.source === "breakout",
+  );
+  const metricColumns = cols.filter(
+    (column) => column.source === "aggregation",
+  );
+  const [dimensionColumn] = dimensionColumns;
+  const [metricColumn] = metricColumns;
+  if (
+    dimensionColumn == null ||
+    metricColumn == null ||
+    dimensionColumns.length !== 1 ||
+    metricColumns.length !== 1
+  ) {
+    return series;
+  }
+
+  const currentValues = getMetricValues(
+    current.data,
+    dimensionColumn,
+    metricColumn,
+  );
+  const previewValues = getMetricValues(
+    preview.data,
+    dimensionColumn,
+    metricColumn,
+  );
+  const dimensionValues = [
+    ...new Set([...currentValues.keys(), ...previewValues.keys()]),
+  ];
+  if (isDate(dimensionColumn) || isNumeric(dimensionColumn)) {
+    dimensionValues.sort(compareDimensionValues);
+  }
+
+  const rows = dimensionValues.map((value) => {
+    const currentValue = currentValues.get(value) ?? 0;
+    const previewValue = previewValues.get(value) ?? 0;
+    return [
+      value,
+      Math.min(currentValue, previewValue),
+      Math.max(previewValue - currentValue, 0),
+      Math.max(currentValue - previewValue, 0),
+    ];
+  });
+
+  // The extra columns have no field ref: they are not in the query.
+  const { field_ref: _fieldRef, ...metricColumnWithoutRef } = metricColumn;
+  const settings = preview.card.visualization_settings;
+  return [
+    {
+      card: {
+        ...preview.card,
+        display,
+        visualization_settings: {
+          ...settings,
+          "graph.dimensions": [dimensionColumn.name],
+          "graph.metrics": [
+            metricColumn.name,
+            INCREASE_COLUMN,
+            DECREASE_COLUMN,
+          ],
+          "stackable.stack_type": "stacked",
+          series_settings: {
+            ...settings.series_settings,
+            [INCREASE_COLUMN]: {
+              title: t`Increase`,
+              color: colors["feedback-positive"],
+              // A zero increase or decrease would draw its line over the
+              // line of the lower value.
+              "line.hidden": true,
+            },
+            [DECREASE_COLUMN]: {
+              title: t`Decrease`,
+              color: colors["feedback-negative"],
+              // A zero increase or decrease would draw its line over the
+              // line of the lower value.
+              "line.hidden": true,
+            },
+          },
+        },
+      },
+      data: {
+        ...preview.data,
+        cols: [
+          dimensionColumn,
+          metricColumn,
+          {
+            ...metricColumnWithoutRef,
+            name: INCREASE_COLUMN,
+            display_name: t`Increase`,
+          },
+          {
+            ...metricColumnWithoutRef,
+            name: DECREASE_COLUMN,
+            display_name: t`Decrease`,
+          },
+        ],
+        rows,
+      },
+    },
+  ];
+}
+
+function getMetricValues(
+  data: DatasetData,
+  dimensionColumn: DatasetColumn,
+  metricColumn: DatasetColumn,
+): Map<RowValue, number> {
+  const dimensionIndex = data.cols.findIndex(
+    (column) => column.name === dimensionColumn.name,
+  );
+  const metricIndex = data.cols.findIndex(
+    (column) => column.name === metricColumn.name,
+  );
+  const values = new Map<RowValue, number>();
+  data.rows.forEach((row) => {
+    const metricValue = row[metricIndex];
+    values.set(
+      row[dimensionIndex],
+      typeof metricValue === "number" ? metricValue : 0,
+    );
+  });
+  return values;
+}
+
+// Dates come as ISO strings, which sort in time order.
+function compareDimensionValues(value1: RowValue, value2: RowValue): number {
+  if (typeof value1 === "number" && typeof value2 === "number") {
+    return value1 - value2;
+  }
+  return String(value1).localeCompare(String(value2));
 }
 
 function getPreviewQuery(
