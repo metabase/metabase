@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCollectionByIdEndpoint,
@@ -8,12 +9,19 @@ import {
   setupDashboardQueryMetadataEndpoint,
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
-import { screen, within } from "__support__/ui";
+import { act, screen, within } from "__support__/ui";
+import { initAuth } from "embedding-sdk-bundle/store/auth";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
+import {
+  createMockLoginStatusState,
+  createMockSdkState,
+} from "embedding-sdk-bundle/test/mocks/state";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import type { CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -109,6 +117,27 @@ describe("MetabaseBrowser", () => {
     expect(queryNewQuestionButton()).not.toBeInTheDocument();
     expect(queryNewDashboardButton()).not.toBeInTheDocument();
   });
+
+  it("should wait for the SDK login before fetching the initial collection", async () => {
+    const { store, authConfig } = setup({
+      initialCollection: "root",
+      initStatus: { status: "loading" },
+    });
+
+    expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("path:/api/collection/root"),
+    ).toHaveLength(0);
+
+    act(() => {
+      store.dispatch(initAuth.fulfilled(undefined, "test-request", authConfig));
+    });
+
+    expect(await screen.findByText("Root Dashboard")).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("path:/api/collection/root").length,
+    ).toBeGreaterThan(0);
+  });
 });
 
 function getBreadcrumb(name: string) {
@@ -123,7 +152,15 @@ function queryNewDashboardButton() {
   return screen.queryByRole("button", { name: "New dashboard" });
 }
 
-function setup() {
+interface SetupOpts {
+  initialCollection?: CollectionId | "all";
+  initStatus?: LoginStatus;
+}
+
+function setup({
+  initialCollection = "all",
+  initStatus = { status: "success" },
+}: SetupOpts = {}) {
   useLocaleMock.mockReturnValue({ isLocaleLoading: false });
 
   const personalCollection = createMockCollection({
@@ -193,20 +230,31 @@ function setup() {
   );
   setupNotificationChannelsEndpoints({});
 
-  const { state } = setupSdkState();
+  const { state } = setupSdkState({
+    sdkState: createMockSdkState({
+      initStatus: createMockLoginStatusState(initStatus),
+    }),
+  });
 
   const settings: SdkIframeEmbedSettings & {
     componentName: "metabase-browser";
   } = {
     componentName: "metabase-browser",
     instanceUrl: "http://localhost",
-    initialCollection: "all",
+    initialCollection,
     // `MetabaseBrowser` defaults `readOnly` to true when the key is absent.
     readOnly: false,
   };
 
-  renderWithSDKProviders(<MetabaseBrowser settings={settings} />, {
-    componentProviderProps: { authConfig: createMockSdkConfig() },
-    storeInitialState: state,
-  });
+  const authConfig = createMockSdkConfig();
+
+  const { store } = renderWithSDKProviders(
+    <MetabaseBrowser settings={settings} />,
+    {
+      componentProviderProps: { authConfig },
+      storeInitialState: state,
+    },
+  );
+
+  return { store, authConfig };
 }
