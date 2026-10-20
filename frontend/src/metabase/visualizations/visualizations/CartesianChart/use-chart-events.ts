@@ -92,7 +92,7 @@ export const useChartEvents = (
     onHoverChange,
     clicked,
     isDashboard,
-    getHref,
+    getCardHref,
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
   // to re-run chart-instance-dependent effects (e.g. brush) once it is ready,
@@ -472,17 +472,19 @@ export const useChartEvents = (
     (seriesIndex: number) => {
       const seriesModel = chartModel.seriesModels[seriesIndex];
       return seriesModel
-        ? getHref?.(getQuestionCard(seriesModel.cardId))
+        ? getCardHref?.(getQuestionCard(seriesModel.cardId))
         : undefined;
     },
-    [chartModel.seriesModels, getHref, getQuestionCard],
+    [chartModel.seriesModels, getCardHref, getQuestionCard],
   );
 
   // Legend titles are links only when clicking one always opens a question:
   // breakout series can open drills instead. The Embedding SDK has no
   // in-app routes to link to.
   const canNavigate =
-    getHref !== undefined && onChangeCardAndRun != null && !isEmbeddingSdk();
+    getCardHref !== undefined &&
+    onChangeCardAndRun != null &&
+    !isEmbeddingSdk();
   const canLinkSeries =
     canNavigate &&
     chartModel.seriesModels.every((seriesModel) =>

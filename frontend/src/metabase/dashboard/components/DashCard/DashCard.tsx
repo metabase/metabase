@@ -55,7 +55,7 @@ import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import type {
-  DashCardGetHref,
+  DashCardGetCardHref,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
 import { useAutoScrollIntoView } from "./use-auto-scroll-into-view";
@@ -131,11 +131,13 @@ function DashCardInner({
   );
   const store = useStore();
   const dispatch = useDispatch();
-  const getHref = useCallback<DashCardGetHref>(
+  const getHref = useCallback(
+    () => getDashcardHref(store.getState(), dashcard.id),
+    [store, dashcard.id],
+  );
+  const getCardHref = useCallback<DashCardGetCardHref>(
     (opts) =>
-      opts
-        ? getNewCardUrlFromDashboard(store.getState(), { ...opts, dashcard })
-        : getDashcardHref(store.getState(), dashcard.id),
+      getNewCardUrlFromDashboard(store.getState(), { ...opts, dashcard }),
     [store, dashcard],
   );
   const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
@@ -419,6 +421,7 @@ function DashCardInner({
           expectedDuration={expectedDuration}
           error={error}
           getHref={navigateToNewCardFromDashboard ? getHref : undefined}
+          getCardHref={navigateToNewCardFromDashboard ? getCardHref : undefined}
           isAction={isAction}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
           isEditingDashboardLayout={isEditingDashboardLayout}

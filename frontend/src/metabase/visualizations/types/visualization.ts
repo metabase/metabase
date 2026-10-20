@@ -53,7 +53,8 @@ export interface VisualizationProps {
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
   card: SeriesCard;
-  getHref?: (nextCard?: SeriesCard) => string | undefined;
+  getHref?: () => string | undefined;
+  getCardHref?: (nextCard: SeriesCard) => string | undefined;
   data: DatasetData;
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;

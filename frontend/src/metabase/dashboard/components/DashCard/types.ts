@@ -12,9 +12,9 @@ export type DashCardOnChangeCardAndRunHandler = (
 ) => void;
 
 /**
- * Returns the URL a dashcard navigates to: the dashcard's own question when
- * called without arguments, otherwise `nextCard` reached from `previousCard`.
+ * Returns the URL for opening `nextCard` from the dashcard's `previousCard`,
+ * with the dashboard's filters applied, or `undefined` when it can't be opened.
  */
-export type DashCardGetHref = (
-  opts?: Pick<NavigateToNewCardFromDashboardOpts, "nextCard" | "previousCard">,
+export type DashCardGetCardHref = (
+  opts: Pick<NavigateToNewCardFromDashboardOpts, "nextCard" | "previousCard">,
 ) => string | undefined;

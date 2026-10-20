@@ -94,7 +94,7 @@ import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParam
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 import type {
-  DashCardGetHref,
+  DashCardGetCardHref,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
 import {
@@ -131,7 +131,8 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: DashCardSeries;
   question: Question | null;
-  getHref?: DashCardGetHref;
+  getHref?: () => string | undefined;
+  getCardHref?: DashCardGetCardHref;
 
   gridSize: {
     width: number;
@@ -172,6 +173,7 @@ export function DashCardVisualization({
   series: rawSeries,
   question,
   getHref,
+  getCardHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -446,19 +448,16 @@ export function DashCardVisualization({
     [onChangeCardAndRun, findCardById],
   );
 
-  const getCardHref = useMemo(() => {
-    if (!getHref) {
+  const getNextCardHref = useMemo(() => {
+    if (!getCardHref) {
       return;
     }
 
-    return (nextCard?: SeriesCard) => {
-      if (!nextCard) {
-        return getHref();
-      }
+    return (nextCard: SeriesCard) => {
       const previousCard = findCardById(nextCard.id);
-      return previousCard ? getHref({ nextCard, previousCard }) : undefined;
+      return previousCard ? getCardHref({ nextCard, previousCard }) : undefined;
     };
-  }, [getHref, findCardById]);
+  }, [getCardHref, findCardById]);
 
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
@@ -655,7 +654,8 @@ export function DashCardVisualization({
               : undefined
           }
           mode={clickActionMode ?? dashboardClickActionMode}
-          getHref={getCardHref}
+          getHref={getHref}
+          getCardHref={getNextCardHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
           headerIcon={headerIcon}

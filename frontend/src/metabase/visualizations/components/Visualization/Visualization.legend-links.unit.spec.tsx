@@ -37,8 +37,8 @@ interface SetupOpts {
 }
 
 const setup = async ({ rawSeries }: SetupOpts) => {
-  const getHref = jest.fn(
-    (nextCard?: SeriesCard) => `/question/${nextCard?.id}`,
+  const getCardHref = jest.fn(
+    (nextCard: SeriesCard) => `/question/${nextCard.id}`,
   );
   const onChangeCardAndRun = jest.fn<void, [OnChangeCardAndRunOpts]>();
 
@@ -47,7 +47,7 @@ const setup = async ({ rawSeries }: SetupOpts) => {
       rawSeries={rawSeries}
       isDashboard
       showTitle
-      getHref={getHref}
+      getCardHref={getCardHref}
       onChangeCardAndRun={onChangeCardAndRun}
     />,
     { withRouter: true },
@@ -55,7 +55,7 @@ const setup = async ({ rawSeries }: SetupOpts) => {
   // ExplicitSize sets the chart dimensions on the tick after mounting.
   await delay(0);
 
-  return { getHref, onChangeCardAndRun };
+  return { getCardHref, onChangeCardAndRun };
 };
 
 const getLegend = () => screen.getByLabelText("Legend");
@@ -65,12 +65,12 @@ const getLegendLink = (name: string) =>
 
 describe("Visualization dashcard legend links (metabase#83401)", () => {
   it("should link each series to its own question, building the URL on hover", async () => {
-    const { getHref } = await setup({
+    const { getCardHref } = await setup({
       rawSeries: [createBarSeries(1, "Card1"), createBarSeries(2, "Card2")],
     });
 
     expect(getLegendLink("Card2")).toHaveAttribute("href", "#");
-    expect(getHref).not.toHaveBeenCalled();
+    expect(getCardHref).not.toHaveBeenCalled();
 
     await userEvent.hover(getLegendTitle("Card2"));
 
