@@ -294,7 +294,7 @@
              :token-id (:id token-data)
              :scopes   (or (some->> (:scope token-data) (into #{})) #{})}))))))
 
-(defn live-mcp-access-token?
+(defn live-access-token?
   "Whether the access token with row id `token-id` still authenticates `user-id`: it exists, is unrevoked and
   unexpired, belongs to `user-id`, was issued to a client that still exists, and its user is active."
   [token-id user-id]

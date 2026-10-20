@@ -343,8 +343,8 @@
                              ["HTTP://LocalHost:3000/api/metabase-mcp"] wide)))))))))
 
 (deftest resolver-and-liveness-check-agree-test
-  (testing "`live-mcp-access-token?` refuses an MCP token for every reason `resolve-access-token` does, and accepts one
-            it resolves"
+  (testing "`live-access-token?` refuses a token for every reason `resolve-access-token` does, and accepts one it
+            resolves"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (mt/with-temp [:model/User {user-id :id} {}]
         (mt/with-model-cleanup [:model/OAuthAccessToken :model/OAuthClient]
@@ -367,7 +367,7 @@
                                                                             (+ (System/currentTimeMillis) 3600000))})]))
                 agree   (fn [[token token-id]]
                           [(some? (oauth-server/resolve-access-token token))
-                           (oauth-server/live-mcp-access-token? token-id user-id)])]
+                           (oauth-server/live-access-token? token-id user-id)])]
             (testing "control: a live MCP token passes both"
               (is (= [true true] (agree (mint! (client!))))))
             (testing "an expired token fails both"

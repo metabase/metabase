@@ -379,7 +379,7 @@
    endpoint."
   [{:keys [scope handler route-params]} request respond raise]
   (let [claims (mcp.session/resolve-ui-credential (get-in request [:headers ui-credential-header]))
-        user   (when (oauth-server/live-mcp-access-token? (:tid claims) (:uid claims))
+        user   (when (oauth-server/live-access-token? (:tid claims) (:uid claims))
                  (mw.session/user-info-for-id (:uid claims)))]
     (cond
       (not user)
