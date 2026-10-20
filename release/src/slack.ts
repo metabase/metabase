@@ -227,6 +227,23 @@ export async function findSlackMessage({ channelName, text, limit = 100 }: {
   };
 }
 
+export async function getRecentSlackMessages({ channelName, limit = 100 }: {
+  channelName: string,
+  limit?: number,
+}): Promise<string[]> {
+  const channelId = await getSlackChannelId(channelName);
+  if (!channelId) {
+    throw new Error(`Could not find channel ${channelName}`);
+  }
+
+  const response = await slack.conversations.history({
+    channel: channelId,
+    limit,
+  });
+
+  return response.messages?.map(message => message.text ?? '') ?? [];
+}
+
 function getExistingSlackMessage(version: string, channelName: string) {
   return findSlackMessage({ channelName, text: getReleaseTitle(version) });
 }

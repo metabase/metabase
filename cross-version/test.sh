@@ -269,7 +269,7 @@ fetch_history() {
 }
 
 changesets_in_grace_period() {
-  local ids id commit added now age_hours json=""
+  local ids id id_line commit added now age_hours base json=""
   ids=$(grep "not in the changelog file:" <<<"$1" | sed 's/.*not in the changelog file://' |
     grep -oE 'v[0-9]+\.[0-9A-Za-z:._-]+' | sort -u || true)
   if [[ -z "$ids" ]]; then
@@ -282,11 +282,22 @@ changesets_in_grace_period() {
     return 1
   fi
 
+  base=$(git -C "$REPO_ROOT" rev-list -1 --first-parent --before="${GRACE_PERIOD} days ago" HEAD)
+  if [[ -z "$base" ]]; then
+    warn "Could not find the commit from ${GRACE_PERIOD} day(s) ago"
+    return 1
+  fi
+
   now=$(date +%s)
   for id in $ids; do
+    id_line="^[[:space:]]*id:[[:space:]]*['\"]?${id//./\\.}['\"]?[[:space:]]*$"
+    if git -C "$REPO_ROOT" grep -qE "$id_line" "$base" -- resources/migrations; then
+      warn "$id was already in ${base:0:11}, which is older than ${GRACE_PERIOD} day(s)"
+      return 1
+    fi
     commit="" added=""
     read -r commit added < <(git -C "$REPO_ROOT" -c log.showRoot=false log --since="${GRACE_PERIOD} days ago" \
-      -S "$id" --format='%H %ct' HEAD -- resources/migrations | tail -1) || true
+      -E -G "$id_line" --format='%H %ct' HEAD -- resources/migrations | tail -1) || true
     if [[ -z "${commit:-}" ]]; then
       warn "$id was not added in the last ${GRACE_PERIOD} day(s)"
       return 1

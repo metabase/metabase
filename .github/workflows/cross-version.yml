@@ -122,6 +122,7 @@ jobs:
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
 
       - name: Notify Slack about migrations that need a backport or a release
+        continue-on-error: true
         if: >-
           github.ref_name == 'master' &&
           steps.run-test.outputs.skipped == 'true' &&
@@ -135,7 +136,7 @@ jobs:
           SLACK_CHANNEL: 'engineering-ci'
         with:
           script: | # js
-            const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { getRecentSlackMessages, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
             const { notifyOverdueChangesets } = require('${{ github.workspace }}/.github/scripts/notify-unreleased-migrations');
 
             await notifyOverdueChangesets({
@@ -144,7 +145,7 @@ jobs:
               notifyAfterHours: Number(process.env.NOTIFY_AFTER_HOURS),
               gracePeriodDays: Number(process.env.GRACE_PERIOD),
               channelName: process.env.SLACK_CHANNEL,
-              findSlackMessage,
+              getRecentSlackMessages,
               sendSlackMessage,
             });
 
