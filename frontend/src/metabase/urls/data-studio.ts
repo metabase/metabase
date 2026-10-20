@@ -139,6 +139,10 @@ export function dataStudioDashboardUsage(dashboardId: DashboardId) {
   return `${dataStudioDashboard(dashboardId)}/usage`;
 }
 
+export function dataStudioDashboardHistory(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/history`;
+}
+
 export function dataStudioDashboardSubscriptions(
   dashboardId: DashboardId,
   subscriptionId?: DashboardSubscription["id"],
@@ -403,6 +407,10 @@ export function dataStudioActionFields(
   return fieldId != null
     ? `${fieldsUrl}/${encodeURIComponent(fieldId)}`
     : fieldsUrl;
+}
+
+export function dataStudioActionDependencies(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/dependencies`;
 }
 
 export function dataStudioActionRun(actionId: WritebackActionId) {

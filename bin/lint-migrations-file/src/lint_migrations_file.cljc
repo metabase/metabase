@@ -180,6 +180,35 @@
    #{"datetime" "timestamp" "timestamp without time zone"}
    change-log file 49 "00-000"))
 
+(defn- bare-entity-id-type-changes
+  "The changes of `change-set` that give an `entity_id` column the bare `char(21)` type instead of `${entity_id.type}`."
+  [change-set]
+  (let [bare?     #(= "char(21)" (some-> % str/lower-case str/trim))
+        bare-col? (fn [col] (and (= "entity_id" (get-in col [:column :name])) (bare? (get-in col [:column :type]))))]
+    (filter (fn [change]
+              (or (some bare-col? (get-in change [:createTable :columns]))
+                  (some bare-col? (get-in change [:addColumn :columns]))
+                  (and (= "entity_id" (get-in change [:addNotNullConstraint :columnName]))
+                       (bare? (get-in change [:addNotNullConstraint :columnDataType])))
+                  (and (= "entity_id" (get-in change [:modifyDataType :columnName]))
+                       (bare? (get-in change [:modifyDataType :newDataType])))))
+            (get-in change-set [:changeSet :changes]))))
+
+(defn require-entity-id-type
+  "Ensures that directory-based migration files from `20261019_` on give `entity_id` columns the `${entity_id.type}`
+  type, which carries the byte-wise collation serialization relies on to order entities alike on every app DB."
+  [change-log ^java.io.File file]
+  (when-let [bad-ids (when (and (directory-based-migration-file? file)
+                                (not (neg? (compare (subs (.getName file) 0 8) "20261019"))))
+                       (->> change-log
+                            (filter (comp seq bare-entity-id-type-changes))
+                            (map #(get-in % [:changeSet :id]))
+                            seq))]
+    (throw (validation-error
+            (str "Migration(s) [" (str/join "," (map #(str "'" % "'") bad-ids))
+                 "] give entity_id the bare char(21) type; use ${entity_id.type}")
+            {:invalid-ids (vec bad-ids)}))))
+
 (def ^:private directory-based-id-format-re
   "For directory-based migration files (v60+), IDs must be prefixed with the correct version.
   E.g., `v60.my-migration-name` or `v60.1`"
@@ -321,6 +350,7 @@
   (require-no-bare-blob-or-text-types change-log)
   (require-no-bare-boolean-types change-log file)
   (require-no-datetime-type change-log file)
+  (require-entity-id-type change-log file)
   (require-table-scoped-existence-preconditions change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]

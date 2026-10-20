@@ -8,9 +8,7 @@
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.collections.core :as collections]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -35,20 +33,19 @@
    :yaml (serialization/entity-yaml entity)})
 
 (mu/defn generate :- ::data-apps.schema/app-files
-  "The `data_app.yaml` of a new app named `name`, served at `slug` (from the name by default), and its collection's
-  file, both with new entity IDs and the YAML an export writes for them once a pull saves them."
-  [{app-name :name :keys [slug description]} :- ::data-apps.schema/app-request]
+  "The `data_app.yaml` of an app named `name`, served at `slug` (from the name by default), and its collection's file,
+  with the entity IDs `entity_id` and `collection_id` of an existing app, or new ones, and the YAML an export writes
+  for them once a pull saves them."
+  [{app-name :name :keys [slug description entity_id collection_id]} :- ::data-apps.schema/app-request]
   (let [slug          (or slug (name->slug app-name))
         _             (when-not (mr/validate ::data-apps.schema/slug slug)
                         (throw (ex-info (tru "Pass a slug: \"{0}\" is not a valid one." slug) {:status-code 400})))
-        app-id        (u/generate-nano-id)
-        collection-id (u/generate-nano-id)
-        created-at    (u.date/format (mi/current-timestamp))
+        app-id        (or entity_id (u/generate-nano-id))
+        collection-id (or collection_id (u/generate-nano-id))
         collection    {:name        (str "Data App: " slug)
                        :namespace   "data-apps"
                        :entity_id   collection-id
                        :slug        (collections/slugify (str "Data App: " slug))
-                       :created_at  created-at
                        :serdes/meta [{:model "Collection" :id collection-id
                                       :label (serialization/slugify-name (str "Data App: " slug))}]}
         app           (m/assoc-some {:version     data-app.config/supported-app-version
@@ -57,7 +54,6 @@
                                      :path        bundle-path
                                      :collection  collection-id
                                      :entity_id   app-id
-                                     :created_at  created-at
                                      :serdes/meta [{:model "DataApp" :id app-id :label slug}]}
                                     :description description)]
     {:files [(file app nil)

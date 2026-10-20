@@ -167,10 +167,37 @@
     :cum-count   "count"
     :count-where "count_where"))
 
+;;; -------- Field.settings → aggregation inheritance policy (see #83416) --------
+;;;
+;;; Field.settings is a grab-bag — value-formatting (currency, decimals, date style…), per-row cell
+;;; behavior (view_as:link, click_behavior), and cell-generic layout (show_mini_bar, text_align). Only
+;;; a subset makes sense to flow into an aggregation.
+
+(def ^:private cell-generic-settings-keys
+  "Pure cell-level visual settings — meaningful for any aggregation that produces a cell."
+  #{:show_mini_bar :text_wrapping :text_align})
+
+(def ^:private value-formatting-settings-keys
+  "Settings that describe how the field's own values are rendered — number and date formatting plus
+  cell-generic layout. Safe to inherit for aggregations whose output IS a value of the operand's type
+  (sum/avg/max/min/median/stddev/cum-sum/sum-where/percentile).
+
+  Anything outside the number-formatting, date-formatting, and cell-generic categories is dropped. In
+  particular, per-row cell behavior (view_as:link templates, click_behavior) can't resolve against an
+  aggregated row (#83416)."
+  (into cell-generic-settings-keys
+        [;; number formatting
+         :number_style :currency :currency_style :currency_in_header
+         :number_separators :decimals :scale :prefix :suffix
+         ;; date/time formatting (only meaningful when the aggregation preserves datetime: min/max/median)
+         :date_style :date_separator :date_abbreviate :time_enabled :time_style]))
+
 (defmethod lib.metadata.calculation/metadata-method ::quantity-aggregation
   [query stage-number clause]
-  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
-         :semantic-type :type/Quantity))
+  (let [base ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)]
+    (-> (dissoc base :settings)
+        (m/assoc-some :settings (not-empty (select-keys (:settings base) cell-generic-settings-keys)))
+        (assoc :semantic-type :type/Quantity))))
 
 (lib.hierarchy/derive ::quantity-aggregation ::aggregation)
 (lib.hierarchy/derive ::count-aggregation ::quantity-aggregation)
@@ -305,12 +332,12 @@
 (defmethod lib.metadata.calculation/metadata-method ::aggregation
   [query stage-number [_tag _opts first-arg :as clause]]
   (merge
-   ;; flow the `:options` from the field we're aggregating. This is important, for some reason.
-   ;; See [[metabase.query-processor.aggregation-test/field-settings-for-aggregate-fields-test]]
+   ;; Flow :semantic-type and value-formatting :settings from the aggregated-over field; drop per-row cell
+   ;; behavior and other categories that can't apply to an aggregated row.
    (when first-arg
-     ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
-     ;; here for its type!
-     (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
+     (let [col (lib.metadata.calculation/metadata query stage-number first-arg)]
+       (m/assoc-some (select-keys col [:semantic-type])
+                     :settings (not-empty (select-keys (:settings col) value-formatting-settings-keys)))))
    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
 (lib.common/defop count       [] [x])

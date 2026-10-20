@@ -1,0 +1,503 @@
+## The dependency jobs process the entities whose status rows a write marks stale in its own transaction: an
+## entity's own row for the columns each job reads, and its direct dependents' rows when what they read changes. The
+## status rows lose the retry delays and keep a failure count and a terminal flag; their stale flag becomes a count
+## of the writes the job has not read. result_metadata_status and analysis_finding_status hold one row per entity,
+## as dependency_status does, and analysis_finding keeps only the findings.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.drkztr
+      author: ranquild
+      comment: Drop dependency_status.next_retry_at, which the jobs no longer use since they don't retry
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: next_retry_at
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: next_retry_at
+                  type: ${timestamp_type}
+                  remarks: Earliest time at which a failed entity can be retried (null means immediately processable)
+
+  - changeSet:
+      id: v65.u3r8zm
+      author: ranquild
+      comment: Drop dependency_status.unresolved_tables, since a table a native query names is recorded once the query changes again
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: unresolved_tables
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: unresolved_tables
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity names tables that match no synced table, recomputed after each sync
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.lywci7
+      author: ranquild
+      comment: Rename dependency_status.dependency_analysis_version to analysis_version, as the other status tables name it
+      changes:
+        - renameColumn:
+            tableName: dependency_status
+            oldColumnName: dependency_analysis_version
+            newColumnName: analysis_version
+            columnDataType: smallint
+      rollback:
+        - renameColumn:
+            tableName: dependency_status
+            oldColumnName: analysis_version
+            newColumnName: dependency_analysis_version
+            columnDataType: smallint
+        - addNotNullConstraint:
+            tableName: dependency_status
+            columnName: dependency_analysis_version
+            columnDataType: smallint
+        - addDefaultValue:
+            tableName: dependency_status
+            columnName: dependency_analysis_version
+            columnDataType: smallint
+            defaultValueNumeric: 0
+
+  - changeSet:
+      id: v65.0mshmu
+      author: ranquild
+      comment: Keep dependency_status.analysis_version not null, which a rename on MySQL drops
+      changes:
+        - addNotNullConstraint:
+            tableName: dependency_status
+            columnName: analysis_version
+            columnDataType: smallint
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.wlb1z1
+      author: ranquild
+      comment: Keep the default of dependency_status.analysis_version, which a rename on MySQL drops
+      changes:
+        - addDefaultValue:
+            tableName: dependency_status
+            columnName: analysis_version
+            columnDataType: smallint
+            defaultValueNumeric: 0
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.oacw7z
+      author: ranquild
+      comment: Create result_metadata_status
+      changes:
+        - createTable:
+            tableName: result_metadata_status
+            remarks: Whether the result metadata of each MBQL card is to be re-derived
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(254)
+                  remarks: The type of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: The ID of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stale
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many writes changed what the job reads for the entity since the job last read it; the job processes it while above 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fail_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many times in a row the job failed to process the entity since a write changed it
+                  constraints:
+                    nullable: false
+              - column:
+                  name: terminal
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the job gave up on the entity after its failures, until a write changes it
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analysis_version
+                  type: int
+                  remarks: The version of the result metadata logic that last processed the card
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: result_metadata_status
+
+  - changeSet:
+      id: v65.ckqf9u
+      author: ranquild
+      comment: Unique constraint to prevent duplicate result_metadata_status entries
+      changes:
+        - addUniqueConstraint:
+            tableName: result_metadata_status
+            columnNames: entity_type, entity_id
+            constraintName: idx_unique_result_metadata_status
+      rollback:
+        - dropUniqueConstraint:
+            tableName: result_metadata_status
+            constraintName: idx_unique_result_metadata_status
+
+  - changeSet:
+      id: v65.u44qob
+      author: ranquild
+      comment: Create analysis_finding_status
+      changes:
+        - createTable:
+            tableName: analysis_finding_status
+            remarks: Whether each analyzable entity is to be analyzed again
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(254)
+                  remarks: The type of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: The ID of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stale
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many writes changed what the job reads for the entity since the job last read it; the job processes it while above 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fail_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many times in a row the job failed to process the entity since a write changed it
+                  constraints:
+                    nullable: false
+              - column:
+                  name: terminal
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the job gave up on the entity after its failures, until a write changes it
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analysis_version
+                  type: int
+                  remarks: The version of the analysis that last processed the entity
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: analysis_finding_status
+
+  - changeSet:
+      id: v65.0ypnl2
+      author: ranquild
+      comment: Unique constraint to prevent duplicate analysis_finding_status entries
+      changes:
+        - addUniqueConstraint:
+            tableName: analysis_finding_status
+            columnNames: entity_type, entity_id
+            constraintName: idx_unique_analysis_finding_status
+      rollback:
+        - dropUniqueConstraint:
+            tableName: analysis_finding_status
+            constraintName: idx_unique_analysis_finding_status
+
+  - changeSet:
+      id: v65.eoug8w
+      author: ranquild
+      comment: Copy the stale flag and analysis version of each analysis_finding row to analysis_finding_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO analysis_finding_status (entity_type, entity_id, stale, analysis_version)
+              SELECT analyzed_entity_type, analyzed_entity_id, CASE WHEN stale THEN 1 ELSE 0 END, COALESCE(analysis_version, 0)
+              FROM analysis_finding
+      rollback: # the table is dropped by the rollback of the changeset creating it
+
+  - changeSet:
+      id: v65.1suf0c
+      author: ranquild
+      comment: Drop the index on analysis_finding.stale, which moves to analysis_finding_status
+      changes:
+        - dropIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_finding_stale
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
+
+  - changeSet:
+      id: v65.d291qd
+      author: ranquild
+      comment: Drop analysis_finding.stale, which analysis_finding_status now holds
+      changes:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: stale
+      rollback:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs re-analysis due to upstream changes
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              UPDATE analysis_finding SET stale = COALESCE((SELECT s.stale > 0
+              FROM analysis_finding_status s WHERE s.entity_type = analysis_finding.analyzed_entity_type
+              AND s.entity_id = analysis_finding.analyzed_entity_id), FALSE)
+
+  - changeSet:
+      id: v65.em1iri
+      author: ranquild
+      comment: Drop analysis_finding.analysis_version, which analysis_finding_status records
+      changes:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: analysis_version
+      rollback:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: analysis_version
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: The version of the analysis that was performed
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              UPDATE analysis_finding SET analysis_version = COALESCE((SELECT s.analysis_version
+              FROM analysis_finding_status s WHERE s.entity_type = analysis_finding.analyzed_entity_type
+              AND s.entity_id = analysis_finding.analyzed_entity_id), 0)
+
+  - changeSet:
+      id: v65.pxgfgg
+      author: ranquild
+      comment: Rename analysis_finding.analyzed_entity_type to entity_type, as the status tables name it
+      changes:
+        - renameColumn:
+            tableName: analysis_finding
+            oldColumnName: analyzed_entity_type
+            newColumnName: entity_type
+            columnDataType: varchar(254)
+      rollback:
+        - renameColumn:
+            tableName: analysis_finding
+            oldColumnName: entity_type
+            newColumnName: analyzed_entity_type
+            columnDataType: varchar(254)
+        - addNotNullConstraint:
+            tableName: analysis_finding
+            columnName: analyzed_entity_type
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v65.2rxyyj
+      author: ranquild
+      comment: Rename analysis_finding.analyzed_entity_id to entity_id, as the status tables name it
+      changes:
+        - renameColumn:
+            tableName: analysis_finding
+            oldColumnName: analyzed_entity_id
+            newColumnName: entity_id
+            columnDataType: int
+      rollback:
+        - renameColumn:
+            tableName: analysis_finding
+            oldColumnName: entity_id
+            newColumnName: analyzed_entity_id
+            columnDataType: int
+        - addNotNullConstraint:
+            tableName: analysis_finding
+            columnName: analyzed_entity_id
+            columnDataType: int
+
+  - changeSet:
+      id: v65.p5wigm
+      author: ranquild
+      comment: Keep analysis_finding.entity_type not null, which a rename on MySQL drops
+      changes:
+        - addNotNullConstraint:
+            tableName: analysis_finding
+            columnName: entity_type
+            columnDataType: varchar(254)
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.j3y4t5
+      author: ranquild
+      comment: Keep analysis_finding.entity_id not null, which a rename on MySQL drops
+      changes:
+        - addNotNullConstraint:
+            tableName: analysis_finding
+            columnName: entity_id
+            columnDataType: int
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.7d5dj3
+      author: ranquild
+      comment: Drop the index on dependency_status.stale, which becomes a count of the writes the job has not read
+      changes:
+        - dropIndex:
+            tableName: dependency_status
+            indexName: idx_dependency_status_stale
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale)
+
+  - changeSet:
+      id: v65.47bljg
+      author: ranquild
+      comment: Add dependency_status.stale_count, which replaces the stale flag
+      changes:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: stale_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many writes changed what the job reads for the entity since the job last read it
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: stale_count
+
+  - changeSet:
+      id: v65.i33b3h
+      author: ranquild
+      comment: Copy the dependency_status stale flags into stale_count
+      changes:
+        - sql:
+            sql: UPDATE dependency_status SET stale_count = CASE WHEN stale THEN 1 ELSE 0 END
+      rollback:
+        - sql:
+            sql: UPDATE dependency_status SET stale = (stale_count > 0)
+
+  - changeSet:
+      id: v65.vcn86w
+      author: ranquild
+      comment: Drop the dependency_status stale flag, which stale_count replaces
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: stale
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs (re)processing
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.accafc
+      author: ranquild
+      comment: Rename dependency_status.stale_count to stale, as the other status tables name it
+      changes:
+        - renameColumn:
+            tableName: dependency_status
+            oldColumnName: stale_count
+            newColumnName: stale
+            columnDataType: int
+      rollback:
+        - renameColumn:
+            tableName: dependency_status
+            oldColumnName: stale
+            newColumnName: stale_count
+            columnDataType: int
+
+  - changeSet:
+      id: v65.cw6b2z
+      author: ranquild
+      comment: Keep dependency_status.stale not null, which a rename on MySQL drops
+      changes:
+        - addNotNullConstraint:
+            tableName: dependency_status
+            columnName: stale
+            columnDataType: int
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.hn74zg
+      author: ranquild
+      comment: Keep the default of dependency_status.stale, which a rename on MySQL drops
+      changes:
+        - addDefaultValue:
+            tableName: dependency_status
+            columnName: stale
+            columnDataType: int
+            defaultValueNumeric: 0
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.f2ttgl
+      author: ranquild
+      comment: Index dependency_status.stale, the count of writes the job has not read
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale) WHERE stale > 0
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale)
+      rollback:
+        - dropIndex:
+            tableName: dependency_status
+            indexName: idx_dependency_status_stale

@@ -273,10 +273,10 @@ function setup(
 }
 
 describe("ObjectDetailPanel", () => {
-  it("renders an object detail component", () => {
+  it("renders an object detail component", async () => {
     setup({ question: mockQuestion });
 
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Product/i)).toBeInTheDocument();
     expect(
       screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
     ).toBeInTheDocument();
@@ -344,10 +344,14 @@ describe("ObjectDetailPanel", () => {
   });
 
   describe("renders actions menu", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setupDatabasesEndpoints([databaseWithActionsEnabled]);
       setupActionsEndpoints(actions);
       setup({ question: mockDataset });
+      // `ActionExecuteModal` initialises its values state after this render.
+      // Nothing observable changes when it does, and it issues no request to
+      // wait on, so flush that update rather than leaving it for the next test.
+      await waitForRequestsToSettle();
     });
 
     it("should not show implicit create action", async () => {
@@ -494,7 +498,7 @@ describe("ObjectDetailPanel", () => {
 
     const action = await findActionInActionMenu(implicitDeleteAction);
     expect(action).toBeInTheDocument();
-    action?.click();
+    await userEvent.click(checkNotNull(action));
 
     const modal = await screen.findByTestId("delete-object-modal");
     expect(modal).toBeInTheDocument();

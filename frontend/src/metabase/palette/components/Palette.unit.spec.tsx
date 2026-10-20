@@ -86,21 +86,32 @@ describe("command palette", () => {
     fetchMock.put("path:/api/setting/color-scheme", 200);
 
     setup();
-    await userEvent.keyboard("[ControlLeft>]k");
-    await screen.findByTestId("command-palette");
-    const input = await screen.findByPlaceholderText(/search for anything/i);
-    await userEvent.type(input, "dark mode");
-    await userEvent.click(await screen.findByText("Toggle dark/light mode"));
+
+    // Performing an action closes the palette, so each toggle opens its own.
+    // Clicking a second time in the closing palette races the unmount and the
+    // click then lands on a detached node.
+    const toggleColorScheme = async () => {
+      await userEvent.keyboard("[ControlLeft>]k");
+      await screen.findByTestId("command-palette");
+      const input = await screen.findByPlaceholderText(/search for anything/i);
+      await userEvent.type(input, "dark mode");
+      await userEvent.click(await screen.findByText("Toggle dark/light mode"));
+      await waitFor(() =>
+        expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument(),
+      );
+    };
 
     const calls = () =>
       fetchMock.callHistory.calls(/\/api\/setting\/color-scheme/);
+
+    await toggleColorScheme();
 
     // wait for the call to be recorded: reading at(-1) too early re-reads the
     // previous request, whose body is already consumed
     await waitFor(() => expect(calls()).toHaveLength(1));
     expect(await calls().at(-1)?.request?.json()).toEqual({ value: "dark" });
 
-    await userEvent.click(await screen.findByText("Toggle dark/light mode"));
+    await toggleColorScheme();
 
     await waitFor(() => expect(calls()).toHaveLength(2));
     expect(await calls().at(-1)?.request?.json()).toEqual({

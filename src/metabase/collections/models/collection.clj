@@ -376,6 +376,8 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
+        ;; not even an administrator edits a data app's collection: only a pull of its app changes it
+        (not= (keyword (:namespace instance)) data-apps-ns)
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
@@ -2287,8 +2289,7 @@
           :slug
           :type]
    :skip []
-   :transform {:created_at        (serdes/date)
-               ;; We only dump the parent id, and recalculate the location from that on load.
+   :transform {;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
                                               (serdes/fk :model/Collection)

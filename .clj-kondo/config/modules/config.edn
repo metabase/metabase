@@ -890,6 +890,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Graphy"
+   :api  #{metabase.dependencies.hooks}
+   :uses #{premium-features}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
@@ -1518,6 +1523,7 @@
               collections
               documents
               driver
+              embedding
               events
               explorations
               interestingness
@@ -1749,6 +1755,7 @@
            metabase.models.visualization-settings}
    :uses #{api
            app-db
+           dependencies
            lib
            lib.legacy-mbql
            lib.metadata
@@ -2014,7 +2021,7 @@
    :uses #{analytics.interface
            analytics.internal-stats
            app-db
-           events
+           dependencies
            settings
            startup
            task
@@ -2285,6 +2292,7 @@
               metabase.query-processor.reducible
               metabase.query-processor.result-serialization
               metabase.query-processor.schema
+              metabase.query-processor.sensitive-fields
               metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -2827,6 +2835,7 @@
            app-db
            audit-app
            database-routing
+           dependencies
            driver
            events
            interestingness
@@ -3058,6 +3067,7 @@
                     :model/TransformRun}
    :uses #{app-db
            database-routing
+           dependencies
            driver
            events
            lib
@@ -3809,11 +3819,9 @@
            api-scope
            audit-app
            collections
-           driver
            events
            lib
            lib.be
-           lib.metadata
            lib.schema
            lib.types
            metabot
@@ -3826,8 +3834,11 @@
            request
            settings
            system
+           users
            util
+           util.graph
            warehouse-schema-overlay
+           enterprise/dependencies
            enterprise/serialization}
    :model-imports #{:model/Action
                     :model/Card
@@ -3837,7 +3848,6 @@
                     :model/Field
                     :model/Measure
                     :model/Permissions
-                    :model/QueryAction
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -3884,18 +3894,20 @@
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
-   :uses #{api
+   :uses #{actions
+           api
            app-db
+           batch-processing
            collections
            database-routing
            documents
            driver
-           events
            lib
            lib.be
            lib.metadata
            lib.metric
            lib.schema
+           lib.types
            measures
            models
            native-query-snippets
@@ -3915,16 +3927,26 @@
            util.graph
            warehouse-schema-overlay
            enterprise/permissions.sandbox}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Dimension
                     :model/Document
+                    :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/QueryAction
                     :model/Sandbox
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform}}
 
   enterprise/dependencies.replacement
@@ -4210,7 +4232,6 @@
            app-db
            audit-app
            driver
-           events
            lib
            lib.be
            lib.legacy-mbql
@@ -4409,7 +4430,6 @@
            app-db
            appearance
            collections
-           events
            lib
            lib.schema
            logger

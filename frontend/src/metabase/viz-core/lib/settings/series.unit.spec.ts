@@ -105,31 +105,50 @@ describe("Series unit settings", () => {
   });
 });
 
-describe("series trend line settings", () => {
-  // the definitions map has a catch-all index signature, so type the nested
-  // widget props at this boundary to keep the guard calls below checked
-  type SeriesSettingsWidgetProps = {
-    getSettingDefinitionsForObject: (
-      series: Series,
-      single: SingleSeries,
-    ) => VisualizationSettingsDefinitions;
-  };
-
-  const getSeriesSettingDefinitions = (
+// the definitions map has a catch-all index signature, so type the nested
+// widget props at this boundary to keep the guard calls below checked
+type SeriesSettingsWidgetProps = {
+  getSettingDefinitionsForObject: (
     series: Series,
-    settings: ComputedVisualizationSettings,
-  ): VisualizationSettingsDefinitions => {
-    const getProps = checkNotNull(
-      seriesSetting()[SERIES_SETTING_KEY]?.getProps,
-    );
-    const { getSettingDefinitionsForObject }: SeriesSettingsWidgetProps =
-      getProps(series, { [SERIES_SETTING_KEY]: {}, ...settings }, _.noop, {
-        series,
-        settings,
-      });
-    return getSettingDefinitionsForObject(series, series[0]);
-  };
+    single: SingleSeries,
+  ) => VisualizationSettingsDefinitions;
+};
 
+const getSeriesSettingDefinitions = (
+  series: Series,
+  settings: ComputedVisualizationSettings,
+): VisualizationSettingsDefinitions => {
+  const getProps = checkNotNull(seriesSetting()[SERIES_SETTING_KEY]?.getProps);
+  const { getSettingDefinitionsForObject }: SeriesSettingsWidgetProps =
+    getProps(series, { [SERIES_SETTING_KEY]: {}, ...settings }, _.noop, {
+      series,
+      settings,
+    });
+  return getSettingDefinitionsForObject(series, series[0]);
+};
+
+describe("series axis setting", () => {
+  it.each([
+    ["row", true],
+    ["bar", false],
+  ] as const)(
+    "hides the Y-axis position on %s charts: %s",
+    (display, isHidden) => {
+      const series = [createMockSingleSeries({ display })];
+      const settings = createMockVisualizationSettings({
+        "graph.metrics": ["count"],
+        "graph.dimensions": ["CATEGORY"],
+      });
+      const getHidden = checkNotNull(
+        getSeriesSettingDefinitions(series, settings).axis?.getHidden,
+      );
+
+      expect(getHidden(series[0], {}, { series, settings })).toBe(isHidden);
+    },
+  );
+});
+
+describe("series trend line settings", () => {
   const getIsHidden = (
     key: "show_series_trendline" | "trendline.color" | "trendline.style",
     series: Series,
