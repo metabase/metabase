@@ -1,0 +1,33 @@
+.floatingPanels {
+  height: 100%;
+  padding: 1rem 1rem 1rem 0;
+}
+
+.resizableCard {
+  position: relative;
+  height: 100%;
+}
+
+.floatingCard {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: 0 4px 16px var(--mb-color-shadow);
+}
+
+.dockedPanel {
+  height: 100%;
+  background-color: var(--mb-color-background-primary);
+  border-left: 1px solid var(--mb-color-border);
+}
+
+/* Three tabs share a narrow panel with two icon buttons, so they sit tighter than the default. */
+.tabs[data-variant="default"] {
+  --tab-padding-inline: var(--mantine-spacing-sm);
+}
+
+.tabList {
+  flex-wrap: nowrap;
+}

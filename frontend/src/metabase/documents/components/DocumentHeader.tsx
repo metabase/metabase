@@ -24,8 +24,6 @@ import {
   Text,
   TextInput,
   Tooltip,
-  Transition,
-  type TransitionProps,
 } from "metabase/ui";
 import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -33,26 +31,20 @@ import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
+import type { SaveStatus } from "../hooks/use-document-editor";
 
 import S from "./DocumentHeader.module.css";
 import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
-
-const saveButtonTransition: TransitionProps["transition"] = {
-  in: { opacity: 1, visibility: "visible", width: "auto" },
-  out: { opacity: 0, visibility: "hidden", width: 0 },
-  transitionProperty: "opacity",
-};
 
 interface DocumentHeaderProps {
   document: Document | undefined;
   documentTitle: string;
   isNewDocument: boolean;
   canWrite: boolean;
-  showSaveButton: boolean;
+  saveStatus: SaveStatus;
   isBookmarked: boolean;
   onTitleChange: (title: string) => void;
   onTitleSubmit?: () => void;
-  onSave: () => void;
   onMove: () => void;
   onDuplicate: () => void;
   onToggleBookmark: () => void;
@@ -65,11 +57,10 @@ export const DocumentHeader = ({
   documentTitle,
   isNewDocument,
   canWrite,
-  showSaveButton,
+  saveStatus,
   isBookmarked,
   onTitleChange,
   onTitleSubmit,
-  onSave,
   onMove,
   onDuplicate,
   onToggleBookmark,
@@ -135,7 +126,7 @@ export const DocumentHeader = ({
               onTitleChange(value);
             }
           }}
-          placeholder={t`New document`}
+          placeholder={t`New notebook`}
           readOnly={!canWrite}
           maxLength={DOCUMENT_TITLE_MAX_LENGTH}
           classNames={{ input: S.titleInput }}
@@ -169,24 +160,11 @@ export const DocumentHeader = ({
         )}
       </Flex>
       <Flex gap="lg" align="center" className={S.actionsContainer}>
-        <Transition
-          mounted={showSaveButton}
-          transition={saveButtonTransition}
-          duration={200}
-          keepMounted
-        >
-          {(style) => (
-            <Box
-              style={
-                style.display === "none" ? saveButtonTransition.out : style
-              }
-            >
-              <Button onClick={onSave} variant="filled" data-hide-on-print>
-                {t`Save`}
-              </Button>
-            </Box>
-          )}
-        </Transition>
+        {saveStatus !== null && (
+          <Text c="text-tertiary" data-hide-on-print aria-live="polite">
+            {saveStatus === "saving" ? t`Saving…` : t`Saved`}
+          </Text>
+        )}
         {!isNewDocument && hasComments && !isWithinIframe() && (
           <Tooltip label={t`Show all comments`}>
             <Box>

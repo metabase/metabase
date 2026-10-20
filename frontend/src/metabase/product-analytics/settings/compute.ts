@@ -23,6 +23,7 @@ const SETTING_SECTIONS: readonly SettingSection[] = [
   "toolbar",
   "setup",
   "advanced",
+  "filters",
 ];
 
 const isSettingSection = (value: string | undefined): value is SettingSection =>

@@ -64,7 +64,10 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
+import { closeSidebar } from "../../../documents.slice";
+import { getSidebarMode } from "../../../selectors";
 import { useDocumentEditorHost } from "../../Editor/DocumentEditorHost";
+import { ExploreQuestionModal } from "../../ExploreQuestionModal";
 
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
@@ -228,6 +231,10 @@ export const CardEmbed: Node<{
   },
 });
 
+const CARD_CHART_ATTRIBUTE = "data-card-embed-chart";
+const CARD_CONTROL_SELECTOR =
+  "button, a, input, textarea, [role='button'], [data-testid='card-embed-title']";
+
 export const CardEmbedComponent = memo(
   /* eslint-disable complexity -- ESLint and oxlint report different positions within this function header. */
   ({
@@ -335,6 +342,7 @@ export const CardEmbedComponent = memo(
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
+    const [exploreUrl, setExploreUrl] = useState<string | null>(null);
     const [menuView, setMenuView] = useState<string | null>(null);
 
     const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
@@ -474,6 +482,36 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    const sidebarMode = useSelector(getSidebarMode);
+    const isVizSettingsOpen =
+      sidebarMode === "viz-settings" && selectedEmbedIndex === embedIndex;
+
+    // Like an analysis card: a click opens its visualization settings, and a
+    // click while they're open closes them.
+    const handleCardClick = (event: React.MouseEvent<HTMLElement>) => {
+      const { target, currentTarget } = event;
+      // Portaled popovers (menus, drills) still bubble here through React.
+      const isInCard =
+        target instanceof Element && currentTarget.contains(target);
+      const isOnControl =
+        target instanceof Element &&
+        target.closest(CARD_CONTROL_SELECTOR) !== null;
+      if (!canWrite || isExternalDocument || !isInCard || isOnControl) {
+        return;
+      }
+      if (isVizSettingsOpen) {
+        dispatch(closeSidebar());
+        return;
+      }
+      // Clicks on a chart are for its drills.
+      const isOnChart =
+        target instanceof Element &&
+        target.closest(`[${CARD_CHART_ATTRIBUTE}]`) !== null;
+      if (!isOnChart) {
+        handleEditVisualizationSettings();
+      }
+    };
+
     const shouldShowTimelineEventsMenu = useMemo(() => {
       if (!series) {
         return false;
@@ -516,10 +554,11 @@ export const CardEmbedComponent = memo(
       dispatch(host.actions.deselectTimelineEvents());
     }, [dispatch, host.actions]);
 
+    // Opens the question in a modal rather than leaving the document.
     const handleTitleClick = () => {
       const chartHref = node.attrs.chart_href;
       if (chartHref) {
-        dispatch(host.navigateToCard(chartHref, document));
+        setExploreUrl(chartHref);
         return;
       }
       if (!host.capabilities.canOpenCardInQueryBuilder) {
@@ -532,8 +571,7 @@ export const CardEmbedComponent = memo(
           // ad-hoc url rather than a link to a saved question.
           const { id: _id, ...draftCard } = card;
           const question = buildQuestion(card.id < 0 ? draftCard : card);
-          const url = Urls.question(question);
-          dispatch(host.navigateToCard(url, document));
+          setExploreUrl(Urls.question(question));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
         }
@@ -674,6 +712,7 @@ export const CardEmbedComponent = memo(
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
+            onClick={handleCardClick}
           >
             {card && (
               <Box className={styles.questionHeader}>
@@ -819,7 +858,10 @@ export const CardEmbedComponent = memo(
             )}
             {series && isInViewport ? (
               <>
-                <Box className={styles.questionResults}>
+                <Box
+                  className={styles.questionResults}
+                  {...{ [CARD_CHART_ATTRIBUTE]: true }}
+                >
                   <ExplicitSizeRefreshModeContext.Provider value="layout">
                     <Visualization
                       rawSeries={series}
@@ -899,6 +941,13 @@ export const CardEmbedComponent = memo(
                 }}
               />
             ))}
+          {exploreUrl !== null && (
+            <ExploreQuestionModal
+              title={displayName ?? t`Question`}
+              url={exploreUrl}
+              onClose={() => setExploreUrl(null)}
+            />
+          )}
           {isReplaceModalOpen && (
             <QuestionPickerModal
               onChange={handleReplaceModalSelect}

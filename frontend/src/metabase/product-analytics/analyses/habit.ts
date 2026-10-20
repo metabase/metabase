@@ -8,9 +8,8 @@ import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
+  getAnyEventDefinitionProps,
   getCommonSpec,
-  getEventDefinitionProps,
-  incomplete,
   isOneOf,
   isOptionalEventDefinition,
   isPositiveDuration,
@@ -41,7 +40,7 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
     widget: EventDefinitionWidget,
     getDefault: () => null,
     isValid: (value) => isOptionalEventDefinition(value),
-    getProps: getEventDefinitionProps,
+    getProps: getAnyEventDefinitionProps,
   }),
   "habit.lookback": {
     getTitle: () => t`Look back`,
@@ -104,19 +103,12 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   },
   settings: SETTINGS,
   toSpec: (settings, events) => {
+    // Empty means any event counts as showing up.
     const active = settings["habit.active"];
-    if (active === null) {
-      return incomplete([
-        {
-          key: "habit.active",
-          message: t`Define the event that counts as showing up.`,
-        },
-      ]);
-    }
     return ready({
       ...getCommonSpec("habit", settings),
       habit: {
-        active: { flag: events.flagFor(active) },
+        active: active === null ? undefined : { flag: events.flagFor(active) },
         lookback: settings["habit.lookback"],
         subPeriod: settings["habit.sub_period"],
         measure: settings["habit.measure"],

@@ -14,10 +14,13 @@ import type { StoredSettings } from "../settings/types";
 
 export const ANALYSIS_NODE_TYPE = "productAnalysis";
 
-/** Settings the document holds for every analysis, so nodes never store them. */
-const DOCUMENT_SETTING_KEYS = [
-  "date_range",
-] as const satisfies readonly (keyof CommonSettings)[];
+/**
+ * Settings the document holds for every analysis, so nodes never store them.
+ * None for now: a card's date range defaults to the document's, but each card
+ * can set its own.
+ */
+const DOCUMENT_SETTING_KEYS =
+  [] as const satisfies readonly (keyof CommonSettings)[];
 
 type FoundAnalysisNode = {
   node: ProseMirrorNode;

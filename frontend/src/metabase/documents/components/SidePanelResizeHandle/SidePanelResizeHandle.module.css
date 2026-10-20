@@ -1,0 +1,47 @@
+/* Both handles are wider than the 1px border they sit on, so they're easy to grab. */
+.outerHandle {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 9px;
+  cursor: col-resize;
+}
+
+.outerHandle::after {
+  content: "";
+  position: absolute;
+  top: var(--mantine-radius-md);
+  bottom: var(--mantine-radius-md);
+  left: 4px;
+  width: 1px;
+}
+
+.outerHandle:hover::after,
+.outerHandle[data-active]::after {
+  background-color: var(--mb-color-border-strong);
+}
+
+.divider {
+  position: relative;
+  flex-shrink: 0;
+  width: 1px;
+  cursor: col-resize;
+  background-color: var(--mb-color-border);
+}
+
+.divider::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+
+.divider:hover,
+.divider[data-active] {
+  background-color: var(--mb-color-border-strong);
+}

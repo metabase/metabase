@@ -8,7 +8,12 @@ import type {
 
 import type { AnalysisKind } from "../spec/types";
 
-export const ANALYSIS_PANEL_TABS = ["setup", "advanced", "insights"] as const;
+export const ANALYSIS_PANEL_TABS = [
+  "setup",
+  "advanced",
+  "filters",
+  "insights",
+] as const;
 
 export type AnalysisPanelTab = (typeof ANALYSIS_PANEL_TABS)[number];
 

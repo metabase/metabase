@@ -18,11 +18,9 @@ import {
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyModal } from "metabase/common/components/CopyModal";
-import {
-  LeaveConfirmModal,
-  LeaveRouteConfirmModal,
-} from "metabase/common/components/LeaveConfirmModal";
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -54,6 +52,7 @@ import {
 } from "../documents.slice";
 import { useDocumentEditor } from "../hooks/use-document-editor";
 import { usePrintContextValue } from "../hooks/use-print-context-value";
+import { useSidePanelWidths } from "../hooks/use-side-panel-widths";
 import { useSyncCommentsSidebar } from "../hooks/use-sync-comments-sidebar";
 import {
   getSelectedEmbedIndex,
@@ -68,6 +67,11 @@ import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import { EmbedTimelineSidebar } from "./EmbedTimelineSidebar";
+import { SidePanelResizeHandle } from "./SidePanelResizeHandle";
+import {
+  type UseDocumentPageAddon,
+  useNoDocumentPageAddon,
+} from "./document-page-addon";
 
 // The prefetch queue tracks every card embed's in-flight load, so it doubles
 // as the print-readiness signal: printing waits until nothing is loading.
@@ -92,7 +96,13 @@ const DocumentPrintContextProvider = ({
   );
 };
 
-export const DocumentPage = () => {
+type DocumentPageProps = {
+  useAddon?: UseDocumentPageAddon;
+};
+
+export const DocumentPage = ({
+  useAddon = useNoDocumentPageAddon,
+}: DocumentPageProps) => {
   const location = useLocation();
   const { entityId, childTargetId: paramsChildTargetId } = useParams<{
     entityId: string;
@@ -106,6 +116,10 @@ export const DocumentPage = () => {
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const sidebarMode = useSelector(getSidebarMode);
+  const vizSettingsPanel = useSidePanelWidths({
+    storageKey: "metabase.documents.viz-settings-width",
+    isPaletteOpen: false,
+  });
   const [mainContentEl, setMainContentEl] = useState<HTMLDivElement | null>(
     null,
   );
@@ -115,6 +129,8 @@ export const DocumentPage = () => {
   >(null);
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
+  // New notebooks are auto-saved to the creator's personal collection.
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
 
   const {
     editorInstance,
@@ -122,10 +138,8 @@ export const DocumentPage = () => {
     collectionPickerMode,
     setCollectionPickerMode,
     editorContainerRef,
-    isNavigationScheduled,
     scheduleNavigation,
     isNewDocument,
-    isSaving,
     documentData,
     isDocumentLoading,
     error,
@@ -136,13 +150,14 @@ export const DocumentPage = () => {
     setDocumentContent,
     updateCardEmbeds,
     hasUnsavedChanges,
-    showSaveButton,
+    saveStatus,
     handleChange,
     handleSave,
     handleUpdate,
     handleQuestionSelect,
   } = useDocumentEditor({
     documentId,
+    autoSave: { collectionId: personalCollectionId ?? null },
     onDocumentCreated: trackDocumentCreated,
     onDocumentUpdated: (document) =>
       trackDocumentUpdated(document, "standalone"),
@@ -166,7 +181,13 @@ export const DocumentPage = () => {
     }
   }, [dispatch, error]);
 
-  // This editor doesn't know analysis nodes and would drop them on save.
+  const addon = useAddon({
+    editor: editorInstance,
+    canWrite: canWrite ?? false,
+    savedContent: documentData?.document,
+  });
+
+  // Analysis documents have their own page, with table and date-range pickers.
   const isAnalysisDocument =
     getProductAnalyticsDocumentContext(documentData?.document) !== undefined;
   useEffect(() => {
@@ -188,6 +209,27 @@ export const DocumentPage = () => {
   useEffect(() => {
     dispatch(setChildTargetId(paramsChildTargetId));
   }, [dispatch, paramsChildTargetId]);
+
+  // As with analysis cards, a click on the page canvas outside any question
+  // card closes a card's visualization settings.
+  useEffect(() => {
+    if (sidebarMode !== "viz-settings" || mainContentEl === null) {
+      return;
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      const { target } = event;
+      const isOnCanvas =
+        target instanceof Element && mainContentEl.contains(target);
+      const isOnQuestionCard =
+        target instanceof Element &&
+        target.closest('[data-type="cardEmbed"]') !== null;
+      if (isOnCanvas && !isOnQuestionCard) {
+        dispatch(closeSidebar());
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [sidebarMode, mainContentEl, dispatch]);
 
   const handleCloseComments = useCallback(() => {
     navigate(".", { relative: "route" }); // remove the "/comments" path
@@ -253,7 +295,7 @@ export const DocumentPage = () => {
     return null;
   }
 
-  return (
+  return addon.wrap(
     <PrefetchQueueProvider>
       <DocumentPrintContextProvider>
         <Box className={styles.documentPage}>
@@ -267,17 +309,10 @@ export const DocumentPage = () => {
                     documentTitle={documentTitle}
                     isNewDocument={isNewDocument}
                     canWrite={canWrite ?? false}
-                    showSaveButton={showSaveButton ?? false}
+                    saveStatus={saveStatus}
                     isBookmarked={isBookmarked}
                     onTitleChange={setDocumentTitle}
                     onTitleSubmit={focusEditorBody}
-                    onSave={() => {
-                      if (isNewDocument) {
-                        setCollectionPickerMode("save");
-                      } else {
-                        handleSave();
-                      }
-                    }}
                     onMove={() => setCollectionPickerMode("move")}
                     onDuplicate={handleDuplicate}
                     onToggleBookmark={handleToggleBookmark}
@@ -285,12 +320,14 @@ export const DocumentPage = () => {
                     onShowHistory={handleShowHistory}
                   />
                   <Editor
+                    extraExtensions={addon.extraExtensions}
+                    hostOverride={addon.hostOverride}
                     onEditorReady={setEditorInstance}
                     onCardEmbedsChange={updateCardEmbeds}
                     onQuestionSelect={handleQuestionSelect}
                     initialContent={documentContent}
                     onChange={handleChange}
-                    editable={canWrite && !isSaving}
+                    editable={canWrite}
                     isLoading={isDocumentLoading}
                     editorContainerRef={editorContainerRef}
                   />
@@ -298,18 +335,34 @@ export const DocumentPage = () => {
               </ScrollContainerProvider>
             </Box>
 
+            {addon.sidePanel}
+
             {sidebarMode === "viz-settings" &&
               selectedQuestionId &&
               selectedEmbedIndex !== null &&
               editorInstance && (
                 <Box
-                  className={styles.sidebar}
+                  className={styles.floatingSidebar}
                   data-testid="document-card-sidebar"
                 >
-                  <EmbedQuestionSettingsSidebar
-                    cardId={selectedQuestionId}
-                    editorInstance={editorInstance}
-                  />
+                  <Box className={styles.resizableSidebar}>
+                    <SidePanelResizeHandle
+                      handle="outer"
+                      isActive={vizSettingsPanel.activeHandle === "outer"}
+                      onPointerDown={(event) =>
+                        vizSettingsPanel.startResize("outer", event)
+                      }
+                    />
+                    <Box
+                      className={styles.floatingSidebarCard}
+                      w={vizSettingsPanel.widths.settings}
+                    >
+                      <EmbedQuestionSettingsSidebar
+                        cardId={selectedQuestionId}
+                        editorInstance={editorInstance}
+                      />
+                    </Box>
+                  </Box>
                 </Box>
               )}
 
@@ -393,18 +446,6 @@ export const DocumentPage = () => {
 
             {sidebarMode === "comments" && <Outlet />}
 
-            <LeaveRouteConfirmModal
-              // `key` remounts this modal when navigating between different documents or to a new document.
-              // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
-              key={location.key}
-              isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-              onOpenChange={(open) => {
-                if (open) {
-                  trackDocumentUnsavedChangesWarningDisplayed(documentData);
-                }
-              }}
-            />
-
             <LeaveConfirmModal
               // only applies when going from /new -> /new
               opened={isLeaveConfirmModalOpen}
@@ -442,6 +483,6 @@ export const DocumentPage = () => {
           )}
         </Box>
       </DocumentPrintContextProvider>
-    </PrefetchQueueProvider>
+    </PrefetchQueueProvider>,
   );
 };

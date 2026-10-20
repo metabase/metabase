@@ -89,6 +89,27 @@
   overflow-y: auto;
 }
 
+/* Floats like an analysis card's side panels. */
+.floatingSidebar {
+  flex-shrink: 0;
+  height: 100%;
+  padding: 1rem 1rem 1rem 0;
+}
+
+.resizableSidebar {
+  position: relative;
+  height: 100%;
+}
+
+.floatingSidebarCard {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: 0 4px 16px var(--mb-color-shadow);
+}
+
 .cardEmbed {
   padding: 0.5rem;
   border-radius: 4px;

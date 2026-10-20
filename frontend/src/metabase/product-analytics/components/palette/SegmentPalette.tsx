@@ -3,12 +3,14 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import {
+  Box,
   Button,
   Group,
   Icon,
   Loader,
   ScrollArea,
   Stack,
+  Tabs,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -41,7 +43,12 @@ type SegmentPaletteProps = {
   usersTable: UsersTable | undefined;
   /** Lines the header up with the side panel's. */
   headerHeight: string;
+  activeTab: SegmentSource;
+  onTabChange: (tab: SegmentSource) => void;
 };
+
+const isSegmentSource = (value: string | null): value is SegmentSource =>
+  value === "event" || value === "people";
 
 /**
  * The recessed panel beside the side panel: the event table's segments and
@@ -52,37 +59,59 @@ export const SegmentPalette = ({
   table,
   usersTable,
   headerHeight,
+  activeTab,
+  onTabChange,
 }: SegmentPaletteProps) => (
-  <Stack className={S.root} h="100%" gap={0}>
+  <Stack h="100%" gap={0} aria-label={t`Segments`}>
     <Group
       h={headerHeight}
-      px="md"
+      px="sm"
+      align="flex-end"
+      wrap="nowrap"
       style={{
         flexShrink: 0,
         borderBottom: "1px solid var(--mb-color-border)",
       }}
     >
-      <Text fw="bold" c="text-secondary">
-        {t`Segments`}
-      </Text>
+      <Tabs
+        className={S.tabs}
+        value={activeTab}
+        listBorder={false}
+        miw={0}
+        onChange={(value) => {
+          if (isSegmentSource(value)) {
+            onTabChange(value);
+          }
+        }}
+      >
+        <Tabs.List className={S.tabList}>
+          <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
+          <Tabs.Tab value="people">{getPeopleTitle(usersTable)}</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
     </Group>
     <ScrollArea flex={1} mih={0}>
-      <Stack gap="xl" pt="md" pb="lg">
+      {/* Both stay mounted so a draft being edited survives a tab switch. */}
+      <Box pt="md" pb="lg" display={activeTab === "event" ? undefined : "none"}>
         <PaletteSection
-          title={t`Event segments`}
           source="event"
           table={table}
           emptyMessage={t`No segments on this table yet.`}
         />
+      </Box>
+      <Box
+        pt="md"
+        pb="lg"
+        display={activeTab === "people" ? undefined : "none"}
+      >
         <PaletteSection
-          title={getPeopleTitle(usersTable)}
           source="people"
           table={usersTable?.table}
           samples={usersTable === undefined ? getSamplePeopleSegments() : []}
           emptyMessage={t`No segments on this table yet.`}
           notice={t`Filtering by these is coming soon.`}
         />
-      </Stack>
+      </Box>
     </ScrollArea>
   </Stack>
 );
@@ -93,7 +122,6 @@ const getPeopleTitle = (usersTable: UsersTable | undefined): string => {
 };
 
 type PaletteSectionProps = {
-  title: string;
   source: SegmentSource;
   /** Undefined when there's no such table; only `samples` are shown then. */
   table: Table | undefined;
@@ -106,7 +134,6 @@ type PaletteSectionProps = {
 type ModalState = { draft: SegmentDraft } | null;
 
 const PaletteSection = ({
-  title,
   source,
   table,
   samples = [],
@@ -147,23 +174,7 @@ const PaletteSection = ({
       py="xs"
       {...eventDrop.dropProps}
     >
-      <Group justify="space-between" wrap="nowrap" mb="xs">
-        <Group gap="xs" wrap="nowrap">
-          <Text fw="bold">{title}</Text>
-          {isLoading && <Loader size="xs" />}
-        </Group>
-        <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
-          <Button
-            size="compact-md"
-            variant="subtle"
-            leftSection={<Icon name="add" />}
-            disabled={!canEdit || isDrafting}
-            onClick={() => setIsDrafting(true)}
-          >
-            {t`Draft`}
-          </Button>
-        </Tooltip>
-      </Group>
+      {isLoading && <Loader size="xs" />}
       {notice !== undefined && <Text c="text-tertiary">{notice}</Text>}
       {takesEvents && eventDrop.isActive && (
         <Text c="text-brand" fw="bold">
@@ -236,6 +247,18 @@ const PaletteSection = ({
           }}
         />
       )}
+      <Group>
+        <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
+          <Button
+            variant="subtle"
+            leftSection={<Icon name="add" />}
+            disabled={!canEdit || isDrafting}
+            onClick={() => setIsDrafting(true)}
+          >
+            {t`Draft a segment`}
+          </Button>
+        </Tooltip>
+      </Group>
       {modal !== null && table !== undefined && tableQuery !== undefined && (
         <NewSegmentModal
           table={table}

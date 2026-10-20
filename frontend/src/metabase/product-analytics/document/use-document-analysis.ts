@@ -16,8 +16,9 @@ type UseDocumentAnalysisArgs = {
 };
 
 /**
- * Runs the analysis a document node holds, with the document's table and date
- * range. Setting changes are written to the node, so they can be undone.
+ * Runs the analysis a document node holds, with the document's table. Its date
+ * range is its own when set, or the document's. Setting changes are written to
+ * the node, so they can be undone.
  */
 export const useDocumentAnalysis = ({
   nodeId,
@@ -26,7 +27,7 @@ export const useDocumentAnalysis = ({
 }: UseDocumentAnalysisArgs) => {
   const { editor, tableId, dateRange } = useAnalysisDocument();
   const stored = useMemo(
-    () => ({ ...definition.settings, date_range: dateRange }),
+    () => ({ date_range: dateRange, ...definition.settings }),
     [definition.settings, dateRange],
   );
   const handleChangeSettings = useCallback(

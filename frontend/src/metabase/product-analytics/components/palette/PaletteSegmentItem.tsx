@@ -62,13 +62,21 @@ export const PaletteSegmentItem = ({
           <Icon name="grabber" size={12} />
         </Box>
       )}
+      {segment.status === "saved" && (
+        <Icon name="segment" c="core-filter" style={{ flexShrink: 0 }} />
+      )}
       <Tooltip
         label={segment.description}
         disabled={!segment.description}
         openDelay={400}
         position="right"
       >
-        <Text truncate flex={1} miw={0}>
+        <Text
+          truncate
+          flex={1}
+          miw={0}
+          c={segment.status === "draft" ? "text-secondary" : undefined}
+        >
           {segment.name}
         </Text>
       </Tooltip>

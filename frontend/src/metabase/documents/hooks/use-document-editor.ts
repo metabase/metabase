@@ -61,7 +61,19 @@ interface UseDocumentEditorParams {
   onDocumentUpdated?: (document: Document) => void;
   /** Where to go once a new document is created. Defaults to the document page. */
   getDocumentUrl?: (document: Document) => string;
+  /**
+   * Saves changes shortly after they're made, creating a new document in
+   * `collectionId` on the first change. Off by default.
+   */
+  autoSave?: { collectionId: RegularCollectionId | null };
 }
+
+export type SaveStatus = "saving" | "saved" | null;
+
+const AUTO_SAVE_DELAY_MS = 800;
+
+/** Marks the navigation from `/new` to a document that was just auto-created. */
+export const CREATED_FROM_NEW_STATE = { isCreatedFromNew: true };
 
 interface UseDocumentEditorResult {
   editorInstance: TiptapEditor | null;
@@ -84,6 +96,7 @@ interface UseDocumentEditorResult {
   updateCardEmbeds: (embeds: CardEmbedRef[]) => void;
   hasUnsavedChanges: () => boolean;
   showSaveButton: boolean;
+  saveStatus: SaveStatus;
   handleChange: (content: JSONContent) => void;
   handleSave: (
     collectionId?: RegularCollectionId | null,
@@ -103,7 +116,9 @@ export function useDocumentEditor({
   onDocumentCreated,
   onDocumentUpdated,
   getDocumentUrl = Urls.document,
+  autoSave,
 }: UseDocumentEditorParams): UseDocumentEditorResult {
+  const isAutoSaveEnabled = autoSave !== undefined;
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [sendToast] = useToast();
@@ -134,6 +149,18 @@ export function useDocumentEditor({
   const isNewDocument = documentId === "new";
   const isSaving = isCreating || isUpdating;
 
+  // Auto-save creates a new document on the first change and moves to its URL
+  // without remounting, so the editor keeps its content, cursor, and history.
+  const justCreatedIdRef = useRef<DocumentId | null>(null);
+  const isJustCreated =
+    documentId !== undefined && documentId === justCreatedIdRef.current;
+  // What auto-save last sent, so reloads of our own save don't reset the editor.
+  const lastSavedRef = useRef<{ name: string; document: JSONContent } | null>(
+    null,
+  );
+  const savedTitleRef = useRef<string | null>(null);
+  const [hasSaved, setHasSaved] = useState(false);
+
   const hasLoadedDocumentRef = useRef(false);
 
   // if the document is updating on mount (due to a previous update with the same fixedCacheKey),
@@ -157,10 +184,15 @@ export function useDocumentEditor({
   if (documentData) {
     hasLoadedDocumentRef.current = true;
   }
-  const isDocumentLoading = isLoading || isUpdatingOnMount;
+  const isDocumentLoading = !isJustCreated && (isLoading || isUpdatingOnMount);
+  const savedDocumentId = documentData?.id ?? justCreatedIdRef.current;
+  if (isAutoSaveEnabled && documentData && savedTitleRef.current === null) {
+    savedTitleRef.current = documentData.name;
+  }
 
   const canWrite = Boolean(
-    !documentData?.archived && (isNewDocument || documentData?.can_write),
+    !documentData?.archived &&
+    (isNewDocument || isJustCreated || documentData?.can_write),
   );
 
   const {
@@ -170,7 +202,10 @@ export function useDocumentEditor({
     setDocumentContent,
     documentNeedsMigration,
     updateCardEmbeds,
-  } = useDocumentState(documentData);
+  } = useDocumentState(
+    documentData,
+    isAutoSaveEnabled ? lastSavedRef : undefined,
+  );
 
   useEffect(() => {
     // Set current document when document loads (includes collection_id and all other data)
@@ -214,8 +249,10 @@ export function useDocumentEditor({
     !isNewDocument
   ) {
     prevDocumentIdRef.current = documentId;
-    settledContentRef.current = null;
-    isTitleSettlingRef.current = true;
+    if (!isJustCreated) {
+      settledContentRef.current = null;
+      isTitleSettlingRef.current = true;
+    }
   }
 
   useEffect(() => {
@@ -255,8 +292,11 @@ export function useDocumentEditor({
     // We call .trim() on documentTitle to ensure that no one can push the save button
     // with a document name that is all whitespace, the API will reject it. However,
     // when comparing saved with current titles, we need to use unmodified values
+    const savedTitle = isAutoSaveEnabled
+      ? (savedTitleRef.current ?? originalTitle)
+      : originalTitle;
     const titleChanged =
-      documentTitle !== originalTitle && !isTitleSettlingRef.current;
+      documentTitle !== savedTitle && !isTitleSettlingRef.current;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
@@ -276,20 +316,55 @@ export function useDocumentEditor({
     documentData,
     hasUnsavedEditorChanges,
     draftCards,
+    isAutoSaveEnabled,
   ]);
 
-  const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
+  const latestTitleRef = useRef(documentTitle);
+  latestTitleRef.current = documentTitle;
+
+  const showSaveButton =
+    !isAutoSaveEnabled && hasUnsavedChanges() && canWrite && !isSaving;
+
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveRef = useRef<() => void>(() => undefined);
+  const scheduleAutoSave = useCallback(() => {
+    if (!isAutoSaveEnabled) {
+      return;
+    }
+    if (autoSaveTimerRef.current !== null) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      autoSaveRef.current();
+    }, AUTO_SAVE_DELAY_MS);
+  }, [isAutoSaveEnabled]);
+
+  // Leaving with a save still pending saves right away instead of asking.
+  useEffect(
+    () => () => {
+      if (autoSaveTimerRef.current !== null) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+        autoSaveRef.current();
+      }
+    },
+    [],
+  );
 
   const handleTitleChange = useCallback(
     (title: string) => {
       setDocumentTitle(title);
       isTitleSettlingRef.current = false;
+      scheduleAutoSave();
     },
-    [setDocumentTitle],
+    [setDocumentTitle, scheduleAutoSave],
   );
 
   const handleChange = useCallback(
     (content: JSONContent) => {
+      scheduleAutoSave();
+
       // For new documents, any content means changes
       if (isNewDocument) {
         // when navigating to `/new`, handleChange is fired but the editor instance hasn't been set yet
@@ -309,7 +384,13 @@ export function useDocumentEditor({
         dispatch(setHasUnsavedChanges(!_.isEqual(content, baseline)));
       }
     },
-    [dispatch, editorInstance, isNewDocument, documentNeedsMigration],
+    [
+      dispatch,
+      editorInstance,
+      isNewDocument,
+      documentNeedsMigration,
+      scheduleAutoSave,
+    ],
   );
 
   const handleSave = useCallback(
@@ -342,8 +423,10 @@ export function useDocumentEditor({
 
         const documentAst = editorInstance.getJSON();
         const name =
-          documentTitle ||
-          t`Untitled document - ${getFormattedTime(new Date(), "day", { local: true })}`;
+          documentTitle.trim() ||
+          (isAutoSaveEnabled
+            ? t`Untitled notebook`
+            : t`Untitled document - ${getFormattedTime(new Date(), "day", { local: true })}`);
 
         const newDocumentData = {
           name,
@@ -351,8 +434,8 @@ export function useDocumentEditor({
           cards: Object.keys(cardsToSave).length > 0 ? cardsToSave : undefined,
         };
 
-        const result = await (documentData?.id
-          ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
+        const result = await (savedDocumentId !== null
+          ? updateDocument({ ...newDocumentData, id: savedDocumentId }).then(
               (response) => {
                 if (response.data) {
                   onDocumentUpdated?.(response.data);
@@ -367,14 +450,38 @@ export function useDocumentEditor({
               if (response.data) {
                 const _document = response.data;
                 onDocumentCreated?.(_document);
+                if (isAutoSaveEnabled) {
+                  justCreatedIdRef.current = _document.id;
+                }
                 scheduleNavigation(() => {
-                  navigate(getDocumentUrl(_document));
+                  navigate(
+                    getDocumentUrl(_document),
+                    isAutoSaveEnabled
+                      ? { replace: true, state: CREATED_FROM_NEW_STATE }
+                      : undefined,
+                  );
                 });
               }
               return response;
             }));
 
-        if (result.data) {
+        if (result.data && isAutoSaveEnabled) {
+          lastSavedRef.current = { name, document: documentAst };
+          savedTitleRef.current = documentTitle;
+          settledContentRef.current = documentAst;
+          setHasSaved(true);
+          dispatch(clearDraftCards());
+          // Edits made while the save was in flight still need saving.
+          const isStillDirty = !_.isEqual(
+            editorInstance.getJSON(),
+            documentAst,
+          );
+          dispatch(setHasUnsavedChanges(isStillDirty));
+          if (isStillDirty || latestTitleRef.current !== documentTitle) {
+            scheduleAutoSave();
+          }
+          return { document: result.data };
+        } else if (result.data) {
           sendToast({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
@@ -401,6 +508,9 @@ export function useDocumentEditor({
       draftCards,
       draftCardOriginalIds,
       documentData?.id,
+      savedDocumentId,
+      isAutoSaveEnabled,
+      scheduleAutoSave,
       onDocumentCreated,
       onDocumentUpdated,
       getDocumentUrl,
@@ -413,6 +523,12 @@ export function useDocumentEditor({
     ],
   );
 
+  autoSaveRef.current = () => {
+    if (canWrite && hasUnsavedChanges()) {
+      handleSave(autoSave?.collectionId ?? null);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
@@ -422,7 +538,9 @@ export function useDocumentEditor({
           return;
         }
 
-        if (isNewDocument) {
+        if (isAutoSaveEnabled) {
+          autoSaveRef.current();
+        } else if (isNewDocument) {
           setCollectionPickerMode("save");
         } else {
           handleSave();
@@ -441,6 +559,7 @@ export function useDocumentEditor({
     isNewDocument,
     setCollectionPickerMode,
     canWrite,
+    isAutoSaveEnabled,
   ]);
 
   const handleUpdate = async (payload: {
@@ -483,9 +602,28 @@ export function useDocumentEditor({
     updateCardEmbeds,
     hasUnsavedChanges,
     showSaveButton,
+    saveStatus: getSaveStatus({ isAutoSaveEnabled, isSaving, hasSaved }),
     handleChange,
     handleSave,
     handleUpdate,
     handleQuestionSelect,
   };
 }
+
+const getSaveStatus = ({
+  isAutoSaveEnabled,
+  isSaving,
+  hasSaved,
+}: {
+  isAutoSaveEnabled: boolean;
+  isSaving: boolean;
+  hasSaved: boolean;
+}): SaveStatus => {
+  if (!isAutoSaveEnabled) {
+    return null;
+  }
+  if (isSaving) {
+    return "saving";
+  }
+  return hasSaved ? "saved" : null;
+};

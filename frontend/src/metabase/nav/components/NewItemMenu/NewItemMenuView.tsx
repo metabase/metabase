@@ -4,11 +4,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { getUserCanWriteToCollections } from "metabase/current-user";
-import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
-import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
-import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
@@ -27,88 +24,21 @@ export interface NewItemMenuProps {
   onCloseNavbar: () => void;
 }
 
-export const NewItemMenuView = ({
-  collectionId,
-  trigger,
-  hasDataAccess,
-  hasNativeWrite,
-  hasDatabaseWithJsonEngine,
-}: NewItemMenuProps) => {
+export const NewItemMenuView = ({ trigger }: NewItemMenuProps) => {
   const dispatch = useDispatch();
-
-  const lastUsedDatabaseId = useSelector((state) =>
-    getSetting(state, "last-used-native-database-id"),
-  );
-  const areAiFeaturesEnabled = useSelector(
-    (state) => getSetting(state, "ai-features-enabled?") !== false,
-  );
-
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
-  const { hasNlqAccess } = useUserMetabotPermissions();
-
   const menuItems = useMemo(() => {
-    const items = [];
-
-    if (hasDataAccess && areAiFeaturesEnabled) {
-      items.push(
-        <NewMenuItemAIExploration
-          key="nlq"
-          collectionId={collectionId}
-          hasNlqAccess={hasNlqAccess}
-        />,
-      );
-    }
-
-    if (hasDataAccess) {
-      items.push(
-        <Menu.Item
-          key="event-analysis"
-          component={ForwardRefLink}
-          to={Urls.newEventAnalysis()}
-          leftSection={<Icon name="funnel" />}
-        >
-          {t`Event analysis`}
-        </Menu.Item>,
-      );
-    }
-
-    if (hasDataAccess) {
-      items.push(
-        <Menu.Item
-          key="question"
-          component={ForwardRefLink}
-          to={Urls.newQuestion({
-            mode: "notebook",
-            creationType: "custom_question",
-            collectionId,
-            cardType: "question",
-          })}
-          leftSection={<Icon name="insight" />}
-        >
-          {t`Question`}
-        </Menu.Item>,
-      );
-    }
-
-    if (hasNativeWrite) {
-      items.push(
-        <Menu.Item
-          key="native"
-          component={ForwardRefLink}
-          to={Urls.newQuestion({
-            DEPRECATED_RAW_MBQL_type: "native",
-            creationType: "native_question",
-            collectionId,
-            cardType: "question",
-            DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
-          })}
-          leftSection={<Icon name="sql" />}
-        >
-          {hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`}
-        </Menu.Item>,
-      );
-    }
+    const items = [
+      <Menu.Item
+        key="document"
+        component={ForwardRefLink}
+        to="/document/new"
+        leftSection={<Icon name="document" />}
+      >
+        {t`Notebook`}
+      </Menu.Item>,
+    ];
 
     if (canWriteToCollections) {
       items.push(
@@ -122,32 +52,19 @@ export const NewItemMenuView = ({
         >
           {t`Dashboard`}
         </Menu.Item>,
+        <Menu.Item
+          key="data-app"
+          component={ForwardRefLink}
+          to={Urls.newDataAppGuide()}
+          leftSection={<Icon name="app" />}
+        >
+          {t`Data app`}
+        </Menu.Item>,
       );
     }
 
-    items.push(
-      <Menu.Item
-        key="document"
-        component={ForwardRefLink}
-        to="/document/new"
-        leftSection={<Icon name="document" />}
-      >
-        {t`Document`}
-      </Menu.Item>,
-    );
-
     return items;
-  }, [
-    hasDataAccess,
-    areAiFeaturesEnabled,
-    hasNativeWrite,
-    collectionId,
-    lastUsedDatabaseId,
-    hasDatabaseWithJsonEngine,
-    dispatch,
-    canWriteToCollections,
-    hasNlqAccess,
-  ]);
+  }, [dispatch, canWriteToCollections]);
 
   if (menuItems.length === 0) {
     return null;

@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
@@ -24,6 +25,7 @@ import {
 } from "metabase/rich_text_editing/tiptap/extensions/shared/SuggestionPaper";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Divider,
@@ -33,6 +35,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -42,12 +45,15 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
 import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
+import { getLastQueryType, setLastQueryType } from "./last-query-type";
 import type {
   CommandOption,
   CommandSection,
   NewQuestionMenuItem,
+  NewQuestionModalType,
   NewQuestionModals,
   NewQuestionOption,
+  NewQuestionType,
 } from "./types";
 import { type MetabotCommandConfig, getAllCommandSections } from "./utils";
 
@@ -123,19 +129,32 @@ export const CommandSuggestion = forwardRef<
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
-  const [newQuestionType, setNewQuestionType] = useState<
-    "notebook" | "native" | null
-  >(null);
+  const [newQuestionType, setNewQuestionType] =
+    useState<NewQuestionModalType | null>(null);
+  const navigate = useNavigate();
 
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const { capabilities } = host;
   const extraCommandSections = host.useExtraCommandSections();
+  const allEventAnalysisCommands = host.useEventAnalysisCommands();
+  const eventAnalysisCommands = useMemo(
+    () =>
+      allEventAnalysisCommands.filter(
+        (item) => item.isAllowedAtPosition?.(editor) ?? true,
+      ),
+    [allEventAnalysisCommands, editor],
+  );
 
   const allCommandSections: CommandSection[] = useMemo(
     () =>
-      getAllCommandSections(metabotCommand, capabilities, extraCommandSections),
-    [metabotCommand, capabilities, extraCommandSections],
+      getAllCommandSections(
+        metabotCommand,
+        capabilities,
+        newQuestionOptions.length > 0,
+        extraCommandSections,
+      ),
+    [metabotCommand, capabilities, newQuestionOptions, extraCommandSections],
   );
 
   const allCommandOptions = useMemo(
@@ -164,13 +183,39 @@ export const CommandSuggestion = forwardRef<
     );
   }, [viewMode, query, allowedCommandOptions]);
 
+  const handleNewQuestionType = useCallback(
+    (type: NewQuestionType) => {
+      setLastQueryType(type);
+      match(type)
+        .with("notebook", "native", (modalType) =>
+          setNewQuestionType(modalType),
+        )
+        .with("ai", () => {
+          command({ command: "metabot" });
+          if (document) {
+            host.analytics.trackAskMetabot(document);
+          }
+        })
+        .with("event-analysis", () => {
+          if (eventAnalysisCommands.length > 0) {
+            setViewMode("eventAnalysisType");
+          } else {
+            // Plain notebooks can't hold event analyses yet, so start a new one.
+            command({ run: () => navigate(Urls.newEventAnalysis()) });
+          }
+        })
+        .exhaustive();
+    },
+    [command, document, host, eventAnalysisCommands, navigate],
+  );
+
   const createQuestionsMenuItems: NewQuestionMenuItem[] = useMemo(
     () =>
       newQuestionOptions.map((option) => ({
         ...option,
-        action: () => setNewQuestionType(option.value),
+        action: () => handleNewQuestionType(option.value),
       })),
-    [newQuestionOptions],
+    [newQuestionOptions, handleNewQuestionType],
   );
 
   const areChartsAllowed =
@@ -249,6 +294,15 @@ export const CommandSuggestion = forwardRef<
       return;
     }
 
+    if (commandName === "newQuery") {
+      command({
+        clearQuery: true,
+        switchToEmbedMode: true,
+      });
+      setViewMode("newQuestionType");
+      return;
+    }
+
     if (commandName === "embedQuestion") {
       command({
         clearQuery: true,
@@ -283,6 +337,10 @@ export const CommandSuggestion = forwardRef<
       return createQuestionsMenuItems;
     }
 
+    if (viewMode === "eventAnalysisType") {
+      return eventAnalysisCommands;
+    }
+
     // When searching in command mode, combine search results with matching commands
     if (query && searchMenuItems.length > 0) {
       // Show search results (questions) followed by matching commands
@@ -296,6 +354,7 @@ export const CommandSuggestion = forwardRef<
     searchMenuItems,
     commandOptions,
     createQuestionsMenuItems,
+    eventAnalysisCommands,
   ]);
 
   let totalItems = currentItems.length;
@@ -358,8 +417,21 @@ export const CommandSuggestion = forwardRef<
   };
 
   useEffect(() => {
-    setSelectedIndex(0);
-  }, [currentItems.length, viewMode, searchMenuItems.length]);
+    if (viewMode === "newQuestionType") {
+      const lastQueryType = getLastQueryType();
+      const lastQueryIndex = newQuestionOptions.findIndex(
+        (option) => option.value === lastQueryType,
+      );
+      setSelectedIndex(Math.max(lastQueryIndex, 0));
+    } else {
+      setSelectedIndex(0);
+    }
+  }, [
+    currentItems.length,
+    viewMode,
+    searchMenuItems.length,
+    newQuestionOptions,
+  ]);
 
   useEffect(() => {
     const selectedItem = itemRefs.current[selectedIndex];
@@ -376,6 +448,14 @@ export const CommandSuggestion = forwardRef<
 
       if (viewMode === "newQuestionType" && event.key === "Enter") {
         createQuestionsMenuItems[selectedIndex]?.action();
+        return true;
+      }
+
+      if (viewMode === "eventAnalysisType" && event.key === "Enter") {
+        const option = eventAnalysisCommands[selectedIndex];
+        if (option) {
+          executeCommand(option);
+        }
         return true;
       }
 
@@ -441,6 +521,18 @@ export const CommandSuggestion = forwardRef<
           }}
         />
       )}
+
+      {viewMode === "eventAnalysisType" &&
+        eventAnalysisCommands.map((option, index) => (
+          <CommandMenuItem
+            key={option.command}
+            ref={(el) => (itemRefs.current[index] = el)}
+            option={option}
+            isSelected={selectedIndex === index}
+            onClick={() => executeCommand(option)}
+            onMouseEnter={() => setSelectedIndex(index)}
+          />
+        ))}
 
       {!viewMode && (
         <>

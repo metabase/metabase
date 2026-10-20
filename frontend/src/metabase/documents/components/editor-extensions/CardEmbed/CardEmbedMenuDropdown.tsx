@@ -79,8 +79,29 @@ export const CardEmbedMenuDropdown = ({
     );
   }
 
+  const isDownloadShown = !isStatic && canDownloadResults(dataset);
+
   return (
     <>
+      <Menu.Item
+        onClick={handleEditVisualizationSettings}
+        leftSection={<Icon name="palette" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Edit visualization`}
+      </Menu.Item>
+      {!isStatic && (
+        <Menu.Item
+          onClick={() => setIsModifyModalOpen(true)}
+          leftSection={
+            <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
+          }
+          disabled={!canWrite}
+        >
+          {t`Edit query`}
+        </Menu.Item>
+      )}
+      <Menu.Divider />
       {!isWithinIframe() && canWrite && (
         <Menu.Item
           leftSection={<Icon name="add_comment" size={14} />}
@@ -103,13 +124,6 @@ export const CardEmbedMenuDropdown = ({
       >
         {t`Add supporting text`}
       </Menu.Item>
-      <Menu.Item
-        onClick={handleEditVisualizationSettings}
-        leftSection={<Icon name="palette" size={14} />}
-        disabled={!canWrite}
-      >
-        {t`Edit Visualization`}
-      </Menu.Item>
       {shouldShowTimelineEventsMenu && (
         <Menu.Item
           leftSection={<Icon name="calendar" size={14} />}
@@ -119,17 +133,25 @@ export const CardEmbedMenuDropdown = ({
           {t`Events`}
         </Menu.Item>
       )}
-      {!isStatic && (
-        <Menu.Item
-          onClick={() => setIsModifyModalOpen(true)}
-          leftSection={
-            <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
-          }
-          disabled={!canWrite}
-        >
-          {t`Edit Query`}
-        </Menu.Item>
+      {isDownloadShown && (
+        <>
+          <Menu.Divider />
+          <Menu.Item
+            leftSection={<Icon name="download" aria-hidden />}
+            aria-label={
+              isDownloadingData ? t`Downloading…` : t`Download results`
+            }
+            disabled={isDownloadingData}
+            closeMenuOnClick={false}
+            onClick={() => {
+              setMenuView("downloads");
+            }}
+          >
+            {isDownloadingData ? t`Downloading…` : t`Download results`}
+          </Menu.Item>
+        </>
       )}
+      <Menu.Divider />
       {!isStatic && (
         <Menu.Item
           onClick={handleReplaceQuestion}
@@ -139,25 +161,12 @@ export const CardEmbedMenuDropdown = ({
           {t`Replace`}
         </Menu.Item>
       )}
-      {!isStatic && canDownloadResults(dataset) && (
-        <Menu.Item
-          leftSection={<Icon name="download" aria-hidden />}
-          aria-label={isDownloadingData ? t`Downloading…` : t`Download results`}
-          disabled={isDownloadingData}
-          closeMenuOnClick={false}
-          onClick={() => {
-            setMenuView("downloads");
-          }}
-        >
-          {isDownloadingData ? t`Downloading…` : t`Download results`}
-        </Menu.Item>
-      )}
       <Menu.Item
         onClick={handleRemoveNode}
         leftSection={<Icon name="trash" size={14} />}
         disabled={!canWrite}
       >
-        {t`Remove Chart`}
+        {t`Remove chart`}
       </Menu.Item>
     </>
   );

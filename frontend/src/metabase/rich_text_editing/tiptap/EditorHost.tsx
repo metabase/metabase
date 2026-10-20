@@ -13,7 +13,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type { CommandSection } from "./extensions/Command/types";
+import type { CommandOption, CommandSection } from "./extensions/Command/types";
 
 /**
  * Result returned by the card-data hooks the host provides to the CardEmbed
@@ -200,6 +200,8 @@ export interface EditorAnalyticsHost {
 /** Slash-menu sections a host adds between the built-in commands and formatting. */
 export interface EditorCommandsHost {
   useExtraCommandSections: () => CommandSection[];
+  /** The event analyses the slash menu's query picker can insert, if the host supports them. */
+  useEventAnalysisCommands: () => CommandOption[];
 }
 
 /**
@@ -220,6 +222,7 @@ export type EditorHost = EditorDocumentHost &
 const noop = () => undefined;
 
 export const NO_EXTRA_COMMAND_SECTIONS: CommandSection[] = [];
+export const NO_EVENT_ANALYSIS_COMMANDS: CommandOption[] = [];
 
 /**
  * Inert host used when no provider is configured (e.g. the comments and metabot
@@ -270,6 +273,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
   useCardEmbedSlots: () => EMPTY_CARD_EMBED_SLOTS,
   useExtraCommandSections: () => NO_EXTRA_COMMAND_SECTIONS,
+  useEventAnalysisCommands: () => NO_EVENT_ANALYSIS_COMMANDS,
 };
 
 const EditorHostContext = createContext<EditorHost>(DEFAULT_EDITOR_HOST);

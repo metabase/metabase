@@ -5,6 +5,7 @@ import {
   EMPTY_CARD_EMBED_SLOTS,
   type EditorHost,
   EditorHostProvider,
+  NO_EVENT_ANALYSIS_COMMANDS,
   NO_EXTRA_COMMAND_SECTIONS,
   useEditorHost,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -113,6 +114,7 @@ export const documentEditorHost: DocumentEditorHost = {
   useReportPrefetchLoading,
   useDraftCardOperations,
   useExtraCommandSections: () => NO_EXTRA_COMMAND_SECTIONS,
+  useEventAnalysisCommands: () => NO_EVENT_ANALYSIS_COMMANDS,
 };
 
 export const useDocumentEditorHost = (): DocumentEditorHost => {
