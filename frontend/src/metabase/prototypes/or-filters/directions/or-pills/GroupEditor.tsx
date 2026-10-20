@@ -10,13 +10,15 @@ import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 
 import S from "./GroupEditor.module.css";
 import { Token } from "./Token";
-import { type PillRows, toPillClause, updateRow } from "./orPills";
+import { type PillRows, updateRow } from "./orPills";
 
 type GroupEditorProps = {
   query: Lib.Query;
   stageIndex: number;
   rows: PillRows;
   onUpdate: (rows: PillRows) => void;
+  /** Ungroups the pill: each row becomes its own top-level filter. */
+  onExpand: (rows: PillRows) => void;
 };
 
 /**
@@ -30,9 +32,9 @@ export function GroupEditor({
   stageIndex,
   rows: initialRows,
   onUpdate,
+  onExpand,
 }: GroupEditorProps) {
   const [rows, setRows] = useState(initialRows);
-  const [isExpanded, setIsExpanded] = useState(false);
   // Only one thing is ever on screen: the single-clause editor, the rows, or
   // the picker that adds/replaces one clause (no picker stacked over the rows).
   const [view, setView] = useState<EditorView>({ type: "auto" });
@@ -111,8 +113,6 @@ export function GroupEditor({
     );
   };
 
-  const draftClause = toPillClause(rows);
-
   return (
     <Box miw={420} ff="monospace">
       <Stack gap="sm" px="md" pt="sm" pb="md">
@@ -152,17 +152,6 @@ export function GroupEditor({
             onClick={() => setView({ type: "add", rowIndex: rows.length })}
           />
         </Box>
-        {isExpanded && (
-          <Text size="sm" c="text-secondary">
-            {draftClause
-              ? getFilterLabel(
-                  query,
-                  stageIndex,
-                  toFilterClause(query, stageIndex, draftClause),
-                )
-              : t`No conditions`}
-          </Text>
-        )}
       </Stack>
       <Divider />
       <Group justify="space-between" p="md">
@@ -170,9 +159,10 @@ export function GroupEditor({
           variant="subtle"
           size="compact-md"
           px={0}
-          onClick={() => setIsExpanded((expanded) => !expanded)}
+          // Changes the logic: OR rows become AND-ed top-level pills.
+          onClick={() => onExpand(rows)}
         >
-          {isExpanded ? t`Collapse` : t`Expand`}
+          {t`Expand`}
         </Button>
         <Button variant="filled" onClick={() => onUpdate(rows)}>
           {t`Update filter`}

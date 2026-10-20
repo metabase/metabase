@@ -14,7 +14,12 @@ import type { FilterUiProps, FilterUiVariant } from "../../types";
 
 import { GroupEditor } from "./GroupEditor";
 import { Token } from "./Token";
-import { type PillRows, readPillRows, writePillRows } from "./orPills";
+import {
+  type PillRows,
+  expandPillRows,
+  readPillRows,
+  writePillRows,
+} from "./orPills";
 
 /**
  * Direction A: top-level filters stay AND-ed pills, as today. A pill can hold
@@ -36,6 +41,9 @@ export function OrPillsPrototype({
       filter={filter}
       onUpdate={(rows) =>
         onChange(writePillRows(query, stageIndex, filter, rows))
+      }
+      onExpand={(rows) =>
+        onChange(expandPillRows(query, stageIndex, filter, rows))
       }
       onRemove={() => onChange(Lib.removeClause(query, stageIndex, filter))}
     />
@@ -75,10 +83,18 @@ type PillProps = {
   stageIndex: number;
   filter: Lib.FilterClause;
   onUpdate: (rows: PillRows) => void;
+  onExpand: (rows: PillRows) => void;
   onRemove: () => void;
 };
 
-function Pill({ query, stageIndex, filter, onUpdate, onRemove }: PillProps) {
+function Pill({
+  query,
+  stageIndex,
+  filter,
+  onUpdate,
+  onExpand,
+  onRemove,
+}: PillProps) {
   const [isOpened, setIsOpened] = useState(false);
   const rows = readPillRows(query, stageIndex, filter);
 
@@ -105,6 +121,10 @@ function Pill({ query, stageIndex, filter, onUpdate, onRemove }: PillProps) {
           rows={rows}
           onUpdate={(nextRows) => {
             onUpdate(nextRows);
+            setIsOpened(false);
+          }}
+          onExpand={(nextRows) => {
+            onExpand(nextRows);
             setIsOpened(false);
           }}
         />

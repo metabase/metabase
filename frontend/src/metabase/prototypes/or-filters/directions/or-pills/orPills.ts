@@ -32,16 +32,19 @@ export function readPillRows(
   return [[filter]];
 }
 
-/** Collapses rows into one clause, or `undefined` when every row is empty. */
-export function toPillClause(
-  rows: PillRows,
-): Lib.FilterClause | Lib.ExpressionClause | undefined {
-  const rowClauses = rows
+function toRowClauses(rows: PillRows) {
+  return rows
     .filter((row) => row.length > 0)
     .map((row) =>
       row.length === 1 ? row[0] : Lib.expressionClause("and", row),
     );
+}
 
+/** Collapses rows into one clause, or `undefined` when every row is empty. */
+export function toPillClause(
+  rows: PillRows,
+): Lib.FilterClause | Lib.ExpressionClause | undefined {
+  const rowClauses = toRowClauses(rows);
   if (rowClauses.length === 0) {
     return undefined;
   }
@@ -61,6 +64,23 @@ export function writePillRows(
   return clause
     ? Lib.replaceClause(query, stageIndex, filter, clause)
     : Lib.removeClause(query, stageIndex, filter);
+}
+
+/**
+ * Ungroups a pill: removes `filter` and adds each row as its own top-level
+ * filter. Top-level filters are AND-ed, so this changes the query's logic.
+ */
+export function expandPillRows(
+  query: Lib.Query,
+  stageIndex: number,
+  filter: Lib.FilterClause,
+  rows: PillRows,
+): Lib.Query {
+  const withoutPill = Lib.removeClause(query, stageIndex, filter);
+  return toRowClauses(rows).reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
+    withoutPill,
+  );
 }
 
 export function updateRow(
