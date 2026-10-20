@@ -419,14 +419,12 @@
     password                                               "password"))
 
 (defn- resolve-credentials
-  "Set the JDBC credential properties. WIF is explicit (:auth-mode must be `\"wif\"`), because it has
-  no field-based signal to infer from. Otherwise re-derive password vs key-pair from the current
-  details so callers that only tweak :use-password / :password / :private-key-* don't have to keep
-  :auth-mode in sync."
+  "Set the JDBC credential properties. An explicit :auth-mode wins, because it is the method the user
+  selected and the details can still hold credentials of the method they used before. Without
+  :auth-mode, derive password vs key-pair from the other auth-related keys."
   [{:keys [auth-mode] :as details}]
-  (case (or (when (= "wif" auth-mode) "wif")
+  (case (or (#{"wif" "password" "key-pair"} auth-mode)
             (infer-auth-mode details)
-            auth-mode
             "key-pair")
     "wif"      (resolve-wif-credentials details)
     "password" (-> details (dissoc :private-key) resolve-private-key)
@@ -1199,7 +1197,12 @@
     ;; :details' :auth-mode during the merge in effective-details.
     (and (not (contains? details :auth-mode))
          (some? (infer-auth-mode details)))
-    (as-> d (assoc d :auth-mode (infer-auth-mode d)))))
+    (as-> d (assoc d :auth-mode (infer-auth-mode d)))
+
+    ;; Keep :use-password in sync with an explicit :auth-mode, so that a stale value from the
+    ;; previous method does not change which credentials are tried first.
+    (#{"password" "key-pair"} (:auth-mode details))
+    (assoc :use-password (= "password" (:auth-mode details)))))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
