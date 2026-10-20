@@ -19,7 +19,7 @@ import { useSetting } from "metabase/settings";
 import { Flex, Icon, Popover, Select } from "metabase/ui";
 
 // width needed to show Previous 12 months option w/ clipping
-const FILTER_WIDTH = 205;
+export const FILTER_WIDTH = 205;
 
 const DATE_OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];
 const RELATIVE_DIRECTIONS: RelativeIntervalDirection[] = ["past", "current"];
@@ -201,22 +201,27 @@ function ConversationDateFilter({
   );
 }
 
+type FilterOption = { value: string; label: string };
+
+type SelectFilter = {
+  /** `null` when the filter is off. */
+  value: string | null;
+  options: FilterOption[];
+  onChange: (val: string | null) => void;
+};
+
+type GroupFilter = SelectFilter & {
+  /** The option that turns the group filter off. */
+  noFilterValue: string;
+};
+
 type ConversationFiltersProps = {
   date: string | null;
   onDateChange: (val: string) => void;
-  user: string | null;
-  onUserChange: (val: string | null) => void;
-  group: string | null;
-  onGroupChange: (val: string | null) => void;
-  groupNoFilterValue: string;
-  tenant: string | null;
-  onTenantChange: (val: string | null) => void;
-  userOptions: { value: string; label: string }[];
-  groupOptions: { value: string; label: string }[];
-  tenantOptions: { value: string; label: string }[];
-  hasTenants: boolean;
-  /** Hides the user select for pages where filtering by user isn't a meaningful concept. */
-  hasUsers?: boolean;
+  // Each filter shows only when it's passed.
+  userFilter?: SelectFilter;
+  groupFilter?: GroupFilter;
+  tenantFilter?: SelectFilter;
   /** Rendered right after the Group select, before User/Date — for a caller-specific filter that
    * belongs grouped with Group rather than after the rest of this shared bar. */
   extraFilter?: ReactNode;
@@ -225,51 +230,44 @@ type ConversationFiltersProps = {
 export function ConversationFilters({
   date,
   onDateChange,
-  user,
-  onUserChange,
-  group,
-  onGroupChange,
-  groupNoFilterValue,
-  tenant,
-  onTenantChange,
-  userOptions,
-  groupOptions,
-  tenantOptions,
-  hasTenants,
-  hasUsers = true,
+  userFilter,
+  groupFilter,
+  tenantFilter,
   extraFilter,
 }: ConversationFiltersProps) {
   return (
     <Flex gap="sm" wrap="wrap" align="center">
-      {hasTenants && (
+      {tenantFilter && (
         <Select
-          data={[{ value: "", label: t`All tenants` }, ...tenantOptions]}
-          value={tenant ?? ""}
-          onChange={(val) => onTenantChange(val === "" ? null : val)}
+          data={[{ value: "", label: t`All tenants` }, ...tenantFilter.options]}
+          value={tenantFilter.value ?? ""}
+          onChange={(val) => tenantFilter.onChange(val === "" ? null : val)}
           searchable
           w={FILTER_WIDTH}
           bdrs="xs"
           data-testid="conversation-filters-tenant-select"
         />
       )}
-      <Select
-        placeholder={t`Group`}
-        data={groupOptions}
-        value={group ?? groupNoFilterValue}
-        onChange={(val) =>
-          onGroupChange(val === groupNoFilterValue ? null : val)
-        }
-        searchable
-        w={FILTER_WIDTH}
-        bdrs="xs"
-        data-testid="conversation-filters-group-select"
-      />
-      {extraFilter}
-      {hasUsers && (
+      {groupFilter && (
         <Select
-          data={[{ value: "", label: t`All users` }, ...userOptions]}
-          value={user ?? ""}
-          onChange={(val) => onUserChange(val === "" ? null : val)}
+          placeholder={t`Group`}
+          data={groupFilter.options}
+          value={groupFilter.value ?? groupFilter.noFilterValue}
+          onChange={(val) =>
+            groupFilter.onChange(val === groupFilter.noFilterValue ? null : val)
+          }
+          searchable
+          w={FILTER_WIDTH}
+          bdrs="xs"
+          data-testid="conversation-filters-group-select"
+        />
+      )}
+      {extraFilter}
+      {userFilter && (
+        <Select
+          data={[{ value: "", label: t`All users` }, ...userFilter.options]}
+          value={userFilter.value ?? ""}
+          onChange={(val) => userFilter.onChange(val === "" ? null : val)}
           searchable
           w={FILTER_WIDTH}
           bdrs="xs"
