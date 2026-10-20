@@ -64,7 +64,11 @@ export const getNewCardUrlFromDashboard = (
   const { dashboardId, dashboards, parameterValues } = state.dashboard;
   const dashboard = dashboardId != null ? dashboards[dashboardId] : null;
 
-  if (!dashboard || !isQuestionDashCard(dashcard)) {
+  if (
+    !dashboard ||
+    !isQuestionDashCard(dashcard) ||
+    !dashcard.card.dataset_query
+  ) {
     return undefined;
   }
 
