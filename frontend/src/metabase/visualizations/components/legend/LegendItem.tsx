@@ -2,11 +2,12 @@ import cx from "classnames";
 import { memo, useState } from "react";
 import { match } from "ts-pattern";
 
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Ellipsified, Flex, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import S from "./Legend.module.css";
+import S from "./LegendItem.module.css";
 import { LegendItemDot } from "./LegendItemDot";
 import { LEGEND_SIZES, type LegendSize } from "./layout";
 
@@ -53,7 +54,8 @@ const LegendItemInner = ({
   onToggleSeriesVisibility,
 }: LegendItemProps) => {
   const { dotSize, dotGap, typography } = LEGEND_SIZES[size];
-  const isLink = onSelectSeries !== undefined && getSeriesHref !== undefined;
+  const isClickable = onSelectSeries != null;
+  const isLink = isClickable && getSeriesHref !== undefined;
   // Building the URL is expensive, so it waits until the title is hovered or
   // focused.
   const [seriesHref, setSeriesHref] = useState<SeriesHref>({
@@ -96,41 +98,41 @@ const LegendItemInner = ({
   };
 
   return (
-    <Flex align="center" miw={0} data-testid="legend-item">
-      <Flex
-        className={cx(S.itemLabel, {
-          [S.hoverableLabel]: onHoverChange != null,
-        })}
-        align="center"
-        w="100%"
-        opacity={isMuted ? 0.4 : 1}
-        onMouseEnter={onHoverChange && handleItemMouseEnter}
-        onMouseLeave={onHoverChange && handleItemMouseLeave}
+    <Flex
+      className={S.root}
+      align="center"
+      miw={0}
+      opacity={isMuted ? 0.4 : 1}
+      onMouseEnter={onHoverChange && handleItemMouseEnter}
+      onMouseLeave={onHoverChange && handleItemMouseLeave}
+      data-testid="legend-item"
+    >
+      <LegendItemDot
+        color={item.color}
+        size={rem(dotSize)}
+        isVisible={item.visible ?? true}
+        onClick={onToggleSeriesVisibility && handleDotClick}
+      />
+      <Box
+        component={isLink ? "a" : "div"} // not Metabase's <Link>: it swaps elements when the href resolves, losing focus
+        href={isLink ? href : undefined}
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          CS.textPrimary,
+          CS.overflowHidden,
+          { [CS.cursorPointer]: isClickable, [CS.textBrandHover]: isClickable },
+        )}
+        display="block"
+        fz={typography}
+        lh={typography}
+        ml={dotGap}
+        miw={0}
+        onClick={isLink ? handleLinkClick : onSelectSeries && handleItemClick}
+        onFocus={isLink ? handleUpdateHref : undefined}
+        onMouseEnter={isLink ? handleUpdateHref : undefined}
       >
-        <LegendItemDot
-          color={item.color}
-          size={rem(dotSize)}
-          isVisible={item.visible ?? true}
-          onClick={onToggleSeriesVisibility && handleDotClick}
-        />
-        <Box
-          component={isLink ? "a" : "div"} // not Metabase's <Link>: it swaps elements when the href resolves, losing focus
-          href={isLink ? href : undefined}
-          className={cx(DashboardS.fullscreenNormalText, S.itemTitle, {
-            [S.clickableTitle]: onSelectSeries != null,
-          })}
-          display="block"
-          fz={typography}
-          lh={typography}
-          ml={dotGap}
-          miw={0}
-          onClick={isLink ? handleLinkClick : onSelectSeries && handleItemClick}
-          onFocus={isLink ? handleUpdateHref : undefined}
-          onMouseEnter={isLink ? handleUpdateHref : undefined}
-        >
-          <Ellipsified>{item.name}</Ellipsified>
-        </Box>
-      </Flex>
+        <Ellipsified>{item.name}</Ellipsified>
+      </Box>
     </Flex>
   );
 };

@@ -75,8 +75,7 @@
                ;; dev-only plugins are never served from another instance
                :dev_bundle_url]
    :defaults  {:enabled true}
-   :transform {:created_at (serdes/date)
-               :bundle     {:export bundle->b64
+   :transform {:bundle     {:export bundle->b64
                             :import b64->bundle}}})
 
 (defn- bundle-columns
