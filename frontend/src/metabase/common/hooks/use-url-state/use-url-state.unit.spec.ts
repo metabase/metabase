@@ -220,7 +220,7 @@ describe("useUrlState", () => {
     expect(router?.location.search).toEqual("?name=abc");
   });
 
-  it("does not write the URL after the router navigated away", async () => {
+  it("does not write the URL after the router navigated away (GDGT-3380)", async () => {
     const location = createLocation("?name=abc");
     const { result, router } = setup({ location });
     // a real navigation re-renders before the debounced write, so this is the only way to open the window
