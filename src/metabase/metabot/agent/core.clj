@@ -187,7 +187,7 @@
        (nil? (get-in part [:result :error]))))
 
 (def ^:private legacy-terminal-tool-names
-  #{"create_sql_query" "document_construct_sql_chart" "document_construct_model_chart"})
+  #{"document_construct_sql_chart" "document_construct_model_chart"})
 
 (defn- answer-producing?
   "Whether a tool output delivered an answer, requiring structured output from legacy terminal tools."

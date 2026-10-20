@@ -7,17 +7,14 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.run-query :as tools.run-query]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,15 +26,13 @@
     :else               ""))
 
 (defn- first-code-editor-buffer-id
-  ([]
-   (first-code-editor-buffer-id (shared/current-memory)))
-  ([memory]
-   (some->> (get-in memory [:context :user_is_viewing] [])
-            (filter #(= "code_editor" (normalize-context-type (:type %))))
-            first
-            :buffers
-            first
-            :id)))
+  [memory]
+  (some->> (get-in memory [:context :user_is_viewing] [])
+           (filter #(= "code_editor" (normalize-context-type (:type %))))
+           first
+           :buffers
+           first
+           :id))
 
 (defn- format-query-output
   "Format a query result for LLM consumption.
@@ -58,21 +53,25 @@
      instruction-text
      "</instructions>")))
 
-(defn- format-validation-error-output
-  [instruction-text]
-  (te/lines
-   "<result>"
-   "SQL query construction failed."
-   "</result>"
-   "<instructions>"
-   instruction-text
-   "</instructions>"))
-
 (defn- code-edit-part
   [buffer-id sql]
   (streaming/code-edit-part {:buffer_id buffer-id
                              :mode "rewrite"
                              :value sql}))
+
+(defn- query-viz-part
+  [{:keys [query-id query]} title]
+  (streaming/viz-part {:entity-id (str (random-uuid))
+                       :query-id query-id
+                       :query (links/->legacy-mbql query)
+                       :title title}))
+
+(defn- validated-sql-action!
+  [{:keys [validation-result action-result]}]
+  (let [{:keys [valid? dialect error-message]} validation-result]
+    (when-not valid?
+      (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))
+    action-result))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Create SQL query
@@ -84,65 +83,41 @@
    [:sql_query :string]
    [:title :string]])
 
-(mu/defn ^{:tool-name    "create_sql_query"
-           :scope        scope/agent-sql-create
-           :capabilities #{:permission-write-sql-queries}}
-  create-sql-query-tool
-  "Create a new SQL query. Provide a short, human-friendly `title` shown above the results."
-  [{:keys [database_id sql_query title]} :- create-sql-schema]
-  (try
-    (let [{:keys [validation-result action-result]}
-          (create-sql-query-tools/create-sql-query
-           {:database-id database_id
-            :sql sql_query})
-          {:keys [valid? dialect error-message]} validation-result
-          {:keys [query-id query]} action-result]
-      (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id
-                                                                       (tools.run-query/sql-results-readable?))]
-          {:output (format-query-output structured instr {:preamble? true})
-           :structured-output structured
-           :instructions instr
-           :data-parts [(streaming/viz-part {:entity-id (str (random-uuid))
-                                             :query-id  query-id
-                                             :query     (links/->legacy-mbql query)
-                                             :title     title})]})
-        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-          {:output (format-validation-error-output instr)
-           :instructions instr})))
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+(defrecord CreateSqlQueryTool [code-edit?]
+  tools/Tool
+  (declaration [_]
+    {:name "create_sql_query"
+     :description (if code-edit?
+                    "Create a new SQL query and update the code editor buffer."
+                    "Create a new SQL query. Provide a short, human-friendly `title` shown above the results.")
+     :scope scope/agent-sql-create
+     :metabot/capabilities #{:permission-write-sql-queries}
+     :args create-sql-schema})
+  (handle [_ {database-id :database_id sql-query :sql_query :keys [title]} ctx]
+    (let [buffer-id (when code-edit?
+                      (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+                          (tools/unrecoverable! ::missing-editor
+                                                {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
+          action-result (validated-sql-action!
+                         (create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query}))
+          {:keys [query-id query-content]} action-result
+          structured (assoc action-result :result-type :query)
+          instr (if code-edit?
+                  instructions/query-loaded-in-editor-instructions
+                  (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?)))]
+      {:output (format-query-output structured instr {:preamble? true})
+       :structured-output structured
+       :data-parts [(if code-edit?
+                      (code-edit-part buffer-id query-content)
+                      (query-viz-part action-result title))]})))
 
-(mu/defn ^{:tool-name    "create_sql_query"
-           :scope        scope/agent-sql-create
-           :capabilities #{:permission-write-sql-queries}}
-  create-sql-query-code-edit-tool
-  "Create a new SQL query and update the code editor buffer."
-  [{:keys [database_id sql_query]} :- create-sql-schema]
-  (try
-    (let [buffer-id (first-code-editor-buffer-id)]
-      (if (nil? buffer-id)
-        (tools/unrecoverable! ::missing-editor
-                              {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})
-        (let [{:keys [validation-result action-result]}
-              (create-sql-query-tools/create-sql-query
-               {:database-id database_id
-                :sql sql_query})
-              {:keys [valid? dialect error-message]} validation-result
-              {:keys [query-content]} action-result]
-          (if valid?
-            (let [structured (assoc action-result :result-type :query)
-                  instr      instructions/query-loaded-in-editor-instructions]
-              {:output (format-query-output structured instr {:preamble? true})
-               :structured-output structured
-               :instructions instr
-               :data-parts [(code-edit-part buffer-id query-content)]})
-            (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-              {:output (format-validation-error-output instr)
-               :instructions instr})))))
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+(def create-sql-query-tool
+  "The Chat tool that creates a SQL query and shows its visualization."
+  (->CreateSqlQueryTool false))
+
+(def create-sql-query-code-edit-tool
+  "The SQL profile tool that creates a SQL query in the active editor."
+  (->CreateSqlQueryTool true))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Edit SQL query
@@ -159,22 +134,16 @@
    [:title :string]])
 
 (defn- sql-edit-result
-  [{:keys [validation-result action-result]} title instruction-fn ctx]
-  (let [{:keys [valid? dialect error-message]} validation-result]
-    (when-not valid?
-      (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))
-    (let [{:keys [query-id query query-content]} action-result
-          structured (assoc action-result :result-type :query)
-          buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
-          instr (instruction-fn query-id (some? buffer-id))]
-      {:output (format-query-output structured instr)
-       :structured-output structured
-       :data-parts [(if buffer-id
-                      (code-edit-part buffer-id query-content)
-                      (streaming/viz-part {:entity-id (str (random-uuid))
-                                           :query-id query-id
-                                           :query (links/->legacy-mbql query)
-                                           :title title}))]})))
+  [operation-result title instruction-fn ctx]
+  (let [{:keys [query-id query-content] :as action-result} (validated-sql-action! operation-result)
+        structured (assoc action-result :result-type :query)
+        buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+        instr (instruction-fn query-id (some? buffer-id))]
+    {:output (format-query-output structured instr)
+     :structured-output structured
+     :data-parts [(if buffer-id
+                    (code-edit-part buffer-id query-content)
+                    (query-viz-part action-result title))]}))
 
 (defrecord EditSqlQueryTool []
   tools/Tool

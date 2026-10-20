@@ -81,14 +81,12 @@
                                                    database-id))))
 
 (defn check-native-query-access!
-  "Throw an agent error unless the current user may write native queries against `database-id`
-  (see [[native-query-access?]])."
+  "Throw an unrecoverable error unless the user may write native queries against `database-id`."
   [database-id]
   (when-not (native-query-access? database-id)
-    (throw (ex-info (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
-                    {:agent-error?    true
-                     :terminal-error? true
-                     :database-id     database-id}))))
+    (tools/unrecoverable! ::no-native-permission
+                          {:user-message (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
+                           :data {:database-id database-id}})))
 
 (defn query-for-sql-edit!
   "Return a stored SQL query, checking its ID, native query permission, and format."
@@ -96,10 +94,7 @@
   (let [available (sort (for [[id query] queries-state :when (metabot.u/extract-sql-content query)] id))
         query (or (get queries-state query-id)
                   (recoverable/unknown-query-id! {:query-id query-id :available available}))]
-    (when-not (native-query-access? (:database query))
-      (tools/unrecoverable! ::no-native-permission
-                            {:user-message (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
-                             :data {:database-id (:database query)}}))
+    (check-native-query-access! (:database query))
     (when-not (metabot.u/extract-sql-content query)
       (not-sql! {:query-id query-id :available available}))
     query))

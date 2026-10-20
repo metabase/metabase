@@ -51,3 +51,12 @@
                 {:uses #{} :text "Use an available query ID from this conversation."}
                 {:uses #{"create_sql_query"}
                  :text "Use `create_sql_query` to create a SQL query, then use its returned query ID."})]})
+
+(defrecoverable unknown-database!
+  "The requested database does not exist."
+  {:payload [:map {:closed true} [:database-id :int]]
+   :status-code 404}
+  [{:keys [database-id]}]
+  {:message (str "Database " database-id " was not found.")
+   :recovery [{:uses #{"read_resource"}
+               :text "Read `metabase://databases` with `read_resource` to choose an available database ID, then retry."}]})

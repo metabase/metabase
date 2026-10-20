@@ -107,6 +107,14 @@
                    tool-name)]
     (is (= (set terminal) @#'agent/legacy-terminal-tool-names))))
 
+(deftest create-terminal-without-structured-output-test
+  (let [parts [{:type :tool-input :id "create" :function "create_sql_query"}
+               {:type :tool-output :id "create" :result {:output "Created SQL"}}]]
+    (is (#'agent/terminal-tool-call? #{"create_sql_query"} parts))
+    (is (not (#'agent/terminal-tool-call? #{"create_sql_query"}
+                                          (assoc-in parts [1 :result :error]
+                                                    {:class :recoverable :code :test/syntax-error}))))))
+
 (deftest terminal-tool-call-test
   (let [terminal #{"edit_sql_query" "create_sql_query" "replace_sql_query"}
         success  [{:type :tool-input :id "a" :function "edit_sql_query"}
@@ -131,7 +139,7 @@
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
     (testing "legacy terminal tools require structured output on success"
-      (doseq [tool-name ["create_sql_query" "document_construct_sql_chart" "document_construct_model_chart"]]
+      (doseq [tool-name ["document_construct_sql_chart" "document_construct_model_chart"]]
         (let [parts [{:type :tool-input :id "d" :function tool-name}
                      {:type :tool-output :id "d" :result {:output "Query construction failed"}}]]
           (is (not (#'agent/terminal-tool-call? #{tool-name} parts)))
