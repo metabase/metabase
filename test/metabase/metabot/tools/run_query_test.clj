@@ -995,6 +995,16 @@
       (is (= "To run one, write SQL that reads it with `create_sql_query`, then run that query with `run_query`."
              step)))))
 
+(deftest run-sql-query-tool-huge-query-id-test
+  (testing "an invented id too long to repeat is cut short, so the recovery step survives the runtime's limit"
+    (let [query-id (apply str (repeat 5000 "x"))]
+      (is (= (refusal ::run-query/unknown-query-id
+                      (str "No query with id " (subs query-id 0 100) ".... Known query ids: [q1]. A saved question or "
+                           "model has no query id.")
+                      (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
+                           "`run_query`."))
+             (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id query-id}))))))
+
 (deftest run-query-description-test
   (testing "the ordinary tool's description names the notebook builder"
     (is (str/includes? (:description (tools.core/declaration run-query/run-query-tool)) "construct_notebook_query")))

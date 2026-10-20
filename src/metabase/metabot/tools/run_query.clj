@@ -148,6 +148,10 @@
    runtime's cut on failure text."
   100)
 
+(def ^:private max-echoed-query-id-chars
+  "How much of an unknown query id the refusal repeats. The id is whatever the model sent, so it has no other bound."
+  100)
+
 (tools/defrecoverable unknown-query-id!
   "The id names no query the conversation holds, nor, where the tool runs saved questions, one the user can read."
   {:payload [:map {:closed true}
@@ -156,7 +160,7 @@
              [:hint      [:enum :notebook-query :sql-query :no-values]]]}
   [{:keys [query-id known-ids hint]}]
   (let [more    (- (count known-ids) max-listed-query-ids)
-        unknown (str "No query with id " query-id ". Known query ids: ["
+        unknown (str "No query with id " (llm-shape/truncate query-id max-echoed-query-id-chars) ". Known query ids: ["
                      (str/join ", " (take max-listed-query-ids known-ids)) "]"
                      (when (pos? more) (str " and " more " more"))
                      ".")]
