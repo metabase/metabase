@@ -1332,10 +1332,11 @@
 
 (deftest rest-scopes-reach-no-mcp-tool-or-resource-test
   (testing "GHY-4940: REST scopes gate REST endpoints only. A token holding every scope that is not an MCP scope (every
-            registered scope and every scope a REST endpoint declares) is refused by every MCP tool and every MCP data
-            resource. UI shells carry no data and are read by any token, so they are not checked.
+            registered scope and every scope a REST endpoint declares) reaches no MCP tool and no MCP resource.
 
-            GHY-4969: `mb:full` is in the set too. It gives the whole REST API, but it still gives nothing on MCP."
+            GHY-4969: `mb:full` is in the set too. It gives the whole REST API, but it still gives nothing on MCP. A
+            token that holds no MCP scope was not issued for this server, so the MCP authorization spec requires the
+            endpoint to refuse it with a 401 `invalid_token`, before the handshake."
     (require 'metabase.api-routes.routes)
     (when config/ee-available?
       (require 'metabase-enterprise.api-routes.routes))
@@ -1349,33 +1350,19 @@
                                 (concat endpoint-scopes (map :scope (api-scope/all-scopes))))]
       (is (seq non-mcp-scopes))
       (is (contains? non-mcp-scopes "mb:full"))
-      (v2.tu/do-with-bearer-token!
-       non-mcp-scopes
-       (fn [headers]
-         (let [session-id (-> (client/client-full-response :post 200 endpoint
-                                                           {:request-options {:headers headers}}
-                                                           (jsonrpc-request "initialize" mcp-app-ui-capabilities))
-                              (get-in [:headers "Mcp-Session-Id"]))
-               post!      (fn [body]
-                            (client/client-full-response :post endpoint
-                                                         {:request-options {:headers (assoc headers "mcp-session-id"
-                                                                                            session-id)}}
-                                                         body))
-               tools      (get-in (post! (jsonrpc-request "tools/list")) [:body :result :tools])
-               resources  (get-in (post! (jsonrpc-request "resources/list")) [:body :result :resources])]
-           (is (seq tools))
-           (doseq [{tool-name :name} tools]
-             (testing (str "tools/call " tool-name)
-               (let [response (post! (jsonrpc-request "tools/call" {:name tool-name :arguments {}}))]
-                 (is (= 403 (:status response)))
-                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"insufficient_scope\"")))))
-           (doseq [{:keys [uri mimeType]} resources
-                   :when (not= "text/html;profile=mcp-app" mimeType)]
-             (testing (str "resources/read " uri)
-               (let [response (post! (jsonrpc-request "resources/read" {:uri uri}))]
-                 (is (= 403 (:status response)))
-                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                                    "error=\"insufficient_scope\"")))))))))))
+      (doseq [[label scopes] [["every non-MCP scope, mb:full included" non-mcp-scopes]
+                              ["only mb:full" #{"mb:full"}]
+                              ["only non-MCP REST scopes" (disj non-mcp-scopes "mb:full")]]]
+        (testing label
+          (v2.tu/do-with-bearer-token!
+           scopes
+           (fn [headers]
+             (let [response (client/client-full-response :post 401 endpoint
+                                                         {:request-options {:headers headers}}
+                                                         (jsonrpc-request "initialize" mcp-app-ui-capabilities))]
+               (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
+               (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
+                                  "error=\"invalid_token\""))))))))))
 
 (deftest baseline-token-reads-the-fields-catalog-test
   (testing "GHY-4543, GHY-4939: the locked baseline carries agent:content:read, so a client that unticked everything
@@ -1500,7 +1487,8 @@
 
 (deftest sessions-without-mcp-scopes-reach-no-mcp-tool-test
   (testing "GHY-4942: MCP tools match only the named scopes a session holds. A cookie session holds none, and an
-            `mb:full` bearer token holds only the unrestricted sentinel, so neither reaches a scoped tool"
+            `mb:full` bearer token holds only the unrestricted sentinel, so neither reaches a scoped tool.
+            GHY-4969: the `mb:full` token is refused before the handshake, with a 401 `invalid_token`."
     (v2.tu/do-with-temp-tool!
      {:name           "scope_probe_sql"
       :scope          metabot.scope/agent-sql-run
@@ -1521,10 +1509,11 @@
            (v2.tu/do-with-bearer-token!
             #{"mb:full"}
             (fn [headers]
-              (let [response ((bearer-session-post! headers) 403 call)]
-                (is (= 403 (:status response)))
+              (let [response (client/client-full-response :post 401 endpoint
+                                                          {:request-options {:headers headers}}
+                                                          (jsonrpc-request "initialize" {:capabilities {}}))]
                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                                   "error_description=\"scope_probe_sql requires agent:sql:run")))))))))))
+                                   "error=\"invalid_token\"")))))))))))
 
 (deftest mb-full-token-keeps-its-named-mcp-scopes-test
   (testing "GHY-4942: mb:full grants nothing in MCP, but a token granted mb:full next to named MCP scopes still holds
@@ -1577,19 +1566,14 @@
                                       {"mcp-session-id" session-id})]
           (is (= 403 (:status response)))
           (is (nil? (get-in response [:body :result :_meta :com.metabase/mcp-apps :credential])))))
-      (testing "an mb:full session cannot mint a credential"
+      (testing "GHY-4969: an mb:full token cannot open a session, so it cannot mint a credential"
         (v2.tu/do-with-bearer-token!
          #{"mb:full"}
          (fn [headers]
-           (let [session-id (-> (client/client-full-response :post 200 endpoint
-                                                             {:request-options {:headers headers}}
-                                                             (jsonrpc-request "initialize" mcp-app-ui-capabilities))
-                                (get-in [:headers "Mcp-Session-Id"]))
-                 response   (client/client-full-response
-                             :post 403 endpoint
-                             {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                             (jsonrpc-request "tools/call" {:name "refresh_ui_credential" :arguments {}}))]
-             (is (nil? (get-in response [:body :result :_meta :com.metabase/mcp-apps :credential])))))))
+           (let [response (client/client-full-response :post 401 endpoint
+                                                       {:request-options {:headers headers}}
+                                                       (jsonrpc-request "initialize" mcp-app-ui-capabilities))]
+             (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))))
       (testing "agent:sql:execute is not an MCP scope, so it does not stand in for agent:sql:run"
         (let [[session-id] (initialize!)
               credential   (mcp.session/issue-ui-credential session-id (mt/user->id :crowberto)

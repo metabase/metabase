@@ -717,8 +717,11 @@
      `:endpoint-paths`.
    - `:default-ask-scopes` — optional scopes emitted as the `scope` parameter of the 401
      `WWW-Authenticate` challenge, i.e. what a client that has not been told otherwise asks for.
-     Omit to let clients ask for everything the resource metadata advertises."
-  [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
+     Omit to let clients ask for everything the resource metadata advertises.
+   - `:accepted-scopes` — the set of scope strings that mark an OAuth token as issued for this surface. An
+     OAuth-authenticated request whose token holds none of them gets the 401 `invalid_token` challenge.
+     Other auth methods are not checked."
+  [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes accepted-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (let [origin-error  (validate-origin request)
@@ -760,13 +763,14 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, refuse it
-           ;; as an invalid token.
-           (and (:authenticated-via-oauth? request) (empty? token-scopes))
+           ;; An OAuth token holding none of this surface's scopes was not issued for this server, e.g. a REST token,
+           ;; so the MCP auth spec requires `invalid_token`. A token without scopes falls here too.
+           (and (:authenticated-via-oauth? request) (not-any? accepted-scopes token-scopes))
            (respond @invalid-token)
 
+           ;; Not cookie-only: the session middleware also resolves an OAuth bearer token and attaches its
+           ;; `:token-scopes`, so that request lands here too. The filter drops the `::unrestricted` sentinel.
            session-auth
-           ;; filter out ::unrestricted sentinel
            (dispatch session-auth (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
