@@ -71,7 +71,7 @@ API key usage is for spotting patterns, not for auditing every request. When an 
 
 ## Turn on PII retention to see IP addresses
 
-The IP address column stays hidden unless you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which controls whether Metabase stores personally identifiable information alongside its analytics. PII retention is off by default. With PII retention on, Metabase also stores each call's full user agent in its application database, though the page doesn't show it.
+The IP address column stays hidden unless you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which controls whether Metabase stores personally identifiable information alongside its analytics. PII retention is off by default.
 
 ## How long Metabase keeps API key usage data
 
