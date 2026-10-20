@@ -2108,6 +2108,19 @@
       (mt/user-http-request :crowberto :post 404
                             (format "user/%d/password-reset-url" user-id)))))
 
+(deftest password-reset-url-sso-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url with a user having sso configured gets a 404"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "ssouser@test.com"
+                                              :sso_source "google"}]
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled   true]
+        (mt/user-http-request :crowberto :post 404
+                              (format "user/%d/password-reset-url" user-id)))
+      (mt/user-http-request :crowberto :post 200
+                            (format "user/%d/password-reset-url" user-id)))))
+
 (deftest password-reset-url-nonexistent-user-not-found-test
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"
     (mt/user-http-request :crowberto :post 404
