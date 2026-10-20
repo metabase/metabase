@@ -331,7 +331,7 @@ describe("getLegendLayout auto", () => {
   });
 
   it("should reserve the last column row for the overflow label", () => {
-    // (200 - 16 - 4 + 8) / (13.8 + 8) = 8 rows, 7 items + "+ 13 more"
+    // (200 - 16 - 10 - 4 + 8) / (13.8 + 8) = 8 rows, 7 items + "+ 13 more"
     expect(layout(createSeriesNames(20), { width: 420, height: 200 })).toEqual({
       type: "vertical",
       isBeforeChart: false,
@@ -341,7 +341,7 @@ describe("getLegendLayout auto", () => {
   });
 
   it("should fit column rows into the measured chart area when it is known", () => {
-    // (100 - 4 + 8) / (13.8 + 8) = 4 rows, 3 items + "+ 17 more"
+    // (100 - 10 - 4 + 8) / (13.8 + 8) = 4 rows, 3 items + "+ 17 more"
     expect(
       layout(createSeriesNames(20), {
         width: 420,
