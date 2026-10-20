@@ -1,17 +1,11 @@
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
-import {
-  type ChartSize,
-  LEGEND_PADDING,
-  LEGEND_SIZES,
-  type LegendSize,
-  MIN_LEGEND_CARD_WIDTH,
-  getLegendLayout,
-  getLegendSize,
-  mapLegendCandidates,
-  measureLegend,
-} from "./layout";
+import { LEGEND_PADDING } from "./constants";
+import { MIN_LEGEND_CARD_WIDTH, getLegendLayout } from "./layout";
+import { measureLegend } from "./measure";
+import { type ChartSize, mapLegendCandidates } from "./plots";
+import { LEGEND_SIZES, type LegendSize } from "./sizes";
 
 const CHAR_WIDTH = 6;
 const MIN_PLOT_WIDTH = 150;
@@ -586,22 +580,5 @@ describe("getLegendLayout alwaysVisible", () => {
         alwaysVisible: true,
       }),
     ).toMatchObject({ visibleCount: 1 });
-  });
-});
-
-describe("getLegendSize", () => {
-  it("should pick lg for large dashboard cards and sm otherwise", () => {
-    expect(getLegendSize({ width: 640, height: 360 })).toBe("lg");
-    expect(getLegendSize({ width: 639, height: 360 })).toBe("sm");
-    expect(getLegendSize({ width: 640, height: 359 })).toBe("sm");
-  });
-
-  it("should always pick md in the query builder and fullscreen", () => {
-    expect(
-      getLegendSize({ width: 300, height: 200, isQueryBuilder: true }),
-    ).toBe("md");
-    expect(
-      getLegendSize({ width: 2000, height: 900, isFullscreen: true }),
-    ).toBe("md");
   });
 });

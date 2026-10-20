@@ -8,12 +8,9 @@ import type { HoveredObject } from "metabase/viz-core";
 import S from "./Legend.module.css";
 import type { LegendItemData } from "./LegendItem";
 import { LegendItem } from "./LegendItem";
-import {
-  LEGEND_PADDING,
-  LEGEND_SIZES,
-  type LegendSize,
-  getOverflowLabel,
-} from "./layout";
+import { LEGEND_PADDING } from "./constants";
+import { getOverflowLabel } from "./measure";
+import { LEGEND_SIZES, type LegendSize } from "./sizes";
 
 const POPOVER_BORDER = 1;
 const POPOVER_PADDING = 8;

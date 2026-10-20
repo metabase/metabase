@@ -7,12 +7,33 @@ import {
   getChartModelAtHeight,
 } from "metabase/viz-core";
 
-import {
-  type ChartSize,
-  type LegendCandidates,
-  type Plot,
-  mapLegendCandidates,
-} from "./layout";
+export interface ChartSize {
+  width: number;
+  height: number;
+}
+
+/** The plot a chart keeps inside its axes at one size. */
+export interface Plot extends ChartSize {
+  hasXAxisLabels: boolean;
+  // the left axes' width minus the right axes'
+  indent: number;
+}
+
+/** One value for each option Auto weighs: no legend, a row, or a column. */
+export interface LegendCandidates<T> {
+  none: T;
+  row: T;
+  column: T;
+}
+
+export const mapLegendCandidates = <T, U>(
+  candidates: LegendCandidates<T>,
+  transform: (value: T) => U,
+): LegendCandidates<U> => ({
+  none: transform(candidates.none),
+  row: transform(candidates.row),
+  column: transform(candidates.column),
+});
 
 /**
  * What the legend needs to lay the chart out at each candidate size. A row

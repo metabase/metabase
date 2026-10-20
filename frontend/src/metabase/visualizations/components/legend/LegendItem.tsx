@@ -7,7 +7,7 @@ import { Box, Ellipsified, Flex, rem } from "metabase/ui";
 
 import S from "./LegendItem.module.css";
 import { LegendItemDot } from "./LegendItemDot";
-import { LEGEND_SIZES, type LegendSize } from "./layout";
+import { LEGEND_SIZES, type LegendSize } from "./sizes";
 
 export interface LegendItemData {
   key: string;

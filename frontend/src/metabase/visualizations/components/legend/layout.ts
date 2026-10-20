@@ -1,106 +1,19 @@
-import { c } from "ttag";
 import _ from "underscore";
 
-import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { LegendPosition } from "metabase-types/api";
 
-import type { LegendItemData } from "./LegendItem";
+import { LEGEND_PADDING, MIN_VISIBLE_COUNT } from "./constants";
+import {
+  type LegendMetrics,
+  getColumnItemWidth,
+  getDotWidth,
+  getRowWidth,
+} from "./measure";
 import { LEGEND_PLACEMENTS } from "./placement";
+import type { ChartSize, LegendCandidates, Plot } from "./plots";
 
-export type LegendSize = "sm" | "lg" | "md";
-
-interface LegendSizeConfig {
-  typography: "sm" | "md";
-  fontSize: number;
-  lineHeight: number;
-  dotSize: number;
-  dotGap: number;
-  itemGap: number;
-  rowGap: number;
-  horizontalGap: number;
-  verticalGap: number;
-  maxVerticalWidth: number;
-  horizontalPadding: number;
-  verticalPadding: number;
-}
-
-export const LEGEND_SIZES = {
-  sm: {
-    typography: "sm",
-    fontSize: 12,
-    lineHeight: 1.15,
-    dotSize: 8,
-    dotGap: 6,
-    itemGap: 12,
-    rowGap: 8,
-    horizontalGap: 12,
-    verticalGap: 24,
-    maxVerticalWidth: 200,
-    horizontalPadding: 32,
-    verticalPadding: 16,
-  },
-  lg: {
-    typography: "sm",
-    fontSize: 12,
-    lineHeight: 1.15,
-    dotSize: 8,
-    dotGap: 6,
-    itemGap: 12,
-    rowGap: 12,
-    horizontalGap: 16,
-    verticalGap: 40,
-    maxVerticalWidth: 200,
-    horizontalPadding: 80,
-    verticalPadding: 76,
-  },
-  md: {
-    typography: "md",
-    fontSize: 14,
-    lineHeight: 1.22,
-    dotSize: 14,
-    dotGap: 8,
-    itemGap: 16,
-    rowGap: 16,
-    horizontalGap: 24,
-    verticalGap: 64,
-    maxVerticalWidth: 256,
-    horizontalPadding: 48,
-    verticalPadding: 32,
-  },
-} as const satisfies Record<LegendSize, LegendSizeConfig>;
-
-// mirrors the large card tier in visualizations/CartesianChart/sizing.ts
-const LARGE_CARD_MIN_WIDTH = 640;
-const LARGE_CARD_MIN_HEIGHT = 360;
-
-interface GetLegendSizeOptions {
-  width: number;
-  height: number;
-  isQueryBuilder?: boolean;
-  isFullscreen?: boolean;
-}
-
-export const getLegendSize = ({
-  width,
-  height,
-  isQueryBuilder,
-  isFullscreen,
-}: GetLegendSizeOptions): LegendSize => {
-  if (isQueryBuilder || isFullscreen) {
-    return "md";
-  }
-  return width >= LARGE_CARD_MIN_WIDTH && height >= LARGE_CARD_MIN_HEIGHT
-    ? "lg"
-    : "sm";
-};
-
-export const LEGEND_FONT_WEIGHT = 400;
-// room for the focus outline of the legend items
-export const LEGEND_PADDING = 2;
 export const MIN_LEGEND_CARD_WIDTH = 420;
-const MAX_VERTICAL_WIDTH_RATIO = 0.25;
 const MAX_TRUNCATED_ITEMS_RATIO = 0.5;
-export const MIN_VISIBLE_COUNT = 1;
 const AUTO_MIN_VISIBLE_COUNT = 2;
 // the plot is the chart without its axes, as in PLOT_HEIGHT_BREAKPOINTS
 const MIN_PLOT_WIDTH = 150;
@@ -131,69 +44,11 @@ export type LegendLayoutResult =
 
 export const HIDDEN_LEGEND_LAYOUT: LegendLayoutResult = { type: "hidden" };
 
-export interface ChartSize {
-  width: number;
-  height: number;
-}
-
-/** The plot a chart keeps inside its axes at one size. */
-export interface Plot extends ChartSize {
-  hasXAxisLabels: boolean;
-  // the left axes' width minus the right axes'
-  indent: number;
-}
-
-/** One value for each option Auto weighs: no legend, a row, or a column. */
-export interface LegendCandidates<T> {
-  none: T;
-  row: T;
-  column: T;
-}
-
-export const mapLegendCandidates = <T, U>(
-  candidates: LegendCandidates<T>,
-  transform: (value: T) => U,
-): LegendCandidates<U> => ({
-  none: transform(candidates.none),
-  row: transform(candidates.row),
-  column: transform(candidates.column),
-});
-
-export interface MeasureLegendOptions {
-  items: LegendItemData[];
-  width: number;
-  height: number;
-  // the room the chart shares with its legend, the same whichever legend shows
-  chartRoom?: ChartSize;
-  size: LegendSize;
-  fontFamily: string;
-  measureText: TextWidthMeasurer;
-  isReversed?: boolean;
-}
-
-export interface LegendMetrics {
-  config: LegendSizeConfig;
-  width: number;
-  height: number;
-  chartSizes: LegendCandidates<ChartSize>;
-  labelWidths: number[];
-  itemWidths: number[];
-  availableWidth: number;
-  // 0 when no item fits, while a column always shows columnVisibleCount
-  columnFitCount: number;
-  columnVisibleCount: number;
-  columnWidth: number;
-  measureOverflowLabel: (overflowCount: number) => number;
-}
-
 interface GetLegendLayoutOptions {
   position: LegendPosition;
   plots: LegendCandidates<Plot>;
   alwaysVisible?: boolean;
 }
-
-export const getOverflowLabel = (count: number) =>
-  c("{0} is the number of hidden legend items").t`+ ${count} more`;
 
 export function getLegendLayout(
   metrics: LegendMetrics,
@@ -219,12 +74,15 @@ export function getLegendLayout(
       });
 }
 
-// Auto weighs each legend by the plot it leaves. A complete row below the
-// chart wins unless a right column leaves the plot clearly more usable height,
-// as on wide short cards. A partial row with "+ N more" comes last. A legend
-// that hides x-axis labels the bare chart shows, or leaves the plot under
-// MIN_AUTO_LEGEND_PLOT_RATIO of its bare height, is not an option.
-// A column with most labels truncated needs a card MIN_LEGEND_CARD_WIDTH wide.
+/**
+ * Auto weighs each legend by the plot it leaves. A complete row below the
+ * chart wins unless a right column leaves the plot clearly more usable height,
+ * as on wide short cards. A partial row with "+ N more" comes last.
+ *
+ * A legend that hides x-axis labels the bare chart shows, or leaves the plot
+ * under MIN_AUTO_LEGEND_PLOT_RATIO of its bare height, is not an option. A
+ * column with most labels truncated needs a card MIN_LEGEND_CARD_WIDTH wide.
+ */
 function getAutoLayout(
   metrics: LegendMetrics,
   plots: LegendCandidates<Plot>,
@@ -314,92 +172,6 @@ function getRowLayout(
   };
 }
 
-const getRowHeight = (config: LegendSizeConfig) =>
-  config.fontSize * config.lineHeight +
-  config.horizontalGap +
-  LEGEND_PADDING * 2;
-
-function isColumnMostlyTruncated(metrics: LegendMetrics): boolean {
-  const labelWidth = getColumnItemWidth(metrics) - getDotWidth(metrics.config);
-  const truncatedCount = metrics.labelWidths.filter(
-    (width) => width > labelWidth,
-  ).length;
-  return (
-    truncatedCount > metrics.labelWidths.length * MAX_TRUNCATED_ITEMS_RATIO
-  );
-}
-
-export function measureLegend({
-  items,
-  width,
-  height,
-  chartRoom: measuredChartRoom,
-  size,
-  fontFamily,
-  measureText,
-  isReversed,
-}: MeasureLegendOptions): LegendMetrics {
-  const config = LEGEND_SIZES[size];
-  const font = {
-    size: config.fontSize,
-    weight: LEGEND_FONT_WEIGHT,
-    family: fontFamily,
-  };
-  const displayedItems = isReversed ? [...items].reverse() : items;
-  const labelWidths = displayedItems.map((item) =>
-    measureText(item.name, font),
-  );
-  const dotWidth = getDotWidth(config);
-  const availableWidth = width - config.horizontalPadding;
-  const chartRoom = measuredChartRoom ?? {
-    width,
-    height: height - config.verticalPadding,
-  };
-  const itemWidths = labelWidths.map((labelWidth) => dotWidth + labelWidth);
-  const measureOverflowLabel = (overflowCount: number) =>
-    measureText(getOverflowLabel(overflowCount), font);
-  const columnFitCount = getColumnFitCount(
-    { itemWidths, config },
-    chartRoom.height,
-  );
-  const columnVisibleCount = Math.max(columnFitCount, MIN_VISIBLE_COUNT);
-  const columnWidth = getColumnWidth(
-    { itemWidths, config, availableWidth, measureOverflowLabel },
-    columnVisibleCount,
-  );
-
-  return {
-    config,
-    width,
-    height,
-    chartSizes: {
-      none: chartRoom,
-      row: {
-        width: chartRoom.width,
-        height: Math.max(chartRoom.height - getRowHeight(config), 0),
-      },
-      column: {
-        width: Math.max(chartRoom.width - columnWidth - config.verticalGap, 0),
-        height: chartRoom.height,
-      },
-    },
-    labelWidths,
-    itemWidths,
-    availableWidth,
-    columnFitCount,
-    columnVisibleCount,
-    columnWidth,
-    measureOverflowLabel,
-  };
-}
-
-const getDotWidth = (config: LegendSizeConfig) =>
-  config.dotSize + config.dotGap;
-
-const getRowWidth = (itemWidths: number[], config: LegendSizeConfig) =>
-  itemWidths.reduce((total, width) => total + width, 0) +
-  config.itemGap * (itemWidths.length - 1);
-
 function getRowVisibleCount(
   { itemWidths, config, measureOverflowLabel }: LegendMetrics,
   rowWidthInsideIndent: number,
@@ -421,49 +193,14 @@ function getRowVisibleCount(
   );
 }
 
-const getColumnItemWidth = ({
-  itemWidths,
-  config,
-  availableWidth,
-}: Pick<LegendMetrics, "itemWidths" | "config" | "availableWidth">) =>
-  Math.max(
-    0,
-    Math.min(
-      Math.max(...itemWidths),
-      availableWidth * MAX_VERTICAL_WIDTH_RATIO,
-      config.maxVerticalWidth,
-    ),
+function isColumnMostlyTruncated(metrics: LegendMetrics): boolean {
+  const labelWidth = getColumnItemWidth(metrics) - getDotWidth(metrics.config);
+  const truncatedCount = metrics.labelWidths.filter(
+    (width) => width > labelWidth,
+  ).length;
+  return (
+    truncatedCount > metrics.labelWidths.length * MAX_TRUNCATED_ITEMS_RATIO
   );
-
-function getColumnFitCount(
-  { itemWidths, config }: Pick<LegendMetrics, "itemWidths" | "config">,
-  columnHeight: number,
-): number {
-  const rowPitch = config.fontSize * config.lineHeight + config.rowGap;
-  const getMaxRows = (rowsHeight: number) =>
-    Math.floor((rowsHeight + config.rowGap) / rowPitch);
-  if (itemWidths.length <= getMaxRows(columnHeight - LEGEND_PADDING * 2)) {
-    return itemWidths.length;
-  }
-  // the last row is the "+ N more" label, which takes no focus outline
-  return Math.max(getMaxRows(columnHeight - LEGEND_PADDING) - 1, 0);
-}
-
-function getColumnWidth(
-  metrics: Pick<
-    LegendMetrics,
-    "itemWidths" | "config" | "availableWidth" | "measureOverflowLabel"
-  >,
-  visibleCount: number,
-): number {
-  const overflowCount = metrics.itemWidths.length - visibleCount;
-  const overflowLabelWidth =
-    overflowCount > 0 ? metrics.measureOverflowLabel(overflowCount) : 0;
-  const contentWidth = Math.max(
-    getColumnItemWidth(metrics),
-    Math.min(overflowLabelWidth, metrics.config.maxVerticalWidth),
-  );
-  return Math.ceil(contentWidth) + LEGEND_PADDING * 2;
 }
 
 function getColumnLayout(

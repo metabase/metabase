@@ -18,15 +18,15 @@ import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
 import S from "./LegendLayout.module.css";
+import { HIDDEN_LEGEND_LAYOUT, getLegendLayout } from "./layout";
+import { measureLegend } from "./measure";
 import {
   type ChartSize,
-  HIDDEN_LEGEND_LAYOUT,
-  LEGEND_SIZES,
-  getLegendLayout,
-  getLegendSize,
-  measureLegend,
-} from "./layout";
-import { type LegendChart, getLegendPlots, getPlotsWithoutAxes } from "./plots";
+  type LegendChart,
+  getLegendPlots,
+  getPlotsWithoutAxes,
+} from "./plots";
+import { LEGEND_SIZES, getLegendSize } from "./sizes";
 
 interface LegendLayoutProps {
   className?: string;

@@ -8,7 +8,7 @@ import { useLegendOverflow } from "metabase/visualizations/hooks/use-legend-over
 
 import LegendS from "./Legend.module.css";
 import { LegendItem } from "./LegendItem";
-import { getOverflowLabel } from "./legend/layout";
+import { getOverflowLabel } from "./legend/measure";
 import type { LegendProps } from "./types";
 
 export function LegendVertical({

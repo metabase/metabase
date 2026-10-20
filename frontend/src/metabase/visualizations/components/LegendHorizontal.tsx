@@ -7,7 +7,7 @@ import { useLegendOverflow } from "metabase/visualizations/hooks/use-legend-over
 import LegendS from "./Legend.module.css";
 import { LegendItem } from "./LegendItem";
 import { LegendOverflow } from "./LegendVertical";
-import { MIN_VISIBLE_COUNT } from "./legend/layout";
+import { MIN_VISIBLE_COUNT } from "./legend/constants";
 import type { LegendProps } from "./types";
 
 type LegendHorizontalProps = LegendProps & {
