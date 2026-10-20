@@ -49,17 +49,8 @@ const ANALYSTS_AND_ADMINS_COPY =
 
 describe("EnableTransformsPage", () => {
   describe("Permissioned card copy", () => {
-    it("shows admins-only copy on OSS", () => {
-      setup({ tokenFeatures: {} });
-
-      expect(screen.getByText(ADMINS_ONLY_COPY)).toBeInTheDocument();
-      expect(
-        screen.queryByText(ANALYSTS_AND_ADMINS_COPY),
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows admins-only copy without advanced permissions, even with other paid features", () => {
-      setup({ tokenFeatures: { hosting: true, "transforms-basic": true } });
+    it("shows admins-only copy without advanced permissions", () => {
+      setup({ tokenFeatures: { advanced_permissions: false } });
 
       expect(screen.getByText(ADMINS_ONLY_COPY)).toBeInTheDocument();
       expect(

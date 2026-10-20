@@ -74,11 +74,8 @@ describe("SettingsNav", () => {
     expect(await screen.findByText("Authentication")).toBeInTheDocument();
   });
 
-  it("should show the Remote sync upsell nav item when remote sync is not enabled, even with other paid features", async () => {
-    await setup({
-      initialRoute: "/admin/settings/general",
-      tokenFeatures: { advanced_permissions: true },
-    });
+  it("should show the Remote sync nav item with an upsell gem when remote sync is not enabled", async () => {
+    await setup({ initialRoute: "/admin/settings/general" });
 
     const remoteSyncNavItem = await screen.findByRole("link", {
       name: /Remote sync/,

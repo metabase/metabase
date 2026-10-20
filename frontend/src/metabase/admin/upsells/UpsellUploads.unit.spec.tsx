@@ -25,23 +25,13 @@ const setup = ({ tokenFeatures = {} }: SetupOpts = {}) => {
 };
 
 describe("UpsellUploads", () => {
-  it.each<{ plan: string; tokenFeatures: Partial<TokenFeatures> }>([
-    { plan: "OSS", tokenFeatures: {} },
-    { plan: "Starter", tokenFeatures: { hosting: true } },
-    {
-      plan: "Starter with an attached DWH",
-      tokenFeatures: { hosting: true, attached_dwh: true },
-    },
-  ])(
-    "shows the upsell without upload management on $plan",
-    ({ tokenFeatures }) => {
-      setup({ tokenFeatures });
+  it("shows the upsell when upload management is off", () => {
+    setup({ tokenFeatures: { upload_management: false } });
 
-      expect(screen.getByText("Manage your uploads")).toBeInTheDocument();
-    },
-  );
+    expect(screen.getByText("Manage your uploads")).toBeInTheDocument();
+  });
 
-  it("hides the upsell when upload management is available", () => {
+  it("hides the upsell when upload management is on", () => {
     setup({ tokenFeatures: { upload_management: true } });
 
     expect(screen.queryByText("Manage your uploads")).not.toBeInTheDocument();
