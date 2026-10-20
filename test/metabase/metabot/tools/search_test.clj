@@ -558,7 +558,7 @@
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
-              (invoke-search [#'search/sql-search-tool] {:keyword_queries ["x"] :database_id 1}))
+              (invoke-search [#'search/sql-search-tool] {:keyword_queries ["x"] :database_id (mt/id)}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "general search includes documents in its default entity types"
           (let [captured (atom nil)]
