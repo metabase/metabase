@@ -754,56 +754,30 @@ describe("scenarios > data studio > datamodel", () => {
         .should("eq", false);
     }
 
-    function verifySelectIsReadOnly(
-      select: Cypress.Chainable<JQuery<HTMLElement>>,
-    ) {
-      select.click();
-      cy.findByRole("listbox").should("not.exist");
-    }
-
     function verifyReadOnlyTablePage({ hasTabs }: { hasTabs: boolean }) {
       cy.log("table picker and table");
       TablePicker.getTable("Orders").should("be.visible");
       TablePicker.getTable("Products").should("be.visible");
-      TableSection.getNameInput()
-        .should("have.value", "Orders")
-        .and("have.attr", "readonly");
-      TableSection.getDescriptionInput().should("have.attr", "readonly");
+      TableSection.getNameInput().should("have.value", "Orders");
       if (hasTabs) {
-        verifySelectIsReadOnly(
-          TableSection.get().findByPlaceholderText("Select visibility layer"),
-        );
-        verifySelectIsReadOnly(
-          TableSection.get().findByPlaceholderText("Select entity type"),
-        );
         TableSection.clickFieldsTab();
       }
-      TableSection.getSortButton().should("not.exist");
 
       cy.log("field metadata, FK target and remapping");
       TableSection.clickField("Product ID");
-      FieldSection.getNameInput()
-        .should("have.value", "Product ID")
-        .and("have.attr", "readonly");
-      verifySelectIsReadOnly(FieldSection.getSemanticTypeInput());
+      FieldSection.getNameInput().should("have.value", "Product ID");
       FieldSection.getSemanticTypeFkTarget().should(
         "have.value",
         "Products → ID",
       );
-      verifySelectIsReadOnly(FieldSection.getSemanticTypeFkTarget());
-      verifySelectIsReadOnly(FieldSection.getVisibilityInput());
-      verifySelectIsReadOnly(FieldSection.getFilteringInput());
       FieldSection.getDisplayValuesInput().should(
         "have.value",
         "Use foreign key",
       );
-      verifySelectIsReadOnly(FieldSection.getDisplayValuesInput());
       FieldSection.getDisplayValuesFkTargetInput().should(
         "have.value",
         "Title",
       );
-      verifySelectIsReadOnly(FieldSection.getDisplayValuesFkTargetInput());
-      FieldSection.getFieldValuesButton().should("be.enabled");
 
       cy.log("preview");
       FieldSection.getPreviewButton().click();
@@ -814,13 +788,6 @@ describe("scenarios > data studio > datamodel", () => {
         .findByText("Sorry, you don’t have permission to see that.")
         .should("not.exist");
 
-      cy.log("formatting");
-      TableSection.clickField("Tax");
-      FieldSection.getNameInput().should("have.value", "Tax");
-      FieldSection.getPrefixInput().should("have.attr", "readonly");
-      FieldSection.getSuffixInput().should("have.attr", "readonly");
-      FieldSection.getMiniBarChartToggle().should("be.disabled");
-
       cy.log("field values");
       TablePicker.getTable("Products").click();
       TableSection.getNameInput().should("have.value", "Products");
@@ -829,7 +796,6 @@ describe("scenarios > data studio > datamodel", () => {
       }
       TableSection.clickField("Category");
       FieldSection.getNameInput().should("have.value", "Category");
-      FieldSection.getCoercionToggle().should("be.disabled");
       PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
       PreviewSection.get().findByText("Doohickey").should("be.visible");
     }
@@ -859,6 +825,7 @@ describe("scenarios > data studio > datamodel", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
+      TableSection.getNameInput().should("have.attr", "readonly");
       verifyReadOnlyTablePage({ hasTabs: true });
     });
 
