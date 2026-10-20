@@ -56,6 +56,7 @@ describe("scenarios > embedding > static embedding dashboard", () => {
     cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
       "be.visible",
     );
+    cy.findByTestId("embed-frame").findAllByRole("gridcell").contains("37.65");
     cy.log("GET /api/database should not be called");
     cy.get("@getDatabases.all").should("have.length", 0);
 
@@ -1415,17 +1416,6 @@ describe("scenarios > embedding > dashboard appearance", () => {
     cy.get('html[data-mantine-color-scheme="light"]').should("exist");
     cy.get('html[data-metabase-theme="light"]').should("exist");
 
-    cy.log("Test explicit light theme via hash parameter");
-    visitWithTheme("light");
-
-    // Test functionality still works with theme parameter
-    cy.get("[data-testid=embed-frame]").should("be.visible");
-    cy.get('html[data-mantine-color-scheme="light"]').should("exist");
-    cy.get('html[data-metabase-theme="light"]').should("exist");
-
-    // Verify theme parameter is in URL hash
-    cy.location("hash").should("include", "theme=light");
-
     cy.log("Test explicit dark theme via hash parameter");
     visitWithTheme("dark");
 
@@ -1436,6 +1426,17 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     // Verify theme parameter is in URL hash
     cy.location("hash").should("include", "theme=dark");
+
+    cy.log("Test explicit light theme via hash parameter");
+    visitWithTheme("light");
+
+    // Test functionality still works with theme parameter
+    cy.get("[data-testid=embed-frame]").should("be.visible");
+    cy.get('html[data-mantine-color-scheme="light"]').should("exist");
+    cy.get('html[data-metabase-theme="light"]').should("exist");
+
+    // Verify theme parameter is in URL hash
+    cy.location("hash").should("include", "theme=light");
   });
 
   it("should use transparent pivot table cells in static embedding's dark mode (metabase#61741)", () => {

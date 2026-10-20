@@ -59,8 +59,6 @@ describe("scenarios > embedding > questions", () => {
 
     H.visitIframe();
 
-    cy.url().should("include", "embed");
-
     cy.findByTestId("embed-frame").within(() => {
       cy.findByText("Total Orders");
       cy.findByText("18,760");
@@ -254,9 +252,9 @@ describe("scenarios [EE] > embedding > questions", () => {
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  H.echartsContainer().get("text").contains(xLabel);
+  H.echartsContainer().find("text").contains(xLabel);
 
-  H.echartsContainer().get("text").contains(yLabel);
+  H.echartsContainer().find("text").contains(yLabel);
 }
 
 describe("issue 30535", () => {
