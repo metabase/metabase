@@ -28,11 +28,11 @@ type SetupOpts = {
 function setup({ isMcpApp = true, handle = "handle-1" }: SetupOpts = {}) {
   EMBEDDING_SDK_CONFIG.isMcpApp = isMcpApp;
   setCurrentMcpQueryHandle(handle);
-  useCredential({ credential: "credential-1", sessionId: "s-1" });
+  setRequestCredential({ credential: "credential-1", sessionId: "s-1" });
 
   const refresher = jest.fn(async (): Promise<McpUiAuth> => {
     const auth = { credential: "credential-2", sessionId: "s-1" };
-    useCredential(auth);
+    setRequestCredential(auth);
     return auth;
   });
   setMcpCredentialRefresher(refresher);
@@ -44,7 +44,7 @@ function setup({ isMcpApp = true, handle = "handle-1" }: SetupOpts = {}) {
   return { store, refresher };
 }
 
-function useCredential(auth: McpUiAuth) {
+function setRequestCredential(auth: McpUiAuth) {
   PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
     async () => ({
       headers: {

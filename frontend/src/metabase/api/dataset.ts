@@ -188,9 +188,8 @@ export const datasetApi = Api.injectEndpoints({
           (url) => baseQuery({ method: "POST", url, body }),
         );
         // Both routes this can reach answer with the query's metadata.
-        return error !== undefined
-          ? { error }
-          : { data: data as CardQueryMetadata };
+        const metadata = data as CardQueryMetadata;
+        return error !== undefined ? { error } : { data: metadata };
       },
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
