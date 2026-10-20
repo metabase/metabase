@@ -14,9 +14,15 @@ export function ExpressionBarPrototype({
   stageIndex,
   variant,
   onChange,
-}: FilterUiProps) {
+  hasInlineActions,
+}: FilterUiProps & { hasInlineActions?: boolean }) {
   const bar = (
-    <ExpressionBar query={query} stageIndex={stageIndex} onChange={onChange} />
+    <ExpressionBar
+      query={query}
+      stageIndex={stageIndex}
+      onChange={onChange}
+      hasInlineActions={hasInlineActions}
+    />
   );
 
   if (variant === "chill") {
@@ -28,4 +34,9 @@ export function ExpressionBarPrototype({
   }
 
   return <NotebookCell color="core-filter">{bar}</NotebookCell>;
+}
+
+/** Direction B2: B with Cancel/Apply inside the bar and a hideable strip. */
+export function ExpressionBarInlinePrototype(props: FilterUiProps) {
+  return <ExpressionBarPrototype {...props} hasInlineActions />;
 }

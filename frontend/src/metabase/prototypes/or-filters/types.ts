@@ -22,4 +22,6 @@ export type FilterDirection = {
   Component: ComponentType<FilterUiProps>;
   /** Replaces the chill header's static "Filter" button. */
   FilterButton?: ComponentType<FilterUiProps>;
+  /** The chill header's button reads "Hide filters" and toggles the strip. */
+  canHideFilters?: boolean;
 };

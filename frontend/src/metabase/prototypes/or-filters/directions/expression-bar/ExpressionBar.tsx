@@ -54,6 +54,8 @@ type ExpressionBarProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
+  /** Cancel/Apply live inside the bar instead of the "+" button and a row below. */
+  hasInlineActions?: boolean;
 };
 
 /**
@@ -65,6 +67,7 @@ export function ExpressionBar({
   query,
   stageIndex,
   onChange,
+  hasInlineActions = false,
 }: ExpressionBarProps) {
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
@@ -350,26 +353,44 @@ export function ExpressionBar({
           ]),
           caret === tokens.length && <Fragment key="input">{input}</Fragment>,
         ]}
-        <ActionIcon
-          size="sm"
-          variant="subtle"
-          c="text-secondary"
-          aria-label={t`Add filter`}
-          onClick={() => {
-            setCaret(tokens.length);
-            setDropdownView({ type: "browse" });
-            setIsDropdownOpen(true);
-          }}
-        >
-          <Icon name="add" />
-        </ActionIcon>
+        {hasInlineActions ? (
+          isDirty && (
+            <Group gap="xs" ml="auto">
+              <Button size="compact-sm" variant="subtle" onClick={revert}>
+                {t`Cancel`}
+              </Button>
+              <Button
+                size="compact-sm"
+                variant="filled"
+                disabled={!parsed.ok}
+                onClick={commit}
+              >
+                {t`Apply`}
+              </Button>
+            </Group>
+          )
+        ) : (
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            c="text-secondary"
+            aria-label={t`Add filter`}
+            onClick={() => {
+              setCaret(tokens.length);
+              setDropdownView({ type: "browse" });
+              setIsDropdownOpen(true);
+            }}
+          >
+            <Icon name="add" />
+          </ActionIcon>
+        )}
       </Box>
       <Group justify="space-between" gap="sm" mih={28}>
         <Text size="sm" c={parsed.ok ? "text-secondary" : "feedback-negative"}>
           {!parsed.ok && parsed.error}
           {parsed.ok && isDirty && t`Press Enter to apply`}
         </Text>
-        {isDirty && (
+        {isDirty && !hasInlineActions && (
           <Group gap="xs">
             <Button size="compact-sm" variant="subtle" onClick={revert}>
               {t`Cancel`}

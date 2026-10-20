@@ -81,6 +81,7 @@ type OrFilterCanvasProps = {
 export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const { query: baseQuery, isLoading, error } = useOrdersQuery();
   const [query, setQuery] = useState<Lib.Query>();
+  const [areFiltersHidden, setAreFiltersHidden] = useState(false);
 
   useEffect(() => {
     if (baseQuery && !query) {
@@ -126,14 +127,26 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
       </Group>
 
       <ChillFrame
+        isHidden={direction.canHideFilters && areFiltersHidden}
         filterButton={
-          direction.FilterButton && (
-            <direction.FilterButton
-              query={query}
-              stageIndex={STAGE_INDEX}
-              variant="chill"
-              onChange={setQuery}
-            />
+          direction.canHideFilters ? (
+            <Button
+              size="compact-md"
+              variant="default"
+              leftSection={<Icon name="filter" />}
+              onClick={() => setAreFiltersHidden((hidden) => !hidden)}
+            >
+              {areFiltersHidden ? t`Show filters` : t`Hide filters`}
+            </Button>
+          ) : (
+            direction.FilterButton && (
+              <direction.FilterButton
+                query={query}
+                stageIndex={STAGE_INDEX}
+                variant="chill"
+                onChange={setQuery}
+              />
+            )
           )
         }
       >
