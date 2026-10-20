@@ -206,7 +206,7 @@
       ;; path needs no exemption for `tools.core/all-items-failed`, whose message is not authored at
       ;; all but assembled from text each item already had filtered for this profile.
       (assert-authored! (if (= :recoverable class)
-                          (tools.error/authored-text error tool-names)
+                          (tools.error/authored-text error output)
                           output)
                         (str class " " code)))
     {:output (cond-> output

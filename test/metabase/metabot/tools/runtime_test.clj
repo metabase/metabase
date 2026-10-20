@@ -22,13 +22,30 @@
               {:uses #{"read_resource"} :text "Or call `read_resource` on the widget collection."}]})
 
 (tools.error/defrecoverable runtime-test-quoted-failure!
-  "A failure whose message quotes foreign text, the way a database's error reaches the model."
-  {:payload [:map {:closed true}
-             [:said   :string]
-             [:prefix :string]]
-   :quoted  #{:said}}
-  [{:keys [said prefix]}]
-  {:message  (str prefix (pr-str said))
+  "A failure that quotes a database's error, the way `run_query`'s does."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str "The database said: " (pr-str database-error))
+   :recovery []})
+
+(tools.error/defrecoverable runtime-test-branching-quoted-failure!
+  "A failure whose authored prefix depends on the database error it quotes, and names a class for one."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str (if (str/includes? database-error "syntax")
+                    "clojure.lang.ExceptionInfo: The query has invalid syntax. "
+                    "The database said: ")
+                  (pr-str database-error))
+   :recovery []})
+
+(tools.error/defrecoverable runtime-test-misquoted-failure!
+  "A failure that declares a quoted database error but writes it without its quotes."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str "The database said: " database-error)
    :recovery []})
 
 (defn- tool
@@ -342,19 +359,23 @@
              (tools.runtime/render {:class :validation :code :invalid-arguments :message message}
                                    all-tool-names)))))))
 
-(deftest ^:parallel render-skips-the-text-a-declaration-quotes-test
-  (let [render (fn [payload]
+(deftest ^:parallel render-checks-all-but-the-quoted-text-test
+  (let [render (fn [code database-error]
                  (tools.runtime/render (tools.error/classify
-                                        (try (tools.error/throw-recoverable! ::runtime-test-quoted-failure payload)
+                                        (try (tools.error/throw-recoverable! code {:database-error database-error})
                                              (catch Throwable e e)))
                                        all-tool-names))]
-    (testing "a class name inside the foreign text a declaration quotes is data, so the check lets it through"
-      (is (= "The database said: \"Column clojure.lang.foo not found\""
-             (:output (render {:said "Column clojure.lang.foo not found", :prefix "The database said: "})))))
-    (testing "the rest of the text is still checked"
+    (testing "a class name inside a quoted database error is data, so the check lets it through"
+      (is (= (str "The database said: " (pr-str "Column \"clojure.lang.foo\" not found"))
+             (:output (render ::runtime-test-quoted-failure "Column \"clojure.lang.foo\" not found")))))
+    (testing "an authored class name is rejected, even where the body chose it because of the quoted error"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"may only carry authored text"
-           (render {:said "Column foo not found", :prefix "clojure.lang.ExceptionInfo: "}))))))
+           (render ::runtime-test-branching-quoted-failure "syntax error near SELECT"))))
+    (testing "a declared value that the body writes without its quotes stays in the checked text"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"may only carry authored text"
+           (render ::runtime-test-misquoted-failure "clojure.lang.ExceptionInfo: boom"))))))
 
 ;; Whether a declaration's text names a tool it has not declared is a property of the declaration,
 ;; not of a render, so `render` no longer checks it — see

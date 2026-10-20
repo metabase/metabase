@@ -260,9 +260,12 @@
     call, in every environment.
   - `:status-code` - *optional*, default 400 - the `:status-code` on the thrown `ex-info`, for the
     non-agent callers of shared tool helpers.
-  - `:quoted` - *optional* - the set of payload keys whose values are foreign text, such as a
-    database's error message, that the body quotes for the model to read as data. The runtime's dev
-    and test check for unauthored text skips those values and still checks the rest of the text; see
+  - `:quoted` - *optional* - a map from payload key to the function that the body quotes that key's
+    value with, for foreign text such as a database's error message. The call site bounds the value,
+    and the body only quotes it, with that function. The runtime's dev and test check for unauthored
+    text excludes exactly those quoted forms: it removes each occurrence of the function's result for
+    the value from the rendered text and checks what is left. A value that the body writes any other
+    way stays in the checked text, so no text that our own code writes is excluded. See
     [[authored-text]].
 
   The body receives the validated payload and returns `{:message ... :recovery [...]}`. Write both
@@ -292,7 +295,7 @@
                               :doc            ~docstring
                               :payload-schema ~(:payload opts)
                               :status-code    ~(:status-code opts 400)
-                              :quoted         ~(:quoted opts #{})
+                              :quoted         ~(:quoted opts {})
                               :build-fn       (fn ~argv ~@body)}))))
 
 ;;; ------------------------------------------ Reading a recoverable error -----------------------------------------
@@ -346,24 +349,20 @@
        (cons message)
        (str/join "\n")))
 
-(def ^:private quoted-placeholder
-  "What [[authored-text]] reads in place of a payload value that a declaration quotes."
-  "quoted text")
-
 (defn authored-text
-  "The text of the recoverable `error` that our own code wrote, as the model in a profile with `tool-names` reads it.
+  "`text`, which renders the recoverable `error`, without the foreign text that its declaration quotes.
 
-  That is [[recoverable-text]], except that each payload value the declaration lists under `:quoted`
-  is replaced by a placeholder first. Such a value is foreign text, such as a database's error
-  message, which the body quotes so the model reads it as data. The runtime's dev and test check
-  for unauthored text reads this rather than the output."
-  [{:keys [code data] :as error} tool-names]
-  (let [{:keys [quoted build-fn]} (get (recoverables) code)
-        quoted-keys               (filter #(some? (get data %)) quoted)]
-    (recoverable-text (if (seq quoted-keys)
-                        (build-fn (reduce #(assoc %1 %2 quoted-placeholder) data quoted-keys))
-                        error)
-                      tool-names)))
+  For each payload key under the declaration's `:quoted`, every occurrence of the key's value as its
+  quoting function renders it is removed, and what is left is the text our own code wrote. The
+  runtime's dev and test check for unauthored text reads this. The body is not run again, so the
+  check reads the text that was sent, and a value that the body wrote any other way stays in it."
+  [{:keys [code data]} text]
+  (reduce-kv (fn [text k quote-fn]
+               (if-some [value (get data k)]
+                 (str/replace text (quote-fn value) "")
+                 text))
+             text
+             (:quoted (get (recoverables) code))))
 
 ;;; ------------------------------------------ Classification ------------------------------------------------------
 
