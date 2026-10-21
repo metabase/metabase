@@ -131,6 +131,16 @@ export const ChartSettingSelect = ({
         section: S.section,
         input: cx(S.input, { [S.inputWithLeftSection]: hasLeftSection }),
       }}
+      styles={
+        disabled
+          ? {
+              input: {
+                backgroundColor: "var(--mb-color-background_surface-disabled)",
+                color: "var(--mb-color-text-disabled)",
+              },
+            }
+          : undefined
+      }
       data={data}
       disabled={isDisabled}
       value={selectedValue}
