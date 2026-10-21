@@ -27,18 +27,35 @@
   flex-direction: column;
 }
 
-/* always-on search above the sections, where the tabs were */
+/* always-on search above the sections, borderless so it reads as part of the list */
 .searchField {
   flex-shrink: 0;
-  margin-bottom: var(--mantine-spacing-sm);
+  margin-bottom: var(--mantine-spacing-xs);
 }
 
-/* the xs input is 32px tall, but its 11px text is smaller than the 14px results */
+/* the design system's TextInput keeps a border even when unstyled, so drop it here. The xs input is
+   32px tall, but its 11px text is smaller than the 14px results */
 .searchField .fieldListSearchInput {
+  padding-inline: 1.5rem 0;
+  border-width: 0;
   font-size: var(--mantine-font-size-md);
+  background-color: transparent;
 }
 
-/* bleeds into the card's padding so item icons align with the group headings and the header,
+/* the icon sits where the row icons do: flush left, not centered and inset past a border */
+.searchField .searchFieldIcon {
+  inset-inline-start: 0;
+  justify-content: flex-start;
+  color: var(--mb-color-text-secondary);
+  transition: color 120ms ease-out;
+}
+
+/* no border to light up, so the icon carries the focus cue alongside the caret */
+.searchField:focus-within .searchFieldIcon {
+  color: var(--mb-color-text-primary);
+}
+
+/* bleeds into the card's padding so the section chevrons line up with the search icon,
    while the hover fill keeps a small inset from the card edge */
 .fieldListScroll {
   flex: 1;
@@ -47,9 +64,9 @@
   margin-inline: calc(-1 * var(--field-list-gutter));
 }
 
+/* padding rather than margin, so the whole 32px band toggles the section */
 .fieldGroupName {
-  margin: 0.75rem 0 0.25rem;
-  padding-inline: var(--field-list-gutter);
+  padding: 0.75rem var(--field-list-gutter) 0.25rem;
   font-size: 0.75rem;
   font-weight: bold;
   text-transform: uppercase;
@@ -73,8 +90,26 @@
   }
 }
 
+/* one chevron that turns to point down, rather than swapping between two icons */
 .sectionChevron {
   flex-shrink: 0;
+  transition: rotate 150ms ease-out;
+}
+
+.sectionToggle[aria-expanded="true"] .sectionChevron {
+  rotate: 90deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionChevron {
+    transition: none;
+  }
+}
+
+/* a section's rows start where its name does, past the 12px chevron and the toggle's gap, so
+   they read as its contents. The hover fill still spans the full row */
+.section .fieldItem {
+  padding-inline-start: calc(var(--field-list-gutter) + 12px + 0.375rem);
 }
 
 .fieldListEmpty {
@@ -82,11 +117,12 @@
   text-wrap: pretty;
 }
 
-/* pinned under the list, out of the way of the fields it explains */
-.fieldListHint {
+/* pinned under the list, with a divider so it doesn't read as one more field. Scoped under
+   .fieldList to win over the Text component's own border reset */
+.fieldList .fieldListHint {
   flex-shrink: 0;
   padding-top: var(--mantine-spacing-sm);
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   font-size: var(--mantine-font-size-sm);
   color: var(--mb-color-text-secondary);
   text-wrap: pretty;
@@ -200,7 +236,8 @@
   flex: 1 0 6rem;
 }
 
-/* a ghost of the Rows well it adds: same corners, dashed in the drop color */
+/* a ghost of the Rows well it adds: same corners, dashed in the drop color. Mounted for the whole
+   drag and faded with a transition, so moving in and out of the zone never restarts it */
 .pivotDropTarget {
   display: flex;
   align-items: center;
@@ -215,25 +252,48 @@
     var(--mb-color-core-summarize) 10%,
     var(--mb-color-background_surface-primary)
   );
-  animation: pivot-drop-target-in 120ms ease-out;
-}
+  opacity: 0;
+  translate: 0 -4px;
+  transition-property: opacity, translate;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 
-@keyframes pivot-drop-target-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
+  &[data-over="true"] {
+    opacity: 1;
+    translate: 0 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pivotDropTarget {
-    animation: none;
+    translate: none;
+    transition-property: opacity;
   }
+}
+
+.wellHeader {
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
 }
 
 .wellTitle {
   font-weight: bold;
   color: var(--mb-color-text-primary);
+}
+
+/* tucked into the title row without making it taller than the other wells' titles; the hit area
+   grows to 40px into the card's 12px padding, clear of the field below */
+.pivotToggle {
+  flex-shrink: 0;
+  margin-block: -0.25rem;
+  overflow: visible;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
 }
 
 /* every item is the chips' height, so the row stays top-aligned when a formula grows a name row */
@@ -300,8 +360,10 @@
   min-width: 0;
 }
 
+/* min-width lets it shrink as a field row's flex child, so long names ellipsize */
 .matchedLabel {
   display: block;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Card, Icon, Text, TextInput, UnstyledButton } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
-import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type {
@@ -112,9 +111,6 @@ export function SummaryFieldList({
           metric,
           label: getMetricLabel(base, metric),
         }}
-        description={
-          Lib.displayInfo(base.query, base.stageIndex, metric).description
-        }
         query={query}
         onSwap={onSwap}
         onAdd={onAdd}
@@ -155,11 +151,18 @@ export function SummaryFieldList({
       <Box className={S.fieldList}>
         <TextInput
           className={S.searchField}
-          classNames={{ input: S.fieldListSearchInput }}
+          classNames={{
+            input: S.fieldListSearchInput,
+            section: S.searchFieldIcon,
+          }}
+          variant="unstyled"
           size="xs"
-          placeholder={t`Search columns and metrics…`}
+          // the half-width card cuts off a longer placeholder; the label says what's searched
+          placeholder={t`Search…`}
           aria-label={t`Search columns and metrics`}
           leftSection={<Icon name="search" />}
+          // the icon's 16px plus the rows' 8px gap, so the text lines up with the field names
+          leftSectionWidth={24}
           value={searchText}
           onChange={(event) => setSearchText(event.currentTarget.value)}
           onKeyDown={(event) => {
@@ -203,7 +206,7 @@ function CollapsibleSection({
   children,
 }: CollapsibleSectionProps) {
   return (
-    <Box>
+    <Box className={S.section}>
       <UnstyledButton
         className={cx(S.fieldGroupName, S.sectionToggle)}
         aria-expanded={isExpanded}
@@ -212,7 +215,7 @@ function CollapsibleSection({
       >
         <Icon
           className={S.sectionChevron}
-          name={isExpanded ? "chevrondown" : "chevronright"}
+          name="chevronright"
           size={12}
           aria-hidden
         />
@@ -227,7 +230,6 @@ type DraggableFieldProps = {
   id: string;
   icon: IconName;
   item: SummaryFieldItem;
-  description?: string;
   /** Search text to highlight in the label. */
   query: string;
   onSwap: (item: SummaryFieldItem) => void;
@@ -238,7 +240,6 @@ function DraggableField({
   id,
   icon,
   item,
-  description,
   query,
   onSwap,
   onAdd,
@@ -269,14 +270,7 @@ function DraggableField({
       }}
     >
       <Icon name={icon} c="text-secondary" aria-hidden />
-      <Box miw={0}>
-        <MatchedLabel label={item.label} query={query} />
-        {description && (
-          <Text size="sm" c="text-secondary" truncate>
-            {description}
-          </Text>
-        )}
-      </Box>
+      <MatchedLabel label={item.label} query={query} />
       <Icon name="grabber" className={S.grabber} aria-hidden />
     </Box>
   );
