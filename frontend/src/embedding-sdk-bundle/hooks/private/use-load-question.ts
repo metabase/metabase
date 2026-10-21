@@ -1,6 +1,7 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
+import { recordPhase } from "embedding-sdk-bundle/analytics/phase-timestamps";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -129,6 +130,7 @@ export function useLoadQuestion({
     }
 
     setIsLoadInFlight(true);
+    recordPhase("component_start");
 
     try {
       const questionState = await dispatch(
@@ -143,7 +145,9 @@ export function useLoadQuestion({
       );
 
       mergeQuestionState(questionState);
+      recordPhase("metadata_ready");
 
+      recordPhase("query_start");
       const results = await runQuestionQuerySdk({
         question: questionState.question,
         isGuestEmbed,
@@ -155,6 +159,7 @@ export function useLoadQuestion({
         initialVisualization,
       });
 
+      recordPhase("query_end");
       mergeQuestionState(results);
 
       setIsLoadInFlight(false);

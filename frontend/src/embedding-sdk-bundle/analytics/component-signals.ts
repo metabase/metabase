@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import type { SdkComponentName } from "./component-events";
+import { recordPhase } from "./phase-timestamps";
 
 /**
  * A signal emitted by an SDK component when it reaches a terminal state
@@ -47,6 +48,7 @@ function emit(signal: ComponentSignal): void {
 
 /** Emit a "ready" signal for the given component. Only the first signal is kept. */
 export function reportComponentReady(component: SdkComponentName): void {
+  recordPhase("result_rendered");
   emit({
     component,
     status: "ready",

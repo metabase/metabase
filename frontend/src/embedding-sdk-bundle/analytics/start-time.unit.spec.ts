@@ -2,6 +2,7 @@ import { getSdkBundleStartTime, resetSdkBundleStartTime } from "./start-time";
 
 const MOCK_SCRIPT_SRC = "https://metabase.example.com/sdk/bundle.js";
 const MOCK_START_TIME = 42.5;
+const MOCK_DURATION = 100;
 
 function insertScriptTag(src: string): HTMLScriptElement {
   const script = document.createElement("script");
@@ -11,12 +12,30 @@ function insertScriptTag(src: string): HTMLScriptElement {
   return script;
 }
 
-function mockResourceTimingEntry(
-  name: string,
-  startTime: number,
-): PerformanceEntry {
-  // Only the fields the implementation reads; the full interface has ~20 more.
-  return { name, startTime, entryType: "resource" } as PerformanceEntry;
+interface MockResourceTimingOpts {
+  name: string;
+  startTime: number;
+  duration?: number;
+  transferSize?: number;
+  encodedBodySize?: number;
+}
+
+function mockResourceTimingEntry({
+  name,
+  startTime,
+  duration = MOCK_DURATION,
+  transferSize = 1000,
+  encodedBodySize = 5000,
+}: MockResourceTimingOpts): PerformanceEntry {
+  // Partial stub — only the fields the implementation reads.
+  return {
+    name,
+    startTime,
+    duration,
+    transferSize,
+    encodedBodySize,
+    entryType: "resource",
+  } as unknown as PerformanceEntry;
 }
 
 describe("getSdkBundleStartTime", () => {
@@ -34,23 +53,74 @@ describe("getSdkBundleStartTime", () => {
       .forEach((el) => el.remove());
   });
 
-  it("returns startTimeMs from the Resource Timing entry", () => {
+  it("returns startTimeMs, bundleReadyMs, and bundleCached from the Resource Timing entry", () => {
     const script = insertScriptTag(MOCK_SCRIPT_SRC);
 
     performance.getEntriesByName = jest.fn((name, type) => {
       if (name === script.src && type === "resource") {
-        return [mockResourceTimingEntry(script.src, MOCK_START_TIME)];
+        return [
+          mockResourceTimingEntry({
+            name: script.src,
+            startTime: MOCK_START_TIME,
+          }),
+        ];
       }
       return [];
     });
 
     const result = getSdkBundleStartTime();
 
-    expect(result).toEqual({ startTimeMs: MOCK_START_TIME });
+    expect(result).toEqual({
+      startTimeMs: MOCK_START_TIME,
+      bundleReadyMs: MOCK_START_TIME + MOCK_DURATION,
+      bundleCached: false,
+    });
     expect(performance.getEntriesByName).toHaveBeenCalledWith(
       script.src,
       "resource",
     );
+  });
+
+  it("reports bundleCached true when transferSize is 0 and detailed timing is available", () => {
+    const script = insertScriptTag(MOCK_SCRIPT_SRC);
+
+    performance.getEntriesByName = jest.fn((name, type) => {
+      if (name === script.src && type === "resource") {
+        return [
+          mockResourceTimingEntry({
+            name: script.src,
+            startTime: MOCK_START_TIME,
+            transferSize: 0,
+            encodedBodySize: 5000,
+          }),
+        ];
+      }
+      return [];
+    });
+
+    const result = getSdkBundleStartTime();
+    expect(result?.bundleCached).toBe(true);
+  });
+
+  it("reports bundleCached null when detailed timing is restricted (cross-origin)", () => {
+    const script = insertScriptTag(MOCK_SCRIPT_SRC);
+
+    performance.getEntriesByName = jest.fn((name, type) => {
+      if (name === script.src && type === "resource") {
+        return [
+          mockResourceTimingEntry({
+            name: script.src,
+            startTime: MOCK_START_TIME,
+            transferSize: 0,
+            encodedBodySize: 0,
+          }),
+        ];
+      }
+      return [];
+    });
+
+    const result = getSdkBundleStartTime();
+    expect(result?.bundleCached).toBeNull();
   });
 
   it("returns null when the Resource Timing entry is missing", () => {
@@ -83,7 +153,12 @@ describe("getSdkBundleStartTime", () => {
 
     performance.getEntriesByName = jest.fn((name, type) => {
       if (name === script.src && type === "resource") {
-        return [mockResourceTimingEntry(script.src, MOCK_START_TIME)];
+        return [
+          mockResourceTimingEntry({
+            name: script.src,
+            startTime: MOCK_START_TIME,
+          }),
+        ];
       }
       return [];
     });
@@ -91,7 +166,11 @@ describe("getSdkBundleStartTime", () => {
     const first = getSdkBundleStartTime();
     const second = getSdkBundleStartTime();
 
-    expect(first).toEqual({ startTimeMs: MOCK_START_TIME });
+    expect(first).toEqual({
+      startTimeMs: MOCK_START_TIME,
+      bundleReadyMs: MOCK_START_TIME + MOCK_DURATION,
+      bundleCached: false,
+    });
     expect(second).toBe(first);
     expect(performance.getEntriesByName).toHaveBeenCalledTimes(1);
   });

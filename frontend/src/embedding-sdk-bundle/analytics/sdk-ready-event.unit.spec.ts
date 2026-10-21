@@ -17,6 +17,12 @@ jest.mock("embedding-sdk-bundle/analytics/start-time", () => ({
   getSdkBundleStartTime: jest.fn(),
 }));
 
+jest.mock("embedding-sdk-bundle/analytics/phase-timestamps", () => ({
+  getPhaseOffsets: jest.fn(() => null),
+  recordPhase: jest.fn(),
+  resetPhaseTimestamps: jest.fn(),
+}));
+
 jest.mock("embedding-sdk-bundle/store", () => ({
   useSdkSelector: jest.fn(),
 }));
@@ -31,6 +37,7 @@ import {
   reportComponentReady,
   resetComponentSignals,
 } from "./component-signals";
+import { getPhaseOffsets } from "./phase-timestamps";
 import {
   SDK_READY_TIMEOUT_MS,
   resetSdkReadyEvent,
@@ -42,10 +49,20 @@ import { getSdkBundleStartTime } from "./start-time";
 
 const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
 const mockGetSdkBundleStartTime = jest.mocked(getSdkBundleStartTime);
+const mockGetPhaseOffsets = jest.mocked(getPhaseOffsets);
 const mockUseIsTrackingEnabled = jest.mocked(useIsTrackingEnabled);
 const mockUseSdkSelector = jest.mocked(useSdkSelector);
 
 const INSTANCE_URL = "https://metabase.example.com";
+
+/** Extracts the `event_detail` string from the first mock call to `trackSdkSimpleEvent`. */
+function getEventDetail(
+  mock: jest.MockedFunction<typeof trackSdkSimpleEvent>,
+): string {
+  const call = mock.mock.calls[0][0];
+  // The ready-event variant always carries event_detail; narrow from the union.
+  return (call as { event_detail: string }).event_detail;
+}
 
 function makeReadySignal(
   overrides: Partial<ComponentSignal> = {},
@@ -70,7 +87,11 @@ describe("sendSdkReadyEvent", () => {
   });
 
   it("sends embedding_sdk_ready with correct fields for a ready signal", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
 
     sendSdkReadyEvent(makeReadySignal({ timestamp: 1500 }));
 
@@ -85,12 +106,44 @@ describe("sendSdkReadyEvent", () => {
         sdk_version: "1.2.3",
         auth_method: "sso",
         client: "embedding-sdk-react",
+        bundle_cached: false,
+        phases: { script_start: 0, bundle_ready: 100 },
       }),
     });
   });
 
+  it("includes lifecycle phases from the phase store when available", () => {
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
+    mockGetPhaseOffsets.mockReturnValueOnce({
+      init_start: 150,
+      init_ready: 300,
+    });
+
+    sendSdkReadyEvent(makeReadySignal({ timestamp: 1500 }));
+
+    const detail: unknown = JSON.parse(getEventDetail(mockTrackSdkSimpleEvent));
+    expect(detail).toEqual(
+      expect.objectContaining({
+        phases: {
+          script_start: 0,
+          bundle_ready: 100,
+          init_start: 150,
+          init_ready: 300,
+        },
+      }),
+    );
+  });
+
   it("sends result 'error' with error_type for an error signal", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
 
     sendSdkReadyEvent(
       makeReadySignal({
@@ -121,7 +174,11 @@ describe("sendSdkReadyEvent", () => {
   });
 
   it("rounds duration_ms to an integer", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100.3 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100.3,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
 
     sendSdkReadyEvent(makeReadySignal({ timestamp: 1500.7 }));
 
@@ -131,12 +188,30 @@ describe("sendSdkReadyEvent", () => {
   });
 
   it("sends only once — second call is ignored", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
 
     sendSdkReadyEvent(makeReadySignal());
     sendSdkReadyEvent(makeReadySignal({ component: "StaticQuestion" }));
 
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends bundle_cached null and phases null when start time is unknown", () => {
+    mockGetSdkBundleStartTime.mockReturnValue(null);
+
+    sendSdkReadyEvent(makeReadySignal());
+
+    const detail: unknown = JSON.parse(getEventDetail(mockTrackSdkSimpleEvent));
+    expect(detail).toEqual(
+      expect.objectContaining({
+        bundle_cached: null,
+        phases: null,
+      }),
+    );
   });
 });
 
@@ -161,7 +236,11 @@ describe("sendDirectSdkReadyEvent", () => {
   });
 
   it("sends a direct POST to the Metaplow proxy with the correct envelope", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: true,
+    });
 
     sendDirectSdkReadyEvent(
       INSTANCE_URL,
@@ -252,7 +331,11 @@ describe("useInitSdkReadyEvent — normal path", () => {
   }
 
   it("sends via the normal path when tracker is ready and a signal was buffered", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 50 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 50,
+      bundleReadyMs: 150,
+      bundleCached: false,
+    });
     reportComponentReady("CollectionBrowser");
 
     setupHook();
@@ -267,7 +350,11 @@ describe("useInitSdkReadyEvent — normal path", () => {
   });
 
   it("sends when signal fires after the hook subscribes", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 50 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 50,
+      bundleReadyMs: 150,
+      bundleCached: false,
+    });
     setupHook();
 
     expect(mockTrackSdkSimpleEvent).not.toHaveBeenCalled();
@@ -278,7 +365,11 @@ describe("useInitSdkReadyEvent — normal path", () => {
   });
 
   it("sends when tracker becomes ready after signal was buffered", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 50 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 50,
+      bundleReadyMs: 150,
+      bundleCached: false,
+    });
     reportComponentReady("InteractiveQuestion");
 
     // Tracker not ready on first render — no event yet.
@@ -330,7 +421,11 @@ describe("useInitSdkReadyEvent — timeout", () => {
   }
 
   it("sends timeout when no signal arrives within 45 seconds", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
     jest.spyOn(performance, "now").mockReturnValue(100);
 
     setupHook();
@@ -350,12 +445,18 @@ describe("useInitSdkReadyEvent — timeout", () => {
         sdk_version: "1.2.3",
         auth_method: "sso",
         client: "embedding-sdk-react",
+        bundle_cached: false,
+        phases: { script_start: 0, bundle_ready: 100 },
       }),
     });
   });
 
   it("does not send timeout when a signal arrives before 45 seconds", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
     jest.spyOn(performance, "now").mockReturnValue(100);
 
     setupHook();
@@ -376,7 +477,11 @@ describe("useInitSdkReadyEvent — timeout", () => {
   });
 
   it("computes remaining time from start time", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
     jest.spyOn(performance, "now").mockReturnValue(20100);
 
     setupHook();
@@ -395,7 +500,11 @@ describe("useInitSdkReadyEvent — timeout", () => {
   });
 
   it("fires immediately when 45 seconds already passed before hook runs", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
     jest.spyOn(performance, "now").mockReturnValue(50000);
 
     setupHook();
@@ -423,12 +532,19 @@ describe("useInitSdkReadyEvent — timeout", () => {
       jest.advanceTimersByTime(1);
     });
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ result: "timeout" }),
+      expect.objectContaining({
+        result: "timeout",
+        event_detail: expect.stringContaining('"bundle_cached":null'),
+      }),
     );
   });
 
   it("does not send a late signal after timeout", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
     jest.spyOn(performance, "now").mockReturnValue(100);
 
     setupHook();
@@ -445,7 +561,11 @@ describe("useInitSdkReadyEvent — timeout", () => {
   });
 
   it("clears the timer on unmount", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
     jest.spyOn(performance, "now").mockReturnValue(100);
 
     const { unmount } = setupHook();
@@ -459,7 +579,11 @@ describe("useInitSdkReadyEvent — timeout", () => {
   });
 
   it("does not fire timeout when tracker is not ready", () => {
-    mockGetSdkBundleStartTime.mockReturnValue({ startTimeMs: 100 });
+    mockGetSdkBundleStartTime.mockReturnValue({
+      startTimeMs: 100,
+      bundleReadyMs: 200,
+      bundleCached: false,
+    });
     jest.spyOn(performance, "now").mockReturnValue(100);
 
     setupHook({ trackerReady: false });

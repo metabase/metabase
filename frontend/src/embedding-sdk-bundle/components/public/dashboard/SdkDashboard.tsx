@@ -16,6 +16,7 @@ import { isEqual } from "underscore";
 
 import type { SdkComponentName } from "embedding-sdk-bundle/analytics/component-events";
 import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
+import { recordPhase } from "embedding-sdk-bundle/analytics/phase-timestamps";
 import {
   DashboardNotFoundError,
   SdkError,
@@ -311,6 +312,7 @@ const SdkDashboardInner = ({
   onVisualizationChange,
   sdkComponentName,
 }: SdkDashboardInnerProps) => {
+  recordPhase("component_start");
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
   const [isFirstRender, setIsFirstRender] = useState(true);

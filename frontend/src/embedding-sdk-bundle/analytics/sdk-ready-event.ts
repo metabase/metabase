@@ -7,11 +7,13 @@ import { METAPLOW_WEBSITE_ID } from "metabase/utils/metaplow";
 import { useIsTrackingEnabled } from "./component-events";
 import type { ComponentSignal } from "./component-signals";
 import { onFirstSignal } from "./component-signals";
+import { getPhaseOffsets } from "./phase-timestamps";
 import {
   getSdkAuthMethod,
   getSdkClient,
   trackSdkSimpleEvent,
 } from "./snowplow";
+import type { StartTimeResult } from "./start-time";
 import { getSdkBundleStartTime } from "./start-time";
 
 /** Maximum time (ms) to wait for a component signal before sending a timeout event. */
@@ -48,6 +50,8 @@ export function sendSdkReadyEvent(signal: ComponentSignal): void {
       sdk_version: getSdkPackageVersion(),
       auth_method: getSdkAuthMethod(),
       client: getSdkClient(),
+      bundle_cached: startTime?.bundleCached ?? null,
+      phases: buildPhases(startTime),
     }),
   });
 }
@@ -58,6 +62,8 @@ function sendSdkTimeoutEvent(): void {
   }
   eventSent = true;
 
+  const startTime = getSdkBundleStartTime();
+
   trackSdkSimpleEvent({
     event: "embedding_sdk_ready",
     result: "timeout",
@@ -66,6 +72,8 @@ function sendSdkTimeoutEvent(): void {
       sdk_version: getSdkPackageVersion(),
       auth_method: getSdkAuthMethod(),
       client: getSdkClient(),
+      bundle_cached: startTime?.bundleCached ?? null,
+      phases: buildPhases(startTime),
     }),
   });
 }
@@ -114,6 +122,8 @@ export function sendDirectSdkReadyEvent(
       sdk_version: getSdkPackageVersion(),
       auth_method: getSdkAuthMethod(),
       client: getSdkClient(),
+      bundle_cached: startTime?.bundleCached ?? null,
+      phases: buildPhases(startTime),
     }),
   };
 
@@ -127,6 +137,8 @@ function sendDirectSdkTimeoutEvent(instanceUrl: string): void {
   }
   eventSent = true;
 
+  const startTime = getSdkBundleStartTime();
+
   const data: Record<string, unknown> = {
     result: "timeout",
     duration_ms: null,
@@ -134,6 +146,8 @@ function sendDirectSdkTimeoutEvent(instanceUrl: string): void {
       sdk_version: getSdkPackageVersion(),
       auth_method: getSdkAuthMethod(),
       client: getSdkClient(),
+      bundle_cached: startTime?.bundleCached ?? null,
+      phases: buildPhases(startTime),
     }),
   };
 
@@ -156,6 +170,32 @@ function postToMetaplowProxy(
   }).catch(() => {
     // Silently ignore — the event is best-effort.
   });
+}
+
+// ---------------------------------------------------------------------------
+// Phase assembly
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the `phases` object for event_detail. Includes Resource Timing
+ * phases (script_start, bundle_ready) and lifecycle phases from the store.
+ * Returns `null` when the start time is unknown.
+ */
+function buildPhases(
+  startTime: StartTimeResult | null,
+): Record<string, number> | null {
+  if (startTime == null) {
+    return null;
+  }
+
+  const offsets = getPhaseOffsets(startTime.startTimeMs);
+  const result: Record<string, number> = {
+    script_start: 0,
+    bundle_ready: Math.round(startTime.bundleReadyMs - startTime.startTimeMs),
+    ...offsets,
+  };
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------

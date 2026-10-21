@@ -8,6 +8,14 @@ const SDK_BUNDLE_DATA_ATTR = "embedding-sdk-bundle";
 export interface StartTimeResult {
   /** High-res timestamp relative to `performance.timeOrigin`, comparable with `performance.now()`. */
   startTimeMs: number;
+  /** High-res timestamp when the bundle finished loading (`startTime + duration`). */
+  bundleReadyMs: number;
+  /**
+   * `true` when the bundle loaded from browser cache (`transferSize === 0`).
+   * `null` when the timing data is restricted (cross-origin without
+   * `Timing-Allow-Origin`) and cache status cannot be determined.
+   */
+  bundleCached: boolean | null;
 }
 
 let cached: StartTimeResult | null | undefined;
@@ -45,7 +53,22 @@ function readStartTime(): StartTimeResult | null {
       return null;
     }
 
-    return { startTimeMs: first.startTime };
+    // getEntriesByName with type "resource" always returns PerformanceResourceTiming entries.
+    const rt = first as PerformanceResourceTiming;
+
+    // transferSize is 0 for both cache hits and cross-origin-restricted
+    // entries. encodedBodySize > 0 confirms detailed timing is available
+    // (not restricted), so transferSize === 0 reliably means a cache hit.
+    const bundleCached =
+      typeof rt.transferSize === "number" && rt.encodedBodySize > 0
+        ? rt.transferSize === 0
+        : null;
+
+    return {
+      startTimeMs: rt.startTime,
+      bundleReadyMs: rt.startTime + rt.duration,
+      bundleCached,
+    };
   } catch {
     // The Performance API is blocked (e.g. data-app sandbox distortion).
     return null;

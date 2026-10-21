@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
+import { recordPhase } from "embedding-sdk-bundle/analytics/phase-timestamps";
 import {
   CollectionNotFoundError,
   SdkError,
@@ -148,6 +149,7 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
+  recordPhase("component_start");
   useTrackSdkComponentMount("CollectionBrowser", null, {});
 
   // "all" is a virtual top level, not a collection, so it never reaches a URL
