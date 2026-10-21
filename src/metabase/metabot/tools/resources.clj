@@ -586,6 +586,7 @@
   same guard for the `get_field_values` tool."
   [table-id]
   (when-let [table (api/read-check :model/Table table-id)]
+    (api/check-404 (:active table))
     (check-resource-database (:db_id table))))
 
 (defn check-card-resource-database

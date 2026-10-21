@@ -1425,6 +1425,31 @@
         (is (= :recoverable class))
         (is (str/includes? text (str "**Error:** " (str/capitalize kind) " 999999 was not found.")))))))
 
+(deftest read-unreadable-field-parent-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card {card-id :id} {:collection_id collection-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[kind child] [["question" "fields"] ["model" "fields"] ["metric" "dimensions"]]]
+          (let [uri (str "metabase://" kind "/" card-id "/" child "/123")
+                {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+            (is (= :recoverable class))
+            (is (str/includes? text (str "**Error:** " (str/capitalize kind) " " card-id " was not found."))))))))
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [uri (str "metabase://table/" (mt/id :products) "/fields/123")
+            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+        (is (= :recoverable class))
+        (is (str/includes? text (str "**Error:** Table " (mt/id :products) " was not found.")))))))
+
+(deftest read-inactive-field-parent-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :active false}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [uri (str "metabase://table/" table-id "/fields/123")
+            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+        (is (= :recoverable class))
+        (is (str/includes? text (str "**Error:** Table " table-id " was not found.")))))))
+
 (deftest read-field-refusal-test
   (mt/with-current-user (mt/user->id :crowberto)
     (doseq [status [403 404]]
