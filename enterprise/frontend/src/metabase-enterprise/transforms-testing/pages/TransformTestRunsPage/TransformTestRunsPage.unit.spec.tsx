@@ -143,4 +143,30 @@ describe("TransformTestRunsPage", () => {
       ).toBe(true);
     });
   });
+
+  it("requests the runs matching the filters in the URL", async () => {
+    setup({
+      initialRoute: Urls.transformTestRuns(1, 2, {
+        statuses: ["failed", "error"],
+        startTime: "past7days",
+      }),
+    });
+
+    await screen.findByText("No runs yet");
+    const url = getLastRunsRequestUrl();
+    expect(url.searchParams.getAll("statuses")).toEqual(["failed", "error"]);
+    expect(url.searchParams.get("start-time")).toBe("past7days");
+  });
+
+  it("filters by status and goes back to the first page", async () => {
+    const { router } = setup({
+      initialRoute: Urls.transformTestRuns(1, 2, { page: 1 }),
+    });
+
+    await userEvent.click(await screen.findByLabelText("Status"));
+    await userEvent.click(await screen.findByLabelText("Failed"));
+    await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+    expect(router?.location.search).toBe("?statuses=failed");
+  });
 });

@@ -22,6 +22,7 @@ import { PAGE_SIZE } from "../../constants";
 import { useRouteTransformTest } from "../../hooks/use-route-transform-test";
 import { getRunTransformTestCacheKey } from "../../utils";
 
+import { TransformTestRunFilterBar } from "./TransformTestRunFilterBar";
 import { TransformTestRunTable } from "./TransformTestRunTable";
 import { getParsedParams } from "./utils";
 
@@ -80,6 +81,15 @@ function TransformTestRuns({ test, readOnly }: TransformTestRunsProps) {
     setIsPolling(shouldPoll);
   }
 
+  const handleFilterOptionsChange = (
+    filterOptions: Omit<Urls.TransformTestRunListParams, "page">,
+  ) => {
+    navigate(
+      Urls.transformTestRuns(test.transform_id, test.id, filterOptions),
+      { replace: true },
+    );
+  };
+
   const handlePageChange = (page: number) => {
     navigate(
       Urls.transformTestRuns(test.transform_id, test.id, { ...params, page }),
@@ -89,7 +99,15 @@ function TransformTestRuns({ test, readOnly }: TransformTestRunsProps) {
 
   return (
     <Stack gap="lg">
-      <Group justify="flex-end">
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <TransformTestRunFilterBar
+          filterOptions={{
+            statuses: params.statuses,
+            startTime: params.startTime,
+            endTime: params.endTime,
+          }}
+          onFilterOptionsChange={handleFilterOptionsChange}
+        />
         <TransformTestRunButton test={test} readOnly={readOnly} />
       </Group>
       {data == null || isLoading || error != null ? (
