@@ -21,7 +21,7 @@ import {
 } from "./query-utils";
 
 type DataAppLogUrlState = {
-  /** The slug of the data app the page is scoped to. */
+  /** The data app's slug. */
   app: string | null;
   type: DataAppEntityType | null;
   /** Current page of the log table, 0-indexed. */

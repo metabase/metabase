@@ -8,32 +8,22 @@ import {
 import * as Lib from "metabase-lib";
 import type { SortDirection, SortingOptions } from "metabase-types/api";
 
-/**
- * The `embedding_client` a published data app records. Previews record `data-app-preview`
- * and are left out: that's the app's author trying it, not people using it.
- */
+// Previews record `data-app-preview` and are left out: that's the author trying the app.
 const DATA_APP_EMBEDDING_CLIENT = "data-app";
 
-/**
- * Every data-app record is in the query log: each read of a question is one query, and each
- * action run is one row too. The view log only mirrors the question reads.
- */
+// Not the view log: that one only mirrors question reads, while the query log has action runs too.
 export const DATA_APP_LOG_VIEW = "v_query_log";
 
-/** The view's primary key: breaks timestamp ties so pages can't skip or repeat rows. */
 export const DATA_APP_LOG_ID_COLUMN = "entity_id";
 
 const TIMESTAMP_COLUMN = "started_at";
 
-/**
- * When, which app, who ran what, how it went, then the technical details. The wide query sits
- * late so it doesn't push the rest out of sight, and the error is last.
- */
+// The wide query sits late so it doesn't push the rest out of sight.
 export const DATA_APP_LOG_COLUMNS = [
   "started_at",
   "embedding_client_identifier",
   "user_id",
-  // An action run records the action it ran; a question read doesn't. That's the entity type.
+  // Only an action run records an action, so this tells the entity type.
   "action_id",
   "card_qualified_id",
   "action_qualified_id",
@@ -56,7 +46,6 @@ const PII_COLUMNS: ReadonlySet<DataAppLogColumn> = new Set([
   "ip_address",
 ]);
 
-/** The IP address and user agents are only recorded while PII retention is on, so they're left out without it. */
 export function dataAppLogColumnKeys(hasPii: boolean): DataAppLogColumn[] {
   return DATA_APP_LOG_COLUMNS.filter(
     (column) => hasPii || !PII_COLUMNS.has(column),
@@ -81,9 +70,8 @@ export function parseDataAppEntityType(
 export type DataAppLogFilters = {
   dateFilter: DateFilterValue;
   userId?: number;
-  /** The data app's slug, which requests record as `embedding_client_identifier`. */
+  /** The data app's slug. */
   dataAppName?: string;
-  /** Unset shows both. */
   entityType?: DataAppEntityType;
 };
 
@@ -184,10 +172,7 @@ function buildBaseQuery({
   return query;
 }
 
-/**
- * The identifiers of the data apps with activity in the date range, removed apps included: their
- * records stay in the log after the app is gone.
- */
+/** The slugs of the data apps with activity in the date range, removed apps included. */
 export function buildLoggedDataAppsQuery({
   provider,
   table,
@@ -211,7 +196,6 @@ type RowsQueryOpts = DataAppLogSource &
     hasPii: boolean;
   };
 
-/** The data-app records matching the filters, projected to the columns the log shows plus its key. */
 export function buildDataAppLogRowsQuery({
   sorting,
   hasPii,
@@ -219,6 +203,7 @@ export function buildDataAppLogRowsQuery({
 }: RowsQueryOpts): Lib.Query {
   let query = buildBaseQuery(opts);
   query = orderByColumn(query, sorting.sort_column, sorting.sort_direction);
+  // Breaks ties, so pages can't skip or repeat rows.
   query = orderByColumn(query, DATA_APP_LOG_ID_COLUMN, "desc");
   const fields = [...dataAppLogColumnKeys(hasPii), DATA_APP_LOG_ID_COLUMN]
     .map((name) => findColumn(query, name, Lib.fieldableColumns))
