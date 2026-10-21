@@ -55,7 +55,7 @@ export function QbeGridPrototype({
   const grid = useGridState(query, stageIndex, onChange);
 
   const content = (
-    <Stack gap="sm">
+    <Stack gap="sm" w="100%" miw={0}>
       <StripSummary query={query} stageIndex={stageIndex} grid={grid.value} />
       <GridEditor
         query={query}
