@@ -13,7 +13,7 @@ const ORDERS_TABLE: PortableTable = ["Sample Database", "PUBLIC", "ORDERS"];
 const appRoot = (slug: string) =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${slug}`;
 
-/** Reads a saved question when it opens. The fixture's `data_app.yaml` names its collection. */
+/** Reads a saved question when it opens. */
 const QUESTION_APP = {
   slug: "synced-app",
   displayName: "Synced App",
@@ -21,7 +21,7 @@ const QUESTION_APP = {
   question: "syncedAppOrdersCount1",
 };
 
-/** Runs an action on a click. The fixture's `data_app.yaml` names its collection. */
+/** Runs an action on a click. */
 const ACTIONS_APP = {
   slug: "synced-actions-app",
   displayName: "Synced Actions App",
@@ -73,11 +73,8 @@ function publishQuestionApp() {
   return H.publishDataApp(root, QUESTION_APP.slug);
 }
 
-/**
- * Publishes the app with the copy of an action it runs into the repository the question app is in.
- * A publish makes the repository's collections what the app's root holds, so this root carries the
- * question app's collection too; otherwise the pull would remove its saved question.
- */
+// A publish makes the repository's collections what the app's root holds, so this root carries the
+// question app's collection too; otherwise the pull would remove its saved question.
 function publishActionsApp() {
   const root = appRoot(ACTIONS_APP.slug);
 
