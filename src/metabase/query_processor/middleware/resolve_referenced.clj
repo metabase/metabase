@@ -69,7 +69,7 @@
           ;; a node that is already in the graph has already been walked (or is being walked), so we only need to add
           ;; the new edge (which throws if it creates a cycle) instead of walking it again
           (depend-and-walk [graph node dependency walk]
-            (let [visited? (contains? (dep/nodes graph) dependency)
+            (let [visited? (seq (dep/immediate-dependents graph dependency))
                   graph    (dep/depend graph node dependency)]
               (if visited?
                 graph

@@ -28,8 +28,8 @@
   "Maximum number of native query snippets that can be expanded while substituting parameters into a native query."
   10000)
 
-(defn- check-snippet-expansion! [{:keys [snippet-path snippet-expansions]} {:keys [snippet-id]}]
-  (when (contains? snippet-path snippet-id)
+(defn- check-snippet-expansion! [{:keys [expanding-snippet-ids snippet-expansions]} {:keys [snippet-id]}]
+  (when (contains? expanding-snippet-ids snippet-id)
     (throw (ex-info (tru "This query has circular referencing snippets.")
                     {:type driver-api/qp.error-type.invalid-query, :snippet-id snippet-id})))
   (when (> (vswap! snippet-expansions inc) max-snippet-expansions)
@@ -56,9 +56,9 @@
 (mr/def ::ctx
   [:map {:closed true}
    ;; IDs of the snippets currently being expanded, used to detect snippets that reference themselves
-   [:snippet-path       [:set ::lib.schema.id/snippet]]
+   [:expanding-snippet-ids [:set ::lib.schema.id/snippet]]
    ;; volatile count of the snippets expanded so far by the current call to [[substitute]]
-   [:snippet-expansions [:fn volatile?]]])
+   [:snippet-expansions    [:fn volatile?]]])
 
 (mu/defn- substitute-field-param :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -97,7 +97,7 @@
   (let [{:keys [replacement-snippet]}                    (->replacement-snippet-info metadata-providerable v)
         [processed-snippet snippet-args snippet-missing] (substitute*
                                                           metadata-providerable
-                                                          (update ctx :snippet-path conj (:snippet-id v))
+                                                          (update ctx :expanding-snippet-ids conj (:snippet-id v))
                                                           param->value
                                                           (lib/parse-parameters replacement-snippet)
                                                           in-optional?)]
@@ -185,7 +185,7 @@
   (log/tracef "Substituting %d params in query" (count param->value))
   (let [[sql args missing] (try
                              (substitute* metadata-providerable
-                                          {:snippet-path #{}, :snippet-expansions (volatile! 0)}
+                                          {:expanding-snippet-ids #{}, :snippet-expansions (volatile! 0)}
                                           param->value
                                           parsed-query
                                           false)
