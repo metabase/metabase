@@ -629,12 +629,7 @@
             ", so these results may be incomplete. "
             "If what you need isn't listed, tell the user the search was incomplete."))
      (when (empty? results)
-       [(str "<no-results reason=\""
-             (cond
-               (seq failed-queries) "incomplete"
-               (seq restrictions)   "restricted"
-               :else                "no_match")
-             "\">")
+       ["<no-results>"
         restrictions
         (str "Retry once with shorter `keyword_queries`: one or two words each, with synonyms as separate entries. "
              "If that also finds nothing, tell the user instead of searching again.")
@@ -678,17 +673,22 @@
 
 (defn- do-search
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as args}]
-  (let [limit   (min max-search-limit (or limit default-search-limit))
-        results (search (merge {:semantic-queries semantic_queries
-                                :term-queries     keyword_queries
-                                :entity-types     (or (seq entity_types) (vec default-types))
-                                :limit            limit
-                                :partial-results? true}
-                               search-opts))]
-    {:output (format-search-output results limit (search-restrictions default-types search-opts args))
-     :structured-output {:result-type :search
-                         :data results
-                         :total_count (count results)}
+  (let [limit        (min max-search-limit (or limit default-search-limit))
+        results      (search (merge {:semantic-queries semantic_queries
+                                     :term-queries     keyword_queries
+                                     :entity-types     (or (seq entity_types) (vec default-types))
+                                     :limit            limit
+                                     :partial-results? true}
+                                    search-opts))
+        restrictions (search-restrictions default-types search-opts args)]
+    {:output (format-search-output results limit restrictions)
+     :structured-output (cond-> {:result-type :search
+                                 :data results
+                                 :total_count (count results)}
+                          (empty? results) (assoc :empty_reason (cond
+                                                                  (seq (:failed-queries (meta results))) "incomplete"
+                                                                  (seq restrictions)                     "restricted"
+                                                                  :else                                  "no_match")))
      :data-parts [(streaming/search-results-part
                    {:total_count (count results)
                     :results (mapv search-result->item results)})]}))
