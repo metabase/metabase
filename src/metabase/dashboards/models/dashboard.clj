@@ -324,7 +324,7 @@
         field-ids      (into []
                              (keep (fn [{:keys [target] ::keys [card-id]}]
                                      (when target
-                                       (params/param-target->field-id target {:dataset_query (card-id->query card-id)}))))
+                                       (params/param-target->resolved-field-id target {:dataset_query (card-id->query card-id)}))))
                              mappings)]
     (query-perms/check-parameter-field-permissions field-ids)))
 

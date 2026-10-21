@@ -121,7 +121,7 @@
   (->> (valid-targets card parameter)
        ;; `param-target->field-id` is the same resolution the rest of the codebase uses for both dimension and
        ;; template-tag targets — matching on the ref's shape here would drift from it
-       (filter #(= field-id (params/param-target->field-id (:target %) card)))
+       (filter #(= field-id (params/param-target->resolved-field-id (:target %) card)))
        first
        :target))
 
@@ -191,11 +191,11 @@
           (= (some-> target first keyword)
              (some-> (target-for-tag tag-name tag-type) first)))
         (let [targets  (valid-targets card parameter)
-              field-id (params/param-target->field-id target card)
+              field-id (params/param-target->resolved-field-id target card)
               ref-name (target-ref-name target)]
           (boolean
            (or (and field-id
-                    (some #(= field-id (params/param-target->field-id (:target %) card)) targets))
+                    (some #(= field-id (params/param-target->resolved-field-id (:target %) card)) targets))
                (and ref-name
                     (some #(= ref-name (:column-name %)) targets)))))))
     (catch Exception e

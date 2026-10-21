@@ -81,7 +81,7 @@
   (let [{:keys [cards parameters dataset_query]} (:object revision)
         resolve-target (fn [target query]
                          (when target
-                           (params/param-target->field-id target {:dataset_query query})))]
+                           (params/param-target->resolved-field-id target {:dataset_query query})))]
     (case model
       :model/Card
       (into [] (keep #(resolve-target (:target %) dataset_query)) parameters)

@@ -470,7 +470,7 @@
    (into []
          (keep (fn [{:keys [target]}]
                  (when target
-                   (params/param-target->field-id target {:dataset_query query}))))
+                   (params/param-target->resolved-field-id target {:dataset_query query}))))
          parameters)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

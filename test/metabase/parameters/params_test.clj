@@ -310,3 +310,19 @@
         (let [errors (:errors (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e))))]
           (is (some? errors))
           (is (not-any? #(and (map? %) (contains? % :schema)) (tree-seq coll? seq errors))))))))
+
+(deftest param-target->resolved-field-id-test
+  (testing "a target that names its column resolves to the Field it refers to in the card's query"
+    (let [mp   (mt/metadata-provider)
+          card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+      (is (= (mt/id :orders :total)
+             (params/param-target->resolved-field-id
+              [:dimension [:field "TOTAL" {:base-type :type/Float}] {:stage-number 0}]
+              card)))
+      (is (= (mt/id :products :category)
+             (params/param-target->resolved-field-id
+              [:dimension [:field "CATEGORY" {:base-type :type/Text, :source-field-name "PRODUCT_ID"}] {:stage-number 0}]
+              card)))
+      (is (nil? (params/param-target->resolved-field-id
+                 [:dimension [:field "NOT_A_COLUMN" {:base-type :type/Text}] {:stage-number 0}]
+                 card))))))

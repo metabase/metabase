@@ -192,7 +192,7 @@
   (card/check-parameter-source-card-permissions (:parameters card))
   (query-perms/check-parameter-field-permissions
    (into []
-         (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
+         (keep #(some-> % :target (params/param-target->resolved-field-id {:dataset_query query})))
          (:parameters card)))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
