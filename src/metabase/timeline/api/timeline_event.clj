@@ -70,9 +70,6 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/TimelineEvent id))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
 (defn- parse-event-update
   "Parse the update of the TimelineEvent `event-id`, moving it to `new-timeline-id` when that is not nil. A check that
   fails throws the 400, 403 or 404 this endpoint returns, and a 403 publishes the permission failure, as
@@ -107,6 +104,9 @@
 
           (throw e))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]."
