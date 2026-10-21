@@ -1886,8 +1886,29 @@
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
+(defn- wrap-database-errors
+  "Return a generic 500 for unhandled database failures, logging the original exception."
+  [handler]
+  (fn [request respond raise]
+    (let [raised? (volatile! false)
+          raise (fn [e]
+                  (vreset! raised? true)
+                  (if (metabot-construct/database-error? e)
+                    (do
+                      (when (nil? (:status-code (ex-data e)))
+                        (analytics/inc! :metabase-api/unhandled-errors))
+                      (log/error e "Database failure in Agent API")
+                      (respond {:status 500 :body {:message (tru "Something went wrong")}}))
+                    (raise e)))]
+      (try
+        (handler request respond raise)
+        (catch Throwable e
+          (if @raised?
+            (throw e)
+            (raise e)))))))
+
 (def ^:private base-routes
-  (api.macros/ns-handler *ns* +auth wrap-error-responses))
+  (api.macros/ns-handler *ns* +auth wrap-database-errors wrap-error-responses))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."

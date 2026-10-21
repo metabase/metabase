@@ -16,6 +16,7 @@ import { useSetting } from "metabase/settings";
 import { Flex, Loader, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
+import { useAuditRowCount } from "metabase-enterprise/monitor/ai-auditing/hooks/useAuditRowCount";
 import {
   ConversationFilters as ApiKeyUsageFilterBar,
   parseId,
@@ -98,6 +99,7 @@ export function ApiKeyUsageSectionLayout() {
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const usageAudit = useAuditTable(VIEW_API_KEY_USAGE);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
+  const tabCount = useAuditRowCount(usageAudit, { dateColumn: "occurred_at" });
 
   const dataSources = useMemo(
     () => ({
@@ -144,6 +146,7 @@ export function ApiKeyUsageSectionLayout() {
     },
     {
       label: t`Events`,
+      count: tabCount,
       to: `${eventsPath}${location.search}`,
       isSelected: (pathname) => pathname === eventsPath,
     },

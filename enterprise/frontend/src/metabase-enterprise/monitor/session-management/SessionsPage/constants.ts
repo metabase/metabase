@@ -6,8 +6,6 @@ import type {
 
 import type { SessionsTab } from "./types";
 
-export const PAGE_SIZE = 50;
-
 export const DEFAULT_TAB: SessionsTab = "active";
 
 export const TAB_STATUS: Record<SessionsTab, SessionStatusFilter> = {
