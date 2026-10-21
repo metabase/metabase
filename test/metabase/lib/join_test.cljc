@@ -141,10 +141,10 @@
     (testing "nothing stranded when cols cover the condition and exposed columns"
       (is (empty? (#'lib.join/stranded-join-refs the-join [id-col cat-col]))))
     (testing "reports the condition column when cols drop it"
-      (is (= [(:id id-col)]
+      (is (= [(:name id-col)]
              (mapv peek (#'lib.join/stranded-join-refs the-join [cat-col])))))
     (testing "reports an exposed column when cols drop it"
-      (is (= [(:id cat-col)]
+      (is (= [(:name cat-col)]
              (mapv peek (#'lib.join/stranded-join-refs the-join [id-col])))))
     (testing "a join with no alias and :fields :all has nothing to strand"
       (let [raw (lib/join-clause (meta/table-metadata :categories)
@@ -1137,14 +1137,14 @@
       (testing "ORDER joining USER (we have an FK to the joined thing)"
         (let [query (lib/query metadata-provider order)]
           (is (=? [[:= {}
-                    [:field {} id-order-user-id]
-                    [:field {} id-user-id]]]
+                    [:field {} "user_id"]
+                    [:field {} "id"]]]
                   (lib/suggested-join-conditions query user)))))
       (testing "USER joining ORDER (joined thing has an FK to us)"
         (let [query (lib/query metadata-provider user)]
           (is (=? [[:= {}
-                    [:field {} id-user-id]
-                    [:field {} id-order-user-id]]]
+                    [:field {} "id"]
+                    [:field {} "user_id"]]]
                   (lib/suggested-join-conditions query order))))))))
 
 (deftest ^:parallel suggested-join-conditions-multiple-fks-to-same-column-test
@@ -1183,14 +1183,14 @@
         (let [query (lib/query metadata-provider message)]
           (is (=? [[:= {}
                     ;; doesn't particularly matter which one gets picked, and order is not necessarily determinate
-                    [:field {} #(contains? #{id-message-sender-id id-message-recipient-id} %)]
-                    [:field {} id-user-id]]]
+                    [:field {} #(contains? #{"sender_id" "recipient_id"} %)]
+                    [:field {} "id"]]]
                   (lib/suggested-join-conditions query user)))))
       (testing "USER joining MESSAGE (joined thing has 2 FKs to us)"
         (let [query (lib/query metadata-provider user)]
           (is (=? [[:= {}
-                    [:field {} id-user-id]
-                    [:field {} #(contains? #{id-message-sender-id id-message-recipient-id} %)]]]
+                    [:field {} "id"]
+                    [:field {} #(contains? #{"sender_id" "recipient_id"} %)]]]
                   (lib/suggested-join-conditions query message))))))))
 
 (deftest ^:parallel suggested-join-conditions-transitive-fks-test
@@ -1304,27 +1304,27 @@
           order               (lib.metadata/table metadata-provider id-order)
           user                (lib.metadata/table metadata-provider id-user)
           ;; the order the conditions get returned in is indeterminate, so for convenience let's just sort them by
-          ;; Field IDs so we get consistent results in the test assertions.
+          ;; Field names so we get consistent results in the test assertions.
           sort-conditions     #(sort-by (fn [[_= _opts [_field-lhs _opts-lhs lhs-id, :as _lhs] [_field-rhs _opts-rhs rhs-id, :as _rhs]]]
                                           [lhs-id rhs-id])
                                         %)]
       (testing "ORDER joining USER (we have a composite FK to the joined thing)"
         (let [query (lib/query metadata-provider order)]
           (is (=? [[:= {}
-                    [:field {} id-order-user-id]
-                    [:field {} id-user-id]]
+                    [:field {} "user_email"]
+                    [:field {} "email"]]
                    [:= {}
-                    [:field {} id-order-user-email]
-                    [:field {} id-user-email]]]
+                    [:field {} "user_id"]
+                    [:field {} "id"]]]
                   (sort-conditions (lib/suggested-join-conditions query user))))))
       (testing "USER joining ORDER (joined thing has a composite FK to us)"
         (let [query (lib/query metadata-provider user)]
           (is (=? [[:= {}
-                    [:field {} id-user-id]
-                    [:field {} id-order-user-id]]
+                    [:field {} "email"]
+                    [:field {} "user_email"]]
                    [:= {}
-                    [:field {} id-user-email]
-                    [:field {} id-order-user-email]]]
+                    [:field {} "id"]
+                    [:field {} "user_id"]]]
                   (sort-conditions (lib/suggested-join-conditions query order)))))))))
 
 (deftest ^:parallel join-conditions-test
@@ -1440,7 +1440,7 @@
                (lib/join-lhs-display-name query join-or-joinable (meta/field-metadata :orders :product-id)))))
       (testing "existing join should use the display name for condition LHS"
         (when join?
-          (is (= (if (= join-condition-count 1)
+          (is (= (if (and source-table? (= join-condition-count 1))
                    "Venues"
                    "Previous results")
                  (lib/join-lhs-display-name query join-or-joinable)))))
@@ -1561,9 +1561,9 @@
           [join]            (lib/joins query)
           [condition]       (lib/join-conditions join)
           {[lhs rhs] :args} (lib/external-op condition)]
-      (is (=? [:field {:temporal-unit :month} integer?]
+      (is (=? [:field {:temporal-unit :month} "CREATED_AT"]
               lhs))
-      (is (=? [:field {:temporal-unit :month, :join-alias "P"} integer?]
+      (is (=? [:field {:temporal-unit :month, :join-alias "P"} "CREATED_AT"]
               rhs))
       (doseq [lhs          [lhs nil]
               [query join] (concat
@@ -1744,8 +1744,8 @@
                                                               (meta/field-metadata :products :title)
                                                               (meta/field-metadata :products :category)
                                                               (meta/field-metadata :products :vendor)]))))
-          bad-field  (fn [[_field opts id :as _field-ref]]
-                       [:field opts (* id 1000)])
+          bad-field  (fn [[_field opts field-name :as _field-ref]]
+                       [:field opts (str field-name "_UNKNOWN")])
           bad-fields (fn [query indexes]
                        (reduce (fn [query field-index]
                                  (lib.util/update-query-stage
