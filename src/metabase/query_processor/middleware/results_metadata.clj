@@ -80,9 +80,13 @@
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
-                 ;; Only update changed metadata; a parameterized run writes only on parameter-independent
-                 ;; column changes, not fingerprint drift (#83734, see also #72007).
-                 (let [parameter-independent? (boolean (:qp/skip-result-metadata-persistence query))]
+                 ;; `:qp/skip-result-metadata-persistence` is an absolute skip set by callers (e.g.
+                 ;; `qp.card/process-query-for-card` when a `card-transform` rewrites the query) to tell us
+                 ;; this run's output is not the Card's canonical shape.
+                 (not (:qp/skip-result-metadata-persistence query))
+                 ;; Only update changed metadata; a non-default parameterized run writes only on
+                 ;; parameter-independent column changes, not fingerprint drift (#83734, see also #72007).
+                 (let [parameter-independent? (boolean (:qp/non-default-parameterized? query))]
                    (not= (comparable-metadata actual-metadata parameter-independent?)
                          (comparable-metadata
                           ;; existing usage -- don't use going forward
