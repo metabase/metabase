@@ -30,22 +30,22 @@
 (defn- invoke
   "Call `retrieve_library_entities` with `args` the way the agent loop does. Return the result, or
   `{:output <the text the model reads> :error {:class :code}}` when the call fails."
-  [args]
-  (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
-                  (metabot.tools/->entries [#'metabot.tools/retrieve-library-entities-tool] (atom {}) nil :nlq))]
-    ((:fn (get entries "retrieve_library_entities")) args)))
+  ([args]
+   (invoke args [#'metabot.tools/retrieve-library-entities-tool]))
+  ([args tool-vars]
+   (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
+                   (metabot.tools/->entries tool-vars (atom {}) nil :nlq))]
+     ((:fn (get entries "retrieve_library_entities")) args))))
 
 (deftest tool-shape-oss-fallback-test
-  (testing "without the library-retrieval feature the tool returns the standard empty result shape"
+  (testing "without the library-retrieval feature the tool reports unavailable"
     ;; Pin the feature off so the defenterprise call takes its OSS fallback regardless of any ambient
     ;; premium token (e.g. an all-features dev token) or rows left in a local pgvector store.
     (mt/with-premium-features #{}
-      (is (=? {:output            #(str/includes? % "No matching library entities")
-               :structured-output {:result-type :search
-                                   :data        []
-                                   :total_count 0
-                                   :weak_match  false}}
-              (retrieve {:user_search_prompt "revenue per region"}))))))
+      (is (= {:output (str "Library search is unavailable.\n"
+                           "Don't retry this call. Tell the user library search is unavailable.")
+              :error  {:class :recoverable :code ::entity-retrieval/library-search-unavailable}}
+             (invoke {:user_search_prompt "revenue per region"}))))))
 
 (deftest similarity-helper-test
   (let [similarity (var-get #'entity-retrieval/similarity)]
@@ -91,7 +91,7 @@
                          :doc_text sentinel
                          :score    {:total_score 0.9
                                     :scores [{:name :similarity :score 0.9}]}}]
-              search!  #(retrieve {:user_search_prompt "secret"})]
+              search!  #(invoke {:user_search_prompt "secret"})]
           (with-unfiltered-search (fn [_ _] raw)
             (mt/with-dynamic-fn-redefs
               [cs.core/library-entity-keys (constantly #{["model" secret-id]})]
@@ -101,7 +101,7 @@
               (testing "a user without collection access receives neither the entity nor its matched document"
                 (mt/with-test-user :rasta
                   (let [result (search!)]
-                    (is (= [] (get-in result [:structured-output :data])))
+                    (is (= {:class :recoverable :code ::entity-retrieval/no-library-matches} (:error result)))
                     (is (not (str/includes? (pr-str result) sentinel)))))))))))))
 
 (deftest match->xml-locale-independent-test
@@ -210,11 +210,39 @@
                 :usage_instructions "u2" :confidence "weak" :similarity 0.3}]
               out)))))
 
-(deftest ^:parallel tool-search-failure-throws-test
-  (testing "a failing library search propagates to the agent loop, which reports the call as failed"
+(deftest ^:parallel tool-search-unavailable-test
+  (testing "provider failures give authored advice, including search only when offered"
     (with-unfiltered-search (fn [_ _] (throw (ex-info "Embedding service unavailable" {})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedding service unavailable"
-                            (retrieve {:user_search_prompt "revenue per region"}))))))
+      (doseq [search? [false true]]
+        (is (= {:output (str "Library search is unavailable.\n"
+                             "Don't retry this call. Tell the user library search is unavailable."
+                             (when search? "\nUse `search` to find data for the user's request."))
+                :error  {:class :recoverable :code ::entity-retrieval/library-search-unavailable}}
+               (invoke {:user_search_prompt "revenue per region"}
+                       (cond-> [#'metabot.tools/retrieve-library-entities-tool]
+                         search? (conj #'metabot.tools/search-tool)))))))))
+
+(deftest ^:parallel interrupted-search-test
+  (with-unfiltered-search (fn [_ _] (throw (InterruptedException.)))
+    (is (thrown? InterruptedException (retrieve {:user_search_prompt "revenue per region"})))))
+
+(deftest ^:parallel tool-search-outcomes-test
+  (doseq [[result code output]
+          [[:busy ::entity-retrieval/library-search-busy
+            (str "Library search is busy because the index is being updated.\n"
+                 "Retry `retrieve_library_entities` once later. If it is still busy, tell the user "
+                 "library search is being updated.")]
+           [:unavailable ::entity-retrieval/library-search-unavailable
+            (str "Library search is unavailable.\n"
+                 "Don't retry this call. Tell the user library search is unavailable.")]
+           [[] ::entity-retrieval/no-library-matches
+            (str "No matching library entities.\n"
+                 "Rephrase `user_search_prompt` and call `retrieve_library_entities` once more. "
+                 "If there are still no matches, ask the user to clarify or narrow the request.")]]]
+    (testing (str result)
+      (with-unfiltered-search (constantly result)
+        (is (= {:output output :error {:class :recoverable :code code}}
+               (invoke {:user_search_prompt "revenue per region"})))))))
 
 (deftest ^:parallel blank-search-prompt-test
   (testing "a blank prompt goes back to the model before anything is searched"
