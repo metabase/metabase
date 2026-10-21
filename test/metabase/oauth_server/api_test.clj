@@ -1050,6 +1050,29 @@
         (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
         (is (= 11 (count @(:attempts @#'api.oauth/token-ip-throttler))))))))
 
+(deftest token-empty-basic-username-does-not-lock-out-the-body-client-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/user-http-request :crowberto :get 200 "api/user/current")
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
+        ;; An empty Basic username is the client the request authenticates as, body `client_id` and all, so it keys
+        ;; the throttle too: the real client in the body gets no bucket and stays free to exchange.
+        (dotimes [_ 11]
+          (is (= "invalid_request"
+                 (:error (token-request! {:grant_type    "refresh_token"
+                                          :client_id     client-id
+                                          :refresh_token "bogus-token"}
+                                         :authorization (basic-auth-header "" "secret")
+                                         :ip-address "198.51.100.9" :expected-status 400)))))
+        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+        (is (string? (:access_token
+                      (token-request! {:grant_type   "authorization_code"
+                                       :client_id    client-id
+                                       :code         (authorize-and-get-code! client-id)
+                                       :redirect_uri "https://example.com/callback"}
+                                      :ip-address "198.51.100.10"
+                                      :authorization (basic-auth-header client-id client-secret)))))))))
+
 (deftest token-requests-without-client-id-use-only-ip-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
