@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import type { LegendChart } from "metabase/visualizations/components/legend/plots";
 import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -10,10 +11,10 @@ import {
   type ScatterPlotModel,
   type WaterfallChartModel,
   extractRemappings,
-  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
+  getChartModelAtHeight,
   getScatterPlotModel,
   getScatterPlotOption,
   getTimelineEventsModel,
@@ -109,11 +110,18 @@ export function useModelsAndOption(
 
   // Fold before layout: the fold decides which category labels get measured.
   const chartModel = useMemo(
-    () =>
-      baseChartModel.isRowChart
-        ? foldRowChartModel(baseChartModel, height, settings)
-        : baseChartModel,
+    () => getChartModelAtHeight(baseChartModel, height, settings),
     [baseChartModel, height, settings],
+  );
+
+  const legendChart: LegendChart = useMemo(
+    () => ({
+      chartModel: baseChartModel,
+      settings,
+      hasTimelineEvents,
+      renderingContext,
+    }),
+    [baseChartModel, settings, hasTimelineEvents, renderingContext],
   );
 
   const chartLayout = useMemo(
@@ -218,6 +226,7 @@ export function useModelsAndOption(
   return {
     chartModel,
     chartLayout,
+    legendChart,
     timelineEventsModel,
     option,
     renderingContext,

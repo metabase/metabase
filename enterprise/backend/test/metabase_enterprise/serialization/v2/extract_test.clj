@@ -300,7 +300,8 @@
                        :model/DashboardCard
                        _
                        {:action_id    action-id
-                        :dashboard_id other-dash-id}]
+                        :dashboard_id other-dash-id
+                        :row          1}]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c1-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c1-eid :label "some_question"}]
@@ -472,6 +473,24 @@
                       (serdes/extract-all "Dashboard")
                       (ids-by-model "Dashboard")))))))))
 
+(deftest dashcard-order-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc
+      [:model/Collection    {coll-id :id}                 {:name "Some Collection"}
+       :model/Card          {card-id :id}                 {:name "Some Question", :collection_id coll-id}
+       :model/Dashboard     {dash-id :id}                 {:name "Some Dashboard", :collection_id coll-id}
+       :model/DashboardTab  {second-tab :id}              {:dashboard_id dash-id :name "Second" :position 1}
+       :model/DashboardTab  {first-tab :id}               {:dashboard_id dash-id :name "First" :position 0}
+       :model/DashboardCard {in-second :entity_id}        {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id second-tab}
+       :model/DashboardCard {in-first-b :entity_id}       {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id first-tab :entity_id "bbbbbbbbbbbbbbbbbbbbb"}
+       :model/DashboardCard {in-first-a :entity_id}       {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id first-tab :entity_id "aaaaaaaaaaaaaaaaaaaaa"}]
+      (testing "dashcards are ordered by their tab's position, not its local id, then by entity_id at the same place"
+        (is (= [in-first-a in-first-b in-second]
+               (map :entity_id (:dashcards (ts/extract-one "Dashboard" dash-id)))))))))
+
 (deftest dashboard-card-series-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
@@ -481,7 +500,7 @@
        :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
        :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
        :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
-       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
+       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id, :row 1}
        :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
        :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
       (testing "Inlined dashcards include their series' card entity IDs"
@@ -986,6 +1005,41 @@
             (is (not (contains? ser :is_published))))
           (testing "collection_id is nil"
             (is (nil? (:collection_id ser)))))))))
+
+(deftest table-owner-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User     {user-id :id}  {:email "owner@example.com"}
+                       :model/Database {db-id :id}    {:name "My Database"}
+                       :model/Table    {table-id :id} {:name "Owned Table" :db_id db-id :owner_user_id user-id}]
+      (testing "the owner is exported by email, not by local id"
+        (is (= "owner@example.com" (:owner_user_id (ts/extract-one "Table" table-id))))))))
+
+(deftest sync-state-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id :id}    {:name                        "My Database"
+                                                       :engine                      :postgres
+                                                       :dbms_version                {:version "14.0"}
+                                                       :initial_sync_status         "aborted"
+                                                       :initial_sync_error          "Connection refused"
+                                                       :metadata_sync_schedule      "0 10 * * * ? *"
+                                                       :cache_field_values_schedule "0 0 16 * * ? *"}
+                       :model/Table    {table-id :id} {:name "My Table" :db_id db-id :initial_sync_status "incomplete"}]
+      (testing "what sync detects or schedules on the exporting instance is not exported"
+        (is (=? {:name "My Database"} (ts/extract-one "Database" db-id)))
+        (is (= #{} (set (keys (select-keys (ts/extract-one "Database" db-id)
+                                           [:dbms_version :initial_sync_status :initial_sync_error
+                                            :metadata_sync_schedule :cache_field_values_schedule])))))
+        (is (not (contains? (ts/extract-one "Table" table-id) :initial_sync_status)))))))
+
+(deftest setting-from-env-var-test
+  (let [exported-site-name #(some (fn [{k :key v :value}] (when (= :site-name k) [v]))
+                                  (serdes/extract-all "Setting" {}))]
+    (mt/with-temporary-setting-values [site-name "From the app DB"]
+      (testing "a Setting set in the app DB is exported"
+        (is (= ["From the app DB"] (exported-site-name))))
+      (mt/with-temp-env-var-value! [mb-site-name "From an env var"]
+        (testing "a Setting set by an env var is not exported"
+          (is (nil? (exported-site-name))))))))
 
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
