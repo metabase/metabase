@@ -1052,8 +1052,9 @@
 
 (deftest token-empty-basic-username-does-not-lock-out-the-body-client-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    ;; Revalidated before the transaction, as a session created inside it would be rolled back but stay cached
+    (mt/user-http-request :crowberto :get 200 "api/user/current")
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (mt/user-http-request :crowberto :get 200 "api/user/current")
       (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
         ;; An empty Basic username is the client the request authenticates as, body `client_id` and all, so it keys
         ;; the throttle too: the real client in the body gets no bucket and stays free to exchange.
