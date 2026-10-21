@@ -855,7 +855,7 @@
                  (not-any? #(or (= 403 (:status-code (ex-data %)))
                                 (instance? java.sql.SQLException %)
                                 (contains? (ex-data %) :toucan2/context-trace)) chain))
-          (throw (ex-info (str "The query builds, but Metabase rejects it when preparing it to run: "
+          (throw (ex-info (str "Metabase could not prepare this query to run: "
                                message)
                           {:agent-error? true
                            :error        :query-preprocessing-failed
@@ -871,7 +871,7 @@
   string (or nil) telling the caller's agent how to recover; the sentence is appended to the
   agent error's message. Omitting it leaves agent errors with the pipeline's bare statement.
 
-  `:preprocess-check?` checks the built query before returning it. Recognized query rejections become
+  `:preprocess-check?` checks the built query before returning it. Known query errors become
   agent errors; other preprocessing failures are logged and ignored."
   ([external-query]
    (execute-representations-query external-query nil))

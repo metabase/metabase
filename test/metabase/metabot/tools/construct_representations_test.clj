@@ -2220,7 +2220,7 @@
             (let [{:keys [class code text]} (test-util/tool-failure tool {:query query :reasoning "count orders"})]
               (is (= :recoverable class))
               (is (= :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed code))
-              (is (= (str "The query builds, but Metabase rejects it when preparing it to run: "
+              (is (= (str "Metabase could not prepare this query to run: "
                           quoted-diagnostic "\nFix that part of the query and retry.")
                      text)))))))))
 
