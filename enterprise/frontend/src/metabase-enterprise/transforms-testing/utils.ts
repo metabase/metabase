@@ -3,6 +3,7 @@ import type {
   TransformRunStatus,
   TransformTestRun,
   TransformTestRunStatus,
+  TransformTestTable,
 } from "metabase-types/api";
 
 const TRANSFORM_RUN_STATUSES: Record<
@@ -33,4 +34,8 @@ export function getRunStatusInfo(
     end_time: run.end_time,
     message: null,
   };
+}
+
+export function getTableName(table: TransformTestTable) {
+  return table.schema ? `${table.schema}.${table.name}` : table.name;
 }
