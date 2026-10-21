@@ -620,8 +620,9 @@
      "<result>"
      results-xml
      ""
+     ;; Search caps each ranked pool, so the total is a lower bound.
      (if (and total (< limit total))
-       (str "Showing " (count results) " of " total " results. "
+       (str "Showing " (count results) " of at least " total " results. "
             "To see more, raise `limit` (max " max-search-limit ") or make the queries more specific.")
        (str "Total results: " (count results)))
      (when (seq failed-queries)

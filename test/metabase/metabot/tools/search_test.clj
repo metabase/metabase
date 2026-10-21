@@ -147,12 +147,13 @@
   (mt/with-test-user :rasta
     (do-with-search-stub!
      [:search.engine/appdb]
-     {"orders" (for [id [1 2 3]] {:id id :model "card" :name (str "Orders " id)})}
+     {"orders"  (for [id [1 2 3]] {:id id :model "card" :name (str "Orders " id)})
+      "reports" (for [id (range 1 1001)] {:id id :model "card" :name (str "Report " id)})}
      (fn []
-       (testing "a page cut short says how many matched and how to see the rest"
-         (is (= ["Showing 2 of 3 results. To see more, raise `limit` (max 50) or make the queries more specific."]
+       (testing "a page cut short gives the total as a lower bound, since search caps the ranked pool"
+         (is (= ["Showing 1 of at least 1000 results. To see more, raise `limit` (max 50) or make the queries more specific."]
                 (result-notes (:output (invoke-search [#'search/search-tool]
-                                                      {:keyword_queries ["orders"] :limit 2}))))))
+                                                      {:keyword_queries ["reports"] :limit 1}))))))
        (testing "a page that holds every match gives the total"
          (is (= ["Total results: 3"]
                 (result-notes (:output (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]}))))))
