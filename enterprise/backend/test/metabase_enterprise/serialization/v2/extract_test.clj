@@ -1018,14 +1018,15 @@
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id :id}    {:name                        "My Database"
                                                        :dbms_version                {:version "14.0"}
-                                                       :initial_sync_status         "incomplete"
+                                                       :initial_sync_status         "aborted"
+                                                       :initial_sync_error          "Connection refused"
                                                        :metadata_sync_schedule      "0 10 * * * ? *"
                                                        :cache_field_values_schedule "0 0 16 * * ? *"}
                        :model/Table    {table-id :id} {:name "My Table" :db_id db-id :initial_sync_status "incomplete"}]
       (testing "what sync detects or schedules on the exporting instance is not exported"
         (is (= #{} (set (keys (select-keys (ts/extract-one "Database" db-id)
-                                           [:dbms_version :initial_sync_status :metadata_sync_schedule
-                                            :cache_field_values_schedule])))))
+                                           [:dbms_version :initial_sync_status :initial_sync_error
+                                            :metadata_sync_schedule :cache_field_values_schedule])))))
         (is (not (contains? (ts/extract-one "Table" table-id) :initial_sync_status)))))))
 
 (deftest setting-from-env-var-test
