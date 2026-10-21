@@ -990,13 +990,10 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
-  ;; `timestamp_add()` doesn't support month/quarter/year, so cast it to `datetime` so we can use `datetime_add()`
-  ;; instead in those cases.
-  (let [hsql-form (cond->> hsql-form
-                    (and (= (temporal-type hsql-form) :timestamp)
-                         (not (contains? (temporal-type->supported-units :timestamp) unit)))
-                    (h2x/cast :datetime))]
-    (add-interval-form hsql-form amount unit)))
+  ;; `timestamp_add()` doesn't support month/quarter/year, `add-interval-form` casts it to
+  ;; `datetime` so we can use `datetime_add()` instead in those cases. We then cast it back
+  ;; to the original temporal type if needed.
+  (->temporal-type (temporal-type hsql-form) (add-interval-form hsql-form amount unit)))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]

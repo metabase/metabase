@@ -420,3 +420,17 @@
                 [120 317763.17]
                 [140 128488.72]]
                (mt/formatted-rows [int 2.0] (qp/process-query query))))))))
+
+(deftest aggregate-datetime-add-on-timestamp-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics :set-timezone)
+    (mt/dataset attempted-murders
+      (mt/with-report-timezone-id! "America/Toronto"
+        (let [mp          (mt/metadata-provider)
+              attempts    (lib.metadata/table mp (mt/id :attempts))
+              datetime-tz (lib.metadata/field mp (mt/id :attempts :datetime_tz))
+              query       (as-> (lib/query mp attempts) $
+                            (lib/expression $ "shifted" (lib/datetime-add datetime-tz 12 :month))
+                            (lib/aggregate $ (lib/count))
+                            (lib/breakout $ (lib/with-temporal-bucket (lib/expression-ref $ "shifted") :month)))]
+          (is (= [["2020-11-01T00:00:00-04:00" 20]]
+                 (mt/rows (qp/process-query query)))))))))
