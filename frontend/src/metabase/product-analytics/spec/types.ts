@@ -128,8 +128,13 @@ export interface LifecycleSpec {
 
 export interface CohortsSpec {
   /**
-   * What places an actor in a cohort: the period of their earliest start
-   * date, or the value of an attribute. Either way, period 0 is the period
+   * What starts an actor's clock: their first time doing it in the date
+   * range. Undefined: any event does.
+   */
+  start?: FlagRef;
+  /**
+   * What places an actor in a cohort: the period they started in, or an
+   * attribute's value as of their start. Either way, period 0 is the period
    * their clock started; see `planCohorts`.
    */
   by: "startDate" | "attribute";
@@ -142,6 +147,8 @@ export interface CohortsSpec {
 export interface OutputSpec {
   funnelView?: "steps" | "overTime" | "timeToConvert";
   cohortsDisplay?: "percent" | "counts";
+  /** A row per cohort, or one row for all of them together. */
+  cohortsLines?: "each" | "average";
   lifecycleShown?: LifecycleStateName[];
   pathsEdgeMetric?: "people" | "events";
 }

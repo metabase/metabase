@@ -79,40 +79,56 @@ describe("buildSql", () => {
   });
 
   describe("cohorts", () => {
+    const starting = createMockEventDefinition({ name: "Signed up" });
     const returning = createMockEventDefinition({ name: "Came back" });
 
-    it("places people by the earliest start date", () => {
+    const getCohortsSql = (stored: StoredSettings) => {
       const spec = getSpec("cohorts", {
-        "cohorts.start_column": "signed_up_at",
+        "cohorts.start": starting,
         "cohorts.return": returning,
+        ...stored,
       });
-      const built = buildSql(spec, "SELECT 1", {
+      return buildSql(spec, "SELECT 1", {
         columns: BASE_COLUMNS,
-        flags: ["ev_1"],
-        extraColumns: [{ as: "cohort_start", alias: "signed_up_at" }],
-      });
+        flags: ["ev_1", "ev_2"],
+        extraColumns: [{ as: "cohort_attribute", alias: "plan" }],
+      }).sql;
+    };
 
-      expect(built.sql).toContain("`signed_up_at` AS cohort_start");
-      expect(built.sql).toContain(
-        "toStartOfWeek(min(cohort_start), 1) AS cohort",
-      );
+    it("places people in the period they first did the starting event", () => {
+      const sql = getCohortsSql({});
+
+      expect(sql).toContain("minIf(ts, is_start) AS start_ts");
+      expect(sql).toContain("toStartOfWeek(start_ts, 1) AS cohort");
+      expect(sql).toContain("addWeeks(cohort, offset) AS date");
     });
 
-    it("places people by their latest attribute value", () => {
-      const spec = getSpec("cohorts", {
-        "cohorts.by": "attribute",
+    it("places people by their attribute value as of their start", () => {
+      const sql = getCohortsSql({
         "cohorts.attribute": "plan",
-        "cohorts.return": returning,
         granularity: "month",
       });
-      const built = buildSql(spec, "SELECT 1", {
-        columns: BASE_COLUMNS,
-        flags: ["ev_1"],
-        extraColumns: [{ as: "cohort_attribute", alias: "plan" }],
-      });
 
-      expect(built.sql).toContain("argMax(cohort_attribute, ts) AS cohort");
-      expect(built.sql).toContain("toStartOfMonth(min(ts)) AS started");
+      expect(sql).toContain(
+        "argMaxIf(e.attribute_value, e.ts, e.ts <= f.start_ts AND e.attribute_value != '') AS cohort",
+      );
+      expect(sql).toContain("toStartOfMonth(f.start_ts) AS started");
+    });
+
+    it("only counts the people who have reached a period", () => {
+      const sql = getCohortsSql({});
+
+      expect(sql).toContain(
+        "uniqExactIf(actor, has(came_back, offset) AND reached >= offset) / uniqExactIf(actor, reached >= offset)",
+      );
+      expect(sql).toContain("HAVING uniqExactIf(actor, reached >= offset) > 0");
+    });
+
+    it("pools every cohort for the average", () => {
+      const sql = getCohortsSql({ "cohorts.lines": "average" });
+
+      expect(sql).toMatch(/GROUP BY offset\n/);
+      expect(sql).not.toContain("AS date");
     });
   });
 });

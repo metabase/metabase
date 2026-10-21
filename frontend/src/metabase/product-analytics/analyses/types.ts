@@ -87,16 +87,21 @@ export type LifecycleSettings = CommonSettings & {
 };
 
 export type CohortsSettings = CommonSettings & {
-  "cohorts.by": CohortsSpec["by"];
-  /** An event table column; the earliest value per actor starts their clock. */
-  "cohorts.start_column": string | null;
-  /** A users table column when there is a users table, else an event table column. */
+  /** The first time an actor does it in the date range starts their clock. Null: any event. */
+  "cohorts.start": EventDefinition | null;
+  /**
+   * A users table column when there is a users table, else an event table
+   * column. Null: cohorts are the periods people started in.
+   */
   "cohorts.attribute": string | null;
   "cohorts.return": EventDefinition | null;
   "cohorts.return_rule": CohortsSpec["returnRule"];
   /** How many periods after their start to follow each cohort: the columns. */
   "cohorts.horizon": number;
   "cohorts.display": NonNullable<OutputSpec["cohortsDisplay"]>;
+  "cohorts.lines": NonNullable<OutputSpec["cohortsLines"]>;
+  /** The line chart's x-axis: periods since each cohort started, or the calendar. */
+  "cohorts.x_axis": "sinceStart" | "date";
 };
 
 export type AnalysisSettingsByKind = {

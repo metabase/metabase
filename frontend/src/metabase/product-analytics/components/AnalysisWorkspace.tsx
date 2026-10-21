@@ -104,7 +104,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     tableId,
     base,
     context,
-    query,
     onShowInsights: openInsights,
   });
   const insights = supporting.insights;

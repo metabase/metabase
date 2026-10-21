@@ -1,8 +1,8 @@
 import type { SupportingAnalyses as SupportingAnalysesState } from "../../supporting/use-supporting-analyses";
 
+import { CohortTablePanel } from "./CohortTablePanel";
 import { FunnelPathsPanel } from "./FunnelPathsPanel";
 import { PathStepsPanel } from "./PathStepsPanel";
-import { RetentionCurvesPanel } from "./RetentionCurvesPanel";
 
 type SupportingAnalysesProps = {
   supporting: SupportingAnalysesState;
@@ -15,7 +15,7 @@ type SupportingAnalysesProps = {
 export const SupportingAnalyses = ({ supporting }: SupportingAnalysesProps) => {
   const { funnel, paths, cohorts } = supporting;
   if (cohorts !== undefined) {
-    return <RetentionCurvesPanel cohorts={cohorts} />;
+    return <CohortTablePanel cohorts={cohorts} />;
   }
   if (paths !== undefined) {
     return <PathStepsPanel steps={paths.steps} />;

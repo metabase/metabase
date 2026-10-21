@@ -1,15 +1,17 @@
-import { dayjs } from "metabase/dayjs";
-import {
-  createMockColumn,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
-
 import type { AnalysisSpec } from "../spec/types";
 
 import {
-  getRetentionCurvesData,
+  type RetentionCurvesView,
+  getCohortTableSettings,
   getRetentionCurvesSettings,
 } from "./retention-curves";
+
+const VIEW: RetentionCurvesView = {
+  period: "week",
+  isPercent: true,
+  lines: "each",
+  xAxis: "sinceStart",
+};
 
 const createSpec = (
   granularity: AnalysisSpec["bucket"]["granularity"],
@@ -24,59 +26,33 @@ const createSpec = (
   output: { cohortsDisplay },
 });
 
-const cols = ["cohort", "offset", "cohort_size", "value"].map((name) =>
-  createMockColumn({ name }),
-);
-
-describe("getRetentionCurvesData", () => {
-  it("drops the periods a date cohort hasn't reached yet", () => {
-    const lastWeek = dayjs().subtract(1, "week").startOf("week");
-    const rows = [0, 1, 2, 3].map((offset) => [
-      lastWeek.format("YYYY-MM-DD"),
-      offset,
-      10,
-      0.5,
-    ]);
-    const data = getRetentionCurvesData(
-      createMockDatasetData({ cols, rows }),
-      "week",
-    );
-    expect(data.rows.map((row) => row[1])).toEqual([0, 1]);
-  });
-
-  it("keeps every period of an attribute cohort", () => {
-    const rows = [0, 1, 2].map((offset) => ["Pro", offset, 10, 0.5]);
-    const data = getRetentionCurvesData(
-      createMockDatasetData({ cols, rows }),
-      "week",
-    );
-    expect(data.rows).toHaveLength(3);
-  });
-
-  it("leaves other result shapes alone", () => {
-    const data = createMockDatasetData({
-      cols: [createMockColumn({ name: "x" })],
-      rows: [[1]],
-    });
-    expect(getRetentionCurvesData(data, "week")).toBe(data);
-  });
-});
-
 describe("getRetentionCurvesSettings", () => {
   it("draws a line per cohort over the period offsets", () => {
-    const settings = getRetentionCurvesSettings(createSpec("week"));
+    const settings = getRetentionCurvesSettings(VIEW);
     expect(settings["graph.dimensions"]).toEqual(["offset", "cohort"]);
     expect(settings["graph.metrics"]).toEqual(["value"]);
     expect(settings["graph.x_axis.scale"]).toBe("ordinal");
     expect(settings["graph.x_axis.title_text"]).toBe("Weeks since start");
   });
 
-  it("formats percentages only when the table shows them", () => {
+  it("titles the average line", () => {
+    const settings = getRetentionCurvesSettings({ ...VIEW, lines: "average" });
+    expect(settings.series_settings?.value?.title).toBe("All cohorts");
+  });
+
+  it("formats percentages only when the chart shows them", () => {
+    expect(getRetentionCurvesSettings(VIEW).column_settings).toBeDefined();
     expect(
-      getRetentionCurvesSettings(createSpec("day", "percent")).column_settings,
-    ).toBeDefined();
-    expect(
-      getRetentionCurvesSettings(createSpec("day", "counts")).column_settings,
+      getRetentionCurvesSettings({ ...VIEW, isPercent: false }).column_settings,
     ).toBeUndefined();
+  });
+});
+
+describe("getCohortTableSettings", () => {
+  it("follows the granularity and the value shown", () => {
+    expect(getCohortTableSettings(createSpec("hour", "counts"))).toEqual({
+      "cohort.period": "day",
+      "cohort.value_format": "counts",
+    });
   });
 });

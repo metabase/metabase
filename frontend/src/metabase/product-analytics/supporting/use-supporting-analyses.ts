@@ -10,10 +10,7 @@ import type {
 
 import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
-import {
-  getRetentionCurvesData,
-  getRetentionCurvesSettings,
-} from "../cohorts/retention-curves";
+import { getCohortTableSettings } from "../cohorts/retention-curves";
 import type { InsightsFocus } from "../components/supporting/InsightsPanel";
 import {
   getFunnelPathsRange,
@@ -36,9 +33,8 @@ import type { InsightsAnalysis } from "../insights/types";
 import { type Insights, useInsights } from "../insights/use-insights";
 import { type PathSteps, usePathSteps } from "../path-steps/use-path-steps";
 import type { AnalysisSpec, FunnelSpec } from "../spec/types";
-import { periodOf } from "../sql/analyses/cohorts";
 import type { FunnelPathsRange } from "../sql/analyses/funnel-paths";
-import type { AnalysisQueryResult } from "../use-analysis-query";
+import { useAnalysisQuery } from "../use-analysis-query";
 
 import { getShowInsightsAction, getShowPathsAction } from "./click-actions";
 
@@ -48,8 +44,6 @@ type UseSupportingAnalysesArgs = {
   /** Must keep its identity while unchanged. */
   base: BaseQueryInput;
   context: AnalysisContext;
-  /** The primary query, for supporting charts that re-read its result. */
-  query: AnalysisQueryResult;
   /** A chart click asked for insights; the side panel should open. */
   onShowInsights: () => void;
 };
@@ -83,9 +77,9 @@ export type PathsSupport = {
   steps: PathSteps;
 };
 
-/** The retention curves below the cohort table, from the table's own result. */
+/** The cohort table below the retention curves. */
 export type CohortsSupport = {
-  /** The line chart, once the cohort query's result is in. */
+  /** The table, once the per-cohort query's result is in. */
   series: SingleSeries<UnsavedCard> | undefined;
   isLoading: boolean;
   error: string | undefined;
@@ -126,24 +120,37 @@ const getInsightsAnalysis = (
  * click actions that bring one of them into view. Each kind of analysis
  * contributes its own: a funnel shows the paths between its steps and the
  * insights into who converts, paths show their steps' entrances and exits
- * and the insights into who bounces, and cohorts show their retention curves.
+ * and the insights into who bounces, and cohorts show their table.
  */
 export const useSupportingAnalyses = ({
   spec,
   tableId,
   base,
   context,
-  query,
   onShowInsights,
 }: UseSupportingAnalysesArgs): SupportingAnalyses => {
   const isFunnel = spec?.kind === "funnel";
   const isCohorts = spec?.kind === "cohorts";
   const isPaths = spec?.kind === "paths";
 
-  const { dataset, datasetQuery } = query;
+  // A row per cohort even when the chart shows their average. When the chart
+  // shows each cohort, the SQL is the same and the result comes from the cache.
+  const cohortTableSpec = useMemo(
+    (): AnalysisSpec | undefined =>
+      spec?.kind === "cohorts"
+        ? { ...spec, output: { ...spec.output, cohortsLines: "each" } }
+        : undefined,
+    [spec],
+  );
+  const cohortTable = useAnalysisQuery({
+    spec: cohortTableSpec,
+    tableId,
+    base,
+  });
   const cohortsSeries = useMemo((): SingleSeries<UnsavedCard> | undefined => {
+    const { dataset, datasetQuery } = cohortTable;
     if (
-      spec?.kind !== "cohorts" ||
+      cohortTableSpec === undefined ||
       dataset?.data === undefined ||
       datasetQuery === undefined
     ) {
@@ -151,13 +158,13 @@ export const useSupportingAnalyses = ({
     }
     return {
       card: {
-        display: "line",
+        display: "cohort",
         dataset_query: datasetQuery,
-        visualization_settings: getRetentionCurvesSettings(spec),
+        visualization_settings: getCohortTableSettings(cohortTableSpec),
       },
-      data: getRetentionCurvesData(dataset.data, periodOf(spec)),
+      data: dataset.data,
     };
-  }, [spec, dataset, datasetQuery]);
+  }, [cohortTableSpec, cohortTable]);
 
   const insights = useInsights({
     spec,
@@ -250,8 +257,8 @@ export const useSupportingAnalyses = ({
     cohorts: isCohorts
       ? {
           series: cohortsSeries,
-          isLoading: query.isLoading,
-          error: query.error,
+          isLoading: cohortTable.isLoading,
+          error: cohortTable.error,
         }
       : undefined,
     insights: { insights, focus: insightsFocus, idleLabel: insightsIdleLabel },
