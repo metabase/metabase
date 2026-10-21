@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -155,6 +156,17 @@
           (is (= [(str marker "-2")]
                  (t2/select-fn-vec :error :model/QueryExecution :error [:like (str marker "%")])))
           (is (pos? (t2/count :model/User))))))))
+
+(deftest unavailable-app-db-does-not-retry-rows-test
+  (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
+            row: every retry would fail too, and could wait for a connection"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [query-processor.db/insert-query-executions!
+                                  (fn [_rows]
+                                    (swap! calls inc)
+                                    (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]
+        (#'process-userland-query/insert-query-executions-resiliently! [{:error "1"} {:error "2"} {:error "3"}])
+        (is (= 1 @calls))))))
 
 (deftest failure-test
   (let [query (mt/mbql-query venues)]

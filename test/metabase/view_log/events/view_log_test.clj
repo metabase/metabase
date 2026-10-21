@@ -17,6 +17,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.view-log.db :as view-log.db]
    [metabase.view-log.events.view-log :as events.view-log]
    [toucan2.core :as t2]))
 
@@ -254,6 +255,17 @@
                                                (view "embedding-sdk-react")])
             (is (= 3 (t2/count :model/ViewLog :model "card" :model_id model-id)))
             (is (pos? (t2/count :model/User)))))))))
+
+(deftest unavailable-app-db-does-not-retry-rows-test
+  (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
+            row: every retry would fail too, and could wait for a connection"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [view-log.db/insert-view-logs!
+                                  (fn [_views]
+                                    (swap! calls inc)
+                                    (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]
+        (#'events.view-log/record-views!* [{:model "card"} {:model "card"} {:model "card"}])
+        (is (= 1 @calls))))))
 
 (deftest increment-view-counts!*-test
   (mt/with-temp [:model/Card  {card-1-id :id} {}

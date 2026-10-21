@@ -12,6 +12,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
@@ -48,18 +49,22 @@
 (defn- insert-query-executions-resiliently!
   "Insert a batch of QueryExecutions in one statement. The batch is one transaction, so a single row the app DB
   rejects (e.g. an overlong value in a narrow column) would discard every row in it: on failure, retry the rows one
-  at a time so only the bad row is lost."
+  at a time so only the bad row is lost. Any other failure (e.g. the app DB is down) would fail every retry too, each
+  possibly waiting for a connection, so then the batch is dropped."
   [query-executions]
   (try
     (query-processor.db/insert-query-executions! query-executions)
     (catch Throwable e
-      (log/warnf "Error saving %d QueryExecution(s) as a batch, retrying individually: %s"
-                 (count query-executions) (ex-message e))
-      (doseq [query-execution query-executions]
-        (try
-          (query-processor.db/insert-query-executions! [query-execution])
-          (catch Throwable e
-            (log/errorf "Error saving query execution info: %s" (ex-message e))))))))
+      (if (sql-errors/row-rejected? e)
+        (do
+          (log/warnf "Error saving %d QueryExecution(s) as a batch, retrying individually: %s"
+                     (count query-executions) (ex-message e))
+          (doseq [query-execution query-executions]
+            (try
+              (query-processor.db/insert-query-executions! [query-execution])
+              (catch Throwable e
+                (log/errorf "Error saving query execution info: %s" (ex-message e))))))
+        (log/errorf "Error saving %d QueryExecution(s): %s" (count query-executions) (ex-message e))))))
 
 (defn- save-execution-metadata!*
   "Save a batch of `QueryExecution`s and update the average execution times for the corresponding `Query`s."
