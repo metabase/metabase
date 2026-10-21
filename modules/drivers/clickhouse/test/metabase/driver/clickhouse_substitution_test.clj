@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -9,6 +10,8 @@
    [metabase.util :as u]
    [schema.core :as s])
   (:import (java.time Clock LocalDate LocalDateTime)))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

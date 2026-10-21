@@ -31,6 +31,8 @@
    (com.clickhouse.jdbc ConnectionImpl)
    (java.sql Connection)))
 
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
+
 (set! *warn-on-reflection* true)
 
 (deftest default-schema-test

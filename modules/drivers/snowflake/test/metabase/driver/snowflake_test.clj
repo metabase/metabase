@@ -65,6 +65,8 @@
    (org.bouncycastle.openssl PKCS8Generator)
    (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
+
 (set! *warn-on-reflection* true)
 
 (deftest default-schema-test

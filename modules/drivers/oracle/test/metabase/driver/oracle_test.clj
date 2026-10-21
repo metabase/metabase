@@ -47,6 +47,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
+
 (set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]

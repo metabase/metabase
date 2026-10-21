@@ -51,7 +51,8 @@
           (is (= schema
                  (driver.sql/default-schema :redshift database))))))))
 
-(use-fixtures :once (fixtures/initialize :plugins))
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel correct-driver-test
