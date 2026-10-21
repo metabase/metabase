@@ -625,7 +625,9 @@
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
           documents      (->> (metabot.db/documents-in-collection coll-id)
                               (filter mi/can-read?))
-          subcollections (->> (metabot.db/unarchived-collections-at-location (child-collection-location coll))
+          subcollections (->> (if (= id-str "root")
+                                (metabot.db/navigable-collections false)
+                                (metabot.db/unarchived-collections-at-location (child-collection-location coll)))
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -635,7 +637,9 @@
 
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll    (readable-collection id-str)
-        subs    (->> (metabot.db/unarchived-collections-at-location (child-collection-location coll))
+        subs    (->> (if (= id-str "root")
+                       (metabot.db/navigable-collections false)
+                       (metabot.db/unarchived-collections-at-location (child-collection-location coll)))
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))

@@ -2009,6 +2009,25 @@
         (doseq [suffix ["" "/items" "/subcollections"]]
           (is (error? (read-uris {:uris [(str "metabase://collection/root" suffix)]}))))))))
 
+(deftest root-navigation-excludes-other-namespaces-and-trash-test
+  (mt/with-temp [:model/Collection {root-id :id} {:name "Default root" :location "/"}
+                 :model/Collection {child-id :id} {:name "Nested child" :location (str "/" root-id "/")}
+                 :model/Collection _ {:name "Snippet root" :namespace "snippets" :location "/"}
+                 :model/Collection _ {:name "Archived root" :archived true :location "/"}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [collection-ids (fn [uri]
+                             (->> (read-uris {:uris [uri]})
+                                  :resources first :content :structured-output :items
+                                  (filter #(= "collection" (:type %)))
+                                  (map :id)
+                                  set))
+            expected (collection-ids "metabase://collections")]
+        (is (contains? expected root-id))
+        (doseq [suffix ["/items" "/subcollections"]]
+          (is (= expected (collection-ids (str "metabase://collection/root" suffix))))
+          (doseq [suffix ["/items" "/subcollections"]]
+            (is (= #{child-id} (collection-ids (str "metabase://collection/" root-id suffix))))))))))
+
 (deftest ^:parallel document-numeric-id-test
   (let [uri "metabase://document/not-a-number"
         error (-> (read-uris {:uris [uri]}) :resources first :error)]
