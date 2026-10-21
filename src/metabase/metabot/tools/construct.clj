@@ -667,11 +667,8 @@
 (defn- as-agent-input-error
   "Return database failures unchanged; wrap other exceptions as agent-input errors.
 
-  Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
-  HTTP callers additionally need a status code; default representation/repair failures to
-  400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
-  Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+  The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
+  callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
   (if (database-error? e)
     e

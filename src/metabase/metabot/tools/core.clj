@@ -487,10 +487,7 @@
       (let [{:keys [agent-error? status-code error entity-type entity-id]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
-          ;; `:agent-error?` *and* an `:error` key. The pipeline's `as-agent-input-error` stamps
-          ;; `:agent-error?` onto foreign exceptions from lib as well, and those
-          ;; messages are not authored for anyone — only an `:error` code says "this sentence was
-          ;; written for a model".
+          ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
            code
