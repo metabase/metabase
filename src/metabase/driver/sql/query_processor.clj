@@ -2045,7 +2045,7 @@
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
   ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
-  ;; A cross-DB rewriter can fill it to route the
+  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
   ;; query at a database different from the connection's bound one. The
   ;; identifier helper drops nil components, so absent `:db` produces the same
   ;; `schema.table` shape as before.
@@ -2423,8 +2423,9 @@
 (defmethod driver/compile-transform :sql
   [driver {:keys [query output-db output-table]}]
   (let [{sql-query :query sql-params :params} query
-        ;; If `:output-db` is populated, qualify the output table with that DB
-        ;; so the CTAS lands in that database. The target namespace lives at the
+        ;; If the workspace remap populated `:output-db`, qualify the output
+        ;; table with that DB so the CTAS lands in the iso database. Used by
+        ;; MySQL workspace transforms today — the iso namespace lives at the
         ;; AST `:db` position and the canonical `output-table` is bare.
         ;;
         ;; 3-part `db.schema.name` writes (Snowflake / SQL Server / BigQuery

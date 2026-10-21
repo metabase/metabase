@@ -10,6 +10,10 @@
    [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   ;; Side-effects: registers BigQuery driver multimethods for workspace
+   ;; isolation (`init-workspace-isolation!`, `grant-workspace-read-access!`,
+   ;; `destroy-workspace-isolation!`).
+   [metabase.driver.bigquery-cloud-sdk.workspaces]
    [metabase.driver.common :as driver.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
@@ -34,6 +38,7 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
+   (com.google.auth.oauth2 ImpersonatedCredentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
@@ -112,7 +117,21 @@
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
-        creds        (.createScoped base-creds bigquery-scopes)
+        ;; Check if we should impersonate a different service account
+        ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
+        ;; so the 1-hour lifetime is just the initial token validity period.
+        ;; Each query creates a fresh client, and the credentials handle refresh internally.
+        impersonating? (some? (:impersonate-service-account details))
+        final-creds  (if impersonating?
+                       (let [target-sa (:impersonate-service-account details)]
+                         (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
+                         (ImpersonatedCredentials/create
+                          (.createScoped base-creds bigquery-scopes)
+                          target-sa
+                          nil  ;; delegates (not needed)
+                          (java.util.ArrayList. bigquery-scopes)
+                          3600))  ;; 1 hour token lifetime
+                       (.createScoped base-creds bigquery-scopes))
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -126,11 +145,21 @@
                               (.setReadTimeout read-timeout-ms)
                               (.build))
         bq-bldr      (doto (BigQueryOptions/newBuilder)
-                       (.setCredentials creds)
+                       (.setCredentials final-creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
+    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
+    ;; from the impersonation target SA, not from a key file), so the Google SDK
+    ;; would throw "A project ID is required for this service but could not be
+    ;; determined from the builder or the environment" when building the client.
+    ;; Fall back to the base SA's project id, which is what every non-impersonated
+    ;; call site is implicitly relying on through `getOptions.getProjectId`.
+    (when impersonating?
+      (when-let [pid (or (:project-id details)
+                         (.getProjectId base-creds))]
+        (.setProjectId bq-bldr ^String pid)))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
     (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
@@ -1147,7 +1176,10 @@
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
-                              :transforms/testing               false}]
+                              :transforms/testing               false
+                              ;; Workspace isolation using service account impersonation
+                              ;; Tearing down workspaces is not working right currently
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
@@ -1516,6 +1548,8 @@
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
   ;; Check if dataset exists using the BigQuery API before trying to create.
+  ;; This is important for workspace isolation where the impersonated SA has
+  ;; access to an existing isolated dataset but cannot create new datasets.
   (let [client     (database-details->client conn-spec) ;; for bigquery, connection spec *is* the details
         project-id (bigquery.common/get-project-id conn-spec)
         dataset-id (DatasetId/of project-id schema)]
@@ -1537,6 +1571,16 @@
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; BigQuery workspace isolation uses service account impersonation instead of SQL GRANT statements.
+;;; Each workspace gets its own service account (created automatically) with table-level read permissions.
+;;;
+;;; Required GCP setup for the main service account:
+;;; - Roles: `roles/bigquery.admin`, `roles/iam.serviceAccountAdmin`, `roles/resourcemanager.projectIamAdmin`
+;;; - APIs: `bigquery.googleapis.com`, `iam.googleapis.com`, `cloudresourcemanager.googleapis.com`
 
 (defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
   "metabot/prompts/dialects/bigquery.md")

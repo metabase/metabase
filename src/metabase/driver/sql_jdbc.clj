@@ -448,3 +448,9 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
+
+(defmethod driver/workspace-isolation-details :sql-jdbc
+  [_driver _database workspace]
+  {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+   :database_details {:user     (driver.u/workspace-isolation-user-name workspace)
+                      :password (driver.u/random-workspace-password)}})
