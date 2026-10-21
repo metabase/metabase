@@ -2822,6 +2822,208 @@
                                               :email "crowberto@metabase.com"}}}]}
                       response)))))))))
 
+(deftest counts-access-test
+  (testing "Dependency counts require authentication and the dependencies feature"
+    (mt/with-premium-features #{:dependencies}
+      (is (= "Unauthenticated" (mt/client :get 401 "ee/dependencies/counts"))))
+    (mt/with-premium-features #{}
+      (is (some? (mt/user-http-request :crowberto :get 402 "ee/dependencies/counts"))))))
+
+(def ^:private monitor-list-params
+  "The params the Monitor's Broken and Unreferenced tables send by default."
+  {:breaking     {:types                        ["table" "card" "transform"]
+                  :card-types                   ["question" "model"]
+                  :include-personal-collections true}
+   :unreferenced {:types                        ["table" "card" "segment" "measure" "snippet"]
+                  :card-types                   ["question" "model" "metric"]
+                  :include-personal-collections true}})
+
+(defn- list-total
+  "The `total` of the `query-type` list endpoint for `list-params`, plus any extra `params`."
+  [user query-type list-params & params]
+  (:total (apply mt/user-http-request user :get 200 (str "ee/dependencies/graph/" (name query-type))
+                 (concat (mapcat identity list-params) params))))
+
+(defn- default-dependency-list-total
+  [user query-type & params]
+  (apply list-total user query-type (monitor-list-params query-type) params))
+
+(defn- counts
+  "`/counts` for `list-params-by-type`, sending each list's params prefixed with its query type."
+  [user list-params-by-type]
+  (apply mt/user-http-request user :get 200 "ee/dependencies/counts"
+         (for [[query-type list-params] list-params-by-type
+               [k v] list-params
+               x [(keyword (str (name query-type) "-" (name k))) v]]
+           x)))
+
+(defn- monitor-counts
+  [user]
+  (counts user monitor-list-params))
+
+(deftest ^:synchronized counts-unreferenced-test
+  (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
+    (let [baseline (default-dependency-list-total :crowberto :unreferenced)]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Collection {personal-child-id :id}
+                     {:location (format "/%d/" (personal-collection-id user-id))}
+                     :model/Card {dependent-id :id} {}
+                     :model/Card {referenced-id :id} {}
+                     :model/Dependency _ {:from_entity_type :card :from_entity_id dependent-id
+                                          :to_entity_type :card :to_entity_id referenced-id}
+                     :model/Table _ {}
+                     :model/Transform _ {}
+                     :model/NativeQuerySnippet _ {}
+                     :model/Dashboard _ {}
+                     :model/Document _ {}
+                     :model/Segment _ {}
+                     :model/Measure _ {}
+                     :model/Card _ {:archived true}
+                     :model/Card _ {:collection_id (personal-collection-id user-id)}
+                     :model/Dashboard _ {:collection_id personal-child-id}]
+        (testing "Counts include the UI's default entity types and personal items, but not archived items"
+          (is (= (+ baseline 6)
+                 (:unreferenced (monitor-counts :crowberto)))))))))
+
+(deftest ^:synchronized counts-params-test
+  (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
+    (let [cases [[{:types ["card"] :card-types ["question"]} 1]
+                 [{:types ["table"]} 1]
+                 [{:types ["card"] :include-personal-collections true} 3]
+                 [{:types ["card"] :include-personal-collections false} 2]]
+          baseline-breaking (list-total :crowberto :breaking (monitor-list-params :breaking))
+          baselines (mapv #(list-total :crowberto :unreferenced (first %)) cases)
+          baseline-defaults {:breaking     (list-total :crowberto :breaking {})
+                             :unreferenced (list-total :crowberto :unreferenced {})}]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Card _ {:type :question}
+                     :model/Card _ {:type :model}
+                     :model/Table _ {}
+                     :model/Card _ {:type :question :collection_id (personal-collection-id user-id)}]
+        (testing "Each list is counted with its own prefixed params"
+          (doseq [[[unreferenced-params increment] baseline] (map vector cases baselines)]
+            (testing (pr-str unreferenced-params)
+              (is (= {:breaking baseline-breaking :unreferenced (+ baseline increment)}
+                     (counts :crowberto {:breaking     (monitor-list-params :breaking)
+                                         :unreferenced unreferenced-params}))))))
+        (testing "Omitted params use the list endpoints' defaults: all unreferenced types, no personal items"
+          (is (= {:breaking     (:breaking baseline-defaults)
+                  :unreferenced (+ (:unreferenced baseline-defaults) 3)}
+                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/counts"))))))))
+
+(deftest ^:synchronized counts-breaking-sources-test
+  (mt/with-premium-features #{:dependencies}
+    (let [baseline (default-dependency-list-total :crowberto :breaking)]
+      (mt/with-temp [:model/Card {source-id :id} {:archived true}
+                     :model/Table {table-id :id} {}
+                     :model/Card {dependent-a-id :id} {}
+                     :model/Card {dependent-b-id :id} {}
+                     :model/Card {archived-dependent-id :id} {:archived true}
+                     :model/Card {archived-only-source-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/Card {personal-source-id :id} {:collection_id (personal-collection-id user-id)}
+                     :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                    :analyzed_entity_id dependent-a-id
+                                                    :source_entity_type :card :source_entity_id source-id
+                                                    :error_type :missing-column :error_detail "column-a"}
+                     :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                    :analyzed_entity_id dependent-a-id
+                                                    :source_entity_type :card :source_entity_id source-id
+                                                    :error_type :missing-column :error_detail "column-b"}
+                     :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                    :analyzed_entity_id dependent-b-id
+                                                    :source_entity_type :card :source_entity_id source-id
+                                                    :error_type :missing-column}
+                     :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                    :analyzed_entity_id dependent-a-id
+                                                    :source_entity_type :table :source_entity_id table-id
+                                                    :error_type :missing-column}
+                     :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                    :analyzed_entity_id archived-dependent-id
+                                                    :source_entity_type :card :source_entity_id archived-only-source-id
+                                                    :error_type :missing-column}
+                     :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                    :analyzed_entity_id dependent-a-id
+                                                    :source_entity_type :card :source_entity_id personal-source-id
+                                                    :error_type :missing-column}]
+        (testing "Counts sources, including personal and archived sources still causing errors"
+          (is (= (+ baseline 3)
+                 (:breaking (monitor-counts :crowberto)))))
+        (testing "The count agrees with the default table total, including when the table is paginated"
+          (is (= (+ baseline 3)
+                 (default-dependency-list-total :crowberto :breaking :limit 1))))))))
+
+(deftest ^:synchronized counts-unreferenced-default-types-test
+  (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
+    (let [baseline (default-dependency-list-total :crowberto :unreferenced)]
+      (doseq [[model attrs increment] [[:model/Card {:type :question} 1]
+                                       [:model/Card {:type :model} 1]
+                                       [:model/Card {:type :metric} 1]
+                                       [:model/Table {} 1]
+                                       [:model/Segment {} 1]
+                                       [:model/Measure {} 1]
+                                       [:model/NativeQuerySnippet {} 1]
+                                       [:model/Transform {} 0]
+                                       [:model/Dashboard {} 0]
+                                       [:model/Document {} 0]]]
+        (testing (str model " " attrs)
+          (mt/with-temp [model _ attrs]
+            (is (= (+ baseline increment)
+                   (default-dependency-list-total :crowberto :unreferenced :limit 1)))
+            (is (= (+ baseline increment)
+                   (:unreferenced (monitor-counts :crowberto))))))))))
+
+(deftest ^:synchronized counts-breaking-default-types-test
+  (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
+    (let [baseline (default-dependency-list-total :crowberto :breaking)]
+      (doseq [[model attrs entity-type increment] [[:model/Card {:type :question} :card 1]
+                                                   [:model/Card {:type :model} :card 1]
+                                                   [:model/Card {:type :metric} :card 0]
+                                                   [:model/Table {} :table 1]
+                                                   [:model/Transform {} :transform 1]
+                                                   [:model/Dashboard {} :dashboard 0]
+                                                   [:model/Document {} :document 0]]]
+        (testing (str model " " attrs)
+          (mt/with-temp [model {source-id :id} attrs
+                         :model/Card {dependent-id :id} {}
+                         :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                        :analyzed_entity_id dependent-id
+                                                        :source_entity_type entity-type
+                                                        :source_entity_id source-id
+                                                        :error_type :missing-column}]
+            (is (= (+ baseline increment)
+                   (default-dependency-list-total :crowberto :breaking :limit 1)))
+            (is (= (+ baseline increment)
+                   (:breaking (monitor-counts :crowberto))))))))))
+
+(deftest ^:synchronized counts-visibility-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [baseline-unreferenced (default-dependency-list-total :rasta :unreferenced)
+            baseline-breaking (default-dependency-list-total :rasta :breaking)]
+        (mt/with-temp [:model/Collection visible-collection {}
+                       :model/Collection hidden-collection {}
+                       :model/Card {visible-source-id :id} {:collection_id (:id visible-collection)}
+                       :model/Card {visible-dependent-id :id} {:collection_id (:id visible-collection)}
+                       :model/Card {hidden-source-id :id} {:collection_id (:id hidden-collection)}
+                       :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                      :analyzed_entity_id visible-dependent-id
+                                                      :source_entity_type :card :source_entity_id visible-source-id
+                                                      :error_type :missing-column}
+                       :model/AnalysisFindingError _ {:analyzed_entity_type :card
+                                                      :analyzed_entity_id visible-dependent-id
+                                                      :source_entity_type :card :source_entity_id hidden-source-id
+                                                      :error_type :missing-column}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
+          (testing "Non-admin counts are restricted to readable sources and items"
+            (is (= {:breaking (inc baseline-breaking) :unreferenced (+ baseline-unreferenced 2)}
+                   (monitor-counts :rasta))))
+          (perms/revoke-collection-permissions! (perms/all-users-group) visible-collection)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) hidden-collection)
+          (testing "A readable source is not breaking if its only broken dependent is unreadable"
+            (is (= {:breaking baseline-breaking :unreferenced (inc baseline-unreferenced)}
+                   (monitor-counts :rasta)))))))))
+
 (deftest data-analyst-can-access-dependency-graph-test
   (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"

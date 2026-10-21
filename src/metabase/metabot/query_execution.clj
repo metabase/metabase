@@ -35,7 +35,8 @@
   (ex-info (tru "Query timed out: it did not finish within {0} seconds. A narrower query may finish in time."
                 (quot timeout-ms 1000))
            {:agent-error? true
-            :error        :query-timed-out}))
+            :error        :query-timed-out
+            :timeout-ms   timeout-ms}))
 
 (defonce ^:private time-limit-executor
   (delay
@@ -130,7 +131,7 @@
    - `:request-canceled-chan`, a promise channel that receives a value when the request being served is canceled.
      The error is `:query-canceled`.
    - `:timeout-ms`, a time limit for the run. The database query timeout still applies when it is shorter.
-     The error is `:query-timed-out`."
+     The error is `:query-timed-out`, with the shorter of the two limits as `:timeout-ms`."
   ([serialized-query row-limit context]
    (execute-page! serialized-query row-limit context nil))
   ([serialized-query row-limit context options]
