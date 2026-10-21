@@ -197,7 +197,7 @@
                                       (str/join ", " (repeat (count block-ids) "?")))
                               deployment-id]
                              block-ids))
-        (versions/record-deployment-version! conn deployment-id (format "x.%d.0.0" major) true)))
+        (versions/record-deployment-version! conn deployment-id (versions/major->version major) true)))
     (jdbc/execute! {:connection conn}
                    [(format "DELETE FROM %s WHERE deployment_id NOT IN (SELECT DISTINCT deployment_id FROM %s WHERE deployment_id IS NOT NULL)"
                             (versions/versions-table-name)

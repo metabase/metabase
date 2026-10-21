@@ -359,13 +359,13 @@
               (with-redefs [config/mb-version-info (tag (format "v0.%d.0" (inc pre-major)))]
                 (testing "migrate up records both the backfilled pre-upgrade version and the upgrade's own version"
                   (mdb/migrate! (mdb/data-source) :up)
-                  (is (= (format "x.%d.0.0" pre-major) (first (versions-recorded))))
+                  (is (= (versions/major->version pre-major) (first (versions-recorded))))
                   (is (= (format "x.%d.0" (inc pre-major)) (last (versions-recorded)))))
                 (testing "migrate down (default) rolls the upgrade back"
                   (mdb/migrate! (mdb/data-source) :down)
                   (is (empty? (jdbc/query {:datasource (mdb/data-source)} [(format "SELECT 1 FROM %s WHERE id = ?" ct) last-id]))
                       "the upgrade's changeset was rolled back")
-                  (is (= (format "x.%d.0.0" pre-major) (first (versions-recorded))))
+                  (is (= (versions/major->version pre-major) (first (versions-recorded))))
                   (is (not-any? #{(format "x.%d.0" (inc pre-major))} (versions-recorded))
                       "the upgrade's version row was removed"))))))))))
 
@@ -407,7 +407,7 @@
             (versions/ensure-version-tracking! conn db)
             (doseq [major [66 67 68]
                     :let [dep (str "d" major)]]
-              (mdb.test-util/fabricate-history! conn ct [{:deployment dep :ran (format "x.%d.0.0" major) :changesets [(str "c" major)]}])
+              (mdb.test-util/fabricate-history! conn ct [{:deployment dep :ran (versions/major->version major) :changesets [(str "c" major)]}])
               (versions/record-legacy-version-tracking! db major dep))
             (is (= ["v66.legacy-version-tracking" "v67.legacy-version-tracking" "v68.legacy-version-tracking"] (markers)))
             (is (= 68 (versions/latest-applied-major-version conn db)) "older binaries see 68 before the downgrade")
@@ -777,6 +777,17 @@
           (is (nil? (row-of "always_base")))
           (is (= ["x.65.0"] (versions-recorded))))))))
 
+(defn- re-run-into!
+  "Move changeset `id`'s changelog row into `deployment-id` as Liquibase does when it re-runs it: exectype RERAN, at the
+  newest position. The newest `dateexecuted` is read through a derived table: MySQL refuses a subquery on the table an
+  UPDATE changes."
+  [conn changelog-table id deployment-id]
+  (jdbc/execute! {:connection conn}
+                 [(format (str "UPDATE %s SET exectype = 'RERAN', deployment_id = ?, orderexecuted = orderexecuted + 100, "
+                               "dateexecuted = (SELECT m FROM (SELECT MAX(dateexecuted) AS m FROM %s) newest) WHERE id = ?")
+                          changelog-table changelog-table)
+                  deployment-id id]))
+
 (deftest rollback-keeps-re-runs-first-run-by-an-emptied-deployment-test
   (testing "a deployment whose only changeset re-ran later still holds where it first ran: an old 64 binary that re-ran
             a 64 view on its own, then 67 re-ran it, then `migrate down` to 64 keeps the view"
@@ -791,11 +802,7 @@
             (doseq [statement (#'versions/first-run-statements conn db ["synthetic.yaml" "test" "view64"])]
               (jdbc/execute! {:connection conn} statement))
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d67" :ran "x.67.1" :changesets ["c67"]}])
-            (jdbc/execute! {:connection conn}
-                           [(format (str "UPDATE %s SET exectype = 'RERAN', deployment_id = 'd67', dateexecuted = "
-                                         "(SELECT MAX(dateexecuted) FROM %s), orderexecuted = orderexecuted + 100 "
-                                         "WHERE id = 'view64'")
-                                    ct ct)])
+            (re-run-into! conn ct "view64" "d67")
             (is (= #{"d64" "d67"} (changelog-deployments conn ct)) "sanity: d64b has no changelog rows left")
             (with-redefs [config/mb-version-info (tag "v0.67.1")]
               (rollback/rollback-major-version! conn liquibase false "64"))
@@ -841,11 +848,7 @@
                     statement (#'versions/first-run-statements conn db [filename "test" "same_view"])]
               (jdbc/execute! {:connection conn} statement))
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d651" :ran "x.65.1" :changesets ["new651"]}])
-            (jdbc/execute! {:connection conn}
-                           [(format (str "UPDATE %s SET exectype = 'RERAN', deployment_id = 'd651', dateexecuted = "
-                                         "(SELECT MAX(dateexecuted) FROM %s), orderexecuted = orderexecuted + 100 "
-                                         "WHERE id = 'same_view'")
-                                    ct ct)])
+            (re-run-into! conn ct "same_view" "d651")
             (with-redefs [config/mb-version-info (tag "v0.65.1")]
               (rollback/rollback-major-version! conn liquibase false "64"))
             (is (= "d64" (:deployment_id (row-in "a.yaml"))) "the view that first ran in 64 is kept")

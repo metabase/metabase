@@ -45,12 +45,17 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- postgres?
+  "Whether the application database is Postgres."
+  []
+  (= :postgres (mdb.connection/db-type)))
+
 (defn versions-table-name
   "Name of the table that records the Metabase version associated with each Liquibase `deployment_id`, cased like
   Liquibase's own `DATABASECHANGELOG` on the application database (upper case on H2 and MySQL, where MySQL table names
   can be case-sensitive; lower case on Postgres)."
   ^String []
-  (if (= :postgres (mdb.connection/db-type))
+  (if (postgres?)
     "databasechangelog_version"
     "DATABASECHANGELOG_VERSION"))
 
@@ -74,7 +79,7 @@
   "Name of the table that records where each re-run changeset first ran (see [[record-first-run!]]), cased like
   [[versions-table-name]]."
   ^String []
-  (if (= :postgres (mdb.connection/db-type))
+  (if (postgres?)
     "databasechangelog_first_run"
     "DATABASECHANGELOG_FIRST_RUN"))
 
@@ -103,6 +108,12 @@
   [version]
   (some-> (re-find #"^x\.(\d+)" (str version)) second parse-long))
 
+(defn major->version
+  "The version string recorded for major `major` when no exact version is known, e.g. `x.55.0.0` for 55: what the
+  backfill and the repairs record, and what development builds record. The inverse of [[version->major]]."
+  [major]
+  (format "x.%d.0.0" major))
+
 (defn- version-numbers
   "The leading dotted numbers of a recorded version string, e.g. `[65 5 1]` for `x.65.5.1` and `[66 0]` for
   `x.66.0-RC2`; nil when it has none."
@@ -130,7 +141,7 @@
   boot-time downgrade check and `migrate down` -- refuse a schema whose newest deployment is a dev one and point at the
   development tooling, which tells deployments apart by `deployment_id` instead (see
   [[metabase.app-db.liquibase.rollback/rollback-to-deployment!]] and `dev.migrate/rollback!`)."
-  (format "x.%d.0.0" dev-major))
+  (major->version dev-major))
 
 (defn synthetic-dev-major?
   "Whether `major` is the development major ([[dev-major]]) rather than a real released version."
@@ -332,7 +343,7 @@
   [^Connection conn ^Database database]
   (let [rows       (query conn [(format "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted, exectype FROM %s"
                                         (changelog-table database))])
-        first-runs (first-runs conn)
+        first-run  (first-runs conn)
         positions  (reduce (fn [positions {:keys [deployment_id] :as row}]
                              (let [pos (exec-pos row)]
                                (cond-> positions
@@ -344,7 +355,7 @@
                            (concat rows
                                    (keep (fn [{:keys [filename author id exectype]}]
                                            (when (= "RERAN" (some-> exectype u/upper-case-en))
-                                             (first-runs [filename author id])))
+                                             (first-run [filename author id])))
                                          rows)))
         ;; `migrate print` reads this before the table exists: nothing is recorded yet
         by-dep    (if (versions-table-exists? conn)
@@ -776,7 +787,7 @@
   [^Connection conn ^Database database]
   (let [major (highest-legacy-major conn database)]
     (when (pos? major)
-      (format "x.%d.0.0" major))))
+      (major->version major))))
 
 (defn- legacy-major-at
   "Fn of a [[recorded-deployments]] entry's `:position`: the highest real (non-marker) `vNN.` major among the rows
@@ -808,7 +819,7 @@
             (for [{:keys [deployment-id position]} (cond-> untracked (empty? tracked) rest)
                   :let [major (major-at position)]
                   :when (pos? major)]
-              [deployment-id (format "x.%d.0.0" major)]))))
+              [deployment-id (major->version major)]))))
 
 (defn- backfill-untracked-deployments!
   "Record the [[backfill-versions]] as ran rows."
@@ -844,14 +855,14 @@
             versioned      (into #{} (comp (filter (comp position-deps :deployment-id)) (map :ran-major)) candidates)]
         (doseq [{:keys [deployment-id ran-version ran-major]} candidates
                 :when (versioned ran-major)]
-          (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as x.%d.0.0"
-                     deployment-id ran-version highest highest)
+          (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as %s"
+                     deployment-id ran-version highest (major->version highest))
           (doseq [{:keys [id metabase_version]} (query conn [(format "SELECT id, metabase_version FROM %s WHERE deployment_id = ?"
                                                                      (versions-table-name))
                                                              deployment-id])
                   :when (> (version->major metabase_version) highest)]
             (execute! conn [(format "DELETE FROM %s WHERE id = ?" (versions-table-name)) id]))
-          (record-deployment-version! conn deployment-id (format "x.%d.0.0" highest) true))))))
+          (record-deployment-version! conn deployment-id (major->version highest) true))))))
 
 (defn- newest-row-safe-for-old-binaries?
   "Whether a binary from before version-less support picks the right changelog from this database: none of the rows
@@ -871,7 +882,7 @@
   on Postgres a savepoint keeps that failure from aborting the caller's transaction."
   [^Connection conn table-name ddl]
   (when-not (table-exists? table-name conn)
-    (let [savepoint (when (and (= :postgres (mdb.connection/db-type)) (not (.getAutoCommit conn)))
+    (let [savepoint (when (and (postgres?) (not (.getAutoCommit conn)))
                       (.setSavepoint conn))]
       (try
         (execute-ddl! conn ddl)
@@ -939,7 +950,7 @@
                  (or (empty? marker-majors) stale-marker?)
                  (not-any? (comp version-less-id? :id)
                            deployment-rows))
-        (let [version (format "x.%d.0.0" major)]
+        (let [version (major->version major)]
           (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as %s"
                      deployment-id ran major version)
           (doseq [{:keys [id metabase_version]} (query conn [(format "SELECT id, metabase_version FROM %s WHERE deployment_id = ?"

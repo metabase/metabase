@@ -153,7 +153,7 @@
         (let [db              (.getDatabase liquibase)
               changelog-table (liquibase/changelog-table-name liquibase)
               latest          (highest-versioned-major liquibase)
-              backfilled      (format "x.%d.0.0" latest)]
+              backfilled      (versions/major->version latest)]
           ;; migrate as a pre-tracking binary would have, attributing the changesets to a *previous* process so the
           ;; deployment differs from this JVM's Liquibase deployment id
           (migrate-without-recording! liquibase)
@@ -196,7 +196,7 @@
       (liquibase/with-liquibase [liquibase conn]
         (let [db              (.getDatabase liquibase)
               changelog-table (liquibase/changelog-table-name liquibase)
-              latest          (format "x.%d.0.0" (highest-versioned-major liquibase))]
+              latest          (versions/major->version (highest-versioned-major liquibase))]
           (migrate-without-recording! liquibase)
           ;; an existing instance with no recorded versions, split across two deployments by execution position (not
           ;; by id: the most recent changesets may be version-less, which carry no major in their id)
@@ -227,7 +227,7 @@
         (liquibase/with-liquibase [liquibase conn]
           (let [db              (.getDatabase liquibase)
                 changelog-table (liquibase/changelog-table-name liquibase)
-                latest          (format "x.%d.0.0" (highest-versioned-major liquibase))]
+                latest          (versions/major->version (highest-versioned-major liquibase))]
             (migrate-without-recording! liquibase)
             (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'main'" changelog-table)])
             ;; a back-ported patch: a much lower-version changeset that EXECUTED LAST, in its own deployment
