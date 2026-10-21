@@ -397,7 +397,10 @@ describe("TablePicker", () => {
           ...FOO_RESULT,
           visibility_type: visibilityType,
         });
-        const { onChange } = setup({ searchTables: [table] });
+        const { onChange } = setup({
+          databases: [...MOCK_DATABASES, DATABASE],
+          searchTables: [table],
+        });
 
         fetchMock.modifyRoute("table-search", {
           response: () => [table],
@@ -442,6 +445,7 @@ describe("TablePicker", () => {
 
     it("should filter the tree based on the search input", async () => {
       const { onChange } = setup({
+        databases: [...MOCK_DATABASES, DATABASE],
         searchTables: SEARCH_RESULTS,
       });
 
@@ -461,6 +465,42 @@ describe("TablePicker", () => {
       });
     });
 
+    it("should exclude search results from databases absent from the metadata tree", async () => {
+      const auditDatabase = createMockDatabase({
+        id: nextId(),
+        name: "Instance Analytics",
+      });
+      const allowedTable = createMockTable({
+        ...FOO_RESULT,
+        name: "audit_events",
+        display_name: "Audit Events",
+      });
+      const excludedTable = createMockTable({
+        id: nextId(),
+        name: "v_audit_log",
+        display_name: "V Audit Log",
+        db_id: auditDatabase.id,
+        db: auditDatabase,
+        initial_sync_status: "complete",
+      });
+      setup({
+        databases: [...MOCK_DATABASES, DATABASE],
+        searchTables: [allowedTable, excludedTable],
+      });
+
+      await userEvent.type(searchInput(), "audit");
+
+      expect(
+        await screen.findByText(allowedTable.display_name),
+      ).toBeInTheDocument();
+      expect(item(DATABASE)).toBeInTheDocument();
+      expect(item(auditDatabase)).not.toBeInTheDocument();
+      expect(item(excludedTable)).not.toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: "Hide table" }),
+      ).toHaveLength(1);
+    });
+
     it("should render a message when no results are found", async () => {
       setup();
 
@@ -471,6 +511,7 @@ describe("TablePicker", () => {
 
     it("should be possible to use the keyboard to select items in the search results", async () => {
       const { onChange } = setup({
+        databases: [...MOCK_DATABASES, DATABASE],
         searchTables: SEARCH_RESULTS,
       });
 
@@ -494,6 +535,7 @@ describe("TablePicker", () => {
 
     it("should not crash when pressing Enter with no item selected (metabase#63350)", async () => {
       const { onChange } = setup({
+        databases: [...MOCK_DATABASES, DATABASE],
         searchTables: SEARCH_RESULTS,
       });
 

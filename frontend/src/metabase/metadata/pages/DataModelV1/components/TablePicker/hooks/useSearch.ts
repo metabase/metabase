@@ -1,25 +1,38 @@
 import { useMemo } from "react";
 
-import { skipToken, useListTablesQuery } from "metabase/api";
+import {
+  skipToken,
+  useListDatabasesQuery,
+  useListTablesQuery,
+} from "metabase/api";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { isSyncCompleted } from "metabase/utils/syncing";
 
 import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
 import { node, rootNode } from "../utils";
 
 export function useSearch(query: string) {
-  const { data, isLoading } = useListTablesQuery(
+  const { data: tables, isLoading: isLoadingTables } = useListTablesQuery(
     query === ""
       ? skipToken
       : {
           term: query,
         },
   );
+  const { data: databases, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery(PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps);
 
   const tree = useMemo(() => {
     const tree: TreeNode = rootNode();
+    const allowedDatabaseIds = new Set(
+      databases?.data.map((database) => database.id),
+    );
 
-    data?.forEach((table) => {
+    tables?.forEach((table) => {
       const { db_id: database_id, id, display_name } = table;
+      if (!allowedDatabaseIds.has(database_id)) {
+        return;
+      }
       const tableSchema = table.schema ?? "";
 
       let databaseNode = tree.children.find(
@@ -71,10 +84,10 @@ export function useSearch(query: string) {
       }
     });
     return tree;
-  }, [data]);
+  }, [databases, tables]);
 
   return {
-    isLoading,
+    isLoading: isLoadingTables || isLoadingDatabases,
     tree,
   };
 }
