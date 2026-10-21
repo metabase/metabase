@@ -55,7 +55,7 @@
        :data-parts        [(streaming/viz-part
                             {:entity-id   (:chart-id result)
                              :query-id    (:query-id result)
-                             :query       (links/->legacy-mbql (:query result))
+                             :query       (links/->frontend-query (:query result))
                              :display     (:chart-type result)
                              :title       title
                              :description description})]})
@@ -101,7 +101,7 @@
        :data-parts [(streaming/viz-part
                      {:entity-id   (or (:chart_id new-chart-data) chart_id)
                       :query-id    (or (:query_id new-chart-data) (str (random-uuid)))
-                      :query       (links/->legacy-mbql query)
+                      :query       (links/->frontend-query query)
                       :display     new-viz
                       :title       title
                       :description description})]})

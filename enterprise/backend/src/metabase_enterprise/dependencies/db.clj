@@ -16,6 +16,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -274,8 +275,8 @@
 ;;; `entity_type`/`entity_id`/`sort_key` rows, then page and count that union. These private helpers build the
 ;;; per-entity-type SELECT and the pieces (joins, extra filters, sort expression) that make it up.
 
-(def ^:private DependencyItemParams
-  "Params shared by [[dependency-item-ids]] and [[dependency-item-count]]."
+(mr/def ::dependency-item-filter-params
+  "Filter params shared by [[dependency-item-ids]] and [[dependency-item-count]]."
   [:map {:closed true}
    [:query-type [:enum :unreferenced :breaking]]
    [:entity-types [:sequential ::deps.dependency-types/dependency-types]]
@@ -283,16 +284,25 @@
    [:search-text {:optional true} [:maybe :string]]
    [:include-personal-collections? :boolean]
    [:sort-column {:optional true} [:maybe [:enum :name :location :dependents-errors :dependents-with-errors]]]
-   [:sort-direction [:enum :asc :desc]]
-   [:offset ms/IntGreaterThanOrEqualToZero]
-   [:limit ms/PositiveInt]
    [:user-id ::lib.schema.id/user]
    [:is-superuser? {:optional true} [:maybe :boolean]]
    [:is-data-analyst? {:optional true} [:maybe :boolean]]])
 
+(mr/def ::dependency-item-page-params
+  "[[::dependency-item-filter-params]] plus the sort direction and page bounds for [[dependency-item-ids]]."
+  [:merge
+   ::dependency-item-filter-params
+   [:map {:closed true}
+    [:sort-direction [:enum :asc :desc]]
+    [:offset ms/IntGreaterThanOrEqualToZero]
+    [:limit ms/PositiveInt]]])
+
 (def ^:private DependencyItemSelectParams
-  "The [[DependencyItemParams]] of the SELECT of one `:entity-type`."
-  (mut/assoc DependencyItemParams :entity-type ::deps.dependency-types/dependency-types))
+  "The [[::dependency-item-filter-params]] of the SELECT of one `:entity-type`."
+  [:merge
+   ::dependency-item-filter-params
+   [:map {:closed true}
+    [:entity-type ::deps.dependency-types/dependency-types]]])
 
 (mu/defn- personal-root-collection-ids :- [:sequential ::lib.schema.id/collection]
   "The IDs of the personal Collections."
@@ -520,7 +530,10 @@
                                                                           location-column default-visible-restriction)
         all-joins (set/union joins sort-joins)
         item-visible-expr (edge-restriction-expr (name entity-type) :entity.id item-visible-restriction)
-        select-clause [[^:allow-raw-sql [:inline (name entity-type)] :entity_type]
+        ;; a plain string here compiles to a `?` parameter, and H2 can't work out the type of a parameter in the
+        ;; select list of a derived table -- `h2x/literal` emits a real quoted SQL literal instead. The value comes
+        ;; from the closed `dependency-types` enum, never from user input.
+        select-clause [[(h2x/literal (name entity-type)) :entity_type]
                        [:entity.id :entity_id]
                        [sort-expr :sort_key]]]
     ^:allow-subquery
@@ -536,8 +549,9 @@
   `:dependents-with-errors`) in `sort-direction`, skipping `offset` and returning up to `limit`. Entities are
   restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`; throws
   when `user-id` is missing."
-  [{:keys [entity-types sort-direction offset limit] :as params} :- DependencyItemParams]
-  (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
+  [{:keys [entity-types sort-direction offset limit] :as params} :- ::dependency-item-page-params]
+  (let [filter-params (dissoc params :sort-direction :offset :limit)
+        union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc filter-params :entity-type %))
                                                        entity-types)}]
     (->> (t2/query (assoc union-query
                           :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
@@ -548,7 +562,7 @@
 (mu/defn dependency-item-count
   "The total count of items matching the same criteria as [[dependency-item-ids]] (ignoring sort direction, offset,
   and limit); throws when `user-id` is missing."
-  [{:keys [entity-types] :as params} :- DependencyItemParams]
+  [{:keys [entity-types] :as params} :- ::dependency-item-filter-params]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
     (-> (t2/query {:select [[:%count.* :total]] :from [[union-query :subquery]]})

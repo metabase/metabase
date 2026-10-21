@@ -1086,6 +1086,32 @@
                                   {:uris [(str "metabase://question/" q-from-model-id "/sources")]})]
             (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
 
+(deftest metric-uris-refuse-a-question-or-a-model-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp       (mt/metadata-provider)
+          query    (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          field-id (mt/id :orders :quantity)]
+      (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
+                     :model/Card {model-id :id}    {:type :model :dataset_query query}]
+        (testing "the error identifies the card type and gives a resource URI that can be read"
+          (doseq [[card-type card-id]     [["question" question-id] ["model" model-id]]
+                  [metric-path card-path] [["" ""]
+                                           ["/dimensions" "/fields"]
+                                           [(str "/dimensions/" field-id) (str "/fields/" field-id)]]
+                  :let [card-uri (str "metabase://" card-type "/" card-id card-path)]]
+            (testing (str "metabase://metric/" card-id metric-path)
+              (is (= (str "Card " card-id " is a " card-type ", not a metric.\n"
+                          "Read `" card-uri "` instead.")
+                     (-> (read-uris {:uris [(str "metabase://metric/" card-id metric-path)]})
+                         :resources first :error)))
+              (is (not (error? (read-uris {:uris [card-uri]})))))))
+        (testing "reading only an invalid metric URI marks the tool call as failed"
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.core/all-items-failed}
+                  (test-util/tool-failure read-resource/read-resource-tool
+                                          {:uris [(str "metabase://metric/" question-id)]}
+                                          (:tool-names read-ctx)))))))))
+
 (defn- measure-definition
   "An MBQL5 measure definition: the sum of `field-id` over `table-id`."
   [table-id field-id]
@@ -1687,3 +1713,10 @@
           (is (str/includes? output "VISIBLE-DOC"))
           (is (not (str/includes? output "SUMMARY-DOC"))
               "a Summary document is reachable only through its exploration, so it must not be listed"))))))
+
+(deftest read-resource-table-output-does-not-presuppose-sql-test
+  (testing "read_resource on ORDERS (FKs to PEOPLE and PRODUCTS) as the embedded profile would call it"
+    (mt/with-test-user :crowberto
+      (let [output (:output (read-uris {:uris [(str "metabase://table/" (mt/id :orders))]}))]
+        (is (str/includes? output "### Related Tables") "premise: ORDERS renders related tables")
+        (is (not (re-find #"(?i)for SQL queries" output)))))))
