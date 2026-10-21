@@ -898,6 +898,7 @@
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
+           metabase.documents.content-gate-cache
            metabase.documents.core
            metabase.documents.init
            metabase.documents.prose-mirror
@@ -2617,6 +2618,7 @@
            appearance
            core.initialization-status
            data-apps
+           documents
            driver
            embedding
            lib.be

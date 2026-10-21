@@ -9,6 +9,7 @@
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.body-limit :as mw.body-limit]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
+   [metabase.server.middleware.content-gate-cache :as mw.gate-cache]
    [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.json :as mw.json]
@@ -96,6 +97,7 @@
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
+        #'mw.gate-cache/wrap-content-gate-cache      ; adjudicates each document's content at most once per request
         #'mw.mp-cache/wrap-metadata-provider-cache   ; initializes the Lib-BE metadata provider cache
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params

@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.content-gate-cache :as gate-cache]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -82,27 +83,9 @@
   has no answer, so deny rather than recur into a stack overflow inside an authorization check."
   #{})
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *cache*
-  "Cache atom bound by [[with-content-gate-cache]], or nil to adjudicate on every call."
-  nil)
-
-(defmacro with-content-gate-cache
-  "Adjudicate each document's content at most once for the duration of `body`. Nesting reuses the
-  enclosing cache.
-
-  The verdict is a rollup over the owning exploration's threads and costs roughly twenty app-DB
-  queries, so anything looping over documents — or over the Cards scoped to one, which all resolve
-  to the same document and so to the same verdict — otherwise pays it once per row. Scope it around
-  such a loop; everywhere else reads through."
-  {:style/indent 0}
-  [& body]
-  `(binding [*cache* (or *cache* (atom {}))]
-     ~@body))
-
 (defn content-visible?
   "Run the registered content-visibility gate for `document`, guarding against re-entry and reusing
-  a verdict already reached under [[with-content-gate-cache]]."
+  a verdict already reached under [[gate-cache/with-content-gate-cache]]."
   [document]
   (let [id      (:id document)
         ;; Keyed by viewer as well as document: a verdict is only ever valid for the user it was
@@ -114,11 +97,11 @@
                     false
                     (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
                       (boolean (@doc-content-visibility-fn document)))))]
-    (if (and id *cache*)
-      (if-some [cached (get @*cache* k)]
+    (if (and id gate-cache/*cache*)
+      (if-some [cached (get @gate-cache/*cache* k)]
         cached
         (let [verdict (adjudge)]
-          (swap! *cache* assoc k verdict)
+          (swap! gate-cache/*cache* assoc k verdict)
           verdict))
       (adjudge))))
 
@@ -273,7 +256,7 @@
                                                        (get (:attrs %) "id")))
         to-clone (when (seq card-ids)
                    (documents.db/cards-not-in-document card-ids id))]
-    (with-content-gate-cache
+    (gate-cache/with-content-gate-cache
       (reduce (fn [accum card]
                 (api/read-check card)
                 (assoc accum
