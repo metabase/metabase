@@ -2170,24 +2170,25 @@
 (deftest ^:parallel attr-remapping-parameter-type-test
   (testing "attr-remapping->parameter uses explicit parameter types instead of :category (QUE2-326)"
     (let [attr-remapping->parameter #'sandboxing/attr-remapping->parameter
-          mp                        (mt/metadata-provider)]
+          query                     (lib/query (mt/metadata-provider)
+                                               (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))]
       (testing "numeric field → :number/="
         (is (= :number/=
-               (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
+               (:type (attr-remapping->parameter query {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
       (testing "text field → :string/="
         (is (= :string/=
-               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
+               (:type (attr-remapping->parameter query {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
       (testing "uncoerceable attribute against numeric field throws instead of dropping the filter (#81821)"
         (testing "integer column"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
-               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
+               (attr-remapping->parameter query {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
         (testing "float column"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
-               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
+               (attr-remapping->parameter query {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
 
 (deftest unix-timestamp-coercion-with-mbql-sandbox-test
   (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"
@@ -2409,3 +2410,16 @@
                   :let [source-col (col-by-name (:remapped_from col))]]
             (is (= (:name col)
                    (:remapped_to source-col)))))))))
+
+(deftest name-ref-fields-of-sandboxed-table-test
+  (testing "a query selecting columns of a sandboxed table by name refs keeps the ones the sandbox exposes"
+    (met/with-gtaps! {:gtaps      {:orders {:query      (mt/mbql-query orders {:fields [$id $user_id $total]})
+                                            :remappings {"user_id" [:dimension [:field (mt/id :orders :user_id) nil]]}}}
+                      :attributes {"user_id" 1}}
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/with-fields [[:field {:lib/uuid (str (random-uuid)), :base-type :type/BigInteger} "ID"]
+                                        [:field {:lib/uuid (str (random-uuid)), :base-type :type/Float} "TOTAL"]
+                                        [:field {:lib/uuid (str (random-uuid)), :base-type :type/Float} "TAX"]]))]
+        (is (= ["ID" "TOTAL"]
+               (map :name (mt/cols (qp/process-query query)))))))))

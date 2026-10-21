@@ -95,20 +95,13 @@
     (when (seq sandboxes)
       (m/index-by :table_id sandboxes))))
 
-(mu/defn- target->field-id :- [:maybe ::lib.schema.id/field]
-  "If a parameter `:target` contains a `:field` clause with an integer Field ID, return that ID."
-  [target :- ::lib.schema.parameter/target]
-  ;; parameter targets still use legacy field refs for whatever wacko reason
-  (match/match-one target
-    [:field (field-id :guard pos-int?) _opts] field-id))
-
-(mu/defn- target-field->base-type :- [:maybe ::lib.schema.common/base-type]
-  "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
-  references. Otherwise returns `nil`."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   target-field-clause   :- ::lib.schema.parameter/target]
-  (when-let [field-id (target->field-id target-field-clause)]
-    (:base-type (lib.metadata/field metadata-providerable field-id))))
+(mu/defn- target->column :- [:maybe ::lib.schema.metadata/column]
+  "The column that the `:field` ref in a parameter `target` resolves to in `query`, the query the parameter applies to."
+  [query  :- ::lib.schema/query
+   target :- ::lib.schema.parameter/target]
+  (let [target (lib/normalize ::lib.schema.parameter/target target)]
+    (when-let [field-ref (lib/parameter-target-field-ref target)]
+      (lib/metadata query (lib/parameter-target-stage-number target) field-ref))))
 
 (defn- attr-value->param-value
   "Take an `attr-value` with a desired `target-type` and coerce to that type if need be. If not type is given or it's
@@ -126,9 +119,9 @@
       :else
       attr-value)))
 
-(defn- attr-remapping->parameter [metadata-providerable login-attributes [attr-name target]]
+(defn- attr-remapping->parameter [query login-attributes [attr-name target]]
   (let [attr-value      (get login-attributes attr-name)
-        field-base-type (target-field->base-type metadata-providerable target)]
+        field-base-type (:base-type (target->column query target))]
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
@@ -150,9 +143,10 @@
        :value  [param-value]})))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
-  [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
+  "The parameters for the attribute remappings of `sandbox`, applied to the sandbox's `query`."
+  [query                                        :- ::lib.schema/query
    {attribute-remappings :attribute_remappings} :- ::sandbox]
-  (mapv (partial attr-remapping->parameter metadata-providerable (api/current-user-attributes))
+  (mapv (partial attr-remapping->parameter query (api/current-user-attributes))
         attribute-remappings))
 
 (mu/defn- preprocess-query :- ::lib.schema/query
@@ -197,16 +191,14 @@
 (mu/defn- card-sandbox->query :- ::lib.schema/query
   [metadata-providerable          :- ::lib.schema.metadata/metadata-providerable
    {card-id :card_id :as sandbox} :- ::sandbox]
-  (update (card-id->underlying-query metadata-providerable card-id)
-          :parameters
-          concat
-          (sandbox->parameters metadata-providerable sandbox)))
+  (let [query (card-id->underlying-query metadata-providerable card-id)]
+    (update query :parameters concat (sandbox->parameters query sandbox))))
 
 (mu/defn- table-sandbox->query :- ::lib.schema/query
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable
    {table-id :table_id, :as sandbox} :- ::sandbox]
-  (-> (lib/query metadata-providerable (lib.metadata/table metadata-providerable table-id))
-      (assoc :parameters (sandbox->parameters metadata-providerable sandbox))))
+  (let [query (lib/query metadata-providerable (lib.metadata/table metadata-providerable table-id))]
+    (assoc query :parameters (sandbox->parameters query sandbox))))
 
 (mu/defn- native-query-metadata :- [:maybe [:sequential {:min 1} ::mbql.s/legacy-column-metadata]]
   [query :- ::lib.schema/query]
@@ -348,18 +340,20 @@
     (into direct-ids name-resolved-ids)))
 
 (defn- filter-stage-fields-to-sandbox
-  "When wrapping a sandbox subquery with a stage that carries a `:fields` clause from before the swap, drop any
-  field-id refs the sandbox no longer exposes (e.g., a native GTAP that omits a column). Field refs by string name
-  refer to the previous stage's output and are preserved. See #73339."
-  [stage sandbox-field-ids]
-  (m/update-existing stage :fields
-                     (fn [fields]
-                       (filterv (fn [field-ref]
-                                  (let [[tag _opts id-or-name] field-ref]
-                                    (or (not= tag :field)
-                                        (not (integer? id-or-name))
-                                        (contains? sandbox-field-ids id-or-name))))
-                                fields))))
+  "When wrapping a sandbox subquery with a stage that carries a `:fields` clause from before the swap, drop the fields
+  whose columns, resolved in that stage at `path` of `query`, come from the sandboxed table but are not returned by the
+  sandbox (e.g., a native GTAP that omits a column). See #73339."
+  [query path stage sandbox-field-ids]
+  (let [table-id (:source-table stage)]
+    (m/update-existing stage :fields
+                       (fn [fields]
+                         (filterv (fn [field-ref]
+                                    (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)]
+                                      (or (not= (:table-id col) table-id)
+                                          (:lib/join-alias col)
+                                          (:fk-field-id col)
+                                          (contains? sandbox-field-ids (:id col)))))
+                                  fields)))))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
                                      [:sequential {:min 1} ::lib.schema/stage]
@@ -402,9 +396,12 @@
         ;; `:source-table` for the sandbox subquery. Any field-id refs the sandbox doesn't expose (e.g., a column
         ;; the native GTAP drops) would compile to `SELECT __mb_source.<dropped>` and fail at the DB. Filter them out.
         wrapper-stage      (when-not skip-final-stage?
-                             (filter-stage-fields-to-sandbox
-                              (dissoc stage :source-table)
-                              (sandbox-exposed-field-ids sandbox-query source-table)))
+                             (dissoc (filter-stage-fields-to-sandbox
+                                      query
+                                      path
+                                      stage
+                                      (sandbox-exposed-field-ids sandbox-query source-table))
+                                     :source-table))
         replacement-stages (cond-> new-source-stages
                              wrapper-stage (conj wrapper-stage))]
     (log/trace "Applied Sandbox: replaced stage with sandboxed stages")
@@ -428,20 +425,24 @@
   "Build the [[metabase.lib.schema/sandboxing.details.entry]] for one applied Sandbox. The user's actual attribute
   values are included only when [[analytics.settings/analytics-pii-retention-enabled]] is set, mirroring how that
   setting gates other user-specific data in Usage Analytics."
-  [{table-id   :table_id
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {table-id   :table_id
     card-id    :card_id
     group-id   :group_id
     sandbox-id :id
     remappings :attribute_remappings} :- ::sandbox]
   (let [login-attributes (api/current-user-attributes)
-        include-values?  (analytics.settings/analytics-pii-retention-enabled)]
+        include-values?  (analytics.settings/analytics-pii-retention-enabled)
+        query            (if card-id
+                           (card-id->underlying-query metadata-providerable card-id)
+                           (lib/query metadata-providerable (lib.metadata/table metadata-providerable table-id)))]
     {:table_id   table-id
      :sandbox_id sandbox-id
      :group_id   group-id
      :card_id    card-id
      :attributes (into {}
                        (map (fn [[attr-name target]]
-                              [attr-name (cond-> {:field_id (target->field-id target)}
+                              [attr-name (cond-> {:field_id (:id (target->column query target))}
                                            include-values? (assoc :value (get login-attributes attr-name)))]))
                        remappings)}))
 
@@ -461,7 +462,9 @@
    table-id->sandbox :- [:map-of ::lib.schema.id/table ::sandbox]]
   (let [sandboxes (keep table-id->sandbox (sandboxed-table-ids query))]
     (cond-> query
-      (seq sandboxes) (update ::details merge (into {} (map (juxt :table_id sandbox->details-entry)) sandboxes)))))
+      (seq sandboxes) (update ::details merge (into {}
+                                                    (map (juxt :table_id #(sandbox->details-entry query %)))
+                                                    sandboxes)))))
 
 (mu/defn- apply-sandboxes :- ::query-with-details
   "Replace `:source-table` entries that refer to Tables for which we have applicable Sandboxes with `:source-query`
