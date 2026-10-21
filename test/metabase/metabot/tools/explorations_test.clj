@@ -18,15 +18,12 @@
    [metabase.util.json :as json]))
 
 (def ^:private research-scopes
-  "The scopes of a user granted Metabot and NLQ, the users that the Research profile is offered to."
+  "Scopes for a user with Metabot and NLQ enabled, as required by the Research profile."
   (scope/user-metabot-perms->scopes {:permission/metabot     :yes
                                      :permission/metabot-nlq :yes}))
 
 (deftest tools-declare-registered-scopes-granted-to-nlq-users-test
-  (testing "every exploration tool declares a registered :scope, so the per-tool scope check applies
-            (a tool with no :scope skips the runtime's scope check entirely), AND an NLQ-yes user is
-            granted that scope — so adding the gate does not filter the tools away from the
-            NLQ-gated :explorations profile that offers them"
+  (testing "each Research tool declares a registered scope available to users with NLQ enabled"
     (doseq [tool [tools.explorations/list-research-metrics-tool
                   tools.explorations/get-research-candidates-tool
                   tools.explorations/add-research-groups-tool
@@ -42,7 +39,7 @@
                 "scope is granted to an NLQ-yes user")))))))
 
 (defn- research-call
-  "Call `tool-name` the way that the Research profile's agent does, and return the outcome.
+  "Run a tool call through the Research profile and return its result.
   The call runs as a user with `research-scopes`. The outcome is the `:output` that the model reads,
   plus `:error` when the call failed."
   [tool-name args]
@@ -58,30 +55,29 @@
   (json/decode+kw (:output result)))
 
 (deftest ^:parallel get-research-candidates-requires-a-filter-test
-  (testing "a call with neither metric_ids nor q is the model's to fix (the unfiltered catalog is the
-            unbounded payload this tool's contract exists to prevent), and says where ids come from"
+  (testing "a call without `metric_ids` or `q` reports a recoverable error and explains how to choose metrics"
     (doseq [args [{} {:q nil} {:q ""} {:metric_ids nil} {:metric_ids []} {:q "  " :metric_ids []}]]
       (testing (pr-str args)
         (is (= {:output (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate"
                              " dimensions of metrics that you have already chosen.\n"
-                             "Call `list_research_metrics` to choose metric ids.\n"
+                             "Call `list_research_metrics` to choose metric IDs.\n"
                              "Call `search` with `entity_types` [\"metric\"] to find metrics by topic.")
                 :error  {:class :recoverable :code ::tools.explorations/needs-metric-ids-or-q}}
                (research-call "get_research_candidates" args)))))))
 
 (deftest ^:parallel get-research-candidates-caps-metric-ids-test
-  (testing "more metric_ids than one call details is an argument error"
+  (testing "a call rejects more than the supported number of metric IDs"
     (is (= {:output (str "Invalid tool arguments: `metric_ids` should have at most 20 elements;"
                          " received an array.")
             :error  {:class :validation :code :invalid-arguments}}
            (research-call "get_research_candidates" {:metric_ids (vec (range 1 22))})))))
 
 (deftest ^:parallel empty-plan-edits-are-argument-errors-test
-  (testing "a call that would change nothing, or blank the plan's name, is rejected"
+  (testing "empty group lists, timeline lists and names are rejected"
     (doseq [[tool-name args expected] [["add_research_groups" {:groups []}
                                         "`groups` must list at least one group; received an array."]
                                        ["select_research_timelines" {:timeline_ids []}
-                                        "`timeline_ids` must list at least one timeline id; received an array."]
+                                        "`timeline_ids` must list at least one timeline ID; received an array."]
                                        ["set_research_name" {:name ""}
                                         "`name` should be at least 1 character; received a string."]]]
       (testing tool-name
@@ -128,7 +124,7 @@
                    output))))))))
 
 (deftest add-research-groups-summary-tolerates-unnamed-dimensions-test
-  (testing (str "the summary skips a dimension id that no group in the payload holds, rather than "
+  (testing (str "the summary skips a dimension ID that no group in the payload holds, rather than "
                 "throwing away the whole tool call")
     (let [payload (assoc (picker-payload 1)
                          :groups [{:metric_id 0 :dimension_ids ["d0" "unresolved"]}])]
@@ -152,15 +148,14 @@
         (is (> 5 (- (count (summary-for 500)) (count fifty))))))))
 
 (defn- add-groups-rejected-with
-  "What the model reads when `research-groups` rejects an `add_research_groups` call with
-  `problems` as its ex-data."
+  "Return the model's result when `research-groups` rejects a call with `problems` as its ex-data."
   [problems]
   (mt/with-dynamic-fn-redefs [explorations/research-groups
                               (fn [_] (throw (ex-info "Invalid research groups" problems)))]
     (research-call "add_research_groups" {:groups [{:metric_id 1}]})))
 
 (deftest add-research-groups-reports-every-problem-at-once-test
-  (testing "every problem in one error, so the model fixes them all in one retry"
+  (testing "one error lists every problem so that the model can fix them in one retry"
     (is (= {:output (str "None of the groups were added:\n"
                          "- Metrics 999, 1000 were not found. They may not exist, or you may not have"
                          " access to them.\n"
@@ -170,11 +165,11 @@
                          " (Revenue).\n"
                          "- Dimension \"plan-1\" is not a candidate of metric 3 (Churn).\n"
                          "Call `list_research_metrics` to find metrics that are available for"
-                         " research, and take their ids from `get_research_candidates`.\n"
-                         "Pass the dimension ids to slice by, or drop `replace_default_dimensions` to"
+                         " research, and take their IDs from `get_research_candidates`.\n"
+                         "Pass the IDs of the dimensions to use, or omit `replace_default_dimensions` to"
                          " keep the automatic selection.\n"
-                         "A dimension id belongs to one metric, so the same dimension has a different"
-                         " id under each metric. Take each group's ids from its own metric's"
+                         "A dimension ID belongs to one metric, so the same dimension has a different"
+                         " ID for each metric. Take each group's IDs from its own metric's"
                          " candidates.\n"
                          "Call `get_research_candidates` with `metric_ids` [1, 3] to see every"
                          " candidate.\n"
@@ -230,7 +225,7 @@
   (mapv #(format "00000000-0000-4000-8000-%012d" %) (range from to)))
 
 (deftest add-research-groups-cuts-long-failure-lists-test
-  (testing "more bad ids than fit are cut short and counted, and the steps survive"
+  (testing "invalid IDs that do not fit are counted, leaving room for recovery steps"
     (let [output   (:output (add-groups-rejected-with
                              {:invalid-dimensions (vec (for [m (range 1 21)]
                                                          {:metric-id     m
@@ -238,10 +233,10 @@
                                                           :dimension-ids (uuids 1 6)
                                                           :candidates    []}))}))
           listed   (count (re-seq #"\"00000000-0000-4000-8000-\d{12}\"" output))
-          [_ more] (re-find #"\n- …and (\d+) more invalid dimension ids on metrics [\d, ]+20\.\n" output)]
+          [_ more] (re-find #"\n- …and (\d+) more invalid dimension IDs on metrics [\d, ]+20\.\n" output)]
       (is (>= 3000 (count output)))
       (is (= 100 (+ listed (parse-long more))))
-      (is (str/includes? output "\nA dimension id belongs to one metric"))
+      (is (str/includes? output "\nA dimension ID belongs to one metric"))
       (is (str/includes? output (str "\nCall `get_research_candidates` with `metric_ids` "
                                      "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,"
                                      " 20] to see every candidate.")))))
@@ -256,7 +251,7 @@
                                                     :dimension-ids (uuids 61 121)
                                                     :candidates    []}]}))
           listed   (count (re-seq #"\"00000000-0000-4000-8000-\d{12}\"" output))
-          [_ more] (re-find #"\n- …and (\d+) more invalid dimension ids on metric 2\.\n" output)]
+          [_ more] (re-find #"\n- …and (\d+) more invalid dimension IDs on metric 2\.\n" output)]
       (is (>= 3000 (count output)))
       (is (= 120 (+ listed (parse-long more))))
       (is (str/includes? output " are not candidates of metric 2 (Metric 2).\n- …and "))
@@ -272,12 +267,12 @@
                                                 :metric-name   "Orders"
                                                 :dimension-ids ["wrong"]
                                                 :candidates    []}]}))]
-    (is (str/includes? output "- 2 invalid dimension ids on metrics 1, 2.\n"))
+    (is (str/includes? output "- 2 invalid dimension IDs on metrics 1, 2.\n"))
     (is (>= 3000 (count output)))
     (is (str/includes? output "Call `get_research_candidates` with `metric_ids` [1, 2]"))))
 
 (deftest add-research-groups-suggests-lookups-within-the-limit-test
-  (testing "the lookup that it suggests asks for no more metric_ids per call than the tool takes"
+  (testing "the suggested lookup respects the limit on metric IDs per call"
     (let [output  (:output (add-groups-rejected-with
                             {:invalid-dimensions (vec (for [m (range 1 22)]
                                                         {:metric-id     m
@@ -291,7 +286,7 @@
       (mt/with-test-user :crowberto
         (doseq [batch batches]
           (is (nil? (:error (research-call "get_research_candidates" {:metric_ids batch}))))))))
-  (testing "and names at most two batches, so that the step stays short"
+  (testing "the recovery step lists at most two batches"
     (let [output (:output (add-groups-rejected-with
                            {:invalid-dimensions (vec (for [m (range 1 61)]
                                                        {:metric-id     m
@@ -305,7 +300,7 @@
                                      " metrics, 20 at a time, to see every candidate."))))))
 
 (defn- orders-count
-  "The query of a minimal metric: a count of orders."
+  "Return a metric query that counts orders."
   []
   (let [mp (mt/metadata-provider)]
     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
@@ -420,10 +415,10 @@
         (is (= {:timeline_ids [releases launches]}
                (streamed-tool-output
                 (research-call "select_research_timelines" {:timeline_ids [releases launches]})))))
-      (testing "names every id that isn't a timeline that the user can list, which the FE would skip"
+      (testing "reports every timeline ID that the client would skip because the user cannot list it"
         (is (= {:output (str "Timelines " archived ", " Integer/MAX_VALUE " were not found. They may"
                              " not exist, or you may not have access to them.\n"
-                             "Call `list_timelines` and use ids from its result.")
+                             "Call `list_timelines` and use IDs from its result.")
                 :error  {:class :recoverable :code ::tools.explorations/unknown-timeline}}
                (research-call "select_research_timelines"
                               {:timeline_ids [releases archived Integer/MAX_VALUE archived]})))))))

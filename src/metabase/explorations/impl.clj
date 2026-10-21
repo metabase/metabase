@@ -489,10 +489,9 @@
       (assoc :missing_metric_ids missing))))
 
 (defn- invalid-dimensions
-  "Every dimension id in `groups` that isn't a candidate of its metric, grouped by metric.
-   Each entry also carries the metric's candidates from `metric-by-id`, which must hold every
-   metric that `groups` name. The entries follow the order in which `groups` first name each
-   metric."
+  "Return invalid dimension IDs from `groups`, grouped by metric.
+   `metric-by-id` must include each metric referenced by `groups`. Each result includes that
+   metric's candidate dimensions. Metrics appear in the order of their first invalid dimension in `groups`."
   [groups metric-by-id]
   (let [bad (for [{metric-id :metric_id dimension-ids :dimension_ids} groups
                   :let [valid (into #{} (map :id) (:dimensions (metric-by-id metric-id)))]
@@ -514,13 +513,13 @@
    `:groups` is a sequence of `{:metric_id <int> :dimension_ids [<str> ...]}` maps
    (`:dimension_ids` optional).
 
-   Throws when any group is invalid, so one bad id fails the whole batch. The `ex-data` lists every
-   problem found, under each of these keys that has one:
-   - `:unknown-metric-ids`: the metric ids that are unknown or inaccessible;
-   - `:replace-without-dimensions`: the metric ids of groups that set
+   Throws when any group is invalid, so one bad ID fails the whole batch. The `ex-data` lists every
+   problem under the applicable keys:
+   - `:unknown-metric-ids`: the metric IDs that are unknown or inaccessible;
+   - `:replace-without-dimensions`: the metric IDs of groups that set
      `:replace_default_dimensions` with no `:dimension_ids`;
-   - `:invalid-dimensions`: per metric, the dimension ids that aren't among its candidates, with
-     those candidates (see [[invalid-dimensions]]).
+   - `:invalid-dimensions`: the invalid dimension IDs and candidate dimensions for each metric
+     (see [[invalid-dimensions]]).
    A group whose metric is unknown gets no further checks.
 
    On success returns `{:metrics [...] :dimension_groups [...] :groups [...]}`, where
@@ -533,7 +532,7 @@
           metric-by-id     (u/index-by :id all)
           known?           #(contains? metric-by-id (:metric_id %))
           known-groups     (filterv known? groups)
-          ;; Metric-level checks run against the cheap catalog; they need no query build.
+          ;; Metric checks use the catalog and do not build queries.
           unknown          (into [] (comp (remove known?) (map :metric_id) (distinct)) groups)
           no-dims          (into [] (comp (filter #(and (:replace_default_dimensions %)
                                                         (empty? (:dimension_ids %))))
@@ -541,16 +540,14 @@
                                           (distinct))
                                  known-groups)
           relevant         (into #{} (map :metric_id) groups)
-          ;; Only the referenced metrics pay [[resolve-metric-queries]]. `all` is already
-          ;; candidate-filtered and resolution only drops dimensions further, so no second
-          ;; [[with-candidate-dimensions]] pass is needed.
+          ;; Only resolve queries for referenced metrics. `all` already has its candidate
+          ;; dimensions filtered, and resolution can only remove dimensions.
           relevant-metrics (->> all
                                 (filterv #(contains? relevant (:id %)))
                                 resolve-metric-queries)
           resolved-by-id   (u/index-by :id relevant-metrics)
-          ;; Dimension ids are checked against the *resolved* metrics: a saved dimension whose
-          ;; target no longer resolves is dropped by [[resolve-metric-queries]], and accepting it
-          ;; would hand the FE a picker block for a dimension that isn't in the payload.
+          ;; Dimension IDs must match the resolved metrics because query resolution removes
+          ;; dimensions whose targets no longer resolve.
           invalid          (invalid-dimensions known-groups resolved-by-id)
           problems         (cond-> {}
                              (seq unknown) (assoc :unknown-metric-ids unknown)

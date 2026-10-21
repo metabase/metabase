@@ -352,7 +352,7 @@
                                               {:groups [{:metric_id 1} {:metric_id 2}]})))))))))
 
 (defn- research-groups-problems
-  "The `ex-data` that [[explorations.impl/research-groups]] throws for `groups`."
+  "Return the `ex-data` from [[explorations.impl/research-groups]] for invalid `groups`."
   [groups]
   (try
     (explorations.impl/research-groups {:groups groups})
@@ -395,7 +395,7 @@
                                         {:metric_id 1 :dimension_ids ["wrong"]}
                                         {:metric_id 1000 :replace_default_dimensions true}
                                         {:metric_id 2 :replace_default_dimensions true}]))))
-    (testing "dimension the catalog still lists but query resolution drops"
+    (testing "a dimension that the catalog still lists is rejected if query resolution removes it"
       ;; `plan-1` survives the cheap catalog but its target no longer resolves against the
       ;; metric's query, so it must be rejected rather than silently dropped from the payload.
       (mt/with-dynamic-fn-redefs [explorations.impl/resolve-metric-queries

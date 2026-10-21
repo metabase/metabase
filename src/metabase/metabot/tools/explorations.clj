@@ -75,9 +75,9 @@
   tools/Tool
   (declaration [_]
     {:name        "list_research_metrics"
-     :description (str "List the metrics available for research: one slim row per metric (id, name,"
-                       " description, in_library – a quality signal), best first. Dimensions are not"
-                       " included; pass metric ids from this index to `get_research_candidates` to see"
+     :description (str "List the metrics available for research, with the best matches first. Each row"
+                       " includes `id`, `name`, `description` and `in_library` (a quality signal)."
+                       " Pass metric IDs from this list to `get_research_candidates` to see"
                        " their candidate dimensions. Pass `q` to filter by a case-insensitive substring"
                        " of a metric or dimension name – e.g. `q: \"region\"` returns the metrics that"
                        " have a Region-like dimension. More than "
@@ -107,7 +107,7 @@
   {:message  (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate dimensions of"
                   " metrics that you have already chosen.")
    :recovery [{:uses #{"list_research_metrics"}
-               :text "Call `list_research_metrics` to choose metric ids."}
+               :text "Call `list_research_metrics` to choose metric IDs."}
               {:uses #{"search"}
                :text "Call `search` with `entity_types` [\"metric\"] to find metrics by topic."}]})
 
@@ -117,13 +117,13 @@
     {:name        "get_research_candidates"
      :description (str "Get the candidate dimensions for chosen research metrics. Pass `metric_ids` (up to "
                        explorations/research-candidates-max-metrics ", from `list_research_metrics`)"
-                       " and/or `q` (a case-insensitive substring of a metric or dimension name) – at"
+                       " or `q` (a case-insensitive substring of a metric or dimension name), or both; at"
                        " least one is required. Each metric lists the `dimensions` it can be sliced by:"
                        " the `id` to pass to `add_research_groups`, the `group` it belongs to, and a"
                        " `name` only when this metric calls it something other than the group name."
                        " Each entry in `dimension_groups` states that group's types and interestingness"
-                       " once, plus the `metric_ids` it can slice. Every metric and dimension id you"
-                       " pass to `add_research_groups` must come from this tool. Requested ids you"
+                       " once, plus the `metric_ids` it can slice. Every metric and dimension ID that you"
+                       " pass to `add_research_groups` must come from this tool. Requested IDs that you"
                        " can't see come back as `missing_metric_ids`; a too-broad `q` returns the top"
                        " matches with `truncated: true` – narrow the search or pass explicit"
                        " `metric_ids`.")
@@ -154,7 +154,7 @@
        (str/join ", " names)))))
 
 (defn- not-found-sentence
-  "That the `noun`s with `ids` were not found, without saying whether they exist."
+  "Report that the entities named by `noun` and `ids` were not found, without disclosing whether they exist."
   [noun ids]
   (if (next ids)
     (str noun "s " (summarize-names (map str ids)) " were not found. They may not exist, or you may"
@@ -162,13 +162,13 @@
     (str noun " " (first ids) " was not found. It may not exist, or you may not have access to it.")))
 
 (def ^:private error-text-budget
-  "How long the text of [[invalid-research-groups!]] may get, its recovery steps included.
-  The runtime cuts a failure's text at 4,000 characters. The steps are counted first, so that they
-  always fit; the bad ids fill what is left, and then the candidates."
+  "Maximum length of the error text from [[invalid-research-groups!]], including recovery steps.
+  Space goes to recovery steps first, then invalid IDs and candidate dimensions. The runtime
+  truncates error text at 4,000 characters."
   3000)
 
 (defn- invalid-dimensions-line
-  "The line that says `ids` are not candidates of the metric that `entry` describes."
+  "Render a line listing `ids` as invalid dimensions for the metric in `entry`."
   [{:keys [metric-id metric-name]} ids]
   (str "- " (if (next ids) "Dimensions " "Dimension ")
        (str/join ", " (map pr-str ids))
@@ -176,17 +176,16 @@
        " of metric " metric-id " (" metric-name ")."))
 
 (defn- left-over-line
-  "The line that counts the bad ids in `left-over` and names their metrics."
+  "Render a line counting the invalid IDs in `left-over` and naming their metrics."
   [left-over listed?]
   (let [n       (count (mapcat :dimension-ids left-over))
         metrics (map (comp str :metric-id) left-over)]
     (str "- " (when listed? "…and ") n (when listed? " more") " invalid dimension "
-         (if (= 1 n) "id" "ids") " on "
+         (if (= 1 n) "ID" "IDs") " on "
          (if (next metrics) "metrics " "metric ") (summarize-names metrics) ".")))
 
 (defn- invalid-dimensions-lines
-  "The lines for `invalid-dimensions` with only its first `k` bad ids listed, and a last line that
-  counts the rest."
+  "List the first `k` invalid dimension IDs and count the rest in a final line."
   [invalid-dimensions k]
   (let [[listed left-over] (reduce (fn [[listed left-over k] {ids :dimension-ids :as entry}]
                                      (let [n (min k (count ids))]
@@ -202,9 +201,8 @@
       (seq left-over) (conj (left-over-line left-over (seq listed))))))
 
 (defn- lookup-step
-  "The step that tells the model to look up the candidates of the metrics in `invalid-dimensions`.
-  It names their ids in batches that `get_research_candidates` accepts, two batches at most, so
-  that it stays short."
+  "Build a recovery step to look up candidates for the metrics in `invalid-dimensions`.
+  List at most two batches of IDs, using the batch size accepted by `get_research_candidates`."
   [invalid-dimensions]
   (let [per-call explorations/research-candidates-max-metrics
         batches  (partition-all per-call (map :metric-id invalid-dimensions))]
@@ -216,7 +214,7 @@
                 " to see every candidate.")}))
 
 (defn- candidates-step
-  "A recovery step that lists up to `per-metric` candidates of each metric in `invalid-dimensions`."
+  "Build a recovery step listing up to `per-metric` candidates for each metric in `invalid-dimensions`."
   [invalid-dimensions per-metric]
   {:uses #{}
    :text (te/lines
@@ -229,9 +227,9 @@
                    "none"))))})
 
 (tools/defrecoverable invalid-research-groups!
-  "Groups in `add_research_groups` that can't be added.
+  "Report groups in `add_research_groups` that can't be added.
   Their metric wasn't found, they replace the automatic dimensions with none, or they name dimension
-  ids that aren't candidates of their metric."
+  IDs that aren't candidates of their metric."
   {:payload [:map {:closed true}
              [:unknown-metric-ids         {:optional true} [:sequential {:min 1} :int]]
              [:replace-without-dimensions {:optional true} [:sequential {:min 1} :int]]
@@ -259,17 +257,17 @@
                     (seq unknown-metric-ids)
                     (conj {:uses #{"list_research_metrics" "get_research_candidates"}
                            :text (str "Call `list_research_metrics` to find metrics that are available"
-                                      " for research, and take their ids from `get_research_candidates`.")})
+                                      " for research, and take their IDs from `get_research_candidates`.")})
 
                     (seq replace-without-dimensions)
                     (conj {:uses #{}
-                           :text (str "Pass the dimension ids to slice by, or drop"
+                           :text (str "Pass the IDs of the dimensions to use, or omit"
                                       " `replace_default_dimensions` to keep the automatic selection.")})
 
                     (seq invalid-dimensions)
                     (conj {:uses #{}
-                           :text (str "A dimension id belongs to one metric, so the same dimension has a"
-                                      " different id under each metric. Take each group's ids from its"
+                           :text (str "A dimension ID belongs to one metric, so the same dimension has a"
+                                      " different ID for each metric. Take each group's IDs from its"
                                       " own metric's candidates.")}
                           (lookup-step invalid-dimensions)))
         text-size (fn [message steps] (count (str/join "\n" (cons message (map :text steps)))))
@@ -420,29 +418,29 @@
 
 (def ^:private select-exploration-timelines-schema
   [:map {:closed true}
-   [:timeline_ids [:sequential {:min 1 :error/message "must list at least one timeline id"} :int]]])
+   [:timeline_ids [:sequential {:min 1 :error/message "must list at least one timeline ID"} :int]]])
 
 (tools/defrecoverable unknown-timeline!
-  "Timeline ids in `select_research_timelines` that are not timelines that the user can see."
+  "Report timeline IDs in `select_research_timelines` that the user cannot list."
   {:payload [:map {:closed true}
              [:timeline-ids [:sequential {:min 1} :int]]]}
   [{:keys [timeline-ids]}]
   {:message  (not-found-sentence "Timeline" timeline-ids)
    :recovery [{:uses #{"list_timelines"}
-               :text "Call `list_timelines` and use ids from its result."}]})
+               :text "Call `list_timelines` and use IDs from its result."}]})
 
 (defrecord SelectResearchTimelinesTool []
   tools/Tool
   (declaration [_]
     {:name        "select_research_timelines"
-     :description (str "Add timelines to the research plan, by the ids that `list_timelines` returns."
+     :description (str "Add timelines to the research plan using the IDs returned by `list_timelines`."
                        " Timelines already in the plan stay; to drop one, use"
                        " `remove_from_research_plan`.")
      :scope       scope/agent-explorations-write
      :args        select-exploration-timelines-schema})
 
   (handle [_ {:keys [timeline_ids]} _ctx]
-    ;; The client silently drops an id that it can't list, so an unchecked one would read as added.
+    ;; The client silently drops timelines that it cannot list, so it would report an unchecked ID as added.
     (let [visible (into #{} (map :id) (timeline/list-timelines))]
       (when-let [unknown (not-empty (into [] (comp (remove visible) (distinct)) timeline_ids))]
         (unknown-timeline! {:timeline-ids unknown})))
