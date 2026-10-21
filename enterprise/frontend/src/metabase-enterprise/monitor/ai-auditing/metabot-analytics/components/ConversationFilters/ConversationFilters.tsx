@@ -17,9 +17,7 @@ import {
 } from "metabase/querying/parameters/utils/parsing";
 import { useSetting } from "metabase/settings";
 import { Flex, Icon, Popover, Select } from "metabase/ui";
-
-// width needed to show Previous 12 months option w/ clipping
-export const FILTER_WIDTH = 205;
+import { FILTER_WIDTH } from "metabase-enterprise/monitor/constants";
 
 const DATE_OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];
 const RELATIVE_DIRECTIONS: RelativeIntervalDirection[] = ["past", "current"];

@@ -1,4 +1,4 @@
-export { ConversationFilters, FILTER_WIDTH } from "./ConversationFilters";
+export { ConversationFilters } from "./ConversationFilters";
 export {
   DEFAULT_DATE,
   DEFAULT_DATE_FILTER,
