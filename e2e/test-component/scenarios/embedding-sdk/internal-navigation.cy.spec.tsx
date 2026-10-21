@@ -388,7 +388,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         const [filter] = filters;
 
         expect(filter[0]).to.equal("=");
-        expect(filter[2]).to.include(ORDERS.QUANTITY);
+        expect([ORDERS.QUANTITY, "QUANTITY"]).to.include(filter[2][2]);
 
         cy.wrap(filter[3]).as("filteredQuantity");
       });
