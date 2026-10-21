@@ -31,7 +31,8 @@
 (def ^:private missing-query-result
   {:error {:class :recoverable :code ::search/missing-query}
    :output (str "Provide at least one query. Every query must be non-blank.\n"
-                "Call `search` again with non-blank queries in `keyword_queries`.")})
+                "Remove blank entries from every query list, then call `search` again "
+                "with non-blank queries in `keyword_queries`.")})
 
 (deftest ^:parallel search-requires-query-test
   (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]

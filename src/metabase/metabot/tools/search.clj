@@ -698,7 +698,8 @@
   [_]
   {:message "Provide at least one query. Every query must be non-blank."
    :recovery [{:uses #{"search"}
-               :text "Call `search` again with non-blank queries in `keyword_queries`."}]})
+               :text (str "Remove blank entries from every query list, then call `search` again "
+                          "with non-blank queries in `keyword_queries`.")}]})
 
 (tools/defrecoverable unavailable-database!
   "The SQL search database does not exist or is unreadable."
