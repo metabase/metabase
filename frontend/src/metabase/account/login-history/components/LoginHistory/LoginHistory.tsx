@@ -44,7 +44,7 @@ const LoginHistoryGroup = ({
   date: string;
 }) => (
   <Box pb="lg">
-    <Label>{date}</Label>
+    <Label mb="xl">{date}</Label>
     <div>
       {items.map((item) => (
         <LoginHistoryItem key={item.timestamp} item={item} />
