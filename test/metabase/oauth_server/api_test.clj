@@ -1031,6 +1031,19 @@
       (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
       (is (= (repeat 11 ip-address) (map first @(:attempts @#'api.oauth/token-ip-throttler)))))))
 
+(deftest token-empty-client-ids-use-only-ip-throttle-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (doseq [[source client-id authorization] [[:body "" nil]
+                                              [:basic "body-client" (basic-auth-header "" "secret")]]]
+      (testing (name source)
+        (oauth-server.tu/reset-token-throttlers!)
+        (dotimes [_ 11]
+          (is (= "invalid_request"
+                 (:error (token-request! {:grant_type "authorization_code" :code "bogus-code" :client_id client-id}
+                                         :authorization authorization :expected-status 400)))))
+        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+        (is (= 11 (count @(:attempts @#'api.oauth/token-ip-throttler))))))))
+
 (deftest token-requests-without-client-id-use-only-ip-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]

@@ -303,9 +303,9 @@
 
 (defn- do-with-token-throttling
   "Apply the token throttles to `f`.
-   Requests without a client ID, or with one longer than 255 characters, use only the IP bucket."
+   Requests with a missing or empty client ID, or one longer than 255 characters, use only the IP bucket."
   [ip-address client-id f]
-  (let [client-id  (when (and client-id (<= (count client-id) max-client-id-length)) client-id)
+  (let [client-id  (when (and (seq client-id) (<= (count client-id) max-client-id-length)) client-id)
         client-key (when client-id [client-id ip-address])
         response (with-throttling-429 [token-ip-throttler ip-address]
                    (if client-id
