@@ -139,6 +139,10 @@ export function dataStudioDashboardUsage(dashboardId: DashboardId) {
   return `${dataStudioDashboard(dashboardId)}/usage`;
 }
 
+export function dataStudioDashboardHistory(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/history`;
+}
+
 export function dataStudioDashboardSubscriptions(
   dashboardId: DashboardId,
   subscriptionId?: DashboardSubscription["id"],

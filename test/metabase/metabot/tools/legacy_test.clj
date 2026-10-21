@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
@@ -70,6 +71,26 @@
   [_args :- [:map {:closed true}]]
   {:output "Failed to read the card."})
 
+(defn- refuse-read!
+  "Throw what `api/read-check` throws for an entity the user can't read (403) or that doesn't exist (404)."
+  [status]
+  (if (= 403 status)
+    (api/check-403 false)
+    (api/check-404 nil)))
+
+(mu/defn ^{:tool-name "old_refused_read"}
+  old-refused-read-tool
+  "Lets a read refusal escape, as `get_field_values` does."
+  [{:keys [status]} :- [:map {:closed true} [:status [:enum 403 404]]]]
+  (refuse-read! status))
+
+(mu/defn ^{:tool-name "old_named_refused_read"}
+  old-named-refused-read-tool
+  "Names the table whose read was refused, with `with-entity`."
+  [{:keys [status]} :- [:map {:closed true} [:status [:enum 403 404]]]]
+  (tools/with-entity {:kind :table :id 5}
+    (refuse-read! status)))
+
 ;;; -------------------------------------------- A converted tool --------------------------------------------------
 
 (tools.error/defrecoverable new-no-widget!
@@ -101,7 +122,7 @@
   (tools/entries
    (tools.legacy/adapt-all [#'old-plain-tool #'old-rich-tool #'old-agent-error-tool
                             #'old-terminal-error-tool #'old-terminal-result-tool #'old-crash-tool
-                            #'old-quiet-failure-tool
+                            #'old-quiet-failure-tool #'old-refused-read-tool #'old-named-refused-read-tool
                             new-widget-tool])))
 
 (defn- invoke
@@ -118,7 +139,7 @@
 (deftest ^:parallel both-kinds-live-in-one-profile-test
   (testing "entries accepts a var and a record side by side"
     (is (= #{"old_plain" "old_rich" "old_agent_error" "old_terminal_error" "old_terminal_result"
-             "old_crash" "old_quiet_failure" "new_widget"}
+             "old_crash" "old_quiet_failure" "old_refused_read" "old_named_refused_read" "new_widget"}
            (set (keys entries)))))
   (testing "and one call path reaches both"
     (is (= {:output "plain 1"} (invoke "old_plain" {:n 1})))
@@ -210,6 +231,19 @@
       (is (= {:class :unrecoverable :code :internal} (:error outcome)))
       (doseq [leak ["H2" "mb_admin" "SELECT"]]
         (is (not (str/includes? (:output outcome) leak)) (str "leaked " leak))))))
+
+(deftest ^:parallel a-refused-read-is-not-found-test
+  (doseq [status [403 404]]
+    (testing (str "a " status " is the declared not-found error, worded the same for both, so the model can "
+                  "recover without learning whether an entity it may not see exists")
+      (is (=? {:output (str "The entity referenced here was not found. It may not exist, or you may not have "
+                            "access to it.\nCall `search` to find the entity you want and use an id from the "
+                            "results.")
+               :error  {:class :recoverable :code :metabase.metabot.tools.recoverable.common/not-found}}
+              (invoke "old_refused_read" {:status status}))))
+    (testing (str "a " status " that the tool attributes keeps the entity's kind and id")
+      (is (str/starts-with? (:output (invoke "old_named_refused_read" {:status status}))
+                            "Table 5 was not found.")))))
 
 (deftest ^:parallel behaviour-is-preserved-not-improved-test
   (testing "a tool that catches its own error and returns it as `:output` still looks like a

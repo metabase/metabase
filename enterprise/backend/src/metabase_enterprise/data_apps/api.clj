@@ -99,8 +99,7 @@
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   [:display_name ms/NonBlankString]
-   [:resource_collection_id ms/PositiveInt]])
+   [:display_name ms/NonBlankString]])
 
 (def ^:private RepoStatusResponse
   [:map
@@ -164,7 +163,7 @@
   [app]
   (if api/*is-superuser?*
     (assoc app :outdated (data-app.config/outdated? app))
-    (select-keys app [:name :display_name :resource_collection_id])))
+    (select-keys app [:name :display_name])))
 
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
