@@ -562,9 +562,11 @@
     (update-in a-join [:stages 0] u/assoc-dissoc :fields refs)))
 
 (defn- select-home-column
-  [home-cols cond-fields]
+  [home-cols other-home-cols cond-fields]
   (when (seq cond-fields)
-    (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
+    (let [cond-home-cols (keep #(or (lib.equality/find-matching-column % home-cols)
+                                    (lib.equality/find-matching-column % other-home-cols))
+                               cond-fields)]
       ;; first choice: the leftmost FK or PK in the condition referring to a home column
       (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
           ;; otherwise the leftmost home column in the condition
@@ -639,8 +641,6 @@
 (defn- add-alias-to-condition
   [query stage-number condition join-alias home-cols join-cols]
   (let [condition (if (and (vector? condition) (= (count condition) 4))
-                    ;; a field that matches columns on both sides belongs to the home side on the LHS and to the joined
-                    ;; side on the RHS
                     (let [[op op-opts lhs rhs] condition]
                       [op
                        op-opts
@@ -687,23 +687,33 @@
     (run! generator taken-names)
     (generator base-name)))
 
+(defn- other-home-columns
+  "The visible columns of a stage other than the columns of `a-join`, which might not have an alias to tell them apart
+  yet."
+  [query stage-number a-join]
+  (lib.metadata.calculation/visible-columns
+   (lib.util/update-query-stage query stage-number
+                                m/update-existing :joins (fn [joins]
+                                                           (filterv #(not= % a-join) joins)))
+   stage-number))
+
 (defn default-alias
   "Generate a default `:alias` for a join clause. home-cols should be visible columns for the stage"
   ([query stage-number a-join]
-   (let [stage     (lib.util/query-stage query stage-number)
-         home-cols (lib.metadata.calculation/visible-columns query stage-number)]
-     (default-alias query stage-number a-join stage home-cols)))
+   (default-alias query stage-number a-join
+                  (lib.util/query-stage query stage-number)
+                  (lib.metadata.calculation/visible-columns query stage-number)
+                  (other-home-columns query stage-number a-join)))
 
-  ([query _stage-number a-join stage home-cols]
-   (let [home-cols   home-cols
-         cond-fields (into []
+  ([query _stage-number a-join stage home-cols other-home-cols]
+   (let [cond-fields (into []
                            (mapcat (fn [condition]
                                      (let [lhs (standard-join-condition-lhs condition)
                                            rhs (standard-join-condition-rhs condition)]
                                        (when (and (lib.util/field-clause? lhs) (lib.util/field-clause? rhs))
                                          [lhs rhs]))))
                            (:conditions a-join))
-         home-col   (select-home-column home-cols cond-fields)
+         home-col   (select-home-column home-cols other-home-cols cond-fields)
          source-name (stage-source-display-name query stage)
          taken-names (cond-> (into [] (keep :alias) (:joins stage))
                        source-name (conj source-name))]
@@ -727,13 +737,10 @@
                                                             (dissoc % :alias)
                                                             %)
                                                          joins))))
-          ;; the columns of the join being named are not home columns, even before it has an alias
-          home-cols   (lib.metadata.calculation/visible-columns
-                       (lib.util/update-query-stage query stage-number
-                                                    m/update-existing :joins (fn [joins]
-                                                                               (filterv #(not= % a-join) joins)))
-                       stage-number)
-          join-alias  (default-alias query stage-number a-join stage home-cols)
+          home-cols   (other-home-columns query stage-number a-join)
+          join-alias  (default-alias query stage-number a-join stage
+                                     (lib.metadata.calculation/visible-columns query stage-number)
+                                     home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
       (cond-> a-join
