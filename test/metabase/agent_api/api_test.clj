@@ -340,7 +340,7 @@
                                        "Representations query has an invalid structure."]
                                       [:unknown-field
                                        "Unknown field"
-                                       (str "Unknown field Call `read_resource` with `metabase://table/<numeric id>/fields` "
+                                       (str "Unknown field\nCall `read_resource` with `metabase://table/<numeric id>/fields` "
                                             "to list this table's columns.")]]]
       (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
                                   (fn [& _]
