@@ -951,11 +951,13 @@
 ;;;   ["between", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "day"], ["now", {}]]
 ;;;   => ["between", {}, ["field", {}, <col>], "2025-01-01", ["now", {}]]
 ;;;
-;;; Why: the frontend opens a Metabot question from a `/question#` hash holding *legacy* MBQL
-;;; (`metabase.metabot.agent.links/->legacy-mbql`). JSON turns the unit into a string, and the legacy
-;;; schema cannot decode it back for `absolute-datetime` / `during`, so the clause never survives the
-;;; hop -- the last paragraph below says what that costs, which depends on where the clause sits. A
-;;; `temporal-unit` on a ref decodes fine (`legacy-json-round-trip-temporal-filters-test`).
+;;; `metabase.metabot.agent.links/->frontend-query` converts a structured query that does not
+;;; normalize to valid MBQL 5 to legacy MBQL. If that conversion fails too, as it does for a query
+;;; stripped of its `:lib/*` keys whose aggregation ref no longer resolves, the raw MBQL 5 query goes
+;;; out instead. In legacy MBQL, JSON turns the unit into a string, and the legacy schema cannot
+;;; decode it for `absolute-datetime` / `during`, so the frontend drops the clause (BOT-1972). A
+;;; `temporal-unit` on a ref decodes correctly (`legacy-json-round-trip-temporal-filters-test`). The
+;;; query builder also writes the hoisted form.
 ;;;
 ;;; Only inside a stage's `filters` and `expressions`, at every nesting level of the two -- a
 ;;; comparison inside a `case` included -- and in every stage of the query, a join's inner stages
@@ -986,8 +988,8 @@
 ;;; `date-field-with-day-bucketing?`, so the literal-side form becomes a negated range
 ;;; (`d < x OR d >= x+1`, dropping NULL rows) while the hoisted one stays an `!=` and gets the
 ;;; `IS NULL` disjunct `sql.qp` adds to every other `!=` (`correct-null-behaviour`). Hoisting is the
-;;; only option here, not just the better one: every `!=` shape that survives the JSON hop compiles
-;;; to `<> ... OR ... IS NULL`, and the one shape that does not is the broken one above. Pinned by
+;;; only option here, not just the better one: the `/question#` link carries the literal-side form
+;;; intact as MBQL 5, and the query engine then runs it as that negated range. Pinned by
 ;;; `optimize-date-not-equals-null-semantics-test`. The divergence is about *which rows*; inside a
 ;;; `case` under `expressions` that becomes a difference in a computed value rather than in the
 ;;; filter.
@@ -1039,15 +1041,10 @@
 ;;; Runs after Pass 2.9, which creates new `filters`. Idempotent: the output matches neither
 ;;; predicate.
 ;;;
-;;; None of the survivors above is merely unrewritten -- each is broken. The legacy unit enums have no
-;;; `:decode/normalize`, so after the JSON hop the clause never normalizes back. What that costs
-;;; depends on where it sits. In `filters`, `expressions` and join `conditions:` the dev and CI
-;;; question page 400s, while a production JAR -- where `normalize-or-throw`'s `mu/defn` output check
-;;; is compiled out -- lets `lib/query`'s `clean-stage-schema-errors` delete the clause, and the
-;;; question silently answers something else. In `aggregation:` the legacy schema is permissive
-;;; enough that even dev never throws: the `count-where` above is deleted in both, silently. Pass 6's
-;;; [[unencodable-temporal-clause-error!]] catches every one and raises a retryable `:agent-error?`,
-;;; except the unparseable literal, which resolve names more precisely.
+;;; The survivors above reach the question intact, since the `/question#` link carries MBQL 5, but the
+;;; query engine runs some of them wrong. Pass 6's [[unencodable-temporal-clause-error!]], whose
+;;; docstring has two examples, catches every one and raises a retryable `:agent-error?`, except the
+;;; unparseable literal, which resolve names more precisely.
 ;;; ============================================================
 
 (def ^:private date-truncation-units
@@ -1302,11 +1299,13 @@
 ;;;   ["temporal-extract", {}, <col>, "week-of-year-iso"]     => ["get-week", {}, <col>, "iso"]
 ;;;   ["temporal-extract", {}, <col>, "day-of-week", "us"]    => ["get-day-of-week", {}, <col>]
 ;;;
-;;; Same hazard as Pass 2.95: the unit lands in the legacy `::TemporalExtractUnit` enum, which has
-;;; no decoder, so the question page 400s. A `get-*` clause carries no unit. The week-mode units keep
-;;; their meaning through the trailing argument `get-week` / `get-day-of-week` already take. The
-;;; clause's own optional mode slot (third example) is dropped: SQL compilation reads only the unit
-;;; (`:temporal-extract` in `metabase.driver.sql.query-processor`), so it never mattered.
+;;; The unit lands in the legacy `::TemporalExtractUnit` enum, which has no decoder, so a question
+;;; that opens from legacy MBQL 400s. The `/question#` link carries a structured query as MBQL 5,
+;;; where the clause survives, so this matters only when a query falls back to legacy MBQL. A
+;;; `get-*` clause carries no unit. The week-mode units keep their meaning through the trailing
+;;; argument `get-week` / `get-day-of-week` already take. The clause's own optional mode slot (third
+;;; example) is dropped: SQL compilation reads only the unit (`:temporal-extract` in
+;;; `metabase.driver.sql.query-processor`), so it never mattered.
 ;;;
 ;;; An exact synonym wherever the clause appears, so not scoped to `filters`. Idempotent: the new
 ;;; head is not `temporal-extract`.
@@ -1396,6 +1395,49 @@
                           (and (vector? aggregation) (string? (first aggregation)))
                           (assoc "aggregation" [aggregation]))))
                     stages)))))
+
+;;; ============================================================
+;;; Pass 1.56 -- split top-level `and` filters into separate `filters:` entries.
+;;;
+;;; A stage's `filters:` entries are implicitly combined with `and`, so
+;;; `filters: [["and", {}, A, B]]` means the same as `filters: [A, B]`. The notebook renders the
+;;; compound `and` as one custom expression (BOT-1446). Splitting it gives each condition its own
+;;; editable filter without changing the rows, whether the model or the user wrote the `and`.
+;;;
+;;; Top-level `and` clauses and directly nested `and` clauses are split case-insensitively (`AND`).
+;;; An `and` under `or` or `not` must stay nested to preserve the boolean logic. An `and` with a
+;;; non-clause operand, such as a trailing map, stays intact so validation can report the original
+;;; clause. The `and`'s options map is dropped because its operands need nothing from it in the
+;;; portable form. Repeating the pass makes no further changes.
+;;;
+;;; Pass 1.56 runs in `normalize-shape*`, after Pass 1 adds options maps and before Pass 1.5.
+;;; It must precede Pass 2.9 (`split-post-agg-filters*`), which moves whole `filters:` entries,
+;;; so a row condition stays in stage 0 while only the condition on an aggregation moves.
+;;;
+;;; `metabase.lib.filter/flatten-and-clause`, used by `lib/atomic-filters`, does the same flattening
+;;; but requires keyword-keyed MBQL. This pass receives the string-keyed portable form before resolution.
+;;; ============================================================
+
+(defn- and-filter-clause?
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (string? (nth clause 0))
+       (= "and" (u/lower-case-en (nth clause 0)))
+       (map? (nth clause 1))
+       (every? clause-like? (drop 2 clause))))
+
+(defn- and-filter-operands
+  [clause]
+  (if (and-filter-clause? clause)
+    (mapcat and-filter-operands (drop 2 clause))
+    [clause]))
+
+(defn- split-top-level-and-filters*
+  [form]
+  (match/replace-all form
+    {"filters" (filters :guard (and (sequential? filters) (some and-filter-clause? filters)))}
+    (assoc &match "filters" (into [] (mapcat and-filter-operands) filters))))
 
 ;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
@@ -1598,12 +1640,13 @@
        (contains? #{"asc" "desc"} (first clause))))
 
 (defn- rewrite-order-by-inline-aggs-in-stage
-  "Apply the inline-agg-in-`order-by` rewrite to a single string-keyed stage map. Returns the
-  updated stage. No-op when the stage has no `order-by` or no `aggregation`."
+  "Rewrite inline aggregations in a stage's `order-by` clauses.
+
+  Leave the stage unchanged if `order-by` is missing or `aggregation` isn't a list of clauses."
   [stage]
   (let [aggs    (get stage "aggregation")
         ord     (get stage "order-by")]
-    (if-not (and (vector? aggs) (seq aggs) (vector? ord) (seq ord))
+    (if-not (and (vector? aggs) (seq aggs) (every? clause-like? aggs) (vector? ord) (seq ord))
       stage
       ;; Build a structural-key → index lookup over the aggregations once.
       (let [agg-key->idx (into {}
@@ -1775,6 +1818,9 @@
   [stage]
   (let [aggs (get stage "aggregation")]
     (cond
+      (not (map? stage))
+      stage
+
       ;; No integer refs anywhere in the stage - nothing to do.
       (not (stage-has-integer-agg-ref? stage))
       stage
@@ -1971,26 +2017,29 @@
    form))
 
 (defn- split-post-agg-filter-stage
-  "Detect post-agg-filter shape in `stage`. Return `[stage]` if no split is needed, or
-  `[stage' new-stage]` if the stage was split. Throws `:agent-error?` ex-info when split is
-  required but unsafe to perform automatically.
+  "Split a stage whose filters refer to its own aggregations.
 
-  Auto-fix is intentionally narrow: it moves the offending filter(s) into a second stage and
-  rewrites their agg-refs to cross-stage `[\"field\" {} \"<col-name>\"]` clauses. It does
-  NOT move `order-by` / `limit` / `fields` — those frequently reference pre-aggregation
-  columns that don't survive the split, and silently relocating them produces either a
-  hard-to-diagnose 'no matching field' error or, worse, a different-row-count query. When
-  any of those keys is present we refuse and ask the LLM to author two stages explicitly."
+  Return `[stage]` if no split is needed, or `[stage' new-stage]` after a split.
+  Rewrite aggregation references in the new stage as cross-stage field references.
+  Throw an `:agent-error?` exception if a split is needed but can't be done safely.
+
+  Moving `order-by`, `limit` or `fields` could change the results because those clauses
+  may refer to columns absent from the aggregation output. Ask the LLM to write two stages
+  explicitly in that case. Leave the stage unchanged for validation if `order-by` or `fields`
+  can't be read as a sequence."
   [stage]
   (let [aggs              (get stage "aggregation")
-        same-stage-uuids  (collect-stage-agg-uuids stage)]
-    (if-not (and (vector? aggs) (seq aggs) (seq same-stage-uuids))
+        same-stage-uuids  (when (vector? aggs) (collect-stage-agg-uuids stage))]
+    (if-not (seq same-stage-uuids)
       [stage]
       (let [filters             (get stage "filters")
             offending-filter?   (fn [f] (form-references-stage-agg? f same-stage-uuids))
             offending-filters   (when (vector? filters) (filterv offending-filter? filters))]
         (cond
           (empty? offending-filters)
+          [stage]
+
+          (some #(not (seqable? (get stage %))) ["order-by" "fields"])
           [stage]
 
           (or (seq (get stage "order-by"))
@@ -2409,7 +2458,8 @@
 ;;; ============================================================
 
 (defn- stage-join-aliases [stage]
-  (into #{} (keep #(when (map? %) (get % "alias"))) (get stage "joins")))
+  (let [joins (get stage "joins")]
+    (into #{} (keep #(when (map? %) (get % "alias"))) (when (sequential? joins) joins))))
 
 (defn- string-cross-stage-field-clause?
   "True if `v` is a string-named field ref to a previous-stage column of a stage whose joins are
@@ -2704,7 +2754,8 @@
   problem per join that has refs naming columns it doesn't return."
   [query mp content-store import-resolver idx stage]
   (let [{:keys [named path]} (join-alias-refs stage)
-        checks               (vec (for [join  (when (or (seq named) (seq path)) (get stage "joins"))
+        joins                (get stage "joins")
+        checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
                                         :let  [alias      (when (map? join) (get join "alias"))
                                                named-refs (get named alias)
                                                path-refs  (when-not (plain-table-join? join) (get path alias))]
@@ -2778,7 +2829,8 @@
              q query]
         (if (>= i n)
           q
-          (let [cols (mini-resolved-columns mp q i content-store)
+          (let [cols (when (map? (get-in q ["stages" i]))
+                       (mini-resolved-columns mp q i content-store))
                 q'   (if cols
                        (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols)
                        q)]
@@ -2996,7 +3048,7 @@
                :error        :numeric-field-id
                :clause       &match})))))
 
-;;; ----- E7: a temporal clause the `/question#` hash cannot carry ---------------------
+;;; ----- E7: a temporal clause Pass 2.95 could not rewrite ----------------------------
 
 (defn- deferred-to-invalid-temporal-literal?
   "True for an `absolute-datetime` whose literal cannot parse.
@@ -3011,9 +3063,8 @@
   Deferring the whole query instead would be a worse trade -- `validate-temporal-literals` does not
   inspect every position, since a bare literal on a comparison head is checked only when an operand
   is *known* temporal, so an unparseable literal in a position it does not inspect would silence E7
-  with nothing to replace it, reopening the silent-deletion hole
-  Pass 2.95 and this detector exist to close. The model fixes what E7 named and sees the literal
-  complaint on the next turn."
+  with nothing to replace it, and the clause would reach the query engine. The model fixes what E7
+  named and sees the literal complaint on the next turn."
   [node]
   (let [literal (nth node 2)]
     (and (string? literal)
@@ -3027,23 +3078,22 @@
 
   All three hold a temporal unit in a slot the legacy schema types with `::DateUnit` /
   `::DateTimeUnit` (`metabase.legacy-mbql.schema`, via `::ValueTypeInfo` for `value`), and neither
-  enum carries a `:decode/normalize`. Once the `/question#` hash has JSON-encoded the query the unit
-  is a string and the clause never normalizes back. In `filters`, `expressions` and join
-  `conditions:` that is a 400 on the dev and CI question page, and in a production JAR -- where
-  `normalize-or-throw`'s `mu/defn` output check is compiled out -- `lib/query`'s
-  `clean-stage-schema-errors` deletes the clause outright and the question silently answers something
-  else. In `aggregation:` the legacy schema is permissive enough that nothing throws even in dev: the
-  clause is deleted silently in both. Pass 2.95 rewrites every shape it can rewrite without changing
-  the answer, so anything still standing here is broken either way.
+  enum carries a `:decode/normalize`: after a JSON hop as legacy MBQL the unit is a string and the
+  clause never normalizes back. The `/question#` link carries a structured query as MBQL 5, where the
+  clause survives the hop, but the query engine runs some of these clauses wrong by comparing the
+  column with the start of the literal's period. On the Sample Database, `count-where` with
+  `[\">\" CREATED_AT [\"absolute-datetime\" \"2026-01-01\" \"month\"]]` counts 18016 orders, though
+  17811 are after January 2026, and
+  `[\"=\" [\"absolute-datetime\" \"2026-03-01\" \"month\"] CREATED_AT]` counts none of the 256 orders
+  from March 2026. Pass 2.95 rewrites every shape it can rewrite without changing the answer, and
+  this detector has the model rewrite the rest.
 
   `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
   and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
   1.867 has already rewritten every one to a `get-*` clause by the time this runs -- narrow that pass
   and this detector needs the head. `time` is excluded on purpose: it 400s in dev, but `->mbql5`
   salvages the raw clause in prod (unit correctly keywordized, filter intact), so flagging it would
-  reject a query that works for customers. This detector exists only because `::DateUnit`,
-  `::TimeUnit`, `::DateTimeUnit` and `::TemporalExtractUnit` lack decoders -- if they ever gain them,
-  delete it rather than inherit a false-positive machine.
+  reject a query that works for customers.
 
   Throws `:agent-error?` ex-info on the first offender."
   [form]
@@ -3064,7 +3114,7 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+               (tru "Move the temporal unit in `{0}` off the literal. Put it on the column - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
                     (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
@@ -3117,6 +3167,7 @@
       normalise-case-clauses*
       normalise-fields-shape*
       normalise-aggregation-clauses*
+      split-top-level-and-filters*
       normalize-expressions-shape*
       ensure-lib-types*))
 
@@ -3134,19 +3185,22 @@
     1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
+    1.56. split a top-level `and` in `filters:` into separate entries that the notebook shows as
+       individual filters (runs in `normalize-shape*`, before 1.5; must precede 2.9);
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
-    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, so its unit no longer sits
-       where legacy normalization cannot decode it (examples in the pass header);
+    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, which survives a fallback
+       to legacy MBQL (examples in the pass header);
     1.87. rewrite a known-misspelled `\"lib/type\"` marker to its canonical value (e.g. the
        join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
     2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
-       `absolute-datetime` literal and onto the ref it is compared to, for the same reason
-       (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
+       `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
+       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
+       form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);

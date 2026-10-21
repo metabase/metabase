@@ -57,7 +57,6 @@ import type {
   NavigatedEntityParameters,
 } from "embedding-sdk-bundle/types/navigation";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import { getErrorMessage } from "metabase/api/utils/errors";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -595,9 +594,7 @@ const SdkDashboardInner = ({
         className={className}
         style={style}
       >
-        <SdkError
-          message={getErrorMessage(errorPage, t`Something's gone wrong`)}
-        />
+        <SdkError message={errorPage.message ?? t`Something's gone wrong`} />
       </MaybeStyledWrapper>
     );
   }

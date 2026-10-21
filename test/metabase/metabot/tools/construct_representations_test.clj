@@ -197,6 +197,23 @@
                 (is (= exported
                        (get-in redo [:structured-output :query-json])))))))))))
 
+(deftest top-level-and-filter-split-into-separate-filters-end-to-end-test
+  (testing "A top-level `and` becomes separate filters in the constructed MBQL 5 query."
+    (with-mp-and-stubs!
+      (fn []
+        (let [q (get-in (construct/execute-representations-query
+                         (query-data
+                          {"lib/type" "mbql/query"
+                           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                        "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                        "filters"      [["and" {}
+                                                         [">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 100]
+                                                         ["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] 1 10]]]}]}))
+                        [:structured-output :query])]
+          (is (=? [[:> {} [:field {} pos-int?] 100]
+                   [:between {} [:field {} pos-int?] 1 10]]
+                  (lib/filters q 0))))))))
+
 (deftest unknown-table-surfaces-agent-error-test
   (with-mp-and-stubs!
     (fn []

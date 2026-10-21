@@ -4,6 +4,8 @@ import type { User } from "metabase-types/api";
 
 import { AccountHeader } from "../AccountHeader";
 
+import S from "./AccountLayout.module.css";
+
 interface AccountLayoutProps {
   user: User | null;
   path?: string;
@@ -20,17 +22,20 @@ const AccountLayout = ({
   }
 
   return (
-    <div>
-      <AccountHeader
-        user={user}
-        path={path}
-        onChangeLocation={onChangeLocation}
-      />
+    <div className={S.root}>
+      <div className={S.header}>
+        <AccountHeader
+          user={user}
+          path={path}
+          onChangeLocation={onChangeLocation}
+        />
+      </div>
       <Box
         mx="auto"
         px={{ base: "sm", sm: "lg" }}
         py={{ base: "sm", sm: "xxl" }}
-        w={{ base: "100%", sm: rem(540) }}
+        w="100%"
+        maw={rem(540)}
       >
         <Outlet />
       </Box>

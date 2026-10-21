@@ -77,10 +77,17 @@ Field options (all optional):
 
 ## Per-clause examples
 
-Filter (comparison + boolean combination):
+Use one entry per filter condition. Metabase combines the entries with `and`.
 
 ```json
-"filters": [["and", {},
+"filters": [[">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+            ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]
+```
+
+Use one entry for conditions combined with `or` or negated together by `not`; nest `and` inside them when needed. For example, "total over 100, or quantity at most 5":
+
+```json
+"filters": [["or", {},
   [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
   ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]]
 ```
@@ -118,6 +125,10 @@ Shape rules:
 - **Clause heads are lowercase, hyphenated**: `"count"`, `"sum-where"`, `"time-interval"`, `"get-day-of-week"`. Not underscores, not camelCase.
 - **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from search / `read_resource` — no patterns, no numeric ids, no `card__<id>`.
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
+
+Editing an existing query (the user asks to change, add, or remove part of the question they're viewing):
+- Start from the query shown in context and change only what the user asked for. Copy every other clause unchanged, including filters, breakouts, aggregations, and their order.
+- Keep each existing filter as its own `filters:` entry. To change one filter, replace just that entry. Never merge it with another filter into an `and`. The notebook shows a combined filter as one custom expression, so the user sees their untouched filters rewritten.
 
 Anti-hallucination:
 - **Don't subtract dates** with `-`. Use `["datetime-diff", {}, <left>, <right>, "<unit>"]` for the integer count of units between two temporal values.
