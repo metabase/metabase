@@ -7,6 +7,7 @@ import {
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
 } from "metabase/api";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
@@ -43,7 +44,10 @@ export function useTableLoader() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const getDatabases = useCallback(async () => {
-    const response = await fetchDatabases({}, true);
+    const response = await fetchDatabases(
+      PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+      true,
+    );
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
       // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -74,6 +78,7 @@ export function useTableLoader() {
         id: databaseId,
         schema: schemaName,
         include_hidden: true,
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
       };
 
       if (
@@ -114,6 +119,7 @@ export function useTableLoader() {
       const newArgs = {
         id: databaseId,
         include_hidden: true,
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
       };
 
       if (
