@@ -8,7 +8,10 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -302,10 +305,10 @@
                 (lib/display-info query drill))))
       (testing "apply drills"
         (testing :contains
-          (is (=? {:stages [{:filters [[:contains {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+          (is (=? {:stages [{:filters [[:contains {} [:field {} "BODY"] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "contains"))))
         (testing :does-not-contain
-          (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+          (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} "BODY"] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "does-not-contain"))))))))
 
 (deftest ^:parallel preserve-temporal-bucket-test-quick-filter
@@ -339,7 +342,7 @@
                                        (lib/available-drill-thrus base-query context))]
       (is (some? drill))
       (is (=? {:stages [{:filters [[:= {}
-                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    [:field {:temporal-unit :month} "CREATED_AT"]
                                     "2023-03-01T00:00:00Z"]]}]}
               (lib/drill-thru base-query -1 nil drill "="))))))
 
@@ -358,7 +361,7 @@
         :drill-args     ["="]
         ;; the emitted filter keeps the full bigint precision (stored as a string in the :value clause)
         :expected-query {:stages [{:filters [[:= {}
-                                              [:field {} (meta/id :orders :quantity)]
+                                              [:field {} "QUANTITY"]
                                               [:value {:base-type :type/BigInteger} big]]]}]}}))))
 
 (deftest ^:parallel quick-filter-drill-on-expression-column-test
@@ -421,7 +424,7 @@
                             (lib/available-drill-thrus query context))
         drilled (lib/drill-thru query -1 nil drill "=")]
     (is (=? [[:= {}
-              [:field {:binning {:strategy :default}} (:id total-col)]
+              [:field {:binning {:strategy :default}} (:name total-col)]
               40]]
             (lib/filters drilled)))
     (testing "the binning that lands in the query is plain options, with none of the `:lib/type`/`:metadata-fn`

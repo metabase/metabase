@@ -5,7 +5,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 

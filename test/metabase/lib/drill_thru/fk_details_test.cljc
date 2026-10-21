@@ -8,7 +8,10 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -67,7 +70,7 @@
                          :many-pks? false}
         :expected-query {:stages [{:source-table (meta/id :products)
                                    :filters      [[:= {}
-                                                   [:field {} (meta/id :products :id)]
+                                                   [:field {} "ID"]
                                                    column-value]]}]}}))))
 
 (deftest ^:parallel apply-fk-details-test-2
@@ -85,7 +88,7 @@
                          :many-pks? false}
         :expected-query {:stages [{:source-table (meta/id :people)
                                    :filters      [[:= {}
-                                                   [:field {} (meta/id :people :id)]
+                                                   [:field {} "ID"]
                                                    column-value]]}]}}))))
 
 (deftest ^:parallel fk-details-on-model-test
@@ -130,7 +133,7 @@
             (is (=? {:stages [{:lib/type :mbql.stage/mbql,
                                :source-table (meta/id :people)
                                :filters [[:= {}
-                                          [:field {} (meta/id :people :id)]
+                                          [:field {} "ID"]
                                           1]]}]}
                     (lib/drill-thru query -1 nil fk-details-drill)))))))))
 

@@ -2,7 +2,7 @@
   "Adapted from frontend/src/metabase-lib/drills.unit.spec.ts"
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [is testing]]
+   [clojure.test :refer [is testing use-fixtures]]
    [clojure.walk :as walk]
    [malli.util :as mut]
    [medley.core :as m]
@@ -21,6 +21,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -147,7 +149,7 @@
                       (->> (lib/returned-columns mbql-query)
                            (map #(-> %
                                      (assoc :lib/source :source/native)
-                                     (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
+                                     (dissoc :lib/breakout? :lib/expression-name :lib/join-alias :fk-field-id :fk-field-name :fk-join-alias))))
                       (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
                         ;; Not all the input queries passed to this are real. Some of them are skeletons used
                         ;; as test expectations. If we fail to generate the returned columns, just return nil.
@@ -324,7 +326,7 @@
         cols       (cond->> returned
                      (= query-kind :native) (map #(-> %
                                                       (assoc :lib/source :source/native)
-                                                      (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
+                                                      (dissoc :lib/breakout? :lib/expression-name :lib/join-alias :fk-field-id :fk-field-name :fk-join-alias))))
         by-name    (m/index-by :name cols)
         col        (get by-name column-name)
         refs       (update-vals by-name lib/ref)

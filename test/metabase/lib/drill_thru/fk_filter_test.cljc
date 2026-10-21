@@ -6,7 +6,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -130,7 +133,7 @@
                                       (lib/available-drill-thrus query context))]
     (is (=? {:lib/type    :metabase.lib.drill-thru/drill-thru,
              :type        :drill-thru/fk-filter
-             :filter      [:= {} [:field {:join-alias "Venues"} (meta/id :venues :category-id)] 2]
+             :filter      [:= {} [:field {:join-alias "Venues"} "CATEGORY_ID"] 2]
              :column-name "Venues → Category ID"
              :table-name  "Checkins"}
             fk-filter-drill))
@@ -167,7 +170,7 @@
                           :column-name "Product ID"
                           :table-name  string?}
         :expected-query  {:stages [(-> (get lib.drill-thru.tu/test-queries "ORDERS") :aggregated :query :stages first)
-                                   {:filters [[:= {} [:field {} (meta/id :orders :product-id)]
+                                   {:filters [[:= {} [:field {} "PRODUCT_ID"]
                                                (get-in lib.drill-thru.tu/test-queries
                                                        ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}
         :expected-native {:stages [{:filters [[:= {} [:field {} "PRODUCT_ID"]

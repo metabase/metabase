@@ -1,12 +1,14 @@
 (ns metabase.lib.drill-thru.pk-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -103,8 +105,8 @@
                                    :value  200}]}
                     drill))
             (testing "Should add one filter for each PK column (#36426)"
-              (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :orders :id)] 100]
-                                           [:= {} [:field {} (meta/id :orders :product-id)] 200]]}]}
+              (is (=? {:stages [{:filters [[:= {} [:field {} "ID"] 100]
+                                           [:= {} [:field {} "PRODUCT_ID"] 200]]}]}
                       (lib/drill-thru query drill)))))))
       (testing "only one PK has a value: ignore the PK without a value"
         (let [context (context-with-values 10 100 nil)
@@ -115,7 +117,7 @@
                                  :value  100}]}
                   drill))
           (testing "\nShould add one filter for each PK column (#36426)"
-            (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :orders :id)] 100]]}]}
+            (is (=? {:stages [{:filters [[:= {} [:field {} "ID"] 100]]}]}
                     (lib/drill-thru query drill))))))
       (testing "neither PK has a value: don't return a drill at all"
         (let [context (context-with-values 10 nil nil)]

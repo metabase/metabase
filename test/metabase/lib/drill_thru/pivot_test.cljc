@@ -11,6 +11,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 ;; Case analysis:
 ;; 1. No pivot drill:
 ;;     Basics: a. native query; b. MBQL with no aggregations; c. column click
@@ -103,9 +105,12 @@
                       (merge {"count" 77}))})
 
 (defn- orders-count-with-breakouts [breakout-values]
-  (orders-count-with-breakouts*
-   (lib/query meta/metadata-provider (meta/table-metadata :orders))
-   breakout-values))
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        cols  (lib/breakoutable-columns query)]
+    (orders-count-with-breakouts*
+     query
+     (for [[col v] breakout-values]
+       [(m/find-first #(= (:id %) (:id col)) cols) v]))))
 
 (defn- orders-count-with-breakouts-and-join [breakout-values]
   (orders-count-with-breakouts*
@@ -352,10 +357,10 @@
                                        (lib/pivot-columns-for-type pivot :category))]
           (is (some? source-col))
           (is (=? {:stages [{:filters  [[:= {}
-                                         [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                         [:field {:temporal-unit :month} "CREATED_AT"]
                                          "2027-03-01T00:00:00Z"]]
-                             :breakout [[:field {:source-field (meta/id :orders :user-id)}
-                                         (meta/id :people :source)]]}]}
+                             :breakout [[:field {:source-field-name "USER_ID"}
+                                         "SOURCE"]]}]}
                   (lib/drill-thru query -1 nil pivot source-col))))))))
 
 (deftest ^:parallel expression-after-aggregation-test
