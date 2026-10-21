@@ -1,4 +1,6 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
+
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 import type { SuggestionPreviewContentProps } from "./SuggestionPreviewContent";
 
@@ -18,7 +20,7 @@ const importSuggestionPreviewContent = () =>
  */
 export const loadSuggestionPreview = () => importSuggestionPreviewContent();
 
-const LazySuggestionPreviewContent = lazy(() =>
+const LazySuggestionPreviewContent = lazyChunk(() =>
   importSuggestionPreviewContent().then(({ SuggestionPreviewContent }) => ({
     default: SuggestionPreviewContent,
   })),

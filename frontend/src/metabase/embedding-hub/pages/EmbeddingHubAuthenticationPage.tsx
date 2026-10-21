@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -10,6 +10,7 @@ import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 import { AuthenticationUpsellPage } from "../upsells";
 
@@ -17,7 +18,7 @@ const ADMIN_AUTHENTICATION_URL = "/admin/settings/authentication";
 
 // Loaded through the same route slot settingsRoutes.tsx uses, so the hub
 // shares the auth-jwt chunk instead of pulling the form back out of it.
-const SettingsJWTForm = lazy(() =>
+const SettingsJWTForm = lazyChunk(() =>
   PLUGIN_AUTH_PROVIDERS.settingsJWTForm().then(({ Component }) => ({
     // PluginRoute's Component is untyped -- the loaded module always accepts
     // SettingsJWTFormProps, since it's SettingsJWTForm itself.

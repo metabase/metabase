@@ -1,12 +1,5 @@
 import cx from "classnames";
-import {
-  type ChangeEvent,
-  Suspense,
-  lazy,
-  memo,
-  useCallback,
-  useState,
-} from "react";
+import { type ChangeEvent, Suspense, memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -28,6 +21,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 import { uuid } from "metabase/utils/uuid";
 import type {
   CustomGeoJSONMap,
@@ -523,7 +517,7 @@ interface ChoroplethPreviewProps {
 
 // leaflet (~225KB) is loaded lazily here so it stays out of the admin bundle
 // until someone actually previews a custom GeoJSON map.
-const LeafletChoropleth = lazy(() =>
+const LeafletChoropleth = lazyChunk(() =>
   import("metabase/visualizations/components/LeafletChoropleth").then(
     (module) => ({ default: module.LeafletChoropleth }),
   ),

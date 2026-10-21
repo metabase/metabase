@@ -1,6 +1,7 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 /**
  * The whitelabel settings pages, in their own chunk.
@@ -13,7 +14,7 @@ import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading
  * `PLUGIN_WHITELABEL` holds components rather than route loaders, so the
  * Suspense boundary lives here rather than at the call site.
  */
-const BrandingSettingsPage = lazy(() =>
+const BrandingSettingsPage = lazyChunk(() =>
   import("./components/WhiteLabelBrandingSettingsPage").then(
     ({ WhiteLabelBrandingSettingsPage }) => ({
       default: WhiteLabelBrandingSettingsPage,
@@ -21,7 +22,7 @@ const BrandingSettingsPage = lazy(() =>
   ),
 );
 
-const ConcealSettingsPage = lazy(() =>
+const ConcealSettingsPage = lazyChunk(() =>
   import("./components/WhiteLabelConcealSettingsPage").then(
     ({ WhiteLabelConcealSettingsPage }) => ({
       default: WhiteLabelConcealSettingsPage,

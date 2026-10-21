@@ -1,4 +1,6 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 
@@ -54,7 +56,7 @@ export const useExpressionWidgetChunk = () => {
   return isLoaded;
 };
 
-const LazyExpressionWidget = lazy(() =>
+const LazyExpressionWidget = lazyChunk(() =>
   importExpressionWidget().then(({ ExpressionWidget }) => ({
     default: ExpressionWidget,
   })),

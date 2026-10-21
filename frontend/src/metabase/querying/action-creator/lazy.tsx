@@ -1,4 +1,6 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
+
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 import type { ActionCreatorProps } from "./ActionCreator";
 
@@ -14,7 +16,7 @@ const importActionCreator = () => import("./ActionCreator");
  */
 export const loadActionCreator = () => importActionCreator();
 
-const LazyActionCreator = lazy(() =>
+const LazyActionCreator = lazyChunk(() =>
   importActionCreator().then(({ ActionCreator }) => ({
     default: ActionCreator,
   })),

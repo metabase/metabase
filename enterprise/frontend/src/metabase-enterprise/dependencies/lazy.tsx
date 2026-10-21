@@ -1,6 +1,7 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 /**
  * The dependency graph page, in its own chunk. It renders the graph with xyflow
@@ -11,7 +12,7 @@ export const loadDependencyGraphPage = () =>
     /* webpackChunkName: "dependency-graph" */ "./pages/DependencyGraphPage"
   );
 
-const DependencyGraphPage = lazy(() =>
+const DependencyGraphPage = lazyChunk(() =>
   loadDependencyGraphPage().then(({ DependencyGraphPage }) => ({
     default: DependencyGraphPage,
   })),
