@@ -2,6 +2,10 @@ import path from "node:path";
 
 import type { Plugin } from "vite";
 
+import {
+  ACTION_DEFINITIONS,
+  QUERY_DEFINITIONS,
+} from "../../data-app-resources/discover";
 import { validateDataAppManifest } from "../config/validate-manifest";
 import { DATA_APP_REBUILT_EVENT } from "../constants/bundle";
 import { DATA_APP_DIAGNOSTICS_CHANGED_EVENT } from "../constants/diagnostics-channel";
@@ -16,6 +20,20 @@ import {
   loadDataAppVirtualModule,
   resolveDataAppVirtualId,
 } from "./virtual-modules";
+
+// `src/` imports the definitions from the root-level `queries/` and `actions/`,
+// so the bundle is built from all three.
+const BUNDLED_DIRECTORIES: readonly string[] = [
+  "src",
+  QUERY_DEFINITIONS.directory,
+  ACTION_DEFINITIONS.directory,
+];
+
+const isBundledFile = (root: string, file: string) => {
+  const [topDirectory] = path.relative(root, file).split(path.sep);
+
+  return BUNDLED_DIRECTORIES.includes(topDirectory);
+};
 
 export function dataAppSandboxDevPlugin(
   appSlug: string,
@@ -56,8 +74,6 @@ export function dataAppSandboxDevPlugin(
         }),
       );
 
-      const srcDir = `${path.sep}src${path.sep}`;
-
       server.watcher.on("all", async (_event, file) => {
         if (path.basename(file) === DATA_APP_MANIFEST_FILE_NAME) {
           server.ws.send({
@@ -68,7 +84,7 @@ export function dataAppSandboxDevPlugin(
           return;
         }
 
-        if (file.includes(srcDir) && (await bundle.rebuild())) {
+        if (isBundledFile(root, file) && (await bundle.rebuild())) {
           server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
         }
       });

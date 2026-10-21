@@ -1,8 +1,8 @@
 (ns metabase.mcp.v2.api
   "The MCP tool surface mounted on every path in
-   [[metabase.mcp.paths/endpoint-paths]]. [[metabase.mcp.transport]] supplies the JSON-RPC framing,
-   origin checks, cookie/bearer auth, session handling, and throttling; `tools/list` and
-   `tools/call` are driven by the [[metabase.mcp.v2.registry]]. Gated by
+   [[metabase.mcp.paths/endpoint-paths]]. [[metabase.mcp.transport]] supplies the JSON-RPC framing, origin checks,
+  bearer auth, session handling, and throttling; `tools/list` and `tools/call` are driven by
+  the [[metabase.mcp.v2.registry]]. Gated by
    [[metabase.mcp.validation/+mcp-enabled]]."
   (:require
    [clojure.string :as str]

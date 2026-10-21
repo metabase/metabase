@@ -1,15 +1,33 @@
 import cx from "classnames";
-import { type ReactNode, useMemo } from "react";
+import {
+  type ReactNode,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { HoveredObject } from "metabase/viz-core";
+import type { LegendPosition } from "metabase-types/api";
 
 import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
 import S from "./LegendLayout.module.css";
-import { LEGEND_SIZES, getLegendLayout, getLegendSize } from "./layout";
+import { LEGEND_COLUMN_GAP, LEGEND_COLUMN_MARGIN_TOP } from "./constants";
+import { HIDDEN_LEGEND_LAYOUT, getLegendLayout } from "./layout";
+import { measureLegend } from "./measure";
+import {
+  type ChartSize,
+  type LegendChart,
+  getLegendPlots,
+  getPlotsWithoutAxes,
+} from "./plots";
+import { LEGEND_SIZES, getLegendSize } from "./sizes";
 
 interface LegendLayoutProps {
   className?: string;
@@ -17,9 +35,9 @@ interface LegendLayoutProps {
   hovered?: HoveredObject | null;
   width?: number;
   height?: number;
-  chartHeight?: number;
-  indent?: number;
+  chart?: LegendChart;
   hasLegend: boolean;
+  legendPosition?: LegendPosition;
   alwaysVisible?: boolean;
   actionButtons?: ReactNode;
   isFullscreen?: boolean;
@@ -33,6 +51,13 @@ interface LegendLayoutProps {
     index: number,
     isReversed?: boolean,
   ) => void;
+  /**
+   * With `onSelectSeries` also set, series titles render as links to the
+   * returned URL. It's called when a title is hovered or focused, not on render.
+   * Clicks still go to `onSelectSeries`; the URL serves middle-click and the
+   * browser's link menu, such as "Open in new tab".
+   */
+  getSeriesHref?: (index: number) => string | undefined;
   onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
   isReversed?: boolean;
 }
@@ -43,9 +68,9 @@ export const LegendLayout = ({
   hovered,
   width = 0,
   height = 0,
-  chartHeight,
-  indent = 0,
+  chart,
   hasLegend,
+  legendPosition = "auto",
   alwaysVisible,
   actionButtons,
   isFullscreen,
@@ -55,40 +80,65 @@ export const LegendLayout = ({
   children,
   onHoverChange,
   onSelectSeries,
+  getSeriesHref,
   onToggleSeriesVisibility,
   isReversed,
 }: LegendLayoutProps) => {
   const hasDimensions = width > 0 && height > 0;
+  const canShowLegend = hasDimensions && hasLegend && legendPosition !== "off";
   const size = getLegendSize({ width, height, isQueryBuilder, isFullscreen });
+  const { rootRef, chartAreaRef, chartRoom } = useChartRoom(width, height);
 
-  const layout = useMemo(
+  const metrics = useMemo(
     () =>
-      getLegendLayout({
-        items,
-        width,
-        height,
-        chartHeight,
-        horizontalWidth: width - Math.abs(indent),
-        size,
-        fontFamily,
-        measureText,
-        alwaysVisible,
-      }),
+      canShowLegend
+        ? measureLegend({
+            items,
+            width,
+            height,
+            chartRoom,
+            size,
+            fontFamily,
+            measureText,
+            isReversed,
+          })
+        : null,
     [
+      canShowLegend,
       items,
       width,
       height,
-      chartHeight,
-      indent,
+      chartRoom,
       size,
       fontFamily,
       measureText,
-      alwaysVisible,
+      isReversed,
     ],
   );
 
-  const isVisible = hasDimensions && hasLegend && layout.type !== "hidden";
-  const { horizontalGap, verticalGap } = LEGEND_SIZES[size];
+  const plots = useMemo(() => {
+    if (metrics == null) {
+      return null;
+    }
+    return chart
+      ? getLegendPlots(chart, metrics.chartSizes)
+      : getPlotsWithoutAxes(metrics.chartSizes);
+  }, [metrics, chart]);
+
+  const layout = useMemo(
+    () =>
+      metrics && plots
+        ? getLegendLayout(metrics, {
+            position: legendPosition,
+            plots,
+            alwaysVisible,
+          })
+        : HIDDEN_LEGEND_LAYOUT,
+    [metrics, plots, legendPosition, alwaysVisible],
+  );
+
+  const isLegendBeforeChart = layout.type !== "hidden" && layout.isBeforeChart;
+  const { rowChartGap } = LEGEND_SIZES[size];
 
   const legendProps = {
     items,
@@ -96,45 +146,87 @@ export const LegendLayout = ({
     size,
     onHoverChange,
     onSelectSeries,
+    getSeriesHref,
     onToggleSeriesVisibility,
     isReversed,
   };
 
+  const horizontalLegend = layout.type === "horizontal" && (
+    <Flex
+      justify="center"
+      flex="0 0 auto"
+      miw={0}
+      mt={isLegendBeforeChart ? 0 : rowChartGap}
+      mb={isLegendBeforeChart ? rowChartGap : 0}
+      ml={Math.max(layout.indent, 0)}
+      mr={Math.max(-layout.indent, 0)}
+      data-testid="legend-horizontal"
+    >
+      <Legend {...legendProps} visibleLength={layout.visibleCount} />
+    </Flex>
+  );
+
+  const verticalLegend = layout.type === "vertical" && (
+    <Box
+      className={cx(S.verticalLegend, CS.overflowHidden)}
+      flex="0 0 auto"
+      miw={0}
+      mt={LEGEND_COLUMN_MARGIN_TOP}
+      ml={isLegendBeforeChart ? 0 : LEGEND_COLUMN_GAP}
+      mr={isLegendBeforeChart ? LEGEND_COLUMN_GAP : 0}
+      style={{ width: layout.width }}
+      data-testid="legend-vertical"
+    >
+      <Legend {...legendProps} visibleLength={layout.visibleCount} isVertical />
+    </Box>
+  );
+
   return (
-    <div className={cx(S.root, className)}>
-      <div className={S.main}>
+    <Flex ref={rootRef} className={className} flex="1 1 auto" miw={0} mih={0}>
+      {isLegendBeforeChart && verticalLegend}
+      <Flex direction="column" flex="1 1 auto" miw={0} mih={0}>
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
-        {hasDimensions && <div className={S.chart}>{children}</div>}
-        {isVisible && layout.type === "horizontal" && (
-          <Flex
-            justify="center"
-            flex="0 0 auto"
-            miw={0}
-            mt={horizontalGap}
-            ml={Math.max(indent, 0)}
-            mr={Math.max(-indent, 0)}
-            data-testid="legend-horizontal"
-          >
-            <Legend {...legendProps} />
-          </Flex>
-        )}
-      </div>
-      {isVisible && layout.type === "vertical" && (
-        <Box
-          className={S.verticalLegend}
-          flex="0 0 auto"
+        <Flex
+          ref={chartAreaRef}
+          direction="column"
+          flex="1 1 auto"
           miw={0}
-          ml={verticalGap}
-          style={{ width: layout.width }}
-          data-testid="legend-vertical"
+          mih={0}
         >
-          <Legend
-            {...legendProps}
-            visibleLength={layout.visibleCount}
-            isVertical
-          />
-        </Box>
-      )}
-    </div>
+          {isLegendBeforeChart && horizontalLegend}
+          {hasDimensions && (
+            <Flex direction="column" flex="1 0 auto" mih={0}>
+              {children}
+            </Flex>
+          )}
+          {!isLegendBeforeChart && horizontalLegend}
+        </Flex>
+      </Flex>
+      {!isLegendBeforeChart && verticalLegend}
+    </Flex>
   );
 };
+
+// The legend root keeps its width and the chart area its height whichever
+// legend shows, so the layout can depend on them without feeding back. They
+// are measured when the card size props change, so a render the chart's own
+// resize triggers before those props catch up keeps the room that matches them.
+function useChartRoom(width: number, height: number) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+  const [chartRoom, setChartRoom] = useState<ChartSize>();
+
+  useLayoutEffect(() => {
+    const roomWidth = rootRef.current?.clientWidth ?? 0;
+    const roomHeight = chartAreaRef.current?.clientHeight ?? 0;
+    const measuredRoom =
+      roomWidth > 0 && roomHeight > 0
+        ? { width: roomWidth, height: roomHeight }
+        : undefined;
+    setChartRoom((room) =>
+      _.isEqual(room, measuredRoom) ? room : measuredRoom,
+    );
+  }, [width, height]);
+
+  return { rootRef, chartAreaRef, chartRoom };
+}

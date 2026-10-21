@@ -191,7 +191,7 @@
 
   `:user-message` is copied onto the outcome for unrecoverable errors so the agent loop can show it
   to the user. It never becomes part of `:output`."
-  [{:keys [class code message recovery user-message]} tool-names]
+  [{:keys [class code message recovery user-message] :as error} tool-names]
   (let [output (case class
                  :validation  message
                  ;; The same assembly an item's failure gets, so a `not-found!` reads identically
@@ -205,7 +205,10 @@
       ;; in `metabase.metabot.tools.error-test` rather than on every render — which also means this
       ;; path needs no exemption for `tools.core/all-items-failed`, whose message is not authored at
       ;; all but assembled from text each item already had filtered for this profile.
-      (assert-authored! output (str class " " code)))
+      (assert-authored! (if (= :recoverable class)
+                          (tools.error/authored-text error output)
+                          output)
+                        (str class " " code)))
     {:output (cond-> output
                (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}

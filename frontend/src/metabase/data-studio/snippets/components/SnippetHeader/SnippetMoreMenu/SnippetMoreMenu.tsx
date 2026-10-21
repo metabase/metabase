@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 import { SnippetModal, type SnippetModalType } from "./SnippetModal";
@@ -77,13 +78,7 @@ function SnippetMenu({ onOpenModal, snippet }: SnippetMenuProps) {
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon
-          variant="subtle"
-          size="sm"
-          aria-label={t`Snippet menu options`}
-        >
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <MoreMenuButton aria-label={t`Snippet menu options`} />
       </Menu.Target>
       <Menu.Dropdown>{menuItems}</Menu.Dropdown>
     </Menu>

@@ -39,6 +39,7 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.db :as sync.db]
@@ -94,11 +95,12 @@
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-       ;; Re-fetch our metadata because there might be some things that have changed after calling
-       ;; `sync-instances`
-       (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table)))))
+    (dependencies.hooks/with-batched-marks
+      (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+         ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+         ;; Re-fetch our metadata because there might be some things that have changed after calling
+         ;; `sync-instances`
+         (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.

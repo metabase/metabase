@@ -9,6 +9,7 @@
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
@@ -91,6 +92,64 @@
     (update-client [_ client-id updated-config]
       (oidc.proto/update-client client-store client-id updated-config))))
 
+(def ^:private scheme-default-port
+  {"http" 80, "https" 443})
+
+(defn- canonical-resource-uri
+  "Canonical form of a resource identifier, for comparing indicators that clients spell differently.
+
+  Lowercases scheme and host, elides the scheme's default port, and trims a trailing slash. Query and fragment are
+  dropped: the canonical form has neither, and ignoring them can only cause narrowing, never widening. Returns nil for
+  anything that is not an absolute URI, which then matches nothing.
+
+  Per RFC 3986 the scheme and host are case-insensitive and the default port is elidable; the path is neither, so
+  `/API/v2` deliberately does not canonicalize to `/api/v2`."
+  [s]
+  (when s
+    (try
+      (let [^java.net.URI uri (java.net.URI. (str s))
+            scheme            (some-> (.getScheme uri) u/lower-case-en)
+            ;; `.getHost` is nil for a host java.net.URI considers non-conformant -- notably one with an
+            ;; underscore, which is routine for Docker Compose / k8s service names and which Metabase's own
+            ;; `u/url?` accepts. Reading the authority instead keeps those canonicalizing; a nil host here
+            ;; would return nil, match nothing, and disable narrowing instance-wide and silently.
+            authority         (some-> (.getAuthority uri) u/lower-case-en)
+            [host port]       (when authority
+                                (if-let [[_ h p] (re-matches #"(?:[^@]*@)?(.*?)(?::(\d+))?" authority)]
+                                  [h (some-> p parse-long)]
+                                  [authority nil]))
+            path              (or (.getPath uri) "")]
+        (when (and scheme (not-empty host))
+          (str scheme "://" host
+               (when-not (or (nil? port) (= port (scheme-default-port scheme)))
+                 (str ":" port))
+               (cond-> path
+                 (and (> (count path) 1) (str/ends-with? path "/"))
+                 (subs 0 (dec (count path)))))))
+      (catch java.net.URISyntaxException _ nil))))
+
+(defn- mcp-endpoint-paths-by-url
+  "Return the MCP endpoint paths keyed by their [[canonical-resource-uri]] under the Site URL."
+  []
+  (into {} (keep (fn [path] (some-> (canonical-resource-uri (str (system/site-url) path)) (vector path))))
+        (mcp/mcp-endpoint-paths)))
+
+(defn mcp-resource-url
+  "Return the canonical MCP endpoint's RFC 8707 resource indicator under the Site URL.
+
+  Return nil when no Site URL is set."
+  []
+  (some-> (system/site-url) (str (mcp/mcp-canonical-path))))
+
+(defn mcp-endpoint-resource?
+  "Return whether every RFC 8707 indicator in `resources` names the MCP endpoint.
+
+  Return true when `resources` names none. `resources` is a string or a sequence of strings.
+  Compare each string's [[canonical-resource-uri]] with the Site URL joined to each of
+  [[metabase.mcp.core/mcp-endpoint-paths]]."
+  [resources]
+  (every? (comp (mcp-endpoint-paths-by-url) canonical-resource-uri) (cond-> resources (string? resources) vector)))
+
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
   []
@@ -168,3 +227,11 @@
               (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+
+(defenterprise jwt-bearer-grant-enabled?
+  "Return whether JWT authentication is enabled and configured.
+
+  The JWT bearer grant (RFC 7523) requires this. Always false on OSS."
+  metabase-enterprise.sso.integrations.jwt
+  []
+  false)

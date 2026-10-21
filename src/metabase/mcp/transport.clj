@@ -2,9 +2,8 @@
   "MCP (Model Context Protocol) Streamable HTTP transport.
 
   Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
-  session issuance, origin validation (DNS-rebinding protection), cookie/bearer auth resolution, per-user throttling,
-  SSE responses and the GET keepalive stream, OAuth discovery hints on 401s, and
-  `insufficient_scope` challenges on 403s."
+  session issuance, origin validation (DNS-rebinding protection), OAuth bearer auth checks, per-user throttling, SSE
+  responses and the GET keepalive stream, OAuth discovery hints on 401s, and `insufficient_scope` challenges on 403s."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -249,8 +248,7 @@
 
   Compares domain AND port: an origin is a (scheme, domain, port) triple, so matching on the domain alone treats
   every other app on the same hostname as same-origin. On a developer machine that is the whole threat model —
-  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server
-  with the user's cookies.
+  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server.
 
   Two deliberate loosenesses:
 
@@ -632,7 +630,7 @@
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
-;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
+;; MCP is auth-gated (OAuth bearer token), so the risk is lower than the
 ;; unauthenticated OAuth endpoints. The threshold is generous to accommodate users running
 ;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check records every
 ;; attempt (not just failures) which is correct here — we want to cap total throughput
@@ -724,10 +722,10 @@
   [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes accepted-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [origin-error  (validate-origin request)
-           bearer-token  (oauth-server/extract-bearer-token request)
-           session-auth  api/*current-user-id*
-           token-scopes  (:token-scopes request)
+     (let [origin-error    (validate-origin request)
+           bearer-token    (oauth-server/extract-bearer-token request)
+           current-user-id api/*current-user-id*
+           token-scopes    (:token-scopes request)
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose token
            ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
            invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
@@ -768,23 +766,25 @@
            (and (:authenticated-via-oauth? request) (not-any? accepted-scopes token-scopes))
            (respond @invalid-token)
 
-           ;; Not cookie-only: the session middleware also resolves an OAuth bearer token and attaches its
-           ;; `:token-scopes`, so that request lands here too. The filter drops the `::unrestricted` sentinel.
-           session-auth
-           (dispatch session-auth (into #{} (filter string?) token-scopes))
+           ;; MCP authenticates only with an OAuth bearer token. The session middleware already ignores sessions and
+           ;; API keys on the MCP paths; this check keeps a request with a current user but no OAuth marker from
+           ;; dispatching should one arrive anyway. It gets the 401 discovery challenge below. A token that reaches
+           ;; here holds an MCP scope, so the session middleware kept only MCP scopes; the filter keeps only strings.
+           (and current-user-id (:authenticated-via-oauth? request))
+           (dispatch current-user-id (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
            ;; token — including checking `user.is_active` and running the granted scopes through the
            ;; `oauth-token->token-scopes` trust hinge — and sets `*current-user-id*`, so an active user's token is
-           ;; served by the `session-auth` branch above. Landing here therefore means the token is unknown, expired,
+           ;; served by the dispatch branch above. Landing here therefore means the token is unknown, expired,
            ;; revoked, or names a DEACTIVATED user. We must not re-resolve and dispatch it: doing so bypassed the
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token
            (respond @invalid-token)
 
-           ;; No auth at all — return 401 with discovery
+           ;; No OAuth — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Authentication required"]))
                                    {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
