@@ -37,6 +37,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.setup :as qp.setup]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -234,7 +235,8 @@
     ;; Single query - use normal QP pipeline to preserve userland metadata
     (qp/process-query (maybe-userland first-query) rff)
     ;; Multiple queries - use custom pivot pipeline
-    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries pivot-limit)
+    ;; Only the first query, whose execution spans all the others, records its running time under the pivot's hash.
+    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns (dissoc info :pivot/query-hash) rff more-queries pivot-limit)
           first-query                  (maybe-userland first-query)]
       (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
                 qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
@@ -892,7 +894,10 @@
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
      (let [query (cond-> query
-                   (seq (:info query)) qp/userland-query)
+                   ;; Hash the query before it gets rewritten so its running time is recorded under the same hash
+                   ;; that `metabase.query-processor.card/enrich-strategy` looks up for the cache strategy.
+                   (seq (:info query)) (-> (assoc-in [:info :pivot/query-hash] (qp.util/query-hash query))
+                                           qp/userland-query))
            rff   (or rff qp.reducible/default-rff)
            ;; Everything between here and the first `qp/process-query`
            ;; runs outside the QP's own middleware, so wrap it in the same exception-catching middleware
