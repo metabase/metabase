@@ -34,6 +34,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -186,6 +187,45 @@
        (let [b-path (path-with f0 "card_b")
              f1     (dissoc f0 b-path)]
          (is (= :incremental (run-differential! f0 f1))))))))
+
+(deftest incremental-query-schema-refusal-writes-nothing-test
+  (testing (str "GHY-4249: an incremental pull whose changed queries this version's schema rejects is refused before "
+                "any changed entity is written")
+    (do-with-bench!
+     (fn [f0]
+       (let [a-path (path-with f0 "card_a")
+             b-path (path-with f0 "card_b")
+             a-eid  (:entity_id (yaml/parse-string (get f0 a-path)))
+             ;; built on Card A, so a load without the preflight writes the edited Card A (a dependency) before it
+             ;; reaches this query, whatever order it walks the files in; a negative limit fails the schema
+             break  (fn [card-yaml]
+                      (let [card (yaml/parse-string card-yaml)]
+                        (yaml/generate-string
+                         (assoc card :dataset_query
+                                {:lib/type "mbql/query"
+                                 :database (get-in card [:dataset_query :database])
+                                 :stages   [{:lib/type    "mbql.stage/mbql"
+                                             :source-card a-eid
+                                             :limit       -5}]}))))
+             f1     (-> f0
+                        (update a-path str/replace "display: table" "display: line")
+                        (update b-path break))]
+         (search.tu/with-index-disabled
+           (let [src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
+             (is (= :success (:status (import-at! src "v0" :force? true))))
+             (let [real         (mt/original-fn #'impl/incremental-load-snapshot!)
+                   incremental? (atom false)
+                   result       (mt/with-dynamic-fn-redefs [impl/incremental-load-snapshot!
+                                                            (fn [& args]
+                                                              (reset! incremental? true)
+                                                              (apply real args))]
+                                  (import-at! src "v1"))]
+               (is @incremental? "the pull takes the incremental path")
+               (is (= :error (:status result)))
+               (is (re-find #"Card B" (:message result)))
+               (testing "the other changed card is not written"
+                 (is (= :table (t2/select-one-fn :display :model/Card :name "Card A"))))
+               (is (= "v0" (remote-sync.task/last-version)))))))))))
 
 (deftest incremental-search-update-only-changed-test
   (testing "GHY-3779: an incremental edit re-indexes only the changed entity (we skip the full reindex),

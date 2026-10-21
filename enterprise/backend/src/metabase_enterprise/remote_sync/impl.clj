@@ -151,6 +151,11 @@
       (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
       (str "Failed to reload from git repository. " message)
 
+      ;; This clause must be high up because the message will contain names of entities. We don't want it to match,
+      ;; e.g., "branch", by accident.
+      (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/query-schema-refusal)
+      (str "Failed to reload from git repository. " message)
+
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
 
@@ -411,6 +416,8 @@
   (report 0.05 {:force? true})
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
+        ;; on the unwrapped ingestable, so its reads don't advance the load's progress
+        _                   (serialization/check-query-schemas! base-ingestable)
         has-transforms?     (snapshot-has-transforms? base-ingestable)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
         load-result         (serdes/with-cache
@@ -524,6 +531,8 @@
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
   [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
+  (when ingestable
+    (serialization/check-query-schemas! ingestable))
   (let [load-result   (when ingestable
                         (serdes/with-cache
                           (serialization/load-metabase!

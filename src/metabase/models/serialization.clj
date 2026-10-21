@@ -720,6 +720,15 @@
           data
           schemas))
 
+(defn- import-field
+  "Runs `transform`'s import on the value of `ingested` it reads, returning the value to store under `k`."
+  [ingested k transform]
+  (assert-one-defined transform :import :import-with-context)
+  (let [input     (get ingested (:as transform k))
+        f         (:import transform)
+        f-context (:import-with-context transform)]
+    (if f (f input) (f-context ingested k input))))
+
 (defn- xform-one [model-name ingested]
   (let [spec (*make-spec* model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
@@ -729,15 +738,10 @@
                     :when (and (not (::nested transform))
                                ;; handling circuit-breaking
                                (not (contains? (::strip ingested) k)))
-                    :let [_         (assert-one-defined transform :import :import-with-context)
-                          import-k  (:as transform k)
-                          input     (get ingested import-k)
-                          f         (:import transform)
-                          f-context (:import-with-context transform)
-                          res       (if f (f input) (f-context ingested k input))]
+                    :let [res (import-field ingested k transform)]
                     :when (and (not= res ::skip)
                                (or (some? res)
-                                   (contains? ingested import-k)))]
+                                   (contains? ingested (:as transform k))))]
                 [k res]))
         ;; coercing a stripped key would re-introduce it as an explicit nil
         (coerce-keys (apply dissoc (:coerce spec) (::strip ingested))))))
@@ -1340,6 +1344,37 @@
   query schema."
   [e]
   (boolean (some (comp ::query-schema-refusal? ex-data) (u/full-exception-chain e))))
+
+(def ^:private placeholder-import-resolver
+  "A fake import resolver that does no DB lookups or user creation."
+  ;; We don't want to hit the DB, just check that the schema validates. The schema looks for positive ints, so make
+  ;; each resolve to `1`.
+  (let [placeholder (fn [x] (when (some? x) 1))]
+    (reify resolve/SerdesImportResolver
+      (resolve/import-fk          [_ eid _model]         (placeholder eid))
+      (resolve/import-fk-keyed    [_ portable _model _k] (placeholder portable))
+      (resolve/import-user        [_ email]              (placeholder email))
+      (resolve/import-database-fk [_ db-name]            (placeholder db-name))
+      (resolve/import-table-fk    [_ path]               (placeholder path))
+      (resolve/import-field-fk    [_ path]               (placeholder path)))))
+
+(defn query-schema-refusals
+  "The query schema refusals that loading `ingested` would throw, without resolving its references against the app
+  DB. Ignores other errors. Empty for a model without a serdes spec."
+  [ingested]
+  (if-let [spec (*make-spec* (ingested-model ingested) nil)]
+    (binding [resolve/*import-resolver* placeholder-import-resolver]
+      (into []
+            (keep (fn [[k transform]]
+                    (when-not (::nested transform)
+                      (try
+                        (import-field ingested k transform)
+                        nil
+                        (catch Exception e
+                          (when (query-schema-refusal? e)
+                            e))))))
+            (:transform spec)))
+    []))
 
 (defn- normalize-imported
   "Normalizes ingested MBQL/structure into this instance's representation, returning `x` unchanged if normalization

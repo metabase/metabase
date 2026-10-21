@@ -263,6 +263,41 @@
    :ingestion ingestion
    :errors    []})
 
+(defn- describe-entity [path ingested]
+  (cond-> (serdes/log-path-str path)
+    (string? (:name ingested)) (str (format " (%s)" (pr-str (:name ingested))))))
+
+(defn check-query-schemas!
+  "Runs through all queries in `ingestion` and checks each query against the schema. Does not write anything to the
+  DB. Throws when any query does not match the query schema. The exception message names every entity and is
+  a [[serdes/query-schema-refusal?]]. Does nothing when `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION` is set."
+  [ingestion]
+  (when-not (serialization.settings/serialization-skip-schema-validation)
+    ;; rolled back so that an import transform with side effects (none should run against placeholder ids, but the
+    ;; specs are open-ended) still leaves the app DB untouched
+    (let [refused (t2/with-transaction [_conn nil {:rollback-only true}]
+                    (into []
+                          (keep (fn [path]
+                                  (when-let [ingested (serdes.ingest/ingest-one ingestion path)]
+                                    (when-let [refusals (seq (serdes/query-schema-refusals ingested))]
+                                      {:entity   (describe-entity path ingested)
+                                       :refusals refusals}))))
+                          (serdes.ingest/ingest-list ingestion)))]
+      (when (seq refused)
+        (throw (ex-info (str "Refusing to import. These entities have queries that do not match this Metabase's "
+                             "query schema: " (str/join ", " (map :entity refused)) ". They were either exported by a "
+                             "newer Metabase whose query shape this version cannot represent, or stored by an instance "
+                             "that never validated them. Set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this "
+                             "check for the whole import.")
+                        {:error         ::query-schema-refusal
+                         :entities      (mapv :entity refused)
+                         :schema-errors (into {}
+                                              (map (fn [{:keys [entity refusals]}]
+                                                     [entity (mapv (comp :schema-errors ex-data) refusals)]))
+                                              refused)}
+                        ;; keeps [[serdes/query-schema-refusal?]] true for this error
+                        (first (:refusals (first refused)))))))))
+
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
   [ingestion & {:keys [continue-on-error reindex?]
