@@ -5,6 +5,7 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.snippets :as tools.snippets]
    [metabase.native-query-snippets.core :as snippets]
+   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -26,9 +27,9 @@
 
 (deftest unreadable-snippet-test
   (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "Private snippet"
-                                                           :content "SELECT 'private'"}]
+                                                             :content "SELECT 'private'"}]
     (mt/with-test-user :rasta
-      (mt/with-dynamic-fn-redefs [snippets/has-any-native-permissions? (constantly false)]
+      (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
         (is (= {:class :recoverable
                 :code  :metabase.metabot.tools.recoverable.common/not-found
                 :text  (not-found-message snippet-id)}
@@ -41,7 +42,7 @@
           tool-names [#{} #{"search"} #{"list_snippets"} #{"list_snippets" "search"}]]
     (testing (str "status " status ", tools " tool-names)
       (mt/with-dynamic-fn-redefs [snippets/get-native-query-snippet
-                                (fn [_] (throw (ex-info "private details" {:status-code status})))]
+                                  (fn [_] (throw (ex-info "private details" {:status-code status})))]
         (let [error (unavailable-snippet 7 tool-names)]
           (is (= :recoverable (:class error)))
           (is (= :metabase.metabot.tools.recoverable.common/not-found (:code error)))
@@ -79,7 +80,7 @@
            [{:description nil :content nil} ""]
            [{:description "" :content ""} "<description></description>\n<content>\n\n</content>\n"]]]
     (mt/with-dynamic-fn-redefs [snippets/get-native-query-snippet
-                              (fn [id] (assoc fields :id id :name "Birds & \"nests\""))]
+                                (fn [id] (assoc fields :id id :name "Birds & \"nests\""))]
       (is (= {:output (str "<snippet id=\"7\" name=\"Birds & \"nests\"\">\n" expected "</snippet>")}
              (test-util/call-tool tools.snippets/get-snippet-details-tool {:snippet_id 7}))))))
 
@@ -88,9 +89,9 @@
              (ex-info "unexpected input error" {:status-code 400 :agent-error? true})
              (RuntimeException. "unexpected failure")]]
     (mt/with-dynamic-fn-redefs [snippets/list-native-query-snippets (fn [] (throw e))
-                              snippets/get-native-query-snippet (fn [_] (throw e))]
+                                snippets/get-native-query-snippet (fn [_] (throw e))]
       (doseq [[tool args] [[tools.snippets/list-snippets-tool {}]
-                          [tools.snippets/get-snippet-details-tool {:snippet_id 7}]]]
+                           [tools.snippets/get-snippet-details-tool {:snippet_id 7}]]]
         (let [caught (is (thrown? Throwable (test-util/call-tool tool args)))]
           (is (identical? e caught))
           (is (= {:class :unrecoverable :code :internal} (tools.error/classify caught))))))))
