@@ -470,7 +470,7 @@
   test to say so."
   (str (ns-name (:ns (meta #'recoverable.pipeline/unknown-table!)))))
 
-(defn- pipeline-error-code
+(defn pipeline-error-code
   "The `recoverable.pipeline` code for a pipeline `:error` keyword, or nil when none is declared."
   [error]
   (when (keyword? error)
@@ -487,10 +487,7 @@
       (let [{:keys [agent-error? status-code error entity-type entity-id]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
-          ;; `:agent-error?` *and* an `:error` key. The pipeline's `as-agent-input-error` stamps
-          ;; `:agent-error?` onto foreign exceptions from lib, toucan2 and JDBC as well, and those
-          ;; messages are not authored for anyone — only an `:error` code says "this sentence was
-          ;; written for a model".
+          ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
            code
@@ -502,7 +499,7 @@
           (contains? refusal-status-codes status-code)
           (tools.error/throw-recoverable! ::recoverable.common/not-found {} {:cause e})
 
-          ;; The flag is dropped because a tool that has not been converted relays the message of any agent error.
+          ;; Tools that still use the legacy adapter expose any message marked with `:agent-error?`.
           agent-error?
           (throw (ex-info (ex-message e) (dissoc (ex-data e) :agent-error?) e))
 
@@ -520,11 +517,8 @@
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;
   - a 403 or 404 becomes `recoverable.common/not-found!`;
-  - anything else passes through and is therefore unrecoverable, including an `:error` code with no
-    declaration. It passes without its `:agent-error?` flag, so a tool that has not been converted
-    cannot relay its message either. `metabase.metabot.tools.recoverable.pipeline-test` scans the
-    pipeline sources and fails when a code has none, so a new pipeline error cannot quietly start
-    ending turns."
+  - anything else is unrecoverable and loses its `:agent-error?` flag, which prevents legacy tools
+    from exposing its message. This includes `:error` codes with no declaration."
   {:style/indent [:defn]}
   [& body]
   `(do-with-pipeline-errors (fn [] ~@body)))

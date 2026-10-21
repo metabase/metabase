@@ -423,3 +423,16 @@ function ValidTypeFixtures() {
 }
 
 void ValidTypeFixtures;
+
+for (const numBins of [10, 50, 100] as const) {
+  const binnedAmount = breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+    binning: { strategy: "num-bins", numBins },
+  });
+
+  defineQuery({
+    source: TEST_SCHEMA.tables.orders,
+    aggregations: [count()],
+    breakouts: [binnedAmount],
+    orderBys: [orderBy(binnedAmount, "asc")],
+  });
+}

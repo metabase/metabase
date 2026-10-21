@@ -129,7 +129,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (list-fields [])))))))
 
 (deftest list-available-fields-quotes-unexpected-errors-test
-  (testing "the message of a failure fetching one table reaches the model as one quoted line"
+  (testing "an error while fetching a table reaches the model as one quoted line"
     (mt/with-dynamic-fn-redefs [resources-tools/check-table-resource-database (constantly nil)
                                 entity-details-tools/get-table-details
                                 (fn [_]

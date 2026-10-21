@@ -26,6 +26,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
@@ -36,6 +37,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
