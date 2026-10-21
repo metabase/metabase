@@ -49,7 +49,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jetty.io EofException)))
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
@@ -1863,21 +1865,24 @@
 (defn- wrap-error-responses
   "Middleware that keeps internal detail out of Agent API error responses, since an agent passes them to its LLM.
   A raised exception gets [[exception-response]], and an error that a streamed query run writes gets
-  [[query-failure-body]]."
+  [[query-failure-body]]. When the client went away before its response was written, the default exception handling
+  logs a canceled request, as on any other route."
   [handler]
-  (fn [request respond _raise]
-    (let [raised? (volatile! false)
-          respond (fn [response]
-                    (respond (streaming-response/with-error-response-fn response query-failure-body)))
-          raise   (fn [e]
-                    (vreset! raised? true)
-                    (respond (exception-response e)))]
+  (fn [request respond raise]
+    (let [raised?  (volatile! false)
+          respond' (fn [response]
+                     (respond (streaming-response/with-error-response-fn response query-failure-body)))
+          raise'   (fn [e]
+                     (vreset! raised? true)
+                     (if (instance? EofException e)
+                       (raise e)
+                       (respond' (exception-response e))))]
       (try
-        (handler request respond raise)
+        (handler request respond' raise')
         (catch Throwable e
           (if @raised?
             (throw e)
-            (raise e)))))))
+            (raise' e)))))))
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 

@@ -30,11 +30,14 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [oidc-provider.util :as oidc.util]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -2070,6 +2073,27 @@
                        (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
                 (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))
                 (is (logs-app-db-error? (messages)))))))))))
+
+(deftest client-disconnect-is-not-an-error-test
+  (testing "A client that disconnects before its response is written gets no error response, count or error log"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+        (let [statuses (atom [])
+              request  (#'client/build-mock-request {:method      :get
+                                                     :url         "agent/v1/ping"
+                                                     :credentials (mt/user->credentials :rasta)})
+              initial  (mt/metric-value system :metabase-api/unhandled-errors)]
+          (try
+            ((test.server.handler/test-handler) request
+                                                (fn [response]
+                                                  (swap! statuses conj (:status response))
+                                                  (throw (EofException. "Client went away")))
+                                                (fn [_e]))
+            (catch EofException _))
+          (is (= 200 (first @statuses)))
+          (is (not-any? #{500} @statuses))
+          (is (= initial (mt/metric-value system :metabase-api/unhandled-errors)))
+          (is (empty? (messages))))))))
 
 (deftest client-error-has-no-stacktrace-test
   (testing "A 400 keeps its message and error code but no stack trace, whatever `hide-stacktraces` says"
