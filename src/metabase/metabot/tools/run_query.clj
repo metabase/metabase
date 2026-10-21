@@ -155,11 +155,12 @@
   100)
 
 (tools/defrecoverable unknown-query-id!
-  "The query ID matches no stored query or saved question that this tool can run for the current user."
+  "The query ID matches neither a stored query nor a saved question that the tool can use for the current user."
   {:payload [:map {:closed true}
              [:query-id  :string]
              [:known-ids [:sequential :string]]
-             [:hint      [:enum :notebook-query :sql-query :no-values]]]}
+             ;; Absent for a tool that takes only the queries stored in the conversation
+             [:hint      {:optional true} [:enum :notebook-query :sql-query :no-values]]]}
   [{:keys [query-id known-ids hint]}]
   (let [more    (- (count known-ids) max-listed-query-ids)
         unknown (str "No query with ID " (llm-shape/truncate query-id max-echoed-query-id-chars) ". Known query IDs: ["
@@ -167,6 +168,10 @@
                      (when (pos? more) (str " and " more " more"))
                      ".")]
     (case hint
+      nil
+      {:message  unknown
+       :recovery []}
+
       :notebook-query
       {:message  (str unknown " Use the ID of a query that you built, or a saved question or model that the user"
                       " can read.")
