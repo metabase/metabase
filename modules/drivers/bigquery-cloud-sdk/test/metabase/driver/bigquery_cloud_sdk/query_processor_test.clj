@@ -860,9 +860,11 @@
                                           :bigquery-cloud-sdk
                                           [:=
                                            {}
-                                           [:field {:lib/uuid          (str (random-uuid))
-                                                    :temporal-unit     unit
-                                                    ::add/source-table "ABC"} 1]
+                                           [:field {:lib/uuid           (str (random-uuid))
+                                                    :base-type          field-type
+                                                    :temporal-unit      unit
+                                                    ::add/source-table  "ABC"
+                                                    ::add/database-type (name (bigquery.tx/base-type->bigquery-type field-type))} 1]
                                            [:relative-datetime {:lib/uuid (str (random-uuid))} -1 unit]])}
                                  {:dialect ::h2x/unquoted-dialect}))))))))))
 
