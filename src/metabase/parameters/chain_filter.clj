@@ -448,11 +448,11 @@
                         (not summarized?))
                (let [table-cols (lib/returned-columns query thing)]
                  (lib/with-join-source-fields
-                  a-join
-                  (into []
-                        (comp (keep #(lib/find-matching-column (lib/with-join-alias % nil) table-cols))
-                              (m/distinct-by :name))
-                        (join-alias->refs (:alias a-join)))))))))))))
+                   a-join
+                   (into []
+                         (comp (keep #(lib/find-matching-column (lib/with-join-alias % nil) table-cols))
+                               (m/distinct-by :name))
+                         (join-alias->refs (:alias a-join)))))))))))))
 
 (defn- one-to-many-join?
   "Whether `join-info` follows an FK backwards, from the Field it references to the referencing Field, so that one row
