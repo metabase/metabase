@@ -1100,9 +1100,10 @@
               (run-tool! {"q1" (venues-count)} {:query_id "q1"}))))))
 
 (defn- reject-app-db-lookup
-  "Stands in for an app DB lookup with a statement the app DB rejects, so the failure carries the app DB's own SQL."
+  "Throw an app DB lookup error without leaving the surrounding transaction aborted."
   [& _]
-  (t2/query ["SELECT no_such_column FROM metabase_field"]))
+  (t2/with-transaction [_conn]
+    (t2/query ["SELECT no_such_column FROM metabase_field"])))
 
 (def ^:private internal-failure
   "What the model reads when a call fails inside Metabase. The turn ends there, and the user gets the generic error."
@@ -1116,7 +1117,7 @@
         (mt/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
           (mt/with-dynamic-fn-redefs [lib-be.db/columns reject-app-db-lookup]
             (is (= internal-failure (run-tool! {"q1" query} {:query_id "q1"}))))
-          (is (some #(str/includes? (str (some-> (:e %) ex-message)) "NO_SUCH_COLUMN") (messages))))))
+          (is (some #(re-find #"(?i)no_such_column" (str (some-> (:e %) ex-message))) (messages))))))
     (testing "when an app DB lookup fails while its SQL compiles"
       (let [query (venues-sql)]
         (mt/with-dynamic-fn-redefs [qp.compile/compile reject-app-db-lookup]
