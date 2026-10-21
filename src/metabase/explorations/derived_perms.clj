@@ -22,6 +22,7 @@
    [metabase.api.common :as api]
    [metabase.explorations.db :as explorations.db]
    [metabase.lib-be.core :as lib-be]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]))
@@ -145,12 +146,13 @@
   Artifacts sharing a [[visibility-key]] share a verdict by construction, so grouping by it lets
   the expensive check run once per group rather than once per artifact."
   [artifacts]
-  (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
-       (remove (fn [[_key [representative]]]
-                 (artifact-visible? representative)))
-       (mapcat val)
-       (map :exploration_thread_id)
-       set))
+  (perms/with-data-access-token-memo
+    (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
+         (remove (fn [[_key [representative]]]
+                   (artifact-visible? representative)))
+         (mapcat val)
+         (map :exploration_thread_id)
+         set)))
 
 (defn thread-ids-with-visible-derived-data
   "The subset of `thread-ids` whose derived read-data the current user may see: every row carrying
