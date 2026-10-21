@@ -17,16 +17,17 @@
   `satisfies? Tool` stops meaning anything and a var passed in by mistake fails somewhere inside
   `declaration` rather than where it was registered. `adapt` refuses it by name, at the call site.
 
-  Behaviour is preserved rather than improved. An unconverted tool that returns a success-shaped
-  failure still looks like a success, because nothing here can tell `{:output \"Failed to read the
-  card\"}` from `{:output \"<card>…</card>\"}`. That is the thing conversion fixes, one tool at a
-  time.
+  Behaviour is preserved rather than improved, except that a read refusal becomes `not-found!`. An
+  unconverted tool that returns a success-shaped failure still looks like a success, because nothing
+  here can tell `{:output \"Failed to read the card\"}` from `{:output \"<card>…</card>\"}`. That
+  is the thing conversion fixes, one tool at a time.
 
   This namespace is deleted when the last tool is converted."
   (:require
    [clojure.string :as str]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.recoverable.legacy :as recoverable.legacy]))
 
 (set! *warn-on-reflection* true)
@@ -96,10 +97,11 @@
   "Re-raise `e` from an old-shape tool as a declared error, or rethrow it.
 
   `:terminal-error?` and `:agent-error?` are the two flags the old shape used to say who the message
-  was for. Anything without one is a failure nobody wrote text for, so it passes through and becomes
-  unrecoverable — the same judgement `with-pipeline-errors` makes."
+  was for. Anything without one is a failure nobody wrote text for: a read refusal becomes
+  `not-found!`, and the rest passes through and becomes unrecoverable. `with-pipeline-errors` makes
+  the same judgement."
   [tool-name ^Throwable e]
-  (let [{:keys [agent-error? terminal-error?]} (ex-data e)]
+  (let [{:keys [agent-error? terminal-error? status-code]} (ex-data e)]
     (cond
       ;; Already a declared error: raised by a converted tool this one called, or by a shared
       ;; converter such as `with-pipeline-errors`. A declared recoverable carries `:agent-error?`
@@ -119,6 +121,9 @@
                                       {:message   (or (not-empty (ex-message e)) "The call failed.")
                                        :tool-name tool-name}
                                       {:cause e})
+
+      (contains? tools/refusal-status-codes status-code)
+      (tools.error/throw-recoverable! ::recoverable.common/not-found {} {:cause e})
 
       :else
       (throw e))))
