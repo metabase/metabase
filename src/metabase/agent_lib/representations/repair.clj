@@ -1413,7 +1413,7 @@
        (string? (nth clause 0))
        (= "and" (u/lower-case-en (nth clause 0)))
        (map? (nth clause 1))
-       (every? vector? (drop 2 clause))))
+       (every? clause-like? (drop 2 clause))))
 
 (defn- and-filter-operands
   [clause]

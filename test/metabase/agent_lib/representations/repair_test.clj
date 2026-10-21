@@ -9,11 +9,13 @@
    [metabase.agent-lib.representations.repair :as repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -1420,6 +1422,16 @@
   (testing "an `and` with a non-clause operand stays intact so validation can report it"
     (let [filters [["and" {} status-filter total-filter {"trailing" "x"}]]]
       (is (= filters (repaired-filters filters))))))
+
+(deftest ^:parallel split-top-level-and-filters-with-bare-field-path-test
+  (let [clause   ["and" {} id-filter ["Sample" "PUBLIC" "ORDERS" "IS_ACTIVE"]]
+        repaired (repair/repair mp-temporal (filters-query [clause]))
+        resolved (repr.resolve/resolve-query mp-temporal repaired)
+        errors   (:errors (mr/explain ::lib.schema/query resolved))]
+    (is (= [clause] (get-in repaired ["stages" 0 "filters"])))
+    (testing "validation reports the original `and` at filter index 0"
+      (is (= [[:stages 0 :filters 0]]
+             (mapv #(vec (take 4 (:in %))) errors))))))
 
 (deftest ^:parallel split-top-level-and-filters-still-repairs-each-conjunct-test
   (testing "temporal buckets and trailing options are repaired in each condition from a split `and`"
