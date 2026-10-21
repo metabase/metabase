@@ -132,6 +132,7 @@
                                [:source-field  {:optional true} ::lib.schema.id/field]
                                [:join-alias    {:optional true} [:ref ::lib.schema.join/alias]]]
                               ::lib.schema.id/field]]]
+    [:new-field-name-clause :mbql.clause/field]
     [:dimension             ::external-remapping]]
    [:fn
     {:error/message "the new field clause should have the same join alias as the original field clause"}
@@ -163,7 +164,8 @@
             (keep (fn [{:keys [id], :as col}]
                     (when-let [dimension (when (pos-int? id)
                                            (field-id->remapping-dimension query id))]
-                      (let [original-ref (lib/ref col)]
+                      (let [original-ref (lib/ref col)
+                            remap-field  (lib.metadata/field query (:human-readable-field-id dimension))]
                         {:original-field-clause original-ref
                          :new-field-clause      [:field
                                                  (merge
@@ -173,6 +175,12 @@
                                                   (when-let [join-alias (:lib/join-alias col)]
                                                     {:join-alias join-alias}))
                                                  (u/the-id (:human-readable-field-id dimension))]
+                         :new-field-name-clause [:field
+                                                 (m/assoc-some {:lib/uuid          (str (random-uuid))
+                                                                :base-type         (:base-type remap-field)
+                                                                :source-field-name ((some-fn :lib/source-column-alias :name) col)}
+                                                               :join-alias (:lib/join-alias col))
+                                                 (:name remap-field)]
                          :dimension             (assoc dimension
                                                        :field-name                (-> dimension :field-id unique-name)
                                                        :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))
@@ -186,6 +194,23 @@
                     [[(simplify-ref-options original-field-clause) new-field-clause]
                      [(simplify-ref-options original-with-id) new-field-clause]])))
         remap-infos))
+
+(mu/defn- new-field-keys :- [:set ::simplified-ref]
+  "The [[simplify-ref-options]] keys of the remapped column of `info`: its legacy ID ref with `:source-field`, and the
+  name ref that the same column can be referenced by."
+  [{:keys [new-field-clause new-field-name-clause]} :- ::remap-info]
+  #{(simplify-ref-options new-field-clause)
+    (simplify-ref-options new-field-name-clause)})
+
+(mu/defn- existing-field-keys :- [:set ::simplified-ref]
+  "The [[simplify-ref-options]] keys of `a-ref`, also without `:source-field` or `:source-field-name` when it names
+  its FK both ways."
+  [a-ref :- ::lib.schema.ref/ref]
+  (let [opts (lib/options a-ref)]
+    (cond-> #{(simplify-ref-options a-ref)}
+      (and (:source-field opts) (:source-field-name opts))
+      (conj (simplify-ref-options (lib/update-options a-ref dissoc :source-field))
+            (simplify-ref-options (lib/update-options a-ref dissoc :source-field-name))))))
 
 (mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- ::lib.schema/fields
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
@@ -207,15 +232,14 @@
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- ::lib.schema/fields]
   (let [normalized-clause->new-options (into {}
-                                             (map (juxt (fn [{a-ref :new-field-clause}]
-                                                          (simplify-ref-options a-ref))
-                                                        (fn [{a-ref :new-field-clause}]
-                                                          (lib/options a-ref))))
+                                             (mapcat (fn [{a-ref :new-field-clause, :as info}]
+                                                       (for [k (new-field-keys info)]
+                                                         [k (lib/options a-ref)])))
                                              infos)]
     (mapv (fn [a-ref]
-            (let [options (normalized-clause->new-options (simplify-ref-options a-ref))]
+            (let [options (some normalized-clause->new-options (existing-field-keys a-ref))]
               (cond-> a-ref
-                options (lib/update-options #(merge options %)))))
+                options (lib/update-options #(merge (m/filter-keys qualified-keyword? options) %)))))
           fields)))
 
 (mu/defn- add-fk-remaps-rewrite-existing-fields :- [:maybe ::lib.schema/fields]
@@ -273,12 +297,16 @@
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- [:maybe ::lib.schema/fields]]
   (when (seq fields)
-    (let [existing-fields (add-fk-remaps-rewrite-existing-fields infos fields)]
+    (let [existing-fields (add-fk-remaps-rewrite-existing-fields infos fields)
+          existing-keys   (into #{} (mapcat existing-field-keys) fields)]
       (into []
             (comp cat
                   (m/distinct-by simplify-ref-options))
             [existing-fields
-             (map :new-field-clause infos)]))))
+             (keep (fn [info]
+                     (when-not (some existing-keys (new-field-keys info))
+                       (:new-field-clause info)))
+                   infos)]))))
 
 (mu/defn- add-fk-remaps-to-stage :- ::lib.schema/stage
   [query :- ::lib.schema/query
@@ -291,7 +319,9 @@
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [new-fields         (add-fk-remaps-to-fields infos fields)
             ;; make a map of field-id-clause -> fk-clause from the tuples
-            original->remapped (original-fields->new-fields infos)
+            original->remapped (let [broken-out (into #{} (map simplify-ref-options) breakout)]
+                                 (m/remove-vals #(broken-out (simplify-ref-options %))
+                                                (original-fields->new-fields infos)))
             ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)

@@ -888,3 +888,28 @@
                 :results_metadata
                 :columns
                 (mapv #(select-keys % [:name :remapped_to :remapped_from])))))))
+
+(deftest ^:parallel add-fk-remaps-existing-name-ref-test
+  (testing "a remapped column the query already selects by a name ref is not added again"
+    (let [query  (-> (lib/query category-id-remap-metadata-provider (meta/table-metadata :venues))
+                     (lib/with-fields [(meta/field-metadata :venues :category-id)
+                                       [:field
+                                        {:lib/uuid (str (random-uuid)), :base-type :type/Text, :source-field-name "CATEGORY_ID"}
+                                        "NAME"]]))
+          fields (lib/fields (:query (#'qp.add-remaps/add-fk-remaps query)))]
+      (is (= 2 (count fields)))
+      (is (=? [:field {::qp.add-remaps/new-field-dimension-id pos-int?} "NAME"]
+              (second fields))))))
+
+(deftest ^:parallel add-fk-remaps-keep-broken-out-remap-test
+  (testing "a breakout on the FK is not replaced by its remapped column when that column is broken out too"
+    (let [query     (-> (lib/query category-id-remap-metadata-provider (meta/table-metadata :venues))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (meta/field-metadata :venues :category-id))
+                        (lib/breakout [:field
+                                       {:lib/uuid (str (random-uuid)), :source-field (meta/id :venues :category-id)}
+                                       (meta/id :categories :name)]))
+          breakouts (lib/breakouts (:query (#'qp.add-remaps/add-fk-remaps query)))]
+      (is (= 2 (count breakouts)))
+      (is (= [(meta/id :venues :category-id) (meta/id :categories :name)]
+             (map #(nth % 2) breakouts))))))
