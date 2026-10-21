@@ -125,9 +125,13 @@ describe("DatabaseEditApp", () => {
     ).toBeEnabled();
   });
 
-  it("shows a cloud-attached database without editing or removing it", async () => {
+  it("shows a cloud-attached database without editing, removing or data actions", async () => {
     setup({
-      database: { ...SAMPLE_DATABASE, is_attached_dwh: true },
+      database: {
+        ...SAMPLE_DATABASE,
+        features: ["actions"],
+        is_attached_dwh: true,
+      },
       hasNullDetails: true,
     });
 
@@ -144,6 +148,9 @@ describe("DatabaseEditApp", () => {
     ).toBeDisabled();
     expect(
       screen.queryByRole("button", { name: "Remove this database" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("database-data-actions-section"),
     ).not.toBeInTheDocument();
   });
 
