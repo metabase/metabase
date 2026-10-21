@@ -1,10 +1,12 @@
-import { type ComponentType, type ReactNode, Suspense, lazy } from "react";
+import { type ComponentType, type ReactNode, Suspense } from "react";
 import {
   type BaseRouteObject,
   type LazyRouteFunction,
   Outlet,
   type RouteObject,
 } from "react-router";
+
+import { isProduction } from "metabase/env";
 
 /**
  * How long a navigation into a code-split route waits for its chunk before it
@@ -34,7 +36,8 @@ const pages = new WeakMap<LazyFunction, LazyPage>();
  *
  * Every `lazy` in the app resolves to a `Component` and nothing else. A loader
  * or any other route property cannot be deferred this way: the router needs
- * those before it commits, and this commits first.
+ * those before it commits, and this commits first. One that resolves anything
+ * else says so in the console outside production.
  */
 export function withChunkFallback(
   routes: RouteObject[],
@@ -73,14 +76,47 @@ function pageFor(load: LazyFunction, fallback?: ReactNode): LazyPage {
     return cached;
   }
 
-  let loading: ReturnType<LazyFunction> | null = null;
-  const start = () => (loading ??= load());
+  let loading: Promise<unknown> | null = null;
+  let failure: unknown = null;
+  let Loaded: ComponentType | null = null;
 
-  const Chunk = lazy(() =>
-    // A route that resolves no component renders its children, which is what
-    // react-router does for a route that has none.
-    start().then(({ Component }) => ({ default: Component ?? Outlet })),
-  );
+  const start = () =>
+    (loading ??= load().then(
+      (route) => {
+        warnOnDroppedProperties(route);
+        Loaded = route.Component ?? Outlet;
+      },
+      (error) => {
+        failure = error;
+        throw error;
+      },
+    ));
+
+  /**
+   * The chunk's component, suspending for as long as the module is on its way.
+   *
+   * `Loaded` is set one step before the step that commits the location, so a
+   * chunk that arrives before the wait runs out renders without suspending:
+   * nothing waits, and the fallback never mounts.
+   *
+   * A chunk that failed keeps failing, for every route that shares it, until
+   * the page is reloaded. react-router caches a rejected `lazy` per route, so
+   * this is wider, but a chunk fails by its URL and every route in it asks for
+   * the same one. Dropping the failure to let a later mount try again is what
+   * cannot be done: React re-renders a component that throws, which would make
+   * the retry a fetch loop.
+   */
+  function Chunk() {
+    if (failure) {
+      throw failure;
+    }
+
+    if (!Loaded) {
+      throw start();
+    }
+
+    return <Loaded />;
+  }
 
   function LazyPage() {
     return (
@@ -93,6 +129,19 @@ function pageFor(load: LazyFunction, fallback?: ReactNode): LazyPage {
   const page = { Component: LazyPage, load: start };
   pages.set(load, page);
   return page;
+}
+
+function warnOnDroppedProperties(route: object): void {
+  if (isProduction) {
+    return;
+  }
+
+  const dropped = Object.keys(route).filter((key) => key !== "Component");
+  if (dropped.length > 0) {
+    console.warn(
+      `A lazy route resolved ${dropped.join(", ")}, which the chunk fallback drops. Only Component survives it.`,
+    );
+  }
 }
 
 /**

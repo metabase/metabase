@@ -166,6 +166,36 @@ describe("a lazy route", () => {
     expect(router?.location.pathname).toBe("/split");
   });
 
+  // The wait is a cap, not a delay. A chunk that comes back inside it commits
+  // the way it always did, and the page mounts with no fallback in between: one
+  // that mounted here would flash on every first visit to a route.
+  it("does not mount the fallback when the chunk arrives inside the wait", async () => {
+    const fallbackMounted = jest.fn();
+
+    function Fallback() {
+      useEffect(() => fallbackMounted(), []);
+      return <span data-testid="loading">loading</span>;
+    }
+
+    const routerHolder: MemoryTestRouterHolder = { current: null };
+
+    render(
+      <RouterProviderMemory
+        routes={makeRoutes()}
+        initialRoute="/"
+        routerHolder={routerHolder}
+        loadingFallback={<Fallback />}
+      />,
+    );
+
+    await act(async () => {
+      routerHolder.current?.navigate("/split");
+    });
+
+    expect(screen.getByTestId("split")).toBeInTheDocument();
+    expect(fallbackMounted).not.toHaveBeenCalled();
+  });
+
   // react-router resolves `lazy` onto the route object itself, so the cost is
   // paid once per chunk rather than on every navigation into the subtree.
   it("is synchronous again on the second visit", async () => {
