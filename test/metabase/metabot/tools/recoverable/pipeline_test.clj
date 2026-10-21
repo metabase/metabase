@@ -9,6 +9,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.tools.error :as tools.error]
    ;; loaded for its declarations; the codes are read out of the catalog, not off the vars
@@ -79,6 +80,50 @@
   (testing "a regex that stopped matching would make both tests above pass vacuously"
     (is (< 20 (count (pipeline-codes))))
     (is (contains? (pipeline-codes) :unknown-table))))
+
+(def ^:private pipeline-payloads
+  "A payload for each branch of the v1 recovery text. `uri-in-source-table!` and the Agent API's hint for the same
+  code pick their sentence by `:entity-type`."
+  (for [entity-type [nil "metric" "question" "model" "card" "table"]]
+    (cond-> {:message "Query failed."}
+      entity-type (assoc :entity-type entity-type :entity-id 1))))
+
+(defn- v1-recovery-texts
+  "Every recovery sentence that the v1 surfaces send for a pipeline error: the steps Metabot declares and the hints
+  the Agent API appends."
+  []
+  (concat
+   (for [[code {:keys [build-fn]}] (tools.error/recoverables)
+         :when   (= declaration-ns (namespace code))
+         payload pipeline-payloads
+         step    (:recovery (build-fn payload))]
+     (:text step))
+   (for [code    (pipeline-codes)
+         payload pipeline-payloads
+         :let    [hint (v1-hints/recovery-hint (assoc payload :error code))]
+         :when   hint]
+     hint)))
+
+(defn- mcp-vocabulary
+  "The part of `text` that only MCP v2's recovery text uses, or nil: its `browse_data` tool, or a sentence that
+  offers a numeric id for `source-table:` or `source-card:`. The `<numeric id>` placeholder in a `metabase://` URI
+  only names the resource to read, so it doesn't count."
+  [text]
+  (or (re-find #"browse_data" text)
+      (some #(when (and (re-find #"(?i)\bnumeric\b" %) (re-find #"source-(table|card)" %)) %)
+            (str/split (str/replace text "<numeric id>" "") #"(?<=\.)\s+"))))
+
+(deftest ^:parallel v1-recovery-text-keeps-to-v1-vocabulary-test
+  (testing "Metabot and the Agent API write portable FKs and entity_ids, so a recovery sentence that names
+           `browse_data` or asks for a numeric id would send their agent the wrong way"
+    (doseq [text (v1-recovery-texts)]
+      (is (nil? (mcp-vocabulary text)) text))))
+
+(deftest ^:parallel the-vocabulary-check-finds-something-test
+  (testing "a check that stopped matching would make the test above pass vacuously, so MCP v2's own hints trip it"
+    (doseq [code [:ambiguous-fk :missing-source-in-first-stage]]
+      (is (some? (mcp-vocabulary (message/render (v2-hints/recovery-hint {:error code}))))
+          (str code)))))
 
 ;;; ===== Can one declaration serve both surfaces? =====
 
