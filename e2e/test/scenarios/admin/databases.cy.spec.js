@@ -324,12 +324,14 @@ describe("admin > database > add", () => {
     );
 
     it("should add MySQL database and redirect to db info page", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("MySQL").click({ force: true });
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show advanced options").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Additional JDBC connection string options");
+      H.popover().findByText("MySQL").click();
+
+      cy.findByTestId("database-form").within(() => {
+        cy.findByRole("button", { name: /Show advanced options/ }).click();
+        cy.findByLabelText("Additional JDBC connection string options").should(
+          "be.visible",
+        );
+      });
 
       H.typeAndBlurUsingLabel("Display name", "QA MySQL8");
       H.typeAndBlurUsingLabel("Host", "localhost");
@@ -345,8 +347,7 @@ describe("admin > database > add", () => {
         "allowPublicKeyRetrieval=true",
       );
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").should("not.be.disabled").click();
+      cy.button("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
 
