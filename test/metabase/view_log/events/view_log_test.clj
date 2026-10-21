@@ -17,6 +17,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.view-log.db :as view-log.db]
    [metabase.view-log.events.view-log :as events.view-log]
    [toucan2.core :as t2]))
 
@@ -229,6 +230,42 @@
           (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
           (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
               "view_count should be incremented"))))))
+
+(deftest oversized-row-does-not-destroy-batch-test
+  (testing "a row the app DB rejects (here: an oversized embedding_client) does not take the rest of the batch with it"
+    ;; no `with-temp`: its rollback-only transaction would be aborted by the rejected statement on Postgres, and
+    ;; `model_id` is not a foreign key, so a Card is not needed
+    (mt/with-model-cleanup [:model/ViewLog]
+      (let [model-id (+ 1000000 (rand-int 1000000))
+            view     (fn [client]
+                       {:model            "card"
+                        :model_id         model-id
+                        :user_id          (mt/user->id :rasta)
+                        :has_access       true
+                        :timestamp        (t/offset-date-time)
+                        :embedding_client client})]
+        (#'events.view-log/record-views!* [(view "embedding-sdk-react")
+                                           (view (apply str (repeat 255 "c")))
+                                           (view "embedding-sdk-react")])
+        (is (= 2 (t2/count :model/ViewLog :model "card" :model_id model-id)))
+        (testing "inside a caller's transaction (the synchronous path of grouper/submit!) the good rows are still saved,
+                  and the rejected statement does not abort that transaction"
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (#'events.view-log/record-views!* [(view (apply str (repeat 255 "c")))
+                                               (view "embedding-sdk-react")])
+            (is (= 3 (t2/count :model/ViewLog :model "card" :model_id model-id)))
+            (is (pos? (t2/count :model/User)))))))))
+
+(deftest unavailable-app-db-does-not-retry-rows-test
+  (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
+            row: every retry would fail too, and could wait for a connection"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [view-log.db/insert-view-logs!
+                                  (fn [_views]
+                                    (swap! calls inc)
+                                    (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]
+        (#'events.view-log/record-views!* [{:model "card"} {:model "card"} {:model "card"}])
+        (is (= 1 @calls))))))
 
 (deftest increment-view-counts!*-test
   (mt/with-temp [:model/Card  {card-1-id :id} {}
