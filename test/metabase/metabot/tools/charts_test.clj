@@ -138,14 +138,14 @@
                "To chart a query from this conversation, call `create_chart` with its query ID."]]
     (testing "a chart ID that the conversation doesn't hold fails, and the model reads the chart IDs that it does hold"
       (is (= {:output (str/join "\n" (cons (str "No chart with ID \"c-9\" exists in this conversation."
-                                                 " The available chart IDs are c-1, c-2.")
-                                            steps))
+                                                " The available chart IDs are c-1, c-2.")
+                                           steps))
               :error  {:class :recoverable :code ::recoverable.common/unknown-chart-id}}
              (invoke "edit_chart" args {:charts {"c-2" (chart "c-2") "c-1" (chart "c-1")}}))))
     (testing "in a conversation without charts, the model reads how to make one"
       (is (= {:output (str/join "\n" (cons (str "No chart with ID \"c-9\" exists in this conversation."
-                                                 " No charts have been created in this conversation yet.")
-                                            steps))
+                                                " No charts have been created in this conversation yet.")
+                                           steps))
               :error  {:class :recoverable :code ::recoverable.common/unknown-chart-id}}
              (invoke "edit_chart" args {}))))))
 
