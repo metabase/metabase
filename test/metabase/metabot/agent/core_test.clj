@@ -297,9 +297,14 @@
          (-> (#'agent/summarize-tool-ios [(unrecoverable-part "a" nil)])
              :tool-results first :error))))
 
+(def ^:private sql-editor-viewing
+  [{:type    "code_editor"
+    :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
+
 (defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id`."
-  [profile-id database-id]
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
+  `viewing`, by default a SQL editor."
+  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
   (let [call-count (atom 0)]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
@@ -319,9 +324,19 @@
                                :state      {}
                                :profile-id profile-id
                                :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing [{:type    "code_editor"
-                                                               :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}}))]
+                                            :user_is_viewing viewing}}))]
           {:llm-calls @call-count :parts parts})))))
+
+(deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
+  (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql db-id :viewing [])]
+          (is (= 1 llm-calls))
+          (is (= :terminal-error (:finish-reason (last parts))))
+          (is (some #(and (= :text (:type %))
+                          (str/includes? (:text %) "No active SQL editor was found"))
+                    parts)))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
