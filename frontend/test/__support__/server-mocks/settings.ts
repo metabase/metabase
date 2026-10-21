@@ -96,6 +96,38 @@ export function setupScimEndpoints(
   fetchMock.post("path:/api/ee/scim/api_key", payload);
 }
 
+// A successful POST stores the token, so the next GET returns it.
+export function setupStatefulScimEndpoints({
+  token,
+  generatedToken,
+  generationFails = false,
+}: {
+  token?: MaskedScimApiKey;
+  generatedToken: UnmaskedScimApiKey;
+  generationFails?: boolean;
+}) {
+  let currentToken = token;
+  let shouldGenerationFail = generationFails;
+
+  fetchMock.get(
+    "path:/api/ee/scim/api_key",
+    () => currentToken ?? { status: 404 },
+  );
+  fetchMock.post("path:/api/ee/scim/api_key", () => {
+    if (shouldGenerationFail) {
+      return { status: 500, body: { message: "An error occurred" } };
+    }
+    currentToken = generatedToken;
+    return generatedToken;
+  });
+
+  return {
+    setGenerationFails: (fails: boolean) => {
+      shouldGenerationFail = fails;
+    },
+  };
+}
+
 export function setupUpsellEndpoints() {
   fetchMock.get(
     "path:/api/user-key-value/namespace/user_acknowledgement/key/upsell-embedding-methods",

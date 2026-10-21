@@ -5,14 +5,18 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupStatefulScimEndpoints,
+  setupStatefulSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,
@@ -41,11 +45,13 @@ const setup = async ({
   hasScimToken = true,
   tokenGenerationFails = false,
   settingDefinitions = [],
+  stateful = false,
 }: {
   settings?: Partial<EnterpriseSettings>;
   hasScimToken?: boolean;
   tokenGenerationFails?: boolean;
   settingDefinitions?: Parameters<typeof setupSettingsEndpoints>[0];
+  stateful?: boolean;
 } = {}) => {
   const settings = createMockSettings({
     "token-features": createMockTokenFeatures({
@@ -54,25 +60,39 @@ const setup = async ({
     }),
     ...opts,
   });
-  setupPropertiesEndpoints(settings);
   setupSettingsEndpoints(settingDefinitions);
-  if (hasScimToken) {
-    fetchMock.get("path:/api/ee/scim/api_key", MOCK_SCIM_TOKEN);
+
+  const scimEndpoints = stateful
+    ? setupStatefulScimEndpoints({
+        token: hasScimToken ? MOCK_SCIM_TOKEN : undefined,
+        generatedToken: MOCK_SCIM_TOKEN,
+        generationFails: tokenGenerationFails,
+      })
+    : undefined;
+  if (stateful) {
+    setupStatefulSettingsEndpoints(settings);
   } else {
-    fetchMock.get("path:/api/ee/scim/api_key", 404);
+    setupPropertiesEndpoints(settings);
+    if (hasScimToken) {
+      fetchMock.get("path:/api/ee/scim/api_key", MOCK_SCIM_TOKEN);
+    } else {
+      fetchMock.get("path:/api/ee/scim/api_key", 404);
+    }
+    fetchMock.post(
+      "path:/api/ee/scim/api_key",
+      tokenGenerationFails
+        ? { status: 500, body: { message: "An error occurred" } }
+        : MOCK_SCIM_TOKEN,
+    );
+    setupUpdateSettingEndpoint();
   }
-  fetchMock.post(
-    "path:/api/ee/scim/api_key",
-    tokenGenerationFails
-      ? { status: 500, body: { message: "An error occurred" } }
-      : MOCK_SCIM_TOKEN,
-  );
-  setupUpdateSettingEndpoint();
 
   renderWithProviders(<UserProvisioning />, {
     storeInitialState: { settings: createMockSettingsState(settings) },
   });
   await waitForLoaderToBeRemoved();
+
+  return { scimEndpoints };
 };
 
 describe("SCIM User Provisioning Settings", () => {
@@ -284,6 +304,82 @@ describe("SCIM User Provisioning Settings", () => {
         screen.queryByText("Copy and save the SCIM token"),
       ).not.toBeInTheDocument();
       expect(screen.queryByText("An error occurred")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("enabling SCIM and generating tokens", () => {
+    it("should show the token-failed error without a modal when enabling SCIM fails to generate a token", async () => {
+      await setup({
+        settings: { "scim-enabled": false },
+        hasScimToken: false,
+        tokenGenerationFails: true,
+        stateful: true,
+      });
+
+      await userEvent.click(await screen.findByLabelText("Disabled"));
+
+      expect(
+        await screen.findByText("Token failed to generate, Please try again."),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("should close the regenerate modal and show the error when regenerating fails after enabling SCIM", async () => {
+      const { scimEndpoints } = await setup({
+        settings: { "scim-enabled": false },
+        hasScimToken: false,
+        stateful: true,
+      });
+
+      await userEvent.click(await screen.findByLabelText("Disabled"));
+      expect(
+        await screen.findByText("Here's what you'll need to set SCIM up"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      checkNotNull(scimEndpoints).setGenerationFails(true);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Regenerate" }),
+      );
+      expect(await screen.findByText("Regenerate token?")).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Regenerate now" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "Failed to regenerate token. Please try again.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.queryByText("An error occurred")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Regenerate" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should remove the missing-token warning once a token has been generated", async () => {
+      await setup({
+        settings: { "scim-enabled": true },
+        hasScimToken: false,
+        stateful: true,
+      });
+      const warning = "Generate a SCIM token below to complete the setup.";
+
+      expect(await screen.findByText(warning)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Generate" }));
+      expect(
+        await screen.findByText("Here's what you'll need to set SCIM up"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      await waitFor(() =>
+        expect(screen.queryByText(warning)).not.toBeInTheDocument(),
+      );
+      expect(
+        await screen.findByRole("button", { name: "Regenerate" }),
+      ).toBeInTheDocument();
     });
   });
 

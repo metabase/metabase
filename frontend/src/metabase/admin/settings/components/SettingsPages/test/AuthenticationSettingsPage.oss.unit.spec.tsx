@@ -21,6 +21,15 @@ describe("AuthenticationSettingsPage (OSS)", () => {
     expect(screen.queryByText(/User Provisioning/i)).not.toBeInTheDocument();
   });
 
+  it("should fall back to the authentication page on the user provisioning tab", async () => {
+    await setup(undefined, false, "user-provisioning");
+
+    expect(await screen.findByTestId("google-setting")).toBeInTheDocument();
+    expect(screen.getByTestId("ldap-setting")).toBeInTheDocument();
+    expect(screen.getByTestId("api-keys-setting")).toBeInTheDocument();
+    expect(screen.queryByTestId("saml-setting")).not.toBeInTheDocument();
+  });
+
   it("should render active badges for enabled and configured auth providers", async () => {
     await setup({
       "google-auth-enabled": true,
