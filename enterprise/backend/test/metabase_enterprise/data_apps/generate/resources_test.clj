@@ -17,6 +17,8 @@
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (set! *warn-on-reflection* true)
 
 (def ^:private app-collection "appCollectionEntity01")
@@ -76,9 +78,6 @@
 
 (defn- table-path [table]
   [(db-name) "PUBLIC" table])
-
-(defn- field-path [table field]
-  [(db-name) "PUBLIC" table field])
 
 (defn- venues-column [field-name & {:as extra}]
   (merge {:type "column" :name field-name :tableId (mt/id :venues) :sourceName "VENUES"} extra))
@@ -147,21 +146,18 @@
                                                     :limit        5))]})
         entity   (file-entity (first (:queries response)))]
     (testing "the query Metabase builds from the definition, referencing tables and fields by name"
-      (let [price       (field-path "VENUES" "PRICE")
-            category-id (field-path "VENUES" "CATEGORY_ID")
-            category    (field-path "CATEGORIES" "NAME")]
-        (is (=? {:dataset_query {:lib/type "mbql/query"
-                                 :database (db-name)
-                                 :stages   [{:source-table (table-path "VENUES")
-                                             :filters      [[">" {} ["field" {} price] 1]]
-                                             :aggregation  [["sum" {:name "total"} ["field" {} price]]]
-                                             :breakout     [["field" {:source-field category-id} category]]
-                                             :order-by     [["desc" {} ["aggregation"
-                                                                        {:lib/source-name "total"}
-                                                                        string?]]]
-                                             :limit        5}]}}
-                entity))
-        (is (empty? (:metrics response)))))
+      (is (=? {:dataset_query {:lib/type "mbql/query"
+                               :database (db-name)
+                               :stages   [{:source-table (table-path "VENUES")
+                                           :filters      [[">" {} ["field" {} "PRICE"] 1]]
+                                           :aggregation  [["sum" {:name "total"} ["field" {} "PRICE"]]]
+                                           :breakout     [["field" {:source-field-name "CATEGORY_ID"} "NAME"]]
+                                           :order-by     [["desc" {} ["aggregation"
+                                                                      {:lib/source-name "total"}
+                                                                      string?]]]
+                                           :limit        5}]}}
+              entity))
+      (is (empty? (:metrics response))))
     (testing "only the uuid the order by points at is kept, and it is the aggregation's"
       (let [stage (-> entity :dataset_query :stages first)]
         (is (= (get-in stage [:aggregation 0 1 :lib/uuid])

@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization :as serdes]
    [metabase.queries.card-schema :as card-schema]
    [metabase.query-processor :as qp]
@@ -33,6 +34,8 @@
   (:import
    (java.io File)
    (java.nio.file Path)))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -1201,7 +1204,7 @@
                   "collection should have been imported from old-format path"))))))))
 
 (deftest query-with-missing-table-and-field-test
-  (testing "An exported query whose table/field have been deleted re-imports by synthesizing inactive rows"
+  (testing "An exported query whose table/field have been deleted re-imports by synthesizing an inactive table; the field is referenced by name"
     (mt/with-temp
       [:model/Database {db-id :id} {}
        :model/Table    {table-id :id, table-name :name, table-schema :schema} {:db_id db-id}
@@ -1213,12 +1216,10 @@
             _        (t2/delete! :model/Field :id field-id)
             _        (t2/delete! :model/Table :id table-id)
             imported (serdes/import-mbql exported)
-            table    (t2/select-one :model/Table :db_id db-id :schema table-schema :name table-name)
-            field    (t2/select-one :model/Field :table_id (:id table) :name field-name)]
+            table    (t2/select-one :model/Table :db_id db-id :schema table-schema :name table-name)]
         (is (=? {:db_id db-id :schema table-schema :name table-name :active false} table))
-        (is (=? {:table_id (:id table) :name field-name :active false}             field))
         (is (= (:id table) (lib/primary-source-table-id imported)))
-        (is (=? [[:field {} (:id field)]] (lib/fields imported)))))))
+        (is (=? [[:field {} field-name]] (lib/fields imported)))))))
 
 (deftest card-on-missing-database-imports-into-stub-database-test
   (testing "Importing a Card whose database is absent from the export and the target creates a stub database"

@@ -14,6 +14,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -24,6 +25,8 @@
    [metabase.util.json :as json]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
@@ -675,17 +678,16 @@
           (is (seq (by-model @serialized "Card")))
           (is (empty? (by-model @serialized "Table")))
           (is (empty? (by-model @serialized "Field"))))
-        (testing "deserializing synthesizes inactive Table and Field for the dangling references"
+        (testing "deserializing synthesizes an inactive Table for the dangling reference; the field is referenced by name"
           (ts/with-db dest-db
             (ts/create! :model/Database :name "my-db")
             (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
             (let [db    (t2/select-one :model/Database :name "my-db")
                   table (t2/select-one :model/Table :name "customers" :db_id (:id db))
-                  field (and table (t2/select-one :model/Field :name "age" :table_id (:id table)))
                   card  (t2/select-one :model/Card :name "Example Card")
                   query (:dataset_query card)]
               (is (=? {:active false} table))
-              (is (=? {:active false} field))
+              (is (=? [[:>= {} [:field {} "age"] 18]] (lib/filters query)))
               (is (= (:id db) (lib/database-id query)))
               (is (= (:id table) (lib/primary-source-table-id query))))))))))
 
@@ -810,7 +812,7 @@
         (testing "exported form is properly converted"
           (is (=? {:database "my-db"
                    :lib/type :mbql/query
-                   :stages   [{:aggregation  [[:sum {} [:field {} ["my-db" nil "sales" "amount"]]]]
+                   :stages   [{:aggregation  [[:sum {} [:field {} "amount"]]]
                                :source-table ["my-db" nil "sales"]}]}
                   (-> @serialized
                       (by-model "Measure")
@@ -842,7 +844,7 @@
                 (testing "the Measure's definition is based on the new Database, Table, and Field IDs"
                   (is (=? {:lib/type :mbql/query
                            :stages   [{:source-table (:id table1d)
-                                       :aggregation  [[:sum {} [:field {} (:id field1d)]]]}]
+                                       :aggregation  [[:sum {} [:field {} "amount"]]]}]
                            :database (:id db1d)}
                           (:definition msr1d))))))))))))
 

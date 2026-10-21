@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
@@ -25,6 +26,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -858,7 +861,7 @@
                        :definition  {:database "My Database"
                                      :lib/type :mbql/query
                                      :stages [{:source-table ["My Database" nil "Schemaless Table"]
-                                               :aggregation  [[:sum {} [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]]]}]}}
+                                               :aggregation  [[:sum {} [:field {} "Some Field"]]]}]}}
                       ser))
               (is (not (contains? ser :id)))
               (testing "have no dependencies; the Database/Table/Fields from the definition are not dependencies"

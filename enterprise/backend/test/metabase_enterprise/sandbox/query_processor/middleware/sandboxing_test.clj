@@ -49,7 +49,8 @@
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once lib.tu/with-name-based-refs
+  (fixtures/initialize :db))
 
 (def sandboxing-disabled-error #"Sandboxing is a paid feature")
 
@@ -193,10 +194,10 @@
         (is (=? (mt/query checkins
                   {:type :query
                    :query {:source-query {:source-table $$checkins
-                                          :fields [[:field %id {}]
-                                                   [:field %date {}]
-                                                   [:field %user_id {}]
-                                                   [:field %venue_id {}]]
+                                          :fields [[:field "ID" {}]
+                                                   [:field "DATE" {}]
+                                                   [:field "USER_ID" {}]
+                                                   [:field "VENUE_ID" {}]]
                                           :filter [:and
                                                    ;; This still gets :default bucketing! auto-bucket-datetimes
                                                    ;; puts :day bucketing on both parts of this filter, since it's
@@ -216,12 +217,12 @@
                                           :query-permissions/sandboxed-table $$checkins}
                            :joins [{:source-query
                                     {:source-table $$venues
-                                     :fields [[:field %venues.id {}]
-                                              [:field %venues.name {}]
-                                              [:field %venues.category_id {}]
-                                              [:field %venues.latitude {}]
-                                              [:field %venues.longitude {}]
-                                              [:field %venues.price {}]]
+                                     :fields [[:field "ID" {}]
+                                              [:field "NAME" {}]
+                                              [:field "CATEGORY_ID" {}]
+                                              [:field "LATITUDE" {}]
+                                              [:field "LONGITUDE" {}]
+                                              [:field "PRICE" {}]]
                                      :filter [:=
                                               $venues.price
                                               [:value 1 {:base_type :type/Integer
@@ -1096,7 +1097,7 @@
                             (fn []
                               (testing "`fix-bad-field-id-refs` middleware should infer `:field` `:join-alias` correctly"
                                 (is (= [:=
-                                        [:field (mt/id :products :category) {:join-alias "products"}]
+                                        [:field "CATEGORY" {:base-type :type/Text, :join-alias "products"}]
                                         [:value "Widget" {:base_type :type/Text
                                                           :semantic_type (t2/select-one-fn :semantic_type :model/Field
                                                                                            :id (mt/id :products :category))
