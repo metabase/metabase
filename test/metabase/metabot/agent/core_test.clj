@@ -99,14 +99,14 @@
     (testing "a usage part without a finish reason (older adapters) is not truncation"
       (is (= :stop (#'agent/finish-reason 0 20 #{} [{:type :text} {:type :usage}]))))))
 
-(deftest legacy-terminal-tools-test
-  (let [terminal (for [[_profile-id profile] @@#'profiles/*profiles
-                       tool (:tools profile)
-                       :let [tool-name (:name (tools.legacy/declaration-of tool))]
-                       :when (and (contains? (:terminal-tools profile) tool-name)
-                                  (tools.legacy/legacy-tool? tool))]
-                   tool-name)]
-    (is (= (set terminal) @#'agent/legacy-terminal-tool-names))))
+(deftest terminal-tools-are-converted-test
+  (testing "a terminal tool ends the turn on a call without an `:error`, so it can't be a legacy tool, which returns
+           its failures as results"
+    (is (empty? (for [[_profile-id profile] @@#'profiles/*profiles
+                      tool (:tools profile)
+                      :when (and (contains? (:terminal-tools profile) (:name (tools.legacy/declaration-of tool)))
+                                 (tools.legacy/legacy-tool? tool))]
+                  tool)))))
 
 (deftest create-terminal-without-structured-output-test
   (let [parts [{:type :tool-input :id "create" :function "create_sql_query"}
