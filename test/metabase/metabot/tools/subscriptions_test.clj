@@ -102,11 +102,12 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Dashboard {dash-id :id} {}]
           (mt/with-current-user (mt/user->id :rasta)
-            (doseq [id [dash-id Integer/MAX_VALUE]]
+            (doseq [id [dash-id Integer/MAX_VALUE]
+                    channel ["data-team" "unknown-channel"]]
               (is (= {:output (str "Dashboard " id " was not found. It may not exist, or you may not have access "
                                    "to it.\nCall `search` to find the entity you want and use an id from the results.")
                       :error  {:class :recoverable :code ::recoverable.common/not-found}}
-                     (subscribe (daily id "data-team")))))))))))
+                     (subscribe (daily id channel)))))))))))
 
 (deftest refused-subscription-test
   (testing "a user who can see the dashboard but may not subscribe to it is told why, in words safe for a channel"
@@ -117,13 +118,14 @@
                      :model/Card          {card-id :id} {:collection_id (:id collection)}
                      :model/DashboardCard _             {:dashboard_id dash-id :card_id card-id}]
         (testing "because a question on it is hidden from them"
-          (mt/with-non-admin-groups-no-collection-perms collection
-            (mt/with-current-user (mt/user->id :rasta)
-              (is (= {:class        :unrecoverable
-                      :code         ::agent-subscriptions/dashboard-cards-not-readable
-                      :user-message (str "You can't subscribe to this dashboard, because you don't have access to "
-                                         "every question on it.")}
-                     (:error (subscribe (daily dash-id "data-team"))))))))
+          (doseq [channel ["data-team" "unknown-channel"]]
+            (mt/with-non-admin-groups-no-collection-perms collection
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (= {:class        :unrecoverable
+                        :code         ::agent-subscriptions/dashboard-cards-not-readable
+                        :user-message (str "You can't subscribe to this dashboard, because you don't have access to "
+                                           "every question on it.")}
+                       (:error (subscribe (daily dash-id channel)))))))))
         (testing "because Metabase refuses to create it"
           (mt/with-dynamic-fn-redefs [pulse.api/create-pulse-with-perm-checks!
                                       (fn [& _] (throw (ex-info "You don't have permissions to do that."

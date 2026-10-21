@@ -54,13 +54,7 @@
                 :creator_id    api/*current-user-id*
                 :skip_if_empty false)))))
 
-(defn create-dashboard-subscription!
-  "Subscribe the Slack `channel` to the dashboard with `dashboard-id`, and return the tool result that reports it.
-
-  `channel` is the name that Metabase's cached list of Slack channels gives it, and the subscription sends on
-  `schedule`. Throws the declared not-found error when the dashboard is missing or unreadable, and an
-  unrecoverable error when the user can read it but may not subscribe to it."
-  [{:keys [dashboard-id channel schedule]}]
+(defn- dashboard-for-subscription [dashboard-id]
   (let [dashboard (tools/with-entity {:kind :dashboard :id dashboard-id}
                     (-> (metabot.db/dashboard dashboard-id)
                         api/read-check
@@ -71,9 +65,21 @@
        ::dashboard-cards-not-readable
        {:user-message (tru "You can''t subscribe to this dashboard, because you don''t have access to every question on it.")
         :data         {:dashboard-id dashboard-id}}))
-    (let [pulse (create-pulse! dashboard dashcards channel schedule)]
-      {:output (str "Created subscription " (:id pulse) " to dashboard \"" (:name dashboard) "\" (id " dashboard-id
-                    "), posting to " channel ".")})))
+    (assoc dashboard :dashcards dashcards)))
+
+(defn- subscribe-to-dashboard! [{dashboard-id :id :as dashboard} channel schedule]
+  (let [pulse (create-pulse! dashboard (:dashcards dashboard) channel schedule)]
+    {:output (str "Created subscription " (:id pulse) " to dashboard \"" (:name dashboard) "\" (id " dashboard-id
+                  "), posting to " channel ".")}))
+
+(defn create-dashboard-subscription!
+  "Subscribe the Slack `channel` to the dashboard with `dashboard-id`, and return the tool result that reports it.
+
+  `channel` is the name that Metabase's cached list of Slack channels gives it, and the subscription sends on
+  `schedule`. Throws the declared not-found error when the dashboard is missing or unreadable, and an
+  unrecoverable error when the user can read it but may not subscribe to it."
+  [{:keys [dashboard-id channel schedule]}]
+  (subscribe-to-dashboard! (dashboard-for-subscription dashboard-id) channel schedule))
 
 (tools/defrecoverable unknown-slack-channel!
   "`slack_channel` names no channel or user in Metabase's cached list of Slack channels and users."
@@ -107,11 +113,10 @@
 
   (handle [_ {:keys [dashboard_id slack_channel schedule]} _ctx]
     (tools.create-alert/check-slack-configured!)
-    (create-dashboard-subscription!
-     {:dashboard-id dashboard_id
-      :channel      (or (:display-name (channel.settings/find-cached-slack-channel-or-username slack_channel))
-                        (unknown-slack-channel! {:slack-channel slack_channel}))
-      :schedule     schedule})))
+    (let [dashboard (dashboard-for-subscription dashboard_id)
+          channel   (or (:display-name (channel.settings/find-cached-slack-channel-or-username slack_channel))
+                        (unknown-slack-channel! {:slack-channel slack_channel}))]
+      (subscribe-to-dashboard! dashboard channel schedule))))
 
 (def create-dashboard-subscription-tool
   "`create_dashboard_subscription` for the Chat profile."
