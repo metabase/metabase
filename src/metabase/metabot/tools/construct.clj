@@ -681,16 +681,16 @@
                            (= 1 (count (filter #(= table-id (:target-table-id %))
                                                (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)))))]
     (ex-info (str (if fk-table-name
-                    (tru "Field {0} is on table {1}, but its `source-field` {2} is a foreign key to table {3}, so the field cannot be reached through it."
-                         (pr-str target) table-name (pr-str source-field) fk-table-name)
-                    (tru "Field {0} is on table {1}, but its `source-field` {2} is not a foreign key to that table, so the field cannot be reached through it."
-                         (pr-str target) table-name (pr-str source-field)))
+                    (format "Field %s is on table %s, but its `source-field` %s is a foreign key to table %s, so the field cannot be reached through it."
+                            (pr-str target) table-name (pr-str source-field) fk-table-name)
+                    (format "Field %s is on table %s, but its `source-field` %s is not a foreign key to that table, so the field cannot be reached through it."
+                            (pr-str target) table-name (pr-str source-field)))
                   " "
                   (if via-fk-table?
-                    (tru "{0} has a foreign key to {1}: join {2} explicitly on {3} and leave out `source-field`, so the field is reached through that join."
-                         fk-table-name table-name fk-table-name (pr-str source-field))
-                    (tru "Use a `source-field` that is a foreign key to {0}, or join {1} explicitly and reference the field with its `join-alias`."
-                         table-name table-name)))
+                    (format "%s has a foreign key to %s: join %s explicitly on %s and leave out `source-field`, so the field is reached through that join."
+                            fk-table-name table-name fk-table-name (pr-str source-field))
+                    (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
+                            table-name table-name)))
              {:agent-error? true
               :status-code  400
               :error        :wrong-source-field})))
