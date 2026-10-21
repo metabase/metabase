@@ -839,7 +839,7 @@
   (with-mp-and-stubs!
     (fn []
       (doseq [ordered? [false true]]
-        (testing (str "bare count aggregation, ordered? " ordered?)
+        (testing (str "single count aggregation, sorting enabled: " ordered?)
           (let [stage  (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
                                 "aggregation"  ["count" {}]}
                          ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
@@ -863,7 +863,7 @@
                                                       "aggregation"  [["count" {}] 42]
                                                       "order-by"     [["desc" {} ["aggregation" {} 0]]]}]})}
                       {})
-        (is false "expected throw")
+        (is false "Invalid aggregation entries should throw an exception")
         (catch clojure.lang.ExceptionInfo e
           (is (true? (:agent-error? (ex-data e))))
           (is (= 400 (:status-code (ex-data e))))

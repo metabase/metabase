@@ -1350,8 +1350,7 @@
    form))
 
 ;;; ============================================================
-;;; Pass 1.55 -- normalise `fields:` and `aggregation:` when the LLM wrote a single clause
-;;; instead of a sequential of clauses.
+;;; Pass 1.55 -- wrap a single `fields:` or `aggregation:` clause in a list
 ;;;
 ;;; The repr schema for both stage and join requires
 ;;; `"fields": [:sequential [:ref ::clause]]` (joins additionally accept the enum strings

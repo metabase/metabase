@@ -2563,7 +2563,7 @@
 (deftest ^:parallel bare-aggregation-clause-test
   (doseq [aggregation [["count"] ["count" {}]]
           ordered? [false true]]
-    (testing (str "aggregation " (pr-str aggregation) ", ordered? " ordered?)
+    (testing (str "single aggregation " (pr-str aggregation) ", sorting enabled: " ordered?)
       (let [stage    (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
                               "aggregation"  aggregation}
                        ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
