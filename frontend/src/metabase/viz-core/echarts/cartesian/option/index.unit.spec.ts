@@ -319,11 +319,11 @@ describe("row chart bands", () => {
     }
   });
 
-  it("keeps 20% of a band clear above the first bar, like the legacy renderer", () => {
+  it("keeps half of the category gap clear above the first bar", () => {
     const { bars, pitch } = renderRowChartBars();
 
     // With no goal label, the plot starts at the base top padding.
-    expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.2, 2);
+    expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.1, 2);
   });
 
   it("draws near-zero bars at least 1px long", () => {

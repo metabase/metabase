@@ -13,7 +13,6 @@ import { CHART_STYLE } from "../constants/style";
 import { getStackTotalValue } from "../model/series";
 import type { LabelFormatter } from "../model/types";
 import { getPaddedAxisLabel } from "../option/utils";
-import { ROW_CHART_STYLE } from "../row/constants";
 import { getRowChartSpacing } from "../row/spacing";
 
 import type { ChartLayout, TicksDimensions } from "./types";
@@ -224,17 +223,8 @@ export const getRowChartLayout = (
     renderingContext,
   );
 
-  // Shrinks the grid so ECharts' centred bands land where visx's did.
-  const bandPadding = ROW_CHART_STYLE.bandOuterPadding;
-  const gridHeight = height - basePadding.top - basePadding.bottom;
-  const legacyBandStep =
-    gridHeight / (Math.max(getDataset(input).length, 1) + bandPadding);
-  const outerInset = (bandPadding / 2) * legacyBandStep;
-
   const padding = {
     ...basePadding,
-    top: basePadding.top + outerInset,
-    bottom: basePadding.bottom + outerInset,
     left: basePadding.left + negativeDataLabelsInset,
   };
 
