@@ -35,6 +35,7 @@ import {
   createMockSearchResults,
   createMockTable,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import {
@@ -356,6 +357,7 @@ export type SetupOpts = Partial<EntityPickerModalProps> & {
   }>;
   libraryCollection?: Collection;
   libraryCollectionItems?: CollectionItem[];
+  isAdmin?: boolean;
 };
 
 export const setup = async ({
@@ -364,6 +366,7 @@ export const setup = async ({
   databases,
   libraryCollection,
   libraryCollectionItems,
+  isAdmin = false,
   ...rest
 }: SetupOpts = {}) => {
   process.env.OVERSCAN = "20"; // for VirtualizedList overscan
@@ -379,13 +382,14 @@ export const setup = async ({
     ? createMockLibraryCollectionItem(libraryCollection)
     : undefined;
 
-  const state = libraryCollectionItem
-    ? createMockState({
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures({ library: true }),
-        }),
-      })
-    : undefined;
+  const state = createMockState({
+    currentUser: createMockUser({ is_superuser: isAdmin }),
+    ...(libraryCollectionItem && {
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures({ library: true }),
+      }),
+    }),
+  });
 
   if (libraryCollectionItem) {
     setupEnterpriseOnlyPlugin("library");

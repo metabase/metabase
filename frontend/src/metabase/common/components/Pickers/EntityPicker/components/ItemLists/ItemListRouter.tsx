@@ -6,7 +6,11 @@ import {
 } from "metabase/common/components/Pickers";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
+import { useOmniPickerContext } from "../../context";
+import { findCustomFolder } from "../../utils";
+
 import { CollectionItemList } from "./CollectionItemList";
+import { CustomFolderItemList } from "./CustomFolderItemList";
 import { DashboardItemList } from "./DashboardItemList";
 import { DbItemList } from "./DbItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
@@ -31,6 +35,8 @@ export const ItemListRouter = ({
   pathIndex: number;
   isLoading?: boolean;
 }) => {
+  const { customFolders } = useOmniPickerContext();
+
   if (isLoading) {
     return <ItemListLoader />;
   }
@@ -38,6 +44,11 @@ export const ItemListRouter = ({
   if (!parentItem) {
     console.error("No parent item");
     return null;
+  }
+
+  const customFolder = findCustomFolder(customFolders, parentItem);
+  if (customFolder) {
+    return <CustomFolderItemList folder={customFolder} />;
   }
 
   if (parentItem.model === "collection") {

@@ -1,38 +1,23 @@
-import type React from "react";
 import { useMemo } from "react";
 
-import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import {
-  Box,
-  type BoxProps,
-  Flex,
-  Icon,
-  NavLink,
-  type NavLinkProps,
-  Tooltip,
-} from "metabase/ui";
+import { type BoxProps, Flex, type NavLinkProps } from "metabase/ui";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
-import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
+import {
+  findCustomFolder,
+  isSelectedItem,
+  useGetEntityPickerIcon,
+} from "../../utils";
 import { ItemListLoader } from "../ItemListLoader";
 
-const PickerColumn = ({
-  children,
-  ...props
-}: {
-  children: React.ReactNode;
-}) => (
-  <Box p="1rem" {...props}>
-    {children}
-  </Box>
-);
+import { PickerColumn, PickerItemRow } from "./PickerItemRow";
 
 interface ItemListProps {
   pathIndex: number;
@@ -55,6 +40,7 @@ export function ItemList({
   const {
     path,
     setPath,
+    customFolders,
     isHiddenItem,
     isDisabledItem,
     isFolderItem,
@@ -66,7 +52,13 @@ export function ItemList({
   const filteredItems = useMemo(() => {
     return items ? items.filter((i) => !isHiddenItem(i)) : items;
   }, [items, isHiddenItem]);
-  const isCurrentLevel = path.length - 2 === pathIndex;
+  // A custom folder's selected item isn't in the path, so the folder's own column is a parent level.
+  const selectedCustomFolder = selectedItem
+    ? findCustomFolder(customFolders, selectedItem)
+    : undefined;
+  const isCurrentLevel =
+    path.length - 2 === pathIndex &&
+    !selectedCustomFolder?.items.some((item) => item.isSelected);
   const isTenantUser = useSelector(getIsTenantUser);
   const getEntityPickerIcon = useGetEntityPickerIcon();
 
@@ -100,69 +92,43 @@ export function ItemList({
     >
       {filteredItems.map((item: OmniPickerItem, index) => {
         const isSelected = index === activeItemIndex;
-        const icon = getEntityPickerIcon(item, {
-          isSelected: isSelected && isCurrentLevel,
-          isTenantUser,
-        });
-        const isDisabled = isDisabledItem(item);
-        const tooltip = options.getItemTooltip?.(item);
 
         return (
-          <Box
-            data-testid="picker-item"
+          <PickerItemRow
             key={`${item.model}-${item.id}`}
-            {...containerProps}
-          >
-            <Tooltip label={tooltip} disabled={!tooltip} position="right">
-              <NavLink
-                w={"auto"}
-                disabled={isDisabled}
-                style={
-                  isDisabled && tooltip ? { pointerEvents: "all" } : undefined
-                }
-                rightSection={
-                  isFolderItem(item) ? (
-                    <Icon name="chevronright" size={10} />
-                  ) : null
-                }
-                mb={0}
-                label={
-                  <Flex align="center">
-                    {tc(item.name)}{" "}
-                    <PLUGIN_MODERATION.ModerationStatusIcon
-                      status={
-                        "moderated_status" in item && item.moderated_status
-                      }
-                      filled
-                      size={14}
-                      ml="0.5rem"
-                    />
-                  </Flex>
-                }
-                active={isSelected}
-                leftSection={<EntityIcon {...icon} />}
-                onClick={(e: React.MouseEvent) => {
-                  e.preventDefault(); // prevent form submission
-                  e.stopPropagation(); // prevent parent onClick
+            label={
+              <Flex align="center">
+                {tc(item.name)}{" "}
+                <PLUGIN_MODERATION.ModerationStatusIcon
+                  status={"moderated_status" in item && item.moderated_status}
+                  filled
+                  size={14}
+                  ml="0.5rem"
+                />
+              </Flex>
+            }
+            icon={getEntityPickerIcon(item, {
+              isSelected: isSelected && isCurrentLevel,
+              isTenantUser,
+            })}
+            isSelected={isSelected}
+            isCurrentLevel={isCurrentLevel}
+            isFolder={isFolderItem(item)}
+            isDisabled={isDisabledItem(item)}
+            tooltip={options.getItemTooltip?.(item)}
+            containerProps={containerProps}
+            navLinkProps={navLinkProps?.(isSelected)}
+            onClick={() => {
+              setPath((prevPath) => [
+                ...prevPath.slice(0, pathIndex + 1),
+                item,
+              ]);
 
-                  if (isDisabled) {
-                    return;
-                  }
-
-                  setPath((prevPath) => [
-                    ...prevPath.slice(0, pathIndex + 1),
-                    item,
-                  ]);
-
-                  if (!options?.hasConfirmButtons && isSelectableItem(item)) {
-                    onChange(item);
-                  }
-                }}
-                variant={isCurrentLevel ? "primary" : "secondary"}
-                {...navLinkProps?.(isSelected)}
-              />
-            </Tooltip>
-          </Box>
+              if (!options?.hasConfirmButtons && isSelectableItem(item)) {
+                onChange(item);
+              }
+            }}
+          />
         );
       })}
     </VirtualizedList>
