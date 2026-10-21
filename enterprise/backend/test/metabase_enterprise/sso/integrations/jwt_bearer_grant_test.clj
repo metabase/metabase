@@ -311,15 +311,26 @@
           (doseq [[client-id limit] [[nil 50] ["jwt-bearer-backend" 10]]]
             (testing (if client-id "with a client ID" "without a client ID")
               (oauth-server.tu/reset-token-throttlers!)
-              (let [error (fn [status sign]
-                            (get-in (token-response status (cond-> {:assertion (sign)}
-                                                             client-id (assoc :client_id client-id)))
-                                    [:body :error]))]
-                (doseq [[expected sign] (take (inc limit) (cycle verified))]
-                  (is (= expected (error 400 sign))))
-                (doseq [[expected sign] (take limit (cycle unverified))]
-                  (is (= expected (error 400 sign))))
-                (is (= "too_many_requests" (error 429 (second (first unverified)))))))))))))
+              (letfn [(check []
+                        (let [error (fn [status sign]
+                                      (get-in (token-response status (cond-> {:assertion (sign)}
+                                                                       client-id (assoc :client_id client-id)))
+                                              [:body :error]))]
+                          (doseq [[expected sign] (take (inc limit) (cycle verified))]
+                            (is (= expected (error 400 sign))))
+                          (doseq [[expected sign] (take limit (cycle unverified))]
+                            (is (= expected (error 400 sign))))
+                          (is (= "too_many_requests" (error 429 (second (first unverified)))))))]
+                ;; The client limit keys on a registered client, so the client-ID case needs one.
+                (if client-id
+                  (mt/with-temp [:model/OAuthClient _ {:client_id         client-id
+                                                       :redirect_uris     ["https://example.com/callback"]
+                                                       :grant_types       ["authorization_code"]
+                                                       :response_types    ["code"]
+                                                       :scopes            ["openid"]
+                                                       :registration_type "static"}]
+                    (check))
+                  (check))))))))))
 
 (deftest exchange-unverified-login-error-counts-test
   (testing "a login that throws without a known post-verification error counts toward the throttles"
