@@ -658,6 +658,21 @@
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
 
+(deftest aggregation-without-aggregation-function-explained-test
+  (testing "an aggregation with no aggregation function in it is explained with lib's own message and how to fix it"
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["+" {} 1 2]]}]})]
+          (is (= :query-not-runnable (:error (ex-data e))))
+          (is (str/ends-with? (ex-message e)
+                              (str ": Aggregations should contain at least one aggregation function. Wrap the "
+                                   "calculation in one, such as `sum` or `count`, or move a per-row calculation "
+                                   "to `expressions:`."))))))))
+
 (deftest editor-rejection-between-message-test
   (with-mp-and-stubs!
     (fn []

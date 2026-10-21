@@ -669,7 +669,8 @@
   to Malli's own message. Missing keys the LLM never writes itself are translated into their usual
   cause instead of being named."
   [error]
-  (let [missing (when (= :malli.core/missing-key (:type error)) (peek (:in error)))]
+  (let [missing (when (= :malli.core/missing-key (:type error)) (peek (:in error)))
+        message (when-not missing (me/error-message error))]
     (cond
       ;; normalization stamps `:lib/uuid` on every clause; one missing means normalizing a clause
       ;; inside it failed, often because it references something that doesn't exist
@@ -682,9 +683,15 @@
       missing
       (tru "missing `{0}`" (name missing))
 
+      ;; lib can give a message as a function, which Malli returns without calling
+      (fn? message)
+      (cond-> (str (message))
+        (= :aggregation (last (butlast (:in error))))
+        (str " " (tru "Wrap the calculation in one, such as `sum` or `count`, or move a per-row calculation to `expressions:`")))
+
       ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
-      (= "non-aggregation expression" (me/error-message error))
-      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
+      (= "non-aggregation expression" message)
+      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" message))))
 
 (defn- query-not-runnable-explanation
   "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
