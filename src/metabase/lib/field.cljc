@@ -458,6 +458,25 @@
       (select-keys (keys old->new))
       (set/rename-keys old->new)))
 
+(def ^:private name-based-field-ref-propagated-keys-for-non-inherited-columns
+  "Keys that should get copied into name-based `:field` ref options from column metadata ONLY when the column is not
+  inherited.
+
+    key-in-col-metadata => key-in-opts"
+  {:lib/join-alias :join-alias
+   :fk-join-alias  :source-field-join-alias
+   :fk-field-name  :source-field-name})
+
+(mu/defn- column-metadata->name-based-field-ref :- :mbql.clause/field
+  [metadata :- ::lib.schema.metadata/column]
+  [:field
+   (merge {:lib/uuid       (str (random-uuid))
+           :effective-type (column-metadata-effective-type metadata)}
+          (select-renamed-keys metadata field-ref-propagated-keys)
+          (when-not (lib.field.util/inherited-column? metadata)
+            (select-renamed-keys metadata name-based-field-ref-propagated-keys-for-non-inherited-columns)))
+   (lib.field.util/ref-name metadata)])
+
 (mu/defn- column-metadata->field-ref :- :mbql.clause/field
   [metadata :- ::lib.schema.metadata/column]
   (let [inherited-column? (lib.field.util/inherited-column? metadata)
@@ -480,7 +499,9 @@
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
     #_else
-    (column-metadata->field-ref metadata)))
+    (if lib.field.util/*name-based-refs*
+      (column-metadata->name-based-field-ref metadata)
+      (column-metadata->field-ref metadata))))
 
 (defn- expression-columns
   "Return the [[::lib.schema.metadata/column]] for all the expressions in a stage of a query."

@@ -2663,3 +2663,28 @@
                                       {:lib/uuid     (str (random-uuid))
                                        :source-field (meta/id :orders :product-id)}
                                       (meta/id :products :category)]))))))
+
+(deftest ^:parallel name-based-refs-test
+  (testing "with name-based refs on, refs name their column"
+    (binding [lib.field.util/*name-based-refs* true]
+      (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+            columns  (lib/visible-columns query)
+            total    (m/find-first #(= (:id %) (meta/id :orders :total)) columns)
+            category (m/find-first #(= (:id %) (meta/id :products :category)) columns)]
+        (is (=? [:field {:base-type :type/Float} "TOTAL"]
+                (lib/ref total)))
+        (testing "and implicit join refs name their FK column instead of referring to it by ID"
+          (let [category-ref (lib/ref category)]
+            (is (=? [:field {:source-field-name "PRODUCT_ID"} "CATEGORY"]
+                    category-ref))
+            (is (not (contains? (second category-ref) :source-field)))))))))
+
+(deftest ^:parallel name-based-refs-nested-column-test
+  (testing "a name-based ref to a nested column names it with its parent path"
+    (binding [lib.field.util/*name-based-refs* true]
+      (is (= "parent.child"
+             (lib.field.util/ref-name {:lib/type  :metadata/column
+                                       :name      "child"
+                                       :base-type :type/Text
+                                       :parent-id 1
+                                       :nfc-path  ["parent"]}))))))
