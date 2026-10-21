@@ -882,19 +882,24 @@
         (let [{api-key :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
                                                             {:group_id (:id (perms-group/admin))
                                                              :name     (str (random-uuid))})]
-          (doseq [path                    ["metabase-mcp" "mcp"]
-                  [credential cookie headers] [["a session cookie" [(test.users/username->token :crowberto)] {}]
+          (doseq [[credential cookie headers] [["a session cookie" [(test.users/username->token :crowberto)] {}]
                                                ["an API key" [] {"x-api-key" api-key}]]]
-            (testing (str path " with " credential)
-              (let [response (apply client/client-full-response
-                                    (concat cookie
-                                            [:post 401 path
-                                             {:request-options {:headers headers}}
-                                             (jsonrpc-request "initialize" {:capabilities {}})]))]
-                (is (= 401 (:status response)))
-                (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
-                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                                   (str "/.well-known/oauth-protected-resource/api/" path)))))))))))
+            (testing credential
+              (testing "authenticates off the MCP paths, so the refusals below are not a broken credential"
+                (apply client/client-full-response
+                       (concat cookie [:get 200 "user/current" {:request-options {:headers headers}}])))
+              (doseq [path   ["metabase-mcp" "mcp"]
+                      method [:post :get :delete]]
+                (testing (str (name method) " " path)
+                  (let [response (apply client/client-full-response
+                                        (concat cookie
+                                                [method 401 path {:request-options {:headers headers}}]
+                                                (when (= :post method)
+                                                  [(jsonrpc-request "initialize" {:capabilities {}})])))]
+                    (is (= 401 (:status response)))
+                    (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
+                    (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
+                                       (str "/.well-known/oauth-protected-resource/api/" path)))))))))))))
 
 (deftest sso-provisioned-session-cannot-authenticate-mcp-test
   (testing "GHY-4941: an embedding customer's backend used to trade a JWT for a Metabase session at `/auth/sso` and
@@ -909,6 +914,8 @@
         (let [session (auth-identity/create-session-with-auth-tracking! user nil :provider/oidc)]
           (testing "the session really is auth-identity-linked — otherwise this degrades into a plain-session test"
             (is (some? (:auth_identity_id session))))
+          (testing "the session authenticates off the MCP paths, so the refusal below is not a broken session"
+            (client/client-full-response (:key session) :get 200 "user/current"))
           (let [response (client/client-full-response (:key session) :post 401 endpoint
                                                       {:request-options {:headers {}}}
                                                       (jsonrpc-request "initialize" {:capabilities {}}))]
