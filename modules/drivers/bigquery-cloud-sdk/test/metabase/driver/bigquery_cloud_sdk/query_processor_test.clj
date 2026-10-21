@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
@@ -587,20 +588,22 @@
 (deftest datetime-diff-day-test
   (mt/test-driver :bigquery-cloud-sdk
     (mt/with-report-timezone-id! "America/Los_Angeles"
-      (let [mp    (mt/metadata-provider)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                      (lib/join (lib/join-clause
-                                 (lib.metadata/table mp (mt/id :orders))
-                                 [(lib/= (lib.metadata/field mp (mt/id :products :id))
-                                         (lib.metadata/field mp (mt/id :orders :product_id)))]))
-                      (lib/expression "daydiff"
-                                      (lib/expression-clause
-                                       :datetime-diff
-                                       [(lib.metadata/field mp (mt/id :products :created_at))
-                                        (lib.metadata/field mp (mt/id :orders :created_at))
-                                        :day]
-                                       nil)))
-            query (lib/aggregate query (lib/sum (lib/expression-ref query "daydiff")))]
+      (let [mp                (mt/metadata-provider)
+            query             (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                  (lib/join (lib/join-clause
+                                             (lib.metadata/table mp (mt/id :orders))
+                                             [(lib/= (lib.metadata/field mp (mt/id :products :id))
+                                                     (lib.metadata/field mp (mt/id :orders :product_id)))])))
+            orders-created-at (m/find-first (comp #{(mt/id :orders :created_at)} :id)
+                                            (lib/visible-columns query))
+            query             (lib/expression query "daydiff"
+                                              (lib/expression-clause
+                                               :datetime-diff
+                                               [(lib.metadata/field mp (mt/id :products :created_at))
+                                                orders-created-at
+                                                :day]
+                                               nil))
+            query             (lib/aggregate query (lib/sum (lib/expression-ref query "daydiff")))]
         (is (= [[7555207]]
                (mt/formatted-rows [int] (qp/process-query query))))))))
 
