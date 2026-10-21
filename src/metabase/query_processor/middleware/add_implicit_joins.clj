@@ -119,10 +119,9 @@
   [query     :- ::lib.schema/query
    path      :- ::lib.walk/path
    field-ref :- :mbql.clause/field]
-  (let [col           (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)
-        fk-field-id   ((some-fn :fk-field-id :lib/original-fk-field-id) col)
-        fk-field-name ((some-fn :fk-field-name :lib/original-fk-field-name) col)
-        fk-join-alias ((some-fn :fk-join-alias :lib/original-fk-join-alias) col)]
+  (let [[_tag {fk-field-name :source-field-name, fk-join-alias :source-field-join-alias} _name] field-ref
+        col         (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)
+        fk-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
     (when fk-field-id
       (let [fk-field (lib.metadata/field query fk-field-id)]
         (m/assoc-some {:fk-field-id fk-field-id}

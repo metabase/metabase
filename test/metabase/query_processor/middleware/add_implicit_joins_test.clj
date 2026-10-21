@@ -33,8 +33,8 @@
             :strategy    :left-join
             :conditions  [[:=
                            {}
-                           [:field {} (meta/id :orders :product-id)]
-                           [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} (meta/id :products :id)]]]
+                           [:field {} "PRODUCT_ID"]
+                           [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} "ID"]]]
             :fk-field-id (meta/id :orders :product-id)}]
           (#'qp.add-implicit-joins/fk-field-infos->joins
            meta/metadata-provider
@@ -67,7 +67,7 @@
                                                   :alias        "Products"}
                                                  {:fields       :none
                                                   :source-table $$products
-                                                  :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                                  :condition    [:= [:field "PRODUCT_ID" {:base-type :type/Integer}] [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                                   :alias        "PRODUCTS__via__PRODUCT_ID"
                                                   :fk-field-id  %product-id
                                                   :strategy     :left-join}]
@@ -99,7 +99,7 @@
                                                               :source-field %category-id}]]
                :joins        [{:source-table $$categories
                                :alias        "CATEGORIES__via__CATEGORY_ID"
-                               :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                               :condition    [:= [:field "CATEGORY_ID" {:base-type :type/Integer}] [:field "ID" {:base-type :type/BigInteger, :join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %category-id}]})
@@ -117,7 +117,7 @@
                                                                :source-field %category-id}]]
                 :joins        [{:source-table $$categories
                                 :alias        "CATEGORIES__via__CATEGORY_ID"
-                                :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                :condition    [:= [:field "CATEGORY_ID" {:base-type :type/Integer}] [:field "ID" {:base-type :type/BigInteger, :join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                 :strategy     :left-join
                                 :fields       :none
                                 :fk-field-id  %category-id}]}})
@@ -138,8 +138,8 @@
                               :fields       :none}
                              {:source-table  $$products
                               :alias         "PRODUCTS__via__PRODUCT_ID__via__Orders"
-                              :condition     [:= [:field %orders.product-id {:join-alias "Orders"}]
-                                              &PRODUCTS__via__PRODUCT_ID__via__Orders.products.id]
+                              :condition     [:= [:field "PRODUCT_ID" {:base-type :type/Integer, :join-alias "Orders"}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID__via__Orders"}]]
                               :fk-field-id   %product-id
                               :fk-join-alias "Orders"}]
                :fields [[:field
@@ -175,21 +175,21 @@
                              {:source-table  $$products
                               :alias         "PRODUCTS__via__PRODUCT_ID"
                               :condition     [:=
-                                              $product-id
-                                              &PRODUCTS__via__PRODUCT_ID.products.id]
+                                              [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                               :fk-field-id   %product-id}
                              {:source-table  $$products
                               :alias         "PRODUCTS__via__PRODUCT_ID__via__Orders"
                               :condition     [:=
-                                              [:field %orders.product-id {:join-alias "Orders"}]
-                                              &PRODUCTS__via__PRODUCT_ID__via__Orders.products.id]
+                                              [:field "PRODUCT_ID" {:base-type :type/Integer, :join-alias "Orders"}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID__via__Orders"}]]
                               :fk-field-id   %product-id
                               :fk-join-alias "Orders"}
                              {:source-table  $$products
                               :alias         "PRODUCTS__via__PRODUCT_ID__via__Orders_2"
                               :condition     [:=
-                                              [:field %orders.product-id {:join-alias "Orders_2"}]
-                                              &PRODUCTS__via__PRODUCT_ID__via__Orders_2.products.id]
+                                              [:field "PRODUCT_ID" {:base-type :type/Integer, :join-alias "Orders_2"}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID__via__Orders_2"}]]
                               :fk-field-id   %product-id
                               :fk-join-alias "Orders_2"}]
                :fields [[:field
@@ -238,8 +238,8 @@
                :joins        [{:source-table $$products
                                :alias        "PRODUCTS__via__PRODUCT_ID"
                                :condition    [:=
-                                              $product-id
-                                              &PRODUCTS__via__PRODUCT_ID.products.id]
+                                              [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id %product-id}
@@ -247,7 +247,7 @@
                                :alias        "PRODUCTS__via__Orders__Product_ID"
                                :condition    [:=
                                               [:field "Orders__Product_ID" {:base-type :type/Integer}]
-                                              &PRODUCTS__via__Orders__Product_ID.products.id]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__Orders__Product_ID"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id %product-id}]
@@ -295,8 +295,8 @@
                               {:source-table $$products
                                :alias        "PRODUCTS__via__PRODUCT_ID"
                                :condition    [:=
-                                              $product-id
-                                              &PRODUCTS__via__PRODUCT_ID.products.id]
+                                              [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %product-id}
@@ -304,14 +304,14 @@
                                :alias        "PRODUCTS__via__Orders__PRODUCT_ID"
                                :condition    [:=
                                               [:field "Orders__PRODUCT_ID" {:base-type :type/Integer}]
-                                              &PRODUCTS__via__Orders__PRODUCT_ID.products.id]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__Orders__PRODUCT_ID"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %product-id}
                               {:source-table $$products
                                :alias        "PRODUCTS__via__PRODUCT_ID__via__Card"
-                               :condition    [:= &Card.orders.product-id
-                                              &PRODUCTS__via__PRODUCT_ID__via__Card.products.id]
+                               :condition    [:= [:field "PRODUCT_ID" {:base-type :type/Integer, :join-alias "Card"}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID__via__Card"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %product-id}
@@ -319,7 +319,7 @@
                                :alias        "PRODUCTS__via__Orders__PRODUCT_ID__via__Card"
                                :condition    [:= [:field "Orders__PRODUCT_ID" {:base-type  :type/Integer
                                                                                :join-alias "Card"}]
-                                              &PRODUCTS__via__Orders__PRODUCT_ID__via__Card.products.id]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__Orders__PRODUCT_ID__via__Card"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %product-id}]
@@ -372,7 +372,7 @@
                                                                :source-field %category-id}]]
                 :joins        [{:source-table $$categories
                                 :alias        "CATEGORIES__via__CATEGORY_ID"
-                                :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                :condition    [:= [:field "CATEGORY_ID" {:base-type :type/Integer}] [:field "ID" {:base-type :type/BigInteger, :join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                 :strategy     :left-join
                                 :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
                                                                          :source-field %category-id}]]
@@ -384,7 +384,7 @@
                  :fields       [$name $category-id->categories.name]
                  :joins        [{:source-table $$categories
                                  :alias        "CATEGORIES__via__CATEGORY_ID"
-                                 :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                 :condition    [:= [:field "CATEGORY_ID" {:base-type :type/Integer}] [:field "ID" {:base-type :type/BigInteger, :join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                  :strategy     :left-join
                                  :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
                                                                           :source-field %category-id}]]
@@ -457,8 +457,8 @@
                                                       :fields       :none
                                                       :fk-field-id  %product_id
                                                       :condition    [:=
-                                                                     $product_id
-                                                                     &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                                                                     [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                                                     [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]}]
                                       :order-by     [[:asc $id]]
                                       :limit        2}))]
                 (is (=? (-> (nth (iterate lib/append-stage base-expected) level)
@@ -485,8 +485,8 @@
                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :strategy     :left-join
                                               :condition    [:=
-                                                             $product-id
-                                                             &PRODUCTS__via__PRODUCT_ID.products.id]
+                                                             [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                                             [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                               :source-table $$products
                                               :fk-field-id  %product-id}]}
                :limit        5})
@@ -503,15 +503,15 @@
   (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
     (is (=? (lib.tu.macros/mbql-query orders
               {:source-query {:source-table $$orders
-                              :fields       [[:field %id {}]
-                                             [:field %user-id {}]
-                                             [:field %product-id {}]
-                                             [:field %subtotal {}]
-                                             [:field %tax {}]
-                                             [:field %total {}]
-                                             [:field %discount {}]
-                                             [:field %created-at {}]
-                                             [:field %quantity {}]
+                              :fields       [[:field "ID" {}]
+                                             [:field "USER_ID" {}]
+                                             [:field "PRODUCT_ID" {}]
+                                             [:field "SUBTOTAL" {}]
+                                             [:field "TAX" {}]
+                                             [:field "TOTAL" {}]
+                                             [:field "DISCOUNT" {}]
+                                             [:field "CREATED_AT" {}]
+                                             [:field "QUANTITY" {}]
                                              [:field %products.category {:source-field %product-id
                                                                          :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
                               :filter       [:and
@@ -526,8 +526,8 @@
                                               :strategy     :left-join
                                               :fk-field-id  %product-id
                                               :condition    [:=
-                                                             $product-id
-                                                             &PRODUCTS__via__PRODUCT_ID.products.id]}]}
+                                                             [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                                             [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]}]}
                :filter       [:=
                               [:field %products.category {:source-field %product-id
                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
@@ -561,8 +561,8 @@
                                :strategy     :left-join
                                :fk-field-id  %product-id
                                :condition    [:=
-                                              $product-id
-                                              &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                                              [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]}]
                :limit        5})
             (add-implicit-joins
              (lib.tu.macros/mbql-query orders
@@ -596,8 +596,8 @@
                  :joins        [{:source-table $$categories
                                  :alias        "CATEGORIES__via__CATEGORY_ID"
                                  :condition    [:=
-                                                $category-id
-                                                &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                                [:field "CATEGORY_ID" {:base-type :type/Integer}]
+                                                [:field "ID" {:base-type :type/BigInteger, :join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                  :strategy     :left-join
                                  :fields       :none
                                  :fk-field-id  %category-id}]}}})
@@ -615,10 +615,10 @@
     ;; TODO - I'm not sure I understand why we add the JOIN to the outer level in this case. Does it make sense?
     (is (=? (lib.tu.macros/mbql-query checkins
               {:source-query {:source-table $$checkins
-                              :fields       [[:field %id {}]
-                                             [:field %date {}]
-                                             [:field %user-id {}]
-                                             [:field %venue-id {}]]
+                              :fields       [[:field "ID" {}]
+                                             [:field "DATE" {}]
+                                             [:field "USER_ID" {}]
+                                             [:field "VENUE_ID" {}]]
                               :filter       [:> $date "2014-01-01"]}
                :aggregation  [[:count]]
                :breakout     [[:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]
@@ -626,8 +626,8 @@
                :joins        [{:source-table $$venues
                                :alias        "VENUES__via__VENUE_ID"
                                :condition    [:=
-                                              $venue-id
-                                              &VENUES__via__VENUE_ID.venues.id]
+                                              [:field "VENUE_ID" {:base-type :type/Integer}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "VENUES__via__VENUE_ID"}]]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %venue-id}]})
@@ -711,8 +711,8 @@
                                :alias        "USERS__via__USER_ID"
                                :strategy     :left-join
                                :condition    [:=
-                                              $user-id
-                                              &USERS__via__USER_ID.users.id]
+                                              [:field "USER_ID" {:base-type :type/Integer}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "USERS__via__USER_ID"}]]
                                :fk-field-id  %checkins.user-id
                                :fields       :none}]
                :limit        10})
@@ -738,8 +738,8 @@
                                                 :alias        "USERS__via__USER_ID"
                                                 :strategy     :left-join
                                                 :condition    [:=
-                                                               $user-id
-                                                               &USERS__via__USER_ID.users.id]
+                                                               [:field "USER_ID" {:base-type :type/Integer}]
+                                                               [:field "ID" {:base-type :type/BigInteger, :join-alias "USERS__via__USER_ID"}]]
                                                 :fk-field-id  %checkins.user-id
                                                 :fields       :none}]}
                  :joins        [{:alias        "u"
@@ -763,8 +763,8 @@
                               :joins        [{:source-table $$products
                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :condition    [:=
-                                                             $product-id
-                                                             &PRODUCTS__via__PRODUCT_ID.products.id]
+                                                             [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                                             [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                               :fields       :none
                                               :strategy     :left-join
                                               :fk-field-id  %product-id}]
@@ -817,10 +817,8 @@
                :joins        [{:source-table $$products
                                :alias        "PRODUCTS__via__PRODUCT_ID"
                                :condition    [:=
-                                              $product-id
-                                              [:field
-                                               %products.id
-                                               {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                              [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                :fields       :none
                                :strategy     :left-join
                                :fk-field-id  %product-id}
@@ -851,10 +849,8 @@
                               :joins        [{:source-table $$products
                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :condition    [:=
-                                                             $product-id
-                                                             [:field
-                                                              %products.id
-                                                              {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                             [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                                             [:field "ID" {:base-type :type/BigInteger, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                               :fields       :none
                                               :strategy     :left-join
                                               :fk-field-id  %product-id}]
@@ -960,30 +956,30 @@
                      add-implicit-clauses)]
       (testing "sanity check: before add-implicit-joins"
         (is (=? {:source-table (meta/id :orders)
-                 :fields       [[:field (meta/id :orders :id)         {}]
-                                [:field (meta/id :orders :user-id)    {}]
-                                [:field (meta/id :orders :product-id) {}]
-                                [:field (meta/id :orders :subtotal)   {}]
-                                [:field (meta/id :orders :tax)        {}]
-                                [:field (meta/id :orders :total)      {}]
-                                [:field (meta/id :orders :discount)   {}]
-                                [:field (meta/id :orders :created-at) {}]
-                                [:field (meta/id :orders :quantity)   {}]]}
+                 :fields       [[:field "ID" {}]
+                                [:field "USER_ID" {}]
+                                [:field "PRODUCT_ID" {}]
+                                [:field "SUBTOTAL" {}]
+                                [:field "TAX" {}]
+                                [:field "TOTAL" {}]
+                                [:field "DISCOUNT" {}]
+                                [:field "CREATED_AT" {}]
+                                [:field "QUANTITY" {}]]}
                 (-> query' lib/->legacy-MBQL :query :source-query))))
       (testing "after add-implicit-joins"
         (let [query'' (-> query'
                           qp.add-implicit-joins/add-implicit-joins
                           lib/->legacy-MBQL)]
           (is (=? {:source-table (meta/id :orders)
-                   :fields       [[:field (meta/id :orders :id)         {}]
-                                  [:field (meta/id :orders :user-id)    {}]
-                                  [:field (meta/id :orders :product-id) {}]
-                                  [:field (meta/id :orders :subtotal)   {}]
-                                  [:field (meta/id :orders :tax)        {}]
-                                  [:field (meta/id :orders :total)      {}]
-                                  [:field (meta/id :orders :discount)   {}]
-                                  [:field (meta/id :orders :created-at) {}]
-                                  [:field (meta/id :orders :quantity)   {}]]}
+                   :fields       [[:field "ID" {}]
+                                  [:field "USER_ID" {}]
+                                  [:field "PRODUCT_ID" {}]
+                                  [:field "SUBTOTAL" {}]
+                                  [:field "TAX" {}]
+                                  [:field "TOTAL" {}]
+                                  [:field "DISCOUNT" {}]
+                                  [:field "CREATED_AT" {}]
+                                  [:field "QUANTITY" {}]]}
                   (-> query'' :query :source-query))))))))
 
 (deftest ^:parallel join-against-implicit-join-test
@@ -1009,8 +1005,8 @@
                                         :strategy            :left-join
                                         :conditions          [[:=
                                                                {}
-                                                               [:field {} (meta/id :orders :product-id)]
-                                                               [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} (meta/id :products :id)]]]
+                                                               [:field {} "PRODUCT_ID"]
+                                                               [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} "ID"]]]
                                         :fk-field-id         (meta/id :orders :product-id)}]
                          :breakout    [[:field {:source-field (meta/id :orders :product-id), :join-alias "PRODUCTS__via__PRODUCT_ID"}
                                         (meta/id :products :category)]]
@@ -1130,16 +1126,16 @@
           query       (lib/query mp (lib.metadata/card mp 1))]
       (is (=? {:stages [{:joins [{:alias "B"}
                                  {:alias "C"}]}
-                        {:joins [{:alias      "D__via__D_ID"
+                        {:joins [{:alias      "D__via__B__D_ID"
                                   :conditions [[:=
                                                 {}
                                                 [:field {} "B__D_ID"]
-                                                [:field {:join-alias "D__via__D_ID"} 40]]]}
-                                 {:alias      "D__via__D_ID_2"
+                                                [:field {:join-alias "D__via__B__D_ID"} "ID"]]]}
+                                 {:alias      "D__via__C__D_ID"
                                   :conditions [[:=
                                                 {}
                                                 [:field {} "C__D_ID"]
-                                                [:field {:join-alias "D__via__D_ID_2"} 40]]]}]}]}
+                                                [:field {:join-alias "D__via__C__D_ID"} "ID"]]]}]}]}
               (qp.preprocess/preprocess query))))))
 
 (deftest ^:parallel filter-creator-full-name-test
@@ -1160,19 +1156,19 @@
                                                             :source-field-name "PRODUCT_ID"
                                                             :source-field   (mt/id :orders :product_id)))
                                     "Blah")))]
-      (is (=? [[:field {} (mt/id :orders :id)]
-               [:field {} (mt/id :orders :user_id)]
-               [:field {} (mt/id :orders :product_id)]
-               [:field {} (mt/id :orders :subtotal)]
-               [:field {} (mt/id :orders :tax)]
-               [:field {} (mt/id :orders :total)]
-               [:field {} (mt/id :orders :discount)]
-               [:field {} (mt/id :orders :created_at)]
-               [:field {} (mt/id :orders :quantity)]
+      (is (=? [[:field {} "ID"]
+               [:field {} "USER_ID"]
+               [:field {} "PRODUCT_ID"]
+               [:field {} "SUBTOTAL"]
+               [:field {} "TAX"]
+               [:field {} "TOTAL"]
+               [:field {} "DISCOUNT"]
+               [:field {} "CREATED_AT"]
+               [:field {} "QUANTITY"]
                [:field
-                {:source-field (mt/id :orders :product_id)
-                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}
-                (mt/id :products :title)]
+                {:source-field-name "PRODUCT_ID"
+                 :join-alias        "PRODUCTS__via__PRODUCT_ID"}
+                "TITLE"]
                ;; should only have one product title... this is broken if we have a second copy that includes
                ;; `:source-field-name`
                ]
