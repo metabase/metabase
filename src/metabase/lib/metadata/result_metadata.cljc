@@ -24,6 +24,7 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
@@ -287,6 +288,19 @@
           [:aggregation aggregation-index fe-friendly-opts]
           [:aggregation aggregation-index])))))
 
+(defn- legacy-id-ref-options
+  "Options for a broken legacy Field ID ref to `col`: implicit joins name their FK Field by ID in `:source-field`, plus
+  `:source-field-name` when the FK column is not referred to by the Field's own name."
+  [query col opts]
+  (let [opts (dissoc opts :base-type :source-field-name)]
+    (if-let [fk-field-id (:fk-field-id col)]
+      (m/assoc-some opts
+                    :source-field      fk-field-id
+                    :source-field-name (when-let [fk-field-name (:fk-field-name col)]
+                                         (when-not (= fk-field-name (:name (lib.metadata/field query fk-field-id)))
+                                           fk-field-name)))
+      opts)))
+
 (mu/defn- remove-join-alias-from-broken-field-ref?
   "Following the rules for the old 'annotate' code:
 
@@ -341,10 +355,10 @@
                               (not (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/name))))
                      (string? id-or-name)
                      (not= (:lib/source col) :source/expressions))
-                [tag (dissoc opts :base-type) (:id col)]
+                [tag (legacy-id-ref-options query col opts) (:id col)]
 
                 (pos-int? id-or-name)
-                [tag (dissoc opts :base-type) id-or-name]
+                [tag (legacy-id-ref-options query col opts) id-or-name]
 
                 :else
                 field-ref)))
