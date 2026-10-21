@@ -8,6 +8,20 @@ describe("scenarios > admin > settings > user provisioning", () => {
     cy.signInAsAdmin();
   });
 
+  describe("oss", { tags: "@OSS" }, () => {
+    it("user provisioning page should not be available for OSS customers", () => {
+      cy.visit("/admin/settings/authentication/user-provisioning");
+
+      // falls back to the authentication page
+      cy.findByTestId("google-setting").should("be.visible");
+      cy.findByTestId("ldap-setting").should("be.visible");
+      cy.findByTestId("api-keys-setting").should("be.visible");
+
+      // no EE auth providers
+      cy.findByTestId("saml-setting").should("not.exist");
+    });
+  });
+
   describe("scim settings management", () => {
     beforeEach(() => {
       H.activateToken("pro-self-hosted");
