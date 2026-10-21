@@ -973,7 +973,7 @@
                                     :code       "bogus-code"}
                                    :expected-status 429))))))
 
-(deftest token-ip-throttled-requests-do-not-fill-client-bucket-test
+(deftest token-rotating-unknown-client-ids-get-only-the-ip-limit-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (dotimes [i 100]
       (is (= (if (< i 50) "invalid_request" "too_many_requests")
@@ -981,7 +981,6 @@
                                       :client_id  (str (random-uuid))
                                       :code       "bogus-code"}
                                      :expected-status (if (< i 50) 400 429))))))
-    ;; Each client ID names no client, so none gets a client bucket; the IP bucket carries the whole run.
     (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))))
 
 (deftest token-ip-throttles-do-not-extend-client-lockout-test
@@ -1025,73 +1024,36 @@
       (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
       (is (empty? @(:attempts @#'api.oauth/token-ip-throttler))))))
 
-(deftest token-overlong-basic-client-id-uses-only-ip-throttle-test
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (let [authorization (basic-auth-header (apply str (repeat 256 "a")) "wrong-secret")
-          ip-address    "198.51.100.5"]
-      (dotimes [_ 11]
-        (is (= "invalid_request"
-               (:error (token-request! {:grant_type "authorization_code"
-                                        :client_id  "different-body-client"
-                                        :code       "bogus-code"}
-                                       :authorization authorization :ip-address ip-address :expected-status 400)))))
-      (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
-      (is (= (repeat 11 ip-address) (map first @(:attempts @#'api.oauth/token-ip-throttler)))))))
-
-(deftest token-empty-client-ids-use-only-ip-throttle-test
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (doseq [[source client-id authorization] [[:body "" nil]
-                                              [:basic "body-client" (basic-auth-header "" "secret")]]]
-      (testing (name source)
-        (oauth-server.tu/reset-token-throttlers!)
-        (dotimes [_ 11]
-          (is (= "invalid_request"
-                 (:error (token-request! {:grant_type "authorization_code" :code "bogus-code" :client_id client-id}
-                                         :authorization authorization :expected-status 400)))))
-        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
-        (is (= 11 (count @(:attempts @#'api.oauth/token-ip-throttler))))))))
-
-(deftest token-empty-basic-username-does-not-lock-out-the-body-client-test
+(deftest token-requests-that-name-no-client-use-only-ip-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     ;; Revalidated before the transaction, as a session created inside it would be rolled back but stay cached
     (mt/user-http-request :crowberto :get 200 "api/user/current")
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
-        ;; An empty Basic username is the client the request authenticates as, body `client_id` and all, so it keys
-        ;; the throttle too: the real client in the body gets no bucket and stays free to exchange.
-        (dotimes [_ 11]
-          (is (= "invalid_request"
-                 (:error (token-request! {:grant_type    "refresh_token"
-                                          :client_id     client-id
-                                          :refresh_token "bogus-token"}
-                                         :authorization (basic-auth-header "" "secret")
-                                         :ip-address "198.51.100.9" :expected-status 400)))))
-        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
-        (is (string? (:access_token
-                      (token-request! {:grant_type   "authorization_code"
-                                       :client_id    client-id
-                                       :code         (authorize-and-get-code! client-id)
-                                       :redirect_uri "https://example.com/callback"}
-                                      :ip-address "198.51.100.10"
-                                      :authorization (basic-auth-header client-id client-secret)))))))))
-
-(deftest token-requests-without-client-id-use-only-ip-throttle-test
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (t2/with-transaction [_conn nil {:rollback-only true}]
-      (mt/user-http-request :crowberto :get 200 "api/user/current")
       (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
-            ip-address "198.51.100.1"]
-        (dotimes [_ 11]
-          (is (= "invalid_request"
-                 (:error (token-request! {:grant_type "authorization_code" :code "bogus-code"}
-                                         :ip-address ip-address :expected-status 400)))))
-        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
-        (is (string? (:access_token
-                      (token-request! {:grant_type   "authorization_code"
-                                       :code         (authorize-and-get-code! client-id)
-                                       :redirect_uri "https://example.com/callback"}
-                                      :ip-address ip-address
-                                      :authorization (basic-auth-header client-id client-secret)))))))))
+            ip-address "198.51.100.1"
+            long-name  (apply str (repeat 256 "a"))]
+        (doseq [[description params authorization]
+                [["no client ID"               {}                            nil]
+                 ["an empty client ID"         {:client_id ""}               nil]
+                 ["an unknown client ID"       {:client_id "no-such-client"} nil]
+                 ;; A Basic username, even an empty one, names the client ahead of the body's `client_id`
+                 ["an empty Basic username"    {:client_id client-id}        (basic-auth-header "" "secret")]
+                 ["an overlong Basic username" {:client_id client-id}        (basic-auth-header long-name "secret")]]]
+          (testing description
+            (oauth-server.tu/reset-token-throttlers!)
+            (dotimes [_ 11]
+              (is (= "invalid_request"
+                     (:error (token-request! (merge {:grant_type "authorization_code" :code "bogus-code"} params)
+                                             :authorization authorization :ip-address ip-address
+                                             :expected-status 400)))))
+            (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+            (is (= 11 (count @(:attempts @#'api.oauth/token-ip-throttler))))
+            (is (string? (:access_token
+                          (token-request! {:grant_type   "authorization_code"
+                                           :code         (authorize-and-get-code! client-id)
+                                           :redirect_uri "https://example.com/callback"}
+                                          :ip-address ip-address
+                                          :authorization (basic-auth-header client-id client-secret)))))))))))
 
 (deftest token-client-throttle-is-shared-across-ips-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -1112,27 +1074,6 @@
                                        :ip-address "198.51.100.3"
                                        :authorization (basic-auth-header client-id client-secret)
                                        :expected-status 429))))))))
-
-(deftest token-unknown-client-id-uses-only-ip-throttle-test
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (t2/with-transaction [_conn nil {:rollback-only true}]
-      (mt/user-http-request :crowberto :get 200 "api/user/current")
-      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
-        ;; A client ID that names no oauth_client row gets no client bucket, as with no ID at all.
-        (dotimes [_ 11]
-          (is (= "invalid_request"
-                 (:error (token-request! {:grant_type    "refresh_token"
-                                          :client_id     "no-such-client"
-                                          :refresh_token "bogus-token"}
-                                         :ip-address "198.51.100.7" :expected-status 400)))))
-        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
-        (is (string? (:access_token
-                      (token-request! {:grant_type   "authorization_code"
-                                       :client_id    client-id
-                                       :code         (authorize-and-get-code! client-id)
-                                       :redirect_uri "https://example.com/callback"}
-                                      :ip-address "198.51.100.8"
-                                      :authorization (basic-auth-header client-id client-secret)))))))))
 
 (deftest token-client-throttle-keys-on-the-stored-client-id-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

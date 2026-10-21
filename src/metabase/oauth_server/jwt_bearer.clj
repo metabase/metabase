@@ -64,20 +64,6 @@
   "These `:error` values identify refused JWT logins whose `:message` was written by Metabase for the caller."
   #{:non-personal-user :missing-email :missing-exp-or-iat :future-iat :invalid-tenant})
 
-(defn- refusal-description
-  "Return `error_description` for a refused JWT login, or nil to use the token endpoint's generic one.
-
-  The login's `message` goes back only when Metabase wrote it for the caller: the login returned one of
-  [[own-reason-errors]], or threw with a 4xx `status-code`. A JWT that fails verification gets a fixed description,
-  since the verifier's message is library text."
-  [{:keys [error status-code message]}]
-  (cond
-    (= :invalid-jwt error)
-    "The JWT could not be verified."
-
-    (or (own-reason-errors error) (<= 400 (or status-code 0) 499))
-    (str message)))
-
 (defn- verified-login-refusal?
   "Whether a refused JWT login `result` comes from an assertion that passed verification.
 
@@ -90,6 +76,19 @@
   (and (not= :invalid-jwt error)
        (boolean (or (own-reason-errors error)
                     (<= 400 (or status-code 0) 499)))))
+
+(defn- refusal-description
+  "Return `error_description` for a refused JWT login, or nil to use the token endpoint's generic one.
+
+  The login's `message` goes back only for a [[verified-login-refusal?]], whose message Metabase wrote for the caller.
+  A JWT that fails verification gets a fixed description, since the verifier's message is library text."
+  [{:keys [error message] :as result}]
+  (cond
+    (= :invalid-jwt error)
+    "The JWT could not be verified."
+
+    (verified-login-refusal? result)
+    (str message)))
 
 (defn- log-in!
   "Log in through JWT authentication without creating a session.
