@@ -5,7 +5,7 @@
    [metabase.test :as mt]))
 
 (deftest user-metabot-perms-sql-generation-scopes-test
-  (testing "sql-generation :yes grants sql and snippets scopes"
+  (testing "enabling SQL generation grants access to SQL tools and snippets"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :yes
                    :permission/metabot-nlq            :no
