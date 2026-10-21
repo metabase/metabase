@@ -2163,3 +2163,20 @@
       (is (some? dash-col))
       (testing "the dash-named joined column resolves in the expression display name (not \"Unknown\")"
         (is (= "0 + Other Question → Agg - Dash" (lib/display-name joined (lib/+ 0 dash-col))))))))
+
+(deftest ^:parallel self-join-card-expression-condition-sides-test
+  (testing "in a self-join of a card, the LHS expression of a condition refers to home columns and the RHS to joined ones"
+    (let [mp     (lib.tu/metadata-provider-with-card-from-query
+                  meta/metadata-provider 1
+                  (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+          card   (lib.metadata/card mp 1)
+          query  (lib/query mp card)
+          col    (fn [cols col-name] (m/find-first #(= (:name %) col-name) cols))
+          lhs    (lib/join-condition-lhs-columns query card nil nil)
+          rhs    (lib/join-condition-rhs-columns query card nil nil)
+          query  (lib/join query (lib/join-clause card [(lib/= (lib/+ (col lhs "ID") (col lhs "USER_ID"))
+                                                               (lib/+ (col rhs "ID") (col rhs "PRODUCT_ID")))]))
+          [_op _opts lhs-expr rhs-expr] (first (lib/join-conditions (first (lib/joins query))))
+          alias  (lib/current-join-alias (first (lib/joins query)))]
+      (is (= [nil nil] (mapv lib/current-join-alias (drop 2 lhs-expr))))
+      (is (= [alias alias] (mapv lib/current-join-alias (drop 2 rhs-expr)))))))

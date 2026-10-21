@@ -536,7 +536,7 @@
     (into []
           (remove (fn [a-ref]
                     (lib.equality/find-matching-column
-                     (lib.options/update-options a-ref dissoc :join-alias :source-field) cols)))
+                     (lib.options/update-options a-ref #(apply dissoc % :join-alias lib.util/implicit-join-option-keys)) cols)))
           (concat field-refs cond-refs))))
 
 (mu/defn with-join-source-fields :- ::lib.join.util/partial-join
@@ -612,15 +612,43 @@
                         "__mb_source")]
     join-alias))
 
-(defn- add-alias-to-join-refs [query stage-number form join-alias join-cols]
+(defn- add-alias-to-join-refs
+  "Add `join-alias` to the refs in `form` that match `join-cols`, unless they also match `home-cols`."
+  [query stage-number form join-alias join-cols home-cols]
   (match/replace form
     (field :guard (and (lib.util/field-clause? field)
-                       (lib.equality/find-matching-column query stage-number field join-cols)))
+                       (lib.equality/find-matching-column query stage-number field join-cols)
+                       (not (and home-cols (lib.equality/find-matching-column query stage-number field home-cols)))))
     (with-join-alias field join-alias)))
+
+(defn- add-home-join-alias
+  "Add the alias of an earlier join to a `field` ref without one that matches no home column itself, when the only home
+  column with its name comes from that join."
+  [query stage-number field home-cols]
+  (or (when (and (lib.util/field-clause? field)
+                 (string? (nth field 2))
+                 (not (lib.join.util/current-join-alias field))
+                 (not (lib.equality/find-matching-column query stage-number field home-cols)))
+        (let [candidates (filter #(and (:lib/join-alias %)
+                                       (= (:name %) (nth field 2)))
+                                 home-cols)]
+          (when (= (count candidates) 1)
+            (with-join-alias field (:lib/join-alias (first candidates))))))
+      field))
 
 (defn- add-alias-to-condition
   [query stage-number condition join-alias home-cols join-cols]
-  (let [condition (add-alias-to-join-refs query stage-number condition join-alias join-cols)]
+  (let [condition (if (and (vector? condition) (= (count condition) 4))
+                    ;; a field that matches columns on both sides belongs to the home side on the LHS and to the joined
+                    ;; side on the RHS
+                    (let [[op op-opts lhs rhs] condition]
+                      [op
+                       op-opts
+                       (add-alias-to-join-refs query stage-number
+                                               (add-home-join-alias query stage-number lhs home-cols)
+                                               join-alias join-cols home-cols)
+                       (add-alias-to-join-refs query stage-number rhs join-alias join-cols nil)])
+                    (add-alias-to-join-refs query stage-number condition join-alias join-cols nil))]
     ;; Sometimes conditions have field references which cannot be unambiguously
     ;; assigned to one of the sides. The following code tries to deal with
     ;; these cases, but only for conditions that look like the ones generated
@@ -699,7 +727,12 @@
                                                             (dissoc % :alias)
                                                             %)
                                                          joins))))
-          home-cols   (lib.metadata.calculation/visible-columns query stage-number)
+          ;; the columns of the join being named are not home columns, even before it has an alias
+          home-cols   (lib.metadata.calculation/visible-columns
+                       (lib.util/update-query-stage query stage-number
+                                                    m/update-existing :joins (fn [joins]
+                                                                               (filterv #(not= % a-join) joins)))
+                       stage-number)
           join-alias  (default-alias query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
