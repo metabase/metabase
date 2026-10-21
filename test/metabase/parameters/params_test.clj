@@ -13,7 +13,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 (deftest hydrate-name-field-test
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"

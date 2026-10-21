@@ -8,7 +8,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.source-swap.native :as source-swap.native]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 (defn- field-id-ref
   [mp field-id]

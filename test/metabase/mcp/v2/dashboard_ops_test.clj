@@ -5,9 +5,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
    [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

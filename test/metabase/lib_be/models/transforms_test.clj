@@ -10,7 +10,8 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "

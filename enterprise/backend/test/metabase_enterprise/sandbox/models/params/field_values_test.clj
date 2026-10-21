@@ -7,12 +7,15 @@
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

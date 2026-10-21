@@ -11,6 +11,7 @@
   the documented path no longer works on the shipped sample data."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
@@ -18,6 +19,8 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (defn- do-with-sample-database
   "Call `thunk` with a freshly extracted and synced bundled Sample Database, with the `:sandboxes` premium

@@ -10,6 +10,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -24,7 +25,8 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  (fixtures/initialize :db))
 
 (defn- call-run-saved-question
   ([args] (call-run-saved-question v2.tu/all-scopes args))

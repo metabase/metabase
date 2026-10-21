@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -10,6 +11,8 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (defn- do-with-mocked-field-values-updating!
   "Run `f` with the on-demand FieldValues update entry points stubbed out to just record which

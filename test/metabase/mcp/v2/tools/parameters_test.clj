@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -19,6 +20,8 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

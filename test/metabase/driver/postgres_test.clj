@@ -71,7 +71,8 @@
    (java.sql Connection)
    (org.postgresql.util PGobject PSQLException PSQLState)))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 

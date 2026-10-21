@@ -27,7 +27,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 

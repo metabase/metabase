@@ -7,7 +7,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 (defn- standalone-action-schema
   "The schema entry for a model-less query action created from `action` and `dataset-query`."
