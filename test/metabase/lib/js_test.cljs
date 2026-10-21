@@ -222,7 +222,7 @@
   (doseq [tag                          [:contains :starts-with :ends-with :does-not-contain]
           opts                         [{} {:case-sensitive false}]
           :let [field    [:field {} (meta/id :venues :name)]
-                js-field #js ["field" "NAME" #js {"base-type" "type/Text"}]]
+                js-field #js ["field" (meta/id :venues :name) #js {"base-type" "type/Text"}]]
           [label legacy-expr exp-form] [["binary"
                                          (apply array (name tag) js-field "hotel"
                                                 (when (seq opts) [(clj->js opts)]))
