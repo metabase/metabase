@@ -161,7 +161,8 @@
 (defn- humanized-message
   "Render humanized `errors` for [[humanize-detail]] and [[mu-humanize-detail]].
 
-   `vector-of-messages?` says whether a vector of plain strings is one value's messages or an error per position."
+   Treat a vector of strings as messages for one value when `vector-of-messages?` is true, or as errors
+   at separate positions when false."
   [errors vector-of-messages?]
   (cond
     (map? errors)
@@ -185,22 +186,20 @@
     (message/msg ["%s"] (str errors))))
 
 (defn humanize-detail
-  "Flatten a [[malli.error/humanize]] explanation into a one-line message of `path: expectation`, with the paths
-   and expectations cleaned.
+  "Format a [[malli.error/humanize]] explanation as one line.
 
-   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
-   multi-element collection names which element it is in; a run of plain strings is a single
-   value's alternative messages and joins without positions. For [[metabase.util.malli.humanize/humanize]] output,
-   use [[mu-humanize-detail]]."
+   Messages use `path: expectation`, with paths and expectations cleaned. Collection positions are labelled `[i]`,
+   and entries without errors are omitted. A sequence of strings holds alternative messages for one value
+   and has no position labels. Use [[mu-humanize-detail]] for [[metabase.util.malli.humanize/humanize]] output."
   [errors]
   (humanized-message errors true))
 
 (defn mu-humanize-detail
-  "Flatten a [[metabase.util.malli.humanize/humanize]] explanation, as [[humanize-detail]] does Malli's own.
+  "Format a [[metabase.util.malli.humanize/humanize]] explanation as one line.
 
-   That humanizer writes a single message as a plain string, so each of its vectors labels positions, plain strings
-   included. Several errors for the same value, such as the branches of an `:or`, come as a list and join without
-   positions of their own. The query pipeline's structural failures carry this kind of explanation."
+   Vectors hold errors by position, even when their elements are strings. Lists hold several errors for one value,
+   such as failed branches of an `:or`, and join without adding position labels. The query pipeline uses this format
+   for structural validation errors. Use [[humanize-detail]] for Malli's own output."
   [errors]
   (humanized-message errors false))
 

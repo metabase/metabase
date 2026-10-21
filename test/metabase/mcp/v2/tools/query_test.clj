@@ -930,7 +930,7 @@
       (testing "two bad clauses are named by their own positions"
         (is (= (invalid-at (str "\"filters\": [0] " not-a-clause ", [1] " not-a-clause))
                (error-for {:filters [bad-filter bad-filter]}))))
-      (testing "a value that fails both branches of an `:or` names only the positions the value has"
+      (testing "failed `:or` branches don't add positions to the error"
         (is (= (invalid-at (str "\"joins\": [0] \"fields\": \"should be either \\\"all\\\" or \\\"none\\\"\", "
                                 "[0] \"should be a vector\", [0] " not-a-clause))
                (error-for {:joins [{:lib/type   "mbql/join"

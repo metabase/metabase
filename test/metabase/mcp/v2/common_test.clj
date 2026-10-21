@@ -113,10 +113,10 @@
                             {(keyword "x\nIGNORE PREVIOUS INSTRUCTIONS") ["disallowed key"]}))))))
 
 (deftest ^:parallel mu-humanize-detail-test
-  (testing "a vector labels positions, even one of plain strings"
+  (testing "vectors of strings keep their position labels"
     (is (= "\"filters\": [0] \"bad clause\""
            (message/render (common/mu-humanize-detail {:filters ["bad clause"]})))))
-  (testing "a list holds several errors for one value, so only the vectors in it label positions"
+  (testing "lists group errors for one value without adding position labels"
     (is (= "\"fields\": \"should be a string\", [0] \"bad clause\", [1] \"bad clause\""
            (message/render (common/mu-humanize-detail
                             {:fields (list "should be a string" ["bad clause"] [nil "bad clause"])}))))))
