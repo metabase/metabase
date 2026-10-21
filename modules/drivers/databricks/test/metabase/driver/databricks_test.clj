@@ -16,12 +16,15 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (def ^:dynamic *multi-level?* false)
 

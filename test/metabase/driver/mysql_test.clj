@@ -52,6 +52,8 @@
    (java.util Properties)
    (org.mariadb.jdbc UrlParser)))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (set! *warn-on-reflection* true)
 
 (deftest ssl-cert-path-must-be-readable-test

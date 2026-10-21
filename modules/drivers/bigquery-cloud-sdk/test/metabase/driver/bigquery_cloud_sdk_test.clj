@@ -17,6 +17,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -38,6 +39,8 @@
   (:import
    (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList JobId LegacySQLTypeName Schema TableResult)
    (com.google.cloud.http HttpTransportOptions)))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -1814,13 +1817,13 @@
                          FROM %s.products p
                          WHERE 1=1 [[ AND {{category}} ]]
                          ORDER BY p.title ASC;" (get-test-data-name))
-          product-category (lib/ref (lib.metadata/field mp (mt/id :products :category)))
+          product-category (mt/id :products :category)
           query (-> (lib/native-query mp sql)
                     (lib/with-template-tags {"category" {:name "category"
                                                          :alias "p.category"
                                                          :display-name "Category"
                                                          :type :dimension
-                                                         :dimension product-category
+                                                         :field-id product-category
                                                          :widget-type :text}})
                     (assoc :parameters [{:type :text
                                          :target [:dimension [:template-tag "category"]]

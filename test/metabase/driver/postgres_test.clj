@@ -71,6 +71,8 @@
    (java.sql Connection)
    (org.postgresql.util PGobject PSQLException PSQLState)))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (set! *warn-on-reflection* true)
 
 (deftest default-schema-test
@@ -1176,7 +1178,7 @@
                                  {"type" {:name         "type"
                                           :display-name "Type"
                                           :type         :dimension
-                                          :dimension    (lib/ref type-field)
+                                          :field-id     (:id type-field)
                                           :widget-type  :string/=}}))
                            :parameters [{:type   :string/=
                                          :target [:dimension [:template-tag "type"]]
