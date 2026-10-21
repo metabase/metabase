@@ -422,7 +422,8 @@
                (mt/formatted-rows [int 2.0] (qp/process-query query))))))))
 
 (deftest aggregate-datetime-add-on-timestamp-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics :set-timezone)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics :set-timezone
+                                                   :test/dynamic-dataset-loading)
     (mt/dataset attempted-murders-no-time
       (mt/with-report-timezone-id! "Pacific/Honolulu"
         (let [mp          (mt/metadata-provider)
@@ -434,4 +435,4 @@
                             (lib/breakout $ (lib/with-temporal-bucket (lib/expression-ref $ "shifted") :month)))]
           (is (= [["2020-10-01T00:00:00-10:00" 1]
                   ["2020-11-01T00:00:00-10:00" 19]]
-                 (mt/rows (qp/process-query query)))))))))
+                 (mt/formatted-rows [str int] (qp/process-query query)))))))))
