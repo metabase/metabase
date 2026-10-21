@@ -6,6 +6,7 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockParameter,
   createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
@@ -223,6 +224,51 @@ describe("getDashboardDrillType", () => {
 
     expect(type).toBe("question-url");
   });
+
+  it("resolves a link to the current dashboard without separately loaded target metadata", () => {
+    const type = getDashboardDrillType({
+      settings: buildSettings({ root: dashboardLink }),
+      extraData: { dashboard: targetDashboard },
+    });
+
+    expect(type).toBe("dashboard-reset");
+  });
+
+  it("resolves a link to an accessible tab of the current public dashboard (#84384)", () => {
+    const type = getDashboardDrillType({
+      settings: buildSettings({ root: dashboardLink }),
+      extraData: {
+        dashboard: createMockDashboard({
+          id: "299ff06a-c478-40a9-aaa7-24f85207d4f2",
+          tabs: [createMockDashboardTab({ id: 7, dashboard_id: 2 })],
+        }),
+      },
+    });
+
+    expect(type).toBe("dashboard-reset");
+  });
+
+  it.each([
+    { description: "another dashboard", dashboardId: 3, tabId: 7 },
+    { description: "an unavailable tab", dashboardId: 2, tabId: 8 },
+  ])(
+    "does not resolve a public link targeting $description without target metadata",
+    ({ dashboardId, tabId }) => {
+      const type = getDashboardDrillType({
+        settings: buildSettings({ root: dashboardLink }),
+        extraData: {
+          dashboard: createMockDashboard({
+            id: "299ff06a-c478-40a9-aaa7-24f85207d4f2",
+            tabs: [
+              createMockDashboardTab({ id: tabId, dashboard_id: dashboardId }),
+            ],
+          }),
+        },
+      });
+
+      expect(type).toBeNull();
+    },
+  );
 
   it("resolves no drill when the link target is not loaded in extraData", () => {
     const type = getDashboardDrillType({
