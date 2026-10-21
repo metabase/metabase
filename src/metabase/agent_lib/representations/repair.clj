@@ -974,7 +974,7 @@
 ;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
 ;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
 ;;; query builder writes it.
-;;; Pass 2.96 expands day/default dates into ranges in conditional aggregations.
+;;; Pass 2.96 expands date-only `day` / `default` bounds into ranges in conditional aggregations.
 ;;;
 ;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
 ;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
@@ -1297,14 +1297,14 @@
    form))
 
 ;;; ============================================================
-;;; Pass 2.96 -- expand whole-day comparisons outside filters, expressions and join conditions.
+;;; Pass 2.96 -- expand whole-day comparisons outside of filters, expressions and join conditions.
 ;;;
-;;; Date-only day/default bounds become ranges on the raw ref, with an exclusive next-day
-;;; upper bound. This counts whole days and lets the expression editor re-save the result:
-;;; dropping the unit loses the last day's times, and a day-bucketed ref prints as an unknown
-;;; column. Default timestamps only lose their wrapper. Negations stay for E7: a `!=` filter
-;;; drops rows with no date on a DateTime column and keeps them on a Date column, and this pass
-;;; cannot tell the two apart.
+;;; Date-only bounds with the `day` or `default` unit become ranges on the unbucketed column,
+;;; with an exclusive upper bound on the next day. The expression editor can save these ranges;
+;;; it cannot save a bucketed column, and dropping the unit would leave out times after midnight
+;;; on the last day. Timestamps with the `default` unit only lose their wrapper. E7 rejects date
+;;; negations because `!=` filters keep rows with no date for Date columns and drop them for
+;;; DateTime columns, and this pass does not know the column's type.
 ;;; ============================================================
 
 (defn- next-day [literal]
@@ -1344,7 +1344,7 @@
     node))
 
 (defn- repair-day-and-default-comparisons*
-  "Repair temporal comparisons outside filters, expressions and join conditions."
+  "Repair temporal comparisons outside of filters, expressions and join conditions."
   [form]
   (if (and (map? form) (vector? (get form "stages")))
     (letfn [(rewrite [node]
@@ -3070,18 +3070,17 @@
 
     [\"count-where\", {}, [\">\", {}, <col>, [\"absolute-datetime\", {}, \"2025-01-01\", \"month\"]]]
 
-  All three hold a temporal unit in a slot the legacy schema types with `::DateUnit` /
-  `::DateTimeUnit` (`metabase.legacy-mbql.schema`, via `::ValueTypeInfo` for `value`), and neither
-  enum carries a `:decode/normalize`. Once the `/question#` hash has JSON-encoded the query the unit
+  The `absolute-datetime`, `during` and unit-carrying `value` clauses store their units in
+  `::DateUnit` / `::DateTimeUnit` slots in the legacy schema (`metabase.legacy-mbql.schema`, via
+  `::ValueTypeInfo` for `value`), and neither enum carries a `:decode/normalize`. Once the `/question#` hash has JSON-encoded the query the unit
   is a string and the clause never normalizes back. In `filters`, `expressions` and join
   `conditions:` that is a 400 on the dev and CI question page, and in a production JAR -- where
   `normalize-or-throw`'s `mu/defn` output check is compiled out -- `lib/query`'s
   `clean-stage-schema-errors` deletes the clause outright and the question silently answers something
   else. In `aggregation:` the legacy schema is permissive enough that nothing throws even in dev: the
-  clause is deleted silently in both. Pass 2.95 repairs comparisons in filters and expressions;
-  Pass 2.96 expands day/default dates into ranges and unwraps default timestamps outside filters,
-  expressions and join conditions.
-  Anything still standing here cannot survive the hop.
+  clause is deleted silently in both. Pass 2.95 repairs comparisons in filters and expressions.
+  Pass 2.96 expands date-only `day` / `default` bounds into ranges and unwraps `default` timestamps
+  outside of filters, expressions and join conditions.
 
   `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
   and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
@@ -3111,7 +3110,7 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Write a range as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). For date negations, compare outside the excluded days: to exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. In `filters:` and `expressions:` you can put the unit on the column with `temporal-unit` instead and compare it to the first day of the period as a plain date string, except for `year` on an `expression` reference, which the query engine reads as a number."
+               (tru "`{0}` does not survive the round trip through the question link that the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
                     (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
@@ -3193,8 +3192,8 @@
     2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
        `absolute-datetime` literal and onto the ref it is compared to, for the same reason
        (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
-    2.96. outside `filters`, `expressions` and join `conditions`, expand date-only `day` / `default` comparisons into
-       whole-day ranges on the raw ref; leave date negations for E7; unwrap `default` timestamps;
+    2.96. expand date-only `day` / `default` comparisons into whole-day ranges on the unbucketed column outside of
+       `filters`, `expressions` and join `conditions`; leave date negations for E7; unwrap `default` timestamps;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);

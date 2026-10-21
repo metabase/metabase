@@ -1833,7 +1833,7 @@
                    [["<" {} created-at (end "2017-02-01")] 949]
                    [[">=" {} created-at (start "2017-01-31")] 17819]]]
             (testing (pr-str predicate)
-              (let [;; Pass 2.95 only hoists a common unit; separate scalar filters also cover mixed-unit membership.
+              (let [;; Separate filters let Pass 2.95 handle dates with different units.
                     filter-predicate (if (and (contains? #{"=" "in"} (first predicate)) (> (count predicate) 4))
                                        (into ["or" {}] (map (fn [date] ["=" {} created-at date]) (drop 3 predicate)))
                                        predicate)

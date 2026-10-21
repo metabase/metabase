@@ -1239,7 +1239,7 @@
     ;; plain upper date keeps only midnight of the last day
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"`>=` its first day and `<` the first day after it.*not `between`.*`year` on an `expression` reference"
+         #"`>=` the first day of the period and `<` the first day after the period.*not `between`.*`year` on an `expression` reference"
          (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")]))))
   (testing "date negations leave the choice of counting NULL dates to the model"
     (is (thrown-with-msg?
