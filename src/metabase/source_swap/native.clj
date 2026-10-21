@@ -173,7 +173,7 @@
             (or (when (#{:dimension :temporal-unit} (:type tag))
                   (when-some [field (perf/some #(when (= (:id %) (:field-id tag)) %) old-fields)]
                     (when-some [new-field (perf/some #(when (= (:name %) (:name field)) %) new-fields)]
-                      (assoc tag :field-id (:id new-field) :dimension (lib/ref new-field)))))
+                      (assoc tag :field-id (:id new-field)))))
                 tag))
           template-tags)))
 

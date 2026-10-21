@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -22,8 +21,6 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

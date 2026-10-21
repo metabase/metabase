@@ -12,7 +12,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -36,8 +35,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

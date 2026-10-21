@@ -3,14 +3,11 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

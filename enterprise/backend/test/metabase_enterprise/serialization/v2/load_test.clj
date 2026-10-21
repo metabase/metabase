@@ -14,7 +14,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -25,8 +24,6 @@
    [metabase.util.json :as json]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off

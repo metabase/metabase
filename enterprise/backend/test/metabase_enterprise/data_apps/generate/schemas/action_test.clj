@@ -4,10 +4,7 @@
    [metabase-enterprise.data-apps.generate.schemas.action :as schemas.action]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (defn- standalone-action-schema
   "The schema entry for a model-less query action created from `action` and `dataset-query`."

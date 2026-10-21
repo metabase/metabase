@@ -1,12 +1,9 @@
 (ns metabase.lib.schema.template-tag-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.test-util :as lib.tu]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -74,27 +71,15 @@
                                          :type         :temporal-unit
                                          :dimension    [:field 1]}})))))
 
-(deftest ^:parallel normalize-syncs-field-id-and-dimension-test
-  (binding [lib.schema.template-tag/*omit-dimension* false]
-    (let [normalize #(lib/normalize ::lib.schema.template-tag/template-tag
-                                    (merge {:name "x", :display-name "X", :id "1", :widget-type :category} %))]
-      (testing "a legacy `:dimension` gets the `:field-id` it refers to"
-        (is (=? {:field-id 10, :dimension [:field {} 10]}
-                (normalize {:type :dimension, :dimension [:field 10 nil]}))))
-      (testing "a `:field-id` gets the legacy `:dimension` for older readers"
-        (is (=? {:field-id 11, :dimension [:field {:lib/uuid string?} 11]}
-                (normalize {:type :temporal-unit, :field-id 11}))))
-      (testing "`:field-id` wins when the two disagree"
-        (is (=? {:field-id 12, :dimension [:field {} 12]}
-                (normalize {:type :dimension, :field-id 12, :dimension [:field 10 nil]})))))))
-
-(deftest ^:parallel normalize-omits-dimension-test
-  (binding [lib.schema.template-tag/*omit-dimension* true]
-    (let [normalize #(lib/normalize ::lib.schema.template-tag/template-tag
-                                    (merge {:name "x", :display-name "X", :id "1", :widget-type :category} %))]
-      (testing "a legacy `:dimension` is replaced by the `:field-id` it refers to"
-        (is (= {:name "x", :display-name "X", :id "1", :widget-type :category, :type :dimension, :field-id 10}
-               (normalize {:type :dimension, :dimension [:field 10 nil]}))))
-      (testing "a `:field-id` gets no legacy `:dimension`"
-        (is (= {:name "x", :display-name "X", :id "1", :widget-type :category, :type :temporal-unit, :field-id 11}
-               (normalize {:type :temporal-unit, :field-id 11})))))))
+(deftest ^:parallel normalize-replaces-dimension-test
+  (let [normalize #(lib/normalize ::lib.schema.template-tag/template-tag
+                                  (merge {:name "x", :display-name "X", :id "1", :widget-type :category} %))]
+    (testing "a legacy `:dimension` is replaced by the `:field-id` it refers to"
+      (is (= {:name "x", :display-name "X", :id "1", :widget-type :category, :type :dimension, :field-id 10}
+             (normalize {:type :dimension, :dimension [:field 10 nil]}))))
+    (testing "`:field-id` wins over a legacy `:dimension`"
+      (is (= {:name "x", :display-name "X", :id "1", :widget-type :category, :type :dimension, :field-id 12}
+             (normalize {:type :dimension, :field-id 12, :dimension [:field 10 nil]}))))
+    (testing "a `:field-id` gets no legacy `:dimension`"
+      (is (= {:name "x", :display-name "X", :id "1", :widget-type :category, :type :temporal-unit, :field-id 11}
+             (normalize {:type :temporal-unit, :field-id 11}))))))

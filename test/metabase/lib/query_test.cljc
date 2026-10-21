@@ -1,7 +1,7 @@
 (ns metabase.lib.query-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -18,8 +18,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.types.core :as types]
    [metabase.util.malli :as mu]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

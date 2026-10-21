@@ -5,12 +5,9 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.parameters.params :as params]
    [metabase.test :as mt]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

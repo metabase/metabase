@@ -71,8 +71,6 @@
    (java.sql Connection)
    (org.postgresql.util PGobject PSQLException PSQLState)))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
 (set! *warn-on-reflection* true)
 
 (deftest default-schema-test

@@ -24,8 +24,6 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
 (set! *warn-on-reflection* true)
 
 (defn- query->collection-name

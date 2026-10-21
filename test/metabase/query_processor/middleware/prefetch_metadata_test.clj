@@ -8,12 +8,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

@@ -19,8 +19,6 @@
   (:import
    (java.time OffsetDateTime ZonedDateTime)))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel semantic-type->unix-timestamp-unit-test

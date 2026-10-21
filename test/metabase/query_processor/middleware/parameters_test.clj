@@ -18,7 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- substitute-params
   ([query]

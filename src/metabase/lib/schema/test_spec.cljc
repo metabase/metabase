@@ -199,7 +199,7 @@
    [:ref ::lib.schema.template-tag/field-filter]
    [:ref ::test-common-spec]
    [:map
-    [:dimension   [:or ::lib.schema.id/field string?]]
+    [:field-id    ::lib.schema.id/field]
     [:widget-type {:default :text} [:ref ::lib.schema.template-tag/widget-type]]]])
 
 (mr/def ::test-temporal-unit-spec
@@ -207,7 +207,7 @@
    [:ref ::lib.schema.template-tag/temporal-unit]
    [:ref ::test-common-spec]
    [:map
-    [:dimension   [:or ::lib.schema.id/field string?]]]])
+    [:field-id    ::lib.schema.id/field]]])
 
 (mr/def ::test-snippet-spec
   [:merge

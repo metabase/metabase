@@ -1,12 +1,9 @@
 (ns metabase.lib.parameters-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.ref :as lib.ref]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
+   [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel parameter-target-field-id-test
   (is (= 256

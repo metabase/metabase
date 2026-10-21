@@ -3,14 +3,11 @@
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "

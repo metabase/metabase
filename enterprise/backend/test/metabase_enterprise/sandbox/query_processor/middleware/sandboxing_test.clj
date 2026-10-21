@@ -49,8 +49,7 @@
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
-  (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (def sandboxing-disabled-error #"Sandboxing is a paid feature")
 

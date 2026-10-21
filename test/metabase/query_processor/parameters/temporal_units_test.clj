@@ -7,11 +7,8 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (defn- ->local-date-time [t]
   (as-> t $

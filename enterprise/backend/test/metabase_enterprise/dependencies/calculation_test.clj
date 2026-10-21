@@ -1,18 +1,15 @@
 (ns metabase-enterprise.dependencies.calculation-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as calculation]
    [metabase.actions.core :as actions]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (deftest ^:parallel upstream-deps-card-test
   (let [mp (mt/metadata-provider)

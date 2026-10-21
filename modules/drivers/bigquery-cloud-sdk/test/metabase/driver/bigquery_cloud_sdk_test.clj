@@ -17,7 +17,6 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -39,8 +38,6 @@
   (:import
    (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList JobId LegacySQLTypeName Schema TableResult)
    (com.google.cloud.http HttpTransportOptions)))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (set! *warn-on-reflection* true)
 

@@ -18,8 +18,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel ->utc-instant-test

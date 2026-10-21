@@ -12,15 +12,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 ;; TIMEZONE FIXME
 (def broken-drivers

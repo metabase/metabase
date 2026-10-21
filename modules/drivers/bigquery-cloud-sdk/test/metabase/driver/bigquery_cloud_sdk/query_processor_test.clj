@@ -33,8 +33,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
 (defn ^:private get-test-data-name
   []
   (bigquery.tx/test-dataset-id

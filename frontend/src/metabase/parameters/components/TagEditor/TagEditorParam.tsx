@@ -181,7 +181,6 @@ class TagEditorParamInner extends Component<
         type: type,
         default: undefined,
         "field-id": undefined,
-        dimension: undefined,
         alias: undefined,
         "emit-alias": type === "table" ? true : undefined,
         "widget-type": type === "dimension" ? "none" : undefined,

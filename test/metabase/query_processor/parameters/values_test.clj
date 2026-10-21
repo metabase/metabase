@@ -28,8 +28,6 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
 (set! *warn-on-reflection* true)
 
 (def ^:private test-uuid (str (random-uuid)))

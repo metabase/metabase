@@ -1,18 +1,11 @@
 (ns metabase.source-swap.native-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.source-swap.native :as source-swap.native]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
-(defn- field-id-ref
-  [mp field-id]
-  (lib/ref (lib.metadata/field mp field-id)))
 
 (def ^:private metadata-provider-with-cards
   (lib.tu/mock-metadata-provider meta/metadata-provider
@@ -465,10 +458,9 @@
                    :name         "filter"
                    :display-name "Filter"
                    :widget-type  :number/=
-                   :field-id     (meta/id :products :id)
-                   :dimension    (field-id-ref meta/metadata-provider (meta/id :products :id))}]
+                   :field-id     (meta/id :products :id)}]
           result (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
-      (is (=? [{:name "filter", :field-id (meta/id :orders :id), :dimension [:field {} "ID"]}]
+      (is (=? [{:name "filter", :field-id (meta/id :orders :id)}]
               result)))))
 
 (deftest ^:parallel update-dimension-tags-no-match-test

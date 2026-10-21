@@ -358,7 +358,7 @@ describe("parameters/utils/mapping-options", () => {
           created: {
             type: "dimension",
             name: "created",
-            dimension: ORDERS.CREATED_AT,
+            "field-id": ORDERS.CREATED_AT,
           },
         },
       });

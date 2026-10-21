@@ -5,11 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 ;; Athena supports uuids in queries, but not in create table
 

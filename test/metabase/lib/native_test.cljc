@@ -1,7 +1,7 @@
 (ns metabase.lib.native-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -10,8 +10,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
-
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

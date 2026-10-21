@@ -22,8 +22,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
-
 (defn- optional [& args] (lib/parsed-optional-param args))
 
 (defn- substitute [parsed param->value]

@@ -64,7 +64,7 @@
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
     [:field-id    {:optional true} ::id/field]
-    ;; legacy, kept in sync with `:field-id` for older readers
+    ;; legacy, replaced by `:field-id` when normalized
     [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
 (mr/def ::field-filter.options
@@ -90,7 +90,7 @@
     [:type        [:= :dimension]]
     ;; field filters can have a missing field before it is set
     [:field-id    {:optional true} ::id/field]
-    ;; legacy, kept in sync with `:field-id` for older readers
+    ;; legacy, replaced by `:field-id` when normalized
     [:dimension   {:optional true} [:ref :mbql.clause/field]]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
@@ -110,24 +110,15 @@
   (when (sequential? dimension)
     (some #(when (pos-int? %) %) (rest dimension))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *omit-dimension*
-  "Whether Lib stops adding the legacy `:dimension` ref next to the `:field-id` of a template tag."
-  false)
-
-(defn sync-field-id-and-dimension
-  "Make the `:field-id` of a template tag and its legacy `:dimension` ref name the same Field: `:field-id` wins, either
-  one is filled in from the other, and `:dimension` is dropped when [[*omit-dimension*]] is set."
+(defn dimension->field-id
+  "Replace the legacy `:dimension` ref of a template tag with the `:field-id` of the Field it refers to; `:field-id`
+  wins when the tag has both."
   [{:keys [field-id dimension], :as tag}]
-  (let [dimension-id (dimension-field-id dimension)]
-    (if-some [field-id (or field-id dimension-id)]
-      (cond
-        *omit-dimension*          (-> tag (assoc :field-id field-id) (dissoc :dimension))
-        (= field-id dimension-id) (assoc tag :field-id field-id)
-        :else                     (assoc tag
-                                         :field-id  field-id
-                                         :dimension [:field {:lib/uuid (str (random-uuid))} field-id]))
-      tag)))
+  (if (contains? tag :dimension)
+    (-> tag
+        (dissoc :dimension)
+        (m/assoc-some :field-id (or field-id (dimension-field-id dimension))))
+    tag))
 
 ;; Example:
 ;;
@@ -231,7 +222,7 @@
                           (let [tag (cond-> tag
                                       (:type tag) (update :type common/normalize-keyword))]
                             (cond-> tag
-                              (#{:dimension :temporal-unit} (:type tag)) sync-field-id-and-dimension))))
+                              (#{:dimension :temporal-unit} (:type tag)) dimension->field-id))))
     :decode/api       common/remove-internal-keys
     :encode/serialize common/remove-internal-keys}
    [:multi {:dispatch #(keyword (:type %))}
