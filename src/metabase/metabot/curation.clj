@@ -224,12 +224,22 @@
   []
   {:seen #{} :verdicts (atom {}) :definitions (atom {})})
 
+(defn- definition-readable?
+  "Whether the current user may query every Table and read every Card the definition query `definition` names. An
+  uncurated metric is judged by its definition only when they may: otherwise the verdict would tell them whether a
+  Table they cannot see is curated, so the metric fails closed instead."
+  [definition]
+  (let [{:keys [table card]} (lib/all-referenced-entity-ids [definition])]
+    (and (every? #(mi/can-query? :model/Table %) table)
+         (every? #(mi/can-read? :model/Card %) card))))
+
 (defn- metric-ok?
   "Whether the metric `id`, whose definition query is `definition` (nil when unusable), may be used: it's curated,
-  or its definition is structured and passes [[uncurated-query-sources]] on its own. A missing metric, a native
-  definition, a reference cycle, or a chain deeper than [[max-metric-nesting]] fails closed. A native definition
-  references no tables, so there's nothing to judge it by: like the permissions code, treat it as its own thing
-  rather than as covered by default."
+  or its definition is structured, reads only what the current user may ([[definition-readable?]]), and passes
+  [[uncurated-query-sources]] on its own. A missing metric, a native definition, a definition over something the
+  user cannot read, a reference cycle, or a chain deeper than [[max-metric-nesting]] fails closed. A native
+  definition references no tables, so there's nothing to judge it by: like the permissions code, treat it as its own
+  thing rather than as covered by default."
   [curated? id definition {:keys [seen verdicts] :as ctx}]
   ;; keyed by depth as well as id: the depth guard is a property of the path, so the same metric may pass when
   ;; referenced directly and fail at the end of a long chain
@@ -242,6 +252,7 @@
                          (not (lib/any-native-stage? definition))
                          (not (seen id))
                          (< (count seen) max-metric-nesting)
+                         (definition-readable? definition)
                          (empty? (uncurated-query-sources definition (update ctx :seen conj id))))))
         (swap! verdicts assoc k <>)))))
 
@@ -363,12 +374,9 @@
   "Whether a curated-only Metabot may read the Card with `metric-id` where a metric is expected: the same judgement
   [[uncurated-query-sources]] makes for a metric a query uses (see [[metric-ok?]]). A curated Card of any type
   passes on its own curation; only a live metric Card is judged by its definition, so an uncurated question or
-  model named here is denied like anywhere else, and a missing or archived Card is.
-
-  The definition is judged without a permission check on what it names, as [[check-curated-query!]] judges a
-  conversation query: a user who can read the metric but not its base Table, a Table it joins, a metric, measure, or
-  segment it uses, learns from the verdict whether those are curated. Accepted, for the same reason; the metric's
-  details name no Table the user cannot query."
+  model named here is denied like anywhere else, and a missing or archived Card is. So is an uncurated metric whose
+  definition reads a Table or Card the user cannot ([[definition-readable?]]): judging it would tell them whether
+  that Table is curated."
   [metric-id]
   (let [curated?   (fn [model id] (contains? (curated-ids [[model id]]) [model id]))
         definition (when-let [{:keys [database_id dataset_query archived]} (metabot.db/card-of-type metric-id :metric)]
