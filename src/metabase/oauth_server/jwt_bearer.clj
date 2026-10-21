@@ -82,7 +82,7 @@
   "Whether a refused JWT login `result` comes from an assertion that passed verification.
 
   An allowlist, so an unrecognised failure counts toward the throttles rather than skipping them. Verified refusals
-  are the ones Metabase raises itself once the signature and time claims check out: a returned failure in
+  are the ones Metabase raises itself after the JWT library accepts the assertion: a returned failure in
   [[own-reason-errors]], or an exception it throws with a 4xx status, such as user provisioning being off. A failed
   verification returns `:invalid-jwt`, and anything else, including a caught exception with no `:error` or status,
   is treated as unverified."
@@ -126,7 +126,8 @@
 (defn verified-refusal?
   "Return whether `e` refuses a JWT bearer grant whose assertion passed verification.
 
-  These are the JWT login's refusals other than `:invalid-jwt`, and refusals of users whose groups don't allow MCP."
+  These are the JWT login refusals that [[verified-login-refusal?]] accepts, and refusals of users whose groups don't
+  allow MCP."
   [e]
   (boolean (::verified? (ex-data e))))
 
