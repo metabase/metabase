@@ -1397,6 +1397,49 @@
                     stages)))))
 
 ;;; ============================================================
+;;; Pass 1.56 -- split top-level `and` filters into separate `filters:` entries.
+;;;
+;;; A stage's `filters:` entries are implicitly combined with `and`, so
+;;; `filters: [["and", {}, A, B]]` means the same as `filters: [A, B]`. The notebook renders the
+;;; compound `and` as one custom expression (BOT-1446). Splitting it gives each condition its own
+;;; editable filter without changing the rows, whether the model or the user wrote the `and`.
+;;;
+;;; Top-level `and` clauses and directly nested `and` clauses are split case-insensitively (`AND`).
+;;; An `and` under `or` or `not` must stay nested to preserve the boolean logic. An `and` with a
+;;; non-clause operand, such as a trailing map, stays intact so validation can report the original
+;;; clause. The `and`'s options map is dropped because its operands need nothing from it in the
+;;; portable form. Repeating the pass makes no further changes.
+;;;
+;;; Pass 1.56 runs in `normalize-shape*`, after Pass 1 adds options maps and before Pass 1.5.
+;;; It must precede Pass 2.9 (`split-post-agg-filters*`), which moves whole `filters:` entries,
+;;; so a row condition stays in stage 0 while only the condition on an aggregation moves.
+;;;
+;;; `metabase.lib.filter/flatten-and-clause`, used by `lib/atomic-filters`, does the same flattening
+;;; but requires keyword-keyed MBQL. This pass receives the string-keyed portable form before resolution.
+;;; ============================================================
+
+(defn- and-filter-clause?
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (string? (nth clause 0))
+       (= "and" (u/lower-case-en (nth clause 0)))
+       (map? (nth clause 1))
+       (every? clause-like? (drop 2 clause))))
+
+(defn- and-filter-operands
+  [clause]
+  (if (and-filter-clause? clause)
+    (mapcat and-filter-operands (drop 2 clause))
+    [clause]))
+
+(defn- split-top-level-and-filters*
+  [form]
+  (match/replace-all form
+    {"filters" (filters :guard (and (sequential? filters) (some and-filter-clause? filters)))}
+    (assoc &match "filters" (into [] (mapcat and-filter-operands) filters))))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -3114,6 +3157,7 @@
       normalise-case-clauses*
       normalise-fields-shape*
       normalise-aggregation-clauses*
+      split-top-level-and-filters*
       normalize-expressions-shape*
       ensure-lib-types*))
 
@@ -3131,6 +3175,8 @@
     1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
+    1.56. split a top-level `and` in `filters:` into separate entries that the notebook shows as
+       individual filters (runs in `normalize-shape*`, before 1.5; must precede 2.9);
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
