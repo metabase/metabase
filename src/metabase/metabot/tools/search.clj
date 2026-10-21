@@ -702,7 +702,7 @@
                           "with non-blank queries in `keyword_queries`.")}]})
 
 (tools/defrecoverable unavailable-database!
-  "The SQL search database does not exist or is unreadable."
+  "The database for this SQL search does not exist or the user cannot read it."
   {:payload [:map {:closed true} [:database-id :int]]}
   [{:keys [database-id]}]
   {:message (str "Database " database-id

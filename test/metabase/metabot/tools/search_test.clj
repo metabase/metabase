@@ -629,7 +629,7 @@
                                                                      {:data [] :total 0})]
               (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
-        (testing "limits outside 1 to 50 are rejected by schema validation"
+        (testing "limits below 1 or above 50 are rejected by schema validation"
           (doseq [limit [0 75]]
             (is (=? {:error {:class :validation :code :invalid-arguments}}
                     (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
