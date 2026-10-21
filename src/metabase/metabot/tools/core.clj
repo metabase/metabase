@@ -455,7 +455,7 @@
   test to say so."
   (str (ns-name (:ns (meta #'recoverable.pipeline/unknown-table!)))))
 
-(defn- pipeline-error-code
+(defn pipeline-error-code
   "The `recoverable.pipeline` code for a pipeline `:error` keyword, or nil when none is declared."
   [error]
   (when (keyword? error)
@@ -472,10 +472,7 @@
       (let [{:keys [agent-error? status-code error entity-type entity-id source-card source-card-type]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
-          ;; `:agent-error?` *and* an `:error` key. The pipeline's `as-agent-input-error` stamps
-          ;; `:agent-error?` onto foreign exceptions from lib, toucan2 and JDBC as well, and those
-          ;; messages are not authored for anyone — only an `:error` code says "this sentence was
-          ;; written for a model".
+          ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
            code

@@ -12,7 +12,7 @@ const { ORDERS_ID: ORDERS_TABLE_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > modular embedding", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest({ signOut: true });
+    H.prepareSdkIframeEmbedTest();
   });
 
   it("can find the embed.js file", () => {
@@ -495,7 +495,6 @@ describe("scenarios > embedding > modular embedding", () => {
       H.resetSnowplow();
       H.prepareSdkIframeEmbedTest({
         enabledAuthMethods: ["jwt"],
-        signOut: false,
       });
       H.enableTracking();
     });

@@ -21,12 +21,10 @@
   (let [id (or (parse-long (str entity-id)) entity-id)]
     (case entity-type
       "metric"
-      ;; Not the base table unconditionally: a metric defined on a saved question only works on that question.
-      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, build the stage on the source it "
-                         "was defined on -- its base table's numeric id in `source-table:`, or, for a metric defined "
-                         "on a saved question or model, that card's numeric id in `source-card:` (find it via "
-                         "\"search\" or \"browse_data\") -- and reference the metric by its numeric id: "
-                         "`aggregation: [[metric, {}, %s]]`.")]
+      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, build the stage on its required "
+                         "source: its base table's numeric ID in `source-table:`, or its saved question or model's "
+                         "numeric ID in `source-card:` (find it via \"search\" or \"browse_data\"). "
+                         "Then reference the metric by its numeric ID: `aggregation: [[metric, {}, %s]]`.")]
                    id id)
 
       ("question" "model" "card")
@@ -41,15 +39,23 @@
       (message/msg ["`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."]))))
 
 (defn- usable-sources-hint
-  "The numeric-id restatement of an `:incompatible-metric` error's sources, whose message names them portably."
+  "Return the usable source IDs from an `:incompatible-metric` error as MCP guidance."
   [usable-sources]
   (when (seq usable-sources)
     (apply message/msg
-           [(str "On this surface use numeric ids: " (str/join "; " (repeat (count usable-sources) "%s")) ".")]
+           [(str "Use numeric IDs here: " (str/join "; " (repeat (count usable-sources) "%s")) ".")]
            (for [[metric-id {:keys [source-table source-card]}] (sort-by key usable-sources)]
              (if source-table
                (message/msg ["metric %s needs `\"source-table\": %s`"] metric-id source-table)
                (message/msg ["metric %s needs `\"source-card\": %s`"] metric-id source-card))))))
+
+(defn- card-fields-hint
+  "Return MCP guidance for listing the source card's columns, or nil when the error names no card."
+  [source-card source-card-type]
+  (when (and source-card source-card-type)
+    (message/msg [(str "Call \"get_content\" with items [{\"type\": %s, \"id\": %s}] and include [\"fields\"] to "
+                       "list the columns it returns.")]
+                 source-card-type source-card)))
 
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
@@ -77,14 +83,17 @@
                        "the table to list its columns with their numeric ids.")])
 
     :ambiguous-fk
-    (if (and source-card source-card-type)
+    (if-let [card-fields (card-fields-hint source-card source-card-type)]
       ;; A card returns a joined foreign key under its join alias (`O2__USER_ID`), which the table's fields don't show.
-      (message/msg [(str "Call \"get_content\" with items [{\"type\": %s, \"id\": %s}] and include [\"fields\"] to "
-                         "list the columns it returns. Put the foreign-key column's `lib/desired-column-alias` (its "
-                         "`name` when it has none) in `source-field-name`.")]
-                   source-card-type source-card)
+      (message/msg [(str "%s Put the foreign-key column's `id` in `source-field` and its `lib/desired-column-alias` "
+                         "(its `name` when it has none) in `source-field-name`.")]
+                   card-fields)
       (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
                          "source table to list the available foreign-key columns.")]))
+
+    ;; Raised only on a `source-card:` stage, where the way out is a column the card returns.
+    (:column-not-returned :unexportable-fk)
+    (card-fields-hint source-card source-card-type)
 
     :no-fk-path
     (message/msg [(str "If a metric relates to that table, call \"browse_data\" with action \"get_fields\" for the "

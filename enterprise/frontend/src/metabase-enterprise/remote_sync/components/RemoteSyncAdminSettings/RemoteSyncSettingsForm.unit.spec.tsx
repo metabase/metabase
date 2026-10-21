@@ -994,11 +994,11 @@ describe("RemoteSyncSettingsForm", () => {
       expect(screen.getByText("Collections to sync")).toBeInTheDocument();
     });
 
-    it("should not display collections section in admin variant when remote-sync-collections-enabled is off", async () => {
+    it("should not display collections section in admin variant when remote-sync-custom-collections-enabled is off", async () => {
       setup({
         remoteSyncEnabled: false,
         remoteSyncType: "read-write",
-        remoteSyncCollectionsEnabled: false,
+        remoteSyncCustomCollectionsEnabled: false,
       });
 
       await waitFor(() => {
@@ -1013,7 +1013,7 @@ describe("RemoteSyncSettingsForm", () => {
       setup({
         remoteSyncEnabled: false,
         remoteSyncType: "read-write",
-        remoteSyncCollectionsEnabled: false,
+        remoteSyncCustomCollectionsEnabled: false,
         libraryCollection: null,
         hasLibraryFeature: true,
         createdLibraryCollection: createMockLibraryCollection({ id: 555 }),

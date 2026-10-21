@@ -68,6 +68,7 @@
 (def $bucketAuto "$bucketAuto")
 (def $collStats "$collStats")
 (def $facet "$facet")
+(def $unionWith "$unionWith")
 (def $geoNear "$geoNear")
 (def $graphLookup "$graphLookup")
 (def $indexStats "$indexStats")

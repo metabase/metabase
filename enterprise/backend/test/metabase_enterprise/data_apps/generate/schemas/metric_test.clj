@@ -52,9 +52,7 @@
   (testing "stage source-card emits sourceCardId"
     (is (= 42 (#'schemas.metric/source-card-id
                {:dataset_query {:stages [{:source-card 42}]}}))))
-  (testing (str "a multi-stage definition starting from a card is still LINEAGE-wise card-based here, even though\n"
-                "it can only be CONSUMED from its base table (see `metabot.tools.util/metric-required-source`).\n"
-                "The two questions differ for exactly this shape; this pins that they are answered separately.")
+  (testing "The first stage identifies the source card even when a multi-stage metric requires its base table"
     (is (= 42 (#'schemas.metric/source-card-id
                {:dataset_query {:stages [{:source-card 42} {:aggregation [[:count]]}]}})))))
 

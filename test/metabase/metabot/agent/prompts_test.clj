@@ -51,11 +51,7 @@
       (is (= #{"null"}
              (set (map second (re-seq #"\"Sample Database\",\s*([^,\s]+)" text))))))))
 (deftest ^:parallel metric-source-guidance-is-carried-by-every-surface-test
-  ;; "A metric only works on the source it was defined on" is taught in three places that cannot share text: the
-  ;; canonical .md served as an MCP resource, the advanced skill split out of it, and the aggregation catalog. Get
-  ;; it wrong in any one and the agent builds `source-table: <base table>` for a metric defined on a saved question,
-  ;; which the QP rejects. The gate in `metabase.metabot.tools.construct` and the tag attributes in
-  ;; `metabase.metabot.tools.shared.llm-shape` are the other two halves; this pins the prose half.
+  ;; The MCP prompt, advanced skill, and aggregation catalog must agree on how to choose a metric's source.
   (let [surfaces {"prompts/tools/construct_notebook_query.md"
                   (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
                   "skills/construct-notebook-query-advanced.md"
@@ -68,7 +64,7 @@
         (testing "and the marker for a metric whose source cannot be offered"
           (is (str/includes? doc "source_unavailable")))
         (testing "and states the rule that makes the choice between them conditional"
-          (is (str/includes? doc "only works on the source it was defined on")))
+          (is (str/includes? doc "Build the stage on that source")))
         (testing "and breaks a metric out through an implicit join, the way the query runs"
           (is (str/includes? doc "on a `source-table` and a `source-card` stage alike"))
           (is (not (str/includes? doc "cannot resolve an implicit join against a metric aggregation"))))))
@@ -76,7 +72,7 @@
       (let [doc (slurp (io/resource "metabot/prompts/shared/prompt_snippets/semantic-layer-discovery.selmer"))]
         (is (str/includes? doc "base_table_fully_qualified_name"))
         (is (str/includes? doc "source_card_portable_entity_id"))
-        (is (str/includes? doc "only works on the source it was defined on"))))
+        (is (str/includes? doc "Use the source specified by its `<metric>` tag"))))
     (testing "the aggregation catalogs describe the metric clause the same way"
       (doseq [path ["metabot/prompts/tools/construct_notebook_query.md"
                     "metabot/skills/construct-notebook-query-operators.md"]]

@@ -2,6 +2,8 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.field-stats-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
@@ -163,3 +165,23 @@
           (is (=? {:structured-output {:table_reference "User"}}
                   (metabot.tools.field-stats/field-values
                    {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))))))
+
+(deftest field-values-of-a-card-that-is-not-a-metric-test
+  (let [mp            (mt/metadata-provider)
+        query         (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        metric-values #(metabot.tools.field-stats/field-values
+                        {:entity-type "metric", :entity-id %, :field-id (mt/id :orders :quantity), :limit 5})]
+    (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
+                   :model/Card {model-id :id}    {:type :model :dataset_query query}]
+      (mt/as-admin
+        (testing "reading a question or model as a metric names the card's type"
+          (doseq [[card-type card-id] [["question" question-id] ["model" model-id]]]
+            (is (=? {:class :recoverable
+                     :code :metabase.metabot.tools.util/wrong-source-type
+                     :message (str "ID " card-id " is a " card-type ", not a metric.")
+                     :recovery [{:text "Retry using a metric ID." :uses #{}}]}
+                    (tools.error/classify
+                     (is (thrown? clojure.lang.ExceptionInfo (metric-values card-id))))))))
+        (testing "a metric that doesn't exist is refused as not found"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
+                                (metric-values Integer/MAX_VALUE))))))))
