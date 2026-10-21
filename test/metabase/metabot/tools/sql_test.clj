@@ -564,3 +564,19 @@
               (is (str/includes? output "Fix the SQL syntax and retry"))
               (is (str/includes? output "Common issues to check:"))
               (is (str/ends-with? output "Case sensitivity of identifiers\n")))))))))
+
+(deftest omitted-sql-match-lines-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [sql (str "SELECT\n" (str/join "\n" (repeat 1000 "id\n-- gap")) "\nFROM birds")
+          result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                  "edit_sql_query" {:edits [{:old_string "id" :new_string "bird_id"}]})
+          output (:output result)
+          [_ listed omitted] (re-find #"Match lines: ([0-9, ]+); ([0-9]+) further match locations omitted" output)]
+      (is (= ::sql.edit/edit-ambiguous (get-in result [:error :code])))
+      (is (some? omitted))
+      (when omitted
+        (let [lines (map parse-long (str/split listed #", "))]
+          (is (= (take (count lines) (range 2 2001 2)) lines))
+          (is (= 1000 (+ (count lines) (parse-long omitted))))))
+      (is (<= (count output) 4000))
+      (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL.")))))

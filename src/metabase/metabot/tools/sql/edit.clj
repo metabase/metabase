@@ -61,11 +61,11 @@
   [sql]
   (int-array (cons 0 (map (comp inc first) (match-spans #"\n" sql)))))
 
-(defn- location
+(defn- line-number
   [^ints starts position]
   (let [found (java.util.Arrays/binarySearch starts (int position))
         index (if (neg? found) (- (- found) 2) found)]
-    {:line (inc index) :column (inc (- position (aget starts index)))}))
+    (inc index)))
 
 (defn- excerpt-ranges
   [length positions radius]
@@ -124,7 +124,7 @@
 
 (defn- match-lines
   [starts spans]
-  (let [lines (map #(:line (location starts (first %))) spans)
+  (let [lines (map #(line-number starts (first %)) spans)
         full (str/join ", " lines)]
     (if (<= (count full) 1400)
       full
@@ -152,7 +152,7 @@
                     (metabot.tools.sql.common/bounded-quote query-id 128) ": "
                     (if ambiguous? "text to replace found multiple times." "text to replace not found.")
                     (when (and (not ambiguous?) closest)
-                      (str " Closest match ignoring case and whitespace at line " (:line (location starts (first closest)))
+                      (str " Closest match ignoring case and whitespace at line " (line-number starts (first closest))
                            ": " (metabot.tools.sql.common/bounded-quote (subs sql (first closest) (second closest)) 1024)
                            " (not applied)."))
                     (when ambiguous? (str " Match lines: " (match-lines starts spans) "."))
