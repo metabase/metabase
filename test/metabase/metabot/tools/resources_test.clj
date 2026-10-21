@@ -21,6 +21,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
@@ -1086,6 +1087,32 @@
                                   {:uris [(str "metabase://question/" q-from-model-id "/sources")]})]
             (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
 
+(deftest metric-uris-refuse-a-question-or-a-model-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp       (mt/metadata-provider)
+          query    (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          field-id (mt/id :orders :quantity)]
+      (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
+                     :model/Card {model-id :id}    {:type :model :dataset_query query}]
+        (testing "the error identifies the card type and gives a resource URI that can be read"
+          (doseq [[card-type card-id]     [["question" question-id] ["model" model-id]]
+                  [metric-path card-path] [["" ""]
+                                           ["/dimensions" "/fields"]
+                                           [(str "/dimensions/" field-id) (str "/fields/" field-id)]]
+                  :let [card-uri (str "metabase://" card-type "/" card-id card-path)]]
+            (testing (str "metabase://metric/" card-id metric-path)
+              (is (= (str "Card " card-id " is a " card-type ", not a metric.\n"
+                          "Read `" card-uri "` instead.")
+                     (-> (read-uris {:uris [(str "metabase://metric/" card-id metric-path)]})
+                         :resources first :error)))
+              (is (not (error? (read-uris {:uris [card-uri]})))))))
+        (testing "reading only an invalid metric URI marks the tool call as failed"
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.core/all-items-failed}
+                  (test-util/tool-failure read-resource/read-resource-tool
+                                          {:uris [(str "metabase://metric/" question-id)]}
+                                          (:tool-names read-ctx)))))))))
+
 (defn- measure-definition
   "An MBQL5 measure definition: the sum of `field-id` over `table-id`."
   [table-id field-id]
@@ -1511,6 +1538,30 @@
         (let [output (read-field :products :category)]
           (is (str/includes? output "| Widget |"))
           (is (not (str/includes? output "This list shows"))))))))
+
+(deftest read-table-field-whose-database-cannot-be-sampled-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [field-id (mt/id :orders :total)
+          uri      (str "metabase://table/" (mt/id :orders) "/fields/" field-id)]
+      (mt/with-temp-vals-in-db :model/Field field-id {:fingerprint nil}
+        (testing "field details include a note and no statistics when sync can't compute a fingerprint"
+          (doseq [[failure refingerprint] {"no connection"
+                                           (constantly :sync/no-connection)
+                                           "a sample query that failed"
+                                           (constantly (ex-info "Table \"ORDERS\" not found" {}))
+                                           "a transient connection error"
+                                           (fn [_] (throw (java.net.ConnectException. "Connection refused")))}]
+            (testing failure
+              (mt/with-dynamic-fn-redefs [sync/refingerprint-field! refingerprint]
+                (let [{:keys [resources output]} (read-uris {:uris [uri]})]
+                  (is (= {:statistics_unavailable true}
+                         (get-in resources [0 :content :structured-output :value_metadata])))
+                  (is (str/includes? output (str "Metabase couldn't sample this field from the database, so"
+                                                 " there are no statistics to show."))))))))
+        (testing "any other exception fails the read as an internal error"
+          (mt/with-dynamic-fn-redefs [sync/refingerprint-field! (fn [_] (throw (NullPointerException.)))]
+            (is (= {:class :unrecoverable :code :internal}
+                   (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})))))))))
 
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)

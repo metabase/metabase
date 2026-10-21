@@ -12,6 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -22,7 +23,10 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -582,6 +586,36 @@
                   (catch Exception e e))]
           (is (= 400 (:status-code (ex-data e)))))))))
 
+(deftest ^:parallel metadata-lookup-failure-is-internal-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query (orders-query {:fields [(field-name-ref :orders :id)]})]
+      (doseq [failure [(ex-info "SELECT private_metadata failed" {:toucan2/context-trace []})
+                       (ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable"))]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
+                 (registry/call-tool execute-scope (str (random-uuid)) "execute_query" {:query query}))))))))
+
+(deftest ^:parallel declared-errors-in-toucan-scopes-are-recoverable-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query (orders-query {:fields [(field-name-ref :orders :id)]})]
+      (doseq [status-code [nil 400]
+              agent-error? [false true]
+              [error message expected] [[:invalid-representations-query
+                                         "Representations query has an invalid structure."
+                                         "\"Representations query has an invalid structure.\""]
+                                        [:unknown-field
+                                         "Unknown field"
+                                         (str "\"Unknown field\"\nCall \"browse_data\" with action \"get_fields\" for "
+                                              "the table to list its columns with their numeric ids.")]]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                    (fn [& _]
+                                      (t2/with-connection [_conn]
+                                        (throw (ex-info message (cond-> {:error error}
+                                                                  status-code (assoc :status-code status-code)
+                                                                  agent-error? (assoc :agent-error? true))))))]
+          (is (= {:result {:isError true :content [{:type "text" :text expected}]}}
+                 (registry/call-tool execute-scope (str (random-uuid)) "execute_query" {:query query}))))))))
+
 (deftest ^:parallel native-query-rejection-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid (str (random-uuid))]
@@ -912,6 +946,34 @@
         (is (str/includes? msg "stages")))
       (testing "and never as an opaque internal failure"
         (is (not (str/includes? msg "Internal error")))))))
+
+(deftest ^:parallel schema-failure-names-each-position-once-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [bad-filter   ["" {} ["field" {} (mt/id :orders :id)] 10]
+          not-a-clause "\"clause must be [operator-string, options-map, …args]\""
+          error-for    (fn [stage]
+                         (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                         {:query (numeric-orders-query stage)})))
+          invalid-at   (fn [detail]
+                         (str "\"Representations query has an invalid structure.\" Invalid at \"stages\": [0] "
+                              detail ". Fix the named paths, or call \"learn\" with \"query-dialect\" "
+                              "for the clause shapes."))]
+      (testing "a bad clause at index 0 keeps its position"
+        (is (= (invalid-at (str "\"filters\": [0] " not-a-clause))
+               (error-for {:filters [bad-filter]}))))
+      (testing "two bad clauses are named by their own positions"
+        (is (= (invalid-at (str "\"filters\": [0] " not-a-clause ", [1] " not-a-clause))
+               (error-for {:filters [bad-filter bad-filter]}))))
+      (testing "failed `:or` branches don't add positions to the error"
+        (is (= (invalid-at (str "\"joins\": [0] \"fields\": \"should be either \\\"all\\\" or \\\"none\\\"\", "
+                                "[0] \"should be a vector\", [0] " not-a-clause))
+               (error-for {:joins [{:lib/type   "mbql/join"
+                                    :alias      "P"
+                                    :stages     [{:lib/type "mbql.stage/mbql" :source-table (mt/id :products)}]
+                                    :conditions [["=" {}
+                                                  ["field" {} (mt/id :orders :product_id)]
+                                                  ["field" {:join-alias "P"} (mt/id :products :id)]]]
+                                    :fields     [{:x 1}]}]})))))))
 
 (deftest ^:parallel schema-failure-locates-the-offending-stage-test
   (mt/with-current-user (mt/user->id :rasta)
