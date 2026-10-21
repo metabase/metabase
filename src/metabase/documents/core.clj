@@ -19,6 +19,7 @@
 (p/import-vars
  [metabase.documents.api.document
   add-card-to-document!
+  add-card-to-document-row!
   copy-document!]
  [metabase.documents.content-gate-cache
   with-content-gate-cache]
