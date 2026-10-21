@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.tools.core :as tools]
    [metabase.models.interface :as mi]
    [metabase.util :as u]))
 
@@ -165,11 +166,26 @@
   (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
       api/read-check))
 
+(tools/defrecoverable wrong-source-type!
+  "The card ID identifies a different kind of data source."
+  {:payload [:map {:closed true}
+             [:id :int]
+             [:expected-type [:enum :model :metric]]
+             [:actual-type [:enum :model :metric :question]]]}
+  [{:keys [id expected-type actual-type]}]
+  {:message (str "ID " id " is a " (name actual-type) ", not a " (name expected-type) ".")
+   :recovery [{:text (str "Retry using a " (name expected-type) " ID.") :uses #{}}]})
+
 (defn get-card
-  "Retrieve the card with `id` from the app DB."
-  [id]
-  (-> (metabot.db/card id)
-      api/read-check))
+  "Retrieve a readable card by ID, optionally requiring a model or metric."
+  ([id]
+   (-> (metabot.db/card id)
+       api/read-check))
+  ([id expected-type]
+   (let [card (get-card id)]
+     (when-not (= expected-type (:type card))
+       (wrong-source-type! {:id id :expected-type expected-type :actual-type (:type card)}))
+     card)))
 
 (defn get-card-by-entity-id
   "Retrieve a readable card by its 21-char NanoID `entity_id`, or `nil` if not found. Used by
@@ -184,20 +200,24 @@
   (some-> (metabot.db/card-by-entity-id entity-id)
           api/read-check))
 
+(defn card-query-metadata
+  "Return a pivot question's underlying query, or the card metadata for other cards."
+  [card card-metadata]
+  (if (and (= :question (:type card)) (= :pivot (:display card)))
+    (:dataset-query card-metadata)
+    card-metadata))
+
 (defn card-query
   "Return a query based on the card with ID `card-id`."
   [card-id]
   (when-let [card (get-card card-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
-      (lib/query mp (cond-> (lib.metadata/card mp card-id)
-                      ;; pivot questions have strange result-columns so we work with the dataset-query
-                      (and (= :question (:type card))
-                           (= :pivot (:display card))) (get :dataset-query))))))
+      (lib/query mp (card-query-metadata card (lib.metadata/card mp card-id))))))
 
 (defn metric-query
   "Return a query based on the metric with ID `metric-id`."
   [metric-id]
-  (when-let [card (get-card metric-id)]
+  (when-let [card (get-card metric-id :metric)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (lib.metadata/metric mp metric-id)))))
 

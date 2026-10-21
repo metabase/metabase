@@ -79,40 +79,49 @@
       (when-let [allowed (get (metabot.perms/sandbox-restricted-fields #{table-id}) table-id)]
         (api/check-403 (contains? allowed field-id))))))
 
+(def ^:private max-suggested-field-ids 100)
+
 (tools/defrecoverable unknown-field!
   "The field ID does not identify an accessible column of this data source."
   {:payload [:map {:closed true}
              [:field-id [:or :int :string]]
-             [:available-ids [:sequential [:or :int :string]]]]}
-  [{:keys [field-id available-ids]}]
-  {:message (str "Field " field-id " was not found. Valid field IDs: " (pr-str available-ids) ".")
+             [:entity-type [:enum "table" "model" "metric" "question"]]
+             [:entity-id :int]
+             [:available-ids [:sequential {:max 100} [:or :int :string]]]
+             [:remaining-count :int]]}
+  [{:keys [field-id entity-type entity-id available-ids remaining-count]}]
+  {:message (str "Field " field-id " was not found in " entity-type " " entity-id
+                 ". Valid field IDs: " (pr-str available-ids)
+                 (when (pos? remaining-count) (str " and " remaining-count " more")) ".")
    :recovery [{:text "Retry with one of these field IDs." :uses #{}}]})
 
 (defn- field-column
-  [field-id columns]
+  [entity-type entity-id field-id columns]
   (if-let [col (metabot.tools.u/find-column-by-field-id field-id columns)]
     (do (check-column-table-perms! col) col)
-    (unknown-field! {:field-id field-id
-                     :available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct))
-                                          (entity-details/permission-filter-columns columns))})))
+    (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct))
+                              (entity-details/permission-filter-columns columns))]
+      (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
+                       :available-ids (vec (take max-suggested-field-ids available-ids))
+                       :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))}))))
 
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
-        col (field-column field-id (lib/visible-columns query))]
+        col (field-column "table" table-id field-id (lib/visible-columns query))]
     (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
-  [card-id field-id limit]
+  [entity-type card-id field-id limit]
   (let [query (metabot.tools.u/card-query card-id)
         columns (distinct (concat (lib/returned-columns query) (lib/visible-columns query)))
-        col (field-column field-id columns)]
+        col (field-column entity-type card-id field-id columns)]
     (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column field-id (lib/filterable-columns query))]
+        col (field-column "metric" metric-id field-id (lib/filterable-columns query))]
     (field-metadata-output query col field-id limit)))
 
 (defn field-values
@@ -120,5 +129,6 @@
   [{:keys [entity-type entity-id field-id limit]}]
   (case entity-type
     "metric"                      (metric-field-stats entity-id field-id limit)
-    ("model" "report" "question") (card-field-stats entity-id field-id limit)
+    ("model" "report" "question") (card-field-stats (if (= entity-type "report") "question" entity-type)
+                                                    entity-id field-id limit)
     "table"                       (table-field-stats entity-id field-id limit)))

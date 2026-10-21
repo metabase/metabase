@@ -682,14 +682,9 @@
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
          query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
-         ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
          card-query (when query-needed?
-                      (lib/query metadata-provider (if (and (#{:question} card-type)
-                                                            (#{:pivot} (:display base))
-                                                            (#{:query} (:type dataset-query)))
-                                                     dataset-query
-                                                     card-metadata)))
+                      (lib/query metadata-provider (metabot.tools.u/card-query-metadata base card-metadata)))
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 permission-filter-columns

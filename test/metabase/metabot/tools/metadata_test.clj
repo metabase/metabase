@@ -67,7 +67,8 @@
                                                     {:data_source "table" :source_id (mt/id :products)
                                                      :field_id "missing"})]
         (is (= {:class :recoverable :code ::field-stats/unknown-field} error))
-        (is (str/includes? output "Field missing was not found. Valid field IDs:"))
+        (is (str/includes? output (str "Field missing was not found in table " (mt/id :products)
+                                       ". Valid field IDs:")))
         (is (str/includes? output (str (mt/id :products :category))))
         (is (str/includes? output "Retry with one of these field IDs."))))))
 
@@ -171,7 +172,8 @@
       (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields
                                   (fn [_] {(mt/id :products) #{allowed-id}})]
         (doseq [profile [:document-generate-content :slackbot]]
-          (is (= (str "Field missing was not found. Valid field IDs: [" allowed-id "]."
+          (is (= (str "Field missing was not found in table " (mt/id :products)
+                      ". Valid field IDs: [" allowed-id "]."
                       "\nRetry with one of these field IDs.")
                  (:output (invoke-metadata profile "get_field_values"
                                            {:data_source "table" :source_id (mt/id :products)
@@ -241,3 +243,88 @@
           (is (=? {:structured-output {:field_id field-id :result-type :field-metadata}}
                   (invoke-metadata profile "get_field_values"
                                    {:data_source data-source :source_id source-id :field_id field-id}))))))))
+
+(deftest metadata-wrong-source-types-are-recoverable-test
+  (mt/as-admin
+    (mt/with-temp [:model/Card {question-id :id} {:type :question}
+                   :model/Card {model-id :id} {:type :model}
+                   :model/Card {metric-id :id} {:type :metric}]
+      (doseq [profile [:document-generate-content :slackbot]
+              [source-id actual-type expected-type] [[question-id "question" "model"]
+                                                     [metric-id "metric" "model"]
+                                                     [model-id "model" "metric"]]
+              :let [message (str "ID " source-id " is a " actual-type ", not a " expected-type "."
+                                 "\nRetry using a " expected-type " ID.")]]
+        (let [result (invoke-metadata profile "list_available_fields"
+                                      (assoc {:table_ids [(mt/id :products)] :model_ids [] :metric_ids []}
+                                             (keyword (str expected-type "_ids")) [source-id]))]
+          (is (nil? (:error result)))
+          (is (= [(mt/id :products)] (mapv :id (get-in result [:structured-output :tables]))))
+          (is (= [message] (get-in result [:structured-output :errors]))))
+        (is (=? {:error {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed}
+                 :output #(str/includes? % message)}
+                (invoke-metadata profile "list_available_fields"
+                                 (assoc {:table_ids [] :model_ids [] :metric_ids []}
+                                        (keyword (str expected-type "_ids")) [source-id])))))
+      (doseq [profile [:document-generate-content :slackbot]]
+        (is (= {:error {:class :recoverable :code ::tools.u/wrong-source-type}
+                :output (str "ID " model-id " is a model, not a metric.\nRetry using a metric ID.")}
+               (invoke-metadata profile "get_field_values"
+                                {:data_source "metric" :source_id model-id :field_id (mt/id :orders :id)})))))))
+
+(deftest pivot-question-fields-round-trip-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+                    (lib/breakout (lib/with-temporal-bucket
+                                    (lib.metadata/field mp (mt/id :orders :created_at)) :month)))]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question :display :pivot :dataset_query query}]
+        (let [fields (get-in (entity-details/get-table-details
+                              {:entity-type :question :entity-id card-id
+                               :with-fields? true :with-field-values? false :with-related-tables? false
+                               :with-metrics? false :with-measures? false :with-segments? false})
+                             [:structured-output :fields])]
+          (is (= 3 (count fields)))
+          (doseq [profile [:document-generate-content :slackbot]
+                  {field-id :field_id} fields]
+            (is (=? {:structured-output {:field_id field-id :result-type :field-metadata}}
+                    (invoke-metadata profile "get_field_values"
+                                     {:data_source "question" :source_id card-id :field_id field-id})))))))))
+
+(deftest unknown-field-names-card-source-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count)))]
+      (doseq [card-type [:model :question :metric]]
+        (mt/with-temp [:model/Card {card-id :id} {:type card-type :dataset_query query}]
+          (doseq [profile [:document-generate-content :slackbot]
+                  data-source (if (= card-type :question) ["question" "report"] [(name card-type)])]
+            (is (=? {:error {:class :recoverable :code ::field-stats/unknown-field}
+                     :output #(str/starts-with? % (str "Field missing was not found in " (name card-type)
+                                                       " " card-id ". Valid field IDs:"))}
+                    (invoke-metadata profile "get_field_values"
+                                     {:data_source data-source :source_id card-id :field_id "missing"})))))))))
+
+(deftest wide-table-field-suggestions-keep-recovery-test
+  (mt/as-admin
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "WIDE_BIRDS" :active true}]
+      (t2/insert! :model/Field (for [i (range 1300)]
+                                 {:table_id table-id :name (str "BIRD_" i) :base_type :type/Integer
+                                  :database_type "INTEGER" :active true}))
+      (doseq [[profile tool-name args] [[:document-generate-content "get_field_values"
+                                         {:data_source "table" :source_id table-id :field_id "missing"}]
+                                        [:slackbot "get_field_values"
+                                         {:data_source "table" :source_id table-id :field_id "missing"}]
+                                        [:internal "read_resource"
+                                         {:uris [(str "metabase://table/" table-id "/fields/missing")]}]]]
+        (let [{:keys [error output]} (invoke-metadata profile tool-name args)
+              ids (second (re-find #"Valid field IDs: \[([^\]]*)\]" output))]
+          (is (= :recoverable (:class error)))
+          (is (str/includes? output (str "Field missing was not found in table " table-id ".")))
+          (is (= 100 (count (re-seq #"\d+" (or ids "")))))
+          (is (str/includes? output "and 1200 more"))
+          (is (str/includes? output "Retry with one of these field IDs."))
+          (is (< (count output) 4000)))))))

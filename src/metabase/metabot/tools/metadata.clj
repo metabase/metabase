@@ -11,6 +11,7 @@
    [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as tools.u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -42,7 +43,9 @@
   [{:keys [entity-type entity-id]}]
   (if (= entity-type :table)
     (resources-tools/check-table-resource-database entity-id)
-    (resources-tools/check-card-resource-database entity-id))
+    (do
+      (resources-tools/check-card-resource-database entity-id)
+      (tools.u/get-card entity-id entity-type)))
   (if (= entity-type :metric)
     (entity-details-tools/get-metric-details
      {:metric-id entity-id

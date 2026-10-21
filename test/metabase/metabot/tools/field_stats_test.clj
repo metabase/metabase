@@ -37,7 +37,8 @@
     (testing "A field-id not on the table is an agent error, not a field-metadata result."
       (mt/as-admin
         (is (=? {:class :recoverable :code ::metabot.tools.field-stats/unknown-field
-                 :message #"Field -1 was not found\. Valid field IDs: .*"}
+                 :message (re-pattern (str "Field -1 was not found in table " products-id
+                                           "\\. Valid field IDs: .*"))}
                 (tools.error/classify
                  (is (thrown? clojure.lang.ExceptionInfo
                               (metabot.tools.field-stats/field-values
