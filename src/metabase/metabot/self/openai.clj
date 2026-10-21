@@ -223,10 +223,7 @@
                                              (if (string? args) args (json/encode args)))}
                   :tool-output {:type    "function_call_output"
                                 :call_id (:id part)
-                                :output  (or (get-in part [:result :output])
-                                             (when-let [err (:error part)]
-                                               (str "Error: " (:message err)))
-                                             (pr-str (:result part)))}
+                                :output  (core/tool-result-text (:result part))}
                   ;; user messages
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))
