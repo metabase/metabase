@@ -29,6 +29,7 @@
       (str (parent-qualified-name metadata-providerable parent) \. own-name)
       own-name)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *name-based-refs*
   "Whether Lib generates `:field` refs that name their column rather than refer to its Field by ID."
   false)
