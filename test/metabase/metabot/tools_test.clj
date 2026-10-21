@@ -300,10 +300,10 @@
           [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/create-chart-tool))]
       (is (= original declared))))
   (testing "a converted tool and an unconverted one sit side by side"
-    (let [entries (agent-tools/->entries [#'agent-tools/list-timelines-tool       ; mu/defn var
+    (let [entries (agent-tools/->entries [#'agent-tools/list-snippets-tool        ; mu/defn var
                                           #'agent-tools/get-timeline-details-tool] ; record
                                          (atom {}) nil :nlq)]
-      (is (= #{"list_timelines" "get_timeline_details"} (set (keys entries))))
+      (is (= #{"list_snippets" "get_timeline_details"} (set (keys entries))))
       (is (every? fn? (map :fn (vals entries))))))
   (testing "the entry's :fn goes through the runtime, so it reports rather than throws"
     (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil :nlq)
