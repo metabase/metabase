@@ -2,6 +2,8 @@ import { RangeSlider, Slider } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting/numbers";
 import type * as Lib from "metabase-lib";
 
+import { roundToStep } from "../NumberColumnStats/utils";
+
 import S from "./HistogramSlider.module.css";
 
 interface HistogramSliderProps {
@@ -9,7 +11,7 @@ interface HistogramSliderProps {
   histogram: number[];
   min: number;
   max: number;
-  isInteger: boolean;
+  step: number;
   values: (number | null)[];
   onChange: (values: number[]) => void;
 }
@@ -19,7 +21,8 @@ const TRACK_VARS = {
 };
 
 /**
- * The slider covers the range of the data, from min to max. The filter values
+ * The slider covers the range of the data, from min to max, rounded out to the
+ * step. The filter values
  * come from the inputs too and can be out of this range: the slider shows them
  * at its nearest end, and changes them only when the user moves it.
  */
@@ -28,11 +31,10 @@ export function HistogramSlider({
   histogram,
   min,
   max,
-  isInteger,
+  step,
   values,
   onChange,
 }: HistogramSliderProps) {
-  const step = getStep(min, max, isInteger);
   const clamp = (value: number) => Math.min(Math.max(value, min), max);
   const round = (value: number) => roundToStep(value, step);
   const bucketWidth = (max - min) / histogram.length;
@@ -175,19 +177,6 @@ function HistogramBars({ histogram, isHighlighted }: HistogramBarsProps) {
       })}
     </svg>
   );
-}
-
-function getStep(min: number, max: number, isInteger: boolean) {
-  if (isInteger) {
-    return 1;
-  }
-  const rawStep = (max - min) / 1000;
-  return rawStep > 0 ? 10 ** Math.floor(Math.log10(rawStep)) : 1;
-}
-
-function roundToStep(value: number, step: number) {
-  const decimals = Math.max(0, -Math.floor(Math.log10(step)));
-  return Number((Math.round(value / step) * step).toFixed(decimals));
 }
 
 function isHighlighted(
