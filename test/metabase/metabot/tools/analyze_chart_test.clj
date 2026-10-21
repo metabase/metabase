@@ -2,9 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api-scope.core :as api-scope]
    [metabase.interestingness.core :as interestingness]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.analyze-chart :as analyze-chart]
@@ -48,6 +53,40 @@
                                            (memory chart-configs) nil :internal))]
     ((:fn (get entries "analyze_chart")) arguments)))
 
+(defn- agent-loop-outcome!
+  "Run a Metabot turn in `profile-id` in which the model calls `analyze_chart` on `chart-config`, the one chart that
+  the user is viewing, and return the call's outcome. An admin runs it in their own conversation with query
+  execution on, so the profile offers `run_query`."
+  [profile-id chart-config]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [llm-providers                    llm.tu/default-connections
+                                         llm-metabot-provider             "openrouter/anthropic/claude-haiku-4-5"
+                                         metabot-query-execution-enabled? true
+                                         metabot-eval-profiles-enabled?   true]
+        (let [calls (atom 0)]
+          (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)
+                                      openrouter/openrouter
+                                      (fn [_]
+                                        (test-util/mock-llm-response
+                                         (if (= 1 (swap! calls inc))
+                                           [{:type      :tool-input
+                                             :id        "t1"
+                                             :function  "analyze_chart"
+                                             :arguments {:chart_config_id "c1"}}]
+                                           [{:type :text :text "Done."}])))]
+            (some #(when (= :tool-output (:type %)) (:result %))
+                  (into [] (agent/run-agent-loop
+                            {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+                             :profile-id      profile-id
+                             :conversation-id conversation-id
+                             :messages        [{:role :user :content "What does this chart show?"}]
+                             :state           {}
+                             :context         {:capabilities    ["permission:write_sql_queries"]
+                                               :user_is_viewing [{:id            "c1"
+                                                                  :type          "adhoc"
+                                                                  :chart_configs [chart-config]}]}})))))))))
+
 (defn- numeric-series-config
   "A well-formed single-series row chart config."
   []
@@ -68,7 +107,8 @@
                                      :y            {:name "count" :type "number"}
                                      :x_values     ["Never" "Rarely" "Often"]
                                      :y_values     ["One"   "Two"    "Three"]
-                                     :display_name series-name}}}})
+                                     :display_name series-name
+                                     :chart_type   "row"}}}})
 
 (def ^:private no-series-data
   "How `analyze_chart` fails on a chart with nothing to analyze."
@@ -194,3 +234,23 @@
                           "Chart config \"clojure.lang.Keyword\" was not found"))
     (is (str/includes? (:output (invoke (text-series-config "clojure.lang.Keyword") {:chart_config_id "c1"}))
                        "Series \"clojure.lang.Keyword\" has non-numeric y-values."))))
+
+(deftest analyze-chart-tool-read-values-steps-follow-run-query-test
+  (let [sql-steps (str "To read the chart's values instead, call `run_query` with the ID of the unsaved SQL query"
+                       " that the user is viewing.\n"
+                       "For a saved question, write SQL that reads it with `create_sql_query`, then run that query"
+                       " with `run_query`.")
+        empty-chart {:display_type "row" :title "Empty" :series {}}]
+    (testing "Chat's run_query runs a saved question by its own ID, so the step offers the question's ID"
+      (is (=? {:error  {:class :recoverable :code ::analyze-chart/no-series-data}
+               :output (:text no-series-data)}
+              (agent-loop-outcome! :internal empty-chart))))
+    (testing "internal-sql's run_query runs SQL only, so the steps ask for SQL that reads a saved question"
+      (is (=? {:error  {:class :recoverable :code ::analyze-chart/no-series-data}
+               :output (str "This chart has no series data to analyze.\n"
+                            sql-steps "\n"
+                            "If you can't read the chart's values, tell the user that this chart can't be analyzed.")}
+              (agent-loop-outcome! :internal-sql empty-chart)))
+      (is (=? {:error  {:class :recoverable :code ::analyze-chart/non-numeric-series}
+               :output #(str/includes? % sql-steps)}
+              (agent-loop-outcome! :internal-sql (get (text-series-config "Count") "c1")))))))

@@ -61,10 +61,20 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
          (when (< shown (count ids))
            (str " and " (- (count ids) shown) " more")))))
 
-(def ^:private read-values-step
-  {:uses #{"run_query"}
-   :text (str "To read the chart's values instead, call `run_query` with the ID of the query or question that the"
-              " user is viewing.")})
+(defn- read-values-steps
+  "Return the steps that read the chart's values with `run_query` instead.
+  `sql-only-run-query?` says whether the profile's `run_query` runs SQL only and so takes no saved question's ID."
+  [sql-only-run-query?]
+  (if sql-only-run-query?
+    [{:uses #{"run_query"}
+      :text (str "To read the chart's values instead, call `run_query` with the ID of the unsaved SQL query that the"
+                 " user is viewing.")}
+     {:uses #{"create_sql_query" "run_query"}
+      :text (str "For a saved question, write SQL that reads it with `create_sql_query`, then run that query with"
+                 " `run_query`.")}]
+    [{:uses #{"run_query"}
+      :text (str "To read the chart's values instead, call `run_query` with the ID of the query or question that the"
+                 " user is viewing.")}]))
 
 (tools/defrecoverable chart-config-not-found!
   "No chart config from the user's viewing context has the requested ID."
@@ -86,24 +96,26 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
 (tools/defrecoverable no-series-data!
   "No series of the chart config has a point with both an x and a y value."
-  {:payload [:map {:closed true}]}
-  [_]
+  {:payload [:map {:closed true} [:sql-only-run-query? :boolean]]}
+  [{:keys [sql-only-run-query?]}]
   {:message  "This chart has no series data to analyze."
-   :recovery [read-values-step
-              {:uses #{}
-               :text "If you can't read the chart's values, tell the user that this chart can't be analyzed."}]})
+   :recovery (conj (read-values-steps sql-only-run-query?)
+                   {:uses #{}
+                    :text "If you can't read the chart's values, tell the user that this chart can't be analyzed."})})
 
 (tools/defrecoverable non-numeric-series!
   "A series of the chart config has a y-value that is not a number."
-  {:payload [:map {:closed true} [:series :string]]
+  {:payload [:map {:closed true}
+             [:series              :string]
+             [:sql-only-run-query? :boolean]]
    :quoted  {:series quoted-excerpt}}
-  [{:keys [series]}]
+  [{:keys [series sql-only-run-query?]}]
   {:message  (str "Series " (quoted-excerpt series) " has non-numeric y-values. Chart analysis "
                   "requires a numeric y-axis metric.")
-   :recovery [read-values-step
-              {:uses #{}
-               :text (str "If you can't read the chart's values, tell the user that this chart can't be analyzed"
-                          " because its y-axis values aren't numbers.")}]})
+   :recovery (conj (read-values-steps sql-only-run-query?)
+                   {:uses #{}
+                    :text (str "If you can't read the chart's values, tell the user that this chart can't be analyzed"
+                               " because its y-axis values aren't numbers.")})})
 
 (defn- stringify-series-keys
   "Ensure series map keys are strings, not keywords.
@@ -130,16 +142,17 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   (boolean (some (fn [v] (and (some? v) (not (number? v)))) y-values)))
 
 (defn- validate-chart-config!
-  "Throw a recoverable error when `chart-config` is too malformed to analyze."
-  [{:keys [series] :as chart-config}]
+  "Throw a recoverable error when `chart-config` is too malformed to analyze.
+  `sql-only-run-query?` picks the recovery steps, as in [[read-values-steps]]."
+  [{:keys [series] :as chart-config} sql-only-run-query?]
   (when (empty? (interestingness/analyzable-series chart-config))
-    (no-series-data! {}))
+    (no-series-data! {:sql-only-run-query? sql-only-run-query?}))
   (doseq [[series-name {:keys [y_values]}] series]
     (when (non-numeric-y-value? y_values)
       ;; compute-chart-stats assumes each series has numeric y-values.
-      (non-numeric-series! {:series series-name}))))
+      (non-numeric-series! {:series series-name :sql-only-run-query? sql-only-run-query?}))))
 
-(defrecord AnalyzeChartTool []
+(defrecord AnalyzeChartTool [sql-only-run-query?]
   tools/Tool
   (declaration [_]
     {:name        "analyze_chart"
@@ -154,7 +167,7 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
   (handle [_ {:keys [chart_config_id deep]} _ctx]
     (let [chart-config (resolve-chart-config-from-memory chart_config_id)]
-      (validate-chart-config! chart-config)
+      (validate-chart-config! chart-config sql-only-run-query?)
       ;; Wrap TMD operations in resource context to ensure off-heap memory is released
       (resource/stack-resource-context
        (let [{:keys [timeline_events title display_type]} chart-config
@@ -168,5 +181,9 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
          {:output (str representation "\n\n---\n\n" interpretation-guidance)})))))
 
 (def analyze-chart-tool
-  "The `analyze_chart` tool, which analyzes a chart that the user is viewing."
-  (->AnalyzeChartTool))
+  "The `analyze_chart` tool for profiles whose `run_query` runs a saved question by its own ID."
+  (->AnalyzeChartTool false))
+
+(def analyze-chart-sql-tool
+  "The `analyze_chart` tool for the eval-only `internal-sql` profile, whose `run_query` runs SQL only."
+  (->AnalyzeChartTool true))
