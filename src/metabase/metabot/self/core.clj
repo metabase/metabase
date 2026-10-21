@@ -581,15 +581,26 @@
                           group))))
         parts))
 
-(defn tool-result-text
-  "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part: its `:output`. The
-  other keys of the result, such as `:structured-output` and `:data-parts`, do not go to the model.
+(def failed-tool-result-text
+  "The text of a failed tool call whose result has none."
+  "Tool execution failed")
 
-  `ToolResult` requires `:output`, but in production an invalid input is only logged. A result without `:output` is
-  then sent as empty text. That is also what `metabase.metabot.persistence/history` replays for it, so the next
-  turn's request still starts with the bytes that this turn sent."
+(defn tool-result-text
+  "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part. History replays
+  the same text (see `metabase.metabot.persistence/history`), so the next turn's request starts with the bytes that
+  this turn sent.
+
+  The text is the `:output` of a map result, and the printed value of any other result. The other keys of a map,
+  such as `:structured-output` and `:data-parts`, do not go to the model. `ToolResult` requires a map with
+  `:output`, but in production an invalid input is only logged, so a result can be a string or have no `:output`.
+
+  A failed call whose text is blank gets [[failed-tool-result-text]]. The model must read that the call failed, and
+  Anthropic rejects a failed result with empty content."
   [result]
-  (or (:output result) ""))
+  (let [text (str (if (map? result) (:output result) result))]
+    (if (and (str/blank? text) (:error result))
+      failed-tool-result-text
+      text)))
 
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's

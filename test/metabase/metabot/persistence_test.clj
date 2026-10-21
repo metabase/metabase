@@ -1533,7 +1533,20 @@
                                 {:type   :tool-output :id "c1"
                                  :result {:output "Table 7 was not found. Call `search` for a table id."
                                           :error  {:class :recoverable
-                                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}}]))))))))
+                                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}}]))))
+        (testing "each result replays as the text that the adapters send for it, so the next turn's prefix holds"
+          (doseq [result ["just a string"
+                          42
+                          nil
+                          {:output "rows"}
+                          {:rows [1 2]}
+                          {:output "Table 7 was not found." :error {:class :recoverable :code :x}}
+                          {:error {:class :recoverable :code :x}}
+                          {:output "" :error {:class :unrecoverable :code :x}}]]
+            (testing (pr-str result)
+              (is (= (self.core/tool-result-text result)
+                     (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                    {:type :tool-output :id "c1" :result result}]))))))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"
