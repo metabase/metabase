@@ -2,6 +2,7 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
+import { dayjs } from "metabase/dayjs";
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
 import {
   createMockColumn,
@@ -286,6 +287,56 @@ describe("getChartLayout", () => {
     });
   });
 
+  it("does not reserve x-axis room for a time series label the tick grid never draws", () => {
+    const utc = (value: string) => dayjs.utc(value);
+    const first = "2019-03-01";
+    const getTimeSeriesInput = (last: string): ChartLayoutInput => ({
+      ...input,
+      xAxisModel: {
+        axisType: "time",
+        interval: { unit: "day", count: 1 },
+        intervalsCount: utc(last).diff(utc(first), "day"),
+        range: [utc(first), utc(last)],
+        formatter: (value) => utc(String(value)).format("MMM D, YYYY"),
+        toEChartsAxisValue: (value) =>
+          utc(String(value)).format("YYYY-MM-DDTHH:mm:ss[Z]"),
+        fromEChartsAxisValue: (value) => dayjs.utc(value),
+      },
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: first, price: 1200 },
+        { [X_AXIS_DATA_KEY]: last, price: 1800 },
+      ],
+    });
+    const chartContext: RenderingContext = {
+      ...getChartContext(),
+      // Every date label is 90px wide, so a 400px chart fits three ticks.
+      measureText: (text) => (/\d{4}/.test(text) ? 90 : 20),
+    };
+    const timeSeriesSettings = createMockVisualizationSettings({
+      ...settings,
+      "graph.x_axis.axis_enabled": true,
+      "graph.x_axis.scale": "timeseries",
+    });
+    const getLayout = (last: string) =>
+      getChartLayout(
+        getTimeSeriesInput(last),
+        timeSeriesSettings,
+        false,
+        400,
+        300,
+        chartContext,
+      );
+
+    // Yearly ticks end at January 2021, months before the data does, so the
+    // last data point gets no label and its label width takes no room.
+    expect(getLayout("2021-06-15").padding.right).toBe(CHART_STYLE.padding.x);
+
+    // The room stays when the last tick does sit at the axis end.
+    expect(getLayout("2021-01-01").padding.right).toBeGreaterThan(
+      CHART_STYLE.padding.x,
+    );
+  });
+
   it("keeps room for the min and max y-axis labels below rotated x-axis labels on the smallest card", () => {
     const chartContext: RenderingContext = {
       ...getChartContext(),
@@ -323,6 +374,37 @@ describe("getChartLayout", () => {
         chartLayout.padding.top -
         chartLayout.padding.bottom,
     ).toBeGreaterThanOrEqual(fontSize * 2);
+  });
+
+  it("reserves no room for x-axis labels the auto setting hides", () => {
+    const chartContext: RenderingContext = {
+      ...getChartContext(),
+      measureText: (text) => text.length * 7,
+    };
+    const states = Array.from({ length: 50 }, (_, index) => `State ${index}`);
+    const chartLayout = getChartLayout(
+      {
+        ...input,
+        xAxisModel: { ...xAxisModel, valuesCount: states.length },
+        transformedDataset: states.map((state) => ({
+          [X_AXIS_DATA_KEY]: state,
+          price: 1500,
+        })),
+      },
+      createMockVisualizationSettings({
+        ...settings,
+        "graph.x_axis.axis_enabled": true,
+        "graph.x_axis.scale": "ordinal",
+      }),
+      false,
+      300,
+      200,
+      chartContext,
+    );
+
+    expect(chartLayout.axisEnabledSetting).toBe(false);
+    expect(chartLayout.ticksDimensions.xTicksHeight).toBe(0);
+    expect(chartLayout.padding.bottom).toBe(CHART_STYLE.padding.y);
   });
 
   it("does not reserve padding for empty x- or y-axis titles", () => {

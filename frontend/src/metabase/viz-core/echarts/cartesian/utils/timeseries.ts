@@ -326,7 +326,7 @@ export function expectedTickCount(
 export function computeTimeseriesTicksInterval(
   xDomain: Extent,
   xInterval: TimeSeriesInterval,
-  chartLayout: ChartLayout,
+  chartLayout: Pick<ChartLayout, "outerWidth" | "padding" | "ticksDimensions">,
   formatter: TimeSeriesAxisFormatter,
 ) {
   const minTickCount = 2;
@@ -392,7 +392,7 @@ export function getFormatter(
 }
 
 function maxTicksForChartWidth(
-  chartLayout: ChartLayout,
+  chartLayout: Pick<ChartLayout, "outerWidth" | "padding" | "ticksDimensions">,
   unit: CartesianChartDateTimeAbsoluteUnit,
   formatter: TimeSeriesAxisFormatter,
 ) {

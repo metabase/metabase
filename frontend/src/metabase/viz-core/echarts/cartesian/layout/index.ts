@@ -17,9 +17,11 @@ import type {
   ChartDataset,
   NumericAxisScaleTransforms,
   StackModel,
+  TimeSeriesXAxisModel,
   XAxisModel,
   YAxisModel,
 } from "../model/types";
+import { getTicksOptions } from "../option/ticks";
 import { getPaddedAxisLabel } from "../option/utils";
 
 import { getRowChartLayout } from "./row";
@@ -506,11 +508,15 @@ const getTicksDimensions = (
     ticksDimensions.firstXTickWidth = firstXTickWidth;
     ticksDimensions.lastXTickWidth = lastXTickWidth;
 
+    // labels the auto setting hides take no room, margin included
+    const labelsMargin = axisEnabledSetting
+      ? renderingContext.theme.cartesian.ticks.marginX
+      : 0;
     ticksDimensions.xTicksHeight =
       getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting, renderingContext) +
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
-        : renderingContext.theme.cartesian.ticks.marginX);
+        : labelsMargin);
 
     ticksDimensions.getXTickWidth = (text: string) => {
       if (axisEnabledSetting === "rotate-90") {
@@ -544,6 +550,55 @@ const TICK_OVERFLOW_BUFFER = 4;
 
 // don't allow overflow greater than 12.5% of the chart width
 const MAX_OVERFLOW_PERCENTAGE = 0.125;
+
+/** A horizontal x-axis label, centered `inset` pixels inside the boundary edge it is closest to. */
+interface EdgeLabel {
+  width: number;
+  inset: number;
+}
+
+/**
+ * The outermost labels of a time series axis, which labels its tick grid only
+ * (see getTicksOptions), so they can sit well inside the boundary, or be absent.
+ */
+const getTimeSeriesEdgeLabels = (
+  xAxisModel: TimeSeriesXAxisModel,
+  ticksDimensions: TicksDimensions,
+  chartWidth: number,
+  padding: Padding,
+  boundaryWidth: number,
+): { first: EdgeLabel; last: EdgeLabel } | null => {
+  const { customValues, xDomainPadded, formatter } = getTicksOptions(
+    xAxisModel,
+    { outerWidth: chartWidth, padding, ticksDimensions },
+  );
+  if (customValues == null) {
+    // ECharts spaces the ticks itself, so the labels can be anywhere
+    return null;
+  }
+
+  const [axisMin, axisMax] = xDomainPadded;
+  const getEdgeLabel = (
+    value: number | undefined,
+    axisEdge: number,
+  ): EdgeLabel => {
+    if (value == null) {
+      return { width: 0, inset: 0 };
+    }
+    const label = formatter(
+      xAxisModel.fromEChartsAxisValue(value).format("YYYY-MM-DDTHH:mm:ss[Z]"),
+    );
+    return {
+      width: ticksDimensions.getXTickWidth(label),
+      inset: (Math.abs(axisEdge - value) / (axisMax - axisMin)) * boundaryWidth,
+    };
+  };
+
+  return {
+    first: getEdgeLabel(customValues[0], axisMin),
+    last: getEdgeLabel(customValues[customValues.length - 1], axisMax),
+  };
+};
 
 const getTicksOverflow = (
   input: ChartLayoutInput,
@@ -622,27 +677,34 @@ const getTicksOverflow = (
     };
   }
 
-  const firstTickOverflow = Math.min(
-    Math.max(
-      ticksDimensions.firstXTickWidth / 2 -
-        dimensionWidth / 2 -
-        padding.left +
-        TICK_OVERFLOW_BUFFER,
-      0,
-    ),
-    maxOverflow,
-  );
-  const lastTickOverflow = Math.min(
-    Math.max(
-      ticksDimensions.lastXTickWidth / 2 -
-        dimensionWidth / 2 -
-        padding.right +
-        TICK_OVERFLOW_BUFFER,
-      0,
-    ),
-    maxOverflow,
-  );
-  return { firstTickOverflow, lastTickOverflow };
+  const getDataEdgeLabel = (width: number): EdgeLabel => ({
+    width,
+    inset: dimensionWidth / 2,
+  });
+  const edgeLabels =
+    axisEnabledSetting && isTimeSeriesAxis(xAxisModel)
+      ? getTimeSeriesEdgeLabels(
+          xAxisModel,
+          ticksDimensions,
+          chartWidth,
+          padding,
+          currentBoundaryWidth,
+        )
+      : null;
+  const first =
+    edgeLabels?.first ?? getDataEdgeLabel(ticksDimensions.firstXTickWidth);
+  const last =
+    edgeLabels?.last ?? getDataEdgeLabel(ticksDimensions.lastXTickWidth);
+
+  const getOverflow = ({ width, inset }: EdgeLabel, paddingSide: number) =>
+    Math.min(
+      Math.max(width / 2 - inset - paddingSide + TICK_OVERFLOW_BUFFER, 0),
+      maxOverflow,
+    );
+  return {
+    firstTickOverflow: getOverflow(first, padding.left),
+    lastTickOverflow: getOverflow(last, padding.right),
+  };
 };
 
 export const getCartesianChartPadding = (
