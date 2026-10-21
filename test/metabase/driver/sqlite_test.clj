@@ -308,6 +308,18 @@
   (mt/test-driver :sqlite
     (is (nil? (driver.sql/default-schema :sqlite (mt/db))))))
 
+(deftest ^:parallel database-error-while-reading-rows-is-invalid-query-test
+  (mt/test-driver :sqlite
+    (testing "A database error raised while rows are read is :invalid-query, like one raised when the query starts"
+      (is (=? {:status     :failed
+               :error_type :invalid-query
+               :error      #"(?s).*malformed JSON.*"}
+              (qp/process-query
+               (qp/userland-query
+                (lib/native-query (mt/metadata-provider)
+                                  (str "SELECT json_extract(CASE WHEN ID = 1 THEN '{\"n\":1}' ELSE 'broken' END, '$.n')"
+                                       " AS N FROM VENUES")))))))))
+
 (deftest ^:parallel timezone-id-test
   (mt/test-driver :sqlite
     (is (= "UTC"

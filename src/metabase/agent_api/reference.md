@@ -400,8 +400,8 @@ On failure:
 { "status": "failed", "error": "Query error message" }
 ```
 
-When the run fails inside Metabase rather than in the query or its database,
-`error` is `Something went wrong`, and the details go to the server log.
+When the run fails inside Metabase, such as in an app DB lookup, `error` is
+`Something went wrong`, and the details go to the server log.
 
 Row limits:
 
