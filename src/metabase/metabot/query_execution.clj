@@ -36,7 +36,8 @@
   (ex-info (tru "Query timed out: it did not finish within {0} seconds. A narrower query may finish in time."
                 (quot timeout-ms 1000))
            {:agent-error? true
-            :error        :query-timed-out}))
+            :error        :query-timed-out
+            :timeout-ms   timeout-ms}))
 
 (defonce ^:private time-limit-executor
   (delay
@@ -123,7 +124,7 @@
   "Run `serialized-query` for one page of at most `row-limit` rows, recorded under the QP `context`.
    Returns `{:cols :rows :returned :truncated?}`.
    The `truncated?` flag is true only when more rows exist, so a result that fills the page exactly is complete.
-   A run that doesn't complete throws an agent error whose message carries the QP's error text, quoted.
+   A query failure throws an agent error with the QP's error text in quotes.
    Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`, with a true
    `:permissions-error?` when the QP refused the query because the current user may not run it.
 
@@ -131,7 +132,7 @@
    - `:request-canceled-chan`, a promise channel that receives a value when the request being served is canceled.
      The error is `:query-canceled`.
    - `:timeout-ms`, a time limit for the run. The database query timeout still applies when it is shorter.
-     The error is `:query-timed-out`."
+     The error is `:query-timed-out`, with the shorter of the two limits as `:timeout-ms`."
   ([serialized-query row-limit context]
    (execute-page! serialized-query row-limit context nil))
   ([serialized-query row-limit context options]

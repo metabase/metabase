@@ -462,6 +462,11 @@
   []
   (t2/select-pks-vec :model/Collection :is_remote_synced true))
 
+(mu/defn remote-synced-root-collections
+  "The `:namespace` and `:type` of the remote-synced top-level Collections."
+  []
+  (t2/select [:model/Collection :id :namespace :type] :is_remote_synced true :location "/"))
+
 (mu/defn unarchived-remote-synced-root-collection-ids
   "The IDs of the unarchived remote-synced root Collections."
   []
