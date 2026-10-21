@@ -13,11 +13,7 @@
    [toucan2.core :as t2]))
 
 (deftest table-schema-rows-are-permission-checkable-test
-  (testing (str "Callers run `can-query?` / `can-read?` straight on these narrowed rows. Both fall through to\n"
-                "`can-access-via-collection?`, which reads `:is_published` and then the parent collection -- so a\n"
-                "row missing those columns answers differently from the full row the pk arity fetches. That is a\n"
-                "silent under-report for every published table, and search now turns it into a\n"
-                "`source_unavailable` marker that contradicts what `metric-details` says about the same metric.")
+  (testing "Narrowed table rows preserve query and read permission checks"
     (let [table-id (mt/id :orders)
           row      (first (metabot.db/table-schema-rows [table-id]))]
       (is (some? row))
@@ -33,9 +29,7 @@
                 (str "can-read? disagrees for " user))))))))
 
 (deftest card-source-info-classifies-legacy-metrics-test
-  (testing (str "Metrics saved before curated dimensions come back un-upgraded on the model: `:card_schema` below\n"
-                "24 and no `:dimensions`. Reading their source must neither arm the upgrade to 24, which recomputes\n"
-                "the whole dimension set from the query, nor lose the stage structure the classification reads.")
+  (testing "Reading stored metric sources preserves stage structure without upgrading curated dimensions"
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Card {source-id :id} {:name          "Orders source"
                                                   :database_id   (mt/id)
@@ -65,10 +59,7 @@
                                     metabot.tools.u/metric-required-source)))))))))))
 
 (deftest card-source-rows-are-permission-checkable-test
-  (testing (str "Callers run `can-read?` straight on these narrowed rows, and the column list now feeds three\n"
-                "separate permission gates. `:document_id` especially: `parent-document-permits?` branches on\n"
-                "`(contains? card :document_id)`, so present-but-nil and absent mean different things -- drop it\n"
-                "and the narrowed row silently takes the pk-resolve path instead of the one it looks like it takes.")
+  (testing "Narrowed card rows preserve collection and document permission checks"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
                    :model/Card {card-id :id}
                    {:name          "A card"

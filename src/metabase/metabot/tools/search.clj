@@ -172,20 +172,14 @@
                                     r))))))
 
 (defn- enrich-with-metric-sources
-  "Attach source info to metric search results: base-table (`:base_table_id`, `:base_table_name`,
-  `:base_table_schema`, `:base_table_portable_fk`), source-card (`:source_card_id`, `:source_card_name`,
-  `:source_card_portable_entity_id`), or `:source_unavailable` when no source can be offered.
+  "Add the source required to use each metric in the search results.
 
-  [[metabase.metabot.tools.util/metric-required-source]] decides which applies. Source metadata is attached only
-  when the user can query that Table or read that Card; collection access to the metric Card does not imply access
-  to its source.
+  Return base-table fields, source-card fields, or `:source_unavailable`, as selected by
+  [[metabase.metabot.tools.util/metric-required-source]]. Check table query access or card read access separately
+  from access to the metric itself.
 
-  A fixed number of queries per search call, but one reads each metric's `dataset_query`, since only the stage
-  structure says which source applies.
-
-  Requires `:database_name` to already be set on each metric result (done earlier by
-  [[enrich-with-database-engines]]) so we can assemble the full portable FK
-  `[database_name, schema, table]`."
+  Requires `:database_name` on each result (see [[enrich-with-database-engines]]) to build portable FKs.
+  Query count is fixed per search call, but each metric's stored definition must be read."
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
         card-id->source (when (seq metric-ids)
@@ -204,14 +198,11 @@
         (metabot.tools.u/readable-source-cards (distinct (vals metric-id->source-card-id)))
         metric-id->table-id (into {}
                                   (keep (fn [[metric-id r]]
-                                          ;; A card-pinned metric's table is never a usable source, so it is
-                                          ;; dropped here rather than filtered downstream.
                                           (when (and (= :table (:kind r)) (:table-id r))
                                             [metric-id (:table-id r)])))
                                   metric-id->required)
         table-ids (->> metric-id->table-id vals distinct)
-        ;; `can-query?`, matching `metric-details`: a false negative here becomes `source_unavailable` below, telling
-        ;; the agent to skip a metric the other surface offers a source for.
+        ;; Use the same query permission check as `metric-details` so both tools offer the same sources.
         table-id->row (when (seq table-ids)
                         (into {}
                               (comp (filter mi/can-query?)
@@ -221,8 +212,6 @@
       (seq metric-ids)
       (mapv (fn [{:keys [id type database_name] :as result}]
               (if (= "metric" type)
-                ;; Shared with `metric-details`, which describes the same metric on the other surface. A metric with
-                ;; neither source -- unreadable, gone, or a definition we could not read -- gets `:source_unavailable`.
                 (merge result (metabot.tools.u/metric-source-fields
                                {:source-card   (get source-card-id->row (get metric-id->source-card-id id))
                                 :source-table  (get table-id->row (get metric-id->table-id id))

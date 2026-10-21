@@ -48,7 +48,7 @@ const setupEndpoints = ({
   remoteSyncBranch = "main",
   remoteSyncAutoImport = false,
   remoteSyncTransforms = false,
-  remoteSyncCollectionsEnabled,
+  remoteSyncCustomCollectionsEnabled,
   // Unjustified type cast. FIXME
   libraryCollection = null as Collection | null,
   // Unjustified type cast. FIXME
@@ -68,7 +68,7 @@ const setupEndpoints = ({
   remoteSyncBranch?: string;
   remoteSyncAutoImport?: boolean;
   remoteSyncTransforms?: boolean;
-  remoteSyncCollectionsEnabled?: boolean;
+  remoteSyncCustomCollectionsEnabled?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
   rootCollectionItems?: CollectionItem[];
@@ -86,7 +86,8 @@ const setupEndpoints = ({
     "remote-sync-branch": remoteSyncBranch,
     "remote-sync-auto-import": remoteSyncAutoImport,
     "remote-sync-transforms": remoteSyncTransforms,
-    "remote-sync-collections-enabled": remoteSyncCollectionsEnabled,
+    "remote-sync-custom-collections-enabled":
+      remoteSyncCustomCollectionsEnabled,
     "development-mode?": isDevInstance,
   });
 
@@ -125,13 +126,13 @@ const createStoreState = ({
   isDevInstance = false,
   remoteSyncEnabled = false,
   remoteSyncType = "read-only" as const,
-  remoteSyncCollectionsEnabled = true,
+  remoteSyncCustomCollectionsEnabled = true,
 }: {
   isAdmin?: boolean;
   isDevInstance?: boolean;
   remoteSyncEnabled?: boolean;
   remoteSyncType?: "read-only" | "read-write";
-  remoteSyncCollectionsEnabled?: boolean;
+  remoteSyncCustomCollectionsEnabled?: boolean;
 } = {}) => {
   return createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -139,7 +140,8 @@ const createStoreState = ({
       "development-mode?": isDevInstance,
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-type": remoteSyncType,
-      "remote-sync-collections-enabled": remoteSyncCollectionsEnabled,
+      "remote-sync-custom-collections-enabled":
+        remoteSyncCustomCollectionsEnabled,
     }),
   });
 };
@@ -152,7 +154,7 @@ interface SetupOpts {
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncBranch?: string;
   remoteSyncTransforms?: boolean;
-  remoteSyncCollectionsEnabled?: boolean;
+  remoteSyncCustomCollectionsEnabled?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
   rootCollectionItems?: CollectionItem[];
@@ -174,7 +176,7 @@ export const setup = ({
   remoteSyncType = "read-only",
   remoteSyncBranch = "main",
   remoteSyncTransforms = false,
-  remoteSyncCollectionsEnabled = true,
+  remoteSyncCustomCollectionsEnabled = true,
   libraryCollection = null,
   dirty = [],
   rootCollectionItems = [],
@@ -196,7 +198,7 @@ export const setup = ({
     remoteSyncType,
     remoteSyncBranch,
     remoteSyncTransforms,
-    remoteSyncCollectionsEnabled,
+    remoteSyncCustomCollectionsEnabled,
     libraryCollection,
     dirty,
     rootCollectionItems,
@@ -214,7 +216,7 @@ export const setup = ({
         isDevInstance,
         remoteSyncEnabled,
         remoteSyncType,
-        remoteSyncCollectionsEnabled,
+        remoteSyncCustomCollectionsEnabled,
       }),
     },
   );

@@ -45,13 +45,13 @@
 
 (deftest ^:parallel powerset-test
   (is (= [[]]
-         (#'qp.pivot/powerset [])))
+         (#'pivot.common/powerset [])))
   (is (= [[0] []]
-         (#'qp.pivot/powerset [0])))
+         (#'pivot.common/powerset [0])))
   (is (= [[0 1] [1] [0] []]
-         (#'qp.pivot/powerset [0 1])))
+         (#'pivot.common/powerset [0 1])))
   (is (= [[0 1 2] [1 2] [0 2] [2] [0 1] [1] [0] []]
-         (#'qp.pivot/powerset [0 1 2]))))
+         (#'pivot.common/powerset [0 1 2]))))
 
 (deftest ^:parallel breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -59,7 +59,7 @@
             [0 1]
             [0]
             []]
-           (#'qp.pivot/breakout-combinations 3 [0 1 2] [] true true)))))
+           (#'pivot.common/breakout-combinations 3 [0 1 2] [] true true)))))
 
 (deftest ^:parallel breakout-combinations-test-2
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -79,7 +79,7 @@
              [3]
              ;; bottom right corner
              []])
-           (#'qp.pivot/breakout-combinations 4 [0 1 2] [3] true true)))))
+           (#'pivot.common/breakout-combinations 4 [0 1 2] [3] true true)))))
 
 (deftest ^:parallel breakout-combinations-test-3
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -92,71 +92,71 @@
               [1]
               [0]
               []]
-             (#'qp.pivot/breakout-combinations 3 [] [] true true))))))
+             (#'pivot.common/breakout-combinations 3 [] [] true true))))))
 
 (deftest ^:parallel breakout-combinations-test-row-totals-disabled
   (testing "Should return the correct combos when row totals are disabled but column totals are enabled"
     (is (= [[0 1] [0]]
-           (#'qp.pivot/breakout-combinations 2 [1] [0] false true)))))
+           (#'pivot.common/breakout-combinations 2 [1] [0] false true)))))
 
 (deftest ^:parallel breakout-combinations-test-col-totals-disabled
   (testing "Should return the correct combos when column totals are disabled but row totals are enabled"
     (is (= [[0 1] [1]]
-           (#'qp.pivot/breakout-combinations 2 [1] [0] true false)))))
+           (#'pivot.common/breakout-combinations 2 [1] [0] true false)))))
 
 (deftest ^:parallel breakout-combinations-test-row-col-totals-disabled
   (testing "Should return only the main query when both row and column totals are disabled"
     (is (= [[0 1]]
-           (#'qp.pivot/breakout-combinations 2 [1] [0] false false)))))
+           (#'pivot.common/breakout-combinations 2 [1] [0] false false)))))
 
 (deftest ^:parallel breakout-combinations-test-4
   (testing "The breakouts are sorted ascending."
     (is (= [[0 1 2] [1 2] [2] [0 1] [1] []]
-           (#'qp.pivot/breakout-combinations 3 [1 0] [2] true true)))))
+           (#'pivot.common/breakout-combinations 3 [1 0] [2] true true)))))
 
 (deftest ^:parallel validate-pivot-rows-cols-test
   (testing "Should throw an Exception if you pass in invalid pivot-rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [0 1 2 3] [] true true))))
+         (#'pivot.common/breakout-combinations 3 [0 1 2 3] [] true true))))
   (testing "Should throw an Exception if you pass in invalid pivot-cols"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+         (#'pivot.common/breakout-combinations 3 [] [0 1 2 3] true true))))
   (testing "Should throw an Exception if pivot-rows or pivot-cols contain duplicates"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-rows: duplicate breakout indices"
-         (#'qp.pivot/breakout-combinations 3 [0 0 1] [] true true)))
+         (#'pivot.common/breakout-combinations 3 [0 0 1] [] true true)))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: duplicate breakout indices"
-         (#'qp.pivot/breakout-combinations 3 [] [1 1] true true))))
+         (#'pivot.common/breakout-combinations 3 [] [1 1] true true))))
   (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"pivot-rows and pivot-cols must not overlap"
-         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true)))))
+         (#'pivot.common/breakout-combinations 3 [0 1] [1 2] true true)))))
 
 (deftest ^:parallel breakout-combinations-powerset-cap-test
-  (let [max-breakouts @#'qp.pivot/max-powerset-breakouts]
+  (let [max-breakouts @#'pivot.common/max-powerset-breakouts]
     (testing "the powerset fallback is allowed up to the cap"
       (is (= (long (Math/pow 2 max-breakouts))
-             (count (#'qp.pivot/breakout-combinations max-breakouts [] [] true true)))))
+             (count (#'pivot.common/breakout-combinations max-breakouts [] [] true true)))))
     (testing "the powerset fallback is rejected past the cap, before any combinations are enumerated"
       (doseq [num-breakouts [(inc max-breakouts) 30 62]]
         (is (=? {:type          :invalid-query
                  :num-breakouts num-breakouts}
                 (try
-                  (#'qp.pivot/breakout-combinations num-breakouts [] [] true true)
+                  (#'pivot.common/breakout-combinations num-breakouts [] [] true true)
                   nil
                   (catch ExceptionInfo e
                     (ex-data e)))))))
     (testing "explicit pivot-rows/pivot-cols only produce a linear number of combinations, so they are not capped"
       (is (= 60
-             (count (#'qp.pivot/breakout-combinations 30 (range 29) [29] true true)))))))
+             (count (#'pivot.common/breakout-combinations 30 (range 29) [29] true true)))))))
 
 (defn- many-breakouts-query
   "A query against `checkins` with `n` distinct breakouts (the date bucketed by different temporal units)."
@@ -175,7 +175,7 @@
 (deftest powerset-breakout-cap-run-pivot-query-test
   (testing "a pivot query with no pivot rows/cols and too many breakouts fails as an invalid query instead of
            enumerating every breakout combination"
-    (let [query (qp.core/userland-query (many-breakouts-query (inc @#'qp.pivot/max-powerset-breakouts)))]
+    (let [query (qp.core/userland-query (many-breakouts-query (inc @#'pivot.common/max-powerset-breakouts)))]
       (doseq [native? [false true]]
         (testing (str "use-native-pivot-tables = " native?)
           (mt/with-temporary-setting-values [use-native-pivot-tables native?]
@@ -342,7 +342,7 @@
         (is (= (assoc pivot-options :show-row-totals true :show-column-totals true)
                actual-pivot-options)))
       (are [num-breakouts expected] (= expected
-                                       (#'qp.pivot/breakout-combinations
+                                       (#'pivot.common/breakout-combinations
                                         num-breakouts
                                         (:pivot-rows pivot-options)
                                         (:pivot-cols pivot-options)
@@ -367,11 +367,11 @@
               :show-row-totals true, :show-column-totals true}
              pivot-options))
       (is (= [[0 1] [1] [0] []]
-             (#'qp.pivot/breakout-combinations 2
-                                               (:pivot-rows pivot-options)
-                                               (:pivot-cols pivot-options)
-                                               (:show-row-totals pivot-options)
-                                               (:show-column-totals pivot-options)))))))
+             (#'pivot.common/breakout-combinations 2
+                                                   (:pivot-rows pivot-options)
+                                                   (:pivot-cols pivot-options)
+                                                   (:show-row-totals pivot-options)
+                                                   (:show-column-totals pivot-options)))))))
 
 ;;; ---- apply-pivot-viz-settings ----
 
@@ -578,17 +578,17 @@
   (testing "the two pivot paths stash the same [:middleware :pivot-options] on the query given to qp/process-query"
     (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
-        (let [query                  (-> (qp.pivot.test-util/pivot-query)
-                                         qp.middleware.normalize/normalize-preprocessing-middleware)
-              [multi-p multi-stub]   (capture-first-query)
-              [sql-p sql-stub]       (capture-first-query)]
+        (let [query                    (-> (qp.pivot.test-util/pivot-query)
+                                           qp.middleware.normalize/normalize-preprocessing-middleware)
+              [multi-p multi-stub]     (capture-first-query)
+              [single-p single-stub]   (capture-first-query)]
           (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
-            (#'qp.pivot/run-pivot-query-multi query nil))
-          (mt/with-dynamic-fn-redefs [qp.core/process-query sql-stub]
-            (#'qp.pivot/run-sql-pivot-query query nil))
+            (#'qp.pivot/run-multi-query-pivot query nil))
+          (mt/with-dynamic-fn-redefs [qp.core/process-query single-stub]
+            (#'qp.pivot/run-single-query-pivot query nil))
           (is (some? (get-in @multi-p [:middleware :pivot-options])))
-          (is (= (get-in @multi-p [:middleware :pivot-options])
-                 (get-in @sql-p   [:middleware :pivot-options]))))))))
+          (is (= (get-in @multi-p  [:middleware :pivot-options])
+                 (get-in @single-p [:middleware :pivot-options]))))))))
 
 (deftest ^:mb/driver-tests pivot-with-expression-referencing-breakout-e2e-test
   (testing "pivot with a breakout that references an expression"
@@ -890,11 +890,11 @@
                     :show-row-totals true, :show-column-totals true}
                    pivot-options))
             (is (= [[0 1] [1] [0] []]
-                   (#'qp.pivot/breakout-combinations 2
-                                                     (:pivot-rows pivot-options)
-                                                     (:pivot-cols pivot-options)
-                                                     (:show-row-totals pivot-options)
-                                                     (:show-column-totals pivot-options))))
+                   (#'pivot.common/breakout-combinations 2
+                                                         (:pivot-rows pivot-options)
+                                                         (:pivot-cols pivot-options)
+                                                         (:show-row-totals pivot-options)
+                                                         (:show-column-totals pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156
                      :data {:cols [{:lib/desired-column-alias "CATEGORY"}
