@@ -11,18 +11,23 @@
   can-query-table?
   check-parameter-field-permissions
   can-run-query?
+  can-run-query-with-source-footprint?
   check-card-read-perms
   check-card-result-metadata-data-perms
   check-data-perms
   check-result-metadata-data-perms
   check-run-permissions-for-query
   has-perm-for-query?
+  merge-source-footprints
   perms-exception
   query->resolved-source-ids
   query->resolved-source-table-ids
+  query->source-footprint
   query->source-ids
   query->source-table-ids
-  required-perms-for-query])
+  required-perms-for-query
+  source-footprint-transform
+  SourceFootprint])
 
 (defmacro with-card-instances
   "Provide a map of Card ID -> instance to use instead of hitting a metadata provider for more efficient perms

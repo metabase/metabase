@@ -249,17 +249,85 @@
      query)
     (not-empty @all-ids)))
 
-(defn- native-query-perms
-  [query]
+(def SourceFootprint
+  "Everything [[required-perms-for-query]] and the data-access lens read from a preprocessed query."
+  [:map {:closed true}
+   [:table-ids           {:optional true} [:set ::lib.schema.id/table]]
+   [:table-query-ids     {:optional true} [:set ::lib.schema.id/table]]
+   [:card-ids            {:optional true} [:set ::lib.schema.id/card]]
+   [:native?             {:optional true} :boolean]
+   [:referenced-card-ids {:optional true} [:set ::lib.schema.id/card]]])
+
+(defn- preprocessed->source-footprint
+  [preprocessed-query]
+  (let [referenced (referenced-card-ids preprocessed-query)]
+    (cond-> (or (query->source-ids preprocessed-query) {})
+      referenced (assoc :referenced-card-ids referenced))))
+
+(mu/defn query->source-footprint :- [:maybe SourceFootprint]
+  "The [[SourceFootprint]] of `query`, preprocessed as admin with per-user lens resolution skipped, so it is the same
+  for every user. Throws on an unpreprocessable query. A `stored` footprint, when given, is returned instead."
+  ([query :- ::query]
+   (when (seq query)
+     (preprocessed->source-footprint (preprocess-without-per-user-lens query))))
+  ([query  :- ::query
+    stored :- [:maybe SourceFootprint]]
+   (or stored (query->source-footprint query))))
+
+(defn- merge-source-footprint
+  [a {:keys [table-ids table-query-ids card-ids native? referenced-card-ids]}]
+  (cond-> a
+    table-ids           (update :table-ids           (fnil set/union #{}) table-ids)
+    table-query-ids     (update :table-query-ids     (fnil set/union #{}) table-query-ids)
+    card-ids            (update :card-ids            (fnil set/union #{}) card-ids)
+    (some? native?)     (update :native?             (fnil #(or %1 %2) false) native?)
+    referenced-card-ids (update :referenced-card-ids (fnil set/union #{}) referenced-card-ids)))
+
+(mu/defn merge-source-footprints :- [:maybe SourceFootprint]
+  "The [[SourceFootprint]] of a query reading everything `footprints` read. nil when none is given."
+  [footprints :- [:sequential [:maybe SourceFootprint]]]
+  (when-let [footprints (seq (remove nil? footprints))]
+    (reduce merge-source-footprint {} footprints)))
+
+(def source-footprint-transform
+  "Toucan transform for a persisted [[query->source-footprint]]. An unreadable blob reads as `nil`, like a row that
+  was never stamped, so the query is resolved live."
+  (let [{:keys [in out]} (mi/transform-json-with-schema "source_footprint" SourceFootprint {:log-level :error})]
+    {:in  in
+     :out (fn [s]
+            (let [footprint (out s)]
+              (if (or (nil? footprint) (mr/validate SourceFootprint footprint))
+                footprint
+                (do (log/errorf "Unreadable source_footprint %s; resolving live" (pr-str s))
+                    nil))))}))
+
+(defn- native-perms
+  [card-ids]
   (merge
    {:perms/create-queries :query-builder-and-native
     :perms/view-data      :unrestricted}
-   (when-let [card-ids (referenced-card-ids query)]
+   (when (seq card-ids)
      {:card-ids card-ids
       :paths    (into #{}
                       (mapcat (fn [card-id]
                                 (mi/perms-objects-set (card-instance card-id) :read)))
                       card-ids)})))
+
+(defn- native-query-perms
+  [query]
+  (native-perms (referenced-card-ids query)))
+
+(defn- source-footprint->required-perms
+  [{:keys [table-ids table-query-ids card-ids native? referenced-card-ids]}]
+  (merge
+   (when-let [card-ids (not-empty (into (set card-ids) referenced-card-ids))]
+     {:card-ids card-ids})
+   (when (seq table-ids)
+     {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
+   (when (seq table-query-ids)
+     {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
+   (when native?
+     (native-perms referenced-card-ids))))
 
 (defn- legacy-mbql-required-perms
   ([query options]
@@ -267,7 +335,7 @@
 
   ([metadata-provider
     query
-    {:keys [throw-exceptions? already-preprocessed?]}]
+    {:keys [throw-exceptions? already-preprocessed? source-footprint]}]
    (try
      (let [metadata-provider (or metadata-provider
                                  (when (qp.store/initialized?)
@@ -280,18 +348,10 @@
                                        lib/primary-source-card-id)]
          {:paths (source-card-read-perms source-card-id)}
          ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-         (let [query                                                (cond-> query
-                                                                      (not already-preprocessed?) preprocess-query)
-               {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
-           (merge
-            (when-let [card-ids (not-empty (into (set card-ids) (referenced-card-ids query)))]
-              {:card-ids card-ids})
-            (when (seq table-ids)
-              {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
-            (when (seq table-query-ids)
-              {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
-            (when native?
-              (native-query-perms query))))))
+         (source-footprint->required-perms
+          (or source-footprint
+              (preprocessed->source-footprint (cond-> query
+                                                (not already-preprocessed?) preprocess-query))))))
      ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
      ;; that means no one will ever get to see it
      (catch Throwable e
@@ -317,7 +377,9 @@
 
 (defn required-perms-for-query
   "Returns a map representing the permissions required to run `query`. The map has the optional keys
-  :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries."
+  :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries.
+
+  `:source-footprint` stands in for preprocessing."
   [query & {:as perms-opts}]
   (if (empty? query)
     {}
@@ -457,6 +519,20 @@
         (throw e)
         false))))
 
+(defn- can-run-query*
+  [{database-id :database :as query} {:keys [throw-exceptions?] :as perms-opts}]
+  (try
+    (let [required-perms (required-perms-for-query query perms-opts)]
+      (check-data-perms query required-perms)
+      ;; Check card read permissions for any cards referenced in subqueries!
+      (doseq [card-id (:card-ids required-perms)]
+        (check-card-read-perms database-id card-id))
+      true)
+    (catch clojure.lang.ExceptionInfo e
+      (if (and throw-exceptions? (not (:permissions-error? (ex-data e))))
+        (throw e)
+        false))))
+
 (mu/defn can-run-query?
   "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise.
 
@@ -471,22 +547,19 @@
     already-preprocessed? :- :boolean]
    (can-run-query? query already-preprocessed? false))
 
-  ([{database-id :database :as query} :- ::query
-    already-preprocessed?                :- :boolean
-    throw-non-permission-errors?         :- :boolean]
-   (try
-     (let [required-perms (required-perms-for-query query
-                                                    :already-preprocessed? already-preprocessed?
-                                                    :throw-exceptions? throw-non-permission-errors?)]
-       (check-data-perms query required-perms)
-       ;; Check card read permissions for any cards referenced in subqueries!
-       (doseq [card-id (:card-ids required-perms)]
-         (check-card-read-perms database-id card-id))
-       true)
-     (catch clojure.lang.ExceptionInfo e
-       (if (and throw-non-permission-errors? (not (:permissions-error? (ex-data e))))
-         (throw e)
-         false)))))
+  ([query                        :- ::query
+    already-preprocessed?        :- :boolean
+    throw-non-permission-errors? :- :boolean]
+   (can-run-query* query
+                   {:already-preprocessed? already-preprocessed?
+                    :throw-exceptions?     throw-non-permission-errors?})))
+
+(mu/defn can-run-query-with-source-footprint? :- :boolean
+  "[[can-run-query?]] for a query whose [[query->source-footprint]] is already known, without preprocessing it."
+  [query     :- ::query
+   footprint :- SourceFootprint]
+  (can-run-query* query {:source-footprint  footprint
+                         :throw-exceptions? false}))
 
 (mu/defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"

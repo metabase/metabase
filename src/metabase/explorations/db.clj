@@ -169,9 +169,9 @@
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
 (mu/defn lens-stamped-threads
-  "The ID and data-access token of the ExplorationThreads among `thread-ids` that carry a token."
+  "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationThread :id :data_access_token]
+  (t2/select [:model/ExplorationThread :id :data_access_token :source_footprint]
              :id [:in thread-ids]
              :data_access_token [:not= nil]))
 
@@ -431,10 +431,11 @@
              {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn lens-stamped-queries
-  "The ID, thread, Database, query, and data-access token of the ExplorationQueries with a query on the
-  ExplorationThreads with `thread-ids`, in ID order."
+  "The ExplorationQueries with a query on the ExplorationThreads with `thread-ids`, with what the content gate reads,
+  in ID order."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token]
+  (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token
+              :source_footprint]
              :exploration_thread_id [:in thread-ids]
              :dataset_query [:not= nil]
              {:order-by [[:id :asc]]}))
@@ -499,7 +500,9 @@
 (mu/defn update-query!
   "Apply `changes` to the ExplorationQuery with `query-id`."
   [query-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::explorations.schema/exploration-query.update [:dataset_query :name :data_access_token :status :started_at :finished_at])]
+   changes  :- (mut/select-keys ::explorations.schema/exploration-query.update
+                                [:dataset_query :name :data_access_token :source_footprint
+                                 :status :started_at :finished_at])]
   (t2/update! :model/ExplorationQuery query-id changes))
 
 (mu/defn fail-pending-query!
