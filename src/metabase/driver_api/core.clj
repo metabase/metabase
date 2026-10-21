@@ -75,6 +75,7 @@
  actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
+ add/column-info-options
  metabase.query-processor.util.add-alias-info.helpers/mbql-5-aggregation-name
  annotate/aggregation-name
  annotate/base-type-inferer
@@ -380,6 +381,22 @@
 (def qp.add.nfc-path
   "::add/nfc-path"
   ::add/nfc-path)
+
+(def qp.add.coercion-strategy
+  "::add/coercion-strategy"
+  ::add/coercion-strategy)
+
+(def qp.add.database-type
+  "::add/database-type"
+  ::add/database-type)
+
+(def qp.add.parent-names
+  "::add/parent-names"
+  ::add/parent-names)
+
+(def qp.add.column-name
+  "::add/column-name"
+  ::add/column-name)
 
 (def qp.add.desired-alias
   "::add/desired-alias"

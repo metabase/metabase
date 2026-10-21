@@ -39,7 +39,15 @@
   ##### `::desired-alias`
 
   If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
-  this alias. This alias is guaranteed to be unique."
+  this alias. This alias is guaranteed to be unique.
+
+  ##### `::coercion-strategy`, `::database-type`
+
+  The `:coercion-strategy` and `:database-type` of the column a `:field` clause refers to.
+
+  ##### `::parent-names`, `::column-name`
+
+  For a nested column, the names of its ancestor columns, outermost first, and its own name."
   (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
    [medley.core :as m]
@@ -47,6 +55,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -194,12 +203,42 @@
      :source/native
      :source/pivot-grouping)      ::none))
 
+(defn- parent-names [query {:keys [parent-id]}]
+  (loop [parent-id parent-id, names ()]
+    (if-some [parent (when parent-id (lib.metadata/field query parent-id))]
+      (recur (:parent-id parent) (conj names (:name parent)))
+      (not-empty (vec names)))))
+
+(mu/defn column-info-options :- :map
+  "The `::coercion-strategy`, `::database-type`, `::parent-names` and `::column-name` of a nested column, and forced
+  native sandbox coercion options for a `:field` ref to `col`."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   col                   :- ::lib.schema.metadata/column]
+  (m/assoc-some {}
+                ::coercion-strategy (:coercion-strategy col)
+                ::database-type     (:database-type col)
+                ::parent-names      (parent-names metadata-providerable col)
+                ::column-name       (when (:parent-id col)
+                                      (some->> (:id col) (lib.metadata/field metadata-providerable) :name))
+                :qp/native-sandbox-column.force-coercion-strategy (:qp/native-sandbox-column.force-coercion-strategy col)))
+
+(defn- add-column-info-to-options
+  "Add the [[column-info-options]] of `col` to `opts`, except for a column the stage reads from its source query rather
+  than a table, which already applied them; a forced native sandbox coercion is always added."
+  [opts query col]
+  (merge opts
+         (if (#{::source ::none} (::source-table opts))
+           (select-keys (column-info-options query col) [:qp/native-sandbox-column.force-coercion-strategy])
+           (column-info-options query col))))
+
 (defn- add-source-to-field-ref [query path field-ref col]
   (lib/update-options
    field-ref #(-> %
                   (assoc ::source-table (source-table query path col)
                          ::source-alias (escaped-source-alias query path (:lib/join-alias col) (:lib/source-column-alias col)))
-                  (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
+                  (u/assoc-default :base-type (:base-type col))
+                  (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))
+                  (add-column-info-to-options query col))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
   "I feel evil about doing this, since generally this namespace otherwise just ADDs info and does not in any other way
@@ -370,9 +409,10 @@
         source-table          (escaped-join-alias query parent-stage-path (:join-alias opts))]
     ;; don't need to calculate `::desired-alias` because it may not be returned and even if it is it's not getting
     ;; returned in the join conditions
-    (lib/update-options field-ref assoc
-                        ::source-alias source-alias
-                        ::source-table source-table)))
+    (lib/update-options field-ref #(-> %
+                                       (assoc ::source-alias source-alias
+                                              ::source-table source-table)
+                                       (add-column-info-to-options query col)))))
 
 (defn- cartesian-join-condition-exception
   "Exception thrown when a join condition contains a field ref to an 'other' field, ie. one whose `:join-alias` is not

@@ -1419,3 +1419,33 @@
               ;; Before the fix, ::add/desired-alias was nil because lib.equality/= failed
               ;; due to :inherited-temporal-unit mismatch (:minute vs :day).
               (is (some? (::add/desired-alias (second created-at-brk)))))))))))
+
+(deftest ^:parallel column-info-options-test
+  (testing "refs to table columns carry their coercion strategy and database type; refs to source query columns do not"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [{:id                (meta/id :orders :quantity)
+                            :coercion-strategy :Coercion/UNIXSeconds->DateTime
+                            :effective-type    :type/DateTime}]})
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/with-fields [(lib.metadata/field mp (meta/id :orders :quantity))])
+                    lib/append-stage)
+          query (lib/filter query (lib/not-null (first (lib/visible-columns query))))
+          [stage-0 stage-1] (:stages (driver/with-driver :h2 (add/add-alias-info query)))
+          [_tag filter-ref-opts] (nth (first (:filters stage-1)) 2)]
+      (is (=? {::add/coercion-strategy :Coercion/UNIXSeconds->DateTime
+               ::add/database-type     "INTEGER"}
+              (second (first (:fields stage-0)))))
+      (is (=? {::add/source-table ::add/source}
+              filter-ref-opts))
+      (is (not-any? filter-ref-opts [::add/coercion-strategy ::add/database-type]))))
+  (testing "refs to nested columns carry the names of their parents"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [{:id (meta/id :orders :tax), :parent-id (meta/id :orders :total)}]})
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/with-fields [(lib.metadata/field mp (meta/id :orders :tax))]))
+          [stage] (:stages (driver/with-driver :h2 (add/add-alias-info query)))]
+      (is (=? {::add/parent-names ["TOTAL"]
+               ::add/column-name  "TAX"}
+              (second (first (:fields stage))))))))

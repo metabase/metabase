@@ -355,6 +355,11 @@
    [:metabase.query-processor.util.add-alias-info/source-table  {:optional true} [:maybe [:or :int :string :keyword]]]
    [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
    [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]
+   [:metabase.query-processor.util.add-alias-info/nfc-path      {:optional true} [:maybe [:sequential :string]]]
+   [:metabase.query-processor.util.add-alias-info/coercion-strategy {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
+   [:metabase.query-processor.util.add-alias-info/database-type     {:optional true} [:maybe :string]]
+   [:metabase.query-processor.util.add-alias-info/parent-names      {:optional true} [:maybe [:sequential :string]]]
+   [:metabase.query-processor.util.add-alias-info/column-name       {:optional true} [:maybe :string]]
    [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:maybe ::lib.schema.id/dimension]]
    [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:maybe ::lib.schema.id/dimension]]
    [:metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field {:optional true} :boolean]])

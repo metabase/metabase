@@ -174,6 +174,10 @@
    :metabase.query-processor.util.add-alias-info/source-alias               "ID"
    :metabase.query-processor.util.add-alias-info/desired-alias              "ID_2"
    :metabase.query-processor.util.add-alias-info/nfc-path                   ["parent" "child"]
+   :metabase.query-processor.util.add-alias-info/coercion-strategy          :Coercion/UNIXSeconds->DateTime
+   :metabase.query-processor.util.add-alias-info/database-type              "BIGINT"
+   :metabase.query-processor.util.add-alias-info/parent-names               ["parent"]
+   :metabase.query-processor.util.add-alias-info/column-name                "child"
    :metabase.query-processor.util.add-alias-info/resolved                   {:lib/type  :metadata/column
                                                                              :name      "ID"
                                                                              :base-type :type/Integer}
