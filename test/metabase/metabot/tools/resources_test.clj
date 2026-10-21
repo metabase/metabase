@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
+   [metabase.api-scope.core :as api-scope]
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,6 +19,7 @@
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.metabot.tools.runtime :as runtime]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -142,6 +144,21 @@
         (doseq [resource (drop 5 resources)]
           (is (str/starts-with? (or (:error resource) "") "Skipped: only the first 5 URIs are read per call.")))
         (is (= 7 (count (re-seq #"<resource uri=" output))))))))
+
+(deftest all-failed-batch-retains-each-uri-test
+  (doseq [tool-names [#{"read_resource"} #{"read_resource" "search"}]
+          uris [(mapv #(str "metabase://nonsense/" %) (range 30))
+                [(str "metabase://nonsense/" (apply str (repeat 5000 "x")))
+                 "metabase://nonsense/last"]]]
+    (let [result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                 {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                  :tool-names tool-names}
+                                 "read_resource" {:uris uris})
+          output (:output result)]
+      (is (= :recoverable (get-in result [:error :class])))
+      (is (= (count uris) (count (re-seq #"<resource uri=" output))))
+      (is (every? #(str/includes? output (str "uri=\"" % "\"")) uris))
+      (is (str/ends-with? output "</resources>")))))
 
 (deftest ^:parallel single-and-batched-declarations-test
   (let [single  (tools/declaration read-resource/read-resource-tool)
