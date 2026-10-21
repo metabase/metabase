@@ -41,8 +41,6 @@ const mockUseIsTrackingEnabled = jest.mocked(useIsTrackingEnabled);
 const mockInitSdkTracker = jest.mocked(initSdkTracker);
 const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
 
-// Mirrors the store shape snowplow.unit.spec.ts builds: settings come from the seeded
-// `getSessionProperties` query cache, which is where `getSettings` reads them.
 function makeStore(settings: Partial<EnterpriseSettings> = {}) {
   const state = createMockState({ sdk: createMockSdkState() });
   const stateWithSettings = {
@@ -54,7 +52,7 @@ function makeStore(settings: Partial<EnterpriseSettings> = {}) {
       },
     ]),
   };
-  // The hook only ever dispatches and reads state; a full store would pull in the whole SDK reducer tree.
+  // The hook only dispatches and reads state; a full SdkStore is not needed.
   return {
     dispatch: jest.fn(),
     getState: () => stateWithSettings,

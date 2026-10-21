@@ -1,10 +1,3 @@
-/**
- * True when every key in `partialObjectOrValue` is present in `objectOrValue` with a matching value,
- * recursively; a function anywhere in the pattern is handed the real value and decides for itself.
- *
- * Shared by the Snowplow micro and Metabase Track helpers, which both assert against recorded
- * analytics events that carry far more fields than any one assertion cares about.
- */
 export function isDeepMatch(objectOrValue, partialObjectOrValue) {
   if (isMatcher(partialObjectOrValue)) {
     return partialObjectOrValue(objectOrValue);

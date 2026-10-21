@@ -2,8 +2,6 @@ import { updateSetting } from "e2e/support/helpers";
 
 import { isDeepMatch } from "./e2e-deep-match";
 
-// Re-exported so `H.isDeepMatch` keeps resolving; it lives in its own module because the Metabase
-// Track helpers match recorded events the same way.
 export { isDeepMatch };
 
 const SNOWPLOW_URL = "http://localhost:9090";

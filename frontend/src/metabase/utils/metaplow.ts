@@ -17,14 +17,10 @@ const getSanitizedUrl = (url: string) => {
 };
 
 interface MetaplowConfig {
-  // The tracker library composes its endpoint as `${hostUrl}/send`. Null when Metabase Track is off.
   hostUrl: string | null;
   getUserId: () => number | undefined;
 }
 
-// Null unless the instance has Metabase Track on, so `init()` does not patch `history` or bind a document click
-// listener for a destination that is switched off. `metaplow-url` is the collector's full `/send` endpoint, and the
-// tracker library appends `/send` itself.
 export function getCollectorHostUrl(): string | null {
   if (!Settings.get("metaplow-tracking-enabled")) {
     return null;

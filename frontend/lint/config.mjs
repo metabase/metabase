@@ -548,8 +548,6 @@ const configs = [
     },
   },
   {
-    // The e2e Metabase Track sink is a zero-dependency Node service that docker compose runs
-    // straight off a stock `node` image, so it is CommonJS and logs to the console.
     files: ["metaplow/**/*.js"],
     languageOptions: {
       sourceType: "commonjs",

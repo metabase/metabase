@@ -18,14 +18,8 @@ import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { getSettings } from "metabase/settings";
 import { initMetaplow } from "metabase/utils/metaplow";
 
-// The SDK runs in the customer's page, where a direct POST to the Metabase Track collector is cross-origin and
-// blocked by a strict `connect-src` CSP. Point the tracker at the instance's relay instead — the same host the SDK's
-// data calls already go to. Every instance including Cloud, so there is one code path and the collector host is
-// never referenced from the customer's page.
 const METAPLOW_RELAY_PATH = "/api/metaplow-proxy";
 
-// Null unless the instance has Metabase Track on. `init()` monkey-patches `history` and binds a document click
-// listener in the host page, so it must not run for a feature the instance has switched off.
 function getMetaplowHostUrl(store: SdkStore, metabaseInstanceUrl: string) {
   const isEnabled = !!getSettings(store.getState())?.[
     "metaplow-tracking-enabled"

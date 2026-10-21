@@ -79,8 +79,6 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 
 const store = getSdkStore();
 createSnowplowTracker(() => getUserId(store.getState()));
-// The SDK's own tracker init skips EAJS, so this is the only place the iframe leg gets a Metabase Track tracker.
-// The iframe is served by the instance, so it posts to the collector directly rather than through the SDK's relay.
 initMetaplow({
   hostUrl: getCollectorHostUrl(),
   getUserId: () => getUserId(store.getState()),

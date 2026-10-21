@@ -114,7 +114,6 @@ async function _init(
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
-    // The main app is served by the instance itself, so it posts to the collector directly.
     hostUrl: getCollectorHostUrl(),
     getUserId: () => getUserId(store.getState()),
   });
