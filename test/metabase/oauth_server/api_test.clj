@@ -953,6 +953,9 @@
                  (:error (token-request! params :expected-status 400 :authorization authorization)))))
         (let [response (token-request! params :expected-status 429 :authorization authorization :full-response? true)]
           (is (= "too_many_requests" (get-in response [:body :error])))
+          (is (= (str "Too many attempts! You must wait " (get-in response [:headers "Retry-After"])
+                      " seconds before trying again.")
+                 (get-in response [:body :error_description])))
           (is (some-> (get-in response [:headers "Retry-After"]) parse-long pos-int?))
           (is (= 10 (count @(:attempts @#'api.oauth/token-ip-throttler)))))))))
 
@@ -1007,7 +1010,8 @@
                    (fn [attempts]
                      (doall (for [[throttle-key timestamp] attempts]
                               [throttle-key (- timestamp (* 60 1000))]))))
-            (is (string? (:access_token (token-request! params :authorization authorization :ip-address ip-address))))))))))
+            (is (string? (:access_token (token-request! params :authorization authorization
+                                                        :ip-address ip-address))))))))))
 
 (deftest token-overlong-body-client-id-rejected-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -1016,7 +1020,8 @@
                                     :code       "bogus-code"}
                                    :expected-status 400 :full-response? true)]
       (is (some? (get-in response [:body :errors :client_id])))
-      (is (empty? @(:attempts @#'api.oauth/token-client-throttler))))))
+      (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+      (is (empty? @(:attempts @#'api.oauth/token-ip-throttler))))))
 
 (deftest token-overlong-basic-client-id-uses-only-ip-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -1124,12 +1129,16 @@
                   wait     (some-> (get-in response [:headers "Retry-After"]) parse-long)]
               (is (pos-int? wait))
               (when (pos-int? wait)
+                (is (= (str "Too many attempts! You must wait " wait " seconds before trying again.")
+                       (get-in response [:body :error_description])))
                 (is (<= (- expected-wait 60) wait expected-wait))
                 (let [second-response (token-request! params :authorization authorization :ip-address ip-address
                                                       :expected-status 429 :full-response? true)
                       second-wait     (some-> (get-in second-response [:headers "Retry-After"]) parse-long)]
                   (is (pos-int? second-wait))
                   (when (pos-int? second-wait)
+                    (is (= (str "Too many attempts! You must wait " second-wait " seconds before trying again.")
+                           (get-in second-response [:body :error_description])))
                     (doseq [throttler [client-throttler ip-throttler]]
                       (swap! (:attempts throttler)
                              (fn [recorded]
