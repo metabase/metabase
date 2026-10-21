@@ -456,7 +456,6 @@
     ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
     (t2/with-transaction [_]
       (next-method provider $))
-    ;; only once the transaction commits, so admins are never told about a user whose provisioning rolled back
     (cond-> $
       (:created-new-user? $) (u/prog1 (notify-admins-of-new-sso-user! (:user <>))))
     (apply-inactive-check $)
