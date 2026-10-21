@@ -404,6 +404,7 @@
     [#"(?i)real"                              :type/Float]
     [#"(?i)double"                            :type/Float]
     [#"(?i)decimal.*"                         :type/Decimal]
+    [#"(?i)^number$"                          :type/Decimal]
     [#"(?i)varchar.*"                         :type/Text]
     [#"(?i)char.*"                            :type/Text]
     [#"(?i)json"                              :type/Text]
