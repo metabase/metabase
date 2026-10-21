@@ -225,12 +225,21 @@
 
 ;;; -------------------- Aggregation Construction --------------------
 
+(defn- resolve-field-ref
+  "The `[field-id fk-field-id]` of the Field a `:field` ref in the first stage of `query` resolves to, or nil if it does
+  not resolve to a Field."
+  [query field-ref]
+  (let [col (lib/metadata query 0 field-ref)]
+    (when (and (pos-int? (:id col))
+               (not (:metabase.lib.field.resolution/fallback-metadata? col)))
+      [(:id col) (:fk-field-id col)])))
+
 (defn- simple-field-ref?
-  "Returns true if the argument is a simple [:field opts id] reference."
-  [arg]
+  "Returns true if the argument is a `:field` reference to a Field."
+  [query arg]
   (and (sequential? arg)
        (= :field (first arg))
-       (pos-int? (nth arg 2 nil))))
+       (some? (resolve-field-ref query arg))))
 
 (def ^:private mbql-agg-hierarchy
   "Hierarchy for dispatching on MBQL aggregation keywords."
@@ -244,41 +253,42 @@
 (defmulti ^:private mbql-aggregation->node*
   "Convert MBQL aggregation clause to AST aggregation node.
    Dispatches on the aggregation keyword."
-  {:arglists '([agg-type mbql-clause])}
-  (fn [agg-type _mbql-clause] agg-type)
+  {:arglists '([agg-type query mbql-clause])}
+  (fn [agg-type _query _mbql-clause] agg-type)
   :hierarchy #'mbql-agg-hierarchy)
 
 (defn- field-ref->column-node
-  "Build an AST column node from a simple [:field opts id] ref, preserving
-  `:source-field` so implicit-join metrics compile to queries the QP can resolve."
-  [[_field opts field-id]]
-  (cond-> (column-node field-id)
-    (:source-field opts) (assoc :source-field (:source-field opts))))
+  "Build an AST column node from a simple `:field` ref, preserving the FK Field of an implicit join so implicit-join
+  metrics compile to queries the QP can resolve."
+  [query field-ref]
+  (let [[field-id fk-field-id] (resolve-field-ref query field-ref)]
+    (cond-> (column-node field-id)
+      fk-field-id (assoc :source-field fk-field-id))))
 
 (defmethod mbql-aggregation->node* :count
-  [_ mbql-clause]
+  [_ query mbql-clause]
   (let [[_agg-type _opts & args] mbql-clause
         first-arg (first args)]
     (if (nil? first-arg)
       {:node/type :aggregation/count}
-      (if (simple-field-ref? first-arg)
+      (if (simple-field-ref? query first-arg)
         {:node/type :aggregation/count
-         :column    (field-ref->column-node first-arg)}
+         :column    (field-ref->column-node query first-arg)}
         {:node/type :aggregation/mbql
          :clause    mbql-clause}))))
 
 (defmethod mbql-aggregation->node* :column-agg
-  [agg-type mbql-clause]
+  [agg-type query mbql-clause]
   (let [[_agg-type _opts & args] mbql-clause
         first-arg (first args)]
-    (if (simple-field-ref? first-arg)
+    (if (simple-field-ref? query first-arg)
       {:node/type (keyword "aggregation" (name agg-type))
-       :column    (field-ref->column-node first-arg)}
+       :column    (field-ref->column-node query first-arg)}
       {:node/type :aggregation/mbql
        :clause    mbql-clause})))
 
 (defmethod mbql-aggregation->node* :default
-  [_ mbql-clause]
+  [_ _query mbql-clause]
   {:node/type :aggregation/mbql
    :clause    mbql-clause})
 
@@ -286,10 +296,10 @@
   "Convert MBQL aggregation clause to AST aggregation node.
    Simple aggregations over field references (e.g. sum(price)) produce typed nodes.
    Complex aggregations (e.g. avg(case(...))) fall through to :aggregation/mbql."
-  [mbql-clause]
+  [query mbql-clause]
   (when mbql-clause
     (let [[agg-type] mbql-clause]
-      (mbql-aggregation->node* agg-type mbql-clause))))
+      (mbql-aggregation->node* agg-type query mbql-clause))))
 
 ;;; -------------------- Source Construction --------------------
 
@@ -333,7 +343,7 @@
     (cond-> {:node/type   source-type
              :id          id
              :name        (:name metadata)
-             :aggregation (or (mbql-aggregation->node aggregation)
+             :aggregation (or (mbql-aggregation->node mbql5-query aggregation)
                               {:node/type :aggregation/count})
              :base-table  (table-node table-id)
              :metadata    metadata}
