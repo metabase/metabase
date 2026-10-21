@@ -113,9 +113,9 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
         cohorts: {
           by: "startDate",
           return: { flag: FLAG.active },
-          returnRule: "onOrAfter",
+          returnRule: "exactly",
         },
-        output: { cohortsDisplay: "percent" },
+        output: { cohortsDisplay: "percent", cohortsLines: "each" },
       };
   }
 };

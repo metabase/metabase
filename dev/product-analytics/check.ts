@@ -22,6 +22,7 @@ import {
   planFunnelPaths,
 } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-paths";
 import { activeColumn } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit";
+import { COHORT_ATTRIBUTE_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/cohorts";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
 import {
   IN_RANGE_FLAG,
@@ -152,10 +153,8 @@ const check = (name: string, ok: boolean, detail: string) => {
 
 const cohortColumns = (spec: AnalysisSpec): ProjectedColumn[] =>
   spec.cohorts?.by === "attribute"
-    ? [{ as: "cohort_attribute", alias: "country" }]
-    : spec.cohorts !== undefined
-      ? [{ as: "cohort_start", alias: "created_at" }]
-      : [];
+    ? [{ as: COHORT_ATTRIBUTE_COLUMN, alias: "country" }]
+    : [];
 
 /**
  * The identities tables and their link to events: every identified person has
@@ -363,12 +362,21 @@ const run = async (
       values.every((value) => value >= 0 && value <= 1),
       `min ${Math.min(...values)} max ${Math.max(...values)}`,
     );
-    const cohorts = new Set(rows.map((row) => String(row.cohort)));
-    check(
-      "cohorts has several rows",
-      cohorts.size > 1,
-      [...cohorts].slice(0, 4).join(", "),
-    );
+    if (spec.output.cohortsLines === "average") {
+      const offsets = rows.map((row) => asNumber(row.offset));
+      check(
+        "average has a row per offset",
+        new Set(offsets).size === rows.length,
+        offsets.join(", "),
+      );
+    } else {
+      const cohorts = new Set(rows.map((row) => String(row.cohort)));
+      check(
+        "cohorts has several rows",
+        cohorts.size > 1,
+        [...cohorts].slice(0, 4).join(", "),
+      );
+    }
   }
 };
 
@@ -419,15 +427,33 @@ for (const [label, overrides] of pathsVariants) {
 
 const cohortsSpec = defaultSpec("cohorts");
 if (cohortsSpec.cohorts !== undefined) {
-  await run(
-    "cohorts",
-    truth,
-    {
-      ...cohortsSpec,
-      cohorts: { ...cohortsSpec.cohorts, by: "attribute" },
-    },
-    "cohorts (by country)",
-  );
+  const cohortsVariants: [string, AnalysisSpec][] = [
+    [
+      "by country",
+      {
+        ...cohortsSpec,
+        cohorts: { ...cohortsSpec.cohorts, by: "attribute" },
+      },
+    ],
+    [
+      "average, on or after",
+      {
+        ...cohortsSpec,
+        cohorts: { ...cohortsSpec.cohorts, returnRule: "onOrAfter" },
+        output: { ...cohortsSpec.output, cohortsLines: "average" },
+      },
+    ],
+    [
+      "from signup",
+      {
+        ...cohortsSpec,
+        cohorts: { ...cohortsSpec.cohorts, start: { flag: FLAG.signup } },
+      },
+    ],
+  ];
+  for (const [label, spec] of cohortsVariants) {
+    await run("cohorts", truth, spec, `cohorts (${label})`);
+  }
 }
 
 // DAU/MAU and WAU/MAU: the range starts 40 days into the data, so the month
