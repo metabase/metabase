@@ -792,8 +792,9 @@
         runnable                   (runnable-query query_id query allow-non-sql?)]
     ;; A query the conversation holds came from construct_notebook_query, which judged it, or from the user's
     ;; viewing context, which nothing judged: the rows go to the model either way. A saved question was judged
-    ;; in [[saved-question]]; SQL is left to the SQL tools' own gates.
-    (when (and (shared/curated-only?) (nil? saved-card) (not (:checked-sql runnable)))
+    ;; in [[saved-question]]. SQL the query holds itself is left to the SQL gates above; its structured stages,
+    ;; and a notebook query over a SQL question Metabot saved, are judged like any other.
+    (when (and (shared/curated-only?) (nil? saved-card))
       (curation/check-curated-query! (str "query " query_id) (:query runnable)))
     (when-not (or allow-non-sql? (:checked-sql runnable))
       (not-sql! {:query-id query_id, :hint (recovery-hint allow-non-sql?)}))

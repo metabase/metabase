@@ -1021,6 +1021,62 @@
               (is (contains? (items (str db "/schemas")) "LIBRARY_SCHEMA"))
               (is (contains? (items (str db "/schemas/LIBRARY_SCHEMA/tables")) "published_by_settings")))))))))
 
+(deftest check-curated-query-native-stages-test
+  (testing "a native stage is left to the SQL gates and the structured stages around it are judged: a native join
+            does not exempt the query, and what a native stage's template tags name is not judged"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {sql-card :id} {:dataset_query (mt/native-query {:query "SELECT 1 AS X"})}]
+        (let [mp          (mt/metadata-provider)
+              orders      (orders-query)
+              order-id    (lib.metadata/field mp (mt/id :orders :id))
+              native-join {:lib/type   :mbql/join
+                           :alias      "N"
+                           :strategy   :left-join
+                           :conditions [(lib/= order-id order-id)]
+                           :stages     [{:lib/type :mbql.stage/native :native "SELECT 1 AS ID"}]}
+              joined      (assoc-in orders [:stages 0 :joins] [native-join])
+              sql         (lib/native-query mp "SELECT 1")
+              tagged      (-> (lib/native-query mp (str "SELECT * FROM {{#" sql-card "}}"))
+                              (lib/with-template-tags {(str "#" sql-card) {:type         :card
+                                                                           :name         (str "#" sql-card)
+                                                                           :display-name (str "#" sql-card)
+                                                                           :card-id      sql-card
+                                                                           :id           (str (random-uuid))}}))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                (curation/check-curated-query! "q" joined))
+              "raw ORDERS is judged although the query holds a native join")
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (is (nil? (curation/check-curated-query! "q" joined)) "curated ORDERS passes"))
+          (is (nil? (curation/check-curated-query! "q" sql)) "SQL names nothing to judge")
+          (is (nil? (curation/check-curated-query! "q" tagged))
+              "a saved question a SQL template tag names is the SQL gates' business"))))))
+
+(deftest run-query-judges-a-notebook-over-a-metabot-sql-question-test
+  (testing "a notebook query the viewing context holds over a SQL question Metabot saved is judged like any other,
+            while SQL the query holds itself is left to the SQL gates"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot metabot {:name "curated metabot" :use_verified_content true}
+                     :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}
+                     :model/Card {sql-card :id} {:dataset_query           (mt/native-query {:query "SELECT 1 AS X"})
+                                                 :metabot_conversation_id conversation-id}]
+        (let [mp        (mt/metadata-provider)
+              over-card (lib/query mp (lib.metadata/card mp sql-card))
+              run       (fn [query]
+                          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                                             metabot-sql-execution-enabled?   true]
+                            (as-metabot metabot :internal
+                                        #(binding [tools.shared/*memory-atom*
+                                                   (atom {:conversation-id conversation-id
+                                                          :state           {:queries {"q" query}}
+                                                          :context         {}})
+                                                   scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                                                   scope/*current-user-scope*
+                                                   (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+                                           (run-query/run-query-tool {:query_id "q"})))))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content" (run over-card)))
+          (testing "inline SQL isn't judged here"
+            (is (not (str/includes? (:output (run (mt/native-query {:query "SELECT 1 AS X"}))) "curated")))))))))
+
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (testing "a missing id gets the handler's own answer, not a curation verdict"
     (mt/with-current-user (mt/user->id :crowberto)

@@ -15,6 +15,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.walk :as lib.walk]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.models.interface :as mi]
@@ -430,10 +431,21 @@
     (when (some-> row mi/can-read?)
       (check-curated-subject! label subject))))
 
+(defn- without-native-refs
+  "`query` with the template tags of its native stages removed, in joins too, so that the entity walk sees only what
+  the structured stages name."
+  [query]
+  (lib.walk/walk-stages query
+                        (fn [_query _path stage]
+                          (when (= :mbql.stage/native (:lib/type stage))
+                            (dissoc stage :template-tags)))))
+
 (defn check-curated-query!
   "Reject `query` — a query the conversation holds, as a lib query or a query map with `:database` — unless everything
-  it reads is curated or covered (see [[uncurated-query-sources]]), naming it by `label`. A native query names no
-  tables to judge it by and is left to the SQL tools' own gates. Callers decide whether the session is curated-only.
+  it reads is curated or covered (see [[uncurated-query-sources]]), naming it by `label`. A native stage is left to
+  the SQL tools' own gates: what it and its template tags name is set aside, and the structured stages around it,
+  a notebook joined to SQL or built on a SQL question, are judged like any other. Callers decide whether the session
+  is curated-only.
 
   The rule runs before the query processor checks the user's permissions on the query. A query the user may not
   run is refused here when it reads an uncurated entity, and by the processor otherwise, so the shape of the refusal
@@ -443,6 +455,5 @@
   (let [query (cond-> query
                 (not (:lib/metadata query))
                 (->> (lib/query (lib-be/application-database-metadata-provider (:database query)))))]
-    (when (and (not (lib/any-native-stage? query))
-               (seq (uncurated-query-sources query)))
+    (when (seq (uncurated-query-sources (without-native-refs query)))
       (recoverable.common/not-curated! {:label label}))))
