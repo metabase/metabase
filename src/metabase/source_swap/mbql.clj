@@ -51,16 +51,27 @@
       expression-name
       (lib.options/update-options assoc :lib/expression-name expression-name))))
 
+(defn- ref-to-resolved-column
+  "A new ref for the column `resolving-ref` resolves to in `stage-number` of `query`, or nil when it is the same as
+  `field-ref`, or when the column cannot be resolved, or when the new ref would not resolve back to it."
+  [query stage-number field-ref resolving-ref]
+  (when-let [column (lib.field.resolution/resolve-field-ref query stage-number resolving-ref)]
+    (when-not (::lib.field.resolution/fallback-metadata? column)
+      (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
+        (when (and (not (same-ref? field-ref new-field-ref))
+                   (or (not (lib/clause-of-type? new-field-ref :field))
+                       (let [new-column (lib.field.resolution/resolve-field-ref query stage-number new-field-ref)]
+                         (and (not (::lib.field.resolution/fallback-metadata? new-column))
+                              (= ((juxt :id :fk-field-id :lib/join-alias) new-column)
+                                 ((juxt :id :fk-field-id :lib/join-alias) column))))))
+          new-field-ref)))))
+
 (mu/defn upgrade-field-ref :- ::lib.schema.ref/ref
   "Generate a new ref for a column. Always takes a `:field` ref, may return a `:field` ref or an `:expression` ref."
   [query         :- ::lib.schema/query
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
-  (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-        (when-not (::lib.field.resolution/fallback-metadata? column)
-          (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
-            (when-not (same-ref? field-ref new-field-ref)
-              new-field-ref))))
+  (or (ref-to-resolved-column query stage-number field-ref field-ref)
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
@@ -220,11 +231,7 @@
                             ;; implicit joins FK table field ID
                             (and new-fk-id-column (:id new-fk-id-column))
                             (lib.options/update-options assoc :source-field (:id new-fk-id-column)))]
-    (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
-          (when-not (::lib.field.resolution/fallback-metadata? new-column)
-            (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref new-column))]
-              (when-not (same-ref? field-ref new-field-ref)
-                new-field-ref))))
+    (or (ref-to-resolved-column query stage-number field-ref swapped-field-ref)
         field-ref)))
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]

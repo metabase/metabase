@@ -19,6 +19,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared :as shared]
@@ -202,7 +203,12 @@
                  ;; throw on a calculation failure, so it lands in the catch below as a check we
                  ;; could not make rather than reading as a denial
                  (query-perms/can-run-query? normalized false true))
-        (let [field-table (metabot.perms/field-id->table-id field)
+        (let [field       (into field
+                                (when (= :mbql/query (:lib/type normalized))
+                                  (lib/all-field-ids
+                                   (lib/query (lib-be/application-database-metadata-provider database-id)
+                                              normalized))))
+              field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
           (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
                      (sandbox-visible-fields? field-table))

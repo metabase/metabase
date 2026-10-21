@@ -215,6 +215,9 @@
       (testing "a field reference in the older form"
         (refused "NOPE_LEGACY" #(assoc-in % [:dataset_query :stages 0 :filters]
                                           [["=" {} ["field" [db "PUBLIC" "VENUES" "NOPE_LEGACY"] nil] 1]])))
+      (testing "a field reference that names a column of its stage's source table"
+        (refused "NOPE_NAME" #(assoc-in % [:dataset_query :stages 0 :filters]
+                                        [["=" {} ["field" {:base-type "type/Text"} "NOPE_NAME"] 1]])))
       (testing "a table template tag"
         (refused "NOPE_TAG_TABLE" #(assoc % :dataset_query
                                           {:database db
@@ -324,6 +327,9 @@
           (refused (native {:type "card" :card-id other-id})))
         (testing "a snippet template tag"
           (refused (native {:type "snippet" :snippet-name "s" :snippet-id 1})))
+        (testing "a field reference that names a column of its stage's source table"
+          (refused "NOPE_NAME" #(assoc-in % [:dataset_query :stages 0 :filters]
+                                          [["=" {} ["field" {:base-type "type/Text"} "NOPE_NAME"] 1]])))
         (testing "a table template tag"
           (refused (native {:type "table" :table-id (mt/id :venues)})))))))
 

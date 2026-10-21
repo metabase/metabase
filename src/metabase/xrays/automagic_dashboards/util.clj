@@ -81,6 +81,19 @@
             [:sequential ::lib.schema.common/possibly-unnormalized-clause]]]
   (match/match-many form [:field & _] &match))
 
+(defn- resolved-field-id
+  "The ID of the Field a `:field` ref resolves to in the query of the root's entity or source card."
+  [root clause]
+  (when (sequential? clause)
+    (when-some [query (some (fn [x]
+                              (let [query (:dataset_query x)]
+                                (when (and (map? query) (:lib/metadata query) (seq (:stages query)))
+                                  query)))
+                            [(:entity root) (:source root)])]
+      (let [id (:id (lib/metadata query -1 clause))]
+        (when (pos-int? id)
+          id)))))
+
 (mu/defn ->field :- [:maybe [:and
                              (ms/InstanceOf :model/Field)
                              ::ads/field]]
@@ -92,7 +105,8 @@
                                                               :mbql.clause/field
                                                               :mbql.clause/expression]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
-                     (field-reference->id field-id-or-name-or-clause)
+                     (or (resolved-field-id root field-id-or-name-or-clause)
+                         (field-reference->id field-id-or-name-or-clause))
                      field-id-or-name-or-clause)]
     (or
      ;; Handle integer Field IDs.
