@@ -1,0 +1,47 @@
+name: Auto-pass a confirmed-flaky re-run
+
+# When someone re-runs a PR's "Run tests", asks ci-conductor whether the failures are flakes. If a
+# person has confirmed it for the PR's head commit, cancels the re-run and passes the jobs that
+# failed. The test suites know nothing of this. See .github/scripts/flaky-rerun-auto-pass.ts.
+#
+# Confirm in CI Conductor *before* re-running: each re-run asks once, when it starts.
+on:
+  workflow_run:
+    workflows: [Run tests]
+    types: [requested]
+
+jobs:
+  auto-pass:
+    name: Check for a confirmed-flaky re-run
+    # PR re-runs from this repo only: never a master or release-branch push, never a fork.
+    if: >-
+      ${{ github.repository == 'metabase/metabase'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.run_attempt > 1
+      && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+      - uses: ./.github/actions/prepare-node-bun
+      - name: Ask ci-conductor whether the failures are flaky
+        env:
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_AUTHOR: ${{ github.event.workflow_run.actor.login }}
+          CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
+          CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun .github/scripts/flaky-rerun-auto-pass.ts
