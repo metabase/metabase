@@ -28,7 +28,8 @@
                  :pages 2
                  :next-page-uri "metabase://user/recent-items?filter=<&\"&page=2"})]
     (is (str/includes? output
-                       "Fetch metabase://user/recent-items?filter=&lt;&amp;&quot;&amp;page=2 for the next page"))))
+                       (str "Fetch metabase://user/recent-items?filter=&lt;&amp;&quot;&amp;page=2 for the next page. "
+                            "Copy it exactly; do not modify its query string.")))))
 
 (deftest ^:parallel field->xml-test
   (testing "formats field with all attributes matching Python format"

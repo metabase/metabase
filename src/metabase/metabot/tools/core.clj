@@ -454,10 +454,10 @@
     (with-entity {:kind :timeline :id timeline-id}
       (timeline/include-events-singular (timeline/get-timeline timeline-id)))
 
-  `entity` is `{:kind <keyword> :id <id>}`. A 403 and a 404 — the two things `api/read-check` raises
-  — both become the same recoverable error; see `recoverable.common/not-found!` for why they are not
-  distinguished. Declared tool errors pass through unchanged. Other exceptions pass through, so a failure stays
-  unrecoverable instead of being reported to the model as a missing entity."
+  `entity` is `{:kind <keyword> :id <id>}`. Both 403 and 404 errors from `api/read-check` become
+  the same recoverable error; see `recoverable.common/not-found!` for why they are not distinguished.
+  Declared tool errors and other exceptions pass through unchanged, so other failures remain
+  unrecoverable."
   {:style/indent [:defn]}
   [entity & body]
   `(do-with-entity ~entity (fn [] ~@body)))

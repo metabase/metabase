@@ -1783,7 +1783,7 @@
         (is (> (:total structured-1) 25))
         (is (= 25 (count (:items structured-1))))
         (is (= "metabase://collections?tree=true&amp;page=2" next-page-uri))
-        (testing "the URI copied from the note reads the next page"
+        (testing "a URI copied from the note opens the next page"
           (is (= 2 (:page structured-2)))
           (is (= 25 (count (:items structured-2))))
           (is (= "metabase://collections?tree=true&page=3" (:next-page-uri structured-2)))

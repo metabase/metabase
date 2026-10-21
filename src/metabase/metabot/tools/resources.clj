@@ -1143,7 +1143,7 @@
     (llm-shape/entity->xml structured)))
 
 (defn- resource-element
-  "Wrap a resource body with its URI in an escaped XML attribute."
+  "Wrap a resource body in XML, escaping its URI attribute."
   [uri body]
   (str "<resource uri=\"" (llm-shape/escape-xml uri) "\">\n" body "\n</resource>"))
 
@@ -1217,7 +1217,7 @@
   (handle [_ {:keys [uri]} _ctx]
     (let [structured (:structured-output (dispatch uri))]
       (when-not structured
-        ;; Legacy table, card, metric, measure and segment helpers still return failures as text.
+        ;; Table, card, metric, measure and segment helpers return failures as text.
         (recoverable.common/not-found! (uri-entity (:segments (parse-uri uri)))))
       {:output            (format-content structured)
        :structured-output structured}))
