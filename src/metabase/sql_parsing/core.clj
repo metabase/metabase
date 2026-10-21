@@ -48,18 +48,18 @@
 (def ^:private underline-end "\u001b[0m")
 
 (defn- caret-line
-  "A line of carets under the token `snippet` underlines, or nil when it underlines none.
+  "A line of carets under the token `line` underlines, or nil when it underlines none.
 
-  The offsets are into the text with the escapes taken out, which is the `snippet` its reader will see."
-  [snippet]
-  (when-let [start (str/index-of snippet underline-start)]
+  The offsets are into the text with the escapes taken out, which is the `line` its reader will see."
+  [line]
+  (when-let [start (str/index-of line underline-start)]
     (let [plain (fn [s] (str/replace s ansi-escape ""))
-          after (subs snippet (+ start (count underline-start)))
+          after (subs line (+ start (count underline-start)))
           token (plain (if-let [end (str/index-of after underline-end)]
                          (subs after 0 end)
                          after))]
       (when (seq token)
-        (str (apply str (repeat (count (plain (subs snippet 0 start))) \space))
+        (str (apply str (repeat (count (plain (subs line 0 start))) \space))
              (apply str (repeat (count token) \^)))))))
 
 (defn- without-parser-internals
@@ -78,10 +78,10 @@
 (defn- diagnostic
   "`reported`, the message sqlglot gives for a failure, as the diagnostic [[parse-error-message]] describes."
   [reported]
-  (let [[detail snippet] (str/split reported #"\n" 2)]
-    (->> [(without-parser-internals detail)
-          (some-> snippet (str/replace ansi-escape ""))
-          (some-> snippet caret-line)]
+  (let [[detail & snippet] (str/split-lines reported)]
+    (->> snippet
+         (mapcat (fn [line] [(str/replace line ansi-escape "") (caret-line line)]))
+         (cons (without-parser-internals detail))
          (remove nil?)
          (str/join "\n"))))
 

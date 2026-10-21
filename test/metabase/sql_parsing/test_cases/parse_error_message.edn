@@ -39,4 +39,10 @@
    :dialect    "postgres"
    :sql        "SELECT * FROM ,"
    :internals  "<Token token_type: TokenType.COMMA, text: ,,"
-   :diagnostic "ParseError: Expected table name but got ','. Line 1, Col: 15.\n  SELECT * FROM ,\n                ^"}]}
+   :diagnostic "ParseError: Expected table name but got ','. Line 1, Col: 15.\n  SELECT * FROM ,\n                ^"}
+
+  {:name       "a token on the second of three lines"
+   :dialect    "postgres"
+   :sql        "SELECT 1\nFROM WHERE venues\nLIMIT 1"
+   :internals  "<Token token_type: TokenType.WHERE, text: WHERE, line: 2,"
+   :diagnostic "ParseError: Expected table name but got 'WHERE'. Line 2, Col: 10.\n  SELECT 1\nFROM WHERE venues\n     ^^^^^\nLIMIT 1"}]}
