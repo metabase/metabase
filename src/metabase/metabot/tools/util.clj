@@ -7,7 +7,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
@@ -222,7 +223,8 @@
                      seen
                      (into tables (:table refs))
                      (inc depth)))))
-        (catch Throwable _
+        (catch Exception e
+          (log/debug e "Can't walk the card's definition; treating its tables as unknown")
           nil)))))
 
 (defn metric-query

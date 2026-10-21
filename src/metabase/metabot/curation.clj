@@ -173,7 +173,7 @@
   (when (seq definition)
     (try
       (lib/query mp definition)
-      (catch Throwable e
+      (catch Exception e
         (log/debug e "Curation check can't build a definition query; treating it as uncurated")
         nil))))
 
