@@ -5,11 +5,13 @@ export const ChartSettingToggle = ({
   onChange,
   id,
   disabled,
+  readOnly,
 }: {
   value: boolean | undefined;
   onChange: (value: boolean) => void;
   id?: string;
   disabled?: boolean;
+  readOnly?: boolean;
 }) => (
   <Switch
     labelPosition="left"
@@ -17,6 +19,6 @@ export const ChartSettingToggle = ({
     onChange={(e) => onChange(e.currentTarget.checked)}
     id={id}
     role="switch"
-    disabled={disabled}
+    disabled={disabled || readOnly}
   />
 );
