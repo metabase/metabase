@@ -40,6 +40,7 @@ const FieldSectionBase = ({
   ...stackProps
 }: FieldSectionBaseProps & StackProps) => {
   const id = getRawTableFieldId(field);
+  const readOnly = !table.can_write;
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -100,6 +101,7 @@ const FieldSectionBase = ({
           nameMaxLength={254}
           namePlaceholder={t`Give this field a name`}
           namePrefix={parent?.display_name}
+          readOnly={readOnly}
           onDescriptionChange={handleDescriptionChange}
           onNameChange={handleNameChange}
         />
@@ -143,21 +145,25 @@ const FieldSectionBase = ({
       <Stack gap="xxl">
         <DataSection
           field={field}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <MetadataSection
           field={field}
           table={table}
           getFieldHref={getFieldHref}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <BehaviorSection
           field={field}
           databaseId={table.db_id}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <FormattingSection
           field={field}
+          readOnly={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
       </Stack>

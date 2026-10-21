@@ -17,7 +17,7 @@ import type {
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { createApiKey, createTestNativeQuery } from "./api";
+import { createApiKey, createTestNativeQuery, updateSetting } from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
@@ -48,7 +48,6 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   bundle_path: "dist/index.js",
   enabled: true,
   resource_collection_id: 1,
-  table_ids: [],
   allowed_hosts: [],
   bundle_hash: "e2e-bundle-hash",
   created_at: "2024-01-01T00:00:00Z",
@@ -619,6 +618,7 @@ export function pullExampleDataApps({
 }: { goodAppCards?: ResourceEntity[] } = {}) {
   setupGitSync();
   copySyncedCollectionFixture();
+  updateSetting("remote-sync-custom-collections-enabled", true);
   copySyncedDataAppsFixture();
   if (goodAppCards) {
     writeDataAppResources(LOCAL_GIT_PATH, {
@@ -673,6 +673,7 @@ function commitDataApp(
   if (initializeRepo) {
     setupGitSync();
     copySyncedCollectionFixture();
+    updateSetting("remote-sync-custom-collections-enabled", true);
   }
   // A copy only adds, so a file the author deleted would stay in the repository.
   cy.task("removeDataAppPaths", { paths: [collectionsDir] });

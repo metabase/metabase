@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
@@ -90,7 +91,7 @@ describe("MainNavSharedCollections > new shared collection modal", () => {
     fetchMock.get("path:/api/collection/1", MOCK_TENANT_COLLECTIONS[0]);
 
     const addButton = screen.getByRole("button", { name: /add/i });
-    addButton.click();
+    await userEvent.click(addButton);
 
     expect(
       await screen.findByText("New shared collection"),

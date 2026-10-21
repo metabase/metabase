@@ -971,6 +971,19 @@
       (is (= {:type "errored" :error {:message "boom"}} (:status message)))
       (is (not-any? annotated? (:parts message))))))
 
+(deftest ^:parallel message->client-message-error-code-test
+  (testing "a stored error code is also the client's `error.type`, as on the live stream"
+    (is (= {:type "errored"
+            :error {:error-code "ai_provider_context_full" :message "m" :type "ai_provider_context_full"}}
+           (:status (client-message
+                     {:role :assistant :finished true :data []
+                      :error (json/encode {:error-code "ai_provider_context_full" :message "m"})})))))
+  (testing "an error without a code keeps its stored type"
+    (is (= {:type "errored" :error {:message "boom" :type "java.lang.RuntimeException"}}
+           (:status (client-message
+                     {:role :assistant :finished true :data []
+                      :error (json/encode {:message "boom" :type "java.lang.RuntimeException"})}))))))
+
 (deftest ^:parallel message->client-message-incomplete-status-test
   (testing "a turn that stopped early reloads as incomplete, carrying the reason"
     (doseq [reason ["length" "content-filter" "tool-calls"]]
@@ -1034,7 +1047,25 @@
               {:type "errored" :error {:message "boom"}}
               {:type "done"}
               {:type "done"}]
-             (mapv :status result))))))
+             (mapv :status result)))))
+  (testing "a context-full turn stays, so a reloaded conversation still reads as full"
+    (let [result (metabot-persistence/messages->client-messages
+                  [{:id 1 :role :user      :data [{:type "text" :text "first"}]}
+                   {:id 2 :role :assistant :data [{:type "text" :text "first reply"}]}
+                   {:id 3 :role :user      :data [{:type "text" :text "too long"}]}
+                   {:id 4 :role :assistant :finished true :data []
+                    :error (json/encode {:error-code "ai_provider_context_full" :message "full"})}])]
+      (is (= ["1" "2" "3" "4"] (mapv :id result)))
+      (is (=? {:type "errored" :error {:type "ai_provider_context_full" :message "full"}}
+              (:status (peek result))))))
+  (testing "an errored turn with another code is still dropped"
+    (is (= ["1" "2"]
+           (mapv :id (metabot-persistence/messages->client-messages
+                      [{:id 1 :role :user      :data [{:type "text" :text "first"}]}
+                       {:id 2 :role :assistant :data [{:type "text" :text "first reply"}]}
+                       {:id 3 :role :user      :data [{:type "text" :text "broken"}]}
+                       {:id 4 :role :assistant :finished true :data []
+                        :error (json/encode {:error-code "ai_provider_unavailable" :message "m"})}]))))))
 
 (defn- start-and-finalize!
   "Run start-turn! then finalize-assistant-turn! with a one-text-part body (as :rasta).
@@ -1444,10 +1475,40 @@
           (is (= ""
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
                                 {:type :tool-output :id "c1" :result nil}]))))
-        (testing "errored tool output uses the error text"
-          (is (= "kaboom"
+        (testing (str "a failed tool output replays the model-facing text from its result. The "
+                      "error lives in `:result`, not on the part, and `:errorText` is what the "
+                      "model reads again on replay — so it is the authored failure text, not the "
+                      "sentence the live UI channel shows.")
+          (is (= "Table 7 was not found. Call `search` for a table id."
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
-                                {:type :tool-output :id "c1" :error {:message "kaboom"}}]))))))))
+                                {:type   :tool-output :id "c1"
+                                 :result {:output "Table 7 was not found. Call `search` for a table id."
+                                          :error  {:class :recoverable
+                                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}}]))))))))
+
+(deftest history-hides-query-results-while-query-execution-is-off-test
+  (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            _               (seed-turn! conversation-id "how many?"
+                                        [{:type :tool-input :id "c1" :function "run_query" :arguments {:query_id "q"}}
+                                         {:type :tool-output :id "c1" :result {:output "<query_results>42</query_results>"}}
+                                         {:type :tool-input :id "c2" :function "search" :arguments {:q "x"}}
+                                         {:type :tool-output :id "c2" :result {:output "found"}}
+                                         {:type :text :text "There are 42."}])
+            tool-contents   (fn []
+                              (->> (metabot-persistence/history (metabot-persistence/live-messages conversation-id))
+                                   (filter #(= :tool (:role %)))
+                                   (mapv :content)))]
+        (is (= {:on       ["<query_results>42</query_results>" "found"]
+                :off      ["Results hidden: query execution is turned off." "found"]
+                :on-again ["<query_results>42</query_results>" "found"]}
+               {:on       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                            (tool-contents))
+                :off      (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+                            (tool-contents))
+                :on-again (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                            (tool-contents))}))))))
 
 (deftest history-drops-errored-turn-test
   (testing "a turn whose reply errored is dropped whole; surrounding turns survive"

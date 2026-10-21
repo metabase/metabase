@@ -153,10 +153,9 @@ export const RelativeCurrent = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
-    const week = canvas.getByRole("button", {
-      name: "Week",
-    });
-    week.classList.add("pseudo-hover");
+    // Chip's hover styles live on its label, not the hidden radio input
+    const week = canvas.getByText("Week").closest("label");
+    week?.classList.add("pseudo-hover");
     const next = canvas.getByRole("tab", {
       name: "Next",
     });

@@ -366,6 +366,7 @@
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
+           funnysql
            task.secure-delegate
            util
            util.classloader
@@ -603,7 +604,6 @@
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
-                    :model/Session
                     :model/Setting
                     :model/User
                     :model/UserParameterValue
@@ -891,6 +891,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Graphy"
+   :api  #{metabase.dependencies.hooks}
+   :uses #{premium-features}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
@@ -981,18 +986,21 @@
   {:team "Embedding"
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
+           metabase.embedding.sdk-react-18
            metabase.embedding.settings
            metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
+           app-db
+           batch-processing
            models
            premium-features
            server
            settings
            util}
    :model-imports #{:model/Card :model/Dashboard}
-   :model-exports #{:model/EmbeddingTheme}}
+   :model-exports #{:model/EmbeddingSdkReact18Host :model/EmbeddingTheme}}
 
   embedding-hub
   {:team "Embedding"
@@ -1038,7 +1046,11 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/EmbeddingSdkReact18Host
+                    :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1127,6 +1139,11 @@
            api
            request
            util}}
+
+  funnysql
+  {:team "Querying Platform"
+   :api  #{metabase.funnysql.core}
+   :uses #{util}}
 
   geojson
   {:team "UX West"
@@ -1442,10 +1459,13 @@
            events
            lib.schema
            mcp
+           metabot.agent-api
            models
+           premium-features
            request
            server
            settings
+           sso.auth-identity
            system
            task
            tracing
@@ -1456,6 +1476,7 @@
   {:team "Graphy"
    :api  #{metabase.measures.api metabase.measures.schema}
    :uses #{api
+           collections
            events
            lib
            lib.be
@@ -1472,7 +1493,10 @@
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Measure}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
 
   metabot
   {:team    "Metabot"
@@ -1507,6 +1531,7 @@
               collections
               documents
               driver
+              embedding
               events
               explorations
               interestingness
@@ -1577,6 +1602,7 @@
               metabase.agent-api.schema
               metabase.agent-api.settings}
    :uses    #{ai-tracing
+              analytics.interface
               api
               channel
               collections
@@ -1738,6 +1764,7 @@
            metabase.models.visualization-settings}
    :uses #{api
            app-db
+           dependencies
            lib
            lib.legacy-mbql
            lib.metadata
@@ -2003,7 +2030,7 @@
    :uses #{analytics.interface
            analytics.internal-stats
            app-db
-           events
+           dependencies
            settings
            startup
            task
@@ -2270,10 +2297,12 @@
               metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
+              metabase.query-processor.pivot.common
               metabase.query-processor.preprocess
               metabase.query-processor.reducible
               metabase.query-processor.result-serialization
               metabase.query-processor.schema
+              metabase.query-processor.sensitive-fields
               metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -2529,14 +2558,12 @@
 
   search.embeddings
   {:team "Metabot"
-   :ns-prefix "metabase.embeddings"
-   :api  #{metabase.embeddings.provider metabase.embeddings.startup}
+   :api  #{metabase.search.embeddings.provider metabase.search.embeddings.startup}
    :uses #{plugins util}}
 
   search.entity-retrieval
   {:team "Metabot"
-   :ns-prefix "metabase.entity-retrieval"
-   :api #{metabase.entity-retrieval.core metabase.entity-retrieval.mirror}
+   :api #{metabase.search.entity-retrieval.core metabase.search.entity-retrieval.mirror}
    :uses #{premium-features util}
    :model-imports #{:model/OsiAiContext}}
 
@@ -2550,6 +2577,7 @@
    :module-exports #{segments.rest}
    :api  #{metabase.segments.schema}
    :uses #{api
+           collections
            lib
            lib.be
            lib.schema
@@ -2563,7 +2591,10 @@
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Segment}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
 
   segments.rest
   {:team "Graphy"
@@ -2814,6 +2845,7 @@
            app-db
            audit-app
            database-routing
+           dependencies
            driver
            events
            interestingness
@@ -3045,6 +3077,7 @@
                     :model/TransformRun}
    :uses #{app-db
            database-routing
+           dependencies
            driver
            events
            lib
@@ -3796,11 +3829,9 @@
            api-scope
            audit-app
            collections
-           driver
            events
            lib
            lib.be
-           lib.metadata
            lib.schema
            lib.types
            metabot
@@ -3813,8 +3844,11 @@
            request
            settings
            system
+           users
            util
+           util.graph
            warehouse-schema-overlay
+           enterprise/dependencies
            enterprise/serialization}
    :model-imports #{:model/Action
                     :model/Card
@@ -3824,7 +3858,6 @@
                     :model/Field
                     :model/Measure
                     :model/Permissions
-                    :model/QueryAction
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -3857,6 +3890,7 @@
            lib.metadata
            lib.schema
            models
+           permissions
            premium-features
            query-processor
            settings
@@ -3870,18 +3904,20 @@
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
-   :uses #{api
+   :uses #{actions
+           api
            app-db
+           batch-processing
            collections
            database-routing
            documents
            driver
-           events
            lib
            lib.be
            lib.metadata
            lib.metric
            lib.schema
+           lib.types
            measures
            models
            native-query-snippets
@@ -3901,16 +3937,26 @@
            util.graph
            warehouse-schema-overlay
            enterprise/permissions.sandbox}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Dimension
                     :model/Document
+                    :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/QueryAction
                     :model/Sandbox
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform}}
 
   enterprise/dependencies.replacement
@@ -4196,7 +4242,6 @@
            app-db
            audit-app
            driver
-           events
            lib
            lib.be
            lib.legacy-mbql
@@ -4292,8 +4337,7 @@
 
   enterprise/search.embeddings
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.embeddings"
-   :api #{metabase-enterprise.embeddings.client}
+   :api #{metabase-enterprise.search.embeddings.client}
    :uses #{enterprise/search.semantic}}
 
   enterprise/search.embeddings.embedder
@@ -4304,8 +4348,7 @@
 
   enterprise/search.entity-retrieval
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.entity-retrieval"
-   :api #{metabase-enterprise.entity-retrieval.init}
+   :api #{metabase-enterprise.search.entity-retrieval.init}
    :uses #{analytics.interface
            app-db
            collections
@@ -4326,14 +4369,13 @@
 
   enterprise/search.semantic
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.semantic-search"
-   :api #{metabase-enterprise.semantic-search.api
-          metabase-enterprise.semantic-search.core
-          metabase-enterprise.semantic-search.db.datasource
-          metabase-enterprise.semantic-search.embedding
-          metabase-enterprise.semantic-search.embedding-health
-          metabase-enterprise.semantic-search.init
-          metabase-enterprise.semantic-search.util}
+   :api #{metabase-enterprise.search.semantic.api
+          metabase-enterprise.search.semantic.core
+          metabase-enterprise.search.semantic.db.datasource
+          metabase-enterprise.search.semantic.embedding
+          metabase-enterprise.search.semantic.embedding-health
+          metabase-enterprise.search.semantic.init
+          metabase-enterprise.search.semantic.util}
    :uses #{activity-feed
            analytics
            analytics.interface
@@ -4398,7 +4440,6 @@
            app-db
            appearance
            collections
-           events
            lib
            lib.schema
            logger

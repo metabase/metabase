@@ -512,14 +512,15 @@
                :type                   "question"
                :display                "table"
                :creator_id             "crowberto@metabase.com"
-               :visualization_settings {:column_settings nil}
+               :card_schema            pos-int?
+               :visualization_settings {}
                :parameters             []
                :parameter_mappings     []
                :dataset_query          {:database (db-name)
                                         :stages   [{:source-table (table-path "VENUES") :limit 5}]}}
               entity))
       (is (not-any? (partial contains? entity)
-                    [:description :collection_position :public_uuid :card_schema :archived :enable_embedding])
+                    [:description :collection_position :public_uuid :archived :enable_embedding])
           "what serialization leaves unset or at its default is left out, as the format omits it"))))
 
 (deftest keys-come-in-the-order-serialization-writes-them-test
@@ -626,3 +627,15 @@
                                                                                          :column {:type "column" :name "CATEGORY_ID"}}]}]})]})]
       (is (=? [["field" {:name "category"} some?]]
               (get-in (file-entity file) [:dataset_query :stages 0 :breakout]))))))
+
+(deftest unsupported-bin-count-lists-presets-test
+  (is (=? {:queries [{:error "Unsupported bin count 20. Supported counts for this field are 10, 50, and 100."}
+                     {:file string?}]}
+          (generate! :crowberto 200
+                     {:queries (for [num-bins [20 50]]
+                                 (query-item (str "Venues by price " num-bins)
+                                             (venues-definition
+                                              :aggregations [{:type "operator" :operator "count"}]
+                                              :breakouts [(venues-column "PRICE"
+                                                                         :binning {:strategy "num-bins"
+                                                                                   :numBins num-bins})])))}))))

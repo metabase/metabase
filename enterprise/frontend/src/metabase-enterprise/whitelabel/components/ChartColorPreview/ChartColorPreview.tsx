@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { Box, Flex } from "metabase/ui";
+import type { ColorPalette } from "metabase/ui/colors/types";
 
 import { ChartColorSample } from "../ChartColorSample";
 
@@ -10,7 +11,7 @@ import { getAccentColorGroups } from "./utils";
 const PREVIEW_TIMEOUT = 400;
 
 export interface ChartColorPreviewProps {
-  colorPalette: Record<string, string>;
+  colorPalette: ColorPalette;
 }
 
 export const ChartColorPreview = ({

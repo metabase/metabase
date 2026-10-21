@@ -2,12 +2,14 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.agent-api.api :as agent-api]
    [metabase.api-scope.core :as api-scope]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
@@ -29,14 +31,13 @@
 (defonce ^:private provider (atom nil))
 
 (defn supported-scopes
-  "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`).
-
-  `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
-  discovery metadata, so keeping it out means no client is led toward it. Note this is not a gate: dynamic
-  registration is unauthenticated and accepts any registered scope, so a client that names `mb:full` itself still
-  registers with it. Keeping it off this list narrows who finds it, not who may ask."
+  "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`)."
   []
-  (vec (into (sorted-set) (mcp/all-scopes))))
+  (-> (sorted-set)
+      (into (mcp/v2-scopes))
+      (into (agent-api/defendpoint-scopes))
+      (disj "mb:full") ;; mb:full should not appear so clients don't find it; they can still register with it (e.g., CLI)
+      vec))
 
 (defn all-scopes-registered?
   "True when every scope in the space-delimited `scope` string is registered via
@@ -57,7 +58,7 @@
   "The scopes the MCP resource at `path` accepts, which [[narrow-scope-to-resource]] trims a grant to. Every path in
   [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they all accept the same set: the scopes
   the v2 tool registry gates on plus the resource scopes its UI tools render through. What the resource *advertises*
-  is the narrower [[mcp-resource-advertised-scopes]].
+  is [[mcp-resource-advertised-scopes]].
 
   This branched while v1 was still served. v1's tools gated on the per-entity agent-API scopes
   (`agent:question:create`, `agent:sql:execute`, …), so the aliases that reached v1 had to advertise those or
@@ -69,11 +70,12 @@
   (vec (into (sorted-set) (mcp/v2-scopes))))
 
 (defn mcp-resource-advertised-scopes
-  "The RFC 9728 `scopes_supported` for the MCP resource at `path`: the baseline a client requests on first connect, a
-  subset of [[mcp-resource-scopes]]."
-  ;; Narrower than what the resource accepts: a client reaches the rest by a 403 `insufficient_scope` step-up.
+  "The RFC 9728 `scopes_supported` for the MCP resource at `path`: every v2 scope, in surface order, which Claude Code
+  and the Claude connectors request on first connect."
+  ;; The whole surface, not the baseline (ENG-11089): a manual reconnect asks for exactly this, so a narrower list left
+  ;; the write scopes unreachable for clients whose step-up is lossy.
   [_path]
-  (vec (mcp/v2-baseline-scopes)))
+  (vec (mcp/v2-scopes)))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
@@ -117,9 +119,7 @@
   ;; scope still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
   ;; registration is enabled, so an admin who turned it off leaves existing clients without those.
   ;;
-  ;; The MCP kill switch is the one thing that stops the widening entirely. Some MCP surface scopes also gate the agent
-  ;; API (`agent:resource:read` is the declared scope of `POST /api/agent/v1/read-resource`), which has its own lever,
-  ;; so widening with MCP off would hand a client a scope its registration never included for a surface still serving.
+  ;; The MCP kill switch stops the MCP part of the widening: with MCP off, no surface serves those scopes.
   (reify oidc.proto/ClientStore
     (get-client [_ client-id]
       (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
@@ -167,6 +167,12 @@
                  (subs 0 (dec (count path)))))))
       (catch java.net.URISyntaxException _ nil))))
 
+(defn- mcp-endpoint-paths-by-url
+  "Return the MCP endpoint paths keyed by their [[canonical-resource-uri]] under the Site URL."
+  []
+  (into {} (keep (fn [path] (some-> (canonical-resource-uri (str (system/site-url) path)) (vector path))))
+        (mcp/mcp-endpoint-paths)))
+
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
@@ -202,12 +208,27 @@
         ;; token has to work against each -- so the accepted set is the UNION of what they accept, not the set
         ;; of whichever one is checked first. Taking a single winner would drop the v1-only scopes when a v1
         ;; alias is named alongside v2, silently shrinking a grant the client asked for and the user approved.
-        matched  (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
-                         (mcp/mcp-endpoint-paths))]
+        matched  (keep (mcp-endpoint-paths-by-url) named)]
     (if (or (not scope) (empty? matched))
       scope
       (let [accepted (into #{} (mapcat mcp-resource-scopes) matched)]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
+
+(defn mcp-resource-url
+  "Return the canonical MCP endpoint's RFC 8707 resource indicator under the Site URL.
+
+  Return nil when no Site URL is set."
+  []
+  (some-> (system/site-url) (str (mcp/mcp-canonical-path))))
+
+(defn mcp-endpoint-resource?
+  "Return whether every RFC 8707 indicator in `resources` names the MCP endpoint.
+
+  Return true when `resources` names none. `resources` is a string or a sequence of strings.
+  Compare each string's [[canonical-resource-uri]] with the Site URL joined to each of
+  [[metabase.mcp.core/mcp-endpoint-paths]]."
+  [resources]
+  (every? (comp (mcp-endpoint-paths-by-url) canonical-resource-uri) (cond-> resources (string? resources) vector)))
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
@@ -286,3 +307,11 @@
               (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+
+(defenterprise jwt-bearer-grant-enabled?
+  "Return whether JWT authentication is enabled and configured.
+
+  The JWT bearer grant (RFC 7523) requires this. Always false on OSS."
+  metabase-enterprise.sso.integrations.jwt
+  []
+  false)

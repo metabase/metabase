@@ -1,6 +1,5 @@
 (ns metabase.driver.sql-jdbc.actions
   (:refer-clojure :exclude [some mapv select-keys empty? not-empty get-in])
-  #_{:clj-kondo/ignore [:discouraged-namespace]} ;; for using toucan2 in this ns
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]

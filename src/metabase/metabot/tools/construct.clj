@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [clojure.string :as str]
    [malli.error :as me]
+   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -17,7 +19,8 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -28,7 +31,9 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -121,8 +126,19 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
+   [:show_chart {:optional true
+                 :description (str "Pass false for a query you build only to read its values with run_query: "
+                                   "the user is then shown no chart. Defaults to true.")}
+    [:maybe :boolean]]
    [:title :string]
    [:description :string]])
+
+(defn without-show-chart
+  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
+   model is not told about the argument."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema] output]]
+                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -636,27 +652,70 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
-(defn- as-agent-input-error
-  "Wrap `e` as an agent-input error.
+(defn database-error?
+  "Returns true for database failures that must not be relayed as input errors."
+  [e]
+  (let [{:keys [status-code agent-error? error]} (ex-data e)
+        causes (u/full-exception-chain e)]
+    (boolean
+     (and (not (and status-code (<= 400 status-code 499)))
+          (or (some #(instance? SQLException %) causes)
+              (and (not (and (nil? status-code)
+                             (or agent-error? (tools/pipeline-error-code error))))
+                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
 
-  Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
-  HTTP callers additionally need a status code; default representation/repair failures to
-  400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
-  Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+(defn- as-agent-input-error
+  "Return database failures unchanged; wrap other exceptions as agent-input errors.
+
+  The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
+  callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
-  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-        data   (cond-> base
-                 (nil? (:status-code base)) (assoc :status-code 400))]
-    (ex-info (ex-message e) data e)))
+  (if (database-error? e)
+    e
+    (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+          data   (cond-> base
+                   (nil? (:status-code base)) (assoc :status-code 400))]
+      (ex-info (ex-message e) data e))))
+
+(defn- not-runnable-problem
+  "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add
+  to Malli's own message. Missing keys the LLM never writes itself are translated into their usual
+  cause instead of being named."
+  [error]
+  (let [missing (when (= :malli.core/missing-key (:type error)) (peek (:in error)))]
+    (cond
+      ;; normalization stamps `:lib/uuid` on every clause; one missing means normalizing a clause
+      ;; inside it failed, often because it references something that doesn't exist
+      (= :lib/uuid missing)
+      (tru "a reference inside it could not be resolved - often a field reference to a column, join alias, or expression that does not exist. Refer to a join''s or an earlier stage''s columns by their exact machine name (an aggregation is `min`, `count`, `sum`)")
+
+      (= :base-type missing)
+      (tru "a field reference by name is missing `base-type`, usually because the name matches no real column")
+
+      missing
+      (tru "missing `{0}`" (name missing))
+
+      ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
+      (= "non-aggregation expression" (me/error-message error))
+      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
 (defn- query-not-runnable-explanation
-  "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli
-  explanation of why; nil when the query is runnable."
+  "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
+  description of where and why; nil when the query is runnable. Problems [[not-runnable-problem]]
+  explains are listed first, and the usual causes are added when it explains none."
   [pmbql-query]
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-      (me/humanize explanation))))
+      (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
+        (cond-> (or (some->> errors
+                             (map #(str (pr-str (:in %)) ": " (or (not-runnable-problem %) (me/error-message %))))
+                             distinct
+                             (take 3)
+                             seq
+                             (str/join "; "))
+                    (tru "the query does not match the query builder''s schema"))
+          (not-any? not-runnable-problem errors)
+          (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -724,10 +783,7 @@
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
         checked     (check-source-table-query-permissions! mp parsed)]
-    ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
-    ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
-    ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
-    ;; them reach the tool wrapper with the flag set.
+    ;; Relay query-input errors while preserving database and permission failures.
     (try
       (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the
             ;; clause left alone - and `resolve-query` below resolves the query for real. A refusal
@@ -738,8 +794,8 @@
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
-                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
-                                                 (pr-str why))
+                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Problem in {0}."
+                                                 why)
                                             {:agent-error? true
                                              :error        :query-not-runnable
                                              :status-code  400})))
@@ -757,7 +813,7 @@
                              :query          pmbql-query
                              :query-json     exported-repr
                              :result-columns (result-columns-for-query pmbql-query mp)}
-         :instructions      (instructions/query-created-instructions-for query-id)})
+         :instructions      (instructions/query-created-instructions-for query-id false)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
         ;; HTTP callers get the standard forbidden response instead of an agent-error payload.
@@ -772,7 +828,7 @@
   `recovery-hint` is absent or has nothing to say about this error."
   [e recovery-hint]
   (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
-    (ex-info (str (ex-message e) " " hint) (ex-data e) e)
+    (ex-info (str (ex-message e) "\n" hint) (ex-data e) e)
     e))
 
 (defn execute-representations-query
@@ -839,65 +895,87 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- tool-output
+  "The text the model sees: `result-xml` followed by `instruction-text`."
+  [result-xml instruction-text]
+  (str "<result>\n" result-xml "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
-(mu/defn ^{:tool-name "construct_notebook_query"
-           :scope     scope/agent-notebook-create}
-  construct-notebook-query-tool
-  "Construct and visualize a notebook query from a metric, model, or table.
+(def ^:private tool-description
+  "What the model is told `construct_notebook_query` is."
+  (str
+   "Construct and visualize a notebook query from a metric, model, or table.\n"
+   "\n"
+   "Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a\n"
+   "short, human-friendly `title` shown above the resulting chart. Also provide a concise\n"
+   "one- or two-sentence `description` of what the chart shows (the metric, the grouping, and\n"
+   "any notable filter); it is used as the saved question's description. See\n"
+   "`resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."))
 
-  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
-  short, human-friendly `title` shown above the resulting chart. Also provide a concise
-  one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
-  any notable filter); it is used as the saved question's description. See
-  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
-  (try
-    (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
-          chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
-                                      :table)
-          query-result            (execute-representations-query
-                                   query
-                                   {:recovery-hint recovery-hints/recovery-hint})
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [chart-result (create-chart-tools/create-chart
-                            {:query-id      (:query-id structured)
-                             :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
-              full-structured (assoc structured
+(defn- chart-instructions
+  "What to tell the model to do with the chart it just got."
+  [chart-id]
+  (let [link (te/link "Chart" "metabase://chart/" chart-id)]
+    (te/lines
+     "Your query and chart have been created successfully."
+     ""
+     "Next steps to present the chart to the user:"
+     (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+     "- If creating multiple charts, present all chart links")))
+
+(defrecord ConstructNotebookQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "construct_notebook_query"
+     :description tool-description
+     :scope       scope/agent-notebook-create
+     :args        construct-notebook-query-args-schema})
+
+  (handle [_ {:keys [query visualization show_chart title description]} _ctx]
+    (let [chart-type (or (-> visualization
+                             (some-> (update-keys (comp keyword u/->kebab-case-en name)))
+                             :chart-type
+                             chart-type->keyword)
+                         :table)
+          ;; Declared pipeline errors and refusals are recoverable; anything else ends the turn.
+          structured (:structured-output (tools/with-pipeline-errors
+                                           (execute-representations-query query)))
+          ;; A query built only to be read needs run_query, so without it the chart is the one way
+          ;; the user sees anything and is always shown.
+          show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+      (if-not show-chart?
+        (let [instruction-text (te/lines
+                                "Your query has been created. The user has not been shown it."
+                                ""
+                                (str "To read its values, call `run_query` with `query_id` `"
+                                     (:query-id structured) "`."))]
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
+                                           instruction-text)
+           :structured-output (assoc structured :result-type :query)})
+        (let [chart            (create-chart-tools/create-chart
+                                {:query-id      (:query-id structured)
+                                 :chart-type    chart-type
+                                 :queries-state {(:query-id structured) (:query structured)}})
+              instruction-text (chart-instructions (:chart-id chart))]
+          {:output            (tool-output (structured->chart-xml structured (:chart-id chart) chart-type)
+                                           instruction-text)
+           :structured-output (assoc structured
                                      :result-type   :query
-                                     :chart-id      (:chart-id chart-result)
-                                     :chart-type    (:chart-type chart-result)
-                                     :chart-link    (:chart-link chart-result)
-                                     :chart-content (:chart-content chart-result))
-              instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-                (te/lines
-                 "Your query and chart have been created successfully."
-                 ""
-                 "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-                 "- If creating multiple charts, present all chart links"))
-              chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
+                                     :chart-id      (:chart-id chart)
+                                     :chart-type    (:chart-type chart)
+                                     :chart-link    (:chart-link chart)
+                                     :chart-content (:chart-content chart))
            :data-parts        [(streaming/viz-part
-                                {:entity-id   (:chart-id chart-result)
+                                {:entity-id   (:chart-id chart)
                                  :query-id    (:query-id structured)
-                                 :query       (links/->legacy-mbql (:query structured))
+                                 :query       (links/->frontend-query (:query structured))
                                  :display     chart-type
                                  :title       title
-                                 :description description})]
-           :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
-    (catch Exception e
-      (tools.u/handle-agent-or-api-error e))))
+                                 :description description})]})))))
+
+(def construct-notebook-query-tool
+  "`construct_notebook_query`: run an agent-authored MBQL 5 query through the representations
+  pipeline and attach a chart to the conversation."
+  (->ConstructNotebookQueryTool))

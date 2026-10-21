@@ -137,7 +137,7 @@
   org.apache.sshd/sshd-core                 {:mvn/version "2.19.0"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
-  org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
+  org.apache.tika/tika-core                 {:mvn/version "3.3.3"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.86"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.86"}
@@ -259,7 +259,7 @@
     clj-kondo/clj-kondo          {:mvn/version "2026.07.24"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
-    {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
+    {:mvn/version "1.9.0"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
@@ -429,6 +429,10 @@
   ;; as some default values differ between dev and prod
   ;;
   ;;    clojure -M:ee:doc api-documentation
+  ;;
+  ;; or run every documentation command in one JVM
+  ;;
+  ;;    clojure -M:ee:doc all-documentation
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
@@ -752,7 +756,8 @@
                                    "test/metabase/channel/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"
-                                   "frontend/src/metabase/documents/components/Editor/data/data\\.json$"]}}
+                                   "frontend/src/metabase/documents/components/Editor/data/data\\.json$"
+                                   "frontend/src/metabase/common/components/EmojiPicker/emojibase/en\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
@@ -920,7 +925,7 @@
    ;; declared here too so the alias stands on its own instead of failing at exec time when `:dev`
    ;; happens to be absent. Keep the version in step with the one in `:dev`.
    :extra-paths ["dev/src"]
-   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.6.2"}}
+   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.9.0"}}
    :exec-fn  dev.profile-tests/run
    :jvm-opts ["-Dclj-async-profiler.output-dir=target"
               ;; without these, inlined frames are attributed to the wrong method

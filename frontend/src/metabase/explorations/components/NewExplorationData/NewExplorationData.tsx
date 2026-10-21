@@ -199,7 +199,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       className={S.container}
       data-testid="research-content"
       gap="sm"
-      bg="background-primary"
+      bg="background_page-primary"
       flex={1}
       px="xxl"
       pt="xl"
@@ -237,7 +237,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         <Button
           variant="subtle"
           color="neutral"
-          bd="1px dashed border"
+          bd="1px dashed border-neutral"
           bdrs="xl"
           leftSection={
             timelines.length ? <Icon name="add" size={12} /> : undefined

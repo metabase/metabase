@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -36,6 +37,35 @@
               (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
+
+(deftest create-sql-query-says-whether-its-results-can-be-read-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id (mt/user->id :crowberto)}
+                       :model/MetabotConversation {theirs :id} {:user_id (mt/user->id :rasta)}]
+          (doseq [:let [both #{"create_sql_query" "run_query"}]
+                  [situation tool-names query-on? sql-on? conversation readable?]
+                  [["run_query offered and SQL execution on"    both                  true  true  own    true]
+                   ["run_query offered and SQL execution off"   both                  true  false own    false]
+                   ["run_query offered and query execution off" both                  false true  own    false]
+                   ["no run_query in the session"               #{"create_sql_query"} true  true  own    false]
+                   ["a conversation someone else can read"      both                  true  true  theirs false]]]
+            (testing situation
+              (mt/with-temporary-setting-values [metabot-query-execution-enabled? query-on?
+                                                 metabot-sql-execution-enabled?   sql-on?]
+                (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                          :conversation-id conversation
+                                                                          :state           {}})
+                          scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                          scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                    scope/all-yes-permissions)]
+                  (let [instructions (:instructions (agent-sql/create-sql-query-tool {:database_id db-id
+                                                                                      :sql_query   "SELECT 1"
+                                                                                      :title       "Results"}))]
+                    (is (= [readable? (not readable?)]
+                           [(str/includes? instructions "Run the query with `run_query`")
+                            (str/includes? instructions "you cannot view the results directly yourself")]))))))))))))
 
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
@@ -183,36 +213,40 @@
               (is (str/starts-with? instructions "The SQL query has a syntax error"))
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
 
-(deftest edit-sql-query-viz-part-test
-  (testing "edit_sql_query emits a generated_entity card unless an open code-editor buffer wins"
+(deftest edit-and-replace-sql-query-viz-part-test
+  (testing "edit_sql_query and replace_sql_query emit a generated_entity card unless a code-editor buffer is open"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {:as db} {:engine :h2}]
           (mt/with-db db
             (let [mp       (mt/metadata-provider)
                   query-id "test-inline-q"
-                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)
-                  run      (fn [context]
-                             (let [memory (atom {:state   {:queries {query-id query}}
-                                                 :context context})]
-                               (binding [shared/*memory-atom* memory]
-                                 (agent-sql/edit-sql-query-tool
-                                  {:query_id  query-id
-                                   :checklist "- [x] checked"
-                                   :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
-                                   :title     "Results"}))))]
-              (testing "no code-editor buffer -> a single generated_entity (native) part"
-                (let [parts  (:data-parts (run {}))
-                      entity (:data (first parts))]
-                  (is (= 1 (count parts)))
-                  (is (= "generated_entity" (:data-type (first parts))))
-                  (is (= "card" (:type entity)))
-                  (is (= :native (get-in entity [:query :query :type])))))
-              (testing "an open code-editor buffer wins"
-                (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                  :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
-                  (is (= 1 (count parts)))
-                  (is (= "code_edit" (:data-type (first parts)))))))))))))
+                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)]
+              (doseq [[tool-name tool args] [["edit_sql_query" agent-sql/edit-sql-query-tool
+                                              {:edits [{:old_string "SELECT *" :new_string "SELECT id"}]}]
+                                             ["replace_sql_query" agent-sql/replace-sql-query-tool
+                                              {:new_query "SELECT id FROM t"}]]
+                      :let [run (fn [context]
+                                  (let [memory (atom {:state   {:queries {query-id query}}
+                                                      :context context})]
+                                    (binding [shared/*memory-atom* memory]
+                                      (tool (assoc args
+                                                   :query_id  query-id
+                                                   :checklist "- [x] checked"
+                                                   :title     "Results")))))]]
+                (testing tool-name
+                  (testing "a single generated_entity part carries a legacy native query when no code-editor buffer is open"
+                    (let [parts  (:data-parts (run {}))
+                          entity (:data (first parts))]
+                      (is (= 1 (count parts)))
+                      (is (= "generated_entity" (:data-type (first parts))))
+                      (is (= "card" (:type entity)))
+                      (is (= :native (get-in entity [:query :query :type])))))
+                  (testing "an open code-editor buffer receives a code_edit part"
+                    (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
+                                                                      :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
+                      (is (= 1 (count parts)))
+                      (is (= "code_edit" (:data-type (first parts)))))))))))))))
 
 (def ^:private no-native-permission-output
   "You do not have permission to write SQL queries against this database. Native query permissions are required.")

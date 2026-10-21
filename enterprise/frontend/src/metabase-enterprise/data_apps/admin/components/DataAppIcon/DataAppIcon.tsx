@@ -9,8 +9,8 @@ export function DataAppIcon() {
       justify="center"
       w="2.75rem"
       h="2.75rem"
-      bd="1px solid var(--mb-color-border)"
-      bg="background-secondary"
+      bd="1px solid var(--mb-color-border-neutral)"
+      bg="background_page-secondary"
       visibleFrom="sm"
       style={{ borderRadius: "50%", flexShrink: 0 }}
     >

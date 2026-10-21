@@ -10,6 +10,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
@@ -101,15 +102,6 @@
     (str (subs s 0 (- max-len 3)) "...")
     s))
 
-(def ^:private consent-scope-order
-  "The MCP v2 scopes in the order the consent page lists them, least to most harmful."
-  ["agent:resource:read"
-   "agent:content:read"
-   "agent:query:run"
-   "agent:content:write"
-   "agent:sql:run"
-   "agent:delivery:write"])
-
 (defn- scope-tokens
   "Split a space-separated OAuth `scope` value into its distinct scope strings, in first-seen order. Returns nil when
    blank.
@@ -121,14 +113,13 @@
 
 (defn- requested-scope-descriptions
   "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?}` maps for
-   the consent page, so the user sees exactly what the client is asking for. Scopes in [[consent-scope-order]] come
+   the consent page, so the user sees exactly what the client is asking for. Scopes in [[metabase.mcp.core/v2-scopes]] come
    first in that order, then the rest in request order. `:locked?` marks an MCP baseline scope, which is always granted;
    `:full-access?` marks the full account access scope. Falls back to the raw scope string when a scope has no
    registered human-readable description. Returns nil when no scope was requested."
   [scope-param]
   (when-let [scopes (scope-tokens scope-param)]
-    (let [rank     (zipmap consent-scope-order (range))
-          baseline (set (mcp/v2-baseline-scopes))]
+    (let [rank (zipmap (mcp/v2-scopes) (range))]
       (->> scopes
            ;; `sort-by` is stable, so unranked scopes keep their request order
            (sort-by #(rank % (count rank)))
@@ -138,7 +129,7 @@
                     ;; Flag the broad first-party grant so the consent page can warn about it without
                     ;; hardcoding the scope string in the view.
                     :full-access? (= s oauth-server/full-access-scope)
-                    :locked?      (contains? baseline s)}))))))
+                    :locked?      (mcp/v2-baseline-scope? s)}))))))
 
 (defn- form-values
   "A form field that may repeat, as a vector: Ring decodes one value to a string and several to a vector."
@@ -154,7 +145,7 @@
    that was not offered."
   [offered chosen]
   (when (every? (set offered) chosen)
-    (filterv (some-fn (set chosen) (set (mcp/v2-baseline-scopes))) offered)))
+    (filterv (some-fn (set chosen) mcp/v2-baseline-scope?) offered)))
 
 ;;; ------------------------------------------- Error descriptions ------------------------------------------------
 
@@ -636,6 +627,7 @@
    _query-params
    body :- [:map {:closed true, :decode/api {:enter (fn [body] (if (map? body) body {}))}}
             [:grant_type    {:optional true} [:maybe :string]]
+            [:assertion     {:optional true} [:maybe :string]]
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
             [:refresh_token {:optional true} [:maybe :string]]
@@ -655,7 +647,13 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider body authorization-header)]
+                (let [response (if (= jwt-bearer/grant-type (:grant_type body))
+                                 (jwt-bearer/exchange-jwt-for-token! provider request
+                                                                     {:assertion (:assertion body)
+                                                                      :scopes    (when (some? (:scope body))
+                                                                                   (or (scope-tokens (:scope body)) []))
+                                                                      :resource  (:resource body)})
+                                 (oidc/token-request provider body authorization-header))]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

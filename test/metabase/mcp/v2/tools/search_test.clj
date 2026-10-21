@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -492,6 +493,26 @@
               (is (not (:isError content)))
               (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
                   (str "the table is in the results: " (pr-str rows))))))))))
+
+(deftest library-table-ranks-first-test
+  (testing "search ranks a table in the Library above a final-layer table outside it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (collections.tu/with-library [{data :data}]
+        ;; The final layer puts the outside table first unless the Library boost applies.
+        (mt/with-temp [:model/Table {outside-id :id} {:db_id      (mt/id)
+                                                      :name       "mcpboost outside"
+                                                      :active     true
+                                                      :data_layer :final}
+                       :model/Table {inside-id :id}  {:db_id         (mt/id)
+                                                      :name          "mcpboost inside"
+                                                      :active        true
+                                                      :is_published  true
+                                                      :collection_id (:id data)}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
+                                                    {:token-scopes #{"agent:content:read"}})]
+              (is (= [inside-id outside-id]
+                     (->> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data (map :id)))))))))))
 
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must

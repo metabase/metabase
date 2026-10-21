@@ -17,12 +17,15 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -3345,6 +3348,13 @@
                     api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
             (is (true? (mi/can-read? dashboards)))
             (is (false? (mi/can-write? dashboards)))))))))
+
+(deftest data-apps-collection-is-read-only-test
+  (testing "Nobody writes a collection of the data apps namespace, administrators included"
+    (mt/with-temp [:model/Collection collection {:namespace "data-apps"}]
+      (mt/with-test-user :crowberto
+        (is (false? (mi/can-write? collection)))
+        (is (false? (mi/can-write? :model/Collection (:id collection))))))))
 
 (deftest create-library
   (mt/with-empty-h2-app-db!
