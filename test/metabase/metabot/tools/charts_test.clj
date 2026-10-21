@@ -149,6 +149,31 @@
               :error  {:class :recoverable :code ::recoverable.common/unknown-chart-id}}
              (invoke "edit_chart" args {}))))))
 
+(deftest edit-chart-unknown-chart-id-keeps-recovery-steps-test
+  (let [steps    (str "To make a new chart, call `construct_notebook_query` and use the chart ID that it returns.\n"
+                      "To chart a query from this conversation, call `create_chart` with its query ID.")
+        charts   (fn [ids]
+                   {:charts (into {} (map (fn [id] [id {:chart_id id :query_id "q-1" :queries [stub-query]}])) ids)})
+        uuids    (map #(format "%08d-0000-4000-8000-000000000000" %) (range 120))
+        long-id  (apply str (repeat 4100 "x"))
+        output   (fn [chart-id state]
+                   (:output (invoke "edit_chart"
+                                    (assoc chart-args :chart_id chart-id :new_viz_settings {:chart_type "pie"})
+                                    state)))]
+    (testing "with more than 30 charts, the error lists the first 30 and counts the rest"
+      (is (= (str "No chart with ID \"c-9\" exists in this conversation. The available chart IDs are "
+                  (str/join ", " (take 30 uuids)) " and 90 more.\n"
+                  steps)
+             (output "c-9" (charts uuids)))))
+    (testing "a long chart ID is cut to its first 100 characters"
+      (is (= (str "No chart with ID \"" (subs long-id 0 100) "\" exists in this conversation."
+                  " No charts have been created in this conversation yet.\n"
+                  steps)
+             (output long-id {}))))
+    (testing "the recovery steps still fit when every chart ID is long"
+      (is (str/ends-with? (output long-id (charts (map #(str % long-id) (range 120))))
+                          (str " and 90 more.\n" steps))))))
+
 (deftest construct-notebook-query-unknown-chart-type-test
   (testing "construct_notebook_query takes any chart type, and one that Metabot can't create fails with the ones it can"
     (mt/with-dynamic-fn-redefs [construct/execute-representations-query
