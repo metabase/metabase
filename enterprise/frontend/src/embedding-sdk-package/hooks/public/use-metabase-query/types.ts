@@ -399,13 +399,18 @@ type AggregationResultOrderBy = {
   direction?: MetabaseOrderByDirection;
 };
 
+/**
+ * Allowed bin counts, for use with the num-bins binning strategy.
+ **/
+export type BinCount = 10 | 50 | 100;
+
 export type DefaultBinningOptions = {
   strategy: "default";
 };
 
 export type NumBinsBinningOptions = {
   strategy: "num-bins";
-  numBins: 10 | 50 | 100;
+  numBins: BinCount;
 };
 
 export type BinWidthBinningOptions = {
