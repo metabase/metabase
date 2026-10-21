@@ -83,7 +83,7 @@
                                                  [(lib/= id (meta/field-metadata :reviews :product-id))]))]
       (is (=? {:stages [{:joins       [{:conditions [[:= {} vector? vector?]]}]
                          :aggregation [[:count {}]]
-                         :breakout    [[:field {} int?]]}
+                         :breakout    [[:field {} string?]]}
                         {:joins       [{:conditions [[:= {} vector? vector?]]}]
                          :aggregation (symbol "nil #_\"key is not present.\"")
                          :breakout    (symbol "nil #_\"key is not present.\"")}]}
@@ -833,12 +833,12 @@
                                                         [:field
                                                          {:base-type :type/Integer
                                                           :effective-type :type/Integer}
-                                                         (meta/id :checkins :venue-id)]
+                                                         "VENUE_ID"]
                                                         [:field
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "locale"}
-                                                         (meta/id :venues :id)]]],
+                                                         "ID"]]],
                                           :alias "locale"}]
                                  :filters [[:>
                                             {}
@@ -846,7 +846,7 @@
                                              {:base-type :type/BigInteger
                                               :effective-type :type/BigInteger
                                               :join-alias "locale"}
-                                             (meta/id :venues :id)]
+                                             "ID"]
                                             3]]}]}]
           (testing "by name"
             (is (=? renamed
@@ -877,12 +877,12 @@
                                                         [:field
                                                          {:base-type :type/Integer
                                                           :effective-type :type/Integer}
-                                                         (meta/id :checkins :venue-id)]
+                                                         "VENUE_ID"]
                                                         [:field
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "alias"}
-                                                         (meta/id :venues :id)]]],
+                                                         "ID"]]],
                                           :alias "alias"}
                                          {:lib/type :mbql/join
                                           :stages [{:lib/type :mbql.stage/mbql
@@ -892,12 +892,12 @@
                                                         [:field
                                                          {:base-type :type/Integer
                                                           :effective-type :type/Integer}
-                                                         (meta/id :checkins :user-id)]
+                                                         "USER_ID"]
                                                         [:field
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "alias_2"}
-                                                         (meta/id :users :id)]]],
+                                                         "ID"]]],
                                           :alias "alias_2"}]
                                  :filters [[:>
                                             {}
@@ -905,7 +905,7 @@
                                              {:base-type :type/BigInteger
                                               :effective-type :type/BigInteger
                                               :join-alias "alias"}
-                                             (meta/id :venues :id)]
+                                             "ID"]
                                             3]]}]}]
           (testing "by name"
             (is (=? renamed
@@ -981,12 +981,12 @@
                                                      [:field
                                                       {:base-type :type/Integer
                                                        :effective-type :type/Integer}
-                                                      (meta/id :checkins :venue-id)]
+                                                      "VENUE_ID"]
                                                      [:field
                                                       {:base-type :type/BigInteger
                                                        :effective-type :type/BigInteger
                                                        :join-alias join-alias}
-                                                      (meta/id :venues :id)]]],
+                                                      "ID"]]],
                                        :alias join-alias}]
                               :filters [[:>
                                          {}
@@ -994,7 +994,7 @@
                                           {:base-type :type/BigInteger,
                                            :effective-type :type/BigInteger,
                                            :join-alias join-alias}
-                                          (meta/id :venues :id)]
+                                          "ID"]
                                          3]]}
                              {:filters  (symbol "nil #_\"key is not present.\"")
                               :breakout (symbol "nil #_\"key is not present.\"")}]}]
@@ -1363,7 +1363,7 @@
             query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/add-field 0 category)
                          ;; Can't use remove-field itself; it will normalize the fields clause.
-                         (update-in [:stages 0 :fields] #(remove (comp #{(meta/id :products :category)} last) %)))]
+                         (update-in [:stages 0 :fields] #(remove (comp #{"CATEGORY"} last) %)))]
         (is (= 9 (-> query :stages first :fields count)))
         (is (nil? (-> query
                       lib.remove-replace/normalize-fields-clauses
