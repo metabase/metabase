@@ -15,6 +15,7 @@ import { useCliHasData } from "metabase-enterprise/monitor/ai-auditing/cli-analy
 import { cliUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
 import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
+import { useAuditRowCount } from "metabase-enterprise/monitor/ai-auditing/hooks/useAuditRowCount";
 import {
   ConversationFilters as CliCallsFilter,
   useFilterOptions,
@@ -48,6 +49,7 @@ export function CliAnalyticsSectionLayout() {
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const callsAudit = useAuditTable(VIEW_AGENT_API_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
+  const tabCount = useAuditRowCount(callsAudit);
 
   const dataSources = useMemo(
     () => ({
@@ -85,6 +87,7 @@ export function CliAnalyticsSectionLayout() {
     },
     {
       label: t`Calls`,
+      count: tabCount,
       to: `${callsPath}${location.search}`,
       isSelected: (pathname) => pathname === callsPath,
     },

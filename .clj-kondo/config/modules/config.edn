@@ -1461,9 +1461,11 @@
            mcp
            metabot.agent-api
            models
+           premium-features
            request
            server
            settings
+           sso.auth-identity
            system
            task
            tracing
@@ -1600,6 +1602,7 @@
               metabase.agent-api.schema
               metabase.agent-api.settings}
    :uses    #{ai-tracing
+              analytics.interface
               api
               channel
               collections

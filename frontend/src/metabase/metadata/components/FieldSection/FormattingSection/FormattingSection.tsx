@@ -17,10 +17,15 @@ import { TitledSection } from "../../TitledSection";
 
 interface Props {
   field: Field;
+  readOnly?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 }
 
-const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {
+const FormattingSectionBase = ({
+  field,
+  readOnly,
+  onTrackMetadataChange,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -60,6 +65,7 @@ const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {
         denylist={denyList}
         extraData={{ forAdminSettings: true }}
         inheritedSettings={inheritedSettings}
+        readOnly={readOnly}
         style={{ maxWidth: undefined }}
         value={field.settings ?? {}}
         onChange={handleChange}
