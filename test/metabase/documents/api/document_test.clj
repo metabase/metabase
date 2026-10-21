@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
@@ -124,6 +125,22 @@
       (testing "should return 404 for non-existent document"
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
+
+(deftest get-document-runs-content-gate-once-test
+  (testing "one GET /api/document/:id adjudicates the document's content once"
+    (mt/with-temp [:model/Collection {coll-id :id}     {}
+                   :model/Document   {document-id :id} {:name          "Test Document"
+                                                        :collection_id coll-id
+                                                        :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
+      (let [gate  @#'m.document/doc-content-visibility-fn
+            orig  @gate
+            calls (atom 0)]
+        (try
+          (reset! gate (fn [_doc] (swap! calls inc) true))
+          (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
+          (is (= 1 @calls))
+          (finally
+            (reset! gate orig)))))))
 
 (defn- recent-view
   "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent
