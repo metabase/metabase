@@ -227,7 +227,7 @@
   [:schema {:registry registry} [:ref ::stage]])
 
 (defn original-stage-index
-  "Return the input stage index for a repaired stage, or `stage-idx` without repair metadata."
+  "Return the original index of a repaired stage, or `stage-idx` if repair metadata is missing."
   [query stage-idx]
   (get (::original-stage-indexes (meta query)) stage-idx stage-idx))
 
@@ -240,11 +240,10 @@
       (assoc 1 (original-stage-index query stage-idx)))))
 
 (defn validate-query
-  "Validate a string-keyed portable representations query against [[query-schema]] and return it
-  unchanged.
+  "Validate a portable representations query against [[query-schema]] and return it unchanged.
 
-  Used as a sanity check between the repair and resolve passes. `repaired-query` supplies repair
-  metadata for locating errors in the original input; defaults to `parsed`."
+  `parsed` must have string keys. Error paths use the original stage indexes from `repaired-query`,
+  which defaults to `parsed`."
   ([parsed] (validate-query parsed parsed))
   ([parsed repaired-query]
    (when-let [error (mr/explain query-schema parsed)]

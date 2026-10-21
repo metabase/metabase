@@ -687,10 +687,10 @@
       (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
 (defn- query-not-runnable-explanation
-  "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
-  description of where and why; nil when the query is runnable. Problems [[not-runnable-problem]]
-  explains are listed first, and the usual causes are added when it explains none.
-  `repaired-query` supplies the repair metadata used to locate stages in the original input."
+  "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
+
+  Problems that [[not-runnable-problem]] can explain come first. Add the usual causes if it cannot
+  explain any of them. `repaired-query` supplies the original stage indexes and defaults to `pmbql-query`."
   ([pmbql-query] (query-not-runnable-explanation pmbql-query pmbql-query))
   ([pmbql-query repaired-query]
    (binding [lib.schema.expression/*suppress-expression-type-check?* true]
