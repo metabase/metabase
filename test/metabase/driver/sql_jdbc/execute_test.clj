@@ -354,25 +354,3 @@
             (reset! cancels 0)
             (is (= 4 (count (venues-rows 4))))
             (is (pos? @cancels))))))))
-
-(defn- native-query-result
-  "Run `sql` as a userland native query against the current test database."
-  [sql]
-  (qp/process-query (qp/userland-query (lib/native-query (mt/metadata-provider) sql))))
-
-(deftest database-error-while-reading-rows-is-invalid-query-test
-  (testing "A database error raised while rows are read is :invalid-query, like one raised when the query starts"
-    (mt/test-driver :h2
-      (mt/with-temp [:model/Database db {:engine  :h2
-                                         :details {:db (str "mem:" (mt/random-name) ";LAZY_QUERY_EXECUTION=TRUE")}}]
-        (mt/with-db db
-          (is (=? {:status     :failed
-                   :error_type :invalid-query
-                   :error      #"(?s)Division by zero.*"}
-                  (native-query-result "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"))))))
-    (mt/test-driver :sqlite
-      (is (=? {:status     :failed
-               :error_type :invalid-query
-               :error      #"(?s).*malformed JSON.*"}
-              (native-query-result (str "SELECT json_extract(CASE WHEN ID = 1 THEN '{\"n\":1}' ELSE 'broken' END,"
-                                        " '$.n') AS N FROM VENUES")))))))

@@ -2162,7 +2162,7 @@
 
 (deftest database-error-while-reading-rows-keeps-its-text-test
   (testing "A database error raised while rows are read keeps its text, like one raised when the query starts"
-    (let [details {:db (str "mem:" (mt/random-name) ";LAZY_QUERY_EXECUTION=TRUE")}
+    (let [details (update (:details (mt/db)) :db str ";LAZY_QUERY_EXECUTION=TRUE")
           sql     "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"]
       (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details details}]
         (is (=? {:status     "failed"
