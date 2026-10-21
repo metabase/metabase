@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
@@ -47,6 +48,7 @@ function TransformTestRunButton({
   readOnly,
 }: TransformTestRunButtonProps) {
   const [runTest, { isLoading }] = useRunTransformTestMutation();
+  const run = useMemo(() => getRunStatusInfo(test.last_run), [test.last_run]);
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
@@ -59,7 +61,7 @@ function TransformTestRunButton({
   return (
     <RunButton
       id={test.id}
-      run={getRunStatusInfo(test.last_run)}
+      run={run}
       isLoading={isLoading}
       isDisabled={readOnly}
       onRun={handleRun}
