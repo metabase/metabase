@@ -24,6 +24,8 @@ export interface FieldValuePickerProps {
   canListValues?: boolean;
   canSearchValues?: boolean;
   canRemapValues?: boolean;
+  /** Prototype: the column has the Country semantic type. */
+  isCountry?: boolean;
   comboboxProps?: ComboboxProps;
   parseValue?: (rawValue: string) => string | null;
   useGetFieldValues: (args: UseGetFieldValuesArgs) => UseGetFieldValuesResult;
@@ -45,6 +47,7 @@ export function FieldValuePicker({
   canListValues = false,
   canSearchValues = false,
   canRemapValues = false,
+  isCountry,
   comboboxProps,
   parseValue,
   useGetFieldValues,
@@ -71,6 +74,7 @@ export function FieldValuePicker({
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
         autoFocus={autoFocus}
+        isCountry={isCountry}
         onChange={onChange}
       />
     );

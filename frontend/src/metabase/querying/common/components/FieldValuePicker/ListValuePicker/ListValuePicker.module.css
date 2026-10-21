@@ -28,3 +28,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.flag {
+  flex-shrink: 0;
+  width: 21px;
+  height: 16px;
+  border-radius: 3px;
+  object-fit: cover;
+}
