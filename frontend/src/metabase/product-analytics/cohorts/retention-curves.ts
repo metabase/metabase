@@ -8,8 +8,7 @@ import {
   getConversionColumnSettings,
   getSeriesSettings,
 } from "../analyses/series-settings";
-import type { AnalysisSpec, OutputSpec, Period } from "../spec/types";
-import { periodOf } from "../sql/analyses/cohorts";
+import type { OutputSpec, Period } from "../spec/types";
 
 /** How the retention curves are drawn, once hidden settings are resolved. */
 export type RetentionCurvesView = {
@@ -58,9 +57,13 @@ export const getRetentionCurvesSettings = (
 };
 
 /** The cohort table: a row per cohort and a column per period since the start. */
-export const getCohortTableSettings = (
-  spec: AnalysisSpec,
-): VisualizationSettings => ({
-  "cohort.period": periodOf(spec),
-  "cohort.value_format": spec.output.cohortsDisplay ?? "percent",
+export const getCohortTableSettings = ({
+  period,
+  isPercent,
+}: Pick<
+  RetentionCurvesView,
+  "period" | "isPercent"
+>): VisualizationSettings => ({
+  "cohort.period": period,
+  "cohort.value_format": isPercent ? "percent" : "counts",
 });

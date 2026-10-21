@@ -4,6 +4,7 @@ import type { ColumnRole, ColumnRoles } from "../columns";
 import { AddFilterButton } from "../components/AddFilterButton";
 import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { BreakoutMenu } from "../components/toolbar/BreakoutMenu";
 import { CountingMenu } from "../components/toolbar/CountingMenu";
 import { DateRangeButton } from "../components/toolbar/DateRangeButton";
 import { GranularityButton } from "../components/toolbar/GranularityButton";
@@ -16,7 +17,9 @@ import type { Grain, Granularity } from "../spec/types";
 import {
   getColumnOptions,
   getDefaultColumn,
+  getUserPropertyOptions,
   isColumnInTable,
+  isUserPropertyColumn,
 } from "./column-roles";
 import { isOneOf, isOptionalEventDefinition } from "./setting-helpers";
 import type {
@@ -83,14 +86,32 @@ const granularitySetting = (
   getProps: () => ({ units: options?.units ?? [] }),
 });
 
+const breakoutSetting = (
+  isEnabled: boolean,
+): SettingDefinition<AnalysisContext, CommonSettings, "breakout"> =>
+  withWidgetProps({
+    getSection: () => "toolbar",
+    widget: BreakoutMenu,
+    getDefault: () => null,
+    isValid: (value, context) =>
+      value === null || (isEnabled && isUserPropertyColumn(context, value)),
+    getHidden: () => !isEnabled,
+    getProps: (context, settings) => ({
+      columns: getUserPropertyOptions(context, getColumnRoles(settings)),
+    }),
+  });
+
 /**
  * Settings every analysis has: the toolbar controls and the column roles.
- * Pass `granularity: null` for analyses without a time grain.
+ * Pass `granularity: null` for analyses without a time grain, and
+ * `breakout: true` for analyses that can split their result by a property.
  */
 export const commonSettings = ({
   granularity,
+  breakout = false,
 }: {
   granularity: GranularityOptions | null;
+  breakout?: boolean;
 }): AnalysisSettingDefinitions<CommonSettings> => ({
   date_range: {
     getSection: () => "toolbar",
@@ -111,6 +132,7 @@ export const commonSettings = ({
     readDependencies: ["columns.person", "columns.session", "columns.event_id"],
   },
   granularity: granularitySetting(granularity),
+  breakout: breakoutSetting(breakout),
   filters: withWidgetProps({
     getSection: () => "toolbar",
     widget: AddFilterButton,

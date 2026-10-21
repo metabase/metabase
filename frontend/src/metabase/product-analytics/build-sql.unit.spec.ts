@@ -105,7 +105,7 @@ describe("buildSql", () => {
 
     it("places people by their attribute value as of their start", () => {
       const sql = getCohortsSql({
-        "cohorts.attribute": "plan",
+        breakout: "plan",
         granularity: "month",
       });
 
@@ -125,7 +125,10 @@ describe("buildSql", () => {
     });
 
     it("pools every cohort for the average", () => {
-      const sql = getCohortsSql({ "cohorts.lines": "average" });
+      const sql = getCohortsSql({
+        "cohorts.view": "curves",
+        "cohorts.lines": "average",
+      });
 
       expect(sql).toMatch(/GROUP BY offset\n/);
       expect(sql).not.toContain("AS date");

@@ -90,17 +90,7 @@ export const AnalysisToolbar = ({
           </Button>
           <Button.Group>
             <ToolbarSetting setting={findSetting(widgets, "counting")} />
-            {/* PROTOTYPE: not wired up yet. */}
-            <Tooltip label={t`Break out`}>
-              <Button
-                variant="default"
-                px="sm"
-                aria-label={t`Break out`}
-                disabled={!hasTable}
-              >
-                <Icon name="split_branch" />
-              </Button>
-            </Tooltip>
+            <ToolbarSetting setting={findSetting(widgets, "breakout")} />
             {filtersSetting !== undefined && !filtersSetting.hidden && (
               <Tooltip label={t`Filters`}>
                 <Button

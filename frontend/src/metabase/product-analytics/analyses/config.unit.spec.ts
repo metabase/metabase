@@ -310,7 +310,7 @@ describe("analysis settings", () => {
     it("offers the event table's user properties when there is no users table", () => {
       const { getProps } = setup({ kind: "cohorts", table: EVENT_TABLE });
 
-      expect(getProps("cohorts.attribute")).toMatchObject({
+      expect(getProps("breakout")).toMatchObject({
         columns: [{ value: "plan" }],
       });
     });
@@ -320,13 +320,13 @@ describe("analysis settings", () => {
         kind: "cohorts",
         table: EVENT_TABLE,
         usersTable: USERS_TABLE_CONTEXT,
-        stored: { "cohorts.attribute": "country" },
+        stored: { breakout: "country" },
       });
 
-      expect(getProps("cohorts.attribute")).toMatchObject({
+      expect(getProps("breakout")).toMatchObject({
         columns: [{ value: "country" }, { value: "plan" }],
       });
-      expect(computed["cohorts.attribute"]).toBe("country");
+      expect(computed["breakout"]).toBe("country");
       expect(extraColumns).toEqual([
         { as: "cohort_attribute", column: "country", from: "users" },
       ]);
@@ -337,17 +337,17 @@ describe("analysis settings", () => {
         kind: "cohorts",
         table: EVENT_TABLE,
         usersTable: USERS_TABLE_CONTEXT,
-        stored: { "cohorts.attribute": "event_name" },
+        stored: { breakout: "event_name" },
       });
 
-      expect(computed["cohorts.attribute"]).toBeNull();
+      expect(computed["breakout"]).toBeNull();
     });
 
     it("groups by the attribute when one is picked", () => {
       const { specResult } = setup({
         kind: "cohorts",
         table: EVENT_TABLE,
-        stored: { "cohorts.attribute": "plan" },
+        stored: { breakout: "plan" },
       });
 
       expect(getReadySpec(specResult).cohorts).toMatchObject({
@@ -373,13 +373,35 @@ describe("analysis settings", () => {
       });
     });
 
-    it("draws a line per cohort over the weeks since each start by default", () => {
+    it("shows a table with a row per cohort by default, without the line chart's settings", () => {
       const config = getAnalysisConfig("cohorts");
-      const { computed, specResult } = setup({ kind: "cohorts" });
+      const { computed, specResult, isHidden } = setup({
+        kind: "cohorts",
+        table: EVENT_TABLE,
+        stored: { "cohorts.lines": "average", "cohorts.display": "counts" },
+      });
+
+      expect(getReadySpec(specResult).output.cohortsLines).toBe("each");
+      expect(config.getDisplay(computed)).toBe("cohort");
+      expect(config.getVizSettings(computed, {})).toEqual({
+        "cohort.period": "week",
+        "cohort.value_format": "counts",
+      });
+      expect(isHidden("cohorts.lines")).toBe(true);
+      expect(isHidden("cohorts.x_axis")).toBe(true);
+      expect(isHidden("cohorts.display")).toBe(false);
+    });
+
+    it("draws a line per cohort over the weeks since each start", () => {
+      const config = getAnalysisConfig("cohorts");
+      const { computed, specResult } = setup({
+        kind: "cohorts",
+        stored: { "cohorts.view": "curves" },
+      });
 
       expect(getReadySpec(specResult).output.cohortsLines).toBe("each");
       expect(config.getDisplay(computed)).toBe("line");
-      expect(config.getVizSettings(computed)).toMatchObject({
+      expect(config.getVizSettings(computed, {})).toMatchObject({
         "graph.dimensions": ["offset", "cohort"],
         "graph.x_axis.title_text": "Weeks since start",
       });
@@ -389,11 +411,11 @@ describe("analysis settings", () => {
       const config = getAnalysisConfig("cohorts");
       const { computed, specResult } = setup({
         kind: "cohorts",
-        stored: { "cohorts.lines": "average" },
+        stored: { "cohorts.view": "curves", "cohorts.lines": "average" },
       });
 
       expect(getReadySpec(specResult).output.cohortsLines).toBe("average");
-      expect(config.getVizSettings(computed)["graph.dimensions"]).toEqual([
+      expect(config.getVizSettings(computed, {})["graph.dimensions"]).toEqual([
         "offset",
       ]);
     });
@@ -403,12 +425,16 @@ describe("analysis settings", () => {
       const { computed, specResult, isHidden } = setup({
         kind: "cohorts",
         table: EVENT_TABLE,
-        stored: { "cohorts.attribute": "plan", "cohorts.lines": "average" },
+        stored: {
+          "cohorts.view": "curves",
+          breakout: "plan",
+          "cohorts.lines": "average",
+        },
       });
 
       expect(isHidden("cohorts.lines")).toBe(true);
       expect(getReadySpec(specResult).output.cohortsLines).toBe("each");
-      expect(config.getVizSettings(computed)["graph.dimensions"]).toEqual([
+      expect(config.getVizSettings(computed, {})["graph.dimensions"]).toEqual([
         "offset",
         "cohort",
       ]);
@@ -416,16 +442,18 @@ describe("analysis settings", () => {
 
     it("only offers dates along the x-axis for each cohort returning in exactly that period", () => {
       const isDateAxisHidden = (stored: StoredSettings) =>
-        setup({ kind: "cohorts", table: EVENT_TABLE, stored }).isHidden(
-          "cohorts.x_axis",
-        );
+        setup({
+          kind: "cohorts",
+          table: EVENT_TABLE,
+          stored: { "cohorts.view": "curves", ...stored },
+        }).isHidden("cohorts.x_axis");
 
       expect(isDateAxisHidden({})).toBe(false);
       expect(isDateAxisHidden({ "cohorts.return_rule": "onOrAfter" })).toBe(
         true,
       );
       expect(isDateAxisHidden({ "cohorts.lines": "average" })).toBe(true);
-      expect(isDateAxisHidden({ "cohorts.attribute": "plan" })).toBe(true);
+      expect(isDateAxisHidden({ breakout: "plan" })).toBe(true);
     });
 
     it("plots each cohort by date, and stacks counts", () => {
@@ -433,11 +461,15 @@ describe("analysis settings", () => {
       const byDate = (stored: StoredSettings) => {
         const { computed } = setup({
           kind: "cohorts",
-          stored: { "cohorts.x_axis": "date", ...stored },
+          stored: {
+            "cohorts.view": "curves",
+            "cohorts.x_axis": "date",
+            ...stored,
+          },
         });
         return {
           display: config.getDisplay(computed),
-          settings: config.getVizSettings(computed),
+          settings: config.getVizSettings(computed, {}),
         };
       };
 
@@ -459,6 +491,7 @@ describe("analysis settings", () => {
       const { computed } = setup({
         kind: "cohorts",
         stored: {
+          "cohorts.view": "curves",
           "cohorts.x_axis": "date",
           "cohorts.display": "counts",
           "cohorts.return_rule": "onOrAfter",
@@ -466,7 +499,7 @@ describe("analysis settings", () => {
       });
 
       expect(config.getDisplay(computed)).toBe("line");
-      expect(config.getVizSettings(computed)["graph.dimensions"]).toEqual([
+      expect(config.getVizSettings(computed, {})["graph.dimensions"]).toEqual([
         "offset",
         "cohort",
       ]);

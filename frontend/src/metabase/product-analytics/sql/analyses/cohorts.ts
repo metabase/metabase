@@ -18,7 +18,7 @@ const COHORT_PERIODS: Record<Granularity, Period> = {
 export const toCohortPeriod = (granularity: Granularity): Period =>
   COHORT_PERIODS[granularity];
 
-export const periodOf = (spec: AnalysisSpec): Period =>
+const periodOf = (spec: AnalysisSpec): Period =>
   toCohortPeriod(spec.bucket.granularity);
 
 const ADD_PERIODS: Record<Period, string> = {
