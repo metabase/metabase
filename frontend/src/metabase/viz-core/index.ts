@@ -27,8 +27,13 @@ export {
   TIMELINE_BAND_HEIGHT,
   TIMELINE_EVENTS_BAND,
 } from "./echarts/cartesian/constants/style";
-export { foldRowChartModel } from "./echarts/cartesian/model/row-fold";
+export {
+  ROW_CHART_MIN_BAR_HEIGHT,
+  foldRowChartModel,
+  getChartModelAtHeight,
+} from "./echarts/cartesian/model/row-fold";
 export { getChartLayout } from "./echarts/cartesian/layout";
+export type { ChartLayoutInput } from "./echarts/cartesian/layout";
 export type {
   ChartBoundsCoords,
   ChartLayout,
@@ -343,6 +348,10 @@ export {
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "./lib/settings/graph";
+export {
+  getLegendPositionSetting,
+  LEGEND_POSITION_SETTINGS,
+} from "./lib/settings/legend";
 export { nestedSettings } from "./lib/settings/nested";
 export { keyForSingleSeries } from "./lib/settings/series";
 export { TIMELINE_EVENTS_SETTINGS } from "./lib/settings/timelineEvents";
@@ -424,8 +433,8 @@ export {
 export {
   getDefaultPercentVisibility,
   getDefaultPieColumns,
+  getDefaultLegendPosition,
   getDefaultShowLabels,
-  getDefaultShowLegend,
   getDefaultShowTotal,
   getDefaultSliceThreshold,
   getDefaultSortRows,

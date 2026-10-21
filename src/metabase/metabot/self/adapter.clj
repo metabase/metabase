@@ -406,7 +406,9 @@
                         depends on the connection rather than only on the response. Applies to both
                         phases below.
     :read-stream      - turns the response body into a reducible of the provider's events, for a stream
-                        that is not SSE. Defaults to [[core/sse-reducible]].
+                        that is not SSE. Defaults to [[core/sse-reducible]]. When the request has its own
+                        client, a close of the body it gets drops the connection and does not read
+                        the rest of the body (see [[core/abort-on-close]]).
     :wrap-stream      - applied to the reducible before error translation, for an adapter with its own
                         translation to do first.
     :on-request-error - replaces the default [[rethrow!]] catch, for an adapter that retries. Only
@@ -445,7 +447,8 @@
                            ;; encoded up front, since a provider may sign over the body
                            :body        (json/encode body)}
                         request-options)
-              :body
+              ;; on this thread, right after the request, so it sees the connection manager clj-http saw
+              (core/abort-on-close request-options)
               read-stream
               (debug/capture-stream {:provider slug
                                      :model    model
