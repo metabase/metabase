@@ -953,7 +953,8 @@
                  (:error (token-request! params :expected-status 400 :authorization authorization)))))
         (let [response (token-request! params :expected-status 429 :authorization authorization :full-response? true)]
           (is (= "too_many_requests" (get-in response [:body :error])))
-          (is (some-> (get-in response [:headers "Retry-After"]) parse-long pos-int?)))))))
+          (is (some-> (get-in response [:headers "Retry-After"]) parse-long pos-int?))
+          (is (= 10 (count @(:attempts @#'api.oauth/token-ip-throttler)))))))))
 
 (deftest token-ip-refusals-throttled-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -967,6 +968,46 @@
                                     :client_id  (str (random-uuid))
                                     :code       "bogus-code"}
                                    :expected-status 429))))))
+
+(deftest token-ip-throttled-requests-do-not-fill-client-bucket-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (dotimes [i 100]
+      (is (= (if (< i 50) "invalid_request" "too_many_requests")
+             (:error (token-request! {:grant_type "authorization_code"
+                                      :client_id  (str (random-uuid) (apply str (repeat 219 "a")))
+                                      :code       "bogus-code"}
+                                     :expected-status (if (< i 50) 400 429))))))
+    (is (= 50 (count @(:attempts @#'api.oauth/token-client-throttler))))))
+
+(deftest token-ip-throttles-do-not-extend-client-lockout-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (doseq [client-attempt-count [0 8 9]]
+        (testing (str client-attempt-count " previous client refusals")
+          (oauth-server.tu/reset-token-throttlers!)
+          (mt/user-http-request :crowberto :get 200 "api/user/current")
+          (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+                ip-address       "198.51.100.6"
+                authorization    (basic-auth-header client-id client-secret)
+                params           {:grant_type   "authorization_code"
+                                  :code         (authorize-and-get-code! client-id)
+                                  :redirect_uri "https://example.com/callback"}
+                client-throttler @#'api.oauth/token-client-throttler
+                ip-throttler     @#'api.oauth/token-ip-throttler
+                now              (System/currentTimeMillis)]
+            (reset! (:attempts client-throttler)
+                    (repeat client-attempt-count [[client-id ip-address] (- now (* 10 60 1000))]))
+            (reset! (:attempts ip-throttler) (repeat 50 [ip-address (- now (* 59 60 1000))]))
+            (let [responses (repeatedly 10 #(token-request! params :authorization authorization :ip-address ip-address
+                                                            :expected-status 429 :full-response? true))]
+              (is (= (repeat 10 "too_many_requests") (map #(get-in % [:body :error]) responses)))
+              (is (every? #(some-> (get-in % [:headers "Retry-After"]) parse-long (<= 60)) responses)))
+            (is (= client-attempt-count (count @(:attempts client-throttler))))
+            (swap! (:attempts ip-throttler)
+                   (fn [attempts]
+                     (doall (for [[throttle-key timestamp] attempts]
+                              [throttle-key (- timestamp (* 60 1000))]))))
+            (is (string? (:access_token (token-request! params :authorization authorization :ip-address ip-address))))))))))
 
 (deftest token-overlong-body-client-id-rejected-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

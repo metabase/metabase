@@ -307,12 +307,11 @@
   [ip-address client-id f]
   (let [client-id  (when (and client-id (<= (count client-id) max-client-id-length)) client-id)
         client-key (when client-id [client-id ip-address])
-        response   (if client-id
-                     (with-throttling-429 [token-client-throttler client-key
-                                           token-ip-throttler     ip-address]
+        response (with-throttling-429 [token-ip-throttler ip-address]
+                   (if client-id
+                     (with-throttling-429 [token-client-throttler client-key]
                        (f))
-                     (with-throttling-429 [token-ip-throttler ip-address]
-                       (f)))]
+                     (f)))]
     (if (= 429 (:status response))
       (let [retry-after (max (retry-after-seconds token-ip-throttler ip-address)
                              (if client-id (retry-after-seconds token-client-throttler client-key) 0))]
