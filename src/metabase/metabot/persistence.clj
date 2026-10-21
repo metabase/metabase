@@ -545,12 +545,13 @@
     (map vector data)))
 
 (defn- part->llm-messages
-  "The LLM history messages for one stored `part`: a text message, a tool call and its result, or nil."
+  "The LLM history messages for one stored `part`: a text message, a tool call and its result, or nil. Text that is
+  only whitespace replays too: the request leaves it out, as it leaves it out of the steps of the turn that made it
+  (see `metabase.metabot.agent.messages/build-message-history`)."
   [part]
   (cond
     (schema.v2/text-part? part)
-    (when-not (str/blank? (:text part))
-      [{:role :assistant :content (:text part)}])
+    [{:role :assistant :content (:text part)}]
 
     (schema.v2/tool-part? part)
     (tool-part->llm-messages part)))

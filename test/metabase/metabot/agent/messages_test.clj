@@ -455,3 +455,22 @@
         (is (re-find #"(?s)^<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*code editor"
                      (messages/render-context-block context memory true)))
         (is (= 1 @calls))))))
+
+(deftest ^:parallel requests-send-no-text-that-is-only-whitespace-test
+  (testing "the history of earlier turns and the steps of this turn both leave out text that is only whitespace"
+    (is (=? [{:role :user :content "Hi"}
+             {:type :text :text "Hello"}
+             {:role :user :content "Again"}
+             {:type :tool-input :id "c1"}
+             {:type :text :text "Done"}]
+            (messages/build-message-history
+             {}
+             (-> (memory/initialize [{:role :user :content "Hi"}
+                                     {:role :assistant :content "\n\n"}
+                                     {:role :assistant :content "Hello"}
+                                     {:role :user :content "Again"}]
+                                    {})
+                 (memory/set-context-block nil)
+                 (memory/add-step [{:type :text :text " "}
+                                   {:type :tool-input :id "c1" :function "search" :arguments {}}])
+                 (memory/add-step [{:type :text :text "Done"}])))))))

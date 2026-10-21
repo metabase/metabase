@@ -6,6 +6,7 @@
   is responsible for converting these parts into its own wire format (Claude
   messages, Chat Completions messages, OpenAI Responses input items, etc.)."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
@@ -140,6 +141,13 @@
 ;;; History construction
 ;;; ──────────────────────────────────────────────────────────────────
 
+(defn- sent-part?
+  "Whether a request sends `part`. No request sends text that is only whitespace: it adds nothing for the model, and
+  some providers reject it. The steps of this turn and the history of earlier turns both leave it out here, before
+  they go into a request, so the next turn's request starts with the bytes that this turn sent."
+  [part]
+  (not (and (= :text (:type part)) (str/blank? (:text part)))))
+
 (defn- step->parts
   "Extract AISDK parts from a step, filtering out non-message types."
   [step]
@@ -147,10 +155,10 @@
        (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
 (defn steps->parts
-  "The AISDK parts of agent `steps`, in order. [[build-message-history]] puts them last, after the input messages and
-  the dialect preload."
+  "The AISDK parts of agent `steps` that a request sends, in order. [[build-message-history]] puts them last, after
+  the input messages and the dialect preload."
   [steps]
-  (into [] (mapcat step->parts) steps))
+  (into [] (comp (mapcat step->parts) (filter sent-part?)) steps))
 
 (defn render-context-block
   "The `<context>` block for the most recent input message, rendered from `context`, or nil when that message is not
@@ -203,7 +211,7 @@
   ([context memory tools]
    (let [input-messages (messages-with-injected-context context memory)
          steps          (memory/get-steps memory)
-         input-parts    (mapcat input-message->parts input-messages)
+         input-parts    (into [] (comp (mapcat input-message->parts) (filter sent-part?)) input-messages)
          step-parts     (steps->parts steps)
          ;; Preload the active SQL dialect (if any) as a synthetic load_skill
          ;; tool-call/result pair. It is placed after the input messages (so the
