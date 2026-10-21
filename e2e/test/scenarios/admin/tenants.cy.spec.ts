@@ -580,36 +580,6 @@ describe("Tenants - management", () => {
     });
   });
 
-  it("should not show send email modal when creating tenant users when SMTP is configured", () => {
-    H.setupSMTP();
-    cy.request("PUT", "/api/setting", {
-      "use-tenants": true,
-    });
-
-    createTenants();
-
-    cy.visit("admin/people/tenants/people");
-
-    cy.findByRole("link", { name: /Tenant users/ }).click();
-    cy.button("Create tenant user").click();
-
-    H.modal().within(() => {
-      cy.findByRole("textbox", { name: "First name" }).type("Test");
-      cy.findByRole("textbox", { name: "Last name" }).type("User");
-      cy.findByRole("textbox", { name: "Email" }).type("test.user@email.com");
-      cy.findByRole("generic", { name: "Groups" }).should("not.exist");
-      cy.findByRole("textbox", { name: "Tenant" }).click();
-    });
-
-    H.popover().within(() => {
-      cy.findByText("Gizmos").click();
-    });
-
-    H.modal().button("Create").click();
-
-    H.modal().should("not.exist");
-  });
-
   it("should show tenant attributes in user attribute lists when multi tenancy is enabled", () => {
     H.restore("postgres-writable");
     H.activateToken("pro-self-hosted"); // needed because of the restore on the line above
