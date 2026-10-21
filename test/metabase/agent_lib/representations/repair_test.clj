@@ -1134,7 +1134,7 @@
           [start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]]
     (testing (str operator " with " start-unit "/" end-unit)
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"does not survive the round trip"
+           clojure.lang.ExceptionInfo #"Move the temporal unit"
            (repair-in-stage
             {"joins" [{"lib/type" "mbql/join" "alias" "O2"
                        "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
@@ -1165,13 +1165,13 @@
                       ["=" {} (created-at-bucketed "day") (abs-dt "2026-01-01" "day")]
                       ["=" {} (abs-dt "2026-01-01" "day") created-at]])]
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"does not survive the round trip"
+         clojure.lang.ExceptionInfo #"Move the temporal unit"
          (repair-in-stage {"aggregation" [["count-where" {} predicate]]})))))
 
 (deftest ^:parallel standalone-temporal-literals-keep-their-type-test
   (let [literal (abs-dt "2026-01-01" "day")]
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"does not survive the round trip"
+         clojure.lang.ExceptionInfo #"Move the temporal unit"
          (repair-in-stage {"aggregation" [["min" {} literal]]})))))
 
 (deftest ^:parallel unencodable-temporal-clause-error-test
