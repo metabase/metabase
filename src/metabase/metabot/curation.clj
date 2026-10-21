@@ -381,12 +381,12 @@
 (defn measure-or-segment-curated?
   "Whether a curated-only Metabot may read the measure or segment `id` (`kind` is `:measure` or `:segment`): its
   Table is curated, and every Table its definition reads is curated or one FK hop from its Table, the way
-  [[uncurated-query-sources]] judges a measure or segment a query uses. A missing one, or one whose definition
-  can't be built, fails closed."
+  [[uncurated-query-sources]] judges a measure or segment a query uses. A missing or trashed one, or one whose
+  definition can't be built, fails closed."
   [kind id]
   (when-let [table-id (case kind
-                        :measure (metabot.db/measure-table-id id)
-                        :segment (metabot.db/segment-table-id id))]
+                        :measure (metabot.db/live-measure-table-id id)
+                        :segment (metabot.db/live-segment-table-id id))]
     (let [mp     (lib-be/application-database-metadata-provider (metabot.db/table-database-id table-id))
           tables (get (measure-and-segment-tables mp
                                                   (when (= kind :measure) [id])

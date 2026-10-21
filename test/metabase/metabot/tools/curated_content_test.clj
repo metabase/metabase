@@ -1077,6 +1077,20 @@
           (testing "inline SQL isn't judged here"
             (is (not (str/includes? (:output (run (mt/native-query {:query "SELECT 1 AS X"}))) "curated")))))))))
 
+(deftest trashed-measures-fail-closed-test
+  (testing "a measure in the trash is never curated"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders-count (lib/aggregate (orders-query) (lib/count))]
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+                                                  :definition orders-count}
+                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                                                     :archived true :definition orders-count}
+                       :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (is (true? (curation/measure-or-segment-curated? :measure live)))
+            (is (not (curation/measure-or-segment-curated? :measure trashed)))
+            (is (denied? (first (read-uris metabot :internal (str "metabase://measure/" trashed)))))))))))
+
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (testing "a missing id gets the handler's own answer, not a curation verdict"
     (mt/with-current-user (mt/user->id :crowberto)

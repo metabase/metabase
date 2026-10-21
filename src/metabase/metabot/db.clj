@@ -1061,6 +1061,16 @@
   [id :- ::lib.schema.id/segment]
   (t2/select-one-fn :table_id :model/Segment :id id))
 
+(mu/defn live-measure-table-id
+  "The Table ID of the Measure with `id`, or nil when it is missing or in the trash."
+  [id :- ::lib.schema.id/measure]
+  (t2/select-one-fn :table_id :model/Measure :id id :archived false))
+
+(mu/defn live-segment-table-id
+  "The Table ID of the Segment with `id`, or nil when it is missing or in the trash."
+  [id :- ::lib.schema.id/segment]
+  (t2/select-one-fn :table_id :model/Segment :id id :archived false))
+
 (mu/defn measure-entity-id
   "The entity ID of the Measure with `id`."
   [id :- ::lib.schema.id/measure]
