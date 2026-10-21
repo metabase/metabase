@@ -66,8 +66,9 @@
                           {:type :text :id id :text text}]))
 
 (def ^:private two-turns
-  "Two turns five minutes apart, each answered by one LLM call. The `<context>` block of each user message holds the
-  time of its own turn, so the two blocks differ."
+  "Two turns five minutes apart, each answered by one LLM call. The first turn's `<context>` block holds the time of
+  that turn. The second turn sends only what the user is viewing, and the user views nothing, so its message has no
+  block."
   [{:message   "How many orders do we have?"
     :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
     :responses [(answer "msg-1" "There are 18,760 orders.")]}
@@ -223,17 +224,44 @@
                       adapter (+ i 2) (inc i))
        (is (nil? (prefix-break history (render (last turn-n)) (render (first next-turn)))))))))
 
+(defn- user-messages
+  "The content of each user message in the request options `opts`."
+  [opts]
+  (keep #(when (= :user (:role %)) (:content %)) (:input opts)))
+
 (deftest user-message-replays-with-its-context-block-test
-  (let [[[turn-1 :as first-turn] [turn-2 :as second-turn] :as turns] (run-turns! two-turns)
-        user-messages (fn [opts] (keep #(when (= :user (:role %)) (:content %)) (:input opts)))]
-    (testing "each user message is sent with the <context> block of its own turn, in every later turn too"
+  (let [[[turn-1 :as first-turn] [turn-2 :as second-turn] :as turns] (run-turns! two-turns)]
+    (testing "the first user message is sent with its <context> block, in every later turn too"
       (is (= [1 1] [(count first-turn) (count second-turn)]))
       (is (=? [#"(?s)<context>.*2026-10-20T10:00:00Z.*</context>\nHow many orders do we have\?"]
               (user-messages turn-1)))
       (is (=? [#"(?s)<context>.*2026-10-20T10:00:00Z.*</context>\nHow many orders do we have\?"
-               #"(?s)<context>.*2026-10-20T10:05:00Z.*</context>\nAnd last month\?"]
+               "And last month?"]
               (user-messages turn-2))))
     (check-turn-edges turns)))
+
+(deftest later-turn-sends-only-the-viewing-context-test
+  (mt/with-temp [:model/Card      {card-id :id} {:name "Question A" :dataset_query (mt/mbql-query venues)}
+                 :model/Dashboard {dash-id :id} {:name "Dashboard B"}]
+    (let [turns                   [{:message   "How many venues are there?"
+                                    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"
+                                                :user_is_viewing            [{:type "question" :id card-id}]}
+                                    :responses [(answer "msg-1" "There are 100 venues.")]}
+                                   {:message   "What is on this dashboard?"
+                                    :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"
+                                                :user_is_viewing            [{:type "dashboard" :id dash-id}]}
+                                    :responses [(answer "msg-2" "It is empty.")]}]
+          [_ [turn-2] :as requests] (run-turns! turns)
+          [first-message message] (user-messages turn-2)]
+      (testing "the first turn's message replays with the full block: the time, the user, and what they viewed"
+        (is (re-find #"(?s)^<context>\n\nCurrent date: 2026-10-20T10:00:00Z\n.*information about the user.*Question A"
+                     first-message)))
+      (testing "a later turn's block holds only what the user is viewing now"
+        (is (re-find #"(?s)^<context>\n\nThe user is currently looking at the details of a dashboard:.*Dashboard B"
+                     message))
+        (is (re-find #"</context>\nWhat is on this dashboard\?$" message))
+        (is (not (re-find #"Current date|information about the user|recently viewed" message))))
+      (check-turn-edges requests))))
 
 (deftest streamed-text-replays-as-one-part-test
   (let [[first-turn :as turns] (run-turns! streamed-text-turns)

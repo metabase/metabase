@@ -153,7 +153,8 @@
                             :role          :assistant
                             ;; the <context> block sent before the user's message comes first, so the
                             ;; next turn can send that message again with the same bytes
-                            :data          [{:type "data-context" :data #"(?s)<context>.*</context>\n"}
+                            :data          [{:type "data-context"
+                                             :data {:block #"(?s)<context>.*</context>\n" :full true}}
                                             {:type "step-start"}
                                             {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version  2

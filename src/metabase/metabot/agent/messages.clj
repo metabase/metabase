@@ -155,10 +155,19 @@
 (defn render-context-block
   "The `<context>` block for the most recent input message, rendered from `context`, or nil when that message is not
   the user's or the context has nothing to show. This reads the app DB: the agent renders it once per turn and keeps
-  it in memory (see [[memory/set-context-block]])."
-  [context memory]
-  (when (= :user (:role (last (memory/get-input-messages memory))))
-    (prompts/context-injection (user-context/enrich-context-for-template context))))
+  it in memory (see [[memory/set-context-block]]).
+
+  A `full?` block holds all of the context: the current time, the user and the glossary, what the user is viewing,
+  and the recent views. The first turn of a conversation sends it. A later turn sends only what the user is viewing,
+  because the history replays the first block and the rest of the context does not change materially from turn to
+  turn."
+  ([context memory]
+   (render-context-block context memory true))
+  ([context memory full?]
+   (when (= :user (:role (last (memory/get-input-messages memory))))
+     (prompts/context-injection (if full?
+                                  (user-context/enrich-context-for-template context)
+                                  {:viewing_context (user-context/format-viewing-context context)})))))
 
 (defn- messages-with-injected-context
   "Returns messages from memory with the turn's `<context>` block put before the most recent one. The block is the

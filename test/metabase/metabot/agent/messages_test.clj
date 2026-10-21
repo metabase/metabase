@@ -436,3 +436,22 @@
         (is (= [{:role :user :content "Hello"}]
                (history nil)))
         (is (zero? @calls))))))
+
+(deftest render-context-block-of-a-later-turn-test
+  (let [calls   (atom 0)
+        context {:current_user_time "2026-10-20T10:05:00Z"
+                 :user_is_viewing   [{:type "code_editor" :buffers []}]}
+        memory  (memory/initialize [{:role :user :content "Hello"}] {})
+        orig    (mt/original-fn #'user-context/enrich-context-for-template)]
+    (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                (fn [ctx] (swap! calls inc) (orig ctx))]
+      (testing "a later turn's block holds only what the user is viewing, and reads nothing else"
+        (is (= "<context>\n\nThe user is in the code editor but no active buffers are available.\n\n</context>\n"
+               (messages/render-context-block context memory false)))
+        (is (zero? @calls)))
+      (testing "a later turn where the user views nothing sends no block"
+        (is (nil? (messages/render-context-block (dissoc context :user_is_viewing) memory false))))
+      (testing "the first turn's block holds all of the context"
+        (is (re-find #"(?s)^<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*code editor"
+                     (messages/render-context-block context memory true)))
+        (is (= 1 @calls))))))

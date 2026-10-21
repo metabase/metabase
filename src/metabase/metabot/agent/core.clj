@@ -543,7 +543,8 @@
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
   does (see [[turn-input-parts]]). So is the `<context>` block of the user's message, which memory keeps so that
   the turn can be stored with it."
-  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan]
+  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan
+           full-context-replayed?]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -569,7 +570,8 @@
                                 :tool-names (set (keys base-tools))
                                 :request-canceled-chan request-canceled-chan)
                          (memory/add-client-ids (client-content-ids context))
-                         (as-> m (memory/set-context-block m (messages/render-context-block context m))))
+                         (as-> m (memory/set-context-block
+                                  m (messages/render-context-block context m (not full-context-replayed?)))))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
@@ -802,6 +804,9 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]
+            ;; True when `:messages` replay the full `<context>` block of an earlier turn, so this turn's block holds
+            ;; only what the user is viewing (see `metabase.metabot.agent.messages/render-context-block`).
+            [:full-context-replayed? {:optional true} [:maybe :boolean]]
             ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
             [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
