@@ -37,3 +37,18 @@
                   " was not found. It may not exist, or you may not have access to it.")
    :recovery [{:uses #{"search"}
                :text "Call `search` to find the entity you want and use an id from the results."}]})
+
+(defrecoverable unknown-chart-id!
+  "The chart ID does not belong to a chart in this conversation."
+  {:payload [:map {:closed true}
+             [:chart-id  :string]
+             [:available [:sequential :string]]]}
+  [{:keys [chart-id available]}]
+  {:message  (str "No chart with ID " (pr-str chart-id) " exists in this conversation."
+                  (if (seq available)
+                    (str " The available chart IDs are " (str/join ", " available) ".")
+                    " No charts have been created in this conversation yet."))
+   :recovery [{:uses #{"construct_notebook_query"}
+               :text "To make a new chart, call `construct_notebook_query` and use the chart ID that it returns."}
+              {:uses #{"create_chart"}
+               :text "To chart a query from this conversation, call `create_chart` with its query ID."}]})

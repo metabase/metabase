@@ -1,8 +1,8 @@
 (ns metabase.metabot.tools.charts.create
   "Tool for creating charts from queries."
   (:require
-   [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]))
 
@@ -39,7 +39,9 @@
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created
   - :query-id - ID of the source query
-  - :reactions - Navigation action to show the chart"
+  - :reactions - Navigation action to show the chart
+
+  Throws [[run-query/unknown-query-id!]] for a query ID that `queries-state` doesn't hold."
   [{:keys [query-id chart-type queries-state]}]
   (log/info "Creating chart" {:query-id query-id
                               :chart-type chart-type
@@ -56,12 +58,8 @@
   (let [query (or (get queries-state query-id)
                   (get queries-state (str query-id)))]
     (when-not query
-      (throw (ex-info (str "Query not found with ID: " query-id
-                           ". Available queries: [" (str/join ", " (keys queries-state)) "]. "
-                           "Make sure you're using a query ID from a previous query_model or query_metric result.")
-                      {:agent-error? true
-                       :query-id query-id
-                       :available-queries (keys queries-state)})))
+      (run-query/unknown-query-id! {:query-id  query-id
+                                    :known-ids (vec (keys queries-state))}))
     ;; Create the chart and generate navigation URL
     (let [chart-id (str (random-uuid))
           results-url (links/query-and-viz-link query chart-type)
