@@ -728,6 +728,30 @@ export const getCartesianChartPadding = (
   return padding;
 };
 
+export const getInternalInset = (
+  { leftAxisModel, rightAxisModel }: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  ticksDimensions: TicksDimensions,
+  padding: Padding,
+  renderingContext: RenderingContext,
+): ChartLayout["internalInset"] => {
+  const { fontSize, marginY } = renderingContext.theme.cartesian.axisTitle;
+  const hasTicks = !!settings["graph.y_axis.axis_enabled"];
+  const getAxisWidth = (
+    axisModel: YAxisModel | null | undefined,
+    ticksWidth: number,
+  ) =>
+    (hasTicks ? ticksWidth : 0) + (axisModel?.label ? fontSize + marginY : 0);
+  return {
+    left:
+      padding.left -
+      getAxisWidth(leftAxisModel, ticksDimensions.yTicksWidthLeft),
+    right:
+      padding.right -
+      getAxisWidth(rightAxisModel, ticksDimensions.yTicksWidthRight),
+  };
+};
+
 const getDimensionWidth = (
   { xAxisModel }: ChartLayoutInput,
   boundaryWidth: number,
@@ -938,6 +962,13 @@ export const getChartLayout = (
   return {
     ticksDimensions,
     padding,
+    internalInset: getInternalInset(
+      input,
+      settings,
+      ticksDimensions,
+      padding,
+      renderingContext,
+    ),
     bounds,
     boundaryWidth,
     outerHeight: height,
@@ -1028,6 +1059,13 @@ const computeSplitPanelLayout = (
   return {
     ticksDimensions,
     padding,
+    internalInset: getInternalInset(
+      singleAxisInput,
+      settings,
+      ticksDimensions,
+      padding,
+      renderingContext,
+    ),
     bounds,
     boundaryWidth,
     outerHeight: height,

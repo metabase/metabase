@@ -230,6 +230,62 @@ describe("getChartLayout", () => {
     );
   });
 
+  it("exposes the internal inset that no axis content occupies", () => {
+    const chartContext = getChartContext();
+    const { fontSize, marginY } = chartContext.theme.cartesian.axisTitle;
+    const basePadding = {
+      left: CHART_STYLE.padding.x,
+      right: CHART_STYLE.padding.x,
+    };
+    const titledAxesInput = {
+      ...input,
+      leftAxisModel: { ...yAxisModel, label: "Price" },
+      rightAxisModel: { ...yAxisModel, label: "Price" },
+    };
+
+    const layout = getChartLayout(
+      input,
+      settings,
+      false,
+      640,
+      360,
+      chartContext,
+    );
+    expect(layout.internalInset).toEqual(basePadding);
+
+    const titledAxesLayout = getChartLayout(
+      titledAxesInput,
+      settings,
+      false,
+      640,
+      360,
+      chartContext,
+    );
+    expect(titledAxesLayout.padding.right).toBe(
+      CHART_STYLE.padding.x +
+        titledAxesLayout.ticksDimensions.yTicksWidthRight +
+        fontSize +
+        marginY,
+    );
+    expect(titledAxesLayout.internalInset).toEqual(basePadding);
+
+    const hiddenAxesLayout = getChartLayout(
+      titledAxesInput,
+      createMockVisualizationSettings({
+        ...settings,
+        "graph.y_axis.axis_enabled": false,
+      }),
+      false,
+      640,
+      360,
+      chartContext,
+    );
+    expect(hiddenAxesLayout.internalInset).toEqual({
+      left: CHART_STYLE.padding.x + CHART_STYLE.hiddenYAxisWidth,
+      right: CHART_STYLE.padding.x + CHART_STYLE.hiddenYAxisWidth,
+    });
+  });
+
   it("keeps room for the min and max y-axis labels below rotated x-axis labels on the smallest card", () => {
     const chartContext: RenderingContext = {
       ...getChartContext(),

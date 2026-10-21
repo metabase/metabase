@@ -1,21 +1,25 @@
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
+import { LEGEND_PADDING } from "./constants";
 import {
-  LEGEND_COLUMN_GAP,
-  LEGEND_COLUMN_MARGIN_TOP,
-  LEGEND_PADDING,
-} from "./constants";
-import { MIN_LEGEND_CARD_WIDTH, getLegendLayout } from "./layout";
+  MIN_CHART_SIDE_MARGIN,
+  MIN_LEGEND_CARD_WIDTH,
+  getLegendLayout,
+  getLegendMargins,
+} from "./layout";
 import { measureLegend } from "./measure";
 import { type ChartSize, mapLegendCandidates } from "./plots";
-import { LEGEND_SIZES, type LegendSize } from "./sizes";
+import { LEGEND_SIZES, type LegendSizeTier } from "./sizes";
 
 const CHAR_WIDTH = 6;
 const MIN_PLOT_WIDTH = 150;
-const SM = LEGEND_SIZES.sm;
+const SM = LEGEND_SIZES.smallCard;
 const ROW_HEIGHT =
-  SM.fontSize * SM.lineHeight + SM.rowChartGap + LEGEND_PADDING * 2;
+  SM.fontSize * SM.lineHeight +
+  SM.contentMargin.bottomLegend.top +
+  SM.contentMargin.bottomLegend.bottom +
+  LEGEND_PADDING * 2;
 
 const measureText = (text: string) => text.length * CHAR_WIDTH;
 
@@ -31,10 +35,10 @@ const getRowWidth = (names: string[]) =>
 
 // the smallest card whose row holds every item without the y-axis indent
 const getCardWidthForRow = (names: string[]) =>
-  SM.horizontalPadding + LEGEND_PADDING * 2 + getRowWidth(names);
+  SM.horizontalClearance * 2 + LEGEND_PADDING * 2 + getRowWidth(names);
 
 const getColumnSpace = (columnItemWidth: number) =>
-  columnItemWidth + LEGEND_PADDING * 2 + LEGEND_COLUMN_GAP;
+  columnItemWidth + LEGEND_PADDING * 2 + SM.contentMargin.rightLegend.left;
 
 const createSeriesNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `series ${i}`);
@@ -59,7 +63,7 @@ interface LayoutOpts {
   width?: number;
   height?: number;
   chartAreaHeight?: number;
-  size?: LegendSize;
+  size?: LegendSizeTier;
   // the plot's y-axis indent at every size
   indent?: number;
   plotInset?: ChartSize;
@@ -76,7 +80,7 @@ const layout = (
     width = 600,
     height = 300,
     chartAreaHeight,
-    size = "sm",
+    size = "smallCard",
     indent = 0,
     plotInset = { width: 0, height: 0 },
     minXAxisLabelsWidth = 0,
@@ -102,6 +106,7 @@ const layout = (
     height: chart.height - plotInset.height,
     hasXAxisLabels: chart.width >= minXAxisLabelsWidth,
     indent,
+    internalInset: { left: 0, right: 0 },
   }));
   return getLegendLayout(metrics, { position, plots, alwaysVisible });
 };
@@ -216,7 +221,7 @@ describe("getLegendLayout auto", () => {
       width: 420,
       height: 300,
       chartRoom: { width: 420, height: 200 },
-      size: "sm",
+      size: "smallCard",
       fontFamily: "Lato",
       measureText,
     });
@@ -325,12 +330,12 @@ describe("getLegendLayout auto", () => {
     // 25% of (900 - 32) = 217 > 200
     expect(layout(names, { width: 900 })).toMatchObject({
       type: "vertical",
-      width: LEGEND_SIZES.sm.maxVerticalWidth + LEGEND_PADDING * 2,
+      width: LEGEND_SIZES.smallCard.maxVerticalWidth + LEGEND_PADDING * 2,
     });
     // 25% of (1200 - 48) = 288 > 256
-    expect(layout(names, { width: 1200, size: "md" })).toMatchObject({
+    expect(layout(names, { width: 1200, size: "fullscreen" })).toMatchObject({
       type: "vertical",
-      width: LEGEND_SIZES.md.maxVerticalWidth + LEGEND_PADDING * 2,
+      width: LEGEND_SIZES.fullscreen.maxVerticalWidth + LEGEND_PADDING * 2,
     });
   });
 
@@ -366,7 +371,7 @@ describe("getLegendLayout auto", () => {
       layout(createSeriesNames(20), {
         width: 420,
         height: 300,
-        chartAreaHeight: LEGEND_COLUMN_MARGIN_TOP + 169,
+        chartAreaHeight: SM.contentMargin.rightLegend.top + 169,
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 7 });
   });
@@ -392,12 +397,14 @@ describe("getLegendLayout auto", () => {
     });
   });
 
-  it("should use the larger metrics for the md size", () => {
+  it("should use the larger metrics for the fullscreen tier", () => {
     const names = ["12345", "12345", "12345", "12345"];
     // md: item = 14 + 8 + 30 = 52, 4 items + 3 * 16 = 256 <= 368
-    expect(layout(names, { width: 420, size: "md" })).toEqual(row(4));
+    expect(layout(names, { width: 420, size: "fullscreen" })).toEqual(row(4));
     // md: 8 items = 416 + 112 = 528 > 368
-    expect(layout([...names, ...names], { width: 420, size: "md" })).toEqual({
+    expect(
+      layout([...names, ...names], { width: 420, size: "fullscreen" }),
+    ).toEqual({
       type: "vertical",
       isBeforeChart: false,
       width: 56,
@@ -405,14 +412,15 @@ describe("getLegendLayout auto", () => {
     });
   });
 
-  it("should use the roomier lg metrics for column rows", () => {
+  it("should use the roomier largeCard metrics for column rows", () => {
     // (200 - 4 + 12) / (13.8 + 12) = 8 rows, 7 items + the overflow label
     expect(
       layout(createSeriesNames(20), {
         width: 700,
         height: 400,
-        chartAreaHeight: LEGEND_COLUMN_MARGIN_TOP + 200,
-        size: "lg",
+        chartAreaHeight:
+          LEGEND_SIZES.largeCard.contentMargin.rightLegend.top + 200,
+        size: "largeCard",
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 7 });
   });
@@ -545,7 +553,7 @@ describe("getLegendLayout with an explicit position", () => {
     const QUERY_BUILDER_ROW = {
       width: 880,
       indent: 73,
-      size: "md" as const,
+      size: "fullscreen" as const,
     };
     // md item = 14 + 8 + 3 * 6 = 40, one item per 40 + 16 gap
     const names = Array.from({ length: 49 }, (_, i) => `S${i + 10}`);
@@ -595,5 +603,56 @@ describe("getLegendLayout alwaysVisible", () => {
         alwaysVisible: true,
       }),
     ).toMatchObject({ visibleCount: 1 });
+  });
+});
+
+describe("getLegendMargins", () => {
+  const NO_INSET = { left: 0, right: 0 };
+
+  it.each(["smallCard", "largeCard", "fullscreen"] as const)(
+    "should discount the chart's inset on the legend's own side for the %s tier",
+    (size) => {
+      const { contentMargin } = LEGEND_SIZES[size];
+
+      expect(getLegendMargins(size, "right", NO_INSET).left).toBe(
+        contentMargin.rightLegend.left,
+      );
+      expect(getLegendMargins(size, "right", { left: 20, right: 8 }).left).toBe(
+        contentMargin.rightLegend.left - 8,
+      );
+      expect(getLegendMargins(size, "left", { left: 8, right: 20 }).right).toBe(
+        contentMargin.leftLegend.right - 8,
+      );
+    },
+  );
+
+  it("should keep the minimum margin when the inset exceeds the content margin", () => {
+    const gap = LEGEND_SIZES.smallCard.contentMargin.rightLegend.left;
+
+    expect(
+      getLegendMargins("smallCard", "right", { left: 0, right: gap }).left,
+    ).toBe(MIN_CHART_SIDE_MARGIN);
+    expect(
+      getLegendMargins("smallCard", "right", { left: 0, right: gap * 3 }).left,
+    ).toBe(MIN_CHART_SIDE_MARGIN);
+  });
+
+  it("should apply a row's margins as configured, with zero on the sides it does not set", () => {
+    const { contentMargin } = LEGEND_SIZES.smallCard;
+
+    expect(
+      getLegendMargins("smallCard", "bottom", { left: 8, right: 8 }),
+    ).toEqual({
+      top: contentMargin.bottomLegend.top,
+      bottom: contentMargin.bottomLegend.bottom,
+      left: 0,
+      right: 0,
+    });
+    expect(getLegendMargins("fullscreen", "top", NO_INSET)).toEqual({
+      top: LEGEND_SIZES.fullscreen.contentMargin.topLegend.top,
+      bottom: LEGEND_SIZES.fullscreen.contentMargin.topLegend.bottom,
+      left: 0,
+      right: 0,
+    });
   });
 });

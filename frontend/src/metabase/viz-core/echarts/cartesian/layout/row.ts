@@ -233,6 +233,11 @@ export const getRowChartLayout = (
   return {
     ticksDimensions,
     padding,
+    // category and value labels are content, so only the base padding is empty
+    internalInset: {
+      left: CHART_STYLE.padding.x,
+      right: CHART_STYLE.padding.x,
+    },
     bounds,
     negativeDataLabelsWidth: hasFixedMin ? 0 : dataLabelsWidths.negative,
     negativeDataLabelsInset,

@@ -1,11 +1,13 @@
 import _ from "underscore";
 
+import type { Padding } from "metabase/viz-core";
 import type { LegendPosition } from "metabase-types/api";
 
 import { LEGEND_PADDING, MIN_VISIBLE_COUNT } from "./constants";
 import { type LegendMetrics, getRowWidth } from "./measure";
-import { LEGEND_PLACEMENTS } from "./placement";
+import { LEGEND_PLACEMENTS, type LegendPlacement } from "./placement";
 import type { ChartSize, LegendCandidates, Plot } from "./plots";
+import { LEGEND_SIZES, type LegendSizeTier } from "./sizes";
 
 export const MIN_LEGEND_CARD_WIDTH = 420;
 const AUTO_MIN_VISIBLE_COUNT = 2;
@@ -222,3 +224,40 @@ function getColumnLayout(
     visibleCount: columnVisibleCount,
   };
 }
+
+export const MIN_CHART_SIDE_MARGIN = 12;
+
+const NO_MARGINS: Padding = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/**
+ * The legend's margins at `placement`. The side facing the chart discounts the
+ * chart's internal inset on that same side, so the gap to the chart content
+ * stays constant.
+ */
+export const getLegendMargins = (
+  size: LegendSizeTier,
+  placement: LegendPlacement,
+  internalInset: Pick<Padding, "left" | "right">,
+): Padding => {
+  const { chartSide } = LEGEND_PLACEMENTS[placement];
+  const margins: Padding = {
+    ...NO_MARGINS,
+    ...LEGEND_SIZES[size].contentMargin[`${placement}Legend`],
+  };
+  if (placement === "left" || placement === "right") {
+    margins[chartSide] = Math.max(
+      margins[chartSide] - internalInset[placement],
+      MIN_CHART_SIDE_MARGIN,
+    );
+  }
+  return margins;
+};
+
+export const getLayoutPlacement = (
+  layout: Exclude<LegendLayoutResult, { type: "hidden" }>,
+): LegendPlacement => {
+  if (layout.type === "horizontal") {
+    return layout.isBeforeChart ? "top" : "bottom";
+  }
+  return layout.isBeforeChart ? "left" : "right";
+};
