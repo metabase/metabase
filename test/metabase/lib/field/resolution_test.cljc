@@ -1926,3 +1926,40 @@
                  :name                    "Products__ID"
                  :lib/source-column-alias "Products__ID"
                  :base-type               :type/Integer})))))))
+
+(deftest ^:parallel resolve-implicit-join-by-fk-name-test
+  (testing "an implicit join ref without `:source-field` finds its FK column by `:source-field-name`"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (doseq [id-or-name [(meta/id :products :category) "CATEGORY"]]
+        (testing (pr-str id-or-name)
+          (is (=? {:id            (meta/id :products :category)
+                   :lib/source    :source/implicitly-joinable
+                   :fk-field-id   (meta/id :orders :product-id)
+                   :fk-field-name "PRODUCT_ID"}
+                  (lib.field.resolution/resolve-field-ref
+                   query -1
+                   [:field
+                    {:lib/uuid (str (random-uuid)), :base-type :type/Text, :source-field-name "PRODUCT_ID"}
+                    id-or-name]))))))))
+
+(deftest ^:parallel resolve-implicit-join-by-fk-name-and-join-alias-test
+  (testing "`:source-field-join-alias` picks the FK column of an explicit join"
+    (let [orders     (meta/table-metadata :orders)
+          query      (lib/query meta/metadata-provider orders)
+          query      (lib/join query (lib/join-clause orders
+                                                      [(lib/= (meta/field-metadata :orders :id)
+                                                              (lib/with-join-alias (meta/field-metadata :orders :id)
+                                                                                   "O2"))]))
+          join-alias (lib/current-join-alias (first (lib/joins query)))]
+      (is (=? {:id            (meta/id :products :category)
+               :fk-field-id   (meta/id :orders :product-id)
+               :fk-field-name "PRODUCT_ID"
+               :fk-join-alias join-alias}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field
+                {:lib/uuid                (str (random-uuid))
+                 :base-type               :type/Text
+                 :source-field-name       "PRODUCT_ID"
+                 :source-field-join-alias join-alias}
+                "CATEGORY"]))))))

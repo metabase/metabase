@@ -118,10 +118,8 @@
      ;; case it is the raw field name.
      ;;
      ;; Together with `:source-field` and `:source-field-join-alias`, these three form a composite key that
-     ;; uniquely identifies an implicit join.
-     ;;
-     ;; TODO (Cam 2026-01-13): field resolution is not using `:source-field-name` for disambiguation, which
-     ;; seems like a bug. The same applies for `:source-field-join-alias`.
+     ;; uniquely identifies an implicit join. Without `:source-field`, resolution finds the FK column by
+     ;; `:source-field-name` and `:source-field-join-alias`.
      [:source-field-name {:optional true} ::common/non-blank-string]
      ;;
      ;; The explicit join alias of the FK source column used for an implicit join. Disambiguates when the same
