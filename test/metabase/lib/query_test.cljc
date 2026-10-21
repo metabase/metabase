@@ -67,7 +67,7 @@
 (deftest ^:parallel type-fill-in-converted-test
   (is (=? {:stages [{:fields [[:field {:base-type :type/BigInteger
                                        :effective-type :type/BigInteger}
-                               "ID"]]
+                               (meta/id :venues :id)]]
                      :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
           (lib/query
            meta/metadata-provider
@@ -79,7 +79,7 @@
                                          :filters [[:= [:expression "math"] 2]]}}))))
   (testing "filling in works for nested join queries"
     (let [clause (as-> (lib/expression (lib.tu/venues-query) "CC" (lib/+ 1 1)) $q
-                   (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
+                   (lib/join-clause $q [(lib/= [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]
                                                (lib/expression-ref $q "CC"))]))
           query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
@@ -91,7 +91,7 @@
                                 node))
                             (lib.convert/->legacy-MBQL query)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
-                                                [:field {:base-type :type/BigInteger} "ID"]
+                                                [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?
@@ -458,7 +458,7 @@
                               :aggregation  [[:count {:lib/uuid string?}]]
                               :filters      [[:=
                                               {:lib/uuid string?}
-                                              [:field {:lib/uuid string?} "QUANTITY"]
+                                              [:field {:lib/uuid string?} (meta/id :orders :quantity)]
                                               4]]}]}
                  (lib/query meta/metadata-provider x))
       {"lib/type" "mbql/query"
@@ -508,7 +508,7 @@
                                      {:lib/uuid       string?
                                       :base-type      :type/BigInteger
                                       :effective-type effective-type}
-                                     "ID"]
+                                     (meta/id :people :id)]
                                     "1969-10-12"
                                     "1971-10-12"]]}]}
               (lib/query mp query))))))

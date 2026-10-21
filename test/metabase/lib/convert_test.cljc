@@ -989,22 +989,22 @@
                                                     [:field
                                                      {:temporal-unit                              :year
                                                       :lib/original-effective-type :type/DateTimeWithLocalTZ}
-                                                     (meta/id :products :created-at)]
+                                                     "CREATED_AT"]
                                                     [:field
                                                      {:join-alias                                 "O"
                                                       :temporal-unit                              :year
                                                       :lib/original-effective-type :type/DateTimeWithLocalTZ}
-                                                     (meta/id :orders :created-at)]]]}]}]}
+                                                     "CREATED_AT"]]]}]}]}
                   query)))
         (is (=? {:query {:joins [{:alias        "O"
                                   :condition    [:=
                                                  [:field
-                                                  (meta/id :products :created-at)
+                                                  "CREATED_AT"
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :temporal-unit                              :year
                                                    :lib/original-effective-type (symbol "nil #_\"key is not present.\"")}]
                                                  [:field
-                                                  (meta/id :orders :created-at)
+                                                  "CREATED_AT"
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :join-alias                                 "O"
                                                    :temporal-unit                              :year
@@ -1153,7 +1153,7 @@
             venues
             {:source-table $$venues
              :aggregation [[:aggregation-options
-                            [:cum-count [:field %id {:base-type :type/BigInteger}]]
+                            [:cum-count [:field "ID" {:base-type :type/BigInteger}]]
                             {:name "count"}]]})
           (lib.convert/->legacy-MBQL
            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -1167,7 +1167,7 @@
              {:source-table $$venues
               :aggregation [[:aggregation-options
                              [:+
-                              [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
+                              [:aggregation-options [:cum-sum [:field "ID" {:base-type :type/BigInteger}]] {:name "a"}]
                               [:aggregation-options [:cum-count] {:name "b"}]]
                              {:name "xixix"}]]})
            (lib.convert/->legacy-MBQL
