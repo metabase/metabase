@@ -429,6 +429,54 @@ jobs:
       tag_oss: ${{ contains(matrix.tag, 'v0') || !startsWith(matrix.tag, 'v') }}
       dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
+  update-docker-readme:
+    needs: [add-extra-tags]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    concurrency:
+      group: update-docker-readme
+      cancel-in-progress: false
+    env:
+      AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+            bin/docker
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Update Docker Hub README
+        uses: actions/github-script@v9
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+        with:
+          script: | # js
+            const { generateDockerReadme, pushDockerReadme } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const fs = require('fs');
+
+            const template = fs.readFileSync('${{ github.workspace }}/bin/docker/README.md', 'utf8');
+
+            const readme = await generateDockerReadme({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              latestMajorVersion: '${{ vars.LATEST_MAJOR_VERSION }}',
+              template,
+            });
+
+            console.log(readme);
+
+            await pushDockerReadme({
+              readme,
+              repository: '${{ github.repository_owner }}/metabase',
+              username: process.env.DOCKERHUB_USERNAME,
+              token: process.env.DOCKERHUB_TOKEN,
+            });
+
   trigger-cloud-issues:
     # Only create issues in the cloud ops repository if this release happens in https://github.com/metabase/metabase.
     if: ${{ github.repository == 'metabase/metabase' && (needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major') }}
