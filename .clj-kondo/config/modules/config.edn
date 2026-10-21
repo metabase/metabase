@@ -3184,6 +3184,7 @@
            lib
            lib.be
            lib.schema
+           lib.source-swap
            models
            settings
            task
