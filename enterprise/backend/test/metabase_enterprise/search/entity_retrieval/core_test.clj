@@ -10,6 +10,7 @@
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -498,7 +499,16 @@
                         ;; unpublish without reconciling: the index still holds the docs, but the tool drops
                         ;; the hit because the table is no longer a current library member.
                         (mt/with-temp-vals-in-db :model/Table table-id {:is_published false}
-                          (is (empty? (search!)))))
+                          (let [error (is (thrown? clojure.lang.ExceptionInfo (search!)))]
+                            (is (= {:class    :recoverable
+                                    :code     ::tools.entity-retrieval/no-library-matches
+                                    :message  "No matching library entities."
+                                    :recovery [{:uses #{"retrieve_library_entities"}
+                                                :text (str "Rephrase `user_search_prompt` and call "
+                                                           "`retrieve_library_entities` once more. If there are still "
+                                                           "no matches, ask the user to clarify or narrow the request.")}]
+                                    :data     {}}
+                                   (tools.error/classify error))))))
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
                         (mt/user-http-request :crowberto :delete 204 (format "osi/ai-context/table/%d" table-id))
                         (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
