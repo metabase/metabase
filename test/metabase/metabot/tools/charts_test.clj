@@ -290,6 +290,37 @@
                           (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type chart-type})
                           {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [count-and-sum]}}}))))))))
 
+(deftest month-of-year-sankey-test
+  (testing "a month of the year comes back as a number, so a sankey chart can flow from a category to it"
+    (testing "for a chart that the user is viewing, whose query arrives as MBQL 4"
+      (is (=? {:data-parts [{:data {:display "sankey"}}]}
+              (invoke "edit_chart"
+                      (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "sankey"})
+                      {:charts {"c-1" {:chart_id "c-1"
+                                       :query_id "c-1"
+                                       :queries  [{:database (mt/id)
+                                                   :type     "query"
+                                                   :query    {:source-table (mt/id :products)
+                                                              :aggregation  [["count"]]
+                                                              :breakout     [["field" (mt/id :products :category) nil]
+                                                                             ["field" (mt/id :products :created_at)
+                                                                              {:temporal-unit "month-of-year"}]]}}]}}}))))
+    (testing "for a query that construct_notebook_query builds"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (:name (mt/db))]
+          (is (=? {:data-parts [{:data {:display "sankey"}}]}
+                  (invoke "construct_notebook_query"
+                          (assoc chart-args
+                                 :query         {:lib/type "mbql/query"
+                                                 :stages   [{:lib/type     "mbql.stage/mbql"
+                                                             :source-table [db-name "PUBLIC" "PRODUCTS"]
+                                                             :aggregation  [["count" {}]]
+                                                             :breakout     [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]
+                                                                            ["field" {"temporal-unit" "month-of-year"}
+                                                                             [db-name "PUBLIC" "PRODUCTS" "CREATED_AT"]]]}]}
+                                 :visualization {:chart_type "sankey"})
+                          {}))))))))
+
 (deftest chart-tools-undeclared-failure-test
   (testing "a failure that no error declares ends the turn instead of reaching the model"
     (mt/with-dynamic-fn-redefs [create-chart-tools/create-chart (fn [_] (throw (ex-info "boom" {})))

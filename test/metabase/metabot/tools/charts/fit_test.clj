@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.tools.charts.fit :as fit]
@@ -32,6 +33,16 @@
 
 (defn- binned [column]
   (lib/with-binning column {:strategy :default}))
+
+(def ^:private count-by-category-and-month-of-year
+  "Built from MBQL 4, as the frontend sends a query, for which lib's metadata gives the month the type of its date."
+  (lib-be/normalize-query meta/metadata-provider
+                          {:database (meta/id)
+                           :type     :query
+                           :query    {:source-table (meta/id :products)
+                                      :aggregation  [[:count]]
+                                      :breakout     [[:field (meta/id :products :category) nil]
+                                                     [:field (meta/id :products :created-at) {:temporal-unit :month-of-year}]]}}))
 
 (deftest chart-type-fits-when-the-frontend-can-draw-it-test
   (testing "a chart type fits a query when the frontend draws it from the query's columns with its default settings"
@@ -106,7 +117,13 @@
       (lib/with-fields (query :people) [(meta/field-metadata :people :latitude)
                                         (meta/field-metadata :people :longitude)
                                         (meta/field-metadata :people :name)])
-      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar gauge progress object map")))
+      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar gauge progress object map"
+
+      count-by-category-and-month-of-year
+      "table bar line pie sunburst treemap boxplot area combo row pivot scatter sankey progress object"
+
+      (lib/append-stage count-by-category-and-month-of-year)
+      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar progress object")))
 
 (deftest any-chart-type-fits-a-sql-query-test
   (testing "the columns of a SQL query aren't known until it runs, so any chart type passes"

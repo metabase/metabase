@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
@@ -131,13 +132,23 @@
                :text (str "To keep this chart type, call `construct_notebook_query` with a query that returns the "
                           "columns it needs.")}]})
 
+(defn- with-result-type
+  "`col` with the type of the values that the query returns in it.
+  A temporal extraction such as `:month-of-year` returns integers, but lib's column metadata can keep the type of the
+  date that it comes from."
+  [col]
+  (cond-> col
+    (some lib.schema.temporal-bucketing/datetime-integer-extraction-units
+          ((juxt :lib/temporal-unit :inherited-temporal-unit) col))
+    (assoc :effective-type :type/Integer)))
+
 (defn- returned-columns
   "The columns that `query` returns, or nil when they can't be worked out without running it."
   [query]
   (try
     (let [query (lib-be/normalize-query query)]
       (when (seq query)
-        (not-empty (lib/returned-columns query))))
+        (not-empty (mapv with-result-type (lib/returned-columns query)))))
     (catch Exception e
       (log/debug e "Could not work out the columns that a chart's query returns")
       nil)))
