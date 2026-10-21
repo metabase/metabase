@@ -561,7 +561,8 @@
                                        (= (mt/id :orders :product_id) (:fk-field-id %)))
                                  columns)
         mappings   [{:type :table, :table-id (mt/id :orders),   :dimension-id uuid-1, :target (lib/ref created-at)}
-                    {:type :table, :table-id (mt/id :products), :dimension-id uuid-2, :target (lib/ref category)}]
+                    {:type :table, :table-id (mt/id :products), :dimension-id uuid-2
+                     :target (lib/update-options (lib/ref category) dissoc :source-field-name)}]
         dimensions [{:id uuid-1, :name "col1", :effective-type :type/DateTime}
                     {:id uuid-2, :name "col2", :effective-type :type/Text}]
         legacy     (fn [breakout]
