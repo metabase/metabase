@@ -2270,6 +2270,14 @@ The remote branch to sync with, e.g. `main`.
 
 Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
 
+### `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-custom-collections-enabled`
+
+Whether remote sync can sync collections besides the Library, transforms, snippets and data apps. When off, no other collection can be marked as synced, and a pull or a serialization import refuses content with other synced collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` on an instance that pulls or imports such content. It can only be turned off once no other collection is synced.
+
 ### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
 
 - Type: integer
@@ -2300,7 +2308,7 @@ An Authorization Bearer token allowing access to the git repo over HTTP.
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-transforms`
 
-Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+Whether to sync transforms via remote-sync. When enabled, transforms, transform tags, transform tests, Python libraries, and transforms folders are synced.
 
 ### `MB_REMOTE_SYNC_TYPE`
 
