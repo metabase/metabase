@@ -1,3 +1,5 @@
+import type { CardId } from "metabase-types/api";
+
 /**
  * Canonical data-app URLs. `DATA_APP_URL_SEGMENT` is the single source of
  * truth for the `apps` path segment; the page, admin, and iframe-embed URLs
@@ -41,4 +43,19 @@ export function dataStudioDataApps() {
 
 export function dataStudioDataApp(name: string) {
   return `${dataStudioDataApps()}/${encodeURIComponent(name)}`;
+}
+
+export function dataStudioDataAppQuestions(name: string) {
+  return `${dataStudioDataApp(name)}/questions`;
+}
+
+export function dataStudioDataAppQuestion(name: string, cardId: CardId) {
+  return `${dataStudioDataAppQuestions(name)}/${cardId}`;
+}
+
+export function dataStudioDataAppQuestionDependencies(
+  name: string,
+  cardId: CardId,
+) {
+  return `${dataStudioDataAppQuestion(name, cardId)}/dependencies`;
 }
