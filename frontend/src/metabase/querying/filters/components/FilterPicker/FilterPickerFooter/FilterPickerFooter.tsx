@@ -34,7 +34,9 @@ export function FilterPickerFooter({
   return (
     <Flex
       className={S.FilterFooterRoot}
-      p="lg"
+      pt="md"
+      px="xl"
+      pb="xl"
       justify="space-between"
       data-filter-picker-footer
     >

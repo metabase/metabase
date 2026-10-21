@@ -82,7 +82,7 @@ export function DefaultFilterPicker({
       />
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
-          <Stack p="lg" gap="sm">
+          <Stack px="xl" py="lg" gap="sm">
             {availableOptions.map((option) => (
               <Radio
                 key={option.operator}
