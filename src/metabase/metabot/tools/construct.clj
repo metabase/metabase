@@ -918,7 +918,7 @@
            :data-parts        [(streaming/viz-part
                                 {:entity-id   (:chart-id chart-result)
                                  :query-id    (:query-id structured)
-                                 :query       (links/->legacy-mbql (:query structured))
+                                 :query       (links/->frontend-query (:query structured))
                                  :display     chart-type
                                  :title       title
                                  :description description})]
