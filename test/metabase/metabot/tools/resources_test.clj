@@ -21,6 +21,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
@@ -1537,6 +1538,30 @@
         (let [output (read-field :products :category)]
           (is (str/includes? output "| Widget |"))
           (is (not (str/includes? output "This list shows"))))))))
+
+(deftest read-table-field-whose-database-cannot-be-sampled-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [field-id (mt/id :orders :total)
+          uri      (str "metabase://table/" (mt/id :orders) "/fields/" field-id)]
+      (mt/with-temp-vals-in-db :model/Field field-id {:fingerprint nil}
+        (testing "field details include a note and no statistics when sync can't compute a fingerprint"
+          (doseq [[failure refingerprint] {"no connection"
+                                           (constantly :sync/no-connection)
+                                           "a sample query that failed"
+                                           (constantly (ex-info "Table \"ORDERS\" not found" {}))
+                                           "a transient connection error"
+                                           (fn [_] (throw (java.net.ConnectException. "Connection refused")))}]
+            (testing failure
+              (mt/with-dynamic-fn-redefs [sync/refingerprint-field! refingerprint]
+                (let [{:keys [resources output]} (read-uris {:uris [uri]})]
+                  (is (= {:statistics_unavailable true}
+                         (get-in resources [0 :content :structured-output :value_metadata])))
+                  (is (str/includes? output (str "Metabase couldn't sample this field from the database, so"
+                                                 " there are no statistics to show."))))))))
+        (testing "any other exception fails the read as an internal error"
+          (mt/with-dynamic-fn-redefs [sync/refingerprint-field! (fn [_] (throw (NullPointerException.)))]
+            (is (= {:class :unrecoverable :code :internal}
+                   (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})))))))))
 
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)
