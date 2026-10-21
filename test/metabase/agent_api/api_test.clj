@@ -1913,7 +1913,10 @@
     (let [resp (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql"
                                      {:database_id (mt/id)
                                       :sql         "SELECT * FROM table_that_does_not_exist"})]
-      (is (=? {:status "failed" :error #"TABLE_THAT_DOES_NOT_EXIST" :error_type "invalid-query"} resp))
+      (is (=? {:status     "failed"
+               :error      #(str/includes? % "TABLE_THAT_DOES_NOT_EXIST")
+               :error_type "invalid-query"}
+              resp))
       (is (= #{:status :error :error_type} (set (keys resp))))))
   (testing "A successful query records a QueryExecution audit row tagged :agent"
     ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
