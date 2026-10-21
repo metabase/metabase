@@ -1,24 +1,9 @@
 import type { ReactNode } from "react";
 
-import { Link } from "metabase/common/components/Link/Link";
-import { Center, Group, Icon, Paper, Stack, Text, rem } from "metabase/ui";
+import { Center, Group, Icon, Text, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import S from "./MetadataCard.module.css";
-
-interface MetadataCardProps {
-  children: ReactNode;
-}
-
-export function MetadataCard({ children }: MetadataCardProps) {
-  return (
-    <Paper className={S.card}>
-      <Stack gap={rem(12)} className={S.rows}>
-        {children}
-      </Stack>
-    </Paper>
-  );
-}
+import S from "./MetadataRow.module.css";
 
 interface MetadataRowProps {
   icon: IconName;
@@ -43,21 +28,5 @@ export function MetadataRow({ icon, children, muted }: MetadataRowProps) {
         {children}
       </Text>
     </Group>
-  );
-}
-
-export function MetadataRowLink({
-  to,
-  children,
-}: {
-  to: string;
-  children: ReactNode;
-}) {
-  return (
-    <Link to={to} className={S.link}>
-      <Text component="span" fw={600} className={S.text}>
-        {children}
-      </Text>
-    </Link>
   );
 }
