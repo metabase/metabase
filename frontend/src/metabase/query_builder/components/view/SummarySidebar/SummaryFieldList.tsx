@@ -1,21 +1,11 @@
 import { useDraggable } from "@dnd-kit/core";
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Card,
-  Flex,
-  Icon,
-  Tabs,
-  Text,
-  TextInput,
-} from "metabase/ui";
-import * as Lib from "metabase-lib";
+import { Box, Card, Icon, Text, TextInput, UnstyledButton } from "metabase/ui";
+import { isMac } from "metabase/utils/browser";
 import type { IconName } from "metabase-types/api";
 
 import { MatchedLabel } from "./MatchedLabel";
@@ -29,208 +19,226 @@ import {
   getMetricLabel,
 } from "./utils";
 
-type FieldListTab = "columns" | "metrics";
+const METRICS_SECTION_KEY = "metrics";
 
-// a translucent dark disc, so the count stays legible on the brand-filled selected pill
-const INVERSE_BADGE_PROPS = {
-  bg: "background_surface-secondary-hover",
-  c: "text-primary-inverse",
-} as const;
+/** A field in the list: a column, a metric, or the count, but never a chip from a well. */
+export type SummaryFieldItem = Exclude<SummaryDragItem, { kind: "chip" }>;
 
 type SummaryFieldListProps = {
   base: SummaryBase;
+  /** A field was clicked, or picked with Enter or Space. */
+  onSwap: (item: SummaryFieldItem) => void;
+  /** A field was option-clicked (alt-clicked off a Mac), or picked with that key and Enter or Space. */
+  onAdd: (item: SummaryFieldItem) => void;
 };
 
 /**
- * Draggable source fields: the summarized question's columns and the metrics defined on the same
- * table, in tabs. The search button in the header swaps the tabs for a search across both.
+ * The fields to click or drag into the wells, in one list: a Metrics section (Count of rows, then
+ * the metrics defined on the same table), then a section per table the question reaches. Every
+ * section collapses; a search shows all matches.
  */
-export function SummaryFieldList({ base }: SummaryFieldListProps) {
-  const [tab, setTab] = useState<FieldListTab>("columns");
-  const [isSearching, setIsSearching] = useState(false);
+export function SummaryFieldList({
+  base,
+  onSwap,
+  onAdd,
+}: SummaryFieldListProps) {
   const [searchText, setSearchText] = useState("");
-  const query = isSearching ? searchText : "";
+  const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const query = searchText.trim();
+  const isSearching = query.length > 0;
 
   const sections = useMemo(() => getColumnSections(base, query), [base, query]);
   const metrics = useMemo(
     () => getAvailableMetrics(base, query),
     [base, query],
   );
-  const metricCount = useMemo(
-    () => getAvailableMetrics(base, "").length,
-    [base],
+
+  const toggleSection = (key: string) => {
+    setCollapsedKeys((currentKeys) => {
+      const nextKeys = new Set(currentKeys);
+      if (nextKeys.has(key)) {
+        nextKeys.delete(key);
+      } else {
+        nextKeys.add(key);
+      }
+      return nextKeys;
+    });
+  };
+  const renderSection = (key: string, name: string, items: ReactNode[]) => (
+    <CollapsibleSection
+      key={key}
+      name={name}
+      // matches would be hidden in a collapsed section, so a search opens them all
+      isExpanded={isSearching || !collapsedKeys.has(key)}
+      onToggle={isSearching ? undefined : () => toggleSection(key)}
+    >
+      {items}
+    </CollapsibleSection>
   );
 
-  const closeSearch = () => {
-    setIsSearching(false);
-    setSearchText("");
-  };
-
-  const columnGroups = sections.map((section) => (
-    <Box key={section.name}>
-      <Text className={S.fieldGroupName}>{section.name}</Text>
-      {section.columns.map((column) => (
-        <DraggableField
-          key={getItemKey(base, column)}
-          id={`summary-column:${getItemKey(base, column)}`}
-          icon={getColumnIcon(column)}
-          item={{ kind: "column", column, label: getColumnLabel(base, column) }}
-          query={query}
-        />
-      ))}
-    </Box>
-  ));
-  const metricItems = metrics.map((metric) => (
-    <DraggableField
-      key={getItemKey(base, metric)}
-      id={`summary-metric:${getItemKey(base, metric)}`}
-      icon="metric"
-      item={{ kind: "metric", metric, label: getMetricLabel(base, metric) }}
-      description={
-        Lib.displayInfo(base.query, base.stageIndex, metric).description
-      }
-      query={query}
-    />
-  ));
-  const hasColumns = sections.some((section) => section.columns.length > 0);
   const countLabel = t`Count of rows`;
-  // pinned above the columns: the quickest value to start a summary with
-  const countItem = countLabel
+  const isCountMatching = countLabel
     .toLowerCase()
-    .includes(query.trim().toLowerCase()) ? (
-    <DraggableField
-      id="summary-count"
-      icon="sum"
-      item={{ kind: "count", label: countLabel }}
-      query={query}
-    />
-  ) : null;
+    .includes(query.toLowerCase());
+  // Count of rows leads the metrics: the quickest value to start a summary with
+  const metricItems = [
+    ...(isCountMatching
+      ? [
+          <DraggableField
+            key="count"
+            id="summary-count"
+            icon="sum"
+            item={{ kind: "count", label: countLabel }}
+            query={query}
+            onSwap={onSwap}
+            onAdd={onAdd}
+          />,
+        ]
+      : []),
+    ...metrics.map((metric) => (
+      <DraggableField
+        key={getItemKey(base, metric)}
+        id={`summary-metric:${getItemKey(base, metric)}`}
+        icon="metric"
+        item={{
+          kind: "metric",
+          metric,
+          label: getMetricLabel(base, metric),
+        }}
+        query={query}
+        onSwap={onSwap}
+        onAdd={onAdd}
+      />
+    )),
+  ];
+  const metricsSection =
+    metricItems.length > 0
+      ? renderSection(METRICS_SECTION_KEY, t`Metrics`, metricItems)
+      : null;
+  const columnSections = sections
+    .filter((section) => section.columns.length > 0)
+    .map((section) =>
+      renderSection(
+        `table:${section.name}`,
+        section.name,
+        section.columns.map((column) => (
+          <DraggableField
+            key={getItemKey(base, column)}
+            id={`summary-column:${getItemKey(base, column)}`}
+            icon={getColumnIcon(column)}
+            item={{
+              kind: "column",
+              column,
+              label: getColumnLabel(base, column),
+            }}
+            query={query}
+            onSwap={onSwap}
+            onAdd={onAdd}
+          />
+        )),
+      ),
+    );
+  const hasItems = metricsSection != null || columnSections.length > 0;
 
   return (
     <Card className={S.fieldListCard} radius="lg" shadow="xs_outline" p="md">
-      <Tabs<FieldListTab>
-        className={S.fieldList}
-        variant="pills"
-        size="sm"
-        value={tab}
-        onChange={(value) => setTab(value ?? "columns")}
-      >
-        <Flex className={S.fieldListHeader}>
-          {isSearching ? (
-            <TextInput
-              className={S.fieldListSearch}
-              classNames={{ input: S.fieldListSearchInput }}
-              size="xs"
-              autoFocus
-              placeholder={t`Search columns and metrics…`}
-              aria-label={t`Search columns and metrics`}
-              leftSection={<Icon name="search" />}
-              value={searchText}
-              onChange={(event) => setSearchText(event.currentTarget.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  closeSearch();
-                }
-              }}
-              // an empty search has nothing to keep around once focus leaves it
-              onBlur={() => {
-                if (searchText.length === 0) {
-                  closeSearch();
-                }
-              }}
-            />
-          ) : (
-            <Tabs.List className={S.fieldListTabs}>
-              <Tabs.Tab value="columns" leftSection={<Icon name="table" />}>
-                {t`Columns`}
-              </Tabs.Tab>
-              <Tabs.Tab
-                value="metrics"
-                leftSection={<Icon name="metric" />}
-                rightSection={
-                  <Badge
-                    variant="light"
-                    color="neutral"
-                    size="sm"
-                    {...(tab === "metrics" ? INVERSE_BADGE_PROPS : {})}
-                  >
-                    {metricCount}
-                  </Badge>
-                }
-              >
-                {t`Associated metrics`}
-              </Tabs.Tab>
-            </Tabs.List>
-          )}
-          <ActionIcon
-            className={S.searchToggle}
-            // as tall as the search field, so the header keeps its height in both modes
-            size={32}
-            aria-label={
-              isSearching ? t`Close search` : t`Search columns and metrics`
+      <Box className={S.fieldList}>
+        <TextInput
+          className={S.searchField}
+          classNames={{
+            input: S.fieldListSearchInput,
+            section: S.searchFieldIcon,
+          }}
+          variant="unstyled"
+          size="xs"
+          // the half-width card cuts off a longer placeholder; the label says what's searched
+          placeholder={t`Search…`}
+          aria-label={t`Search columns and metrics`}
+          leftSection={<Icon name="search" />}
+          // the icon's 16px plus the rows' 8px gap, so the text lines up with the field names
+          leftSectionWidth={24}
+          value={searchText}
+          onChange={(event) => setSearchText(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setSearchText("");
             }
-            data-searching={isSearching}
-            // keep focus in the field, so an empty search isn't closed by the blur and then reopened
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={isSearching ? closeSearch : () => setIsSearching(true)}
-          >
-            <Icon name="search" className={S.searchToggleSearch} aria-hidden />
-            <Icon name="close" className={S.searchToggleClose} aria-hidden />
-          </ActionIcon>
-        </Flex>
+          }}
+        />
         <Box className={S.fieldListScroll}>
-          {isSearching ? (
-            countItem != null || metrics.length > 0 || hasColumns ? (
-              <>
-                {countItem}
-                {metrics.length > 0 && (
-                  <Box>
-                    <Text className={S.fieldGroupName}>
-                      {t`Associated metrics`}
-                    </Text>
-                    {metricItems}
-                  </Box>
-                )}
-                {columnGroups}
-              </>
-            ) : (
-              <Text className={S.fieldListEmpty} c="text-secondary">
-                {t`Nothing matches “${searchText.trim()}”.`}
-              </Text>
-            )
-          ) : tab === "columns" ? (
+          {hasItems ? (
             <>
-              {countItem}
-              {columnGroups}
+              {metricsSection}
+              {columnSections}
             </>
-          ) : metrics.length > 0 ? (
-            metricItems
           ) : (
             <Text className={S.fieldListEmpty} c="text-secondary">
-              {t`No metrics are connected to this data yet.`}
+              {t`Nothing matches “${query}”.`}
             </Text>
           )}
         </Box>
-      </Tabs>
+        <Text className={S.fieldListHint}>
+          {t`Click to swap, ${isMac() ? "⌥" : "Alt"}-click to add`}
+        </Text>
+      </Box>
     </Card>
+  );
+}
+
+type CollapsibleSectionProps = {
+  name: string;
+  isExpanded: boolean;
+  /** Absent while the section can't collapse, e.g. during a search. */
+  onToggle?: () => void;
+  children: ReactNode;
+};
+
+function CollapsibleSection({
+  name,
+  isExpanded,
+  onToggle,
+  children,
+}: CollapsibleSectionProps) {
+  return (
+    <Box className={S.section}>
+      <UnstyledButton
+        className={cx(S.fieldGroupName, S.sectionToggle)}
+        aria-expanded={isExpanded}
+        disabled={onToggle == null}
+        onClick={onToggle}
+      >
+        <Icon
+          className={S.sectionChevron}
+          name="chevronright"
+          size={12}
+          aria-hidden
+        />
+        {name}
+      </UnstyledButton>
+      {isExpanded && children}
+    </Box>
   );
 }
 
 type DraggableFieldProps = {
   id: string;
   icon: IconName;
-  item: SummaryDragItem;
-  description?: string;
+  item: SummaryFieldItem;
   /** Search text to highlight in the label. */
   query: string;
+  onSwap: (item: SummaryFieldItem) => void;
+  onAdd: (item: SummaryFieldItem) => void;
 };
 
 function DraggableField({
   id,
   icon,
   item,
-  description,
   query,
+  onSwap,
+  onAdd,
 }: DraggableFieldProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
@@ -244,16 +252,21 @@ function DraggableField({
       data-testid="summary-field-item"
       {...attributes}
       {...listeners}
+      // a drag that ends here doesn't click: dnd-kit swallows the click once a drag starts
+      onClick={(event) => (event.altKey ? onAdd(item) : onSwap(item))}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (event.altKey) {
+            onAdd(item);
+          } else {
+            onSwap(item);
+          }
+        }
+      }}
     >
       <Icon name={icon} c="text-secondary" aria-hidden />
-      <Box miw={0}>
-        <MatchedLabel label={item.label} query={query} />
-        {description && (
-          <Text size="sm" c="text-secondary" truncate>
-            {description}
-          </Text>
-        )}
-      </Box>
+      <MatchedLabel label={item.label} query={query} />
       <Icon name="grabber" className={S.grabber} aria-hidden />
     </Box>
   );

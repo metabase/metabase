@@ -271,24 +271,16 @@ function getSearchOptions(
 
 function getSearchPlaceholder({
   isValues,
-  canWriteFormula,
   hasItems,
 }: {
   isValues: boolean;
-  canWriteFormula: boolean;
   hasItems: boolean;
 }) {
   if (hasItems) {
     return isValues ? t`Add a value…` : t`Add a column…`;
   }
-  if (isValues) {
-    return canWriteFormula
-      ? t`Drag or type a metric, or = for a formula`
-      : t`Drag or type a metric`;
-  }
-  return canWriteFormula
-    ? t`Drag or type a column, or = for a formula`
-    : t`Drag or type a column`;
+  // the half-width wells have no room for the "= for a formula" hint; typing = still starts one
+  return isValues ? t`Drag or type a metric` : t`Drag or type a column`;
 }
 
 type SummaryWellSearchProps = {
@@ -344,7 +336,6 @@ function SummaryWellSearch({
     wellId === "values" ? definition.values : definition[wellId];
   const searchPlaceholder = getSearchPlaceholder({
     isValues,
-    canWriteFormula,
     hasItems: wellItems.length > 0,
   });
 

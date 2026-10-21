@@ -9,11 +9,9 @@ import {
   ActionIcon,
   Box,
   Card,
-  Flex,
   Icon,
   Menu,
   Text,
-  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -45,11 +43,7 @@ type SummaryWellsProps = {
   onChange: (definition: SummaryDefinition) => void;
 };
 
-/**
- * The Values and Breakouts drop targets to start. The pivot button on Breakouts, or dragging a
- * column below it, makes it a pivot: a Rows well appears and Breakouts becomes Columns. A pivot
- * made by dragging ends once Rows is empty; one made with the button stays until it's pressed again.
- */
+/** The Values, Rows, and Columns drop targets that define the pivot, in that order. */
 export function SummaryWells({
   base,
   definition,
@@ -67,22 +61,6 @@ export function SummaryWells({
   const formulaEdit = getFormulaEdit(definition, editingItemId);
   const editingWellId =
     formulaEdit != null ? getItemWellId(definition, formulaEdit.itemId) : null;
-  const [isPivotMode, setIsPivotMode] = useState(
-    () => definition.rows.length > 0,
-  );
-  const isPivot = isPivotMode || definition.rows.length > 0;
-
-  const handleTogglePivot = () => {
-    if (isPivot && definition.rows.length > 0) {
-      // back to one list of breakouts, rows first since they're the pivot's first grouping
-      onChange({
-        ...definition,
-        rows: [],
-        columns: [...definition.rows, ...definition.columns],
-      });
-    }
-    setIsPivotMode(!isPivot);
-  };
 
   const handleRemove = (itemId: string) => {
     onChange(removeItem(definition, itemId));
@@ -163,29 +141,24 @@ export function SummaryWells({
         )}
       </SummaryWell>
       <SummaryWell
-        wellId="columns"
-        title={isPivot ? t`Columns` : t`Breakouts`}
+        wellId="rows"
+        title={t`Rows`}
         definition={definition}
         draggedItem={draggedItem}
-        action={<PivotToggle isPivot={isPivot} onToggle={handleTogglePivot} />}
+      >
+        {renderField("rows", renderDimensions("rows", definition.rows))}
+      </SummaryWell>
+      <SummaryWell
+        wellId="columns"
+        title={t`Columns`}
+        definition={definition}
+        draggedItem={draggedItem}
       >
         {renderField(
           "columns",
           renderDimensions("columns", definition.columns),
         )}
       </SummaryWell>
-      {isPivot ? (
-        <SummaryWell
-          wellId="rows"
-          title={t`Rows`}
-          definition={definition}
-          draggedItem={draggedItem}
-        >
-          {renderField("rows", renderDimensions("rows", definition.rows))}
-        </SummaryWell>
-      ) : (
-        <PivotDropZone definition={definition} draggedItem={draggedItem} />
-      )}
     </Box>
   );
 }
@@ -239,8 +212,6 @@ type SummaryWellProps = {
   title: string;
   definition: SummaryDefinition;
   draggedItem: SummaryDragItem | null;
-  /** A control at the end of the title row. */
-  action?: ReactNode;
   children: ReactNode;
 };
 
@@ -250,7 +221,6 @@ function SummaryWell({
   title,
   definition,
   draggedItem,
-  action,
   children,
 }: SummaryWellProps) {
   const { setNodeRef, isOver } = useDroppable({
@@ -290,75 +260,9 @@ function SummaryWell({
       data-testid={`summary-well-${wellId}`}
       onMouseDown={handleMouseDown}
     >
-      <Flex className={S.wellHeader}>
-        <Text className={S.wellTitle}>{title}</Text>
-        {action}
-      </Flex>
+      <Text className={S.wellTitle}>{title}</Text>
       {children}
     </Card>
-  );
-}
-
-type PivotToggleProps = {
-  isPivot: boolean;
-  onToggle: () => void;
-};
-
-function PivotToggle({ isPivot, onToggle }: PivotToggleProps) {
-  const label = isPivot ? t`Back to breakouts` : t`Pivot into rows and columns`;
-  return (
-    <Tooltip label={label}>
-      <ActionIcon
-        className={S.pivotToggle}
-        variant="subtle"
-        size="sm"
-        selected={isPivot}
-        aria-label={label}
-        aria-pressed={isPivot}
-        onClick={onToggle}
-      >
-        <Icon name="pivot_table" />
-      </ActionIcon>
-    </Tooltip>
-  );
-}
-
-type PivotDropZoneProps = {
-  definition: SummaryDefinition;
-  draggedItem: SummaryDragItem | null;
-};
-
-/**
- * The space below the last well. Dragging a column into it shows a Create pivot target; dropping
- * there puts the column in Rows.
- */
-function PivotDropZone({ definition, draggedItem }: PivotDropZoneProps) {
-  const canDrop =
-    draggedItem != null && canDropOnWell(draggedItem, "rows", definition);
-  const { setNodeRef, isOver } = useDroppable({
-    id: "summary-well:pivot",
-    data: { wellId: "rows" },
-    disabled: !canDrop,
-  });
-
-  return (
-    <Box
-      ref={setNodeRef}
-      className={S.pivotDropZone}
-      data-testid="summary-pivot-drop-zone"
-    >
-      {/* mounted for the whole drag, so entering and leaving the zone fade it in and out */}
-      {canDrop && (
-        <Box
-          className={S.pivotDropTarget}
-          data-over={isOver}
-          aria-hidden={!isOver}
-        >
-          <Icon name="pivot_table" />
-          {t`Create pivot`}
-        </Box>
-      )}
-    </Box>
   );
 }
 

@@ -2,10 +2,10 @@ import { SummarySidebar } from "../../../components/view/SummarySidebar";
 
 import { SummarySidebar as BreakoutsSummarySidebar } from "./breakouts";
 import { SummarySidebar as ClickToSwapSummarySidebar } from "./click-to-swap";
+import { SummarySidebar as OriginalSummarySidebar } from "./original";
 import { SummarySidebar as RoomySummarySidebar } from "./roomy";
 import { SummarySidebar as RowsOnDemandSummarySidebar } from "./rows-on-demand";
 import { SummarySidebar as SectionsSummarySidebar } from "./sections";
-import { SummarySidebar as SectionsSwapSummarySidebar } from "./sections-swap";
 import { SummarySidebar as SectionsTopSummarySidebar } from "./sections-top";
 import { SummarySidebar as SideBySideSummarySidebar } from "./side-by-side";
 import type { SummarizeSidebarVariant } from "./types";
@@ -21,8 +21,14 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
   {
     slug: "default",
     name: "Default",
-    axis: "Fields on top, wells below, as shipped in the query builder",
+    axis: "As shipped in the query builder: Sections swap",
     Sidebar: SummarySidebar,
+  },
+  {
+    slug: "original",
+    name: "Original",
+    axis: "The query builder's sidebar before Sections swap: fields on top, wells below",
+    Sidebar: OriginalSummarySidebar,
   },
   {
     slug: "wells-top",
@@ -81,7 +87,7 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
   {
     slug: "sections-swap",
     name: "Sections swap",
-    axis: "Click to swap with Sections' field list: one searchable list of collapsible sections",
-    Sidebar: SectionsSwapSummarySidebar,
+    axis: "Click to swap with Sections' field list; now shipped in the query builder, the same sidebar as Default",
+    Sidebar: SummarySidebar,
   },
 ];
