@@ -10,6 +10,7 @@ import {
   setupTableEndpoints,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
+  setupUpdateTableListEndpoint,
 } from "__support__/server-mocks";
 import {
   act,
@@ -22,8 +23,9 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { Link } from "metabase/common/components/Link";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Route, redirect } from "metabase/router";
+import { Outlet, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -31,6 +33,8 @@ import type {
   Database,
   Field,
   GetFieldValuesResponse,
+  SchemaName,
+  Table,
 } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -176,6 +180,7 @@ interface SetupOpts {
   waitForDatabase?: boolean;
   waitForTable?: boolean;
   shouldSkipTableMocks?: boolean;
+  withUndoListing?: boolean;
 }
 
 const OtherComponent = () => {
@@ -187,6 +192,13 @@ const OtherComponent = () => {
   );
 };
 
+const OutletWithUndoListing = () => (
+  <>
+    <Outlet />
+    <UndoListing />
+  </>
+);
+
 async function setup({
   databases = [SAMPLE_DB],
   fieldValues = SAMPLE_DB_FIELD_VALUES,
@@ -197,6 +209,7 @@ async function setup({
   waitForDatabase = true,
   waitForTable = true,
   shouldSkipTableMocks = false,
+  withUndoListing = false,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
@@ -219,7 +232,10 @@ async function setup({
   const { router } = renderWithProviders(
     <>
       <Route path="notAdmin" element={<OtherComponent />} />
-      <Route path="admin/datamodel">
+      <Route
+        path="admin/datamodel"
+        element={withUndoListing ? <OutletWithUndoListing /> : undefined}
+      >
         <Route index element={redirect("database")} />
         <Route path="database" element={<DataModelV1 />} />
         <Route path="database/:databaseId" element={<DataModelV1 />} />
@@ -630,6 +646,200 @@ describe("DataModelV1", () => {
     });
   });
 
+  describe("table visibility", () => {
+    it("should hide and restore all tables of a single-schema database", async () => {
+      const db = createSingleSchemaVisibilityDb();
+      const [hiddenA, hiddenB, visibleA, visibleB] = checkNotNull(db.tables);
+      const allTables = [hiddenA, hiddenB, visibleA, visibleB];
+      setupUpdateTableListEndpoint();
+      await setup({ databases: [db], withUndoListing: true });
+
+      await expectTablesHidden([hiddenA, hiddenB]);
+      await expectTablesVisible([visibleA, visibleB]);
+
+      setupSchemaTablesResponse(
+        db,
+        "PUBLIC",
+        withVisibility(allTables, "hidden"),
+      );
+      await userEvent.click(
+        await getBulkVisibilityButton(db.name, "Hide all tables"),
+      );
+
+      await expectTablesHidden(allTables);
+      expect(await getUpdateTableListBodies()).toEqual([
+        { ids: [visibleA.id, visibleB.id], visibility_type: "hidden" },
+      ]);
+      expect(await screen.findByText("Tables hidden")).toBeInTheDocument();
+      expect(getLastSchemaTablesUrl(db, "PUBLIC")).toContain(
+        "include_hidden=true",
+      );
+
+      setupSchemaTablesResponse(db, "PUBLIC", allTables);
+      await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      await expectTablesHidden([hiddenA, hiddenB]);
+      await expectTablesVisible([visibleA, visibleB]);
+      expect(await getUpdateTableListBodies()).toEqual([
+        { ids: [visibleA.id, visibleB.id], visibility_type: "hidden" },
+        { ids: [visibleA.id, visibleB.id], visibility_type: null },
+      ]);
+      expect(await screen.findByText("Change undone")).toBeInTheDocument();
+
+      setupSchemaTablesResponse(
+        db,
+        "PUBLIC",
+        withVisibility(allTables, "hidden"),
+      );
+      await userEvent.click(
+        await getBulkVisibilityButton(db.name, "Hide all tables"),
+      );
+      await expectTablesHidden(allTables);
+
+      setupSchemaTablesResponse(db, "PUBLIC", withVisibility(allTables, null));
+      await userEvent.click(
+        await getBulkVisibilityButton(db.name, "Unhide all tables"),
+      );
+
+      await expectTablesVisible(allTables);
+      expect((await getUpdateTableListBodies()).at(-1)).toEqual({
+        ids: allTables.map((table) => table.id),
+        visibility_type: null,
+      });
+      expect(await screen.findByText("Tables unhidden")).toBeInTheDocument();
+    });
+
+    it("should hide and restore all tables of a schema in a multi-schema database", async () => {
+      const db = createMultiSchemaVisibilityDb();
+      const [, wildAnimals, wildBirds] = checkNotNull(db.tables);
+      const wildTables = [wildAnimals, wildBirds];
+      setupUpdateTableListEndpoint();
+      await setup({
+        databases: [db],
+        waitForTable: false,
+        withUndoListing: true,
+      });
+
+      expect(await findTablePickerSchema("Domestic")).toBeInTheDocument();
+      expect(queryBulkVisibilityButton("database", db.name)).toBeNull();
+      expect(queryBulkVisibilityButton("schema", "Domestic")).toBeNull();
+      expect(queryBulkVisibilityButton("schema", "Wild")).toBeNull();
+
+      await userEvent.click(await findTablePickerSchema("Wild"));
+      await expectTablesVisible(wildTables);
+      expect(queryBulkVisibilityButton("database", db.name)).toBeNull();
+      expect(queryBulkVisibilityButton("schema", "Domestic")).toBeNull();
+
+      setupSchemaTablesResponse(
+        db,
+        "Wild",
+        withVisibility(wildTables, "hidden"),
+      );
+      await userEvent.click(
+        await findBulkVisibilityButton("schema", "Wild", "Hide all tables"),
+      );
+
+      await expectTablesHidden(wildTables);
+      expect(await getUpdateTableListBodies()).toEqual([
+        { ids: [wildAnimals.id, wildBirds.id], visibility_type: "hidden" },
+      ]);
+      expect(await screen.findByText("Tables hidden")).toBeInTheDocument();
+
+      setupSchemaTablesResponse(db, "Wild", wildTables);
+      await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      await expectTablesVisible(wildTables);
+      expect((await getUpdateTableListBodies()).at(-1)).toEqual({
+        ids: [wildAnimals.id, wildBirds.id],
+        visibility_type: null,
+      });
+      expect(await screen.findByText("Change undone")).toBeInTheDocument();
+    });
+
+    it("should update the table picker when toggling the visibility of a branch that is not selected", async () => {
+      const accounts = createMockTable({
+        id: 301,
+        db_id: 30,
+        schema: "PUBLIC",
+        name: "ACCOUNTS",
+        display_name: "Accounts",
+        visibility_type: "hidden",
+      });
+      const feedback = createMockTable({
+        id: 302,
+        db_id: 30,
+        schema: "PUBLIC",
+        name: "FEEDBACK",
+        display_name: "Feedback",
+        visibility_type: "hidden",
+      });
+      const orders = createMockTable({
+        id: 303,
+        db_id: 30,
+        schema: "PUBLIC",
+        name: "ORDERS",
+        display_name: "Orders",
+        visibility_type: null,
+      });
+      const birds = createMockTable({
+        id: 401,
+        db_id: 40,
+        schema: "Wild",
+        name: "BIRDS",
+        display_name: "Birds",
+        visibility_type: null,
+      });
+      const sampleDb = createMockDatabase({
+        id: 30,
+        name: "Sample DB",
+        tables: [accounts, feedback, orders],
+      });
+      const writableDb = createMockDatabase({
+        id: 40,
+        name: "Writable DB",
+        tables: [birds],
+      });
+      const allTables = [accounts, feedback, orders];
+      setupUpdateTableListEndpoint();
+      await setup({ databases: [sampleDb, writableDb], waitForTable: false });
+
+      await userEvent.click(await findTablePickerDatabase(sampleDb.name));
+      await userEvent.click(await findTablePickerDatabase(writableDb.name));
+      await userEvent.click(await findTablePickerTable(birds.display_name));
+      await waitForLoaderToBeRemoved();
+      expect(getTableNameInput()).toHaveValue(birds.display_name);
+
+      setupSchemaTablesResponse(sampleDb, "PUBLIC", [
+        { ...accounts, visibility_type: null },
+        feedback,
+        orders,
+      ]);
+      await userEvent.click(await getUnhideTableButton(accounts.display_name));
+
+      await expectTablesVisible([accounts]);
+      expect(
+        await fetchMock.callHistory
+          .lastCall(`table-${accounts.id}-put`)
+          ?.request?.clone()
+          .json(),
+      ).toEqual({ visibility_type: null });
+
+      setupSchemaTablesResponse(
+        sampleDb,
+        "PUBLIC",
+        withVisibility(allTables, "hidden"),
+      );
+      await userEvent.click(
+        await getBulkVisibilityButton(sampleDb.name, "Hide all tables"),
+      );
+
+      await expectTablesHidden(allTables);
+      expect(await getUpdateTableListBodies()).toEqual([
+        { ids: [accounts.id, orders.id], visibility_type: "hidden" },
+      ]);
+    });
+  });
+
   describe("no databases", () => {
     // TODO: https://linear.app/metabase/issue/SEM-459/empty-state-when-there-are-no-databases
     // eslint-disable-next-line jest/no-disabled-tests
@@ -1002,6 +1212,141 @@ async function getUnhideTableButton(name: string) {
   return within(await findTablePickerTable(name)).getByRole("button", {
     name: "Unhide table",
   });
+}
+
+function createSingleSchemaVisibilityDb() {
+  const dbId = 10;
+  const createTable = (
+    id: number,
+    name: string,
+    visibility_type: Table["visibility_type"],
+  ) =>
+    createMockTable({
+      id,
+      db_id: dbId,
+      schema: "PUBLIC",
+      name: name.toUpperCase(),
+      display_name: name,
+      visibility_type,
+    });
+
+  return createMockDatabase({
+    id: dbId,
+    name: "Single Schema DB",
+    tables: [
+      createTable(101, "Accounts", "hidden"),
+      createTable(102, "Feedback", "hidden"),
+      createTable(103, "Orders", null),
+      createTable(104, "People", null),
+    ],
+  });
+}
+
+function createMultiSchemaVisibilityDb() {
+  const dbId = 20;
+  const createTable = (id: number, name: string, schema: SchemaName) =>
+    createMockTable({
+      id,
+      db_id: dbId,
+      schema,
+      name: name.toUpperCase(),
+      display_name: name,
+      visibility_type: null,
+    });
+
+  return createMockDatabase({
+    id: dbId,
+    name: "Multi Schema DB",
+    tables: [
+      createTable(201, "Animals", "Domestic"),
+      createTable(202, "Animals", "Wild"),
+      createTable(203, "Birds", "Wild"),
+    ],
+  });
+}
+
+function withVisibility(
+  tables: Table[],
+  visibility_type: Table["visibility_type"],
+) {
+  return tables.map((table) => ({ ...table, visibility_type }));
+}
+
+function setupSchemaTablesResponse(
+  db: Database,
+  schema: SchemaName,
+  tables: Table[],
+) {
+  fetchMock.modifyRoute(`database-${db.id}-schema-${schema}`, {
+    response: tables,
+  });
+}
+
+function getLastSchemaTablesUrl(db: Database, schema: SchemaName) {
+  return fetchMock.callHistory.lastCall(`database-${db.id}-schema-${schema}`)
+    ?.url;
+}
+
+async function getUpdateTableListBodies() {
+  const calls = fetchMock.callHistory.calls("table-list-put");
+  return Promise.all(
+    calls.map(
+      async (call): Promise<unknown> => await call.request?.clone().json(),
+    ),
+  );
+}
+
+async function getBulkVisibilityButton(
+  databaseName: string,
+  name: "Hide all tables" | "Unhide all tables",
+) {
+  return findBulkVisibilityButton("database", databaseName, name);
+}
+
+async function findBulkVisibilityButton(
+  type: "database" | "schema",
+  itemName: string,
+  name: "Hide all tables" | "Unhide all tables",
+) {
+  return within(await findTablePickerItem(type, itemName)).findByRole(
+    "button",
+    { name },
+  );
+}
+
+function queryBulkVisibilityButton(
+  type: "database" | "schema",
+  itemName: string,
+) {
+  const item = screen
+    .getAllByTestId("tree-item")
+    .find(
+      (el) =>
+        el.getAttribute("data-type") === type &&
+        el.textContent?.includes(itemName),
+    );
+
+  return within(checkNotNull(item)).queryByRole("button", {
+    name: /all tables/,
+  });
+}
+
+async function expectTablesHidden(tables: Table[]) {
+  for (const table of tables) {
+    await waitFor(async () => {
+      expect(
+        await getUnhideTableButton(table.display_name),
+      ).toBeInTheDocument();
+    });
+  }
+}
+
+async function expectTablesVisible(tables: Table[]) {
+  for (const table of tables) {
+    await waitFor(async () => {
+      expect(await getHideTableButton(table.display_name)).toBeInTheDocument();
+    });
+  }
 }
 
 /** table section helpers */

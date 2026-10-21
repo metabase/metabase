@@ -214,165 +214,6 @@ describe("scenarios > admin > datamodel", () => {
         });
       });
 
-      it("should allow hiding and restoring all tables in a single-schema database", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-        ]);
-        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
-
-        TablePicker.getDatabase("Sample Database")
-          .button("Hide all tables")
-          .click();
-        cy.wait("@updateTables");
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-          "Orders",
-          "People",
-          "Products",
-          "Reviews",
-        ]);
-        verifyToastAndUndo("Tables hidden");
-        cy.wait("@updateTables");
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-        ]);
-        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
-
-        TablePicker.getDatabase("Sample Database")
-          .button("Hide all tables")
-          .click();
-        cy.wait("@updateTables");
-        verifyAndCloseToast("Tables hidden");
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-          "Orders",
-          "People",
-          "Products",
-          "Reviews",
-        ]);
-
-        TablePicker.getDatabase("Sample Database")
-          .button("Unhide all tables")
-          .click();
-        cy.wait("@updateTables");
-        verifyAndCloseToast("Tables unhidden");
-
-        verifyTablesVisible([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-          "Orders",
-          "People",
-          "Products",
-          "Reviews",
-        ]);
-      });
-
-      it(
-        "should allow hiding and restoring all tables in a multi-schema database",
-        { tags: ["@external"] },
-        () => {
-          H.restore("postgres-writable");
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
-          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-          H.DataModel.visit();
-
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .button("Hide all tables")
-            .should("not.exist");
-          TablePicker.getSchema("Domestic")
-            .button("Hide all tables")
-            .should("not.exist");
-          TablePicker.getSchema("Wild")
-            .button("Hide all tables")
-            .should("not.exist");
-
-          TablePicker.getSchema("Wild").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .button("Hide all tables")
-            .should("not.exist");
-          TablePicker.getSchema("Domestic")
-            .button("Hide all tables")
-            .should("not.exist");
-          verifyTablesVisible(["Animals", "Birds"]);
-
-          TablePicker.getSchema("Wild")
-            .button("Hide all tables")
-            .should("exist")
-            .click();
-          cy.wait("@updateTables");
-          verifyTablesHidden(["Animals", "Birds"]);
-
-          verifyToastAndUndo("Tables hidden");
-          cy.wait("@updateTables");
-          verifyTablesVisible(["Animals", "Birds"]);
-        },
-      );
-
-      it(
-        "should update the table picker state when toggling visibility of not currently selected branch",
-        { tags: ["@external"] },
-        () => {
-          H.restore("postgres-writable");
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
-          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-          H.DataModel.visit();
-
-          TablePicker.getDatabase("Sample Database").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getSchema("Wild").click();
-          TablePicker.getTable("Animals").click();
-
-          TablePicker.getTable("Accounts")
-            .button("Unhide table")
-            .should("exist")
-            .click();
-          cy.wait("@updateTable");
-          verifyTablesVisible(["Accounts"]);
-
-          TablePicker.getDatabase("Sample Database")
-            .button("Hide all tables")
-            .should("exist")
-            .click();
-          cy.wait("@updateTables");
-          verifyTablesHidden([
-            "Accounts",
-            "Analytic Events",
-            "Feedback",
-            "Invoices",
-            "Orders",
-            "People",
-            "Products",
-            "Reviews",
-          ]);
-        },
-      );
-
       it("hidden table should not show up in various places in UI", () => {
         cy.signInAsAdmin();
 
@@ -1014,29 +855,6 @@ describe("scenarios > admin > datamodel", () => {
       });
     });
 
-    describe("Empty states", { tags: "@external" }, () => {
-      beforeEach(() => {
-        H.restore("postgres-writable");
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-        H.queryWritableDB('delete from "Domestic"."Animals"');
-      });
-
-      it("should show empty state when there is no data", () => {
-        H.DataModel.visit();
-
-        TablePicker.getDatabase("Writable Postgres12").click();
-        TablePicker.getSchema("Domestic").click();
-        TablePicker.getTable("Animals").click();
-        TableSection.clickField("Name");
-        FieldSection.getPreviewButton().click();
-
-        PreviewSection.get().findByText("No data to show").should("be.visible");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        PreviewSection.get().findByText("No data to show").should("be.visible");
-      });
-    });
-
     it("should not auto-focus inputs in filtering preview", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
@@ -1075,25 +893,6 @@ describe("scenarios > admin > datamodel", () => {
         .findByPlaceholderText("Enter a number")
         .should("be.visible")
         .and("not.be.focused");
-    });
-
-    it("should not crash when viewing filtering preview of a hidden table", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
-      });
-
-      TablePicker.getTable("Orders").button("Hide table").click();
-      cy.wait("@updateTable");
-
-      FieldSection.getPreviewButton().click();
-      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-      PreviewSection.get()
-        .findByPlaceholderText("Enter an ID")
-        .should("be.visible");
-      H.main().findByText("Something’s gone wrong").should("not.exist");
     });
   });
 
@@ -1218,23 +1017,4 @@ function verifyTablePreview({
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().icon("close").click({ force: true });
-}
-
-function verifyToastAndUndo(message: string) {
-  H.undoToast().should("contain.text", message);
-  H.undoToast().button("Undo").click();
-  H.undoToast().should("contain.text", "Change undone");
-  H.undoToast().icon("close").click({ force: true });
-}
-
-function verifyTablesVisible(tables: string[]) {
-  for (const table of tables) {
-    TablePicker.getTable(table).button("Hide table").should("exist");
-  }
-}
-
-function verifyTablesHidden(tables: string[]) {
-  for (const table of tables) {
-    TablePicker.getTable(table).button("Unhide table").should("be.visible");
-  }
 }

@@ -4,9 +4,16 @@ import { useState } from "react";
 import { setupCardDataset } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { Field, Table } from "metabase-types/api";
+import type { MockDatasetOpts } from "metabase-types/api/mocks";
+import {
+  createOrdersProductIdField,
   createOrdersTable,
   createOrdersTotalField,
   createSampleDatabase,
@@ -17,12 +24,16 @@ import type { PreviewType } from "./types";
 
 registerVisualizations();
 
-const table = createOrdersTable();
-const field = createOrdersTotalField();
+const ORDERS_TABLE = createOrdersTable();
+const ORDERS_TOTAL_FIELD = createOrdersTotalField();
 
 function TestComponent({
+  field,
+  table,
   onPreviewTypeChange,
 }: {
+  field: Field;
+  table: Table;
   onPreviewTypeChange: (value: PreviewType) => void;
 }) {
   const [previewType, setPreviewType] = useState<PreviewType>("table");
@@ -43,13 +54,29 @@ function TestComponent({
   );
 }
 
-function setup({ status = 200 }: { status?: number } = {}) {
-  setupCardDataset({ status });
+interface SetupOpts {
+  status?: number;
+  dataset?: MockDatasetOpts;
+  field?: Field;
+  table?: Table;
+}
+
+function setup({
+  status = 200,
+  dataset,
+  field = ORDERS_TOTAL_FIELD,
+  table = ORDERS_TABLE,
+}: SetupOpts = {}) {
+  setupCardDataset({ status, dataset });
 
   const onPreviewTypeChange = jest.fn();
 
   renderWithProviders(
-    <TestComponent onPreviewTypeChange={onPreviewTypeChange} />,
+    <TestComponent
+      field={field}
+      table={table}
+      onPreviewTypeChange={onPreviewTypeChange}
+    />,
     {
       // the preview query is built from the metadata store, so an empty store
       // means no request is ever issued
@@ -91,6 +118,52 @@ describe("PreviewSection", () => {
       await userEvent.click(screen.getByLabelText("Detail"));
 
       expect(await screen.findByText("Something went wrong")).toBeVisible();
+    });
+  });
+
+  describe("empty states", () => {
+    beforeEach(() => {
+      mockGetBoundingClientRect();
+    });
+
+    it("shows an empty state in the table and detail previews when the query returns no rows", async () => {
+      setup({ dataset: { data: { rows: [] } } });
+
+      expect(await screen.findByText("No data to show")).toBeVisible();
+
+      await userEvent.click(screen.getByLabelText("Detail"));
+      expect(await screen.findByText("No data to show")).toBeVisible();
+    });
+
+    it("does not show an empty state in the table and detail previews when the query returns rows", async () => {
+      setup({ dataset: { data: { rows: [["Sample row value"]] } } });
+
+      expect(await screen.findByText("Sample row value")).toBeInTheDocument();
+      expect(screen.queryByText("No data to show")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("Detail"));
+      expect(await screen.findByText("Sample row value")).toBeInTheDocument();
+      expect(screen.queryByText("No data to show")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("filtering preview", () => {
+    it("shows the filter picker for a field of a hidden table", async () => {
+      const productIdField = createOrdersProductIdField();
+      setup({
+        field: productIdField,
+        table: createOrdersTable({
+          fields: [productIdField],
+          visibility_type: "hidden",
+        }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Filtering"));
+
+      expect(await screen.findByPlaceholderText("Enter an ID")).toBeVisible();
+      expect(
+        screen.queryByText("Something’s gone wrong"),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -43,6 +43,10 @@ export function setupTableEndpoints(
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }
 
+export function setupUpdateTableListEndpoint() {
+  fetchMock.put("path:/api/table", [], { name: "table-list-put" });
+}
+
 export function setupTableQueryMetadataEndpoint(table: Table) {
   fetchMock.get(`path:/api/table/${table.id}/query_metadata`, table);
 }
