@@ -23,7 +23,7 @@ type MetadataSectionBaseProps = {
   field: Field;
   table: Table;
   getFieldHref: (fieldId: FieldId) => string;
-  readOnly?: boolean;
+  disabled?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
@@ -31,7 +31,7 @@ const MetadataSectionBase = ({
   field,
   table,
   getFieldHref,
-  readOnly,
+  disabled,
   onTrackMetadataChange,
 }: MetadataSectionBaseProps) => {
   const id = getRawTableFieldId(field);
@@ -78,7 +78,7 @@ const MetadataSectionBase = ({
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
-        selectProps={{ readOnly }}
+        selectProps={{ disabled }}
         semanticTypeError={semanticTypeError}
         onChange={handleChange}
       />

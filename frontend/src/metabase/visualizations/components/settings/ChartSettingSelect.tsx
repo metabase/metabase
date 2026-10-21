@@ -36,7 +36,7 @@ type ChartSettingSelectProps = Pick<
   options?: ChartSettingSelectOption[];
   placeholder?: string;
   placeholderNoOptions?: string;
-  readOnly?: boolean;
+  disabled?: boolean;
   rightSectionWidth?: string;
   searchProp?: string;
   value?: ChartSettingSelectValue;
@@ -59,7 +59,7 @@ export const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   pr,
-  readOnly,
+  disabled,
   rightSection,
   rightSectionWidth,
   searchProp,
@@ -89,7 +89,8 @@ export const ChartSettingSelect = ({
     return () => scrollContainer.removeEventListener("scroll", close);
   }, [scrollContainer, dropdownOpened]);
 
-  const disabled =
+  const isDisabled =
+    disabled ||
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
@@ -131,8 +132,7 @@ export const ChartSettingSelect = ({
         input: cx(S.input, { [S.inputWithLeftSection]: hasLeftSection }),
       }}
       data={data}
-      disabled={disabled}
-      readOnly={readOnly}
+      disabled={isDisabled}
       value={selectedValue}
       // Mantine's Select passes two arguments to onChange, but the onChange defined in the settings code takes one.
       onChange={(v) => {
