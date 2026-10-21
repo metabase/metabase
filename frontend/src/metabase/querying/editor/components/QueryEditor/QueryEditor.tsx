@@ -1,4 +1,4 @@
-import { useElementSize } from "@mantine/hooks";
+import { useElementSize, useHotkeys } from "@mantine/hooks";
 import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
@@ -91,6 +91,16 @@ export function QueryEditor({
   });
 
   const { ref, height: availableHeight } = useElementSize();
+
+  const handleCmdEnter = () => {
+    if (isRunnable && !isRunning) {
+      runQuery();
+    }
+  };
+
+  const canRunViaHotkey =
+    uiOptions?.canRunViaHotkey && uiOptions?.readOnly !== true;
+  useHotkeys(canRunViaHotkey ? [["mod+Enter", handleCmdEnter]] : [], []);
 
   if (isLoading || error != null) {
     return (
