@@ -2164,6 +2164,10 @@
               [[{"filters" {"op" ">"}}
                 :invalid-representations-query
                 "Invalid at stages[2].filters: invalid type. Fix the named paths."]
+               [{"breakout" [{"op" "field"}]}
+                :invalid-representations-query
+                (str "Invalid at stages[2].breakout[0]: should be a vector, "
+                     "clause must be [operator-string, options-map, …args]. Fix the named paths.")]
                [{"expressions" {"Previous" ["offset" {} ["field" {} "count"] -1]}}
                 :query-not-runnable
                 "Failing paths: stages[2].expressions[0]:"]]]
@@ -2182,6 +2186,8 @@
           (is (= :recoverable (:class classified)))
           (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
                  (:code classified)))
+          (when (contains? stage-kvs "breakout")
+            (is (vector? (get-in classified [:data :humanized "stages" 2 "breakout"]))))
           (is (str/includes? (tools.error/recoverable-text classified #{}) expected)))))))
 
 (deftest diagnostic-stage-numbers-after-split-test
