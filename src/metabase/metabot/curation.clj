@@ -28,8 +28,9 @@
 
 (def curation-exempt-profiles
   "Profiles whose tools aren't restricted by `use_verified_content`. The nlq profile discovers data through the
-  Library index, which carries its own scope; `nlq-fallback` serves the same profile with general search."
-  #{:nlq :nlq-fallback})
+  Library index, which carries its own scope; `nlq-fallback` serves the same profile with general search. The sql
+  profile writes SQL, which the product decision leaves outside the rule, and reads raw tables' columns to do it."
+  #{:nlq :nlq-fallback :sql})
 
 (defn curated-only?
   "Whether a Metabot tool running for the Metabot row `metabot` under `profile-id` may only reach curated content:
@@ -148,9 +149,9 @@
 ;;; viewed saved question, and the metric reads of `read_resource`, `list_available_fields`, and `get_field_values`,
 ;;; so an uncurated Table can't be reached by naming it directly rather than finding it through search (BOT-1649).
 ;;; A curated entity covers what `read_resource` exposes through it:
-;;; - a curated Table or Card covers the Tables one FK hop away (its related tables), but only as joins: the query's
-;;;   own source must be curated itself, or be what a curated metric in the query is defined on, so a raw Table
-;;;   can't be read in full by joining it to a curated one;
+;;; - a curated Table or Card covers the Tables one FK hop away (its related tables) as joins: their rows and
+;;;   columns are exposed through the join, as `read_resource` exposes them through the curated entity, but the
+;;;   query's own source must be curated itself, or be what a curated metric in the query is defined on;
 ;;; - a curated metric covers the Table or Card it's defined on (its primary source) and that source's related
 ;;;   tables; the Tables its definition merely joins are reachable as joins only, and widen coverage no further;
 ;;; - a curated Table or Card covers the metrics defined on it: an uncurated metric may be used when its definition
@@ -418,7 +419,12 @@
 (defn check-curated-query!
   "Reject `query` — a query the conversation holds, as a lib query or a query map with `:database` — unless everything
   it reads is curated or covered (see [[uncurated-query-sources]]), naming it by `label`. A native query names no
-  tables to judge it by and is left to the SQL tools' own gates. Callers decide whether the session is curated-only."
+  tables to judge it by and is left to the SQL tools' own gates. Callers decide whether the session is curated-only.
+
+  The rule runs before the query processor checks the user's permissions on the query. A query the user may not
+  run is refused here when it reads an uncurated entity, and by the processor otherwise, so the shape of the refusal
+  tells a user who already holds the query whether its entities are curated. Accepted: that user put the query in
+  the conversation, and the alternative is a second permission walk ahead of the processor's own."
   [label query]
   (let [query (cond-> query
                 (not (:lib/metadata query))
