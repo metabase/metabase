@@ -30,7 +30,7 @@
 
   `:message` is the pipeline's own sentence. `:entity-type` and `:entity-id` are present only for
   the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]]).
-  `:source-card` and `:source-card-type` are the numeric id and type of the stage's `source-card:`,
+  `:source-card` and `:source-card-type` are the numeric ID and type of the stage's `source-card:`,
   present only for the codes a `source-card:` stage raises (see [[column-not-returned!]])."
   [:map {:closed true}
    [:message          :string]

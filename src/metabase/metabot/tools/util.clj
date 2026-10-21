@@ -225,7 +225,6 @@
       cards)))
 
 ;;; ------------------------------------------ metric sources ------------------------------------------
-;;;
 
 (defn metric-card-shape-get
   "Read `kebab-k` from a lib metadata card or `snake-k` from a Toucan row.
@@ -237,9 +236,10 @@
     (get card snake-k)))
 
 (defn readable-source-cards
-  "Return readable cards from `card-ids` as `{card-id -> row}` in one query.
+  "Return readable cards from `card-ids` as `{card-id -> row}`, or nil for empty input.
 
-  Rows include `:name`, `:entity_id`, and the columns needed by `can-read?`. Missing and unreadable cards are omitted."
+  Read the cards in one query, including `:name`, `:entity_id`, and the columns needed by `can-read?`.
+  Missing and unreadable cards are omitted."
   [card-ids]
   (when (seq card-ids)
     (into {}

@@ -2307,11 +2307,11 @@
                (lib-be/application-database-metadata-provider (mt/id))
                {metric-id {:kind :card, :card-id question-id}})]
           (is (empty? usable-sources)
-              "nor its numeric id")
+              "nor its numeric ID")
           (is (str/includes? msg "Metric on secret question")
               "the metric itself is readable to this user, so naming it is fine")
           (is (not (str/includes? msg question-eid))
-              "but the source card's portable entity id must not leak")
+              "but the source card's portable entity ID must not leak")
           (is (str/includes? msg "do not have access")))))))
 
 (deftest incompatible-metric-message-does-not-disclose-unreadable-metric-name-test
@@ -2347,7 +2347,7 @@
           (is (not (str/includes? msg "Secret metric"))
               "the name of a metric this user cannot read must not come back")
           (is (str/includes? msg (str metric-id))
-              "it falls back to the numeric id, which the caller already had"))))))
+              "it falls back to the numeric ID, which the caller already had"))))))
 
 (deftest incompatible-metric-message-does-not-disclose-unqueryable-base-table-test
   (testing "The error names a required table only when the user may query it"

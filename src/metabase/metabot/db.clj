@@ -830,7 +830,7 @@
 
 (mu/defn card-source-rows
   "Return the source cards in `card-ids`, including the columns needed by `can-read?`."
-  ;; `can-read?` needs both keys, including nil values, to check collection and document access.
+  ;; `can-read?` needs `:collection_id` and `:document_id`, including nil values, to check access.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
 

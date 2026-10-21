@@ -2024,6 +2024,14 @@
 ;;; Card stages use the FK columns the card returns; table stages use their outbound FKs.
 ;;; Columns already returned by a card are left unchanged. An implicit join could select different rows.
 ;;; Card stages with explicit joins are skipped because lib resolves their fields through those joins.
+;;;
+;;; The pass walks stage[0] only, skips descent into the `\"joins\"` subtree (field clauses
+;;; inside a join live in a join context), and is a no-op on clauses that already carry any
+;;; of the disambiguating opts: `source-field`, `source-field-name`, `source-field-join-alias`,
+;;; or `join-alias`. The latter three are LLM-authored variants we do *not* auto-fill:
+;;; correctly filling them in would require resolving a previous-stage's returned-columns or
+;;; an explicit-join's FK shape, neither of which is in scope for this pass.
+;;; ============================================================
 
 (defn- field-clause?
   "A repaired field clause of shape `[\"field\" <opts-map> <target>]` whose target names a
@@ -2241,7 +2249,7 @@
   "Return the field clause with an inferred `source-field`, or leave it unchanged.
 
   `source-info` describes a table or card (see [[stage-source-info]]). A card exposes only its returned columns,
-  so a field on its base table may still need a join. Throw `:no-fk-path`, `:ambiguous-fk`,
+  so a field on its base table may still be unavailable. Throw `:no-fk-path`, `:ambiguous-fk`,
   `:column-not-returned`, or `:unexportable-fk` when the reference cannot be resolved safely."
   [clause mp import-resolver export-resolver source-info]
   (let [opts (nth clause 1)
@@ -2305,7 +2313,7 @@
               clause)))))))
 
 (defn- stage-source-info
-  "Return the first stage's table or card source information, or nil when the stage must be skipped.
+  "Return a stage's table or card source information, or nil when the stage must be skipped.
 
   Skip unresolved sources and card stages with explicit joins, whose fields lib can resolve through those joins.
   Card metadata is resolved only when a field needs implicit-join repair; candidates come from the card's returned
@@ -2366,6 +2374,26 @@
 ;;;
 ;;; TODO (Mihael 2026-09-28) -- extend this pass to `source-card:` stages.
 ;;;
+;;; Trigger: a field clause `["field" {opts} <portable-fk>]` whose target table is reachable
+;;; from **exactly one** explicit join's source table via **exactly one** FK, and which the
+;;; basic implicit-join pass (Pass 4) cannot handle (target not reachable from `source-table`,
+;;; or LLM clearly intended to hop through the join).
+;;;
+;;; This is the moral equivalent of Pass 4 but the FK-bearing column lives on a joined table
+;;; rather than on `source-table`. We refuse to second-guess any clause that already carries
+;;; one of `source-field` / `source-field-name` / `source-field-join-alias` / `join-alias`.
+;;;
+;;; Conservative on purpose - per `repr-deletion-followups.md`, repair is opt-in: we fill in
+;;; the unambiguous cases and bail loudly on ambiguity rather than guessing. The companion
+;;; multi-stage `source-field-name` repair is *not* implemented here (it would require
+;;; resolving a previous-stage's returned-columns from inside repair, which is structurally
+;;; awkward and prone to silent corruption); see `repr-deletion-followups.md` for the
+;;; deferred-with-rationale entry.
+;;;
+;;; Like Pass 4: walks `stages[0]` only, skips descent into the `\"joins\"` subtree (those
+;;; field clauses already need `join-alias`), no-op when source-table or any join's
+;;; source-table can't be resolved.
+;;; ============================================================
 
 (defn- explicit-join-source-tables
   "For each entry in a stage's `\"joins\"` vector, return
