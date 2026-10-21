@@ -17,13 +17,13 @@ import { TitledSection } from "../../TitledSection";
 
 interface Props {
   field: Field;
-  readOnly?: boolean;
+  disabled?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 }
 
 const FormattingSectionBase = ({
   field,
-  readOnly,
+  disabled,
   onTrackMetadataChange,
 }: Props) => {
   const id = getRawTableFieldId(field);
@@ -65,7 +65,7 @@ const FormattingSectionBase = ({
         denylist={denyList}
         extraData={{ forAdminSettings: true }}
         inheritedSettings={inheritedSettings}
-        readOnly={readOnly}
+        disabled={disabled}
         style={{ maxWidth: undefined }}
         value={field.settings ?? {}}
         onChange={handleChange}

@@ -242,11 +242,6 @@ describe("FieldSection", () => {
   });
 
   describe("read-only table", () => {
-    async function assertSelectIsReadOnly(input: HTMLElement) {
-      await userEvent.click(input);
-      expect(getShownListboxes()).toHaveLength(0);
-    }
-
     it("shows the field settings of a table that cannot be written as read-only", async () => {
       setup({ table: { ...ORDERS_TABLE, can_write: false } });
 
@@ -262,19 +257,19 @@ describe("FieldSection", () => {
       expect(
         screen.getByLabelText("Cast to a specific data type"),
       ).toBeDisabled();
-      expect(screen.getByTestId("prefix")).toHaveAttribute("readonly");
-      await assertSelectIsReadOnly(
+      expect(screen.getByTestId("prefix")).toBeDisabled();
+      expect(
         screen.getByPlaceholderText("Select a semantic type"),
-      );
-      await assertSelectIsReadOnly(
+      ).toBeDisabled();
+      expect(
         screen.getByPlaceholderText("Select a field visibility"),
-      );
-      await assertSelectIsReadOnly(
+      ).toBeDisabled();
+      expect(
         screen.getByPlaceholderText("Select field filtering"),
-      );
-      await assertSelectIsReadOnly(
+      ).toBeDisabled();
+      expect(
         await screen.findByPlaceholderText("Select display values"),
-      );
+      ).toBeDisabled();
       expect(
         screen.getByRole("button", { name: /Field values/ }),
       ).toBeEnabled();
