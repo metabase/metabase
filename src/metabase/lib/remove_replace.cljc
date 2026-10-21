@@ -612,12 +612,17 @@
      query)))
 
 (defn- remove-matching-missing-columns
-  [query-after query-before stage-number match-spec]
+  "Remove references to the columns visible in `query-before` but not in `query-after`. `match-specs` returns the
+  `[op opts id-or-name]` specs of the references to a column."
+  [query-after query-before stage-number match-specs]
   (let [removed-cols (set/difference
                       (set (lib.metadata.calculation/visible-columns query-before stage-number))
                       (set (lib.metadata.calculation/visible-columns query-after stage-number)))]
     (reduce
-     #(apply remove-local-references %1 stage-number query-after (match-spec %2))
+     (fn [query column]
+       (reduce #(apply remove-local-references %1 stage-number query-after %2)
+               query
+               (match-specs column)))
      query-after
      removed-cols)))
 
@@ -628,7 +633,10 @@
                                   query-after
                                   query-before
                                   stage-number
-                                  (fn [column] [:field {:join-alias (:lib/join-alias column)} (:id column)]))]
+                                  (fn [column]
+                                    (for [id-or-name [((some-fn :lib/source-column-alias :name) column) (:id column)]
+                                          :when      id-or-name]
+                                      [:field {:join-alias (:lib/join-alias column)} id-or-name])))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
     ;; the next stage as well
     (if-let [next-stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
@@ -637,7 +645,7 @@
        query-before
        next-stage-number
        (fn [column]
-         [:field {} (:lib/source-column-alias column)]))
+         [[:field {} (:lib/source-column-alias column)]]))
       query-without-local-refs)))
 
 (defn- join-spec->alias
@@ -742,7 +750,7 @@
   (let [fields (:fields (lib.util/query-stage query stage-number))]
     (and fields
          ;; Quick first check: if there are any implicitly-joined fields, it's not the default list.
-         (not (some (comp :source-field lib.options/options) fields))
+         (not (some (comp lib.util/implicit-join-options? lib.options/options) fields))
          (lib.equality/matching-column-sets? query stage-number fields
                                              (lib.metadata.calculation/default-columns-for-stage query stage-number)))))
 

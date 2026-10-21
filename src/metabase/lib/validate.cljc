@@ -1,6 +1,7 @@
 (ns metabase.lib.validate
   "Checks and validation for queries."
   (:require
+   [medley.core :as m]
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.join :as lib.join]
@@ -59,17 +60,24 @@
    Returns `{:source-entity-type :table/:card, :source-entity-id <id>}` or `nil`.
 
    Rules (from the spec):
-   1. If `:source-field` present → find the field's table
+   1. If it is an implicit join ref → find the table of its FK field
    2. If `:join-alias` present → find the join's source table/card
    3. If it's the first stage → use main source-table or source-card
    4. Otherwise → references previous stage column, no source"
   [query stage-number field-ref]
-  (let [[_tag {:keys [source-field join-alias]} _id-or-name] field-ref
+  (let [[_tag {:keys [join-alias], :as opts} _name] field-ref
         stage (lib.util/query-stage query stage-number)]
     (cond
-      ;; Case 1: :source-field present - find the field's table via implicit join
-      source-field
-      (when-let [field-metadata (lib.metadata/field query source-field)]
+      ;; Case 1: implicit join ref - find the table of its FK field
+      (lib.util/implicit-join-options? opts)
+      (when-let [field-metadata (some->> (or (:source-field opts)
+                                             (:id (lib.metadata.calculation/metadata
+                                                   query stage-number
+                                                   [:field
+                                                    (m/assoc-some {:lib/uuid (str (random-uuid)), :base-type :type/*}
+                                                                  :join-alias (:source-field-join-alias opts))
+                                                    (:source-field-name opts)])))
+                                         (lib.metadata/field query))]
         (when-let [table-id (:table-id field-metadata)]
           {:source-entity-type :table
            :source-entity-id   table-id}))

@@ -724,6 +724,23 @@
                     [_op _opts filter-col] (first (lib/filters query))]]
         (is (=? col (lib.equality/find-matching-column query -1 filter-col cols)))))))
 
+(deftest ^:parallel find-matching-column-implicit-join-by-fk-name-test
+  (testing "an implicit join ref naming its FK column by name matches the column joined through that FK"
+    (let [base      (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+          columns   (lib.metadata.calculation/visible-columns base)
+          name-cols (filter #(= (:id %) (meta/id :ic/accounts :name)) columns)]
+      (is (= 2 (count name-cols)))
+      (doseq [col name-cols]
+        (testing (:fk-field-name col)
+          (is (=? {:fk-field-id (:fk-field-id col)}
+                  (lib.equality/find-matching-column
+                   [:field
+                    {:lib/uuid          (str (random-uuid))
+                     :base-type         :type/Text
+                     :source-field-name (:fk-field-name col)}
+                    (:name col)]
+                   columns))))))))
+
 (deftest ^:parallel desired-alias-field-ref-selected-test
   (testing "We should match field refs using desired-column-alias names correctly"
     (let [mp    (lib.tu/mock-metadata-provider

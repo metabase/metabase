@@ -1856,6 +1856,19 @@
       (is (not-any? (comp #{"Cat"} :lib/join-alias) (lib/returned-columns removed)))
       (is (empty? (lib/order-bys removed))))))
 
+(deftest ^:parallel remove-join-drops-name-refs-to-its-columns-test
+  (testing "removing a join drops name refs to its columns"
+    (let [base    (lib.tu/query-with-join)
+          cat-col (m/find-first (comp #{"Cat"} :lib/join-alias) (lib/returned-columns base))
+          query   (lib/order-by base [:field
+                                      {:lib/uuid   (str (random-uuid))
+                                       :base-type  (:base-type cat-col)
+                                       :join-alias "Cat"}
+                                      (:lib/source-column-alias cat-col)])
+          removed (lib/remove-clause query (first (lib/joins query)))]
+      (is (= 1 (count (lib/order-bys query))))
+      (is (empty? (lib/order-bys removed))))))
+
 (deftest ^:parallel remove-expression-used-in-breakout-cascades-test
   (testing "#32625 #31635 removing an expression removes a dependent breakout but keeps the aggregation"
     (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

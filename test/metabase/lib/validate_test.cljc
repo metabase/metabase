@@ -288,6 +288,26 @@
               :name "missingcol"}
              (first errors))))))
 
+(deftest ^:parallel find-bad-refs-with-source-implicit-join-by-fk-name-test
+  (testing "an implicit join ref naming its FK column only by name gets the FK field's table as source"
+    (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/join (lib/join-clause (meta/table-metadata :reviews)
+                                                    [(lib/= (meta/field-metadata :orders :product-id)
+                                                            (meta/field-metadata :reviews :product-id))])))
+          join-alias (lib/current-join-alias (first (lib/joins query)))
+          bad-query  (lib/filter query (lib/= [:field
+                                               {:lib/uuid                (str (random-uuid))
+                                                :base-type               :type/Text
+                                                :source-field-name       "PRODUCT_ID"
+                                                :source-field-join-alias join-alias}
+                                               "missingcol"]
+                                              "test"))]
+      (is (= #{{:type               :missing-column
+                :source-entity-type :table
+                :source-entity-id   (meta/id :reviews)
+                :name               "missingcol"}}
+             (lib/find-bad-refs-with-source bad-query))))))
+
 (deftest ^:parallel find-bad-refs-with-source-missing-field-in-fields-not-soft-test-1-main-fields
   (testing "missing (not inactive) field refs in top-level `:fields` clauses are NOT marked :soft?"
     (let [mp           meta/metadata-provider

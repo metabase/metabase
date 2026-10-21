@@ -20,6 +20,7 @@
    [metabase.lib.date-time :as lib.date-time]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -35,6 +36,7 @@
 
 (defn- is-ref-for-column? [expr column]
   (and (lib.util/clause-of-type? expr :field)
+       (= (lib.join.util/current-join-alias expr) (lib.join.util/current-join-alias column))
        (lib.equality/find-matching-column expr [column])))
 
 (defn- contains-ref-for-column? [expr column]
