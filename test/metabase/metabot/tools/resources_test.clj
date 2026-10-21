@@ -693,8 +693,7 @@
                             :model/Transform {transform-id :id}
                             {:name   "Private source card"
                              :source {:type  "query"
-                                      :query (lib/query (mt/metadata-provider)
-                                                        (lib.metadata/card (mt/metadata-provider) card-id))}}]
+                                      :query (lib/query mp (lib.metadata/card mp card-id))}}]
                (let [uri (str "metabase://transform/" transform-id)]
                  (testing "a source card in an unreadable collection prevents reading the transform"
                    (mt/with-current-user (mt/user->id :rasta)
