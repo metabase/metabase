@@ -525,18 +525,41 @@
   {:role    :user
    :content (str (stored-context-block reply) (message-text message))})
 
+(defn- row-steps
+  "The parts of the assistant row `data`, one vector per LLM call of the turn. Each call starts at a `step-start`
+  part. A row migrated from v1 has no `step-start` parts, so it does not record which parts each call made: there,
+  each part is a step of its own."
+  [data]
+  (if (some #(= "step-start" (:type %)) data)
+    (reduce (fn [steps part]
+              (if (= "step-start" (:type part))
+                (conj steps [])
+                (conj (pop steps) (conj (peek steps) part))))
+            [[]]
+            data)
+    (map vector data)))
+
+(defn- step->llm-messages
+  "The LLM history messages for the `parts` of one step: its text and tool calls in order, then the results of those
+  calls in the same order. This is how the agent loop sends a step, because the tools of a step run in parallel and
+  their results come after the LLM call ends (see [[metabase.metabot.self.core/tool-executor-xf]]). When history
+  puts each result after its call, a step with parallel calls replays in a different order, and the next turn's
+  request does not start with the bytes that this turn sent."
+  [parts]
+  (let [replayed (keep (fn [part]
+                         (cond
+                           (schema.v2/text-part? part)
+                           (when-not (str/blank? (:text part))
+                             [{:role :assistant :content (:text part)}])
+
+                           (schema.v2/tool-part? part)
+                           (tool-part->llm-messages part)))
+                       parts)]
+    (concat (map first replayed) (keep second replayed))))
+
 (defn- assistant-row->llm-messages
   [{:keys [data]}]
-  (into []
-        (mapcat (fn [part]
-                  (cond
-                    (schema.v2/text-part? part)
-                    (when-not (str/blank? (:text part))
-                      [{:role :assistant :content (:text part)}])
-
-                    (schema.v2/tool-part? part)
-                    (tool-part->llm-messages part))))
-        data))
+  (into [] (mapcat step->llm-messages) (row-steps data)))
 
 (defn- rows->turns
   [rows]

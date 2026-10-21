@@ -1464,6 +1464,31 @@
                   {:role :tool :tool_call_id "c1" :content "rows"}]
                  history)))))))
 
+(deftest history-replays-the-calls-of-a-step-before-their-results-test
+  (with-rasta-tx
+    (let [replay (fn [parts]
+                   (let [conversation-id (str (random-uuid))]
+                     (seed-turn! conversation-id "look it up" parts)
+                     (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+          call   (fn [id] {:role :assistant :tool_calls [{:id id :name "search" :arguments (json/encode {:q id})}]})
+          result (fn [id] {:role :tool :tool_call_id id :content (str "found " id)})
+          parts  (fn [id] [{:type :tool-input :id id :function "search" :arguments {:q id}}
+                           {:type :tool-output :id id :result {:output (str "found " id)}}])]
+      (testing "the calls of one step replay before their results, as the agent loop sends them"
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (call "c2") (result "c1") (result "c2")
+                (call "c3") (result "c3")
+                {:role :assistant :content "done"}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (map first [(parts "c1") (parts "c2")])
+                               (map second [(parts "c1") (parts "c2")])
+                               [{:type :start}]
+                               (parts "c3")
+                               [{:type :start} {:type :text :text "done"}])))))
+      (testing "a row with no step-start parts, as a row migrated from v1 is, replays each result after its call"
+        (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
+               (replay (concat (parts "c1") (parts "c2")))))))))
+
 (deftest history-tool-output-shapes-test
   (testing "bare-scalar, nil, and errored tool outputs each coerce to a string tool result"
     (with-rasta-tx

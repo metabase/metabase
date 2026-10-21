@@ -4,9 +4,9 @@
   between two turns: the first request of a turn must start with the last request of the turn before it, in the
   wire format of each adapter.
 
-  For now they cover the `<context>` block sent before each user message and assistant text streamed in deltas.
-  Other parts of a turn — the SQL dialect preload, thinking, parallel tool calls, failed tool calls — are not yet
-  replayed as they were sent, so no conversation here has them."
+  For now they cover the `<context>` block sent before each user message, assistant text streamed in deltas, and
+  tool calls that run in parallel. Other parts of a turn — the SQL dialect preload, thinking, failed tool calls — are
+  not yet replayed as they were sent, so no conversation here has them."
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -95,6 +95,21 @@
    {:message   "And last month?"
     :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
     :responses [(answer "msg-4" "Last month there were 1,412.")]}])
+
+(def ^:private parallel-call-turns
+  "Two turns. The first LLM call of the first turn calls `load_skill` twice, and the two calls run in parallel."
+  [{:message   "How many orders do we have?"
+    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :responses [(mut/mock-llm-response [{:type :start :id "msg-1"}
+                                        {:type :text :id "msg-1-text" :text "Let me read two skills first."}
+                                        {:type :tool-input :id "msg-1-call-1" :function "load_skill"
+                                         :arguments {:ids ["read-resource"]}}
+                                        {:type :tool-input :id "msg-1-call-2" :function "load_skill"
+                                         :arguments {:ids ["edit-chart"]}}])
+                (answer "msg-2" "There are 18,760 orders.")]}
+   {:message   "And last month?"
+    :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :responses [(answer "msg-3" "Last month there were 1,412.")]}])
 
 ;;; ------------------------------------------------ Prefix comparison -----------------------------------------------
 
@@ -198,4 +213,14 @@
     ;; Not DeepSeek. Its builder turns thinking off while the open turn holds a tool call with no signed reasoning,
     ;; as these mocked calls do, so turn 1 ends with thinking off and turn 2 starts with it on. DeepSeek's own calls
     ;; carry signed reasoning, but history does not replay reasoning, so the two turns would differ there instead.
+    (check-turn-edges turns #{"deepseek"})))
+
+(deftest parallel-tool-calls-replay-before-their-results-test
+  (let [[first-turn :as turns] (run-turns! parallel-call-turns)
+        kinds                  (fn [opts] (mapv #(or (:type %) (:role %)) (:input opts)))]
+    (testing "the calls of a step are sent before their results, and in every later turn too"
+      (is (= 2 (count first-turn)))
+      (is (= [:user :text :tool-input :tool-input :tool-output :tool-output]
+             (kinds (last first-turn)))))
+    ;; Not DeepSeek, for the reason in [[streamed-text-replays-as-one-part-test]].
     (check-turn-edges turns #{"deepseek"})))
