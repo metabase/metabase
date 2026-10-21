@@ -129,8 +129,13 @@ describe("TransformTestListPage", () => {
 
     expect(await screen.findByText("No tests yet")).toBeInTheDocument();
     expect(
-      screen.getByText("Create tests with the mb CLI or with remote sync."),
-    ).toBeInTheDocument();
+      screen.getAllByText(
+        (_content, element) =>
+          element?.textContent ===
+          "Create tests with the mb CLI or with remote sync.",
+      ),
+    ).not.toHaveLength(0);
+    expect(screen.getByText("mb", { selector: "code" })).toBeInTheDocument();
   });
 
   it("filters the tests by name", async () => {

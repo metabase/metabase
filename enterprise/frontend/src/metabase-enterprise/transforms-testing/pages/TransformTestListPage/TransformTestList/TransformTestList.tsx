@@ -1,5 +1,5 @@
 import { type MouseEvent, useMemo, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -8,6 +8,7 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Card,
+  Code,
   Ellipsified,
   Icon,
   Menu,
@@ -18,6 +19,8 @@ import {
 } from "metabase/ui";
 import { useRunTransformTestMutation } from "metabase-enterprise/api";
 import type { TransformTest, TransformTestRun } from "metabase-types/api";
+
+import { MB_CLI_NAME } from "../../../constants";
 
 type TransformTestListProps = {
   tests: TransformTest[];
@@ -54,7 +57,9 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
             ) : (
               <ListEmptyState
                 label={t`No tests yet`}
-                description={t`Create tests with the mb CLI or with remote sync.`}
+                description={jt`Create tests with the ${(
+                  <Code key="mb">{MB_CLI_NAME}</Code>
+                )} CLI or with remote sync.`}
               />
             )
           }
