@@ -349,16 +349,20 @@
 
 (defn- filter-stage-fields-to-sandbox
   "When wrapping a sandbox subquery with a stage that carries a `:fields` clause from before the swap, drop any
-  field-id refs the sandbox no longer exposes (e.g., a native GTAP that omits a column). Field refs by string name
-  refer to the previous stage's output and are preserved. See #73339."
-  [stage sandbox-field-ids]
+  field refs to columns of the sandboxed table the sandbox no longer exposes (e.g., a native GTAP that omits a
+  column), by field ID or by the name the sandbox returns them under. Refs through joins are preserved. See #73339."
+  [stage sandbox-field-ids sandbox-column-names]
   (m/update-existing stage :fields
                      (fn [fields]
                        (filterv (fn [field-ref]
-                                  (let [[tag _opts id-or-name] field-ref]
+                                  (let [[tag opts id-or-name] field-ref]
                                     (or (not= tag :field)
-                                        (not (integer? id-or-name))
-                                        (contains? sandbox-field-ids id-or-name))))
+                                        (:join-alias opts)
+                                        (:source-field opts)
+                                        (:source-field-name opts)
+                                        (if (integer? id-or-name)
+                                          (contains? sandbox-field-ids id-or-name)
+                                          (contains? sandbox-column-names id-or-name)))))
                                 fields))))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
@@ -404,7 +408,10 @@
         wrapper-stage      (when-not skip-final-stage?
                              (filter-stage-fields-to-sandbox
                               (dissoc stage :source-table)
-                              (sandbox-exposed-field-ids sandbox-query source-table)))
+                              (sandbox-exposed-field-ids sandbox-query source-table)
+                              (into #{}
+                                    (mapcat (juxt :name :lib/source-column-alias :lib/desired-column-alias))
+                                    (lib/returned-columns sandbox-query))))
         replacement-stages (cond-> new-source-stages
                              wrapper-stage (conj wrapper-stage))]
     (log/trace "Applied Sandbox: replaced stage with sandboxed stages")

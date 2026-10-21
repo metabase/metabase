@@ -11,6 +11,7 @@
    Trigger threshold: >5% null rate.  Alert threshold: >20%.
    Accepts `{:join_step N}` params to scope to a single join."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase-enterprise.transforms-inspector.lens.query-util :as query-util]
    [metabase.lib-be.core :as lib-be]
@@ -44,6 +45,14 @@
   [join-structure alias]
   (some #(when (= (:alias %) alias) (:source-table %)) join-structure))
 
+(defn- field-id-in-table
+  "The ID of the Field of Table `table-id` that a join condition ref names by `id-or-name`."
+  [ctx table-id id-or-name]
+  (if (string? id-or-name)
+    (:id (m/find-first #(= (:name %) id-or-name)
+                       (lib.metadata/fields (lib-be/application-database-metadata-provider (:db-id ctx)) table-id)))
+    id-or-name))
+
 (defn- resolve-join-sides
   "Resolve LHS/RHS field and table info for join `step`. Returns nil when the join condition can't be parsed."
   [ctx step]
@@ -57,12 +66,15 @@
                        (find-table-for-join-alias join-structure (:join-alias lhs-info))
                        from-table-id)]
     (when (and rhs-info lhs-info rhs-table-id lhs-table-id)
-      {:lhs-table-id lhs-table-id
-       :rhs-table-id rhs-table-id
-       :lhs-field-id (:field-id lhs-info)
-       :rhs-field-id (:field-id rhs-info)
-       :lhs-join-alias (:join-alias lhs-info)
-       :rhs-join-alias (:join-alias rhs-info)})))
+      (let [lhs-field-id (field-id-in-table ctx lhs-table-id (:field-id lhs-info))
+            rhs-field-id (field-id-in-table ctx rhs-table-id (:field-id rhs-info))]
+        (when (and lhs-field-id rhs-field-id)
+          {:lhs-table-id   lhs-table-id
+           :rhs-table-id   rhs-table-id
+           :lhs-field-id   lhs-field-id
+           :rhs-field-id   rhs-field-id
+           :lhs-join-alias (:join-alias lhs-info)
+           :rhs-join-alias (:join-alias rhs-info)})))))
 
 (defn- make-base-unmatched-query
   "Stripped-down query with joins up to `step`, plus field metadata for both sides.
