@@ -1,9 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseEndpoints,
   setupDatabaseUsageInfoEndpoint,
+  setupDatabaseWithNullDetailsEndpoint,
   setupEnginesEndpoint,
   setupListTransformsEndpoint,
   setupUserAttributesEndpoint,
@@ -27,14 +29,19 @@ interface SetupOpts {
   database: Database;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  hasNullDetails?: boolean;
 }
 
 const setup = ({
   database,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
+  hasNullDetails,
 }: SetupOpts) => {
   setupEnginesEndpoint({});
+  if (hasNullDetails) {
+    setupDatabaseWithNullDetailsEndpoint(database);
+  }
   setupDatabaseEndpoints(database);
   setupEnginesEndpoint(createMockEngines());
   setupDatabaseUsageInfoEndpoint(database, {
@@ -102,6 +109,50 @@ describe("DatabaseEditApp", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByTestId("database-danger-zone-section"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders a database whose details are null (metabase#25715)", async () => {
+    setup({
+      database: createMockDatabase({
+        id: 7,
+        name: "Sample Database",
+        is_sample: true,
+      }),
+      hasNullDetails: true,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Sample Database" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove this database" }),
+    ).toBeEnabled();
+  });
+
+  it("disables editing an attached DWH sample database with null details", async () => {
+    setup({
+      database: createMockDatabase({
+        id: 7,
+        name: "Sample Database",
+        is_sample: true,
+        is_attached_dwh: true,
+      }),
+      hasNullDetails: true,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Sample Database" }),
+    ).toBeInTheDocument();
+    const editButton = screen.getByRole("button", {
+      name: "Edit connection details",
+    });
+    expect(editButton).toBeDisabled();
+    await userEvent.hover(editButton);
+    expect(
+      await screen.findByRole("tooltip", {
+        name: "The sample database cannot be edited.",
+      }),
     ).toBeInTheDocument();
   });
 
