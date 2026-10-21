@@ -33,7 +33,7 @@
                      ;; Run with admin perms to match behavior during normal sync.
                      (request/as-admin (sync/refingerprint-field! field))
                      (catch Exception e
-                       (log/warnf "Could not fingerprint field %d: %s" id (ex-message e))
+                       (log/warnf e "Could not fingerprint field %d" id)
                        nil))]
         ;; Sync returns `:sync/no-connection` or a Throwable when it can't sample the database
         (cond
