@@ -4,14 +4,17 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.parse :as timeline.parse]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [parsed-types.core :as pt])
+  (:import
+   (metabase.timeline.parse TimelineEventUpdate)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -70,6 +73,40 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(defn- parse-event-update
+  "Parse the update of the TimelineEvent `event-id`, moving it to `new-timeline-id` when that is not nil. A check that
+  fails throws the 400, 403 or 404 this endpoint returns, and a 403 publishes the permission failure, as
+  `api/write-check` does."
+  [event-id new-timeline-id changes]
+  (try
+    (pt/parse TimelineEventUpdate {:event-id        event-id
+                                   :new-timeline-id new-timeline-id
+                                   :changes         changes})
+    (catch clojure.lang.ExceptionInfo e
+      (let [{:keys [type check threw]} (ex-data e)]
+        (when-not (and (= ::pt/invalid type) (not threw))
+          (throw e))
+        (case check
+          ::timeline.parse/changes-match-schema
+          (throw (ex-info (tru "Invalid Request.") {:status-code 400} e))
+
+          (::timeline.parse/event-exists ::timeline.parse/new-timeline-exists)
+          (throw (ex-info (tru "Not found.") {:status-code 404} e))
+
+          ::timeline.parse/may-write-event
+          (do (events/publish-event! :event/write-permission-failure
+                                     {:user-id api/*current-user-id*
+                                      :object  (timeline.db/timeline-event event-id)})
+              (api/throw-403 e))
+
+          ::timeline.parse/may-write-new-timeline
+          (do (events/publish-event! :event/write-permission-failure
+                                     {:user-id api/*current-user-id*
+                                      :object  (timeline.db/timeline new-timeline-id)})
+              (api/throw-403 e))
+
+          (throw e))))))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]."
@@ -86,17 +123,15 @@
                                       [:icon         {:optional true} [:maybe timeline-event/Icon]]
                                       [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/TimelineEvent id)
-        timeline-event-updates (cond-> timeline-event-updates
+  (let [timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
-    (collection/check-allowed-to-change-collection existing timeline-event-updates)
-    (when (api/column-will-change? (:timeline_id existing) (get timeline-event-updates :timeline_id ::api/not-provided))
-      (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (timeline.db/update-timeline-event! id
-                                        (u/select-keys-when timeline-event-updates
-                                                            :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
-                                                            :non-nil #{:name}))
+    (timeline.db/update-timeline-event!
+     (parse-event-update id
+                         (:timeline_id timeline-event-updates)
+                         (u/select-keys-when timeline-event-updates
+                                             :present #{:description :timestamp :time_matters :timezone :icon :archived}
+                                             :non-nil #{:name})))
     (u/prog1 (timeline.db/timeline-event id)
       (events/publish-event! :event/timeline-update {:object (timeline.db/timeline (:timeline_id <>)) :user-id api/*current-user-id*}))))
 

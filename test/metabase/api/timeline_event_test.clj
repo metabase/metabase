@@ -107,6 +107,14 @@
       (is (= {:timeline_id tl-id :name "Event"}
              (select-keys (t2/select-one :model/TimelineEvent :id ev-id) [:timeline_id :name]))))))
 
+(deftest null-timeline-id-means-no-move-test
+  (testing "PUT /api/timeline-event/:id with a null timeline_id leaves the event where it is"
+    (mt/with-temp [:model/Timeline      {tl-id :id} {}
+                   :model/TimelineEvent {ev-id :id} {:name "Event" :timeline_id tl-id}]
+      (mt/user-http-request :crowberto :put 200 (str "timeline-event/" ev-id) {:timeline_id nil :name "renamed"})
+      (is (= {:timeline_id tl-id :name "renamed"}
+             (select-keys (t2/select-one :model/TimelineEvent :id ev-id) [:timeline_id :name]))))))
+
 (deftest update-timeline-event-without-write-permission-test
   (testing "PUT /api/timeline-event/:id is a 403 for an event the user cannot write, and writes nothing"
     (mt/with-temp [:model/Collection    {coll-id :id} {}

@@ -3,6 +3,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
+   [metabase.timeline.db.fetch :as timeline.db.fetch]
    [metabase.timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -61,7 +62,7 @@
   [_model k events]
   (mi/instances-with-hydrated-data
    events k
-   #(timeline.db/timelines-by-id (map :timeline_id events))
+   #(timeline.db.fetch/timelines-by-id (map :timeline_id events))
    :timeline_id))
 
 (defn- fetch-events

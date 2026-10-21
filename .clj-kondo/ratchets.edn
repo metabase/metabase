@@ -32,10 +32,11 @@
                                 :metabase/validate-defendpoint-has-response-schema         426
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
                                 :metabase/validate-defendpoint-route-uses-kebab-case       44
-                                :missing-docstring                                         4
+                                :missing-docstring                                         5
                                 :non-arg-vec-return-type-hint                              1
                                 :reduce-without-init                                       3
                                 :redundant-do                                              1
+                                :redundant-fn-wrapper                                      1
                                 :syntax                                                    2
                                 :type-mismatch                                             2
                                 :unquote-not-syntax-quoted                                 1

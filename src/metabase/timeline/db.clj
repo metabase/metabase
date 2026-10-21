@@ -5,11 +5,15 @@
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.timeline.parse]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [parsed-types.core :as pt]
+   [toucan2.core :as t2])
+  (:import
+   (metabase.timeline.parse TimelineEventUpdate)))
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."
@@ -35,11 +39,6 @@
   "The icon of the Timeline with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one-fn :icon :model/Timeline :id id))
-
-(mu/defn timelines-by-id
-  "A map of id to Timeline for the Timelines with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
 
 (mu/defn timelines-for-collection
   "The Timelines of the Collection with `collection-id` whose archived flag is `archived`."
@@ -106,11 +105,13 @@
                           (when end
                             [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
 
-(mu/defn update-timeline-event!
-  "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent id changes))
+(defn update-timeline-event!
+  "Apply `event-update`, a parsed `TimelineEventUpdate`, returning the number updated. Anything else
+  throws `::pt/not-parsed`."
+  [event-update]
+  (let [{:keys [event-id new-timeline-id changes]} (pt/parsed TimelineEventUpdate event-update)]
+    (t2/update! :model/TimelineEvent event-id (cond-> changes
+                                                new-timeline-id (assoc :timeline_id new-timeline-id)))))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."
