@@ -22,6 +22,7 @@ import {
 } from "metabase/dashboard/selectors";
 import { findDashCardForInlineParameter } from "metabase/dashboard/utils";
 import {
+  getFieldIdTarget,
   getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "metabase/parameters/utils/mapping-options";
@@ -79,7 +80,7 @@ export function showAutoWireToast(
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
       parameter,
       dashcardsToAutoApply,
-      target,
+      getFieldIdTarget(target, questions[targetCard.id], parameter),
       questions,
       dashcards,
     );
@@ -185,7 +186,7 @@ export function showAutoWireToastNewCard({
         parameterDashcard,
       );
 
-      for (const dashcard of dashcards) {
+      for (const dashcard of dashcards.filter(isQuestionDashCard)) {
         const mappings = (dashcard.parameter_mappings ?? []).filter(
           (mapping) => mapping.parameter_id === parameter.id,
         );
@@ -193,7 +194,11 @@ export function showAutoWireToastNewCard({
         for (const mapping of mappings) {
           const option = getMappingOptionByTarget(
             dashcardMappingOptions,
-            mapping.target,
+            getFieldIdTarget(
+              mapping.target,
+              questions[mapping.card_id],
+              parameter,
+            ),
             targetQuestion,
             parameter,
           );
