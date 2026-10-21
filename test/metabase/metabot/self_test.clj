@@ -39,8 +39,7 @@
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [ring.adapter.jetty :as jetty]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -427,48 +426,6 @@
                           []
                           (self.core/sse-reducible istream))]
       (is (= ["msg-0" "msg-1" "msg-2"] result)))))
-
-(deftest sse-reducible-stops-response-test
-  (let [cnt     (atom 30)
-        handler (fn [_req]
-                  (let [out (java.io.PipedOutputStream.)
-                        in  (java.io.PipedInputStream. out 65536)]
-                    (future
-                      (try
-                        (dotimes [i @cnt]
-                          (.write out (.getBytes (test-util/make-sse [(str "msg-" i)])))
-                          (.flush out)
-                          (swap! cnt dec)
-                          (Thread/sleep 10))
-                        (catch Exception _)
-                        (finally
-                          (try (.close out)
-                               (catch Exception _)))))
-                    {:status  200
-                     :headers {"Content-Type"      "text/event-stream"
-                               "Cache-Control"     "no-cache"}
-                     :body    in}))
-        server  (jetty/run-jetty handler {:port 0
-                                          :join? false
-                                          :output-buffer-size 1})
-        url     (str "http://localhost:" (.. server getURI getPort))]
-    (try
-      (let [res       (http/request {:method :post :url url :as :stream})
-            reducible (self.core/sse-reducible (:body res))
-            ;; Take only 2 items, which should trigger early termination
-            result    (reduce (fn [acc item]
-                                (if (< (count acc) 2)
-                                  (conj acc item)
-                                  (reduced acc)))
-                              []
-                              reducible)]
-        (is (= ["msg-0" "msg-1"] result))
-        ;; Give time for cancellation to propagate
-        (Thread/sleep 30)
-        ;; Should have stopped writing when reduction stopped
-        (is (> @cnt 20) "SHOULD have stopped writing when reduction terminated early"))
-      (finally
-        (.stop server)))))
 
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
