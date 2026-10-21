@@ -136,28 +136,28 @@
           by-tag      (m/index-by :tag extractions)]
       (is (=? #{:domain :subdomain :host :path} (set (keys by-tag))))
       (testing "to :domain"
-        (is (=? [:domain {} [:field {} 9999001]]
+        (is (=? [:domain {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:domain by-tag))))
         (is (=? {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:domain by-tag)))))
       (testing "to :subdomain"
-        (is (=? [:subdomain {} [:field {} 9999001]]
+        (is (=? [:subdomain {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:subdomain by-tag))))
         (is (=? {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:subdomain by-tag)))))
       (testing "to :host"
-        (is (=? [:host {} [:field {} 9999001]]
+        (is (=? [:host {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:host by-tag))))
         (is (=? {:stages [{:expressions [[:host {:lib/expression-name "Host"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:host by-tag)))))
       (testing "to :path"
-        (is (=? [:path {} [:field {} 9999001]]
+        (is (=? [:path {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:path by-tag))))
         (is (=? {:stages [{:expressions [[:path {:lib/expression-name "Path"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:path by-tag))))))))
 
 (deftest ^:parallel extracting-from-urls-requires-regex-feature-test

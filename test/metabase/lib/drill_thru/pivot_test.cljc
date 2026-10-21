@@ -103,9 +103,12 @@
                       (merge {"count" 77}))})
 
 (defn- orders-count-with-breakouts [breakout-values]
-  (orders-count-with-breakouts*
-   (lib/query meta/metadata-provider (meta/table-metadata :orders))
-   breakout-values))
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        cols  (lib/breakoutable-columns query)]
+    (orders-count-with-breakouts*
+     query
+     (for [[col v] breakout-values]
+       [(m/find-first #(= (:id %) (:id col)) cols) v]))))
 
 (defn- orders-count-with-breakouts-and-join [breakout-values]
   (orders-count-with-breakouts*
