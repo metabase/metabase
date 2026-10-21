@@ -13,7 +13,10 @@ import { defer } from "metabase/utils/promise";
 import type {
   DashboardCard,
   DashboardTab,
+  Parameter,
+  ParameterTarget,
   TokenFeatures,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -26,7 +29,7 @@ import {
 
 import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
 
-const MOCK_TOKEN =
+export const MOCK_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfSwicGFyYW1zIjp7fSwiaWF0IjoxNzEyNjg0NTA1LCJfZW1iZWRkaW5nX3BhcmFtcyI6e319.WbZTB-cQYh4gjh61ZzoLOcFbJ6j6RlOY3GS4fwzv3W4";
 
 registerStaticVisualizations();
@@ -40,6 +43,10 @@ export type SetupOpts = {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   /** Holds the dashboard request until `releaseDashboardRequest` is called. */
   holdDashboardRequest?: boolean;
+  virtualDashcards?: VirtualDashboardCard[];
+  parameters?: Parameter[];
+  /** Maps every parameter to every question card with this target. */
+  parameterTarget?: ParameterTarget;
 };
 
 export async function setup(
@@ -51,6 +58,9 @@ export async function setup(
     dashboardTitle,
     enterprisePlugins,
     holdDashboardRequest = false,
+    virtualDashcards = [],
+    parameters = [],
+    parameterTarget,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
   mockSettings({
@@ -80,6 +90,13 @@ export async function setup(
           can_write: false,
         }),
         dashboard_tab_id: tabId,
+        parameter_mappings: parameterTarget
+          ? parameters.map((parameter) => ({
+              parameter_id: parameter.id,
+              card_id: i + 1,
+              target: parameterTarget,
+            }))
+          : [],
       }),
     );
   });
@@ -87,8 +104,8 @@ export async function setup(
   const dashboard = createMockDashboard({
     id: 1,
     name: dashboardTitle,
-    parameters: [],
-    dashcards,
+    parameters,
+    dashcards: [...dashcards, ...virtualDashcards],
     tabs,
   });
 
