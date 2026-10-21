@@ -19,7 +19,7 @@
 (def ^:private max-input-ids 5)
 
 (tools/defrecoverable too-many-ids!
-  "A metadata call exceeds the per-source-type ID limit."
+  "The call contains too many IDs for one data source type."
   {:payload [:map {:closed true}
              [:label [:enum "table" "model" "metric"]]
              [:count :int]]}
@@ -146,7 +146,7 @@
   (m/assoc-some result :output (some-> result :structured-output format-fn)))
 
 (tools/defrecoverable unknown-metabot!
-  "The metadata call has no Metabot row."
+  "The call does not identify a Metabot."
   {:payload [:map {:closed true}]}
   [_]
   {:message "No Metabot was provided for this call."

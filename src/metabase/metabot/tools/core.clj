@@ -220,15 +220,11 @@
     (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))))
 
 (defn- entry
-  "One item's [[::entry]]: the result of calling `tool`'s [[handle]] with `item-args`, or its declared
-  failure rendered.
+  "Return one [[::entry]] for `tool` and `item-args`.
 
-  A declared recoverable error becomes this item's contribution. Anything else is a fault, and by
-  default it is rethrown so the whole call fails — a bug is not a partial result.
-
-  `on-item-fault` is the one seam, for a consumer whose contract says otherwise: it takes the item's
-  args and the throwable and returns that item's [[::entry]]. `/v1/read-resource` and
-  `list_available_fields` pass one (see [[with-batched-entries]]); it is nil elsewhere."
+  A declared recoverable error becomes a failed entry. Other errors are rethrown unless
+  `on-item-fault` is supplied; it receives the item's args and the throwable and returns an entry.
+  `/v1/read-resource` and `list_available_fields` supply this callback (see [[with-batched-entries]])."
   [tool item-args ctx on-item-fault]
   (try
     (let [result (handle tool item-args ctx)]
@@ -263,18 +259,16 @@
    :recovery []})
 
 (defn with-batched-entries
-  "`f` applied to the entries of `tool`'s batched call — one [[::entry]] per item, in item order.
-  Returns whatever `f` returns, with the permission cache held across both the item loading and `f`
-  (see [[call]]).
+  "Apply `f` to the entries of `tool`'s batched call in item order.
 
-  Used by `POST /v1/read-resource` for its per-item HTTP response, and by `list_available_fields`
-  to preserve successful IDs even when another ID raises an undeclared exception. [[run-batched]]
-  instead fails the whole call on such an exception and throws when every item fails.
+  Return whatever `f` returns, with the permission cache held while loading the items and calling `f`
+  (see [[call]]). Each item produces one [[::entry]].
 
-  `opts` may carry `:on-item-fault`, called when one item fails with something other than a declared
-  recoverable error, with that item's args and the throwable; it returns that item's [[::entry]].
-  Without it such a failure fails the whole call. These two callers preserve the items that loaded
-  even when another fails."
+  An error other than a declared recoverable error fails the whole call unless `opts` includes
+  `:on-item-fault`. This callback receives the item's args and the throwable and returns its [[::entry]].
+  `POST /v1/read-resource` and `list_available_fields` use it to keep successful results when another
+  item fails unexpectedly. [[run-batched]] fails the whole call on such an error and throws when every
+  item fails."
   [tool args ctx {:keys [on-item-fault]} f]
   (metabot.perms/with-cache
     (let [item-args (batched-args tool args)]

@@ -80,7 +80,7 @@
       (column-portable-fk query tgt))))
 
 (defn column-field-id
-  "The physical field ID or column alias emitted as a column's `field_id`."
+  "Return the physical field ID or column alias used as a column's `field_id`."
   [column]
   (or (:id column)
       (:lib/desired-column-alias column)
@@ -122,7 +122,7 @@
                       :table_reference (table-reference query column)))))
 
 (defn find-column-by-field-id
-  "Find a column by its emitted field ID, or nil if it is absent.
+  "Find a column by its emitted field ID, returning nil if no column matches.
 
   Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns."
   [field-id columns]
@@ -210,7 +210,7 @@
     card-metadata))
 
 (defn card-query
-  "Return a query for the model or question with ID `card-id` and `expected-type`."
+  "Return a query for the model or question with ID `card-id` and card type `expected-type`."
   [card-id expected-type]
   (when-let [card (get-card card-id expected-type)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
