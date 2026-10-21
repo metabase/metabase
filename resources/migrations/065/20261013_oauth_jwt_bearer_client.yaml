@@ -1,4 +1,4 @@
-## Token resolution needs a persisted issuing client, even though the JWT bearer grant authenticates no client.
+## Token resolution needs a stored issuing client, even though the JWT bearer grant doesn't authenticate a client.
 
 databaseChangeLog:
   - changeSet:

@@ -1,5 +1,7 @@
 (ns metabase.oauth-server.jwt-bearer
-  "The JWT bearer grant (RFC 7523), which exchanges a signed JWT for an MCP access token for the user it names."
+  "Exchange a signed JWT for an MCP access token using the JWT bearer grant (RFC 7523).
+
+  The token belongs to the user named in the JWT."
   (:require
    [clojure.string :as str]
    [metabase.auth-identity.core :as auth-identity]
@@ -23,12 +25,14 @@
 (def ^:private client-id "metabase-jwt-bearer")
 
 (defn available?
-  "True when the token endpoint takes the JWT bearer grant, which needs JWT authentication and the MCP server."
+  "Return whether the token endpoint accepts the JWT bearer grant.
+
+  JWT authentication and the MCP server must be enabled."
   []
   (and (oauth-server/jwt-bearer-grant-enabled?) (mcp/mcp-enabled?)))
 
 (defn- check-request!
-  "Throws `ex-info` carrying the RFC 6749 `:error` for a request that is refused before its assertion is checked."
+  "Throw `ex-info` with the RFC 6749 `:error` if the request is refused before checking its assertion."
   [assertion scopes resource]
   (cond
     (not (oauth-server/jwt-bearer-grant-enabled?))
@@ -57,11 +61,11 @@
                                              (oauth-server/mcp-resource-url))}))))
 
 (def ^:private own-reason-errors
-  "The `:error`s of a refused JWT login whose `:message` Metabase wrote for the caller."
+  "These `:error` values identify refused JWT logins whose `:message` was written by Metabase for the caller."
   #{:non-personal-user :missing-email :missing-exp-or-iat :future-iat :invalid-tenant})
 
 (defn- refusal-description
-  "The `error_description` for a refused JWT login, or nil to leave the token endpoint's generic one.
+  "Return `error_description` for a refused JWT login, or nil to use the token endpoint's generic one.
 
   The login's `message` goes back only when Metabase wrote it for the caller: the login returned one of
   [[own-reason-errors]], or threw with a 4xx `status-code`. A JWT that fails verification gets a fixed description,
@@ -75,9 +79,10 @@
     (str message)))
 
 (defn- log-in!
-  "Logs in the user that the JWT `assertion` names through JWT authentication, without a session, and returns them.
-  The assertion must have `exp` and `iat` claims. Throws `ex-info` carrying `invalid_grant` and the
-  [[refusal-description]] when the login is refused."
+  "Log in through JWT authentication without creating a session.
+
+  Return the user named in the JWT `assertion`, which must have `exp` and `iat` claims.
+  Throw `ex-info` carrying `invalid_grant` and the [[refusal-description]] when the login is refused."
   [assertion request]
   (let [{:keys [success? user message] :as result}
         (try
@@ -103,10 +108,11 @@
                      :error-description "MCP access is not enabled for this user's groups."}))))
 
 (defn exchange-jwt-for-token!
-  "Issues an MCP access token to the user that the JWT `assertion` names, and returns the RFC 6749 token response.
+  "Issue an MCP access token to the user named in the JWT `assertion`.
 
-  The token carries `scopes`, or every MCP scope when `scopes` is nil, and is bound to the MCP endpoint, which
-  `resource` must name when it is given. Throws `ex-info` carrying the RFC 6749 `:error` when the request is refused."
+  Return the RFC 6749 token response. The token carries `scopes`, or every MCP scope when `scopes` is nil,
+  and is bound to the MCP endpoint, which `resource` must name when it is given.
+  Throw `ex-info` carrying the RFC 6749 `:error` when the request is refused."
   [provider request {:keys [assertion scopes resource]}]
   (let [scopes  (or scopes (mcp/v2-scopes))
         _       (check-request! assertion scopes resource)

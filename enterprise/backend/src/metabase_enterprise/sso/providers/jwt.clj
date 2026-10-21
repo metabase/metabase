@@ -81,9 +81,10 @@
                        :error :invalid-jwt})))))
 
 (defn- check-exp-and-iat
-  "Returns the verified `jwt-data` when it has `exp` and `iat` claims and an `iat` that isn't in the future.
+  "Return the verified `jwt-data` after checking its `exp` and `iat` claims.
 
-  An `iat` up to [[clock-skew-in-seconds]] ahead of now passes, for clock skew. Throws when a check fails."
+  Both claims must be present. An `iat` up to [[clock-skew-in-seconds]] seconds ahead of now is accepted
+  for clock skew. Throw when a check fails."
   [{:keys [exp iat] :as jwt-data}]
   (cond
     (not (and exp iat))

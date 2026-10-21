@@ -344,7 +344,7 @@
 (mu/defn- apply-personal-only-check
   "Refuses a `request` that sets `:user/personal-only?` for a user who is not a personal account.
 
-  The refusal drops the user, so the rest of the login changes nothing about them."
+  Remove the user from the request on refusal so the rest of the login cannot change their account."
   [request :- [:merge
                ::request.schema/request
                (into [:map {:closed true}

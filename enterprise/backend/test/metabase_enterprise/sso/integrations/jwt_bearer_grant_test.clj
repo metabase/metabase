@@ -26,7 +26,7 @@
        ~@body)))
 
 (defn- assertion
-  "A JWT carrying `claims`, signed with the JWT authentication secret.
+  "Return a JWT carrying `claims`, signed with the JWT authentication secret.
 
   Unless `claims` says otherwise, it's issued now and expires in a minute."
   [claims]
@@ -34,8 +34,9 @@
     (jwt/sign (merge {:iat now, :exp (+ now 60)} claims) sso.test-setup/default-jwt-secret)))
 
 (defn- token-response
-  "POST a JWT bearer grant request with `params` to the token endpoint and return the response, which must have
-  `status`."
+  "POST a JWT bearer grant request with `params` to the token endpoint and return the response.
+
+  The response must have `status`."
   [status params]
   (binding [client/*url-prefix* ""]
     (client/client-full-response :post status "oauth/token"
@@ -48,8 +49,10 @@
   (:body (token-response 200 (merge {:assertion (assertion {:email email})} params))))
 
 (defn- mcp-request
-  "Send the JSON-RPC `method` with `params` to the MCP endpoint with the bearer `access-token`, in the MCP session
-  `session-id` unless it is nil, and return the response, which must have `status`."
+  "Send the JSON-RPC `method` with `params` to the MCP endpoint and return the response.
+
+  Use the bearer `access-token` and, if non-nil, the MCP session `session-id`.
+  The response must have `status`."
   [status access-token session-id method params]
   (client/client-full-response :post status "metabase-mcp"
                                {:request-options {:headers (cond-> {"authorization" (str "Bearer " access-token)}
@@ -57,7 +60,7 @@
                                {:jsonrpc "2.0" :id 1 :method method :params params}))
 
 (defn- mcp-session
-  "Open an MCP session with the bearer `access-token` and return its id."
+  "Open an MCP session with the bearer `access-token` and return its ID."
   [access-token]
   (get-in (mcp-request 200 access-token nil "initialize" {:capabilities {}}) [:headers "Mcp-Session-Id"]))
 
@@ -69,7 +72,7 @@
     (:grant_types_supported (client/client :get 200 ".well-known/oauth-authorization-server"))))
 
 (deftest exchange-test
-  (testing "a JWT exchanges for a token to the MCP endpoint for the user it names, provisioned as JWT login does"
+  (testing "the exchange returns an MCP token and provisions the user named in the JWT as JWT login does"
     (with-jwt-bearer-setup!
       (let [response (token-response 200 {:assertion (assertion {:email      "jwt-bearer@metabase.com"
                                                                  :first_name "Jay"
@@ -125,7 +128,7 @@
                          (get-in (mcp-request 403 access_token (mcp-session access_token)
                                               "tools/call" {:name "test_echo" :arguments {}})
                                  [:body :error :message]))))))
-      (testing "either MCP path is accepted as the resource, and binds the token to the canonical one"
+      (testing "both MCP paths are accepted as resources and bind the token to the canonical endpoint"
         (doseq [resource [(mcp-url) (str (mcp-url) "/") (str (system/site-url) "/api/mcp")]]
           (testing resource
             (is (= [(mcp-url)] (:resource (token! email :resource resource))))))))))
@@ -136,12 +139,12 @@
           refused (fn []
                     (mt/with-temporary-setting-values [jwt-user-provisioning-enabled? false]
                       (:body (token-response 400 {:assertion (assertion {:email email})}))))]
-      (testing "with provisioning off, a JWT naming no user is refused and provisions nobody"
+      (testing "a JWT for an unknown user is refused without provisioning when provisioning is off"
         (is (=? {:error "invalid_grant"} (refused)))
         (is (not (t2/exists? :model/User :email email))))
       (token! email)
       (let [user-id (t2/select-one-pk :model/User :email email)]
-        (testing "with provisioning off, an existing user still gets a token"
+        (testing "an existing user gets a token with provisioning off"
           (mt/with-temporary-setting-values [jwt-user-provisioning-enabled? false]
             (is (=? {:access_token string?} (token! email)))))
         (t2/update! :model/User user-id {:is_active false})
@@ -199,7 +202,7 @@
         (testing description
           (is (=? {:error error, :error_description string?}
                   (:body (token-response 400 params))))))
-      (testing "no refusal provisions the user or issues a token"
+      (testing "refused requests don't provision the user or issue a token"
         (is (not (t2/exists? :model/User :email email)))
         (is (not (t2/exists? :model/OAuthAccessToken :client_id "metabase-jwt-bearer")))))))
 
@@ -212,7 +215,7 @@
               [["no exp"               {:iat now}                           "The JWT must have exp and iat claims."]
                ["no iat"               {:exp (+ now 60)}                    "The JWT must have exp and iat claims."]
                ["an iat in the future" {:iat (+ now 120), :exp (+ now 180)} "The JWT has an iat claim in the future."]]]
-        (testing (str "an assertion with " description " is refused, and provisions nobody")
+        (testing (str "an assertion with " description " is refused without provisioning anyone")
           (is (= {:error "invalid_grant", :error_description error-description}
                  (:body (token-response 400 {:assertion (sign claims)}))))
           (is (not (t2/exists? :model/User :email email)))))
@@ -221,7 +224,7 @@
                 (:body (token-response 200 {:assertion (sign {:iat (+ now 30), :exp (+ now 90)})}))))))))
 
 (deftest exchange-refusal-reason-test
-  (testing "a refused login tells the caller why in error_description"
+  (testing "a refused login tells the caller why in `error_description`"
     (with-jwt-bearer-setup!
       (is (=? {:error "invalid_grant", :error_description "This login is only for personal accounts."}
               (:body (token-response 400 {:assertion (assertion {:email (t2/select-one-fn :email :model/User
@@ -235,12 +238,12 @@
       (testing "a JWT that fails verification gets a fixed description instead of the verifier's message"
         (is (= {:error "invalid_grant", :error_description "The JWT could not be verified."}
                (refusal {:exp (- (buddy-util/now) 60)}))))
-      (testing "a failure Metabase didn't write gets the generic description, with nothing from the database"
+      (testing "an error message not written by Metabase gets the generic description without database details"
         (is (= {:error "invalid_grant", :error_description "The token request is invalid."}
                (refusal {:first_name (apply str (repeat 255 "x"))})))))))
 
 (deftest discovery-test
-  (testing "discovery lists the grant while the token endpoint takes it"
+  (testing "discovery lists the grant while the token endpoint accepts it"
     (with-jwt-bearer-setup!
       (is (= ["authorization_code" "refresh_token" "urn:ietf:params:oauth:grant-type:jwt-bearer"]
              (discovered-grant-types))))))
@@ -287,7 +290,7 @@
                 (is (some? (mcp-session access_token)))))))))))
 
 (deftest token-drives-mcp-test
-  (testing "the token drives MCP as the user the JWT names, and the usage and audit rows land on that user"
+  (testing "MCP calls run as the user named in the JWT, and usage and audit rows belong to that user"
     (with-jwt-bearer-setup!
       (let [{:keys [access_token scope]} (token! "jwt-bearer-mcp@metabase.com")
             user-id    (t2/select-one-pk :model/User :email "jwt-bearer-mcp@metabase.com")

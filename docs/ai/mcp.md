@@ -166,9 +166,9 @@ Most clients ask for all of them. A scope never grants more than your Metabase p
 
 {% include plans-blockquote.html feature="Headless access with JWT" %}
 
-If you have an agent in your app, the agent can use your embedded Metabase's MCP server on behalf of the person signed in to your app.
+An agent in your app can use your embedded Metabase's MCP server on behalf of the person signed in to your app.
 
-How it works: your backend [signs a JWT](../people-and-groups/authenticating-with-jwt.md) for the person (as it would for SSO), and posts the JWT to the token endpoint. There's no browser sign-in or consent page.
+Your backend [signs a JWT](../people-and-groups/authenticating-with-jwt.md) for the person (as it would for SSO) and posts the JWT to the token endpoint. There's no browser sign-in or consent page.
 
 ```
 curl https://{your-metabase.example.com}/oauth/token \
@@ -191,7 +191,7 @@ curl https://{your-metabase.example.com}/oauth/token \
 
 Your agent sends the token to the MCP server at `https://{your-metabase.example.com}/api/metabase-mcp` as `Authorization: Bearer {access_token}`.
 
-Each token issued for headless access to the MCP server appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`. Their activity shows up in [MCP analytics](#mcp-analytics).
+Each token issued for headless access to the MCP server appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`. Calls made with these tokens appear in [MCP analytics](#mcp-analytics).
 
 People who only use headless access show **Never** under **Last Login** in **Admin > People**.
 

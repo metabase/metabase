@@ -168,7 +168,7 @@
       (catch java.net.URISyntaxException _ nil))))
 
 (defn- mcp-endpoint-paths-by-url
-  "The MCP endpoint paths, keyed by their [[canonical-resource-uri]] under the Site URL."
+  "Return the MCP endpoint paths keyed by their [[canonical-resource-uri]] under the Site URL."
   []
   (into {} (keep (fn [path] (some-> (canonical-resource-uri (str (system/site-url) path)) (vector path))))
         (mcp/mcp-endpoint-paths)))
@@ -215,15 +215,18 @@
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
 
 (defn mcp-resource-url
-  "The RFC 8707 resource indicator of the canonical MCP endpoint under the Site URL, or nil when no Site URL is set."
+  "Return the canonical MCP endpoint's RFC 8707 resource indicator under the Site URL.
+
+  Return nil when no Site URL is set."
   []
   (some-> (system/site-url) (str (mcp/mcp-canonical-path))))
 
 (defn mcp-endpoint-resource?
-  "True when every RFC 8707 indicator in `resources` names the MCP endpoint, or when `resources` names none.
+  "Return whether every RFC 8707 indicator in `resources` names the MCP endpoint.
 
-  `resources` is a string or a sequence of strings. They are compared as [[canonical-resource-uri]] with the Site URL
-  joined to each of [[metabase.mcp.core/mcp-endpoint-paths]]."
+  Return true when `resources` names none. `resources` is a string or a sequence of strings.
+  Compare each string's [[canonical-resource-uri]] with the Site URL joined to each of
+  [[metabase.mcp.core/mcp-endpoint-paths]]."
   [resources]
   (every? (comp (mcp-endpoint-paths-by-url) canonical-resource-uri) (cond-> resources (string? resources) vector)))
 
@@ -306,8 +309,9 @@
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
 
 (defenterprise jwt-bearer-grant-enabled?
-  "True when JWT authentication is enabled and configured, which the JWT bearer grant (RFC 7523) needs.
-  Always false on OSS."
+  "Return whether JWT authentication is enabled and configured.
+
+  The JWT bearer grant (RFC 7523) requires this. Always false on OSS."
   metabase-enterprise.sso.integrations.jwt
   []
   false)

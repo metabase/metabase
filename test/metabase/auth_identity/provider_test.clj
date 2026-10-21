@@ -156,7 +156,7 @@
             "the session is attributed to the provider that actually authenticated, which has no AuthIdentity")))))
 
 (deftest login!-without-a-session-test
-  (testing "a login that sets :session/skip? returns the user, and creates no session and no login history"
+  (testing "a login with `:session/skip?` returns the user without creating a session or login history"
     (mt/with-temp [:model/User user {}]
       (let [result (provider/login! :provider/test-plain-attribution
                                     {:user-id       (:id user)
@@ -173,7 +173,7 @@
         (is (not (t2/exists? :model/LoginHistory :user_id (:id user))))))))
 
 (deftest login!-personal-only-test
-  (testing "a login that sets :user/personal-only? refuses a user who is not a personal account, with no session"
+  (testing "a login with `:user/personal-only?` refuses accounts that aren't personal without creating a session"
     (mt/with-temp [:model/User user {:type :api-key}]
       (is (=? {:success? false, :error :non-personal-user}
               (provider/login! :provider/test-plain-attribution
