@@ -176,7 +176,7 @@
                       {:where where})))))
 
 (def ^:private max-output-length
-  "A cap on ordinary agent-bound failure text. A declared error should be nowhere near this; the cap is here
+  "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
   so that a pathological payload cannot spend the turn's context on one failure."
   4000)
 
@@ -189,8 +189,7 @@
   | `:recoverable`   | the message, then each kept recovery step on its own line  |
   | `:unrecoverable` | a fixed sentence carrying only the code                    |
 
-  Composed [[tools/all-items-failed!]] messages retain every item's output in full. Other failures
-  are capped at [[max-output-length]] characters.
+  Failure text is capped at [[max-output-length]] characters.
 
   `:user-message` is copied onto the outcome for unrecoverable errors so the agent loop can show it
   to the user. It never becomes part of `:output`."
@@ -213,8 +212,7 @@
                           output)
                         (str class " " code)))
     {:output (cond-> output
-               (and (not= code ::tools/all-items-failed)
-                    (< max-output-length (count output))) (subs 0 max-output-length))
+               (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}
                user-message (assoc :user-message user-message))}))
 
