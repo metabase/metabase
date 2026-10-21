@@ -423,5 +423,6 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
         (mt/with-current-user (mt/user->id :rasta)
           (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
-                                                          (t2/query ["SELECT no_such_column FROM metabase_field"]))]
+                                                          (t2/with-transaction [_conn]
+                                                            (t2/query ["SELECT no_such_column FROM metabase_field"])))]
             (is (= "Internal error" (tool-error (call-run-saved-question {:id card-id}))))))))))
