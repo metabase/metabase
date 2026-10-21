@@ -9,6 +9,7 @@
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.util :as u]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
   (:import
@@ -1098,7 +1099,7 @@
                                                              :expected-status expected-status)))]
         (dotimes [i 10]
           (is (= "invalid_request"
-                 (refresh-error (if (even? i) (str/upper-case client-id) (str/lower-case client-id)) 400))))
+                 (refresh-error (if (even? i) (u/upper-case-en client-id) (u/lower-case-en client-id)) 400))))
         (is (= "too_many_requests" (refresh-error client-id 429)))))))
 
 (deftest token-basic-auth-determines-client-throttle-key-test

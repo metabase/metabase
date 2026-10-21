@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sso.integrations.jwt-bearer-grant-test
+(ns ^:synchronized metabase-enterprise.sso.integrations.jwt-bearer-grant-test
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
