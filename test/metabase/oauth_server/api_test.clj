@@ -2563,3 +2563,83 @@
             (let [response (authorize not-mcp)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
+
+;;; ------------------------------------ No widening at the token endpoint ------------------------------------
+
+(defn- stored-scope-sets
+  "The scope sets of every access and refresh token row of `client`, revoked or not."
+  [client]
+  (set (for [model [:model/OAuthAccessToken :model/OAuthRefreshToken]
+             row   (t2/select model :client_id (:client_id client))]
+         (set (:scope row)))))
+
+(defn- authorize-rest-and-get-code!
+  "Run the consent flow as crowberto for the static `client` with no resource indicator, approving `mb:full`. Returns
+  the authorization code."
+  [client]
+  ;; see [[get-mcp-consent-page!]] for why the session is revalidated first
+  (mt/user-http-request :crowberto :get 200 "api/user/current")
+  (authorize-and-get-code! (:client_id client)))
+
+(defn- exchange-rest-code!
+  "Exchange `code` for `client` at the token endpoint, sending `scope` when it is non-nil. Returns the response body."
+  [client code scope & {:keys [expected-status] :or {expected-status 200}}]
+  (token-request! (cond-> {:grant_type   "authorization_code"
+                           :code         code
+                           :redirect_uri "https://example.com/callback"}
+                    scope (assoc :scope scope))
+                  :expected-status expected-status
+                  :authorization (basic-auth-header (:client_id client) (:client_secret client))))
+
+(defn- refresh-with-scope!
+  "Refresh `token-response` for `client` sending `scope`, expecting `expected-status`. Returns the response body."
+  [client token-response scope expected-status]
+  (token-request! {:grant_type    "refresh_token"
+                   :refresh_token (:refresh_token token-response)
+                   :scope         scope}
+                  :expected-status expected-status
+                  :authorization (basic-auth-header (:client_id client) (:client_secret client))))
+
+(deftest token-code-exchange-cannot-widen-scope-test
+  (testing (str "GHY-4969 / SEC-1312: a client must not be able to widen its grant at the token endpoint. A `scope` "
+                "sent with the code exchange is ignored: the token holds only the scope the user approved, even when "
+                "the wider scope is inside the client's ceiling.")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (doseq [wider ["mb:full agent:content:read" "agent:content:read" "*"]]
+          (testing (pr-str wider)
+            (let [client   (create-test-client! {:scopes ["mb:full" "agent:content:read"]})
+                  code     (authorize-rest-and-get-code! client)
+                  response (exchange-rest-code! client code wider)]
+              (is (= #{"mb:full"} (token-scope-set response)))
+              (is (= #{"mb:full"} (set (access-token-scopes response))))
+              (is (= #{#{"mb:full"}} (stored-scope-sets client))))))))))
+
+(deftest token-refresh-cannot-widen-rest-grant-test
+  (testing (str "GHY-4969 / SEC-1312: a client must not be able to widen its grant at the token endpoint. A refresh of "
+                "a REST grant that asks for a scope outside the stored grant is refused, and mints no token.")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (create-test-client! {:scopes ["mb:full" "agent:content:read"]})
+              tokens (exchange-rest-code! client (authorize-rest-and-get-code! client) nil)]
+          (is (= #{"mb:full"} (token-scope-set tokens)))
+          (doseq [wider ["mb:full agent:content:read" "agent:content:read" "*" "mb:full *"]]
+            (testing (pr-str wider)
+              (is (=? {:error "invalid_request"} (refresh-with-scope! client tokens wider 400)))
+              (is (= #{#{"mb:full"}} (stored-scope-sets client)))))
+          (testing "the refused refreshes leave the refresh token usable for the approved scope"
+            (is (= #{"mb:full"} (token-scope-set (refresh! client tokens))))
+            (is (= #{#{"mb:full"}} (stored-scope-sets client)))))))))
+
+(deftest token-refresh-cannot-widen-mcp-grant-test
+  (testing (str "GHY-4969 / SEC-1312: a client must not be able to widen its grant at the token endpoint. A refresh of "
+                "an MCP grant that asks for `mb:full` is refused, even when `mb:full` is inside the client's ceiling.")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (create-test-client! {:scopes (into ["mb:full"] (mcp/v2-scopes))})
+              tokens (authorize-at! client "https://example.com/callback" all-v2-scopes (sort v2-scope-set))]
+          (is (= v2-scope-set (token-scope-set tokens)))
+          (doseq [wider [(str all-v2-scopes " mb:full") "mb:full" "*"]]
+            (testing (pr-str wider)
+              (is (=? {:error "invalid_request"} (refresh-with-scope! client tokens wider 400)))
+              (is (= #{v2-scope-set} (stored-scope-sets client))))))))))
