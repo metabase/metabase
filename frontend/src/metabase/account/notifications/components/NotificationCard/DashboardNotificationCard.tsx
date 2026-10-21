@@ -80,7 +80,6 @@ export const DashboardNotificationCard = ({
             c="text-secondary"
             fz="sm"
             lh="0.875rem"
-            data-server-date
           >
             {formatCreatorMessage(item, user.id)}
           </Text>

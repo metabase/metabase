@@ -155,11 +155,7 @@ export const DocumentHeader = ({
               <Icon name="person" />
               <Text>{document.creator.common_name}</Text>
             </Flex>
-            <Tooltip
-              label={getFormattedTime(document.updated_at, "default", {
-                local: true,
-              })}
-            >
+            <Tooltip label={getFormattedTime(document.updated_at)}>
               <Flex align="center" gap="0.25rem" c="text-secondary">
                 <Icon name="clock" />
                 <DateTime value={document.updated_at} unit="day" />

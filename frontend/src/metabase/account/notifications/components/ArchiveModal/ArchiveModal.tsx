@@ -1,13 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { getFormattedTime } from "metabase/common/components/DateTime";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 import type { NotificationType } from "metabase/notifications/types";
 import { formatChannelRecipients } from "metabase/pulse";
 import { Box, Button, Stack } from "metabase/ui";
-import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 type ArchiveModalProps = {
@@ -62,7 +61,7 @@ function ArchiveNotificationModal({
     >
       <Stack gap="lg">
         {isCreator(item, user) && hasUnsubscribed && (
-          <Box data-server-date>
+          <Box>
             {getCreatorMessage(type, user)}
             {t`As the creator you can also choose to delete this if it's no longer relevant to others as well.`}
           </Box>
@@ -130,8 +129,7 @@ const getDateMessage = (
   item: Alert | DashboardSubscription,
   type: NotificationType,
 ): string => {
-  const options = Settings.formattingOptions();
-  const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
+  const createdAt = getFormattedTime(item.created_at, "day");
 
   switch (type) {
     case "alert":

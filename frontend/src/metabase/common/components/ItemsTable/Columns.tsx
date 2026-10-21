@@ -332,7 +332,6 @@ export const Columns = {
       return (
         <ItemCell
           data-testid={`${testIdPrefix}-last-edited-at`}
-          data-server-date
           hideAtContainerBreakpoint="md"
         >
           {lastEditInfo && (

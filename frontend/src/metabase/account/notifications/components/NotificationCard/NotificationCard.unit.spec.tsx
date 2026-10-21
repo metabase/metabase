@@ -1,6 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { QuestionNotificationListItem } from "metabase/notifications/types";
 import type { Notification } from "metabase-types/api";
 import {
@@ -14,10 +15,13 @@ import {
 
 import { NotificationCard } from "./NotificationCard";
 
+const CREATED_AT = "2025-01-07T02:40:47.245205+03:00";
+const CREATED_AT_DAY = dayjs(CREATED_AT).format("MMMM D, YYYY");
+
 const getQuestionAlertItem = (
   opts?: Partial<Notification>,
 ): QuestionNotificationListItem => ({
-  item: createMockNotification(opts),
+  item: createMockNotification({ created_at: CREATED_AT, ...opts }),
   type: "question-notification",
 });
 
@@ -39,7 +43,7 @@ describe("NotificationCard", () => {
     expect(screen.getByLabelText("mail icon")).toBeInTheDocument();
     expect(screen.getByText("Check daily at 9:00 AM")).toBeInTheDocument();
     expect(
-      screen.getByText("Created by you on January 7, 2025"),
+      screen.getByText(`Created by you on ${CREATED_AT_DAY}`),
     ).toBeInTheDocument();
   });
 
@@ -128,7 +132,7 @@ describe("NotificationCard", () => {
     );
 
     expect(
-      screen.getByText("Created by John Doe on January 7, 2025"),
+      screen.getByText(`Created by John Doe on ${CREATED_AT_DAY}`),
     ).toBeInTheDocument();
   });
 

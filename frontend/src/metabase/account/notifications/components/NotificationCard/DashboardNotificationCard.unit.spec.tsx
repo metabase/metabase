@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { DashboardSubscriptionListItem } from "metabase/notifications/types";
 import type { Channel } from "metabase-types/api";
 import {
@@ -9,6 +10,9 @@ import {
 
 import { DashboardNotificationCard } from "./DashboardNotificationCard";
 
+const CREATED_AT = "2021-05-08T18:02:07.441-08:00";
+const CREATED_AT_DAY = dayjs(CREATED_AT).format("MMMM D, YYYY");
+
 const getPulseItem = ({
   creator = getUser(),
   channels = [getChannel()],
@@ -16,7 +20,7 @@ const getPulseItem = ({
   item: createMockDashboardSubscription({
     creator,
     channels,
-    created_at: "2021-05-08T02:02:07.441Z",
+    created_at: CREATED_AT,
   }),
   type: "pulse",
 });
@@ -62,7 +66,7 @@ describe("DashboardNotificationCard", () => {
     expect(screen.getByText("Pulse")).toBeInTheDocument();
     expect(screen.getByText("Emailed hourly")).toBeInTheDocument();
     expect(
-      screen.getByText("Created by you on May 8, 2021"),
+      screen.getByText(`Created by you on ${CREATED_AT_DAY}`),
     ).toBeInTheDocument();
   });
 
@@ -159,7 +163,7 @@ describe("DashboardNotificationCard", () => {
     );
 
     expect(
-      screen.getByText("Created by John Doe on May 8, 2021"),
+      screen.getByText(`Created by John Doe on ${CREATED_AT_DAY}`),
     ).toBeInTheDocument();
   });
 
