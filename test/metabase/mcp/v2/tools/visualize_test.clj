@@ -148,7 +148,7 @@
                     (str "Metabase could not expand a metric reference. Check that it is in an aggregation and "
                          "applies to this stage's source.")]]]
             (testing description
-              (is (= (str "\"The query builds, but Metabase rejects it when preparing it to run: " rejection "\"\n"
+              (is (= (str "\"Metabase could not prepare this query to run: " rejection "\"\n"
                           "Fix that part of the query and retry.")
                      (error-text (call! "visualize_query" (str (random-uuid))
                                         {:query {:lib/type "mbql/query"
