@@ -14,6 +14,28 @@
 
 (declare #^:private substitute*)
 
+(def ^:private max-substituted-sql-length
+  "Maximum length of the SQL produced by substituting parameters into a native query."
+  10000000)
+
+(def ^:private max-snippet-expansions
+  "Maximum number of native query snippets that can be expanded while substituting parameters into a native query."
+  10000)
+
+(defn- check-snippet-expansion! [{:keys [expanding-snippet-ids snippet-expansions]} {:keys [snippet-id]}]
+  (when (contains? expanding-snippet-ids snippet-id)
+    (throw (ex-info (tru "This query has circular referencing snippets.")
+                    {:type driver-api/qp.error-type.invalid-query, :snippet-id snippet-id})))
+  (when (> (vswap! snippet-expansions inc) max-snippet-expansions)
+    (throw (ex-info (tru "This query uses too many snippets.")
+                    {:type driver-api/qp.error-type.invalid-query}))))
+
+(defn- check-sql-length! [[sql :as acc]]
+  (when (> (count sql) max-substituted-sql-length)
+    (throw (ex-info (tru "This query is too long.")
+                    {:type driver-api/qp.error-type.invalid-query})))
+  acc)
+
 (defn- substitute-field-param [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= params/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
@@ -28,14 +50,21 @@
         (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
     [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
 
-(defn- substitute-native-query-snippet [param->value [sql args missing] in-optional? v]
+(defn- substitute-native-query-snippet
+  "`ctx` holds `:expanding-snippet-ids`, the IDs of the snippets currently being expanded (to detect snippets that
+  reference themselves), and `:snippet-expansions`, a volatile count of the snippets expanded so far."
+  [ctx param->value [sql args missing] in-optional? v]
+  (check-snippet-expansion! ctx v)
   (let [{:keys [replacement-snippet]} (sql.params.substitution/->replacement-snippet-info driver/*driver* v)
-        [processed-snippet snippet-args snippet-missing] (substitute* param->value (params.parse/parse replacement-snippet) in-optional?)]
+        [processed-snippet snippet-args snippet-missing] (substitute* (update ctx :expanding-snippet-ids conj (:snippet-id v))
+                                                                      param->value
+                                                                      (params.parse/parse replacement-snippet)
+                                                                      in-optional?)]
     [(str sql processed-snippet)
      (not-empty (concat args snippet-args))
      (not-empty (concat missing snippet-missing))]))
 
-(defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
+(defn- substitute-param [ctx param->value [sql args missing] in-optional? {:keys [k]}]
   (if-not (contains? param->value k)
     [sql args (conj missing k)]
     (let [v (get param->value k)]
@@ -48,7 +77,7 @@
         (substitute-card-query [sql args missing] v)
 
         (params/ReferencedQuerySnippet? v)
-        (substitute-native-query-snippet param->value [sql args missing] in-optional? v)
+        (substitute-native-query-snippet ctx param->value [sql args missing] in-optional? v)
 
         (= params/no-value v)
         [sql args (conj missing k)]
@@ -60,26 +89,27 @@
 
 (declare substitute*)
 
-(defn- substitute-optional [param->value [sql args missing] {subclauses :args}]
-  (let [[opt-sql opt-args opt-missing] (substitute* param->value subclauses true)]
+(defn- substitute-optional [ctx param->value [sql args missing] {subclauses :args}]
+  (let [[opt-sql opt-args opt-missing] (substitute* ctx param->value subclauses true)]
     (if (seq opt-missing)
       [sql args missing]
       [(str sql opt-sql) (concat args opt-args) missing])))
 
 (defn- substitute*
   "Returns a sequence of `[replaced-sql-string jdbc-args missing-parameters]`."
-  [param->value parsed in-optional?]
+  [ctx param->value parsed in-optional?]
   (reduce
    (fn [[sql args missing] x]
-     (cond
-       (string? x)
-       [(str sql x) args missing]
+     (check-sql-length!
+      (cond
+        (string? x)
+        [(str sql x) args missing]
 
-       (params/Param? x)
-       (substitute-param param->value [sql args missing] in-optional? x)
+        (params/Param? x)
+        (substitute-param ctx param->value [sql args missing] in-optional? x)
 
-       (params/Optional? x)
-       (substitute-optional param->value [sql args missing] x)))
+        (params/Optional? x)
+        (substitute-optional ctx param->value [sql args missing] x))))
    nil
    parsed))
 
@@ -94,7 +124,10 @@
   [parsed-query param->value]
   (log/tracef "Substituting params\n%s\nin query:\n%s" (u/pprint-to-str param->value) (u/pprint-to-str parsed-query))
   (let [[sql args missing] (try
-                             (substitute* param->value parsed-query false)
+                             (substitute* {:expanding-snippet-ids #{}, :snippet-expansions (volatile! 0)}
+                                          param->value
+                                          parsed-query
+                                          false)
                              (catch Throwable e
                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
                                                {:type         (or (:type (ex-data e)) driver-api/qp.error-type.qp)
