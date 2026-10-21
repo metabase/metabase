@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import type { ComponentType } from "react";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupInvalidateFindingsEndpoint,
   setupListImbalancedFindingsEndpoint,
   setupUserKeyValueEndpoints,
@@ -109,6 +110,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const Page = PAGE_BY_MODE[mode];

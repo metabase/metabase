@@ -10,7 +10,8 @@ import type { TableId } from "metabase-types/api";
 const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } = H.DataModel;
 
-const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
@@ -744,6 +745,98 @@ describe("scenarios > data studio > datamodel", () => {
       .findByPlaceholderText("Enter an ID")
       .should("be.visible");
     H.main().findByText("Something’s gone wrong").should("not.exist");
+  });
+
+  describe("read-only remote sync", () => {
+    function verifyTableIsNotWritable(tableId: TableId) {
+      cy.request("GET", `/api/table/${tableId}/query_metadata`)
+        .its("body.can_write")
+        .should("eq", false);
+    }
+
+    function verifyReadOnlyTablePage({ hasTabs }: { hasTabs: boolean }) {
+      cy.log("table picker and table");
+      TablePicker.getTable("Orders").should("be.visible");
+      TablePicker.getTable("Products").should("be.visible");
+      TableSection.getNameInput().should("have.value", "Orders");
+      if (hasTabs) {
+        TableSection.clickFieldsTab();
+      }
+
+      cy.log("field metadata, FK target and remapping");
+      TableSection.clickField("Product ID");
+      FieldSection.getNameInput().should("have.value", "Product ID");
+      FieldSection.getSemanticTypeFkTarget().should(
+        "have.value",
+        "Products → ID",
+      );
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use foreign key",
+      );
+      FieldSection.getDisplayValuesFkTargetInput().should(
+        "have.value",
+        "Title",
+      );
+
+      cy.log("preview");
+      FieldSection.getPreviewButton().click();
+      PreviewSection.get().findByText("Product ID").should("be.visible");
+      PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+      PreviewSection.get().findByText("Product ID").should("be.visible");
+      PreviewSection.get()
+        .findByText("Sorry, you don’t have permission to see that.")
+        .should("not.exist");
+
+      cy.log("field values");
+      TablePicker.getTable("Products").click();
+      TableSection.getNameInput().should("have.value", "Products");
+      if (hasTabs) {
+        TableSection.clickFieldsTab();
+      }
+      TableSection.clickField("Category");
+      FieldSection.getNameInput().should("have.value", "Category");
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+      PreviewSection.get().findByText("Doohickey").should("be.visible");
+    }
+
+    beforeEach(() => {
+      H.remapDisplayValueToFK({
+        display_value: ORDERS.PRODUCT_ID,
+        name: "Product ID",
+        fk: PRODUCTS.TITLE,
+      });
+      H.setupGitSync();
+      H.createLibrary();
+      H.copySyncedLibraryFixture();
+      H.commitToRepo();
+      H.configureGitAndPullChanges("read-write");
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      cy.request("POST", "/api/ee/remote-sync/export", { branch: "main" });
+      H.pollForTask({ taskName: "export" });
+      H.configureGitAndPullChanges("read-only");
+
+      [ORDERS_ID, PRODUCTS_ID].forEach(verifyTableIsNotWritable);
+    });
+
+    it("should show a published table in the data studio data model", () => {
+      H.DataModel.visitDataStudio({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+      TableSection.getNameInput().should("have.attr", "readonly");
+      verifyReadOnlyTablePage({ hasTabs: true });
+    });
+
+    it("should show a published table in the admin data model", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+      verifyReadOnlyTablePage({ hasTabs: false });
+    });
   });
 });
 

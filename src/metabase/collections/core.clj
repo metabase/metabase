@@ -20,6 +20,7 @@
   update-collection!]
  [metabase.collections.models.collection
   archive-or-unarchive-collection!
+  assert-remote-syncable
   has-remote-synced-collection?
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
@@ -31,6 +32,7 @@
   instance-analytics-collection-type
   library-collection
   library-collection-type
+  library-collection-types
   library-dashboards-collection-type
   library-dashboards-collection?
   library-data-collection-type
@@ -43,6 +45,7 @@
   remote-synced-collection
   remote-synced-collection?
   remote-synced-dependents
+  root-collection-type-by-id
   shared-tenant-collection?
   slugify
   transforms-ns
