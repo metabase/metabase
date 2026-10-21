@@ -201,7 +201,8 @@
 (defn card-definition-table-ids
   "The ids of the Tables the definition of the card with ID `card-id` reads, plus the Tables one FK hop away from
   them, following source Cards to their own definitions (ten levels at most), or nil when the card is missing or
-  its query can't be built. A native definition names no Tables: its result columns say which Tables it exposes."
+  its query can't be built. A native definition names no Tables and contributes none: its result metadata can map
+  a column to any Field, so it is not trusted to say which Tables it exposes."
   [card-id]
   (when-let [card (get-card card-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
@@ -210,20 +211,16 @@
           (if (or (empty? todo) (= depth 10))
             tables
             (let [queries (into []
-                                (keep (fn [{:keys [dataset-query result-metadata]}]
-                                        (when-let [query (some->> dataset-query (lib/query mp))]
-                                          (if (lib/any-native-stage? query)
-                                            ;; result columns keep their stored spelling in lib's card metadata
-                                            {:native-tables (into #{} (keep #(or (:table-id %) (:table_id %))) result-metadata)}
-                                            {:query query}))))
+                                (comp (keep (fn [{:keys [dataset-query]}] (some->> dataset-query (lib/query mp))))
+                                      (remove lib/any-native-stage?))
                                 (lib.metadata/bulk-metadata mp :metadata/card todo))
-                  refs    (if-let [qs (not-empty (into [] (keep :query) queries))]
-                            (lib/all-referenced-entity-ids qs {:include-implicitly-joinable? true})
+                  refs    (if (seq queries)
+                            (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})
                             {})
                   seen    (into seen todo)]
               (recur (into #{} (remove seen) (:card refs))
                      seen
-                     (-> tables (into (:table refs)) (into (mapcat :native-tables) queries))
+                     (into tables (:table refs))
                      (inc depth)))))
         (catch Throwable _
           nil)))))

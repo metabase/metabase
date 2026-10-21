@@ -1091,8 +1091,8 @@
           (is (not (contains? (model-entry metabot :internal) :query_json))))))))
 
 (deftest field-values-follow-the-definition-through-cards-test
-  (testing "the field-owner rule follows a card's definition through its source cards, reads a native definition's
-            result columns, and judges a metric's columns the same way"
+  (testing "the field-owner rule follows a card's definition through its source cards, trusts no native definition,
+            and judges a metric's columns the same way"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
         (let [mp    (mt/metadata-provider)
@@ -1104,15 +1104,20 @@
                          :model/Card {native-model :id} {:type          :model
                                                          :name          "native model"
                                                          :dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}
+                         :model/Card {edited-native :id} {:type          :model
+                                                          :name          "edited native model"
+                                                          :dataset_query (mt/native-query
+                                                                          {:query "SELECT TOTAL FROM ORDERS"})}
                          :model/Card {edited-model :id} {:type :model :name "edited model" :dataset_query (orders-query)}
                          :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
             (t2/update! :model/Card native-model
                         {:result_metadata [{:name "TOTAL" :display_name "Total" :base_type :type/Float
                                             :id total :table_id (mt/id :orders)}]})
-            (t2/update! :model/Card edited-model
-                        {:result_metadata [{:name "RATING" :display_name "Rating" :base_type :type/Integer
-                                            :id (mt/id :reviews :rating) :table_id (mt/id :reviews)}]})
-            (doseq [id [base-model stacked-model native-model edited-model]]
+            (doseq [id [edited-native edited-model]]
+              (t2/update! :model/Card id
+                          {:result_metadata [{:name "RATING" :display_name "Rating" :base_type :type/Integer
+                                              :id (mt/id :reviews :rating) :table_id (mt/id :reviews)}]}))
+            (doseq [id [base-model stacked-model native-model edited-native edited-model]]
               (verify-card! id))
             (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
                                                         :name          "metric on edited model"
@@ -1125,8 +1130,12 @@
                                                                                  :field_id    field-id})))]
                 (is (some? (get-in (values "model" stacked-model total) [:structured-output :value_metadata]))
                     "a model built on a model reaches the tables its source reads")
-                (is (some? (get-in (values "model" native-model total) [:structured-output :value_metadata]))
-                    "a native model exposes the tables its result columns map to")
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                      (values "model" native-model total))
+                    "a native definition names no tables, so none of its columns has a known owner")
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                      (values "model" edited-native (mt/id :reviews :rating)))
+                    "a native model's result metadata can point anywhere and is not trusted")
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
                                       (values "metric" metric-id (mt/id :reviews :rating)))
                     "a metric's columns are judged by its definition, source cards included")))))))))
