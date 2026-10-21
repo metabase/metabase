@@ -357,3 +357,30 @@
                             ::tools.u/wrong-source-type)} error))
             (is (str/includes? (or output "") (str "ID " source-id " is a " actual-type ", not a " expected-type "."
                                                    "\nRetry using a " expected-type " ID.")))))))))
+
+(deftest question-field-details-use-returned-columns-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (doseq [[display card-query unreturned-id]
+              [[:pivot (-> query (lib/aggregate (lib/count))
+                           (lib/breakout (lib/with-temporal-bucket
+                                           (lib.metadata/field mp (mt/id :orders :created_at)) :month)))
+                (mt/id :orders :quantity)]
+               [:table (lib/with-fields query [(lib.metadata/field mp (mt/id :orders :product_id))])
+                (mt/id :products :category)]]]
+        (mt/with-temp [:model/Card {card-id :id} {:type :question :display display :dataset_query card-query}]
+          (let [fields (get-in (entity-details/get-table-details
+                                {:entity-type :question :entity-id card-id
+                                 :with-fields? true :with-field-values? false :with-related-tables? false
+                                 :with-metrics? false :with-measures? false :with-segments? false})
+                               [:structured-output :fields])
+                valid-ids (mapv :field_id fields)
+                message (str "Field " unreturned-id " was not found in question " card-id
+                             ". Valid field IDs: " (pr-str valid-ids) ".\nRetry with one of these field IDs.")]
+            (is (seq fields))
+            (doseq [profile [:document-generate-content :slackbot :internal]
+                    data-source ["question" "report"]]
+              (let [{:keys [error output]} (invoke-field-detail profile data-source card-id unreturned-id)]
+                (is (= :recoverable (:class error)))
+                (is (str/includes? output message))))))))))

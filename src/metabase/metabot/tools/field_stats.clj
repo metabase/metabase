@@ -114,7 +114,9 @@
 (defn- card-field-stats
   [entity-type card-id field-id limit]
   (let [query (metabot.tools.u/card-query card-id (keyword entity-type))
-        columns (distinct (concat (lib/returned-columns query) (lib/visible-columns query)))
+        columns (if (= entity-type "question")
+                  (lib/returned-columns query)
+                  (distinct (concat (lib/returned-columns query) (lib/visible-columns query))))
         col (field-column entity-type card-id field-id columns)]
     (field-metadata-output query col field-id limit)))
 
