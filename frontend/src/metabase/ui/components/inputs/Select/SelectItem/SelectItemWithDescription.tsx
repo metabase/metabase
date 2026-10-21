@@ -23,16 +23,16 @@ export const SelectItemWithDescription = forwardRef(
     ref: Ref<HTMLDivElement>,
   ) {
     return (
-      <SelectItem ref={ref} selected={selected} {...props}>
+      <SelectItem ref={ref} selected={selected} py="xxs" {...props}>
         {showCheckIcon && <Icon name={selected ? "check" : "empty"} />}
 
         <Flex direction="column" flex="1" gap="xxs">
-          <Text c="inherit" fw="bold" lh="1rem">
+          <Text c="inherit" lh="md">
             {label}
           </Text>
 
           {description && (
-            <Text c="text-disabled" className={S.description} lh="1rem">
+            <Text className={S.description} fz="sm" lh="sm">
               {description}
             </Text>
           )}

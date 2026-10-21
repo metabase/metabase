@@ -68,7 +68,7 @@ const COMBOBOX_PROPS = {
 const ROWS = [
   { id: "states", label: "Option states", height: "17.5rem" },
   { id: "groups", label: "Group labels", height: "17.5rem" },
-  { id: "empty", label: "Empty", height: "8rem" },
+  { id: "empty", label: "Empty", height: "11rem" },
 ] as const;
 
 type RowId = (typeof ROWS)[number]["id"];
