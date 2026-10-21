@@ -15,38 +15,43 @@
 (set! *warn-on-reflection* true)
 
 (deftest assignments-authorize-access-test
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                 :model/PermissionsGroup group {}]
-    (resources/ensure-resources! app)
-    (mt/with-current-user (mt/user->id :rasta)
-      (is (not (mi/can-read? app))))
-    (group-access/add-groups! app [(:id group)])
-    (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
-    (mt/with-current-user (mt/user->id :rasta)
-      (is (mi/can-read? app)))
-    (group-access/remove-group! app (:id group))
-    (mt/with-current-user (mt/user->id :rasta)
-      (is (not (mi/can-read? app))))
-    (mt/with-current-user (mt/user->id :crowberto)
-      (is (mi/can-read? app)))))
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                   :model/PermissionsGroup group {}]
+      (resources/ensure-resources! app)
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (not (mi/can-read? app))))
+      (group-access/add-groups! app [(:id group)])
+      (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (mi/can-read? app)))
+      (group-access/remove-group! app (:id group))
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (not (mi/can-read? app))))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (mi/can-read? app))
+        (testing "without the data apps feature nobody can read an app, admins included"
+          (mt/with-premium-features #{}
+            (is (not (mi/can-read? app)))))))))
 
 (deftest app-list-filters-readable-apps-test
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                 :model/DataApp disabled {:name "disabled" :display_name "Disabled" :bundle_path "disabled.js"
-                                          :enabled false}
-                 :model/DataApp _ {:name "hidden" :display_name "Hidden" :bundle_path "hidden.js"}
-                 :model/PermissionsGroup finches {}
-                 :model/PermissionsGroup owls {}]
-    (group-access/add-groups! app [(:id finches) (:id owls)])
-    (group-access/add-groups! disabled [(:id finches)])
-    (perms/add-user-to-group! (mt/user->id :rasta) (:id finches))
-    (perms/add-user-to-group! (mt/user->id :rasta) (:id owls))
-    (let [list-apps (api.macros/find-route-fn 'metabase-enterprise.data-apps.api :get "/")]
-      (mt/with-current-user (mt/user->id :rasta)
-        (list-apps {} {})
-        (testing "a disabled app isn't listed to a non-superuser, available or not"
-          (doseq [query [{} {:available true}]]
-            (is (= [{:name "birds" :display_name "Birds"}] (list-apps {} query)))))))))
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                   :model/DataApp disabled {:name "disabled" :display_name "Disabled" :bundle_path "disabled.js"
+                                            :enabled false}
+                   :model/DataApp _ {:name "hidden" :display_name "Hidden" :bundle_path "hidden.js"}
+                   :model/PermissionsGroup finches {}
+                   :model/PermissionsGroup owls {}]
+      (group-access/add-groups! app [(:id finches) (:id owls)])
+      (group-access/add-groups! disabled [(:id finches)])
+      (perms/add-user-to-group! (mt/user->id :rasta) (:id finches))
+      (perms/add-user-to-group! (mt/user->id :rasta) (:id owls))
+      (let [list-apps (api.macros/find-route-fn 'metabase-enterprise.data-apps.api :get "/")]
+        (mt/with-current-user (mt/user->id :rasta)
+          (list-apps {} {})
+          (testing "a disabled app isn't listed to a non-superuser, available or not"
+            (doseq [query [{} {:available true}]]
+              (is (= [{:id (:id app) :name "birds" :display_name "Birds"}] (list-apps {} query))))))))))
 
 (deftest read-access-agrees-across-entry-points-test
   (mt/with-premium-features #{:data-apps :tenants}
@@ -75,6 +80,10 @@
             (mt/user-http-request user-id :get (if allowed? 200 403) "ee/apps/birds/bundle")
             (mt/with-current-user user-id
               (is (= allowed? (boolean (mi/can-read? app)))))
+            (is (= allowed? (contains? (t2/select-pks-set :model/DataApp
+                                                          {:where [:in :id (data-apps/visible-data-app-filter-select
+                                                                            {:user-id user-id :is-superuser? admin?})]})
+                                       (:id app))))
             (mt/with-current-user user-id
               (let [request {:route-params {:name "birds"} :metabase-user-id user-id :is-superuser? admin?}]
                 (if allowed?
@@ -306,11 +315,11 @@
           (perms/revoke-collection-permissions! group-id collection-id)
           (mt/user-http-request :rasta :get 403 "ee/apps/birds")
           (resources/ensure-resources! app)
-          (is (= {:name "birds" :display_name "Birds"}
+          (is (= {:id (:id app) :name "birds" :display_name "Birds"}
                  (mt/user-http-request :rasta :get 200 "ee/apps/birds"))))))))
 
 (deftest tenant-users-cannot-inherit-app-access-test
-  (mt/with-premium-features #{:tenants}
+  (mt/with-premium-features #{:data-apps :tenants}
     (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
                    :model/User user {:tenant_id (:id tenant)}
                    :model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
@@ -319,13 +328,14 @@
         (is (not (mi/can-read? app)))))))
 
 (deftest sso-membership-controls-assigned-app-access-test
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                 :model/PermissionsGroup group {}
-                 :model/User user {}]
-    (group-access/add-groups! app [(:id group)])
-    (sso/sync-group-memberships! (:id user) [(:id group)])
-    (mt/with-current-user (:id user)
-      (is (mi/can-read? app)))
-    (sso/sync-group-memberships! (:id user) [])
-    (mt/with-current-user (:id user)
-      (is (not (mi/can-read? app))))))
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                   :model/PermissionsGroup group {}
+                   :model/User user {}]
+      (group-access/add-groups! app [(:id group)])
+      (sso/sync-group-memberships! (:id user) [(:id group)])
+      (mt/with-current-user (:id user)
+        (is (mi/can-read? app)))
+      (sso/sync-group-memberships! (:id user) [])
+      (mt/with-current-user (:id user)
+        (is (not (mi/can-read? app)))))))

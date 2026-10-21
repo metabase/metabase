@@ -136,6 +136,34 @@
     (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
     []))
 
+(mu/defn readable-data-app-ids-select
+  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
+  the enabled apps assigned to one of their groups, and none for a tenant user."
+  [user-id    :- [:maybe ms/PositiveInt]
+   superuser? :- :boolean]
+  (if superuser?
+    ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
+    ^:allow-subquery {:select [:assignment.data_app_id]
+                      :from   [[(t2/table-name :model/DataAppGroupAssignment) :assignment]]
+                      :join   [[(t2/table-name :model/DataApp) :app]
+                               [:= :app.id :assignment.data_app_id]
+                               [:permissions_group_membership :membership]
+                               [:= :membership.group_id :assignment.permission_group_id]
+                               [:core_user :member]
+                               [:= :member.id :membership.user_id]]
+                      :where  [:and
+                               [:= :app.enabled true]
+                               [:= :membership.user_id user-id]
+                               [:= :member.tenant_id nil]]}))
+
+(mu/defn readable-data-app?
+  "Whether the non-superuser User with `user-id` can read the DataApp with `app-id`."
+  [user-id :- ms/PositiveInt
+   app-id  :- ms/PositiveInt]
+  (t2/exists? :model/DataApp {:where [:and
+                                      [:= :id app-id]
+                                      [:in :id (readable-data-app-ids-select user-id false)]]}))
+
 (defn insert-assignments!
   "Assign groups to an app. The unique constraint rejects concurrent duplicates."
   [app-id group-ids]
