@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.prefetch-metadata
   "Middleware that bulk-loads all the metadata referenced by a query into the metadata provider's cache up front, so
   that later middleware and SQL compilation hit the cache instead of fetching objects from the app DB one at a time."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.set :as set]
    [metabase.lib-be.core :as lib-be]
@@ -10,7 +11,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- card->referenced-entity-ids
   [metadata-provider card]

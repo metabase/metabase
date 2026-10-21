@@ -207,6 +207,7 @@
                        [:field (_opts :guard implicit-join-opts?) _name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [fk-field-info (field-ref->fk-field-info query path &match)
+                               {fk-join-alias :join-alias, :keys [source-field-join-alias]} (lib/options &match)
                                join-alias    (or (fk-field-info->join-alias fk-field-info)
                                                  (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
                                                                       (let [field (lib.metadata/field
@@ -216,10 +217,9 @@
                                                                  {:resolving  &match
                                                                   :candidates fk-field-info->join-alias
                                                                   :stage      stage})))]
-                           (let [{fk-join-alias :join-alias, :keys [source-field-join-alias]} (lib/options &match)]
-                             (cond-> (lib/with-join-alias &match join-alias)
-                               (and fk-join-alias (not source-field-join-alias))
-                               (lib/update-options assoc :source-field-join-alias fk-join-alias))))
+                           (cond-> (lib/with-join-alias &match join-alias)
+                             (and fk-join-alias (not source-field-join-alias))
+                             (lib/update-options assoc :source-field-join-alias fk-join-alias)))
                          &match))]
           (when-not (= stage' stage)
             ;; normalize the stage to remove any duplicate fields or breakouts
