@@ -29,6 +29,9 @@ export function FilterOperatorPicker<T extends Lib.FilterOperator>({
       size="xs"
       aria-label={t`Filter operator`}
       classNames={{ input: S.input }}
+      // Same as DateOperatorPicker: a portaled dropdown is outside the filter
+      // popover, so a click on an option would close the popover.
+      comboboxProps={{ withinPortal: false, floatingStrategy: "fixed" }}
       onChange={onChange}
     />
   );
