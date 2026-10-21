@@ -57,10 +57,13 @@
   "List the names of the currently-attached query_execution partition tables."
   [conn]
   (map :pg_class/relname
+       ;; the regclass::oid cast resolves to only the table in the current schema.
+       ;; appdb with a non-default schema is not supported for new installs, but
+       ;; there are users who have upgraded from ancient installs who have it.
        (next.jdbc/execute! conn ["SELECT c.relname FROM pg_inherits i
                                     JOIN pg_class p ON i.inhparent = p.oid
                                     JOIN pg_class c ON i.inhrelid = c.oid
-                                   WHERE p.relname='query_execution'"])))
+                                   WHERE p.oid = 'query_execution'::regclass::oid"])))
 
 (defn fully-on-partitions?
   "Has the database fully switched to managing its truncation with partitions?
