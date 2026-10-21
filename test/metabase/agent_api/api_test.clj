@@ -1990,6 +1990,18 @@
 
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 
+(deftest read-resource-uri-preview-test
+  (doseq [[uri success?] [[(str "metabase://databases?ignored=" (apply str (repeat 4000 "x"))) true]
+                          [(apply str (repeat 4096 "\"")) false]
+                          [(apply str (repeat 4096 "\u08FF")) false]]]
+    (let [response (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource" {:uris [uri]})
+          resource (first (:resources response))
+          attribute (second (re-find #"<resource uri=\"([^\"]*)\">" (:output response)))]
+      (is (= success? (contains? resource :content)))
+      (is (<= (count (pr-str (:uri resource))) 200))
+      (is (<= (count attribute) 200))
+      (is (true? (str/includes? (:uri resource) "[truncated]"))))))
+
 (deftest read-resource-test
   (testing "Dispatches a top-level URI through the shared resolver"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"

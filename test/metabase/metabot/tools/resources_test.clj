@@ -32,6 +32,8 @@
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private uri-arg
   "The tool's item schema, read off the tool so the assertions below compare against what it
   actually publishes."
@@ -173,6 +175,39 @@
     (is (<= (count (:output result)) 4000))
     (is (true? (str/includes? (:output result) "4096")))))
 
+(deftest failed-batch-echo-budget-test
+  (doseq [tool-names [#{"read_resource"} #{"read_resource" "search"}]
+          prefix ["" "metabase://nonsense/" "metabase://collection/1/"
+                  "metabase://collection/" "metabase://chart/"]
+          character ["x" "\"" "&" "\\" "\u08FF" "🦜"]]
+    (testing (str "prefix " (pr-str prefix) ", character " (pr-str character) ", tools " tool-names)
+      (let [uri (str prefix (apply str (repeat (quot (- 4096 (count prefix)) (count character)) character)))
+            result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                   {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                    :tool-names tool-names}
+                                   "read_resource" {:uris (vec (repeat 5 uri))})
+            ^String output (:output result)
+            attributes (map second (re-seq #"<resource uri=\"([^\"]*)\">" output))
+            quoted-uris (for [line (str/split-lines output)
+                              [start stop] [["**Error:** " " is not a Metabase resource URI."]
+                                            ["**Error:** No resource is served at " "."]
+                                            ["**Error:** Invalid id " " in URI."]
+                                            ["**Error:** No chart or query with id " " exists in this conversation"]]
+                              :when (str/starts-with? line start)
+                              :let [end (str/last-index-of line stop)]
+                              :when end]
+                          (subs line (count start) end))]
+        (is (= :metabase.metabot.tools.core/all-items-failed (get-in result [:error :code])))
+        (is (< (count output) 3500))
+        (is (= 5 (count attributes)))
+        (is (true? (every? #(<= (count %) 200) attributes)))
+        (is (true? (every? #(not (re-find #"&[^;]*$" %)) attributes)))
+        (is (seq quoted-uris))
+        (is (true? (every? #(<= (count %) 200) quoted-uris)))
+        (is (true? (str/includes? output "[truncated]")))
+        (is (str/ends-with? output "</resources>"))
+        (is (true? (= output (String. (.getBytes output "UTF-8") "UTF-8"))))))))
+
 (deftest all-failed-batch-retains-each-uri-test
   (doseq [tool-names [#{"read_resource"} #{"read_resource" "search"}]
           uris [(mapv #(str "metabase://nonsense/" %) (range 5))
@@ -187,7 +222,7 @@
           output (:output result)]
       (is (= :recoverable (get-in result [:error :class])))
       (is (= (count uris) (count (re-seq #"<resource uri=" output))))
-      (is (every? #(str/includes? output (str "uri=\"" % "\"")) uris))
+      (is (every? #(str/includes? output (str "uri=\"" (subs % 0 (min 80 (count %))))) uris))
       (is (str/ends-with? output "</resources>")))))
 
 (deftest ^:parallel single-and-batched-declarations-test

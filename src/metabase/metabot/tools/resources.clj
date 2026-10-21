@@ -103,6 +103,36 @@
   "Maximum number of characters in a resource URI."
   4096)
 
+(def ^:private max-uri-preview-length
+  "URI echoes occupy at most this many characters after escaping."
+  200)
+
+(def ^:private max-resource-error-length
+  "Each resource's displayed error text fits within this character budget."
+  400)
+
+(def ^:private truncation-marker "...[truncated]")
+
+(defn- text-preview
+  "Return a prefix and marker that fit the rendered text budget."
+  [^String text limit length-fn]
+  (if (<= (length-fn text) limit)
+    text
+    (loop [end 0]
+      (let [next-end (.offsetByCodePoints text (int end) 1)
+            candidate (str (subs text 0 next-end) truncation-marker)]
+        (if (> (length-fn candidate) limit)
+          (str (subs text 0 end) truncation-marker)
+          (recur (long next-end)))))))
+
+(defn uri-preview
+  "Return a URI preview of at most 200 characters after XML or string escaping."
+  [uri]
+  (text-preview uri max-uri-preview-length
+                (fn [text]
+                  (max (count (llm-shape/escape-xml text))
+                       (count (pr-str text))))))
+
 (def ^:private page-size
   "Page size for list responses."
   25)
@@ -184,7 +214,7 @@
   "The string is not a metabase:// URI at all."
   {:payload [:map {:closed true} [:uri :string]]}
   [{:keys [uri]}]
-  {:message  (str (pr-str uri) " is not a Metabase resource URI. One starts with `metabase://` and"
+  {:message  (str (pr-str (uri-preview uri)) " is not a Metabase resource URI. One starts with `metabase://` and"
                   " has at least one path segment, for example `metabase://databases`.")
    :recovery [kinds-step search-step]})
 
@@ -196,7 +226,7 @@
              ;; itself unknown — then there is no kind to list shapes for.
              [:kind {:optional true} [:maybe :string]]]}
   [{:keys [uri kind]}]
-  {:message  (str "No resource is served at " (pr-str uri) ".")
+  {:message  (str "No resource is served at " (pr-str (uri-preview uri)) ".")
    :recovery (vec (keep identity [(templates-step kind) kinds-step search-step]))})
 
 (tools/defrecoverable non-numeric-id!
@@ -206,7 +236,7 @@
              [:kind :string]
              [:id   :string]]}
   [{:keys [kind id]}]
-  {:message  (str "Invalid id " (pr-str id) " in URI. Resource URIs use the numeric entity id, not"
+  {:message  (str "Invalid id " (pr-str (uri-preview id)) " in URI. Resource URIs use the numeric entity id, not"
                   " an entity_id, a name or a slug.")
    :recovery (vec (keep identity
                         [(templates-step kind)
@@ -223,7 +253,7 @@
   [{:keys [id type card-uri]}]
   {:message  (str "Card " id " is a " type ", not a metric.")
    :recovery [{:uses #{}
-               :text (str "Read `" card-uri "` instead.")}]})
+               :text (str "Read `" (uri-preview card-uri) "` instead.")}]})
 
 (tools/defrecoverable wrong-card-kind!
   "Report a question or model URI that names a different kind of card."
@@ -234,7 +264,7 @@
              [:uri :string]]}
   [{:keys [id expected actual uri]}]
   {:message (str "Card " id " is a " actual ", not a " expected ".")
-   :recovery [{:uses #{} :text (str "Read `" uri "` instead.")}]})
+   :recovery [{:uses #{} :text (str "Read `" (uri-preview uri) "` instead.")}]})
 
 (tools/defrecoverable inactive-table!
   "Report a readable table that is no longer active."
@@ -249,7 +279,7 @@
   {:payload [:map {:closed true} [:database-id :int] [:schema :string]]
    :status-code 404}
   [{:keys [database-id schema]}]
-  {:message (str "Schema " (pr-str schema) " was not found in database " database-id "."
+  {:message (str "Schema " (pr-str (uri-preview schema)) " was not found in database " database-id "."
                  " Schema names are case-sensitive.")
    :recovery [{:uses #{}
                :text (str "Read `metabase://database/" database-id "/schemas` for available schema names.")}]})
@@ -273,9 +303,9 @@
              [:available [:sequential :string]]]}
   [{:keys [id available]}]
   {:message  (if (seq available)
-               (str "No chart or query with id " (pr-str id) " exists in this conversation."
-                    " The ids that do: " (str/join ", " available) ".")
-               (str "No chart or query with id " (pr-str id) " exists in this conversation, and"
+               (str "No chart or query with id " (pr-str (uri-preview id)) " exists in this conversation."
+                    " The ids that do: " (str/join ", " (map uri-preview available)) ".")
+               (str "No chart or query with id " (pr-str (uri-preview id)) " exists in this conversation, and"
                     " none have been created in it yet."))
    :recovery [{:uses #{}
                :text (str "Charts and queries are per-conversation. If the user mentioned this one,"
@@ -1244,7 +1274,7 @@
 (defn- resource-element
   "Wrap a resource body in XML, escaping its URI attribute."
   [uri body]
-  (str "<resource uri=\"" (llm-shape/escape-xml uri) "\">\n" body "\n</resource>"))
+  (str "<resource uri=\"" (llm-shape/escape-xml (uri-preview uri)) "\">\n" body "\n</resource>"))
 
 (def ^:private uri-arg
   "The one thing a read takes. Both declarations below build their `:args` from this, so the single
@@ -1262,6 +1292,7 @@
   (str "Read detailed information about Metabase resources. Copy URIs from `search` or navigation results.\n"
        "Entity IDs are numeric. Use `collection/root` for the root collection; chart and query IDs come\n"
        "from this conversation's state. Schema names are case-sensitive and URI path segments must be URL-encoded.\n\n"
+       "Shortened URI echoes and error text end with ...[truncated]. Reuse the original URI for another read.\n\n"
        "SUPPORTED URI FORMS:\n"
        (str/join "\n" (for [[_ templates] (sort-by key uri-templates)
                             uri templates]
@@ -1340,7 +1371,8 @@
                                       (for [{:keys [item output failed?]} entries]
                                         (resource-element (:uri item)
                                                           (if failed?
-                                                            (str "**Error:** " output)
+                                                            (str "**Error:** "
+                                                                 (text-preview output max-resource-error-length count))
                                                             output))))
                             "\n</resources>")}
         (some :structured-output entries)
