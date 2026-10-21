@@ -1037,7 +1037,7 @@
                          "child_target_id"  (str page-id)
                          "host_data"        (cond-> {:query_ids exploration_query_ids}
                                               explore-filters (assoc :explore_filters explore-filters))}]
-        (documents/add-card-to-document!
+        (documents/add-card-to-document-row!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))
     (document-summary (:id doc))))
