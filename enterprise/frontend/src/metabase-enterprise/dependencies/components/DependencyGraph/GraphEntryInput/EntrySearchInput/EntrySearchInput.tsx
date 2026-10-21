@@ -9,21 +9,20 @@ import {
 } from "metabase/api";
 import { DefaultSelectItem, FixedSizeIcon, Loader, Select } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import {
-  type DependencyEntry,
-  type SearchModel,
-  isActivityModel,
-} from "metabase-types/api";
+import { useDataApps } from "metabase-enterprise/dependencies/hooks/use-data-apps";
+import { type DependencyEntry, isActivityModel } from "metabase-types/api";
+
+import type { EntrySearchModel } from "../constants";
 
 import { SearchModelPicker } from "./SearchModelPicker";
 import { BROWSE_OPTION_VALUE } from "./constants";
-import { getSelectOptions } from "./utils";
+import { getIndexedSearchModels, getSelectOptions } from "./utils";
 
 type EntrySearchInputProps = {
-  searchModels: SearchModel[];
+  searchModels: EntrySearchModel[];
   isGraphFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
-  onSearchModelsChange: (searchModels: SearchModel[]) => void;
+  onSearchModelsChange: (searchModels: EntrySearchModel[]) => void;
   onPickerOpen: () => void;
 };
 
@@ -40,6 +39,12 @@ export function EntrySearchInput({
     SEARCH_DEBOUNCE_DURATION,
   );
   const isSearchEnabled = searchQuery.length > 0;
+  const indexedSearchModels = getIndexedSearchModels(searchModels);
+  // an empty `models` list would search every model
+  const isIndexSearchEnabled =
+    isSearchEnabled && indexedSearchModels.length > 0;
+  const isDataAppSearchWanted =
+    isSearchEnabled && searchModels.includes("data-app");
 
   const { data: recentItems } = useListRecentsQuery(
     {
@@ -53,25 +58,42 @@ export function EntrySearchInput({
   const { data: searchResponse, isFetching: isSearchFetching } = useSearchQuery(
     {
       q: searchQuery,
-      models: searchModels,
+      models: indexedSearchModels,
       context: "dependencies",
     },
     {
-      skip: !isSearchEnabled,
+      skip: !isIndexSearchEnabled,
     },
   );
+
+  const {
+    data: dataApps,
+    isFetching: isDataAppsFetching,
+    hasDataApps,
+  } = useDataApps({ skip: !isDataAppSearchWanted });
+  const isDataAppSearchEnabled = isDataAppSearchWanted && hasDataApps;
 
   const [logRecentItem] = useLogRecentItemMutation();
 
   const searchOptions = useMemo(
     () =>
       getSelectOptions(
-        searchResponse?.data ?? [],
+        // a skipped query still returns the data of its last run
+        isIndexSearchEnabled ? (searchResponse?.data ?? []) : [],
         recentItems ?? [],
+        isDataAppSearchEnabled ? (dataApps ?? []) : [],
         searchModels,
-        isSearchEnabled,
+        searchQuery,
       ),
-    [searchResponse, recentItems, searchModels, isSearchEnabled],
+    [
+      isIndexSearchEnabled,
+      searchResponse,
+      recentItems,
+      isDataAppSearchEnabled,
+      dataApps,
+      searchModels,
+      searchQuery,
+    ],
   );
 
   const handleChange = (value: string | null) => {
@@ -103,7 +125,7 @@ export function EntrySearchInput({
       filter={({ options }) => options}
       leftSection={<FixedSizeIcon name="search" />}
       rightSection={
-        isSearchFetching || isGraphFetching ? (
+        isSearchFetching || isDataAppsFetching || isGraphFetching ? (
           <Loader size="sm" />
         ) : (
           <SearchModelPicker

@@ -4,16 +4,12 @@ import { useState } from "react";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import { useNavigate } from "metabase/router";
 import { Card } from "metabase/ui";
-import type {
-  DependencyEntry,
-  DependencyNode,
-  SearchModel,
-} from "metabase-types/api";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { EntryButton } from "./EntryButton";
 import { EntryPickerModal } from "./EntryPickerModal";
 import { EntrySearchInput } from "./EntrySearchInput";
-import { SEARCH_MODELS } from "./constants";
+import { type EntrySearchModel, SEARCH_MODELS } from "./constants";
 
 type GraphEntryInputProps = {
   node: DependencyNode | null;
@@ -27,7 +23,7 @@ export function GraphEntryInput({
   getGraphUrl,
 }: GraphEntryInputProps) {
   const [searchModels, setSearchModels] =
-    useState<SearchModel[]>(SEARCH_MODELS);
+    useState<EntrySearchModel[]>(SEARCH_MODELS);
   const navigate = useNavigate();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();

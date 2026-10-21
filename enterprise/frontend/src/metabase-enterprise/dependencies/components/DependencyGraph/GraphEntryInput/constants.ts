@@ -28,7 +28,13 @@ export const ENABLED_SEARCH_MODEL_TO_GROUP_TYPE: Record<
   segment: "segment",
 };
 
-export const SEARCH_MODELS: SearchModel[] = ENABLED_SEARCH_MODELS;
+// data apps aren't in the search index, so the entry search lists them itself
+export type EntrySearchModel = SearchModel | "data-app";
+
+export const SEARCH_MODELS: EntrySearchModel[] = [
+  ...ENABLED_SEARCH_MODELS,
+  "data-app",
+];
 
 export const SEARCH_MODEL_TO_GROUP_TYPE: Partial<
   Record<SearchModel, DependencyGroupType>

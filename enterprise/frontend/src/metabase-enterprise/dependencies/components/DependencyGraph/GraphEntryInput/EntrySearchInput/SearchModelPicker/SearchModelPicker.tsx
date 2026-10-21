@@ -12,14 +12,16 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
+import { useDataApps } from "metabase-enterprise/dependencies/hooks/use-data-apps";
+
+import type { EntrySearchModel } from "../../constants";
 
 import S from "./SearchModelPicker.module.css";
-import { getSearchModelItems } from "./utils";
+import { getSearchModelItems, isEntrySearchModel } from "./utils";
 
 type SearchModelPickerProps = {
-  searchModels: SearchModel[];
-  onSearchModelsChange: (models: SearchModel[]) => void;
+  searchModels: EntrySearchModel[];
+  onSearchModelsChange: (models: EntrySearchModel[]) => void;
 };
 
 export function SearchModelPicker({
@@ -51,8 +53,8 @@ export function SearchModelPicker({
 }
 
 type SearchModelPopoverProps = {
-  searchModels: SearchModel[];
-  onSearchModelsChange: (models: SearchModel[]) => void;
+  searchModels: EntrySearchModel[];
+  onSearchModelsChange: (models: EntrySearchModel[]) => void;
 };
 
 function SearchModelPopover({
@@ -65,16 +67,16 @@ function SearchModelPopover({
     calculate_available_models: true,
     context: "dependencies",
   });
-  const items = data ? getSearchModelItems(data) : [];
+  const { data: dataApps = [], isLoading: isLoadingDataApps } = useDataApps();
+  const items = data ? getSearchModelItems(data, dataApps.length > 0) : [];
 
   const handleChange = (value: string[]) => {
-    // Unjustified type cast. FIXME
-    onSearchModelsChange(value as SearchModel[]);
+    onSearchModelsChange(value.filter(isEntrySearchModel));
   };
 
   return (
     <Box w="15rem" p="lg">
-      {isLoading ? (
+      {isLoading || isLoadingDataApps ? (
         <Center>
           <Loader />
         </Center>
