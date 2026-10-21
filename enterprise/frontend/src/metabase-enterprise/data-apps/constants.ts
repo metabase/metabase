@@ -26,3 +26,9 @@ export const DATA_APP_OUTDATED_ERROR_CODE = "data-app-outdated";
 
 export const getOutdatedDataAppMessage = (version: number) =>
   t`This app was built for version ${version} of data apps. Migrate it to the current version, then rebuild and sync it again.`;
+
+// metabase/agent-skills keeps one folder per breaking version of the skill, at
+// `skills/metabase-data-apps/<version>`. The skill is marked internal, so the
+// install also names it.
+export const INSTALL_SKILL_COMMAND =
+  "npx skills add metabase/agent-skills/skills/metabase-data-apps/v1 \\\n  --skill metabase-data-apps";

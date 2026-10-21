@@ -3,6 +3,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ManageDataAppGroupsPage } from "./admin/ManageDataAppGroupsPage";
 import { ManageDataAppsPage } from "./admin/ManageDataAppsPage";
+import { getDataStudioDataAppRoutes } from "./data-studio/routes";
 import { getRoutes, registerDataAppsPagePrefetch } from "./host/routes";
 import { DataAppsNavbarSection } from "./navbar/DataAppsNavbarSection";
 
@@ -17,6 +18,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("data-apps")) {
     PLUGIN_DATA_APPS.isEnabled = true;
     PLUGIN_DATA_APPS.getRoutes = getRoutes;
+    PLUGIN_DATA_APPS.getDataStudioRoutes = getDataStudioDataAppRoutes;
     PLUGIN_DATA_APPS.ManageDataAppsPage = ManageDataAppsPage;
     PLUGIN_DATA_APPS.ManageDataAppGroupsPage = ManageDataAppGroupsPage;
     PLUGIN_DATA_APPS.MainNavbarSection = DataAppsNavbarSection;

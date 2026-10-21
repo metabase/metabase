@@ -30,3 +30,7 @@ export function dataApp(name: string) {
 export function dataAppsSettings() {
   return `/admin/settings/${DATA_APP_URL_SEGMENT}`;
 }
+
+export function dataStudioDataApps() {
+  return `/data-studio/${DATA_APP_URL_SEGMENT}`;
+}

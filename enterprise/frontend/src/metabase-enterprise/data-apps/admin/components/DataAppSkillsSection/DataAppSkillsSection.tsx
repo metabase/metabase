@@ -3,11 +3,7 @@ import { t } from "ttag";
 import { CopyTextArea } from "metabase/common/components/CopyTextArea";
 import { Stack, Text, Title } from "metabase/ui";
 
-// metabase/agent-skills keeps one folder per breaking version of the skill, at
-// `skills/metabase-data-apps/<version>`. The skill is marked internal, so the
-// install also names it.
-const INSTALL_SKILL_COMMAND =
-  "npx skills add metabase/agent-skills/skills/metabase-data-apps/v1 \\\n  --skill metabase-data-apps";
+import { INSTALL_SKILL_COMMAND } from "../../../constants";
 
 export const DataAppSkillsSection = () => (
   <Stack gap="sm">
