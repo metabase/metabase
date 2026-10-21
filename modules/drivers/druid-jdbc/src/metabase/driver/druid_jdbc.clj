@@ -184,12 +184,11 @@
   [:length [:to_json_string json-field-identifier]])
 
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
-  [driver [_ opts id-or-name :as clause]]
-  (let [stored-field  (when (integer? id-or-name)
-                        (driver-api/field (driver-api/metadata-provider) id-or-name))
+  [driver [_ opts _id-or-name :as clause]]
+  (let [json-field    (sql.qp.u/json-field opts)
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
-    (if-not (driver-api/json-field? stored-field)
+    (if-not json-field
       identifier
       (cond
         (or (::sql.qp/forced-alias opts)
@@ -206,7 +205,7 @@
 
         :else
         (perf/postwalk #(if (h2x/identifier? %)
-                          (sql.qp/json-query :druid-jdbc % stored-field)
+                          (sql.qp/json-query :druid-jdbc % json-field)
                           %)
                        identifier)))))
 

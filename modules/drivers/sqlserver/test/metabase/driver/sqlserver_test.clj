@@ -1060,7 +1060,12 @@
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
                                                    [:= {}
-                                                    [:field {:lib/uuid (str (random-uuid))} (mt/id :attempts :datetime)]
+                                                    [:field {:lib/uuid                       (str (random-uuid))
+                                                             driver-api/qp.add.database-type (:database-type
+                                                                                              (lib.metadata/field
+                                                                                               (mt/metadata-provider)
+                                                                                               (mt/id :attempts :datetime)))}
+                                                     (mt/id :attempts :datetime)]
                                                     (sql.qp/compiled [:raw "?"])])})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]
@@ -1118,7 +1123,8 @@
                                          {:lib/uuid                       "00000000-0000-0000-0000-000000000002"
                                           driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
-                                          driver-api/qp.add.desired-alias "name"}
+                                          driver-api/qp.add.desired-alias "name"
+                                          driver-api/qp.add.database-type "varchar"}
                                          (mt/id :venues :name)]]]}]
         (is (= {:where
                 [:=

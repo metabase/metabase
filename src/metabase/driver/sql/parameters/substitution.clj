@@ -295,9 +295,10 @@
     (-> (cond-> col
           temporal-unit (lib/with-temporal-bucket temporal-unit))
         lib/ref
-        (lib/update-options assoc
-                            driver-api/qp.add.source-table (:table-id col)
-                            ::compiling-field-filter?      true))))
+        (lib/update-options merge
+                            (driver-api/column-info-options (driver-api/metadata-provider) col)
+                            {driver-api/qp.add.source-table (:table-id col)
+                             ::compiling-field-filter?      true}))))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an appropriate snippet to represent this `field` in SQL given its param type.

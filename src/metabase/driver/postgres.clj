@@ -824,16 +824,15 @@
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ opts id-or-name :as clause]]
-  (let [stored-field  (when (integer? id-or-name)
-                        (driver-api/field (driver-api/metadata-provider) id-or-name))
+  [driver [_ opts _id-or-name :as clause]]
+  (let [json-field    (sql.qp.u/json-field opts)
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (cond
-      (= (:database-type stored-field) "money")
+      (= (driver-api/qp.add.database-type opts) "money")
       (pg-conversion identifier :numeric)
 
-      (driver-api/json-field? stored-field)
+      json-field
       (cond
         (or (::sql.qp/forced-alias opts)
             (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
@@ -850,7 +849,7 @@
 
         :else
         (perf/postwalk #(if (h2x/identifier? %)
-                          (sql.qp/json-query :postgres % stored-field)
+                          (sql.qp/json-query :postgres % json-field)
                           %)
                        identifier))
 
@@ -864,30 +863,25 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
-  (let [stored-field-ids (map last breakout-fields)
-        stored-fields    (map #(when (integer? %)
-                                 (driver-api/field (driver-api/metadata-provider) %))
-                              stored-field-ids)
+  (let [json-breakout?   (some #(and (driver-api/is-clause? :field %)
+                                     (sql.qp.u/json-field (second %)))
+                               breakout-fields)
         parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
                                   driver clause honeysql-form)
         qualified        (parent-method query)
         unqualified      (parent-method (update query
                                                 :breakout
                                                 #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
-    (if (some driver-api/json-field? stored-fields)
+    (if json-breakout?
       (merge qualified
              (select-keys unqualified #{:group-by}))
       qualified)))
 
 (defn- order-by-is-json-field?
   [clause n]
-  (let [is-aggregation? (= (-> clause (nth n) (first)) :aggregation)
-        stored-field-id (-> clause (nth n) (nth n))
-        stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
-                          (driver-api/field (driver-api/metadata-provider) stored-field-id))]
-    (and
-     (some? stored-field)
-     (driver-api/json-field? stored-field))))
+  (let [ordered-clause (nth clause n)]
+    (boolean (and (driver-api/is-clause? :field ordered-clause)
+                  (sql.qp.u/json-field (second ordered-clause))))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]

@@ -503,14 +503,19 @@
                                {:order-by [:schema]})
                 t1-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t1-id))
                 t2-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t2-id))
-                fk-query (-> (lib/query mp (lib.metadata/table mp t1-id))
-                             (lib/join (lib.metadata/table mp t2-id))
-                             (lib/filter (lib/= t2-id-field 1))
-                             (lib/limit 1))
-                manual-query (-> (lib/query mp (lib.metadata/table mp t1-id))
-                                 (lib/join (lib/join-clause (lib.metadata/table mp t2-id)
-                                                            [(lib/= t1-id-field (lib/+ t2-id-field 1))]))
-                                 (lib/filter (lib/= t2-id-field 1))
+                joined-id    (fn [query]
+                               (m/find-first #(and (= (:id t2-id-field) (:id %)) (:lib/join-alias %))
+                                             (lib/filterable-columns query)))
+                fk-joined    (-> (lib/query mp (lib.metadata/table mp t1-id))
+                                 (lib/join (lib.metadata/table mp t2-id)))
+                fk-query     (-> fk-joined
+                                 (lib/filter (lib/= (joined-id fk-joined) 1))
+                                 (lib/limit 1))
+                manual-joined (-> (lib/query mp (lib.metadata/table mp t1-id))
+                                  (lib/join (lib/join-clause (lib.metadata/table mp t2-id)
+                                                             [(lib/= t1-id-field (lib/+ t2-id-field 1))])))
+                manual-query (-> manual-joined
+                                 (lib/filter (lib/= (joined-id manual-joined) 1))
                                  (lib/limit 1))]
             (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1 "toucan" 1 1]]
                    (mt/rows (qp/process-query fk-query))))

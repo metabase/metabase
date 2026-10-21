@@ -951,39 +951,23 @@
   [_driver [_ _opts _nfc-path]]
   nil)
 
-(defn- parent-id->ancestor-names
-  "Walk the parent chain for a field with `:parent-id` set and return the ancestor field names, \"oldest\" first.
-  For example, if field `c` has parent `b`, returns `[\"b\"]`.
-  If `c` has parent `b` which has parent `a`, returns `[\"a\" \"b\"]`."
-  [parent-id]
-  (loop [id   parent-id
-         path ()]
-    (if-not id
-      (vec path)
-      (let [parent (driver-api/field (driver-api/metadata-provider) id)]
-        (recur (:parent-id parent) (cons (:name parent) path))))))
-
 (defmethod ->honeysql [:sql :field]
-  [driver [_ options id-or-name :as field-clause]]
+  [driver [_ options _id-or-name :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
           source-alias         (field-source-alias field-clause)
-          ;; we can only get database type if we have a field-id
-          ;; which means nested native queries will cause bugs like #42817
-          ;; but this should all be fixed with field refs overhaul!
-          ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
-          field-metadata         (when (integer? id-or-name)
-                                   (driver-api/field (driver-api/metadata-provider) id-or-name))
-          ;; For fields with parent-id (struct-type nested fields), include parent field names
+          from-source-table?     (pos-int? (driver-api/qp.add.source-table options))
+          ;; For nested fields (struct-type nested fields), include parent field names
           ;; in the identifier so e.g. `result.tag_name` is rendered instead of just `tag_name`.
-          parent-names           (when-let [parent-id (:parent-id field-metadata)]
-                                   (parent-id->ancestor-names parent-id))
-          allow-casting?         (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
-                                          (and field-metadata
-                                               (or (pos-int? (driver-api/qp.add.source-table options))
-                                                   (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table
-                                                    options))))
+          parent-names           (when from-source-table?
+                                   (driver-api/qp.add.parent-names options))
+          coercion-strategy      (or (:qp/native-sandbox-column.force-coercion-strategy options)
+                                     (when (or from-source-table?
+                                               (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table
+                                                options))
+                                       (driver-api/qp.add.coercion-strategy options)))
+          allow-casting?         (and coercion-strategy
                                       (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier             (-> (apply h2x/identifier :field
@@ -993,14 +977,9 @@
                                                     [source-alias]))
                                      (with-meta (meta field-clause)))
           identifier             (->honeysql driver identifier)
-          ;; If no field-metadata is available, but a coercion strategy must be applied, synthesize enough
-          ;; `field-metadata` to be able to cast it correctly.
-          field-metadata         (or field-metadata
-                                     (when allow-casting?
-                                       (-> options
-                                           (select-keys [:base-type :effective-type])
-                                           (assoc :coercion-strategy
-                                                  (:qp/native-sandbox-column.force-coercion-strategy options)))))
+          field-metadata         (-> (select-keys options [:base-type :effective-type])
+                                     (m/assoc-some :coercion-strategy coercion-strategy
+                                                   :database-type     (driver-api/qp.add.database-type options)))
           casted-field            (cast-field-if-needed driver field-metadata identifier)
           database-type           (or (h2x/database-type casted-field)
                                       (:database-type field-metadata))

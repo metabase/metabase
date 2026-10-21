@@ -286,7 +286,7 @@
   :time)
 
 (defmethod temporal-type :field
-  [[_ {:keys [base-type effective-type temporal-unit]} id-or-name :as clause]]
+  [[_ {:keys [base-type effective-type temporal-unit], :as opts} _id-or-name :as clause]]
   (cond
     (contains? (meta clause) :bigquery-cloud-sdk/temporal-type)
     (:bigquery-cloud-sdk/temporal-type (meta clause))
@@ -298,8 +298,13 @@
     ((disj u.date/extract-units :year) temporal-unit)
     nil
 
-    (integer? id-or-name)
-    (temporal-type (driver-api/field (driver-api/metadata-provider) id-or-name))
+    (or (driver-api/qp.add.coercion-strategy opts)
+        (driver-api/qp.add.database-type opts))
+    (temporal-type {:lib/type          :metadata/column
+                    :base-type         base-type
+                    :effective-type    effective-type
+                    :coercion-strategy (driver-api/qp.add.coercion-strategy opts)
+                    :database-type     (driver-api/qp.add.database-type opts)})
 
     effective-type
     (base-type->temporal-type effective-type)
@@ -685,7 +690,7 @@
     (vary-meta clause assoc :bigquery-cloud-sdk/base-temporal-type (base-type->temporal-type base-type))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field opts id-or-name :as field-clause]]
+  [driver [_field opts _id-or-name :as field-clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
         parent-method (get-method sql.qp/->honeysql [:sql :field])]
@@ -698,13 +703,11 @@
       (let [field-clause (-> field-clause
                              (with-temporal-type (temporal-type field-clause))
                              with-base-temporal-type)
-            stored-field  (when (integer? id-or-name)
-                            (driver-api/field (driver-api/metadata-provider) id-or-name))
             result       (parent-method driver field-clause)
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
-        (if (and (driver-api/json-field? stored-field)
+        (if (and (sql.qp.u/json-field opts)
                  (or (::sql.qp/forced-alias opts)
                      (= source-table driver-api/qp.add.source)))
           (h2x/identifier :field-alias source-alias)

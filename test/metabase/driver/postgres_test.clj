@@ -489,7 +489,9 @@
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
         (let [field-clause [:field
-                            {:lib/uuid (str (random-uuid))
+                            {:lib/uuid                                                 (str (random-uuid))
+                             :metabase.query-processor.util.add-alias-info/nfc-path      ["jsons" "values" "qty"]
+                             :metabase.query-processor.util.add-alias-info/database-type "integer"
                              :binning
                              {:strategy  :num-bins
                               :num-bins  100
