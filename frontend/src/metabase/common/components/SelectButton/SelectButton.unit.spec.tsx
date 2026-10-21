@@ -27,22 +27,56 @@ describe("SelectButton", () => {
     expect(screen.getByRole("button")).not.toHaveFocus();
   });
 
+  it("should display a chevron", () => {
+    render(<SelectButton>{title}</SelectButton>);
+
+    expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
+  });
+
   describe("clear behavior", () => {
-    it("should not display clear icon when the value is selected, but onClear prop is not provided", () => {
+    const getClearButton = () => screen.getByRole("button", { name: "Clear" });
+    const queryClearButton = () =>
+      screen.queryByRole("button", { name: "Clear" });
+
+    it("should not display the clear button when the value is selected, but onClear prop is not provided", () => {
       render(<SelectButton hasValue>{title}</SelectButton>);
-      expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
+      expect(queryClearButton()).not.toBeInTheDocument();
     });
 
-    it("should not display clear icon when the value is not selected", () => {
+    it("should replace the chevron with the clear button", () => {
+      render(
+        <SelectButton hasValue onClear={jest.fn()}>
+          {title}
+        </SelectButton>,
+      );
+
+      expect(getClearButton()).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("chevrondown icon"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not display the clear button when the value is not selected", () => {
       render(
         <SelectButton hasValue={false} onClear={jest.fn()}>
           {title}
         </SelectButton>,
       );
-      expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
+      expect(queryClearButton()).not.toBeInTheDocument();
     });
 
-    it("should call onClear when close icon is clicked", async () => {
+    it("should not display the clear button when disabled", () => {
+      render(
+        <SelectButton hasValue disabled onClear={jest.fn()}>
+          {title}
+        </SelectButton>,
+      );
+
+      expect(queryClearButton()).not.toBeInTheDocument();
+      expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
+    });
+
+    it("should call onClear when the clear button is clicked", async () => {
       const onClear = jest.fn();
       render(
         <SelectButton hasValue onClear={onClear}>
@@ -50,12 +84,12 @@ describe("SelectButton", () => {
         </SelectButton>,
       );
 
-      await userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(getClearButton());
 
       expect(onClear).toHaveBeenCalledTimes(1);
     });
 
-    it("should not call usual onClick when close icon is clicked", async () => {
+    it("should not call usual onClick when the clear button is clicked", async () => {
       const onClick = jest.fn();
       render(
         <SelectButton hasValue onClick={onClick} onClear={jest.fn()}>
@@ -63,7 +97,7 @@ describe("SelectButton", () => {
         </SelectButton>,
       );
 
-      await userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(getClearButton());
 
       expect(onClick).not.toHaveBeenCalled();
     });
