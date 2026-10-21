@@ -92,7 +92,6 @@ export const SetupPanel = ({
       <Stack className={S.main} w={shownMainWidth} gap={0}>
         <ResizeHandle
           className={S.mainHandle}
-          axis="x"
           getSize={() => shownMainWidth}
           min={MIN_COLUMN_WIDTH}
           max={MAX_TOTAL_WIDTH - (isShowingSegments ? shownSegmentsWidth : 0)}
@@ -159,7 +158,6 @@ export const SetupPanel = ({
           {segments}
           <ResizeHandle
             className={S.segmentsHandle}
-            axis="x"
             getSize={() => shownSegmentsWidth}
             min={MIN_COLUMN_WIDTH}
             max={MAX_TOTAL_WIDTH - shownMainWidth}

@@ -11,7 +11,7 @@ export const COHORT_COLUMN_NAMES: Record<CohortsSpec["by"], string> = {
 };
 
 /** The cohort period: the granularity, with hours rounded up to days. */
-export const periodOf = (spec: AnalysisSpec): Period =>
+const periodOf = (spec: AnalysisSpec): Period =>
   spec.bucket.granularity === "month"
     ? "month"
     : spec.bucket.granularity === "week"

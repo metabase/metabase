@@ -50,7 +50,7 @@ const STATE_COLOR_NAMES: Record<LifecycleStateName, ColorName> = {
 const getStateColor = (state: LifecycleStateName): string =>
   color(STATE_COLOR_NAMES[state]);
 
-export const getStateName = (state: LifecycleStateName): string => {
+const getStateName = (state: LifecycleStateName): string => {
   switch (state) {
     case "new":
       return t`New`;

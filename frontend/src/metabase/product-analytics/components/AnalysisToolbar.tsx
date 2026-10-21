@@ -5,7 +5,6 @@ import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
-import type { HintedPanel } from "../use-analysis-state";
 
 import { SqlModal } from "./SqlModal";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
@@ -27,8 +26,8 @@ type AnalysisToolbarProps = {
   filterCount: number;
   areFiltersExpanded: boolean;
   onToggleFilters: () => void;
-  /** The panel whose button is hovered, so the panel can show it's the one. */
-  onHintPanel: (panel: HintedPanel | null) => void;
+  /** The setup button is hovered, so the setup panel can show it's the one. */
+  onHintSetup: (isHinted: boolean) => void;
   onSave: () => void;
 };
 
@@ -47,7 +46,7 @@ export const AnalysisToolbar = ({
   filterCount,
   areFiltersExpanded,
   onToggleFilters,
-  onHintPanel,
+  onHintSetup,
   onSave,
 }: AnalysisToolbarProps) => {
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
@@ -62,8 +61,8 @@ export const AnalysisToolbar = ({
             variant="default"
             aria-pressed={isSetupOpen}
             onClick={onToggleSetup}
-            onMouseEnter={() => onHintPanel("setup")}
-            onMouseLeave={() => onHintPanel(null)}
+            onMouseEnter={() => onHintSetup(true)}
+            onMouseLeave={() => onHintSetup(false)}
           >
             {setupLabel}
           </Button>

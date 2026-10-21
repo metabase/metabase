@@ -21,10 +21,9 @@ import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 import { grainLabel } from "../sql/compile/grain";
 import type { DrillPoint } from "../sql/compose";
-import { useSupportingAnalyses } from "../supporting/use-supporting-analyses";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
-import { type HintedPanel, useAnalysisState } from "../use-analysis-state";
+import { useAnalysisState } from "../use-analysis-state";
 import { useSaveAnalysis } from "../use-save-analysis";
 
 import { AnalysisResult } from "./AnalysisResult";
@@ -35,9 +34,6 @@ import { SetupPanel } from "./SetupPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
-import { InsightsPanel } from "./supporting/InsightsPanel";
-import { InsightsToggleContext } from "./supporting/InsightsToggle";
-import { SupportingAnalyses } from "./supporting/SupportingAnalyses";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
@@ -52,10 +48,8 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
  * The event analysis page: the title and toolbar across the top, then the
  * setup panel (with the segments attached to its right) and the result side
  * by side. A new analysis shows only the setup panel's table picker until a
- * table is picked. The result's column scrolls, with the kind's supporting
- * analyses below the primary chart. Each chart's insights button opens the
- * insights in a side panel on the right. A saved analysis opens on its
- * result, with the side panels collapsed.
+ * table is picked. The result fills the rest of the page. A saved analysis
+ * opens on its result, with the setup panel collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -66,10 +60,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 }: AnalysisWorkspaceProps<K>) => {
   const navigate = useNavigate();
   const [isSegmentsOpen, setIsSegmentsOpen] = useState(false);
-  // The panel whose toolbar button is hovered lights up its border.
-  const [hintedPanel, setHintedPanel] = useState<HintedPanel | null>(null);
-  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
-  const openInsights = useCallback(() => setIsInsightsOpen(true), []);
+  // The setup button's hover lights up the setup panel's border.
+  const [isSetupHinted, setIsSetupHinted] = useState(false);
   // Like the query builder: a new analysis shows its filters, a saved one
   // starts with them collapsed behind the Filter button's badge.
   const [areFiltersExpanded, setAreFiltersExpanded] = useState(
@@ -89,9 +81,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
-    context,
     computed,
-    base,
     spec,
     widgets,
     missing,
@@ -105,15 +95,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
   });
   const filterCount = useFilterCount(computed.filters, table);
-  const supporting = useSupportingAnalyses({
-    spec,
-    tableId,
-    base,
-    context,
-    query,
-    onShowInsights: openInsights,
-  });
-  const insights = supporting.insights;
   const drillQueries = useDrillQueries({
     spec,
     compiledBase: query.compiledBase,
@@ -132,7 +113,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     countColumn: grainLabel(computed.counting),
     describePoint,
     queries: drillQueries,
-    getExtraActions: supporting.getClickActions,
   });
 
   const tableName = table?.display_name ?? t`this table`;
@@ -212,7 +192,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             isSaveDisabled={isSaveDisabled}
             isSetupOpen={isSetupOpen}
             onToggleSetup={() => setPanel(isSetupOpen ? null : "setup")}
-            onHintPanel={setHintedPanel}
+            onHintSetup={setIsSetupHinted}
             onSave={handleSave}
             filterCount={filterCount}
             areFiltersExpanded={areFiltersExpanded}
@@ -264,52 +244,27 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                   onSelectPeopleSegment={handleAddPeopleFilter}
                 />
               }
-              isHinted={hintedPanel === "setup"}
+              isHinted={isSetupHinted}
             />
           )}
           {tableId !== undefined && (
-            <InsightsToggleContext.Provider
-              value={{
-                isOpen: isInsightsOpen,
-                onToggle: () => setIsInsightsOpen((isOpen) => !isOpen),
-                onHint: (isHinted) =>
-                  setHintedPanel(isHinted ? "insights" : null),
-              }}
-            >
-              <Stack
-                flex={1}
-                miw={0}
-                gap="lg"
-                pr={isInsightsOpen ? 0 : "lg"}
-                style={{ overflowY: "auto" }}
-              >
-                <AnalysisResult
-                  title={config.question}
-                  display={display}
-                  vizSettings={vizSettings}
-                  dataset={query.dataset}
-                  datasetQuery={query.datasetQuery}
-                  isLoading={query.isLoading}
-                  error={query.error}
-                  missing={missing}
-                  setupLabel={config.setupLabel}
-                  onOpenSetup={
-                    panel !== "setup" ? () => setPanel("setup") : undefined
-                  }
-                  clickActionsMode={drillActions.mode}
-                />
-                <SupportingAnalyses supporting={supporting} />
-              </Stack>
-            </InsightsToggleContext.Provider>
-          )}
-          {tableId !== undefined && isInsightsOpen && (
-            <InsightsPanel
-              insights={insights.insights}
-              focus={insights.focus}
-              idleLabel={insights.idleLabel}
-              isHinted={hintedPanel === "insights"}
-              onClose={() => setIsInsightsOpen(false)}
-            />
+            <Stack flex={1} miw={0} pr="lg" style={{ overflowY: "auto" }}>
+              <AnalysisResult
+                title={config.question}
+                display={display}
+                vizSettings={vizSettings}
+                dataset={query.dataset}
+                datasetQuery={query.datasetQuery}
+                isLoading={query.isLoading}
+                error={query.error}
+                missing={missing}
+                setupLabel={config.setupLabel}
+                onOpenSetup={
+                  panel !== "setup" ? () => setPanel("setup") : undefined
+                }
+                clickActionsMode={drillActions.mode}
+              />
+            </Stack>
           )}
         </Group>
       </Stack>

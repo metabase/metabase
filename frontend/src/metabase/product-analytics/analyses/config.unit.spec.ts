@@ -493,24 +493,6 @@ describe("analysis settings", () => {
       expect(sql).toContain("ifNull(event_name, '') AS step_name");
       expect(sql).not.toContain("url_path, ifNull");
     });
-
-    it("gives the funnel steps their flags before the pageviews", () => {
-      const { specResult } = setup({
-        kind: "funnel",
-        stored: {
-          ...REQUIRED_EVENTS.funnel,
-          pageviews: PAGEVIEW,
-          "columns.url_path": "path",
-        },
-      });
-      const spec = getReadySpec(specResult);
-
-      expect(spec.funnel?.steps.map(({ flag }) => flag)).toEqual([
-        "ev_1",
-        "ev_2",
-      ]);
-      expect(spec.pageview).toEqual({ flag: "ev_3" });
-    });
   });
 
   describe("incomplete settings", () => {

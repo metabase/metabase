@@ -9,7 +9,7 @@ import { IN_RANGE_FLAG } from "./lookback";
 export const FIRST_SEEN_EXTRA_COLUMN = "first_seen";
 
 /** What lifecycle reads from `events_base` beyond each event's actor and time. */
-export const lifecycleEventColumns = (
+const lifecycleEventColumns = (
   lifecycle: LifecycleSpec,
 ): { as: string; sql: string }[] =>
   lifecycle.hasFirstSeen
@@ -20,7 +20,7 @@ export const lifecycleEventColumns = (
  * Aggregates over an actor's events in a period: whether any of them is in
  * the date range, and when the actor was first seen.
  */
-export const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
+const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
   `max(${IN_RANGE_FLAG}) AS in_range`,
   ...(lifecycle.hasFirstSeen
     ? [`min(${FIRST_SEEN_EXTRA_COLUMN}) AS first_seen_at`]
@@ -38,7 +38,7 @@ export const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
  *   the period before, and resurrected otherwise. Like PostHog's, someone
  *   first seen before the range is resurrected in their first period in it.
  */
-export const lifecycleStateColumns = (lifecycle: LifecycleSpec): string[] => {
+const lifecycleStateColumns = (lifecycle: LifecycleSpec): string[] => {
   const firstPeriod = lifecycle.hasFirstSeen
     ? startOf(lifecycle.period, "first_seen_at")
     : "min(period) OVER (PARTITION BY actor)";

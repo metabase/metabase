@@ -43,8 +43,6 @@ type UseDrillActionsArgs = {
   countColumn: string;
   describePoint: (point: DrillPoint) => string | null;
   queries: DrillQueries;
-  /** Actions offered before the drills, e.g. into a supporting analysis. */
-  getExtraActions?: (clicked: ClickObject) => ClickAction[];
 };
 
 /** Settings a new analysis keeps from this one: who it counts, and how. */
@@ -74,7 +72,6 @@ export const useDrillActions = ({
   countColumn,
   describePoint,
   queries,
-  getExtraActions,
 }: UseDrillActionsArgs) => {
   const navigate = useNavigate();
   const [modal, setModal] = useState<DrillModal | null>(null);
@@ -169,12 +166,11 @@ export const useDrillActions = ({
 
     return {
       actionsForClick: (clicked) => {
-        const actions: ClickAction[] = getExtraActions?.(clicked) ?? [];
         const drill = canDrill ? getDrill(clicked) : null;
         if (drill === null) {
-          return actions;
+          return [];
         }
-        actions.push(
+        const actions: ClickAction[] = [
           {
             name: "product-analytics.see-members",
             type: "custom",
@@ -212,7 +208,7 @@ export const useDrillActions = ({
               setModal({ type: "segment", drill });
             },
           },
-        );
+        ];
         if (breakoutQuery !== undefined) {
           actions.push({
             name: "product-analytics.breakout",
@@ -237,7 +233,6 @@ export const useDrillActions = ({
     grain,
     countColumn,
     describePoint,
-    getExtraActions,
     startAnalysis,
     breakout,
     breakoutQuery,

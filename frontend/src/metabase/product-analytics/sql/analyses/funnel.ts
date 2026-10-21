@@ -25,12 +25,8 @@ const MODE: Record<string, string> = {
   any: "",
 };
 
-/** The "Step by step" view's label for a step, numbered from 1. */
-export const getFunnelStepLabel = (stepNumber: number, name: string): string =>
-  `${stepNumber}. ${name}`;
-
 /** The step flags, plus the disqualifier flags, on `scoped_events`. */
-export const funnelFlags = (funnel: FunnelSpec) => [
+const funnelFlags = (funnel: FunnelSpec) => [
   ...funnel.steps.map((step, index) => ({
     as: `step_${index + 1}`,
     sql: flagSql(step.flag),
@@ -45,13 +41,13 @@ export const funnelFlags = (funnel: FunnelSpec) => [
  * When each actor first did each step: `t_1` … `t_n`. Not for durations,
  * which need one run through the steps; see `funnelChainsCte`.
  */
-export const funnelStepTimes = (funnel: FunnelSpec): string =>
+const funnelStepTimes = (funnel: FunnelSpec): string =>
   funnel.steps
     .map((_, index) => `  minIf(ts, step_${index + 1}) AS t_${index + 1}`)
     .join(",\n");
 
 /** Whether each actor did each step at all: `hit_1` … `hit_n`. */
-export const funnelHits = (funnel: FunnelSpec): string =>
+const funnelHits = (funnel: FunnelSpec): string =>
   funnel.steps
     .map((_, index) => `  countIf(step_${index + 1}) > 0 AS hit_${index + 1}`)
     .join(",\n");
@@ -60,7 +56,7 @@ export const funnelHits = (funnel: FunnelSpec): string =>
  * Per-actor aggregates ending in `level`, how far the actor got in order.
  * Only for orderings that enforce one; see `funnelHits` for "any".
  */
-export const funnelOrderedLevel = (
+const funnelOrderedLevel = (
   funnel: FunnelSpec,
 ): { sql: string; warnings: string[] } => {
   const window = seconds(funnel.window);
@@ -127,7 +123,7 @@ const stepNumbers = (funnel: FunnelSpec): number[] =>
  * Measure durations with these, not `t_k`: a step's first time ever can come
  * from another run, like an earlier visit that went nowhere.
  */
-export const funnelChainsCte = (funnel: FunnelSpec): Cte => {
+const funnelChainsCte = (funnel: FunnelSpec): Cte => {
   const n = funnel.steps.length;
   const steps = stepNumbers(funnel);
   const isEach = funnel.anchor === "each";
@@ -175,7 +171,7 @@ export const funnelChainsCte = (funnel: FunnelSpec): Cte => {
   };
 };
 
-export type FunnelLevels = {
+type FunnelLevels = {
   ctes: Cte[];
   /** The CTE with one row per kept actor: `level` (or `hit_k`) and `t_1` … `t_n`. */
   source: string;
@@ -184,21 +180,14 @@ export type FunnelLevels = {
 };
 
 /**
- * `scoped_events` with the step flags (plus `extraColumns`), then one row per
- * actor with how far they got, without the disqualified actors.
+ * `scoped_events` with the step flags, then one row per actor with how far
+ * they got, without the disqualified actors.
  */
-export const funnelLevels = (
-  spec: AnalysisSpec,
-  funnel: FunnelSpec,
-  extraColumns: { as: string; sql: string }[] = [],
-): FunnelLevels => {
+const funnelLevels = (spec: AnalysisSpec, funnel: FunnelSpec): FunnelLevels => {
   const warnings: string[] = [];
   const n = funnel.steps.length;
 
-  const base = scopedEvents(spec, undefined, [
-    ...funnelFlags(funnel),
-    ...extraColumns,
-  ]);
+  const base = scopedEvents(spec, undefined, funnelFlags(funnel));
   warnings.push(...base.warnings);
 
   let levelExpr: string;
@@ -438,7 +427,7 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       .map((step) => lit(funnel.steps[step - 1].label))
       .join(", ")}] AS step_name`;
 
-  // Keep in sync with `getFunnelStepLabel`.
+  // Keep in sync with `parseStepLabel`.
   const stepLabel = "concat(toString(step), '. ', step_name)";
   const view = spec.output.funnelView ?? "steps";
   const people = grainLabel(spec.grain);
