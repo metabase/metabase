@@ -191,6 +191,36 @@
                                              references (assoc :references references)))))
               (is (= 1 @calls)))))))))
 
+(deftest generate-content-failed-calls-error-test
+  (testing "when the model runs out of steps on failed calls, the error is not the text written for the model"
+    (let [db-id (mt/id)]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                    (fn [_]
+                                      {:validation-result {:valid?        false
+                                                           :dialect       "h2"
+                                                           :error-message "syntax error near FROM"}})
+                                    openrouter/openrouter
+                                    (fn [_]
+                                      (mut/mock-llm-response
+                                       [{:type      :tool-input
+                                         :id        (str (random-uuid))
+                                         :function  "document_construct_sql_chart"
+                                         :arguments {:database_id  db-id
+                                                     :name         "Orders"
+                                                     :description  "Count of orders"
+                                                     :analysis     "Simple count"
+                                                     :approach     "Direct SQL"
+                                                     :sql          "SELECT COUNT(*) FROM"
+                                                     :viz_settings {:chart_type "bar"}}}]))]
+          (is (= {:draft_card  nil
+                  :description nil
+                  :error       "Metabot could not complete this step."}
+                 (mt/user-http-request :crowberto
+                                       :post 200 "metabot/document/generate-content"
+                                       {:instructions "chart it"}))))))))
+
 (deftest generate-content-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
