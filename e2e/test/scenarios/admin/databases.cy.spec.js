@@ -199,7 +199,9 @@ describe("admin > database > add", () => {
           "Connected",
         );
 
-        editDatabase();
+        cy.findByTestId("database-connection-info-section")
+          .findByRole("button", { name: "Edit connection details" })
+          .click();
 
         cy.findByLabelText(/Choose when syncs and scans happen/).should(
           "have.attr",
@@ -524,9 +526,3 @@ describe("scenarios > admin > databases > sample database", () => {
     });
   });
 });
-
-function editDatabase() {
-  cy.findByTestId("database-connection-info-section")
-    .findByRole("button", { name: "Edit connection details" })
-    .click();
-}
