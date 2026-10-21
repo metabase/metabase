@@ -599,6 +599,25 @@
                                     [:field {:temporal-unit :week}    "CREATED_AT"]]}]}
               (expand-parameters query))))))
 
+(deftest ^:parallel temporal-unit-param-matches-breakout-by-column-test
+  (testing "a temporal-unit param whose target names the column retargets a breakout that refers to it by ID"
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/ensure-uuid [:field {:base-type     :type/DateTimeWithLocalTZ
+                                                                 :temporal-unit :month}
+                                                         (:id created-at)]))
+                         (lib/update-query-stage
+                          0 assoc :parameters
+                          [{:type   :temporal-unit
+                            :value  "year"
+                            :target [:dimension
+                                     (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+                                     {}]}]))]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (:id created-at)]]}]}
+              (expand-parameters query))))))
+
 (deftest ^:parallel temporal-unit-param-does-not-rewrite-join-condition-test
   (testing "a temporal-unit param only updates breakouts and order bys, not join conditions (#80098)"
     (let [mp         meta/metadata-provider

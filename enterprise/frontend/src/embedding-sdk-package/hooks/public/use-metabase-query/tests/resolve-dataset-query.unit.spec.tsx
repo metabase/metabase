@@ -73,22 +73,27 @@ describe("resolveDatasetQuery", () => {
           "lib/type": "mbql.stage/mbql",
           "source-table": 1,
           fields: [
-            ["field", expect.anything(), 100],
-            ["field", expect.anything(), 101],
+            ["field", expect.anything(), "ID"],
+            ["field", expect.anything(), "STATUS"],
           ],
           filters: [
             ["segment", expect.anything(), 11],
-            ["=", expect.anything(), ["field", expect.anything(), 101], "paid"],
+            [
+              "=",
+              expect.anything(),
+              ["field", expect.anything(), "STATUS"],
+              "paid",
+            ],
           ],
           aggregation: [
             ["count", expect.anything()],
-            ["sum", expect.anything(), ["field", expect.anything(), 102]],
+            ["sum", expect.anything(), ["field", expect.anything(), "AMOUNT"]],
           ],
           breakout: [
             [
               "field",
               expect.objectContaining({ "temporal-unit": "month" }),
-              103,
+              "CREATED_AT",
             ],
           ],
           "order-by": [
@@ -98,7 +103,7 @@ describe("resolveDatasetQuery", () => {
               [
                 "field",
                 expect.objectContaining({ "temporal-unit": "month" }),
-                103,
+                "CREATED_AT",
               ],
             ],
           ],
@@ -126,7 +131,7 @@ describe("resolveDatasetQuery", () => {
       expect.objectContaining({
         binning: { strategy: "num-bins", "num-bins": 10 },
       }),
-      102,
+      "AMOUNT",
     ];
 
     expect(stagesOf(datasetQuery)[0]).toMatchObject({
@@ -151,7 +156,7 @@ describe("resolveDatasetQuery", () => {
       [
         "field",
         expect.objectContaining({ binning: { strategy: "default" } }),
-        102,
+        "AMOUNT",
       ],
     ]);
   });
@@ -178,7 +183,7 @@ describe("resolveDatasetQuery", () => {
       stages: [
         {
           "source-table": 1,
-          fields: [["field", expect.anything(), 100]],
+          fields: [["field", expect.anything(), "ID"]],
         },
       ],
     });
@@ -242,19 +247,24 @@ describe("resolveDatasetQuery", () => {
           "source-table": 1,
           filters: [
             ["segment", expect.anything(), 11],
-            ["=", expect.anything(), ["field", expect.anything(), 101], "paid"],
+            [
+              "=",
+              expect.anything(),
+              ["field", expect.anything(), "STATUS"],
+              "paid",
+            ],
           ],
           aggregation: [
             ["metric", expect.objectContaining({ name: "revenue" }), 31],
             ["count", expect.anything()],
-            ["sum", expect.anything(), ["field", expect.anything(), 102]],
+            ["sum", expect.anything(), ["field", expect.anything(), "AMOUNT"]],
             ["measure", expect.objectContaining({ name: "orders" }), 21],
           ],
           breakout: [
             [
               "field",
               expect.objectContaining({ "temporal-unit": "month" }),
-              103,
+              "CREATED_AT",
             ],
           ],
           limit: 100,
@@ -279,7 +289,11 @@ describe("resolveDatasetQuery", () => {
           "source-table": 1,
           aggregation: [["metric", expect.anything(), 31]],
           breakout: [
-            ["field", expect.objectContaining({ "source-field": 104 }), 202],
+            [
+              "field",
+              expect.objectContaining({ "source-field-name": "PRODUCT_ID" }),
+              "NAME",
+            ],
           ],
         },
       ],
@@ -337,7 +351,7 @@ describe("resolveDatasetQuery", () => {
             [
               "field",
               expect.objectContaining({ "temporal-unit": "month" }),
-              103,
+              "CREATED_AT",
             ],
           ],
           "order-by": [
@@ -347,7 +361,7 @@ describe("resolveDatasetQuery", () => {
               [
                 "field",
                 expect.objectContaining({ "temporal-unit": "month" }),
-                103,
+                "CREATED_AT",
               ],
             ],
           ],
@@ -590,9 +604,9 @@ describe("resolveDatasetQuery", () => {
       stages: [
         {
           aggregation: [
-            ["avg", expect.anything(), ["field", expect.anything(), 102]],
+            ["avg", expect.anything(), ["field", expect.anything(), "AMOUNT"]],
           ],
-          breakout: [["field", expect.anything(), 101]],
+          breakout: [["field", expect.anything(), "STATUS"]],
           "order-by": [
             [
               "desc",
@@ -624,9 +638,9 @@ describe("resolveDatasetQuery", () => {
         {
           aggregation: [
             ["metric", expect.anything(), 31],
-            ["avg", expect.anything(), ["field", expect.anything(), 102]],
+            ["avg", expect.anything(), ["field", expect.anything(), "AMOUNT"]],
           ],
-          breakout: [["field", expect.anything(), 101]],
+          breakout: [["field", expect.anything(), "STATUS"]],
           "order-by": [
             [
               "desc",
@@ -655,7 +669,7 @@ describe("resolveDatasetQuery", () => {
       stages: [
         {
           aggregation: [["metric", expect.anything(), 31]],
-          breakout: [["field", expect.anything(), 101]],
+          breakout: [["field", expect.anything(), "STATUS"]],
           "order-by": [
             [
               "desc",
@@ -698,7 +712,7 @@ describe("resolveDatasetQuery aggregation column names", () => {
       [
         "distinct",
         expect.objectContaining({ name: "statuses" }),
-        ["field", expect.anything(), 101],
+        ["field", expect.anything(), "STATUS"],
       ],
     ]);
   });
@@ -846,7 +860,7 @@ describe("resolveDatasetQuery time-interval filters", () => {
       [
         "time-interval",
         expect.anything(),
-        ["field", expect.anything(), 103],
+        ["field", expect.anything(), "CREATED_AT"],
         -24,
         "month",
       ],
@@ -889,9 +903,9 @@ describe("resolveDatasetQuery named breakouts", () => {
           "field",
           expect.objectContaining({
             name: "product_name",
-            "source-field": 104,
+            "source-field-name": "PRODUCT_ID",
           }),
-          202,
+          "NAME",
         ],
       ],
     ]);
@@ -913,14 +927,18 @@ describe("resolveDatasetQuery named breakouts", () => {
             name: "created_month",
             "temporal-unit": "month",
           }),
-          103,
+          "CREATED_AT",
         ],
       ],
       "order-by": [
         [
           "desc",
           expect.anything(),
-          ["field", expect.objectContaining({ name: "created_month" }), 103],
+          [
+            "field",
+            expect.objectContaining({ name: "created_month" }),
+            "CREATED_AT",
+          ],
         ],
       ],
     });

@@ -788,8 +788,12 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    field-ref    :- :mbql.clause/field]
-  (let [opts (second field-ref)]
-    (if-some [fk-field-id (when-not (:source-field opts)
-                            (implicit-join-fk-field-id query stage-number opts))]
-      (resolve-field-ref* query stage-number (assoc-in field-ref [1 :source-field] fk-field-id))
-      (resolve-field-ref* query stage-number field-ref))))
+  (let [opts (second field-ref)
+        col  (if-some [fk-field-id (when-not (:source-field opts)
+                                     (implicit-join-fk-field-id query stage-number opts))]
+               (resolve-field-ref* query stage-number (assoc-in field-ref [1 :source-field] fk-field-id))
+               (resolve-field-ref* query stage-number field-ref))]
+    (cond-> col
+      (and (:fk-field-id col) (not (:fk-field-name col)))
+      (m/assoc-some :fk-field-name (or (:source-field-name opts)
+                                       (:name (lib.metadata/field query (:fk-field-id col))))))))

@@ -178,7 +178,7 @@ describe("dynamic query clauses", () => {
     expect(stagesOf(preview)[0]).toMatchObject({
       "source-table": 1,
       aggregation: [["count", expect.anything()]],
-      breakout: [["field", expect.anything(), 101]],
+      breakout: [["field", expect.anything(), "STATUS"]],
     });
   });
 
