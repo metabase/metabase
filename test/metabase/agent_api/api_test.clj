@@ -14,6 +14,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.mcp.core :as mcp]
    [metabase.metabot.tools.core :as tools.core]
@@ -32,7 +33,9 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [oidc-provider.util :as oidc.util]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -313,6 +316,60 @@
                                          {:query (orders-query
                                                   :aggregation [(orders-field-ref "ID")])})]
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
+
+(deftest construct-query-metadata-lookup-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (let [query (orders-query :fields [(orders-field-ref "ID")])]
+      (doseq [[failure delta] [[(SQLException. "Connection unavailable") 1]
+                               [(ex-info "SELECT private_metadata failed" {:toucan2/context-trace []}) 1]
+                               [(ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable")) 1]
+                               [(ex-info "SELECT private_metadata failed"
+                                         {:toucan2/context-trace [] :status-code 500}) 0]]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+            (is (= {:message "Something went wrong"}
+                   (mt/user-http-request :rasta :post 500 "agent/v2/construct-query" {:query query})))
+            (is (= (+ initial delta) (mt/metric-value system :metabase-api/unhandled-errors)))))))))
+
+(deftest construct-query-declared-errors-in-toucan-scopes-test
+  (let [query (orders-query :fields [(orders-field-ref "ID")])]
+    (doseq [status-code [nil 400]
+            agent-error? [false true]
+            [error message expected] [[:invalid-representations-query
+                                       "Representations query has an invalid structure."
+                                       "Representations query has an invalid structure."]
+                                      [:unknown-field
+                                       "Unknown field"
+                                       (str "Unknown field\nCall `read_resource` with `metabase://table/<numeric id>/fields` "
+                                            "to list this table's columns.")]]]
+      (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                  (fn [& _]
+                                    (t2/with-connection [_conn]
+                                      (throw (ex-info message (cond-> {:error error}
+                                                                status-code (assoc :status-code status-code)
+                                                                agent-error? (assoc :agent-error? true))))))]
+        (is (=? {:error (name error) :message expected}
+                (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
+
+(deftest database-error-callback-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (doseq [database-error? [false true]
+            delivery [:throw :raise]]
+      (let [failure          (if database-error? (SQLException. "Database failure") (Exception. "Handler failure"))
+            callback-failure (if database-error? (SQLException. "Callback failure") (Exception. "Callback failure"))
+            calls            (atom 0)
+            callback         (fn [_] (swap! calls inc) (throw callback-failure))
+            handler          (#'agent-api.api/wrap-database-errors
+                              (fn [_request _respond raise]
+                                (case delivery
+                                  :throw (throw failure)
+                                  :raise (raise failure))))
+            initial          (mt/metric-value system :metabase-api/unhandled-errors)
+            caught           (try (handler {} callback callback) (catch Throwable e e))]
+        (is (identical? callback-failure caught))
+        (is (= 1 @calls))
+        (is (= (+ initial (if database-error? 1 0))
+               (mt/metric-value system :metabase-api/unhandled-errors)))))))
 
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"

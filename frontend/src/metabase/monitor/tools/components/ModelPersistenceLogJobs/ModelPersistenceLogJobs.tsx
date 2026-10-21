@@ -17,6 +17,7 @@ import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Outlet, useNavigate } from "metabase/router";
 import {
   ActionIcon,
@@ -36,8 +37,6 @@ import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
-
-const PAGE_SIZE = 20;
 
 const COLUMN_WIDTHS = [0.22, 0.16, 0.28, 0.14, 0.14, 0.06];
 
