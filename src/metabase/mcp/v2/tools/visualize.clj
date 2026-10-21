@@ -48,17 +48,14 @@
        (message/msg ["Query handle not found — it may have expired; run the query again."]))))
 
 (defn- handle-for-visualization!
-  "Resolve `visualize_query`'s mutually exclusive inputs to the handle the iframe will render.
+  "Return the handle that the iframe will render for `visualize_query`.
 
-   A fresh `query` runs the representations pipeline (validate → repair → resolve, permission
-   checked, then the query processor's preprocessing check) and mints a handle, so the iframe
-   renders exactly what was resolved. A supplied `query_handle` is reused as-is rather than
-   re-minted — the stored query is unchanged, and a duplicate handle would only add a row for the
-   GC to collect.
+   Accept exactly one of `query` or `query_handle`. Validate, repair and resolve a fresh `query`,
+   check permissions and run the query processor's preprocessing check before creating a handle.
+   Reuse a supplied `query_handle` without changing the stored query.
 
-   Native is allowed through the handle path but not the fresh path: `execute_sql` mints handles
-   whose SQL is visualizable by design, while inline `query` is MBQL 5 only, matching
-   `execute_query`."
+   A fresh `query` must be MBQL 5, as in `execute_query`. A `query_handle` can also contain native
+   SQL from `execute_sql`."
   [{:keys [query query_handle prompt]} session-id]
   (let [provided (cond-> []
                    query        (conj :query)

@@ -136,7 +136,7 @@
     (let [mp     (lib-be/application-database-metadata-provider (mt/id))
           orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate orders (lib/count))}]
-        (testing "BOT-2391: a fresh query the query processor rejects gets an error the agent can fix"
+        (testing "BOT-2391: a fresh query that the query processor rejects returns an error with recovery advice"
           (doseq [[description stage rejection]
                   [["a number column compared to text"
                     {:filters [["=" {} ["field" {} (mt/id :orders :total)] "abc"]]}

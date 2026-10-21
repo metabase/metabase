@@ -55,10 +55,10 @@
     e))
 
 (defn execute-representations-query
-  "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
-   the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
-   dialect on. A structural failure gains the offending paths ([[with-schema-detail]]), and an
-   agent error gains v2's recovery message ([[with-recovery-hint]]). `opts` go to
+  "Run the shared representations pipeline for MCP v2 queries.
+   Validate, repair and resolve an agent-authored MBQL query with numeric IDs allowed.
+   Add the offending paths to structural errors ([[with-schema-detail]]) and v2 recovery advice to
+   agent errors when available ([[with-recovery-hint]]). Pass `opts` to
    [[metabot.construct/execute-representations-query]]."
   ([external-query]
    (execute-representations-query external-query nil))
