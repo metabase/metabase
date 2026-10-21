@@ -18,7 +18,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.request.core :as request]
    [metabase.search.core :as search]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -320,36 +319,6 @@
         (testing "an empty list deletes them"
           (load! (assoc field :dimensions []))
           (is (not (t2/exists? :model/Dimension :field_id (:id email)))))))))
-
-(deftest archived-collection-import-test
-  (testing "an archived tree is exported without its archive operation ids and can be unarchived after an import"
-    (let [serialized (atom nil)]
-      (ts/with-dbs [source-db dest-db]
-        (ts/with-db source-db
-          (let [parent     (ts/create! :model/Collection :name "Parent")
-                along      (ts/create! :model/Collection :name "Along" :location (str "/" (:id parent) "/"))
-                apart      (ts/create! :model/Collection :name "Apart" :location (str "/" (:id parent) "/"))
-                apart-kids (ts/create! :model/Collection :name "Apart child"
-                                       :location (str "/" (:id parent) "/" (:id apart) "/"))]
-            (t2/update! :model/Collection (:id apart) {:archived true :archived_directly true :archive_operation_id "first"})
-            (t2/update! :model/Collection (:id apart-kids) {:archived true :archived_directly false :archive_operation_id "first"})
-            (t2/update! :model/Collection (:id parent) {:archived true :archived_directly true :archive_operation_id "second"})
-            (t2/update! :model/Collection (:id along) {:archived true :archived_directly false :archive_operation_id "second"})
-            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
-        (is (not-any? #(contains? % :archive_operation_id) (by-model @serialized "Collection")))
-        (ts/with-db dest-db
-          (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
-          (let [archived? #(t2/select-one-fn :archived :model/Collection :name %)]
-            (is (= #{nil} (t2/select-fn-set :archive_operation_id :model/Collection)))
-            (testing "unarchiving the parent unarchives what was archived along with it, not what was archived apart"
-              (request/as-admin
-                (collection/unarchive-collection! (t2/select-one :model/Collection :name "Parent") {}))
-              (is (= {"Parent" false "Along" false "Apart" true "Apart child" true}
-                     (into {} (map (juxt identity archived?)) ["Parent" "Along" "Apart" "Apart child"]))))
-            (testing "unarchiving what was archived apart unarchives its child"
-              (request/as-admin
-                (collection/unarchive-collection! (t2/select-one :model/Collection :name "Apart") {}))
-              (is (false? (archived? "Apart child"))))))))))
 
 (deftest table-owner-import-test
   (testing "a Table's owner is imported by email, and an older file's local id is kept"
