@@ -207,7 +207,7 @@
                                      " attribute, or copy its `uri` attribute as-is.")}]))})
 
 (tools/defrecoverable not-a-metric!
-  "A metric URI named a question or a model."
+  "Report a metric URI that refers to a question or model."
   {:payload [:map {:closed true}
              [:id       :int]
              [:type     [:enum "question" "model"]]
@@ -691,7 +691,7 @@
 (defn- check-metric-resource
   "Require that `metric-id` is a metric whose backing database is addressable as a Metabot resource.
 
-  A question or a model is refused with the URI that serves it, `path-segments` appended."
+  The error for a question or model includes its resource URI with `path-segments` appended."
   [metric-id & path-segments]
   (let [{card-type :type} (check-card-resource-database metric-id)]
     (when-not (= :metric card-type)

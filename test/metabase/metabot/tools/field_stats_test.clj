@@ -160,7 +160,7 @@
                    {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))))))
 
 (deftest field-values-of-a-card-that-is-not-a-metric-test
-  (testing "a question asked for as a metric is reported as no metric, not as a failure inside lib"
+  (testing "reading a question as a metric reports that no metric was found"
     (let [mp    (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}]

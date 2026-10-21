@@ -1093,7 +1093,7 @@
           field-id (mt/id :orders :quantity)]
       (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
                      :model/Card {model-id :id}    {:type :model :dataset_query query}]
-        (testing "each metric URI says what the card is and which URI serves it, and that URI reads"
+        (testing "the error identifies the card type and gives a resource URI that can be read"
           (doseq [[card-type card-id]     [["question" question-id] ["model" model-id]]
                   [metric-path card-path] [["" ""]
                                            ["/dimensions" "/fields"]
@@ -1105,8 +1105,7 @@
                      (-> (read-uris {:uris [(str "metabase://metric/" card-id metric-path)]})
                          :resources first :error)))
               (is (not (error? (read-uris {:uris [card-uri]})))))))
-        (testing "a call that read nothing else is a failed call, so traces and tool-failure metrics
-                 count it"
+        (testing "reading only an invalid metric URI marks the tool call as failed"
           (is (=? {:class :recoverable
                    :code  :metabase.metabot.tools.core/all-items-failed}
                   (test-util/tool-failure read-resource/read-resource-tool
