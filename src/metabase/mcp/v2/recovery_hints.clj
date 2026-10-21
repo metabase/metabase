@@ -21,12 +21,10 @@
   (let [id (or (parse-long (str entity-id)) entity-id)]
     (case entity-type
       "metric"
-      ;; Not the base table unconditionally: a metric defined on a saved question only works on that question.
-      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, build the stage on the source it "
-                         "was defined on -- its base table's numeric id in `source-table:`, or, for a metric defined "
-                         "on a saved question or model, that card's numeric id in `source-card:` (find it via "
-                         "\"search\" or \"browse_data\") -- and reference the metric by its numeric id: "
-                         "`aggregation: [[metric, {}, %s]]`.")]
+      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, build the stage on its required "
+                         "source: its base table's numeric ID in `source-table:`, or its saved question or model's "
+                         "numeric ID in `source-card:` (find it via \"search\" or \"browse_data\"). "
+                         "Then reference the metric by its numeric ID: `aggregation: [[metric, {}, %s]]`.")]
                    id id)
 
       ("question" "model" "card")
@@ -41,19 +39,18 @@
       (message/msg ["`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."]))))
 
 (defn- usable-sources-hint
-  "The numeric-id restatement of an `:incompatible-metric` error's sources, whose message names them portably."
+  "Return the usable source IDs from an `:incompatible-metric` error as MCP guidance."
   [usable-sources]
   (when (seq usable-sources)
     (apply message/msg
-           [(str "On this surface use numeric ids: " (str/join "; " (repeat (count usable-sources) "%s")) ".")]
+           [(str "Use numeric IDs here: " (str/join "; " (repeat (count usable-sources) "%s")) ".")]
            (for [[metric-id {:keys [source-table source-card]}] (sort-by key usable-sources)]
              (if source-table
                (message/msg ["metric %s needs `\"source-table\": %s`"] metric-id source-table)
                (message/msg ["metric %s needs `\"source-card\": %s`"] metric-id source-card))))))
 
 (defn- card-fields-hint
-  "The sentence sending the agent to the columns the stage's `source-card:` returns, or nil when the error names no
-   card."
+  "Return MCP guidance for listing the source card's columns, or nil when the error names no card."
   [source-card source-card-type]
   (when (and source-card source-card-type)
     (message/msg [(str "Call \"get_content\" with items [{\"type\": %s, \"id\": %s}] and include [\"fields\"] to "

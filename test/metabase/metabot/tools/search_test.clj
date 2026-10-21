@@ -970,9 +970,7 @@
                     "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))))
 
 (deftest enrich-with-metric-source-cards-test
-  (testing (str "A metric defined on a saved question is consumed from that card only, so its search result\n"
-                "carries `source_card_*` instead of `base_table_*`. `report_card.table_id` points at the card's\n"
-                "underlying table; offering it built `source-table:` queries the QP rejects.")
+  (testing "Search offers the source card required by a single-stage card metric"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
@@ -998,12 +996,10 @@
                     :source_card_name               "SourceCard Sample Question"
                     :source_card_portable_entity_id question-eid}
                    (select-keys metric-res metric-source-keys))
-                "the source card is surfaced, entity id included so it can go into `source-card:`, and the base
-                 table is not offered as a source")))))))
+                "the source card includes its entity ID and the base table is not offered")))))))
 
 (deftest enrich-with-metric-source-cards-respects-card-permissions-test
-  (testing (str "A readable metric does not reveal an unreadable source card, and does not fall back to\n"
-                "offering the base table the card sits on.")
+  (testing "Search does not reveal an unreadable source card or offer its base table"
     (mt/with-test-user :rasta
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Private SourceCard Collection"}
@@ -1031,8 +1027,7 @@
             (is (some? metric-res) "collection access still makes the metric searchable")
             (is (= {:source_unavailable true}
                    (select-keys metric-res metric-source-keys))
-                "neither source is offered; it is marked unusable instead, matching what `metric-details` reports
-                 for the same metric -- absence alone reads to the LLM as an invitation to guess a source")))))))
+                "the source is marked unavailable, as it is in metric details")))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
@@ -1087,8 +1082,7 @@
           (is (string? (:type result))))))))
 
 (deftest enrich-with-metric-sources-mixed-results-test
-  (testing (str "A table-based and a card-based metric in one result set: each carries only its own source\n"
-                "fields. Exercises the branch chain together.")
+  (testing "Search reports the source required by each metric in a mixed result set"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
@@ -1135,11 +1129,7 @@
                 "each metric carries only its own source's fields")))))))
 
 (deftest enrich-with-metric-sources-marks-unreadable-base-table-unavailable-test
-  (testing (str "The `source_unavailable` marker is symmetric across both source kinds. A table-based metric whose\n"
-                "base table the user cannot read is exactly as sourceless as an unreadable source card, and\n"
-                "absence alone reads to the LLM as 'look it up elsewhere' -- the guess-a-source behaviour this\n"
-                "enrichment exists to prevent. Must agree with `metric-details`, which describes the same metric\n"
-                "on the other surface.")
+  (testing "A table metric with no queryable source is marked unavailable in search"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-test-user :rasta
         (search.tu/with-temp-index-table
@@ -1154,4 +1144,4 @@
               (is (some? metric) "the metric is still readable via its collection")
               (is (= {:source_unavailable true}
                      (select-keys metric metric-source-keys))
-                  "no base table, and it says so positively rather than just omitting the source"))))))))
+                  "the source is explicitly marked unavailable"))))))))

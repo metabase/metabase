@@ -95,7 +95,7 @@
               "entity_id string.")})
 
 (defn- card-fields-step
-  "The step listing the `what` that the stage's `source-card:` returns, or nil when `payload` names no card."
+  "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
   [{:keys [source-card source-card-type]} what]
   (when (and source-card source-card-type)
     {:uses #{"read_resource"}
@@ -268,7 +268,7 @@
   [])
 
 (defpipeline-error incompatible-metric!
-  "A metric was used on a stage whose source is not the one the metric was defined on."
+  "A metric was used with an incompatible stage source."
   ;; No step: the message names the source each metric needs, or says it has none.
   [])
 
@@ -365,7 +365,7 @@
                 "metric"
                 {:uses #{"read_resource"}
                  :text (str "Metrics are aggregations, not sources. To use metric " entity-id
-                            ", build the stage on the source its `<metric>` tag names (in its search result or "
+                            ", build the stage on the source specified by its `<metric>` tag (in its search result or "
                             "`read_resource metabase://metric/" entity-id "`): `base_table_fully_qualified_name` "
                             "with `database_name` as `source-table:`, or `source_card_portable_entity_id` as "
                             "`source-card:`. Then reference the metric as "

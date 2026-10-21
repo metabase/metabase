@@ -29,7 +29,7 @@ These catalogs accompany `construct_notebook_query`. The clause shape and field 
 - `["share", {}, <bool-pred>]` — fraction of rows where pred is true.
 - `["stddev", {}, <num-expr>]`
 - `["var", {}, <num-expr>]`
-- `["metric", {}, "<portable_entity_id>"]` — reference a defined metric. The stage must be built on the metric's own source: its `base_table_fully_qualified_name` as `source-table`, or its `source_card_portable_entity_id` as `source-card`, whichever the `<metric>` tag carries.
+- `["metric", {}, "<portable_entity_id>"]` references a defined metric. Use the source specified by its `<metric>` tag: `base_table_fully_qualified_name` as `source-table`, or `source_card_portable_entity_id` as `source-card`.
 - `["measure", {}, "<portable_entity_id>"]` — reference a defined measure (preferred over inlining its definition). The measure's table must be the stage's `source-table`.
 
 ## Order-by direction

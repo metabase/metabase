@@ -126,9 +126,10 @@
     :else                          no-values-hint))
 
 (defn- metric-refusal
-  "The refusal for `query-id`, the id of `metric`, a metric the user can read.
-   It says what to aggregate the metric over: the source [[metabase.metabot.tools.util/metric-required-source]] names.
-   Where the user can't read that card, or query that table, it offers no way to its values."
+  "Return a refusal explaining how to query the readable metric with `query-id`.
+
+  Use the source selected by [[metabase.metabot.tools.util/metric-required-source]]. Offer no source when the user
+  cannot read its card or query its table."
   [query-id metric]
   ;; A metric is an aggregation, not a source, so no query with it as the source would run.
   (let [{:keys [kind card-id table-id]} (tools.u/metric-required-source metric)

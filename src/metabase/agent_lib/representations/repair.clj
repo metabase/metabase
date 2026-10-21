@@ -22,15 +22,11 @@
 
   ## Implicit joins
 
-  In addition to the shape passes above, `repair` also runs an **implicit-join pass** that uses
-  the caller's `MetadataProvider` to auto-wire `source-field` options on field clauses referencing
-  something the stage's source does not expose directly -- a sibling table on a `source-table:`
-  stage, or a column the card does not return on a `source-card:` one. That pass is the only reason
-  `repair` takes an `mp` argument - the shape passes themselves don't need it.
+  The implicit-join pass uses the caller's `MetadataProvider` to set `source-field` on references
+  to columns outside the stage's source. It handles table sources and columns omitted by a card source.
 
-  On a `source-card:` stage it asks lib what that card exposes (`lib/visible-columns`, which pulls
-  the implicitly-joinable set), once per stage and only when some clause actually needs deciding.
-  That is the pass's main cost; see [[try-resolve-card-source-info]]."
+  A card stage calls `lib/visible-columns` once, and only when a reference needs implicit-join repair.
+  See [[try-resolve-card-source-info]]."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -2025,22 +2021,9 @@
 ;;; the `source-field` option with the portable FK of the FK column. The QP interprets this as
 ;;; an implicit join (the same machinery users get from the notebook UI).
 ;;;
-;;; Runs on `source-table:` and `source-card:` stages alike -- both need the option for a column the
-;;; source does not expose, else the clause compiles to a nonexistent column and the query dies at
-;;; execution. What differs is where the FK candidates come from: a table's own outbound FKs, or --
-;;; for a card -- the FK columns the card actually RETURNS, which is what lib would offer on that
-;;; source. A card's base table is the wrong origin; see [[try-resolve-card-source-info]]. Columns
-;;; the card already returns are left alone, since an implicit join would answer them differently.
-;;; A `source-card:` stage with explicit joins is skipped whole: lib can resolve a field through
-;;; those joins, by name as well as by id.
-;;;
-;;; The pass walks stage[0] only, skips descent into the `\"joins\"` subtree (field clauses
-;;; inside a join live in a join context), and is a no-op on clauses that already carry any
-;;; of the disambiguating opts: `source-field`, `source-field-name`, `source-field-join-alias`,
-;;; or `join-alias`. The latter three are LLM-authored variants we do *not* auto-fill:
-;;; correctly filling them in would require resolving a previous-stage's returned-columns or
-;;; an explicit-join's FK shape, neither of which is in scope for this pass.
-;;; ============================================================
+;;; Card stages use the FK columns the card returns; table stages use their outbound FKs.
+;;; Columns already returned by a card are left unchanged. An implicit join could select different rows.
+;;; Card stages with explicit joins are skipped because lib resolves their fields through those joins.
 
 (defn- field-clause?
   "A repaired field clause of shape `[\"field\" <opts-map> <target>]` whose target names a
@@ -2073,8 +2056,7 @@
     (catch Exception _ nil)))
 
 (defn- try-resolve-source-card-id
-  "Resolve the stage's `source-card` entity id to a numeric Card id, or nil. Repair is best-effort and must never
-  mask a downstream error."
+  "Resolve the stage's `source-card` entity ID to a numeric Card ID, or nil on failure."
   [import-resolver source-card-eid]
   (try
     (cond
@@ -2110,15 +2092,12 @@
   (try-resolve-field-table-id mp (try-resolve-field-id import-resolver field-fk)))
 
 (defn- try-resolve-card-source-info
-  "What Pass 3 needs about the `source-card:` stage on `card-id`: the card's returned field ids, the tables of those
-  columns, and its implicit-join FK candidates by target table, as lib's `visible-columns` reports them. nil, meaning
-  skip the stage, for native and `:metric` cards or when the card cannot be inspected.
+  "Return the fields, tables, and implicit-join candidates exposed by the card with `card-id`.
 
-  Repair may only produce a join lib would have offered on this source."
-  ;; Candidates come from the card's returned columns, not its base table: a card that aggregates, restricts
-  ;; `:fields`, or joins does not expose every FK its base table has, and a `source-field` naming one it does not
-  ;; return compiles to `__mb_source.<COLUMN>`. nil must never mean "repair anyway": `:returned-field-ids` is a skip
-  ;; condition, so an empty set on failure would re-derive a returned column through a different join path.
+  Return nil for native cards, metric cards, or cards that cannot be inspected. Candidates come from the card's
+  returned columns, as reported by `lib/visible-columns`."
+  ;; A card may omit its base table's FK columns, so candidates must come from its returned columns.
+  ;; Return nil on inspection failure: an empty set could cause a returned column to be replaced by a join.
   [mp card-id]
   (try
     (when-let [card (and mp card-id (lib.metadata/card mp card-id))]
@@ -2127,14 +2106,11 @@
               implicit?  #(= :source/implicitly-joinable (:lib/source %))
               own        (remove implicit? cols)]
           {:card-name          (:name card)
-           ;; Rides in error ex-data: a surface's recovery hint that tells the agent to look the card up needs its
-           ;; type as well as its id, since models and questions are looked up differently.
+           ;; Recovery hints need the card type because models and saved questions use different lookup URIs.
            :card-type          (if (= :model (:type card)) "model" "question")
            :returned-field-ids (into #{} (keep :id) own)
-           ;; Tables of the columns the card returns. lib excludes these from the implicit-join candidates, so a
-           ;; reference to one of their columns that the card does not project lands in the zero-candidate arm and
-           ;; would otherwise be told to add a `joins:` entry joining that table to itself. The card's own base table
-           ;; counts too, even when the card returns none of its columns (an aggregation over implicit-join breakouts).
+           ;; A table already read by the card cannot be joined to itself to recover an omitted column.
+           ;; Include its base table even when an aggregation returns no columns from it.
            :read-table-ids     (into #{(:table-id card)} (keep :table-id) own)
            :fks-by-target      (->> cols
                                     (filter implicit?)
@@ -2146,9 +2122,7 @@
                                     distinct
                                     (group-by :target-table-id))})))
     (catch Exception e
-      ;; Failing closed silently means Pass 3 stops repairing every card stage and the queries come back as
-      ;; `__mb_source.<COLUMN>` execution errors with nothing pointing here. This does real work over a whole card
-      ;; query, so it is likelier to throw on some card shape than its one-line siblings.
+      ;; Log inspection failures so skipped repairs can be traced from later missing-column errors.
       (log/warnf e "Could not inspect source card %s for implicit-join repair; skipping the stage" card-id)
       nil)))
 
@@ -2170,10 +2144,7 @@
   (pr-str fk))
 
 (defn- display-target-table
-  "The target table's name as the agent wrote it. MBQL 5 can carry `fk` as a numeric id rather than a
-  `[db schema table field]` vector: for the portable form the vector already carries the table's own name; for the
-  numeric form we name the table by its bare id rather than reading it back off the metadata provider (a plain id,
-  not `pr-str`, which would render `\"42\"` and read as a table literally named 42)."
+  "Return the target table's name from a portable FK, or its numeric ID for a numeric field reference."
   [fk target-table-id]
   (if (vector? fk)
     (pr-str (nth fk 2))
@@ -2196,11 +2167,10 @@
                   extra)))
 
 (defn- column-not-returned-error [fk card-name card-type card-id target-table-id]
-  ;; `card-id` and `:source-card-type` ride in the ex-data rather than the message: each surface's recovery hint
-  ;; addresses the card in its own vocabulary, and the two card types take different lookups.
+  ;; Recovery hints use the card ID and type to choose the appropriate lookup.
   (ex-info (let [[kind short-kind] (if (= "model" card-type) ["model" "model"] ["saved question" "question"])]
-             (format (str "Field %s is on %s, which the %s %s reads from but does not return, so it cannot be "
-                          "referenced here. Use a column that %s returns.")
+             (format (str "Field %s is on %s. The %s %s reads from that table but does not return this field. "
+                          "Use a column that %s returns.")
                      (display-portable fk)
                      (display-target-table fk target-table-id)
                      kind
@@ -2229,12 +2199,9 @@
                   extra)))
 
 (defn- ambiguous-fk-error [fk source-label n target-table-id extra by-name?]
-  ;; Deliberately do NOT enumerate the candidate FK columns: the metadata provider is un-sandboxed and any leaked
-  ;; `[db schema table field]` path could surface bridge-table column names the caller is not permitted to see
-  ;; (`:agent-error?` relays the message verbatim to the user). The LLM can recover by listing the source's fields
-  ;; with the surface's own discovery tool to inspect the available foreign-key columns.
-  ;; `by-name?`: a card source can return the same FK column under several names, which `source-field` alone cannot
-  ;; tell apart.
+  ;; The metadata provider is not permission-aware, so listing FK candidates could reveal restricted column names.
+  ;; Recovery hints send the agent to permission-checked field listings. `by-name?` also requires the FK's output name
+  ;; when a card returns the same FK column under several names.
   (ex-info (format (str "Field %s can be reached from %s via %d foreign keys. Specify the `source-field` option on the "
                         "field clause"
                         (when by-name?
@@ -2251,10 +2218,10 @@
                   extra)))
 
 (defn- fill-from-candidates
-  "Stamp `source-field` from the single candidate, or throw the appropriate agent error. `stamp-name?` also records
-  `source-field-name` -- the name the source exposes the FK column under -- whenever the candidate carries one, as
-  `lib/ref` does for an implicitly-joinable column. Where that name differs from the field's own, without it the join
-  condition is emitted against a column name the source does not have."
+  "Set `source-field` from the single candidate, or throw an agent error.
+
+  When `stamp-name?` is true, also set `source-field-name` if the candidate has a name. A renamed FK column needs
+  that name in the join condition."
   [clause opts fk export-resolver candidates
    {:keys [source-label target-table-id ex-data-extra stamp-name? strict?]}]
   (case (count candidates)
@@ -2265,23 +2232,17 @@
           src-fk   (assoc clause 1 (cond-> (assoc opts "source-field" src-fk)
                                      (and stamp-name? source-field-name)
                                      (assoc "source-field-name" source-field-name)))
-          ;; Leaving the clause bare is only tolerable where a bare ref might still resolve. On a card stage we
-          ;; have already established that the card neither returns this column nor reads its table, so the bare
-          ;; ref is known-broken and would compile to `__mb_source.<COLUMN>` -- the execution failure this pass
-          ;; exists to prevent. Fail loudly with something the agent can act on instead.
+          ;; A card reference known to need an implicit join would otherwise compile to a missing column.
           strict?  (throw (unexportable-fk-error fk source-label target-table-id ex-data-extra))
           :else    clause))
     (throw (ambiguous-fk-error fk source-label (count candidates) target-table-id ex-data-extra stamp-name?))))
 
 (defn- maybe-fill-source-field
-  "Given a field-clause vector (already known to be a field clause) and the stage's resolved `source-info`, return
-  either the original clause or a clause with `\"source-field\"` populated. Throws `:no-fk-path` or `:ambiguous-fk`
-  on hard errors.
+  "Return the field clause with an inferred `source-field`, or leave it unchanged.
 
-  `source-info` is `{:kind :table …}` or `{:kind :card …}` (see [[stage-source-info]]). The card branch has no
-  \"field is on the source table\" short-circuit on purpose: a `source-card:` stage exposes the columns the card
-  *returns*, which is not the same set as its base table's columns, so the only sound test is whether the card
-  returns this field."
+  `source-info` describes a table or card (see [[stage-source-info]]). A card exposes only its returned columns,
+  so a field on its base table may still need a join. Throw `:no-fk-path`, `:ambiguous-fk`,
+  `:column-not-returned`, or `:unexportable-fk` when the reference cannot be resolved safely."
   [clause mp import-resolver export-resolver source-info]
   (let [opts (nth clause 1)
         fk   (nth clause 2)]
@@ -2322,14 +2283,11 @@
             :card
             (if-let [info @(:info source-info)]
               (cond
-                ;; The card already returns this column, so the bare ref resolves to it. An implicit join would
-                ;; answer from a different join path and silently change the rows.
+                ;; An implicit join could select different rows from the column the card already returns.
                 (contains? (:returned-field-ids info) field-id)
                 clause
 
-                ;; The card reads this table but does not project this column. There is no implicit join to make --
-                ;; the fix is to pick a column it does return, not to join the table to itself, which is what the
-                ;; generic no-FK-path advice would send the agent off to build.
+                ;; The card omits this column; joining its table to itself would not recover it.
                 (contains? (:read-table-ids info) target-table-id)
                 (throw (column-not-returned-error fk (:card-name info) (:card-type info)
                                                   (:card-id source-info) target-table-id))
@@ -2343,19 +2301,15 @@
                                                          :source-card-type (:card-type info)}
                                        :stamp-name?     true
                                        :strict?         true}))
-              ;; Could not work out what the card exposes. Fail CLOSED: leaving the clause alone costs it its
-              ;; repair, where guessing risks a `source-field` that silently answers from the wrong join path.
+              ;; Skip repair when the card cannot be inspected; guessing a join could select different rows.
               clause)))))))
 
 (defn- stage-source-info
-  "What Pass 3 needs to know about a stage's source, or nil to skip the stage: when the source cannot be resolved, and
-  for a `source-card:` stage with explicit joins, whose fields lib can also resolve through those joins.
+  "Return the first stage's table or card source information, or nil when the stage must be skipped.
 
-  A `source-card:` stage needs this pass too: a portable FK naming a column the card does NOT return renders as a
-  bare `[:field {} <id>]` that the QP compiles to `__mb_source.<COLUMN>`, which does not exist, and every downstream
-  gate passes it. But the card's FK candidates are its own *returned* columns, not its base table's -- see
-  [[try-resolve-card-source-info]]. That is resolved behind a delay, so a stage with nothing to repair never pays
-  for it."
+  Skip unresolved sources and card stages with explicit joins, whose fields lib can resolve through those joins.
+  Card metadata is resolved only when a field needs implicit-join repair; candidates come from the card's returned
+  FK columns, not every FK on its base table. See [[try-resolve-card-source-info]]."
   [stage mp import-resolver]
   (if-let [source-table-fk (get stage "source-table")]
     (when-let [table-id (try-resolve-source-table-id import-resolver source-table-fk)]
@@ -2407,34 +2361,11 @@
 ;;; Pass 3.5 -- auto-wire `source-field-join-alias` for implicit joins through an explicitly
 ;;; joined table.
 ;;;
-;;; Unlike Pass 3, this runs on `source-table:` stages ONLY: its candidate search starts from the
-;;; stage's own table (`try-resolve-source-table-id`), and a `source-card:` stage has no such table
-;;; to start from -- the card's base table is the wrong origin here for the same reason it is wrong
-;;; in Pass 3. Pass 3 skips a card-sourced stage with an explicit `joins:` entry as well, so its
-;;; clauses reach lib as written, where the identical query on a `source-table:` stage is repaired.
+;;; This pass uses the source table's FKs and only handles `source-table:` stages.
+;;; Card stages with explicit joins reach lib unchanged; their base table may expose FKs that the card omits.
 ;;;
 ;;; TODO (Mihael 2026-09-28) -- extend this pass to `source-card:` stages.
 ;;;
-;;; Trigger: a field clause `["field" {opts} <portable-fk>]` whose target table is reachable
-;;; from **exactly one** explicit join's source table via **exactly one** FK, and which the
-;;; basic implicit-join pass (Pass 4) cannot handle (target not reachable from `source-table`,
-;;; or LLM clearly intended to hop through the join).
-;;;
-;;; This is the moral equivalent of Pass 4 but the FK-bearing column lives on a joined table
-;;; rather than on `source-table`. We refuse to second-guess any clause that already carries
-;;; one of `source-field` / `source-field-name` / `source-field-join-alias` / `join-alias`.
-;;;
-;;; Conservative on purpose - per `repr-deletion-followups.md`, repair is opt-in: we fill in
-;;; the unambiguous cases and bail loudly on ambiguity rather than guessing. The companion
-;;; multi-stage `source-field-name` repair is *not* implemented here (it would require
-;;; resolving a previous-stage's returned-columns from inside repair, which is structurally
-;;; awkward and prone to silent corruption); see `repr-deletion-followups.md` for the
-;;; deferred-with-rationale entry.
-;;;
-;;; Like Pass 4: walks `stages[0]` only, skips descent into the `\"joins\"` subtree (those
-;;; field clauses already need `join-alias`), no-op when source-table or any join's
-;;; source-table can't be resolved.
-;;; ============================================================
 
 (defn- explicit-join-source-tables
   "For each entry in a stage's `\"joins\"` vector, return
