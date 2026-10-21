@@ -673,7 +673,7 @@
   [expr]
   (let [report-timezone (driver-api/report-timezone-id-if-supported)]
     (if (and report-timezone
-             (= (h2x/database-type expr) "timestamptz"))
+             (h2x/database-or-effective-type-isa? expr "timestamptz" :type/DateTimeWithLocalTZ))
       [:to_timestamp_ltz expr]
       expr)))
 
