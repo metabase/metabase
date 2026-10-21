@@ -923,10 +923,10 @@
                                                                       lib/append-stage
                                                                       (lib/aggregate (lib/count)))
                                                    :type          :metric}]
-            (is (= {:output (str "Query id " metric " is a metric, and a metric does not run by its id. "
-                                 "To get its values, build a notebook query with construct_notebook_query that has "
-                                 "the metric's base table as its source and the metric in `aggregation`, then run "
-                                 "that query with run_query.")}
+            (is (= (metric-refusal metric
+                                   (str "To get its values, use `construct_notebook_query` to build a notebook query "
+                                        "with the metric's base table as its source. Put the metric in `aggregation`, "
+                                        "then run the query with `run_query`."))
                    (run-viewing! [{:type "metric", :id metric}] (str metric)))))))
       (testing "a viewed metric the user can't read is refused like an id that names nothing"
         (mt/with-non-admin-groups-no-root-collection-perms
