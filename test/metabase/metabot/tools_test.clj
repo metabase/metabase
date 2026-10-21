@@ -373,8 +373,8 @@
                                      (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
                                           (mapcat :channels)
                                           (mapv (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame))))]
-        (let [ctx {:memory-atom (atom {:context {:slack_channel_id "C123"}})}]
-          (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [ctx {:memory-atom (atom {:context {:slack_channel_id "C123"}})}]
             (doseq [[schedule expected-cron expected-subscription]
                     [[{:frequency "hourly"}
                       "0 0 * * * ? *" [:hourly nil nil nil]]
@@ -397,5 +397,6 @@
                             {:dashboard_id inapp-dash-id :slack_channel "data-team"}
                             #(subscription-schedules inapp-dash-id) expected-subscription]]]
                     (testing (str tool)
-                      (is (= {:output "success"} (tools.core/call @tool (assoc args :schedule schedule) ctx)))
+                      (is (=? {:output #"^Created (alert|subscription) \d+ .*"}
+                              (tools.core/call @tool (assoc args :schedule schedule) ctx)))
                       (is (= [expected] (stored-schedules))))))))))))))
