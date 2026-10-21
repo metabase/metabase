@@ -9,6 +9,7 @@ interface ChartSettingInputProps {
   placeholder: string;
   onChange: (value: string) => void;
   id?: string;
+  readOnly?: boolean;
 }
 
 export const ChartSettingInput = ({
@@ -16,6 +17,7 @@ export const ChartSettingInput = ({
   onChange,
   placeholder,
   id,
+  readOnly,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value ?? "");
 
@@ -34,6 +36,7 @@ export const ChartSettingInput = ({
       id={id}
       data-testid={id}
       placeholder={placeholder}
+      readOnly={readOnly}
       value={inputValue}
       onChange={(e) => {
         setInputValue(e.target.value);

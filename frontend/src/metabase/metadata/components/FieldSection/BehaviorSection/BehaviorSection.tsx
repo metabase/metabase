@@ -27,12 +27,14 @@ import { RemappingPicker } from "./RemappingPicker";
 type BehaviorSectionBaseProps = {
   field: Field;
   databaseId: DatabaseId;
+  readOnly?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 const BehaviorSectionBase = ({
   field,
   databaseId,
+  readOnly,
   onTrackMetadataChange,
 }: BehaviorSectionBaseProps) => {
   const id = getRawTableFieldId(field);
@@ -130,6 +132,7 @@ const BehaviorSectionBase = ({
     <TitledSection>
       <FieldVisibilityPicker
         description={t`Where this field should be displayed`}
+        readOnly={readOnly}
         label={t`Visibility`}
         value={field.visibility_type}
         onChange={handleVisibilityChange}
@@ -137,6 +140,7 @@ const BehaviorSectionBase = ({
 
       <FieldValuesTypePicker
         description={t`How this field should be filtered`}
+        readOnly={readOnly}
         label={t`Filtering`}
         value={field.has_field_values}
         onChange={handleFilteringChange}
@@ -146,6 +150,7 @@ const BehaviorSectionBase = ({
         <RemappingPicker
           database={database}
           description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
+          readOnly={readOnly}
           field={field}
           label={t`Display values`}
           onTrackMetadataChange={onTrackMetadataChange}
@@ -155,6 +160,7 @@ const BehaviorSectionBase = ({
       {database != null && canFieldUnfoldJson(field, database) && (
         <UnfoldJsonPicker
           description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
+          readOnly={readOnly}
           label={t`Unfold JSON`}
           value={isFieldJsonUnfolded(field, database)}
           onChange={handleUnfoldJsonChange}
