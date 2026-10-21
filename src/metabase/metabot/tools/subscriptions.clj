@@ -1,5 +1,5 @@
 (ns metabase.metabot.tools.subscriptions
-  "`create_dashboard_subscription` for the Chat profile, and the subscription code that both variants use.
+  "Create dashboard subscriptions for the Chat and Slack profiles.
 
   The Chat profile's variant subscribes a Slack channel that the model names."
   (:require
@@ -26,9 +26,7 @@
          (metabot.tools.u/schedule->schedule-map schedule)))
 
 (defn- pulse-card
-  "The question on one dashcard, as a pulse card for the dashboard with `dashboard-id`.
-
-  This is the form that [[pulse.api/create-pulse-with-perm-checks!]] takes."
+  "Return the question on a dashboard card as a pulse card."
   [dashboard-id {:keys [id card]}]
   (-> card
       (select-keys [:id :name :collection_id :description :display :parameter_mappings])
@@ -69,14 +67,14 @@
 
 (defn- subscribe-to-dashboard! [{dashboard-id :id :as dashboard} channel schedule]
   (let [pulse (create-pulse! dashboard (:dashcards dashboard) channel schedule)]
-    {:output (str "Created subscription " (:id pulse) " to dashboard \"" (:name dashboard) "\" (id " dashboard-id
+    {:output (str "Created subscription " (:id pulse) " to dashboard \"" (:name dashboard) "\" (ID " dashboard-id
                   "), posting to " channel ".")}))
 
 (defn create-dashboard-subscription!
-  "Subscribe the Slack `channel` to the dashboard with `dashboard-id`, and return the tool result that reports it.
+  "Subscribe Slack `channel` to dashboard `dashboard-id` and return the tool result.
 
-  `channel` is the name that Metabase's cached list of Slack channels gives it, and the subscription sends on
-  `schedule`. Throws the declared not-found error when the dashboard is missing or unreadable, and an
+  `channel` is a display name from Metabase's cached list of Slack channels. Delivery follows `schedule`.
+  Throws the declared not-found error when the dashboard is missing or unreadable, and an
   unrecoverable error when the user can read it but may not subscribe to it."
   [{:keys [dashboard-id channel schedule]}]
   (subscribe-to-dashboard! (dashboard-for-subscription dashboard-id) channel schedule))
@@ -85,9 +83,9 @@
   "`slack_channel` names no channel or user in Metabase's cached list of Slack channels and users."
   {:payload [:map {:closed true} [:slack-channel :string]]}
   [{:keys [slack-channel]}]
-  {:message  (str "Metabase can't post to " (pr-str slack-channel) ": it isn't a Slack channel or user that"
-                  " Metabase knows about. Metabase knows public channels, private channels that the Metabase app"
-                  " has been added to, and users. A channel created in the last few hours may not be there yet.")
+  {:message  (str "Metabase can't find a Slack channel or user named " (pr-str slack-channel) "."
+                  " It can send to public channels, private channels that the Metabase app"
+                  " has been added to, and users. A channel created in the last few hours may not be available yet.")
    :recovery [{:uses #{}
                :text "Ask the user for the channel's exact name, as it appears in Slack."}]})
 

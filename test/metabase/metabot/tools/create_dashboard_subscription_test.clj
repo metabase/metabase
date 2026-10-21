@@ -11,8 +11,8 @@
    [toucan2.core :as t2]))
 
 (defn- subscribe
-  "Call the Slack profile's `create_dashboard_subscription` the way the Slack agent loop does, from the
-  conversation `channel-id`, and return the outcome."
+  "Run `create_dashboard_subscription` through the Slack agent loop and return its result.
+  The call comes from Slack conversation `channel-id`."
   [args channel-id]
   (tools.runtime/invoke (tools.core/entries
                          [tools.create-dashboard-subscription/slackbot-create-dashboard-subscription-tool])
@@ -37,14 +37,14 @@
                                                   "C123")
                 pulse                  (t2/select-one :model/Pulse :dashboard_id dash-id)]
             (is (nil? error))
-            (is (= (str "Created subscription " (:id pulse) " to dashboard \"Sales\" (id " dash-id
+            (is (= (str "Created subscription " (:id pulse) " to dashboard \"Sales\" (ID " dash-id
                         "), posting to #data-team.")
                    output))
             (is (=? [{:channel_type :slack :details {:channel "#data-team"}}]
                     (t2/select :model/PulseChannel :pulse_id (:id pulse))))))))))
 
 (deftest ^:parallel outside-slack-test
-  (testing "the destination is the conversation that the request came from, so outside Slack there is none"
+  (testing "a subscription requires a Slack conversation as its destination"
     (is (= {:class        :unrecoverable
             :code         ::tools.create-alert/not-in-slack
             :user-message "This can only be set up from a Slack conversation."}

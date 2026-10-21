@@ -20,8 +20,8 @@
      ~@body))
 
 (defn- create-alert
-  "Call `create_alert` the way the Slack agent loop does, from the conversation `channel-id`, and return the
-  outcome: what the model reads, plus the error when the call failed."
+  "Run `create_alert` through the Slack agent loop and return its result.
+  The call comes from Slack conversation `channel-id`."
   ([args] (create-alert args "C123"))
   ([args channel-id]
    (tools.runtime/invoke (tools.core/entries [tools.create-alert/create-alert-tool])
@@ -51,8 +51,8 @@
                        :handlers [{:channel_type :channel/slack
                                    :recipients   [{:details {:value "#data-team"}}]}]}
                       alert)))
-            (testing "and the model reads what it created"
-              (is (= (str "Created alert " (:id alert) " on question \"Revenue\" (id " card-id
+            (testing "the result names the alert that was created"
+              (is (= (str "Created alert " (:id alert) " on question \"Revenue\" (ID " card-id
                           "), posting to #data-team.")
                      output)))))))))
 
@@ -73,20 +73,20 @@
     (mt/with-temp [:model/Card {card-id :id} {}]
       (mt/with-current-user (mt/user->id :rasta)
         (with-slack-channels
-          (testing "outside Slack"
+          (testing "outside of Slack"
             (is (= {:class        :unrecoverable
                     :code         ::tools.create-alert/not-in-slack
                     :user-message "This can only be set up from a Slack conversation."}
                    (:error (create-alert (daily-alert card-id) nil)))))
-          (testing "in a conversation that Metabase can't send to, such as a DM"
+          (testing "a DM cannot receive alerts"
             (is (= {:class        :unrecoverable
                     :code         ::tools.create-alert/unknown-slack-conversation
-                    :user-message (str "Metabase can send alerts and subscriptions only to public channels and to "
-                                       "private channels that the Metabase app has been added to, so it can't "
-                                       "send them to this conversation. A channel created in the last few hours "
+                    :user-message (str "Metabase can't send alerts or subscriptions to this conversation. "
+                                       "It can send them to public channels and to private channels that the "
+                                       "Metabase app has been added to. A channel created in the last few hours "
                                        "may not be available yet.")}
                    (:error (create-alert (daily-alert card-id) "D0123"))))))
-        (testing "when Slack isn't connected"
+        (testing "Slack must be connected"
           (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
             (is (= {:class        :unrecoverable
                     :code         ::tools.create-alert/slack-not-configured

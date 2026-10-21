@@ -1,6 +1,5 @@
 (ns metabase.metabot.tools.static-viz
-  "Static visualization tool for the slackbot profile.
-  Renders existing saved questions/metrics as PNG images in Slack."
+  "Render saved questions and metrics as PNG images in Slack."
   (:require
    [metabase.api.common :as api]
    [metabase.metabot.agent.streaming :as streaming]
@@ -14,13 +13,13 @@
 (defn- queued-output
   [{card-id :id card-name :name card-type :type}]
   (str "<result>\n"
-       "Visualization queued for " (name card-type) " \"" (llm-shape/escape-xml-content card-name) "\" (id "
+       "Visualization queued for " (name card-type) " \"" (llm-shape/escape-xml-content card-name) "\" (ID "
        card-id "). It will be posted as a separate follow-up message in the thread, with its name as the title "
        "and a link to open it in Metabase.\n"
        "</result>\n"
        "<instructions>\n"
-       "Use future tense when referring to the visualization, because it hasn't appeared yet when the user sees "
-       "your text.\n"
+       "Use the future tense when describing the visualization, because it has not appeared when the user reads "
+       "your message.\n"
        "</instructions>"))
 
 (defrecord StaticVizTool []

@@ -11,7 +11,7 @@
     (mt/with-current-user (mt/user->id :rasta)
       (let [{:keys [output data-parts]} (test-util/call-tool tools.static-viz/static-viz-tool {:entity_id card-id})]
         (testing "the model reads which card it queued, by name"
-          (is (re-find (re-pattern (str "Visualization queued for question \"Revenue &lt;by&gt; month\" \\(id "
+          (is (re-find (re-pattern (str "Visualization queued for question \"Revenue &lt;by&gt; month\" \\(ID "
                                         card-id "\\)"))
                        output)))
         (testing "and the Slack bridge gets the card to render"
@@ -19,7 +19,7 @@
                  data-parts)))))))
 
 (deftest a-card-it-cannot-read-is-not-queued-test
-  (testing "a card that the user can't read fails like a missing one, so the model never promises a chart"
+  (testing "an unreadable card and a missing card both return a recoverable error"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Card {card-id :id} {}]
         (mt/with-current-user (mt/user->id :rasta)

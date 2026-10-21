@@ -1,6 +1,5 @@
 (ns metabase.metabot.tools.subscriptions-test
-  "Tests for the Chat profile's `create_dashboard_subscription`, and the subscription code that it shares with the
-  Slack profile's."
+  "Test the Chat profile's dashboard subscription tool and the code shared with the Slack profile."
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
@@ -19,7 +18,7 @@
   {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})
 
 (defn- subscribe
-  "Call the Chat profile's `create_dashboard_subscription` the way the agent loop does, and return the outcome."
+  "Run `create_dashboard_subscription` through the Chat agent loop and return its result."
   [args]
   (tools.runtime/invoke (tools.core/entries [agent-subscriptions/create-dashboard-subscription-tool])
                         {:profile-id :internal
@@ -33,14 +32,14 @@
   {:dashboard_id dashboard-id :slack_channel slack-channel :schedule {:frequency "daily" :hour 9}})
 
 (deftest ^:parallel arguments-test
-  (testing "a day_of_week outside the listed days is rejected at argument validation"
+  (testing "an unsupported day_of_week fails argument validation"
     (is (=? #"Invalid tool arguments: `schedule` .*should be either \"sunday\".*"
             (test-util/tool-boundary-error "create_dashboard_subscription"
                                            #'agent-subscriptions/create-dashboard-subscription-tool
                                            {:dashboard_id  1
                                             :slack_channel "data-team"
                                             :schedule      {:frequency "weekly" :day_of_week "mo" :hour 9}}))))
-  (testing "Slack is the only delivery, so the channel is required"
+  (testing "Slack delivery requires a channel"
     (is (= "Invalid tool arguments: `slack_channel` is required."
            (test-util/tool-boundary-error "create_dashboard_subscription"
                                           #'agent-subscriptions/create-dashboard-subscription-tool
@@ -61,7 +60,7 @@
                 pulse                  (t2/select-one :model/Pulse :dashboard_id dash-id)]
             (is (nil? error))
             (testing "the model reads what it created"
-              (is (= (str "Created subscription " (:id pulse) " to dashboard \"Sales\" (id " dash-id
+              (is (= (str "Created subscription " (:id pulse) " to dashboard \"Sales\" (ID " dash-id
                           "), posting to #data-team.")
                      output)))
             (testing "and it posts to that channel on the requested schedule"
@@ -79,10 +78,10 @@
                                 channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Dashboard {dash-id :id} {}]
-          (is (= {:output (str "Metabase can't post to \"data team\": it isn't a Slack channel or user that "
-                               "Metabase knows about. Metabase knows public channels, private channels that the "
+          (is (= {:output (str "Metabase can't find a Slack channel or user named \"data team\". "
+                               "It can send to public channels, private channels that the "
                                "Metabase app has been added to, and users. A channel created in the last few hours "
-                               "may not be there yet.\n"
+                               "may not be available yet.\n"
                                "Ask the user for the channel's exact name, as it appears in Slack.")
                   :error  {:class :recoverable :code ::agent-subscriptions/unknown-slack-channel}}
                  (subscribe (daily dash-id "data team")))))))))
@@ -110,14 +109,14 @@
                      (subscribe (daily id channel)))))))))))
 
 (deftest refused-subscription-test
-  (testing "a user who can see the dashboard but may not subscribe to it is told why, in words safe for a channel"
+  (testing "a subscription refusal names neither the dashboard nor its questions"
     (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
                                 channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
       (mt/with-temp [:model/Collection    collection    {}
                      :model/Dashboard     {dash-id :id} {}
                      :model/Card          {card-id :id} {:collection_id (:id collection)}
                      :model/DashboardCard _             {:dashboard_id dash-id :card_id card-id}]
-        (testing "because a question on it is hidden from them"
+        (testing "a hidden question prevents the subscription"
           (doseq [channel ["data-team" "unknown-channel"]]
             (mt/with-non-admin-groups-no-collection-perms collection
               (mt/with-current-user (mt/user->id :rasta)
@@ -126,7 +125,7 @@
                         :user-message (str "You can't subscribe to this dashboard, because you don't have access to "
                                            "every question on it.")}
                        (:error (subscribe (daily dash-id channel)))))))))
-        (testing "because Metabase refuses to create it"
+        (testing "a 403 prevents the subscription"
           (mt/with-dynamic-fn-redefs [pulse.api/create-pulse-with-perm-checks!
                                       (fn [& _] (throw (ex-info "You don't have permissions to do that."
                                                                 {:status-code 403})))]

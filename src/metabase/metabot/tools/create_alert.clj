@@ -1,5 +1,5 @@
 (ns metabase.metabot.tools.create-alert
-  "`create_alert`, and the Slack checks that it shares with the dashboard subscription tools.
+  "Create alerts and check Slack delivery for alerts and dashboard subscriptions.
 
   The alert watches a saved question and posts to the Slack conversation that the request came from."
   (:require
@@ -31,7 +31,7 @@
      {:user-message (tru "Slack isn''t connected to Metabase. An admin can connect it in Admin settings.")})))
 
 (defn current-slack-channel
-  "The display name of the Slack conversation that the call in `ctx` came from.
+  "Return the display name of the Slack conversation for the call in `ctx`.
 
   Alerts and subscriptions name their channel this way. Throws an unrecoverable error when the call didn't come
   from Slack, when Slack isn't connected, or when the conversation isn't in Metabase's cached list of channels.
@@ -45,7 +45,7 @@
     (or (:display-name (channel.settings/find-cached-slack-channel-or-username channel-id))
         (tools/unrecoverable!
          ::unknown-slack-conversation
-         {:user-message (tru "Metabase can send alerts and subscriptions only to public channels and to private channels that the Metabase app has been added to, so it can''t send them to this conversation. A channel created in the last few hours may not be available yet.")
+         {:user-message (tru "Metabase can''t send alerts or subscriptions to this conversation. It can send them to public channels and to private channels that the Metabase app has been added to. A channel created in the last few hours may not be available yet.")
           :data         {:channel-id channel-id}}))))
 
 (defn do-with-refusal
@@ -118,7 +118,7 @@
        "this tool; never claim an alert was created without calling it. If you are missing required\n"
        "information, ask the user for it rather than guessing.\n"
        "\n"
-       "`card_id` is the id of a saved question, from a prior search result or the conversation context.\n"
+       "`card_id` is the ID of a saved question, from a prior search result or the conversation context.\n"
        "\n"
        "`send_condition` decides when the alert fires:\n"
        "- `has_result`: the question returns any rows. Default this when the user doesn't say.\n"
@@ -146,7 +146,7 @@
                                   :schedule       schedule
                                   :send-condition (keyword send_condition)
                                   :send-once      (boolean send_once)})]
-      {:output (str "Created alert " (:id alert) " on " (name (:type card)) " \"" (:name card) "\" (id " card_id
+      {:output (str "Created alert " (:id alert) " on " (name (:type card)) " \"" (:name card) "\" (ID " card_id
                     "), posting to " channel ".")})))
 
 (def create-alert-tool

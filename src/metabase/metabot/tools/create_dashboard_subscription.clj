@@ -1,5 +1,5 @@
 (ns metabase.metabot.tools.create-dashboard-subscription
-  "`create_dashboard_subscription` for the Slack profile.
+  "Create dashboard subscriptions for the Slack profile.
 
   It subscribes the conversation that the request came from."
   (:require
@@ -20,7 +20,7 @@
        "without calling it. If you are missing required information, ask the user for it rather than\n"
        "guessing.\n"
        "\n"
-       "`dashboard_id` is the id of the dashboard, from a prior search result or the conversation\n"
+       "`dashboard_id` is the ID of the dashboard, from a prior search result or the conversation\n"
        "context. `schedule` is a frequency (hourly, daily, weekly, monthly) plus that frequency's\n"
        "time fields."))
 
