@@ -300,7 +300,7 @@
                 (is (some? (mcp-session access_token)))))))))))
 
 (deftest exchange-refusal-throttling-test
-  (testing "refusals of a JWT that passed verification don't count toward the token endpoint's limits, unlike unverified ones"
+  (testing "a verified JWT's refusals don't count toward the token limits, unlike an unverified JWT's"
     (with-jwt-bearer-setup!
       (mcp.tu/with-group-level-mode
         (let [verified   [["unsupported_grant_type" #(assertion {:email "jwt-bearer-no-mcp@metabase.com"})]
