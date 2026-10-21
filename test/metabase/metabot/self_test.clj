@@ -454,10 +454,11 @@
         server  (jetty/run-jetty handler {:port 0
                                           :join? false
                                           :output-buffer-size 1})
-        url     (str "http://localhost:" (.. server getURI getPort))]
+        url     (str "http://localhost:" (.. server getURI getPort))
+        opts    {:method :post :url url :as :stream}]
     (try
       ;; Held through the checks, so that a garbage-collected socket can't stop the server in sse-reducible's place
-      (with-open [^java.io.Closeable body (:body (http/request {:method :post :url url :as :stream}))]
+      (with-open [^java.io.Closeable body (self.core/abort-on-close (http/request opts) opts)]
         (let [reducible (self.core/sse-reducible body)
               ;; Take only 2 items, which should trigger early termination
               result    (reduce (fn [acc item]
