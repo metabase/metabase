@@ -2006,13 +2006,14 @@
                                      {:uris [(str "metabase://table/" (mt/id :orders))]})]
       (is (= 1 (count (:resources resp))))
       (is (some? (-> resp :resources first :content)))))
-  (testing "Returns 400 when too many URIs"
-    (let [uris (vec (repeat 10 "metabase://databases"))]
-      (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
-                            {:uris uris})))
-  (testing "this endpoint publishes the tool's own argument schema, so its limits cannot drift from
-           the ones the agent loop enforces. The hand-written copy this replaced had already lost
-           the 5-URI cap."
+  (testing "Reads five URIs and names each skipped URI"
+    (let [uris (conj (vec (repeat 5 "metabase://databases")) "metabase://collections")
+          resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource" {:uris uris})]
+      (is (= uris (mapv :uri (:resources resp))))
+      (is (every? :content (take 5 (:resources resp))))
+      (is (str/starts-with? (-> resp :resources (nth 5) :error) "Skipped:"))
+      (is (str/includes? (:output resp) "<resource uri=\"metabase://collections\">"))))
+  (testing "This endpoint publishes the tool's argument schema"
     ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
     ;; so the outer form differs by a `:description` the endpoint never publishes.
     (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)

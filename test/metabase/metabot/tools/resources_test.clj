@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools]
@@ -61,7 +62,7 @@
 
 (deftest ^:parallel scalar-uris-arg-test
   (testing "a scalar `uris` is rejected with guidance on how to repair the call"
-    (is (= (str "Invalid tool arguments: `uris` must be an array of 1 to 5 URI strings; "
+    (is (= (str "Invalid tool arguments: `uris` must be a non-empty array of URI strings; "
                 "received a string.")
            (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
                                           {:uris "metabase://table/1"})))))
@@ -117,12 +118,29 @@
         (is (= "metabase://database/1/schemas/weird%2Fname/tables" uri))
         (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed)))))))
 
-(deftest ^:parallel the-item-limit-is-a-schema-fact-test
-  (testing "the 5-URI cap is in the batched `:args`, so the runtime rejects a sixth before the tool runs"
-    (is (= (str "Invalid tool arguments: `uris` must be an array of 1 to 5 URI strings; "
-                "received an array.")
-           (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
-                                          {:uris (vec (repeat 10 "metabase://table/123"))})))))
+(deftest oversized-batch-test
+  (let [uris   ["metabase://databases" "metabase://nonsense/1" "metabase://collections"
+                "metabase://nonsense/2" "metabase://databases" "metabase://collections?tree=true"
+                "metabase://nonsense/3"]
+        called (atom [])]
+    (mt/with-dynamic-fn-redefs [read-resource/dispatch
+                                (fn [uri]
+                                  (swap! called conj uri)
+                                  (if (str/includes? uri "nonsense")
+                                    (read-resource/unsupported-uri! {:uri uri})
+                                    {:structured-output {:result-type :metabot-list :list-type :databases
+                                                         :items [] :total 0 :page 1 :pages 1}}))]
+      (binding [scope/*current-user-scope* #{"*"}]
+        (is (nil? (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
+                                                 {:uris uris}))))
+      (reset! called [])
+      (let [{:keys [output resources]} (read-uris {:uris uris})]
+        (is (= (subvec uris 0 5) @called))
+        (is (= uris (mapv :uri resources)))
+        (is (= [false true false true false true true] (mapv #(contains? % :error) resources)))
+        (doseq [resource (drop 5 resources)]
+          (is (str/starts-with? (or (:error resource) "") "Skipped: only the first 5 URIs are read per call.")))
+        (is (= 7 (count (re-seq #"<resource uri=" output))))))))
 
 (deftest ^:parallel single-and-batched-declarations-test
   (let [single  (tools/declaration read-resource/read-resource-tool)
@@ -134,8 +152,8 @@
     (testing "the batched form publishes a sequence of plain strings, not of maps —
              the wire shape the model has always been offered"
       (is (= [:map {:closed true}
-              [:uris [:sequential {:min 1 :max 5
-                                   :error/message "must be an array of 1 to 5 URI strings"}
+              [:uris [:sequential {:min 1
+                                   :error/message "must be a non-empty array of URI strings"}
                       uri-arg]]]
              (:args batched))))
     (testing "both forms share the item schema, so they cannot drift"
@@ -144,7 +162,7 @@
     (testing "only the description and the args differ"
       (is (= (dissoc single :description :args) (dissoc batched :description :args)))
       (is (str/starts-with? (:description batched) (:description single)))
-      (is (str/includes? (:description batched) "Up to 5 URIs")))))
+      (is (str/includes? (:description batched) "Only the first 5 URIs")))))
 
 (deftest ^:parallel an-undeclared-failure-is-not-a-partial-result-test
   (testing "a bug inside one read fails the whole call rather than being reported as that item's

@@ -684,8 +684,7 @@
   "Request shape for /v1/read-resource: the tool's own published arguments.
 
   Taken from the tool rather than written out again, so this endpoint and the agent loop offer the
-  same shape and the same limits. Before, this was a hand-written copy that had already lost the
-  5-URI cap the tool enforces."
+  same arguments. Only the first five URIs are read; later entries report that they were skipped."
   (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)))
 
 (mr/def ::read-resource-item
@@ -728,14 +727,15 @@
   Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent
   loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
   A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
-  that did read. Up to 5 URIs per call, rejected as a 400 by `::read-resource-request`."
+  that did read. Only the first five URIs are read; later entries report that they were skipped."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
                              "Examples: metabase://databases, metabase://database/{id}/tables, "
                              "metabase://collection/{id}/items, metabase://question/{id}, "
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
-                             "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
+                             "Only the first 5 URIs are read per call; later URIs are reported as skipped. "
+                             "List endpoints cap at 25 items.")}}
   [_route-params
    _query-params
    body :- ::read-resource-request]
