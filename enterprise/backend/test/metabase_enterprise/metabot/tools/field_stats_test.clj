@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot.tools.field-stats-test
   (:require
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
@@ -156,30 +157,35 @@
           (is (some? (get-in result [:structured-output :value_metadata :statistics]))))))))
 
 (deftest inaccessible-field-details-match-missing-fields-test
-  (let [mp (mt/metadata-provider)
-        allowed-ids (mapv #(mt/id :venues %) [:id :name :category_id])
-        query (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                (mapv #(lib.metadata/field mp %) allowed-ids))]
-    (met/with-gtaps! {:gtaps {:venues {:query query}}}
-      (doseq [profile [:document-generate-content :slackbot :internal]]
-        (let [responses
-              (mapv (fn [field-id]
-                      (binding [scope/*current-user-scope* #{"*"}]
-                        (let [entries (metabot.tools/->entries (:tools (profiles/get-profile profile)) nil nil profile)
-                              args (if (= profile :internal)
-                                     {:uris [(str "metabase://table/" (mt/id :venues) "/fields/" field-id)]}
-                                     {:data_source "table" :source_id (mt/id :venues) :field_id field-id})
-                              tool-name (if (= profile :internal) "read_resource" "get_field_values")
-                              result ((get-in entries [tool-name :fn]) args)]
-                          (is (= {:class :recoverable
-                                  :code (if (= profile :internal)
-                                          :metabase.metabot.tools.core/all-items-failed
-                                          ::metabot.tools.field-stats/unknown-field)} (:error result)))
-                          (is (str/includes? (:output result)
-                                             (str "Field " field-id " was not found in table " (mt/id :venues) ".")))
-                          (is (str/includes? (:output result) "Retry with one of these field IDs."))
-                          (is (not (str/includes? (:output result) "Call `search`")))
-                          result)))
-                    [(mt/id :venues :price) Integer/MAX_VALUE])]
-          (is (= (mapv :error responses) (repeat 2 (:error (first responses)))))
-          (is (apply = (map #(second (str/split (:output %) #"\. Valid field IDs: " 2)) responses))))))))
+  (met/with-gtaps! {:gtaps {:venues {:query (let [mp (mt/metadata-provider)
+                                                  allowed-ids (mapv #(mt/id :venues %) [:id :name :category_id])]
+                                              (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                (mapv #(lib.metadata/field mp %) allowed-ids)))}}}
+    (doseq [profile [:document-generate-content :slackbot :internal]]
+      (let [responses
+            (mapv (fn [field-id]
+                    (binding [scope/*current-user-scope* #{"*"}]
+                      (let [entries (metabot.tools/->entries (:tools (profiles/get-profile profile)) nil nil profile)
+                            args (if (= profile :internal)
+                                   {:uris [(str "metabase://table/" (mt/id :venues) "/fields/" field-id)]}
+                                   {:data_source "table" :source_id (mt/id :venues) :field_id field-id})
+                            tool-name (if (= profile :internal) "read_resource" "get_field_values")
+                            result ((get-in entries [tool-name :fn]) args)
+                            available-ids (set (edn/read-string
+                                                (or (second (re-find #"Valid field IDs: (\[[^\]]*\])"
+                                                                     (:output result)))
+                                                    "[]")))]
+                        (is (= {:class :recoverable
+                                :code (if (= profile :internal)
+                                        :metabase.metabot.tools.core/all-items-failed
+                                        ::metabot.tools.field-stats/unknown-field)} (:error result)))
+                        (is (str/includes? (:output result)
+                                           (str "Field " field-id " was not found in table " (mt/id :venues) ".")))
+                        (is (str/includes? (:output result) "Retry with one of these field IDs."))
+                        (is (not (str/includes? (:output result) "Call `search`")))
+                        (is (every? available-ids (map #(mt/id :venues %) [:id :name :category_id])))
+                        (is (not (contains? available-ids (mt/id :venues :price))))
+                        result)))
+                  [(mt/id :venues :price) Integer/MAX_VALUE])]
+        (is (= (mapv :error responses) (repeat 2 (:error (first responses)))))
+        (is (apply = (map #(second (str/split (:output %) #"\. Valid field IDs: " 2)) responses)))))))
