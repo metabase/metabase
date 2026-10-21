@@ -197,14 +197,26 @@
                        {:output (str (apply str message)
                                      "\nTo keep this chart type, call `construct_notebook_query` with a query that "
                                      "returns the columns it needs.")
-                        :error  {:class :recoverable :code ::fit/incompatible-chart-type}})]
+                        :error  {:class :recoverable :code ::fit/incompatible-chart-type}})
+        line-failure (failure "Chart type \"line\" can't show this query's columns. It needs 1 or 2 columns to group "
+                              "by and at least 1 number to measure. The query returns 1 column: 0 to group by and 1 "
+                              "number to measure. Chart types that fit these columns: table, scalar, gauge, progress, "
+                              "object.")]
     (testing "create_chart fails on a chart type that can't show the query's columns, and names the ones that can"
-      (is (= (failure "Chart type \"line\" can't show this query's columns. It needs 1 or 2 columns to group by and "
-                      "at least 1 number to measure. The query returns 1 column: 0 to group by and 1 number to "
-                      "measure. Chart types that fit these columns: table, scalar, gauge, progress, object.")
+      (is (= line-failure
              (invoke "create_chart"
                      (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "line"})
                      {:queries {"q-1" orders-count}}))))
+    (testing "edit_chart checks a chart that the user is viewing, whose query arrives as MBQL 4"
+      (is (= line-failure
+             (invoke "edit_chart"
+                     (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "line"})
+                     {:charts {"c-1" {:chart_id "c-1"
+                                      :query_id "c-1"
+                                      :queries  [{:database (mt/id)
+                                                  :type     "query"
+                                                  :query    {:source-table (mt/id :orders)
+                                                             :aggregation  [["count"]]}}]}}}))))
     (testing "edit_chart checks the new chart type against the query of the chart that it edits"
       (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs exactly 1 column. The query "
                       "returns 2 columns: 1 to group by and 1 number to measure. Chart types that fit these columns: "
