@@ -114,13 +114,13 @@
               (is (= (strip (lib/filters query))
                      (strip (-> dataset-query lib/normalize :stages first :filters)))))))))))
 
-(deftest ^:parallel ->frontend-query-stripped-query-with-aggregation-ref-falls-back-test
-  (testing "a query without :lib/* keys falls back to ->legacy-mbql when normalization invalidates its aggregation ref"
-    ;; Normalization assigns a new UUID to the aggregation, so the aggregation ref no longer resolves.
+(deftest ^:parallel ->frontend-query-stripped-query-with-aggregation-ref-goes-out-raw-test
+  (testing "a query without :lib/* keys goes out as the raw MBQL 5 query when normalization invalidates its aggregation ref"
+    ;; Normalization assigns a new UUID to the aggregation, so the aggregation ref no longer resolves,
+    ;; and ->legacy-mbql cannot convert the query either.
     (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
           stripped (strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))]
-      (is (= (links/->legacy-mbql stripped)
-             (links/->frontend-query stripped))))))
+      (is (= stripped (links/->frontend-query stripped))))))
 
 (deftest ^:parallel ->frontend-query-sends-native-queries-as-legacy-test
   (let [native     (lib/native-query meta/metadata-provider "SELECT * FROM CHECKINS")
