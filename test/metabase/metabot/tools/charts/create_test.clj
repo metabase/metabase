@@ -43,7 +43,7 @@
                                   :database 1}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid chart type"
+           #"Chart type \"invalid-type\" is not supported"
            (create-chart/create-chart
             {:query-id "q-789"
              :chart-type :invalid-type

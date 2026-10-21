@@ -14,6 +14,7 @@
    [metabase.metabot.tools.charts :as charts]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
+   [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
@@ -147,6 +148,20 @@
                                             steps))
               :error  {:class :recoverable :code ::recoverable.common/unknown-chart-id}}
              (invoke "edit_chart" args {}))))))
+
+(deftest construct-notebook-query-unknown-chart-type-test
+  (testing "construct_notebook_query takes any chart type, and one that Metabot can't create fails with the ones it can"
+    (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                (fn [_ & _]
+                                  {:structured-output {:query-id "q-1" :query stub-query :result-columns []}})]
+      (is (= {:output (str "Chart type \"histogram\" is not supported. Supported chart types: "
+                           (str/join ", " shared/chart-types) ".")
+              :error  {:class :recoverable :code ::create-chart-tools/unknown-chart-type}}
+             (invoke "construct_notebook_query"
+                     (assoc chart-args
+                            :query         {:lib/type "mbql/query" :stages []}
+                            :visualization {:chart_type "histogram"})
+                     {}))))))
 
 (deftest chart-tools-undeclared-failure-test
   (testing "a failure that no error declares ends the turn instead of reaching the model"
