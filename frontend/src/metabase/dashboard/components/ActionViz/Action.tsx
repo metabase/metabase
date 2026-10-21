@@ -169,6 +169,7 @@ function ActionFn(props: ActionProps) {
             icon="bolt"
             tooltip={tooltip}
             settings={props.settings}
+            isFullHeight={!props.isSettings}
             focus={props.isEditingDashcard}
           />
         </Box>

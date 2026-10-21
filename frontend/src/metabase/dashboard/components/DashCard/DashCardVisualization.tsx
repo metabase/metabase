@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isActionDashCard } from "metabase/actions/utils";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
@@ -631,6 +632,14 @@ export function DashCardVisualization({
     <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
   );
 
+  // An action button fills its borderless card and has its own rounded outline,
+  // so clipping it to the card's radius would cut its corners off.
+  const isActionButton =
+    isActionDashCard(dashcard) &&
+    (dashcard.visualization_settings.actionDisplayType ??
+      dashcard.action?.visualization_settings?.type ??
+      "button") === "button";
+
   return (
     <div
       className={cx(S.VisualizationContainer, CS.flexFull, CS.fullHeight, {
@@ -642,7 +651,7 @@ export function DashCardVisualization({
         <Visualization
           className={cx(S.Visualization, CS.flexFull, {
             [CS.overflowAuto]: visualizationOverlay,
-            [CS.overflowHidden]: !visualizationOverlay,
+            [CS.overflowHidden]: !visualizationOverlay && !isActionButton,
           })}
           dashboard={dashboard ?? undefined}
           dashcard={dashcard}
