@@ -148,10 +148,10 @@
   (atom {}))
 
 (defn recoverables
-  "The declared recoverable errors, as a map of code to catalog entry.
+  "Return the declared recoverable errors as a map from codes to catalog entries.
 
   An entry has `:code`, `:var`, `:doc`, `:payload-schema`, `:status-code`, `:quoted` and `:build-fn`.
-  Tests walk this to cover every declared error at once, and converters look an error up by code."
+  Tests use this map to cover every declared error, and converters use it to look up errors by code."
   []
   @recoverables*)
 
@@ -260,13 +260,10 @@
     call, in every environment.
   - `:status-code` - *optional*, default 400 - the `:status-code` on the thrown `ex-info`, for the
     non-agent callers of shared tool helpers.
-  - `:quoted` - *optional* - a map from payload key to the function that the body quotes that key's
-    value with, for foreign text such as a database's error message. The call site bounds the value,
-    and the body only quotes it, with that function. The runtime's dev and test check for unauthored
-    text excludes exactly those quoted forms: it removes each occurrence of the function's result for
-    the value from the rendered text and checks what is left. A value that the body writes any other
-    way stays in the checked text, so no text that our own code writes is excluded. See
-    [[authored-text]].
+  - `:quoted` - *optional* - a map from payload keys to functions that quote their values, for text
+    from outside Metabase such as database error messages. Bound each value at the call site and
+    quote it with the declared function. The dev and test check for unauthored text excludes those
+    quoted strings; see [[authored-text]].
 
   The body receives the validated payload and returns `{:message ... :recovery [...]}`. Write both
   in English: they are model-facing, not user-facing. Only recovery steps name tools, and each step
@@ -350,12 +347,12 @@
        (str/join "\n")))
 
 (defn authored-text
-  "`text`, which renders the recoverable `error`, without the foreign text that its declaration quotes.
+  "Return `text` with the quoted payload values from `error`'s declaration removed.
 
-  For each payload key under the declaration's `:quoted`, every occurrence of the key's value as its
-  quoting function renders it is removed, and what is left is the text our own code wrote. The
-  runtime's dev and test check for unauthored text reads this. The body is not run again, so the
-  check reads the text that was sent, and a value that the body wrote any other way stays in it."
+  The declaration's `:quoted` map supplies the payload keys and their quoting functions. Remove every
+  occurrence of each quoted value and leave the rest for the runtime's dev and test check for unauthored
+  text. Values written without their declared quoting function stay in the result. The error body is
+  not run again."
   [{:keys [code data]} text]
   (reduce-kv (fn [text k quote-fn]
                (if-some [value (get data k)]

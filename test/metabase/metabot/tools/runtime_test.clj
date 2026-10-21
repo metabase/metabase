@@ -22,7 +22,7 @@
               {:uses #{"read_resource"} :text "Or call `read_resource` on the widget collection."}]})
 
 (tools.error/defrecoverable runtime-test-quoted-failure!
-  "A failure that quotes a database's error, the way `run_query`'s does."
+  "Quote a database error as `run_query` does."
   {:payload [:map {:closed true} [:database-error :string]]
    :quoted  {:database-error pr-str}}
   [{:keys [database-error]}]
@@ -30,7 +30,8 @@
    :recovery []})
 
 (tools.error/defrecoverable runtime-test-branching-quoted-failure!
-  "A failure whose authored prefix depends on the database error it quotes, and names a class for one."
+  "Quote a database error after a prefix chosen from its contents.
+   One prefix includes a class name."
   {:payload [:map {:closed true} [:database-error :string]]
    :quoted  {:database-error pr-str}}
   [{:keys [database-error]}]
@@ -41,7 +42,7 @@
    :recovery []})
 
 (tools.error/defrecoverable runtime-test-misquoted-failure!
-  "A failure that declares a quoted database error but writes it without its quotes."
+  "Declare a quoted database error but write its value without quotes."
   {:payload [:map {:closed true} [:database-error :string]]
    :quoted  {:database-error pr-str}}
   [{:keys [database-error]}]
@@ -368,11 +369,11 @@
     (testing "a class name inside a quoted database error is data, so the check lets it through"
       (is (= (str "The database said: " (pr-str "Column \"clojure.lang.foo\" not found"))
              (:output (render ::runtime-test-quoted-failure "Column \"clojure.lang.foo\" not found")))))
-    (testing "an authored class name is rejected, even where the body chose it because of the quoted error"
+    (testing "a class name written by the error body is rejected even when it depends on quoted text"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"may only carry authored text"
            (render ::runtime-test-branching-quoted-failure "syntax error near SELECT"))))
-    (testing "a declared value that the body writes without its quotes stays in the checked text"
+    (testing "a declared value stays in the checked text when the body writes it without quotes"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"may only carry authored text"
            (render ::runtime-test-misquoted-failure "clojure.lang.ExceptionInfo: boom"))))))
