@@ -6,8 +6,13 @@
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.io ByteArrayOutputStream InputStream IOException OutputStream)
+   (java.net InetAddress ServerSocket Socket SocketException)
+   (java.util.zip GZIPOutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -229,3 +234,222 @@
                                        :display-name "snip"
                                        :snippet-id   Integer/MAX_VALUE}}}
               {:lib/type :mbql.stage/mbql}]})
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Chunked SSE fake server
+;;;
+;;; A raw-socket LLM server that streams SSE with `Transfer-Encoding: chunked`, for tests that must see when
+;;; the client drops the connection. Apache HttpClient drains the rest of a chunked body when the body
+;;; closes: https://github.com/dakrone/clj-http/issues/627
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- read-head!
+  "Read an HTTP request head from `in`, up to the blank line, and return its lines. Nil at EOF."
+  [^InputStream in]
+  (let [sb (StringBuilder.)]
+    (loop []
+      (let [b (.read in)]
+        (cond
+          (neg? b)                                          nil
+          (str/ends-with? (.append sb (char b)) "\r\n\r\n") (str/split-lines (str sb))
+          :else                                             (recur))))))
+
+(defn- header-value
+  "The value of the header `header-name` (lower case) in the head `lines`, or nil."
+  [lines header-name]
+  (some (fn [line]
+          (let [[k v] (str/split line #":\s*" 2)]
+            (when (= header-name (u/lower-case-en k))
+              v)))
+        lines))
+
+(defn- read-request!
+  "Read one request from `in`. Return its `:method`, its `:path` and `:max-tokens?`, true when the JSON body
+  has a `max_tokens` key. Nil at EOF."
+  [^InputStream in]
+  (when-let [[request-line & header-lines] (read-head! in)]
+    (let [[method path] (str/split request-line #" ")
+          length        (parse-long (or (header-value header-lines "content-length") "0"))
+          body          (String. (.readNBytes in (int length)) "UTF-8")]
+      {:method      method
+       :path        path
+       :max-tokens? (str/includes? body "\"max_tokens\"")})))
+
+(defn- write-ascii!
+  [^OutputStream out ^String s]
+  (.write out (.getBytes s "US-ASCII")))
+
+(defn- write-chunk!
+  "Write `data` to `out` as one HTTP chunk, and flush it. Write nothing for empty `data`."
+  [^OutputStream out ^bytes data]
+  (when (pos? (alength data))
+    (write-ascii! out (str (Integer/toHexString (alength data)) "\r\n"))
+    (.write out data)
+    (write-ascii! out "\r\n")
+    (.flush out)))
+
+(defn- plain-encoder
+  "An encoder that sends text as UTF-8 bytes."
+  []
+  {:encode (fn [^String s] (.getBytes s "UTF-8"))
+   :finish (fn [] (byte-array 0))})
+
+(defn- gzip-encoder
+  "An encoder that sends text as one gzip stream. It flushes after each piece, so the client can read it at once."
+  []
+  (let [buf    (ByteArrayOutputStream.)
+        gz     (GZIPOutputStream. buf true)
+        drain! (fn [] (let [data (.toByteArray buf)] (.reset buf) data))]
+    {:encode (fn [^String s] (.write gz (.getBytes s "UTF-8")) (.flush gz) (drain!))
+     :finish (fn [] (.finish gz) (drain!))}))
+
+(defn- response-head
+  [gzip?]
+  (str "HTTP/1.1 200 OK\r\n"
+       "Content-Type: text/event-stream\r\n"
+       "Transfer-Encoding: chunked\r\n"
+       "Connection: close\r\n"
+       (when gzip? "Content-Encoding: gzip\r\n")
+       "\r\n"))
+
+(defn- default-event
+  "The `i`th event of a stream: an OpenAI Chat Completions text delta."
+  [i]
+  {:id      "chatcmpl-fake"
+   :model   "fake-model"
+   :choices [{:index         0
+              :delta         {:role "assistant" :content (str "chunk-" i " ")}
+              :finish_reason nil}]})
+
+(defn- write-events!
+  "Write `n` SSE events, one every `interval-ms`. Call `on-sent` with the count after each event."
+  [write! n {:keys [interval-ms event-fn]} on-sent]
+  (dotimes [i n]
+    (write! (str "data: " (json/encode (event-fn i)) "\n\n"))
+    (on-sent (inc i))
+    (Thread/sleep (long interval-ms))))
+
+(defn- write-after!
+  "Write what comes after the events: `[DONE]` for `:done`, nothing for `:eof`, and for `:keep-alive` `[DONE]`
+  and then 20 s of `: ping` comments."
+  [write! after]
+  (case after
+    :done       (write! "data: [DONE]\n\n")
+    :eof        nil
+    :keep-alive (do (write! "data: [DONE]\n\n")
+                    (dotimes [_ 2000]
+                      (write! ": ping\n\n")
+                      (Thread/sleep 10)))))
+
+(defn- stream-response!
+  "Write a chunked SSE response of `n` events to `out`. Throws an `IOException` when the client is gone."
+  [^OutputStream out n {:keys [gzip? after] :as opts} on-sent]
+  (let [{:keys [encode finish]} (if gzip? (gzip-encoder) (plain-encoder))
+        write!                  #(write-chunk! out (encode %))]
+    (write-ascii! out (response-head gzip?))
+    (.flush out)
+    (write-events! write! n opts on-sent)
+    (write-after! write! after)
+    (write-chunk! out (finish))
+    (write-ascii! out "0\r\n\r\n")
+    (.flush out)))
+
+(defn- event-count
+  "How many events the fake sends for `request`: `:short-total` for a capped (`max_tokens`) call, else `:total`."
+  [{:keys [max-tokens?]} {:keys [total short-total]}]
+  (if (and short-total max-tokens?) short-total total))
+
+(defn- add-connection!
+  "Add the record of a new connection for `request` to `connections`, and return its index."
+  [connections request]
+  (dec (count (swap! connections conj (assoc request :sent 0 :disconnected-at-ms nil)))))
+
+(defn- serve-post!
+  "Stream the response to one `POST`. The first `POST` also reports to the server's `:sent` and `:disconnected`."
+  [^OutputStream out request opts {:keys [connections sent disconnected first-post]}]
+  (let [idx    (add-connection! connections request)
+        first? (compare-and-set! first-post false true)
+        count! (fn [n]
+                 (swap! connections assoc-in [idx :sent] n)
+                 (when first? (reset! sent n)))]
+    (try
+      (stream-response! out (event-count request opts) opts count!)
+      (catch IOException _
+        (swap! connections assoc-in [idx :disconnected-at-ms] (System/currentTimeMillis))
+        (when first?
+          (deliver disconnected (get-in @connections [idx :sent])))))))
+
+(defn- serve-not-found!
+  [^OutputStream out request {:keys [connections]}]
+  (add-connection! connections request)
+  (write-ascii! out "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+  (.flush out))
+
+(defn- serve-connection!
+  "Serve the one request of `socket`: a `POST` gets the stream, any other method a 404."
+  [^Socket socket opts state]
+  (with-open [socket socket]
+    (let [out     (.getOutputStream socket)
+          request (read-request! (.getInputStream socket))]
+      (cond
+        (nil? request)               nil
+        (= "POST" (:method request)) (serve-post! out request opts state)
+        :else                        (serve-not-found! out request state)))))
+
+(defn- accept-loop!
+  "Accept connections on `server` until it closes, and serve each one on its own thread."
+  [^ServerSocket server opts {:keys [sockets] :as state}]
+  (future
+    (try
+      (loop []
+        (let [socket (.accept server)]
+          (swap! sockets conj socket)
+          (future
+            (try
+              (serve-connection! socket opts state)
+              (catch Exception e
+                (log/debug e "Fake SSE server: a connection failed"))))
+          (recur)))
+      (catch SocketException _
+        nil))))
+
+(defn start-chunked-sse-server!
+  "Start a fake LLM server on localhost that answers each `POST` with a chunked SSE stream.
+
+  Options (all optional):
+
+    :total        - events per stream (default 10)
+    :interval-ms  - pause after each event (default 10)
+    :event-fn     - fn of the event index that returns the event map (default: an OpenAI Chat Completions
+                    text delta)
+    :after        - what follows the events: `:done` (`data: [DONE]`, the default), `:eof` (nothing) or
+                    `:keep-alive` (`[DONE]`, then 20 s of `: ping` comments). The chunked terminator follows.
+    :gzip?        - send the body with `Content-Encoding: gzip`
+    :port         - the port to listen on (default 0, a free port)
+    :short-total  - events for a `POST` whose JSON body has `max_tokens`, such as a title call
+
+  Any other method gets a 404. Returns:
+
+    :url          - the base URL, e.g. `http://127.0.0.1:52011`
+    :sent         - atom: the events sent on the first `POST`
+    :disconnected - promise: the `:sent` count when a write to the first `POST` failed (the client left)
+    :connections  - atom: one map per request, `{:method :path :max-tokens? :sent :disconnected-at-ms}`
+    :stop!        - fn that closes the server and every open connection"
+  ([]
+   (start-chunked-sse-server! {}))
+  ([opts]
+   (let [opts   (merge {:total 10 :interval-ms 10 :event-fn default-event :after :done :port 0} opts)
+         server (ServerSocket. (int (:port opts)) 50 (InetAddress/getLoopbackAddress))
+         state  {:connections  (atom [])
+                 :sent         (atom 0)
+                 :disconnected (promise)
+                 :first-post   (atom false)
+                 :sockets      (atom [])}]
+     (accept-loop! server opts state)
+     {:url          (str "http://127.0.0.1:" (.getLocalPort server))
+      :sent         (:sent state)
+      :disconnected (:disconnected state)
+      :connections  (:connections state)
+      :stop!        (fn []
+                      (.close server)
+                      (run! #(.close ^Socket %) @(:sockets state)))})))
