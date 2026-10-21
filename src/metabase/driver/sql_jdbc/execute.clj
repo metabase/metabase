@@ -534,27 +534,36 @@
   [driver prepared-statement i t]
   (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
-(defn set-parameters!
-  "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
-  {:added "0.35.0"}
-  [driver stmt params]
-  ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
-  ;; ask when there are parameters that could outnumber the placeholders.
-  (when (and (seq params)
-             (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
-                     (catch Throwable _ (count params)))
-                (count params)))
+(defn- check-parameter-count!
+  [driver ^PreparedStatement stmt params cause]
+  (when (< (try
+             ;; Partial bindings can change PostgreSQL's inferred parameter types.
+             (.clearParameters stmt)
+             (.. stmt getParameterMetaData getParameterCount)
+             (catch Throwable _ (count params)))
+           (count params))
     (throw (ex-info (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
                     {:driver driver
                      :type   driver-api/qp.error-type.driver
                      :statement (str/split-lines (str stmt))
-                     :params params})))
-  (dorun
-   (map-indexed
-    (fn [i param]
-      (log/tracef "Set param %d ^%s" (inc i) (some-> param class .getName))
-      (set-parameter driver stmt (inc i) param))
-    params)))
+                     :params params}
+                    cause))))
+
+(defn set-parameters!
+  "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
+  {:added "0.35.0"}
+  [driver stmt params]
+  (try
+    (dorun
+     (map-indexed
+      (fn [i param]
+        (log/tracef "Set param %d ^%s" (inc i) (some-> param class .getName))
+        (set-parameter driver stmt (inc i) param))
+      params))
+    (catch Exception e
+      ;; Describing unbound PostgreSQL parameters can itself fail; only probe to explain a binding failure.
+      (check-parameter-count! driver stmt params e)
+      (throw e))))
 
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
