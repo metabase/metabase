@@ -84,7 +84,7 @@ Filters — one entry per condition; entries are ANDed together:
             ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]
 ```
 
-Combine conditions inside a single entry only when they need OR logic – use `or` (with `and` nested inside it if needed), e.g. "quantity at most 5, or total over 100":
+Use one entry for conditions combined with `or` or negated together by `not`; nest `and` inside them when needed. For example, "total over 100, or quantity at most 5":
 
 ```json
 "filters": [["or", {},
