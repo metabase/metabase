@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -33,7 +32,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -296,36 +294,6 @@
   (into []
         (comp (mapcat node-table-fks) (distinct))
         (tree-seq coll? seq parsed-query)))
-
-(defn- node-gate-table-fks
-  "[[node-table-fks]] split for the curation gate before repair: `:source` holds a `source-table` and the table of an
-  implicit join's `source-field`; `:field` holds the table a field reference without a join alias names, which repair
-  may turn into an implicit join. A field with a join alias reads from its join, whose own source is collected where
-  it stands, so its table is not a reference of its own."
-  [node]
-  (cond
-    (map? node)
-    {:source (keep identity [(portable-table-fk (get node "source-table"))
-                             (numeric-table-id (get node "source-table"))
-                             (portable-field-fk-table (get node "source-field"))
-                             (numeric-field-id-ref (get node "source-field"))])}
-
-    (node-scoped-content-ref node)
-    {:source [(node-scoped-content-ref node)]}
-
-    (and (vector? node)
-         (not (map-entry? node))
-         (= "field" (nth node 0 nil))
-         (not (and (map? (nth node 1 nil)) (contains? (nth node 1 nil) "join-alias"))))
-    {:field (keep identity [(or (portable-field-fk-table (nth node 2 nil))
-                                (portable-field-fk-table (nth node 1 nil))
-                                (numeric-field-id-ref (nth node 2 nil))
-                                (numeric-field-id-ref (nth node 1 nil)))])}))
-
-(defn- gate-table-fks
-  "`{:source [...] :field [...]}`, see [[node-gate-table-fks]], over the whole query."
-  [parsed-query]
-  (apply merge-with into {:source [] :field []} (keep node-gate-table-fks (tree-seq coll? seq parsed-query))))
 
 (def ^:private unresolved-table-fk-errors
   #{:unknown-table :ambiguous-table})
@@ -606,35 +574,17 @@
     (when (mi/can-read? card)
       card)))
 
-(defn- source-card-column-tables
-  "The Tables the result columns of the readable Cards `cards` belong to. A field named by one of their portable keys
-  reads the Card's column, as the full rule sees it after resolve, so those Tables are judged only when the query names
-  them as a source. A Card whose query can't be built contributes none, so its Tables are judged."
-  [metadata-provider cards]
-  (into #{}
-        (comp (mapcat (fn [{:keys [id]}]
-                        (try
-                          (lib/returned-columns (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
-                          (catch Exception e
-                            (log/debug e "Can't build the source Card's query; judging the tables its columns name")
-                            nil))))
-              (keep :table-id))
-        cards))
-
 (defn- check-curated-portable-sources!
   "Under [[shared/curated-only?]], before repair reads the query: reject it when its first-stage source, a Card it
   reads, or a table it references is neither curated nor reachable from curated content it references. Repair's
   errors name the columns of the tables and cards they touch, so an uncurated source has to be refused before it
   runs. This is the coarse gate: it judges the ids the portable query names by the rule of
-  [[curation/uncurated-sources]], measures and segments excluded; [[check-curated-query-sources!]] judges the
-  resolved query by the same rule. The tables judged are the sources, the implicit joins' tables, and the tables of
-  field references without a join alias, except those whose fields are a readable source Card's own columns
-  ([[source-card-column-tables]])."
-  [metadata-provider parsed-query]
+  [[curation/uncurated-sources]], the tables every field reference names included and measures and segments
+  excluded; [[check-curated-query-sources!]] judges the resolved query by the same rule. `table-ids` are the tables
+  [[check-source-table-query-permissions!]] resolved."
+  [metadata-provider parsed-query table-ids]
   (when (shared/curated-only?)
-    (let [resolver     (resolve.mp/import-resolver metadata-provider permission-aware-content-store)
-          resolve      (fn [fks] (into #{} (keep #(resolve-table-fk metadata-provider resolver %)) (distinct fks)))
-          cards        (into [] (keep readable-card-by-ref) (source-card-refs parsed-query))
+    (let [cards        (into [] (keep readable-card-by-ref) (source-card-refs parsed-query))
           metric-ids   (into #{}
                              (comp (keep readable-card-by-ref) (map :id))
                              (portable-metric-refs parsed-query))
@@ -649,15 +599,14 @@
           source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
                                          (when serdes.resolve/*numeric-ids-allowed?*
                                            (first-stage-numeric-source-table parsed-query)))]
-                         (resolve-table-fk metadata-provider resolver fk))
-          {:keys [source field]} (gate-table-fks parsed-query)
-          table-ids    (into (resolve source)
-                             (remove (source-card-column-tables metadata-provider cards))
-                             (resolve field))
+                         (resolve-table-fk metadata-provider
+                                           (resolve.mp/import-resolver metadata-provider
+                                                                       permission-aware-content-store)
+                                           fk))
           uncurated    (curation/uncurated-sources metadata-provider
                                                    {:source-table source-table
                                                     :source-card  source-card
-                                                    :table        table-ids
+                                                    :table        (set table-ids)
                                                     :card         card-ids
                                                     :metric       metric-ids})]
       (when (seq uncurated)
@@ -912,7 +861,7 @@
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
         checked     (check-source-table-query-permissions! mp parsed)
-        _curated    (check-curated-portable-sources! mp parsed)]
+        _curated    (check-curated-portable-sources! mp parsed checked)]
     ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
     ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
