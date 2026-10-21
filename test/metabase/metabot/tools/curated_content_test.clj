@@ -246,11 +246,14 @@
               (is (some #(str/includes? % "only uses curated content") (:errors (metadata plain-model)))))
             (testing "an uncurated metric with a native definition is denied: it references no tables to judge it by"
               (is (denied? (read native-metric)))
-              (testing "and construct_notebook_query fails closed on it (resolve rejects it before the rule runs)"
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"."
-                                      (as-metabot metabot :internal
-                                                  #(construct/execute-representations-query
-                                                    (query native-metric-eid)))))))
+              (testing "and construct_notebook_query refuses it before repair as an uncurated source"
+                (is (= :uncurated-source
+                       (try
+                         (as-metabot metabot :internal
+                                     #(construct/execute-representations-query (query native-metric-eid)))
+                         nil
+                         (catch clojure.lang.ExceptionInfo e
+                           (:error (ex-data e))))))))
             (testing "an archived uncurated metric on a curated table is denied"
               (is (denied? (read archived-metric))))
             (testing "a curated metric with a native definition is readable, being curated itself"
