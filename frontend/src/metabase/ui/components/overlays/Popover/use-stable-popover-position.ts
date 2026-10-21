@@ -15,10 +15,11 @@ type StablePopoverPositionProps = Required<
 export function useStablePopoverPosition(
   defaultPosition: FloatingPosition = "bottom",
 ): StablePopoverPositionProps {
+  const [isOpen, setIsOpen] = useState(false);
   const [currentPosition, setCurrentPosition] = useState<FloatingPosition>();
   // Mirrors `currentPosition`, but changes straight away rather than on the next render
   const currentPositionRef = useRef<FloatingPosition>();
-  const floatingRef = useRef<HTMLElement | null>(null);
+  const referenceRef = useRef<Element | null>(null);
 
   const rememberPosition = useCallback((position?: FloatingPosition) => {
     currentPositionRef.current = position;
@@ -40,18 +41,25 @@ export function useStablePopoverPosition(
           availableHeight,
           elements,
         }) => {
-          floatingRef.current = elements.floating;
+          referenceRef.current =
+            elements.reference instanceof Element ? elements.reference : null;
           // A custom `apply` replaces Mantine's default sizing, so cap the size ourselves.
           Object.assign(elements.floating.style, {
             maxWidth: `${availableWidth}px`,
             maxHeight: `${availableHeight}px`,
           });
-          // A `keepMounted` dropdown is still positioned while hidden, with no size
-          const hasBeenMeasured = rects.floating.height > 0;
+          // A `keepMounted` dropdown is still positioned while hidden, with no size, and an update
+          // can finish just after the popover has closed and been removed
+          const isOnScreen =
+            rects.floating.height > 0 && elements.floating.isConnected;
+          if (!isOnScreen) {
+            return;
+          }
+          setIsOpen(true);
           const isStale =
             initialPlacement !==
             (currentPositionRef.current ?? defaultPosition);
-          if (hasBeenMeasured && !isStale) {
+          if (!isStale) {
             rememberPosition(placement);
           }
         },
@@ -61,32 +69,36 @@ export function useStablePopoverPosition(
   );
 
   useEffect(() => {
-    const resetPreferredSide = (event: Event) => {
-      const isInsidePopover =
+    if (!isOpen) {
+      return;
+    }
+
+    const resetPreferredSide = () => rememberPosition(undefined);
+
+    const handleScroll = (event: Event) => {
+      const movesTrigger =
         event.target instanceof Node &&
-        floatingRef.current?.contains(event.target);
-      if (!isInsidePopover) {
-        rememberPosition(undefined);
+        event.target.contains(referenceRef.current);
+      if (movesTrigger) {
+        resetPreferredSide();
       }
     };
 
     window.addEventListener("resize", resetPreferredSide);
-    document.addEventListener("scroll", resetPreferredSide, {
+    document.addEventListener("scroll", handleScroll, {
       capture: true,
       passive: true,
     });
     return () => {
       window.removeEventListener("resize", resetPreferredSide);
-      document.removeEventListener("scroll", resetPreferredSide, {
-        capture: true,
-      });
+      document.removeEventListener("scroll", handleScroll, { capture: true });
     };
-  }, [rememberPosition]);
+  }, [isOpen, rememberPosition]);
 
-  const onClose = useCallback(
-    () => rememberPosition(undefined),
-    [rememberPosition],
-  );
+  const onClose = useCallback(() => {
+    setIsOpen(false);
+    rememberPosition(undefined);
+  }, [rememberPosition]);
 
   return {
     position: currentPosition ?? defaultPosition,
