@@ -1,6 +1,5 @@
 (ns metabase.util.quoting
-  "Quotes text from outside Metabase, such as a database error or a column name, for prose a language model reads.
-   [[quoted]] makes it one double-quoted line, so nothing in the text can end the line or the quotes early.")
+  "Quote text from external sources for language model messages.")
 
 (set! *warn-on-reflection* true)
 
@@ -15,20 +14,20 @@
                         Character/UNASSIGNED]))
 
 (def ^:private double-quote-look-alikes
-  "Code points [[quoted]] escapes because they could read as the `\"` closing a quoted value. Best-effort: a list of
-   known look-alikes, not every character that might pass for a double quote."
-  ;; Single quotes are kept: they can't close a double-quoted value, and names carrying them must survive being copied
-  ;; back.
+  "Known double-quote look-alikes that [[quoted]] escapes.
+   The list does not cover every character that could be mistaken for a double quote."
+  ;; Single quotes cannot end a double-quoted value and must survive copying in names.
   #{0x00AB 0x00BB 0x02BA 0x02DD 0x02EE 0x05F4 0x201C 0x201D 0x201E 0x201F 0x2032 0x2033 0x2034 0x2035 0x2036 0x2037
     0x2057 0x275D 0x275E 0x2760 0x2E42 0x3003 0x301D 0x301E 0x301F 0xFF02 0x1F676 0x1F677 0x1F678})
 
 (defn invisible-code-point?
-  "Whether `code-point` is invisible, line-breaking, or unassigned."
+  "Return whether `code-point` is invisible, line-breaking or unassigned."
   [code-point]
   (contains? invisible-categories (long (Character/getType (int code-point)))))
 
 (defn escape-code-points
-  "`s` with every code point matching `escape?` written as `\\uXXXX` escapes of its UTF-16 code units."
+  "Escape each code point in `s` that matches the `escape?` predicate.
+   Write each UTF-16 code unit as `\\uXXXX`."
   [^String s escape?]
   (let [sb (StringBuilder.)]
     (loop [i 0]
@@ -48,7 +47,8 @@
       (contains? double-quote-look-alikes (long code-point))))
 
 (defn quoted
-  "`s` as one double-quoted line: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and
-   double-quote-like code points. Independent of the caller's print bindings."
+  "Return `s` as a single line enclosed in double quotes.
+   Escape newlines, quotes and backslashes with `pr-str`, then use `\\uXXXX` escapes for invisible,
+   line-breaking and double-quote-like code points. The caller's print bindings do not affect the result."
   [s]
   (escape-code-points (binding [*print-readably* true] (pr-str (str s))) escaped-code-point?))

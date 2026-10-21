@@ -67,7 +67,7 @@
          :group-by [:eid]}]
     (cond-> {:select   [:exploration.*
                         [:agg.max_ts :current_user_last_touched_at]
-                        [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                        [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
              :from     [:exploration]
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and

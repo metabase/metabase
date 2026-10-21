@@ -288,9 +288,7 @@
           ;; observed here so a send that throws is counted too
           (analytics/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
           (when-let [total-time (since-trigger-ms notification-info)]
-            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
-          (when-let [run-id (task-history/current-run-id)]
-            (task-history/complete-task-run! run-id))))
+            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))))
       nil)))
 
 (defn- cron->next-execution-times
@@ -371,7 +369,7 @@
 
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
-  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
+  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it and return the replaced one.")
   (take-notification-with-timeout! [this timeout-ms] "Take the next notification from the queue, returning nil if timeout is reached.")
   (queue-size [this] "Get the current size of the queue."))
 
@@ -389,9 +387,10 @@
       (try
         (when-not (.containsKey id->notification id)
           (.offer items-list item))
-        (.put id->notification id notification)
-        ;; Signal that a notification is available
-        (.signal not-empty-cond)
+        (let [replaced (.put id->notification id notification)]
+          ;; Signal that a notification is available
+          (.signal not-empty-cond)
+          replaced)
         (finally
           (.unlock queue-lock)))))
 
@@ -447,6 +446,26 @@
   []
   (BlockingQueue. (ArrayBlockingQueue. default-blocking-queue-size)))
 
+(defn- queue-notification!
+  "Put `notification` in `queue`, with the log context and the current task run in its metadata."
+  [queue notification]
+  (let [tagged   (-> notification
+                     log/with-context-meta
+                     task-history/track-run-work!)
+        replaced (try
+                   (put-notification! queue tagged)
+                   (catch Throwable e
+                     ;; `tagged` is not in the queue, so it will never run
+                     (task-history/end-run-work! tagged)
+                     (throw e)))]
+    ;; the replaced map will never run. Release it outside the queue lock, because the last piece of work of a run
+    ;; writes the run status. A failure there belongs to the run of the replaced map, not to this send, which is queued.
+    (when replaced
+      (try
+        (task-history/end-run-work! replaced)
+        (catch Throwable e
+          (log/warn e "Could not end the task run work of a replaced notification"))))))
+
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
   There can only be one notification with the same id in the queue.
@@ -490,9 +509,7 @@
                       (if-not (.get shutdown-flag)
                         (do
                           (ensure-enough-workers!)
-                          (put-notification! queue (-> notification
-                                                       log/with-context-meta
-                                                       task-history/with-run-id-meta))
+                          (queue-notification! queue notification)
                           ::ok)
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))

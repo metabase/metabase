@@ -46,6 +46,7 @@ The following Monitor pages aren't included in Monitoring access:
 
 - [Dependency diagnostics](../monitor/dependency-diagnostics.md): Available to admins and people in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group
 - [Alerts management](../monitor/alerts-management.md): Available to admins only
+- [API key usage](../monitor/api-key-usage.md): Available to admins only
 
 ## Subscriptions and alerts
 

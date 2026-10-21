@@ -406,11 +406,6 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}
-            styles={{
-              label: {
-                lineHeight: "1.5rem",
-              },
-            }}
             labelPosition="right"
             checked={notification.payload?.send_once}
             onChange={(event) => {

@@ -2023,7 +2023,11 @@
         (let [d (ex-data e)]
           (is (= :no-fk-path (:error d)))
           (is (true? (:agent-error? d)))
-          (is (re-find #"no foreign key" (ex-message e))))))))
+          (is (= (str "Field [\"Sample\" \"PUBLIC\" \"PRODUCTS\" \"CATEGORY\"] is on table \"PRODUCTS\", which has no foreign key "
+                      "from the source table \"ORDERS\", so it cannot be reached implicitly. "
+                      "To group or filter by a column from that table, add an explicit `joins:` entry "
+                      "and reference the field using the join alias. Otherwise use a field from the source table.")
+                 (ex-message e))))))))
 
 (deftest ^:parallel implicit-join-ambiguous-fk-test
   (testing (str "throws :ambiguous-fk when multiple FKs exist, and does NOT enumerate the "
@@ -2559,6 +2563,46 @@
 ;;; ============================================================
 ;;; Pass 2.8 - integer-index aggregation refs → canonical UUID form (repr-plan step 10)
 ;;; ============================================================
+
+(deftest ^:parallel bare-aggregation-clause-test
+  (doseq [aggregation [["count"] ["count" {}]]
+          ordered? [false true]]
+    (testing (str "single aggregation " (pr-str aggregation) ", sorting enabled: " ordered?)
+      (let [stage    (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                              "aggregation"  aggregation}
+                       ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
+            repaired (repair/repair trivial-mp {"lib/type" "mbql/query", "stages" [stage]})
+            aggs     (get-in repaired ["stages" 0 "aggregation"])
+            uuid     (get-in aggs [0 1 "lib/uuid"])]
+        (if ordered?
+          (do
+            (is (uuid-string? uuid))
+            (is (= [["count" {"lib/uuid" uuid}]] aggs))
+            (is (= ["aggregation" {"base-type" "type/BigInteger", "effective-type" "type/BigInteger"} uuid]
+                   (get-in repaired ["stages" 0 "order-by" 0 2]))))
+          (is (= [["count" {}]] aggs)))
+        (is (= repaired (repair/repair trivial-mp repaired)))))))
+
+(deftest ^:parallel bare-aggregation-repair-keeps-expression-named-aggregation-test
+  (let [q        {"lib/type" "mbql/query"
+                  "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "expressions"  {"aggregation" ["+" {} 1 2]}}]}
+        repaired (repair/repair trivial-mp q)]
+    (is (= ["+" {"lib/expression-name" "aggregation"} 1 2]
+           (get-in repaired ["stages" 0 "expressions" 0])))))
+
+(deftest ^:parallel aggregation-ref-invalid-entry-test
+  (doseq [entry [nil {} 42 [] [42 {}]]
+          aggs [[["count" {}] entry] [entry ["count" {}]]]]
+    (testing (pr-str aggs)
+      (let [q        {"lib/type" "mbql/query"
+                      "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  aggs
+                                 "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}
+            repaired (repair/repair trivial-mp q)]
+        (is (= aggs (get-in repaired ["stages" 0 "aggregation"])))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid structure"
+                              (repr/validate-query repaired)))))))
 
 (deftest ^:parallel aggregation-ref-integer-index-happy-path-test
   (testing "a 0-based integer agg-ref in order-by is rewritten to the canonical UUID form"

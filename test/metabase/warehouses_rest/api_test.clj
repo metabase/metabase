@@ -994,26 +994,30 @@
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
   (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden"}
     (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type "sensitive"}
-      (testing "GET /api/database/:id/metadata?include_hidden=true"
-        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
-                          :tables)]
-          (is (some (partial = "CATEGORIES") (map :name tables)))
-          (is (->> tables
-                   (filter #(= "VENUES" (:name %)))
-                   first
-                   :fields
-                   (map :name)
-                   (some (partial = "PRICE"))))))
-      (testing "GET /api/database/:id/metadata"
-        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))
-                          :tables)]
-          (is (not (some (partial = "CATEGORIES") (map :name tables))))
-          (is (not (->> tables
-                        (filter #(= "VENUES" (:name %)))
-                        first
-                        :fields
-                        (map :name)
-                        (some (partial = "PRICE"))))))))))
+      (let [metadata           (fn [user & params]
+                                 (apply mt/user-http-request user :get 200 (format "database/%d/metadata" (mt/id)) params))
+            table-names        (fn [{:keys [tables]}]
+                                 (set (map :name tables)))
+            venues-field-names (fn [{:keys [tables]}]
+                                 (->> tables
+                                      (filter #(= "VENUES" (:name %)))
+                                      first
+                                      :fields
+                                      (map :name)
+                                      set))]
+        (testing "GET /api/database/:id/metadata excludes hidden tables and sensitive fields"
+          (let [response (metadata :rasta)]
+            (is (not (contains? (table-names response) "CATEGORIES")))
+            (is (not (contains? (venues-field-names response) "PRICE")))))
+        (testing "GET /api/database/:id/metadata?include_hidden=true includes hidden tables but not sensitive fields"
+          (let [response (metadata :crowberto :include_hidden true)]
+            (is (contains? (table-names response) "CATEGORIES"))
+            (is (not (contains? (venues-field-names response) "PRICE")))))
+        (testing "GET /api/database/:id/metadata?include_sensitive_fields=true"
+          (testing "includes sensitive fields for users who can edit the data model"
+            (is (contains? (venues-field-names (metadata :crowberto :include_sensitive_fields true)) "PRICE")))
+          (testing "does not include sensitive fields for other users"
+            (is (not (contains? (venues-field-names (metadata :rasta :include_sensitive_fields true)) "PRICE")))))))))
 
 (deftest fetch-database-metadata-remove-inactive-test
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -1908,8 +1912,10 @@
                                                                                 (binding [driver.settings/*allow-testing-h2-connections* true]
                                                                                   (f)))
                                             t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
-                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
-                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
+                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL.
+                                                                              ;; The id is a `?` parameter under Honey SQL but an inlined literal
+                                                                              ;; under FunnySQL, so accept either.
+                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = (?:\?|\d+)$" sql)
                                                                                 (swap! db-reads inc))
                                                                               (run-query rf init conn model sql-args opts))]
                   (t2/select-one :model/Database :id db-id)
@@ -2823,15 +2829,19 @@
                           :ssl false,
                           :tunnel-enabled false,
                           :advanced-options false}
-        new-details      {:service-account-json "{\"type\": \"service_account\", \"project_id\": \"bigquery-project\"}",
-                          :dataset-filters-type "inclusion",
-                          :dataset-filters-patterns "dev",
-                          :project-id nil
+        new-details      {:host "mysql.example.com",
+                          :port 3306,
+                          :dbname "shop",
+                          :user "shop",
+                          :password "password",
                           :advanced-options false}]
+    ;; saving a Database validates its details through the driver, which loads it on first use -- and a driver namespace
+    ;; cannot load while one of its multimethods is redefined below
+    (driver/the-initialized-driver :mysql)
     (with-redefs [driver/can-connect? (constantly true)]
       (testing "when the engine changes, the existing details are not merged into the new ones (#77480)"
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details existing-details}]
-          (api-update-database! 200 db-id {:engine :bigquery-cloud-sdk, :details new-details})
+          (api-update-database! 200 db-id {:engine :mysql, :details new-details})
           (is (= new-details
                  (t2/select-one-fn :details :model/Database :id db-id))))
         (testing "without an engine change, existing details are still merged into partial updates"
@@ -3130,8 +3140,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         can-query filter tests                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;; Note: can-write-metadata tests are in metabase-enterprise.advanced-permissions.common-test since they require
-;; enterprise features (:perms/manage-table-metadata permission)
 
 (deftest list-databases-can-query-filter-test
   (testing "GET /api/database with can-query=true filters to only queryable databases"
