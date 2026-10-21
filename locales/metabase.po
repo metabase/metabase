@@ -10,7 +10,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-10-20 05:50+0000\n"
+"POT-Creation-Date: 2026-10-21 12:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2438,6 +2438,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CleanupCollectionModal/CleanupCollectionBulkActions.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardMoreMenu/DashboardMoreMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/content-diagnostics/components/ContentDiagnosticsBulkActionsBar/use-bulk-trash-confirmation.ts
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx
@@ -2961,6 +2962,7 @@ msgid "Add"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardMoreMenu/DashboardMoreMenu.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuButton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
 #: frontend/src/metabase/home/components/SetupGuideHomePage/SetupGuideHomePage.tsx
@@ -3410,7 +3412,7 @@ msgstr ""
 msgid "This item has been permanently deleted."
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardBreadcrumbs/DashboardBreadcrumbs.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/pages/DashboardsPage/DashboardsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/pages/DashboardsSectionLayout/DashboardsSectionLayout.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/pages/LibraryPage/hooks.ts
@@ -3450,6 +3452,39 @@ msgstr ""
 msgid "Edit"
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardMoreMenu/DashboardMoreMenu.tsx
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx
+#: frontend/src/metabase/data-studio/snippets/components/SnippetHeader/SnippetMoreMenu/SnippetMoreMenu.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
+#: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx
+msgctxt "A verb, not a noun"
+msgid "Move"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardMoreMenu/DashboardMoreMenu.tsx
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
+#: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx
+msgctxt "A verb, not a noun"
+msgid "Duplicate"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardMoreMenu/DashboardMoreMenu.tsx
+#: frontend/src/metabase/common/components/BookmarkToggle/BookmarkToggle.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
+msgid "Bookmark"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardMoreMenu/DashboardMoreMenu.tsx
+#: frontend/src/metabase/browse/metrics/MetricsTable.tsx
+#: frontend/src/metabase/common/collections/components/ActionMenu/EntityItemMenu.tsx
+#: frontend/src/metabase/common/components/BookmarkToggle/BookmarkToggle.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
+msgid "Remove from bookmarks"
+msgstr ""
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardNameInput.tsx
 msgid "Failed to update dashboard name"
 msgstr ""
@@ -3478,7 +3513,6 @@ msgid "Overview"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardTabs.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppNavbarLink.tsx
 msgid "Contents"
 msgstr ""
 
@@ -3497,6 +3531,18 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/ConversationStatsPage.tsx
 #: frontend/src/metabase/monitor/components/MonitorLayout/MonitorLayout.tsx
 msgid "Usage stats"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/components/DashboardHeader/DashboardTabs.tsx
+#: enterprise/frontend/src/metabase-enterprise/support/components/SupportSettingsSection/SupportSettingsSection.tsx
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardInfoSidebar.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+#: frontend/src/metabase/documents/components/DocumentRevisionHistorySidebar.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
+#: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
+#: frontend/src/metabase/transforms/components/TransformHeader/TransformMoreMenu/TransformMoreMenu.tsx
+#: frontend/src/metabase/transforms/components/TransformRevisionHistorySidebar/TransformRevisionHistorySidebar.tsx
+msgid "History"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/hooks/use-route-dashboard/use-route-dashboard.ts
@@ -4416,16 +4462,6 @@ msgid ""
 "version, then rebuild and sync it again."
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppNavbarLink.tsx
-#, javascript-format
-msgid "Collapse {0}"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppNavbarLink.tsx
-#, javascript-format
-msgid "Expand {0}"
-msgstr ""
-
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
 msgid "This data app can’t be opened directly."
 msgstr ""
@@ -4784,6 +4820,7 @@ msgstr ""
 #: frontend/src/metabase/admin/ai/AISettingsPage.tsx
 #: frontend/src/metabase/admin/ai/EmbeddedMetabotUpsell.tsx
 #: frontend/src/metabase/admin/ai/McpAppsSettings.tsx
+#: frontend/src/metabase/admin/app/components/SdkReact18Notice/SdkReact18Notice.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx
@@ -4803,6 +4840,7 @@ msgstr ""
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
 #: frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
 #: frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/SdkReact18Alert.tsx
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/querying/components/expressions/Editor/HelpText/HelpText.tsx
 msgid "Learn more"
@@ -6397,6 +6435,10 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/components/AvailabilityLayouts/AvailabilityLayouts.tsx
 msgid "Go to MCP settings"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton/NewQuestionButton.tsx
+msgid "Query this data"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpAnalyticsSectionLayout.tsx
@@ -10164,17 +10206,6 @@ msgstr ""
 msgid "You can only have one active request at a time"
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/support/components/SupportSettingsSection/SupportSettingsSection.tsx
-#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardInfoSidebar.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-#: frontend/src/metabase/documents/components/DocumentRevisionHistorySidebar.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/transforms/components/TransformHeader/TransformMoreMenu/TransformMoreMenu.tsx
-#: frontend/src/metabase/transforms/components/TransformRevisionHistorySidebar/TransformRevisionHistorySidebar.tsx
-msgid "History"
-msgstr ""
-
 #: enterprise/frontend/src/metabase-enterprise/table-editing/admin/AdminDatabaseTableEditingSection.tsx
 msgid "Editable table data"
 msgstr ""
@@ -10777,7 +10808,9 @@ msgstr ""
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr ""
+msgid_plural "tables"
+msgstr[0] ""
+msgstr[1] ""
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -14967,6 +15000,15 @@ msgstr ""
 msgid "upgrade"
 msgstr ""
 
+#: frontend/src/metabase/admin/app/components/SdkReact18Notice/SdkReact18Notice.tsx
+#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/SdkReact18Alert.tsx
+msgid "Update host apps to React 19"
+msgstr ""
+
+#: frontend/src/metabase/admin/app/components/SdkReact18Notice/SdkReact18Notice.tsx
+msgid "Dismiss warning"
+msgstr ""
+
 #: frontend/src/metabase/admin/app/reducers.ts
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx
@@ -18610,7 +18652,11 @@ msgid "SSO with SAML and JWT"
 msgstr ""
 
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
-msgid "Metabase group sync with SAML, JWT, and LDAP"
+msgid "Metabase group sync with SAML and JWT"
+msgstr ""
+
+#: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
+msgid "Metabase user attribute sync with LDAP"
 msgstr ""
 
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
@@ -18947,13 +18993,6 @@ msgstr ""
 #: frontend/src/metabase/browse/models/ModelsTable.tsx
 #: frontend/src/metabase/common/collections/utils.ts
 msgid "Untitled collection"
-msgstr ""
-
-#: frontend/src/metabase/browse/metrics/MetricsTable.tsx
-#: frontend/src/metabase/common/collections/components/ActionMenu/EntityItemMenu.tsx
-#: frontend/src/metabase/common/components/BookmarkToggle/BookmarkToggle.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
-msgid "Remove from bookmarks"
 msgstr ""
 
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
@@ -19739,12 +19778,6 @@ msgstr ""
 msgid "Trash this?"
 msgstr ""
 
-#: frontend/src/metabase/common/components/BookmarkToggle/BookmarkToggle.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
-msgid "Bookmark"
-msgstr ""
-
 #: frontend/src/metabase/common/components/BucketPickerPopover/BucketPickerPopover.tsx
 #: frontend/src/metabase/querying/common/components/TemporalUnitPicker/TemporalUnitPicker.tsx
 msgid "More…"
@@ -19917,6 +19950,7 @@ msgstr ""
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextEditedInfo.tsx
+#: frontend/src/metabase/common/components/ItemsTable/ItemsTable.tsx
 #: frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
 #: frontend/src/metabase/dashboard/components/DashboardGridSkeleton/DashboardGridSkeleton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopoverContent.tsx
@@ -21017,7 +21051,7 @@ msgstr ""
 #: metabase/lib/temporal_bucket.cljc
 #, fuzzy
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] ""
 "#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#\n"
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
@@ -21318,6 +21352,11 @@ msgstr ""
 
 #: frontend/src/metabase/common/components/upsells/components/UpsellCardContent.tsx
 msgid "Get a 14 day trial of this and other Pro features."
+msgstr ""
+
+#: frontend/src/metabase/common/data-studio/components/ActivityTimelineCard/ActivityTimelineCard.tsx
+#: frontend/src/metabase/data-studio/common/components/RevisionHistory/RevisionHistoryTimeline.tsx
+msgid "No revision history available."
 msgstr ""
 
 #: frontend/src/metabase/common/hooks/use-before-unload/use-before-unload.ts
@@ -22647,22 +22686,6 @@ msgstr ""
 msgid "Enter fullscreen"
 msgstr ""
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx
-#: frontend/src/metabase/data-studio/snippets/components/SnippetHeader/SnippetMoreMenu/SnippetMoreMenu.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
-#: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx
-msgctxt "A verb, not a noun"
-msgid "Move"
-msgstr ""
-
-#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
-#: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx
-msgctxt "A verb, not a noun"
-msgid "Duplicate"
-msgstr ""
-
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/EditDashboardButton.tsx
 #: frontend/src/metabase/palette/shortcuts/dashboard.ts
 msgid "Edit dashboard"
@@ -23886,10 +23909,6 @@ msgstr ""
 
 #: frontend/src/metabase/data-studio/common/components/LibraryTreePage/hooks.tsx
 msgid "Updated At"
-msgstr ""
-
-#: frontend/src/metabase/data-studio/common/components/RevisionHistory/RevisionHistoryTimeline.tsx
-msgid "No revision history available."
 msgstr ""
 
 #: frontend/src/metabase/data-studio/common/hooks/use-error-handling/use-error-handling.ts
@@ -26580,6 +26599,16 @@ msgstr ""
 
 #: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 msgid "Set via environment variable"
+msgstr ""
+
+#: frontend/src/metabase/embedding/settings/SdkReact18Warning/SdkReact18Warning.tsx
+msgid ""
+"Metabase 66 removes support for React 18. Before upgrading to Metabase 66, "
+"update these apps to React 19:"
+msgstr ""
+
+#: frontend/src/metabase/embedding/settings/SdkReact18Warning/SdkReact18Warning.tsx
+msgid "Unknown host app"
 msgstr ""
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
@@ -30256,7 +30285,7 @@ msgid "Logs and activity"
 msgstr ""
 
 #: frontend/src/metabase/monitor/components/MonitorLayout/MonitorLayout.tsx
-#: frontend/src/metabase/monitor/tools/components/TasksTabs/TasksTabs.tsx
+#: frontend/src/metabase/monitor/tools/components/TasksPageLayout/TasksPageLayout.tsx
 msgid "Background tasks"
 msgstr ""
 
@@ -35741,6 +35770,10 @@ msgid "Job enabled"
 msgstr ""
 
 #: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Job options"
+msgstr ""
+
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
 msgid "Job deleted"
 msgstr ""
 
@@ -36010,6 +36043,10 @@ msgstr ""
 #, javascript-format
 msgctxt "dialog title for moving a transform to another collection"
 msgid "Move \"{0}\""
+msgstr ""
+
+#: frontend/src/metabase/transforms/components/TransformHeader/TransformMoreMenu/TransformMoreMenu.tsx
+msgid "Transform options"
 msgstr ""
 
 #: frontend/src/metabase/transforms/components/TransformHeader/TransformMoreMenu/TransformMoreMenu.tsx
@@ -39329,10 +39366,7 @@ msgid ""
 "Field {0} is on table {1}, which has no foreign key from the source table "
 "{2}, so it cannot be reached implicitly. To group or filter by a column from "
 "that table, add an explicit `joins:` entry and reference the field using the "
-"join alias. If you are aggregating a metric that relates to that table "
-"(metrics can join tables that have no foreign key), its dimensions list the "
-"exact join clause to paste into `joins:` and the columns it unlocks. "
-"Otherwise use a field from the source table."
+"join alias. Otherwise use a field from the source table."
 msgstr ""
 
 #: metabase/agent_lib/representations/repair.clj
@@ -40503,6 +40537,12 @@ msgid ""
 msgstr ""
 
 #: metabase/collections/models/collection.clj
+msgid ""
+"Remote sync syncs only the Library, transforms, snippets and data apps "
+"unless remote-sync-custom-collections-enabled is on."
+msgstr ""
+
+#: metabase/collections/models/collection.clj
 msgid "{0} {1}''s Personal Collection"
 msgstr ""
 
@@ -41064,6 +41104,13 @@ msgstr ""
 
 #: metabase/driver/mongo/execute.clj
 msgid "Unexpected columns in results: {0}"
+msgstr ""
+
+#: metabase/driver/mongo/execute.clj
+msgid ""
+"Pivot result exceeded MongoDB''s $facet size limits. Reduce the pivot''s "
+"cardinality by adding filters or dropping breakouts with many distinct "
+"values, or ask an admin to disable the ''use-native-pivot-tables'' setting."
 msgstr ""
 
 #: metabase/driver/mongo/parameters.clj
@@ -46922,20 +46969,20 @@ msgstr ""
 msgid "Error reducing result rows: {0}"
 msgstr ""
 
-#: metabase/query_processor/pivot.clj
+#: metabase/query_processor/pivot/common.clj
 msgid ""
 "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
 msgstr ""
 
-#: metabase/query_processor/pivot.clj
+#: metabase/query_processor/pivot/common.clj
 msgid "Invalid {0}: duplicate breakout indices"
 msgstr ""
 
-#: metabase/query_processor/pivot.clj
+#: metabase/query_processor/pivot/common.clj
 msgid "Invalid pivot options: pivot-rows and pivot-cols must not overlap"
 msgstr ""
 
-#: metabase/query_processor/pivot.clj
+#: metabase/query_processor/pivot/common.clj
 msgid ""
 "Too many breakouts for a pivot query without pivot rows or columns: {0} "
 "breakouts, but the maximum is {1}"
@@ -50099,8 +50146,18 @@ msgstr ""
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid ""
-"Whether git sync settings let admins choose collections to sync, besides the "
-"Library and transforms."
+"Stop syncing the collections besides the Library, transforms, snippets and "
+"data apps before turning off remote-sync-custom-collections-enabled."
+msgstr ""
+
+#: metabase_enterprise/remote_sync/settings.clj
+msgid ""
+"Whether remote sync can sync collections besides the Library, transforms, "
+"snippets and data apps. When off, no other collection can be marked as "
+"synced, and a pull or a serialization import refuses content with other "
+"synced collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` "
+"on an instance that pulls or imports such content. It can only be turned off "
+"once no other collection is synced."
 msgstr ""
 
 #: metabase_enterprise/remote_sync/settings.clj
