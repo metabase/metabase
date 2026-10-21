@@ -855,7 +855,9 @@
             (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field
-                                    {:lib/uuid (str (random-uuid))
+                                    {:lib/uuid                                                 (str (random-uuid))
+                                     :metabase.query-processor.util.add-alias-info/nfc-path      (:nfc_path field)
+                                     :metabase.query-processor.util.add-alias-info/database-type (:database_type field)
                                      :binning
                                      {:strategy :num-bins,
                                       :num-bins 100,
