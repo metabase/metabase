@@ -1,0 +1,151 @@
+import { type MouseEvent, useMemo, useState } from "react";
+import { t } from "ttag";
+
+import { DateTime } from "metabase/common/components/DateTime";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
+import { useMetadataToasts } from "metabase/common/hooks";
+import type { TreeTableColumnDef } from "metabase/ui";
+import {
+  Card,
+  Ellipsified,
+  Icon,
+  Menu,
+  Stack,
+  TextInput,
+  TreeTable,
+  useTreeTableInstance,
+} from "metabase/ui";
+import { useRunTransformTestMutation } from "metabase-enterprise/api";
+import type { TransformTest, TransformTestRun } from "metabase-types/api";
+
+type TransformTestListProps = {
+  tests: TransformTest[];
+  readOnly: boolean;
+};
+
+export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const columns = useMemo(() => getColumns(readOnly), [readOnly]);
+
+  const treeTableInstance = useTreeTableInstance({
+    data: tests,
+    columns,
+    getNodeId: (test) => String(test.id),
+    globalFilter: searchQuery,
+    onGlobalFilterChange: setSearchQuery,
+  });
+
+  const emptyMessage = searchQuery ? t`No tests found` : t`No tests yet`;
+
+  return (
+    <Stack>
+      <TextInput
+        placeholder={t`Search...`}
+        leftSection={<Icon name="search" />}
+        bdrs="sm"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+      />
+      <Card withBorder p={0}>
+        <TreeTable
+          instance={treeTableInstance}
+          emptyState={<ListEmptyState label={emptyMessage} />}
+          ariaLabel={t`Transform tests`}
+        />
+      </Card>
+    </Stack>
+  );
+}
+
+function getColumns(readOnly: boolean): TreeTableColumnDef<TransformTest>[] {
+  const columns: TreeTableColumnDef<TransformTest>[] = [
+    {
+      id: "name",
+      accessorKey: "name",
+      header: t`Name`,
+      minWidth: 120,
+      cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
+    },
+    {
+      id: "checks",
+      accessorFn: (test) => test.expectations.length,
+      header: t`Checks`,
+      width: 120,
+      cell: ({ row }) => row.original.expectations.length,
+    },
+    {
+      id: "last_run",
+      accessorFn: (test) => test.last_run?.start_time,
+      header: t`Last Run`,
+      minWidth: 120,
+      cell: ({ row }) =>
+        row.original.last_run ? (
+          <LastRunCell run={row.original.last_run} />
+        ) : null,
+    },
+  ];
+
+  if (readOnly) {
+    return columns;
+  }
+
+  return [
+    ...columns,
+    {
+      id: "actions",
+      header: "",
+      width: 48,
+      cell: ({ row }) => <TransformTestMenu test={row.original} />,
+    },
+  ];
+}
+
+function LastRunCell({ run }: { run: TransformTestRun }) {
+  const isFailed =
+    run.status === "failed" ||
+    run.status === "error" ||
+    run.status === "timeout";
+
+  return (
+    <Ellipsified>
+      {isFailed ? t`Failed` : t`Last run`} <DateTime value={run.start_time} />
+    </Ellipsified>
+  );
+}
+
+function TransformTestMenu({ test }: { test: TransformTest }) {
+  const [runTest] = useRunTransformTestMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+
+  const handleRun = async () => {
+    const { data, error } = await runTest(test.id);
+    if (error || data == null) {
+      sendErrorToast(t`Failed to run the test`);
+    } else if (data.status === "passed") {
+      sendSuccessToast(t`Test passed`);
+    } else {
+      sendErrorToast(t`Test failed`);
+    }
+  };
+
+  const stopPropagation = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <Menu>
+      <Menu.Target>
+        <MoreMenuButton
+          aria-label={t`Test options`}
+          onClick={stopPropagation}
+        />
+      </Menu.Target>
+      <Menu.Dropdown onClick={stopPropagation}>
+        <Menu.Item leftSection={<Icon name="play" />} onClick={handleRun}>
+          {t`Run test`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}

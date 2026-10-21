@@ -80,6 +80,10 @@ export function transformIndexes(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/indexes`;
 }
 
+export function transformTestList(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/tests`;
+}
+
 export function transformDependencies(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/dependencies`;
 }
