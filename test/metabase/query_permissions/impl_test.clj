@@ -397,3 +397,17 @@
              clojure.lang.ExceptionInfo
              #"You do not have permission to view data of table 1595 in result_metadata\."
              (query-perms/check-result-metadata-data-perms (mt/id) [{:name "NAME", :table_id 1595}])))))))
+
+(deftest ^:parallel merge-source-footprints-test
+  (is (nil? (query-perms/merge-source-footprints [])))
+  (is (nil? (query-perms/merge-source-footprints [nil])))
+  (is (= {} (query-perms/merge-source-footprints [{} nil])))
+  (is (= {:table-ids           #{1 2 3}
+          :table-query-ids     #{1 3}
+          :card-ids            #{10}
+          :native?             true
+          :referenced-card-ids #{20 21}}
+         (query-perms/merge-source-footprints
+          [{:table-ids #{1 2} :table-query-ids #{1} :native? false :referenced-card-ids #{20}}
+           nil
+           {:table-ids #{3} :table-query-ids #{3} :card-ids #{10} :native? true :referenced-card-ids #{21}}]))))
