@@ -13,6 +13,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 ;;; whether to run `field-count` and `field-distinct-count` tests.
 (defmethod driver/database-supports? [::driver/driver ::field-count-tests]
   [_driver _feature _database]
@@ -32,7 +34,7 @@
                    :order-by [(driver-api/order-by-clause id-column :desc)]}]
     (is (=? {:stages [{:source-table (meta/id :orders)
                        :fields       sequential?
-                       :order-by     [[:desc {} [:field {} (meta/id :orders :id)]]]
+                       :order-by     [[:desc {} [:field {} "ID"]]]
                        :limit        100}]}
             (#'table-rows-sample/table-rows-sample-query mp table fields opts)))))
 
@@ -161,14 +163,14 @@
     [:model/Database db     {}
      :model/Table    table  {:database_require_filter true :db_id (:id db)}
      :model/Field    field1 {:name "name" :table_id (:id table) :base_type :type/Text}
-     :model/Field    field2 {:name "group_id" :table_id (:id table) :database_partitioned true :base_type :type/Integer}]
+     :model/Field    _      {:name "group_id" :table_id (:id table) :database_partitioned true :base_type :type/Integer}]
     (testing "the sample rows query on a table that requires a filter will include a filter"
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
       (let [mp (lib-be/application-database-metadata-provider (:id db))
             table (lib-be/instance->metadata table :metadata/table)
             field1 (lib-be/instance->metadata field1 :metadata/column)]
         (is (=? [[:> {}
-                  [:field {:base-type :type/Integer} (:id field2)]
+                  [:field {:base-type :type/Integer} "group_id"]
                   int?]]
                 (lib/filters (#'table-rows-sample/table-rows-sample-query mp table [field1] {}))))))
     (testing "the mbql on a table that requires a filter will include a filter"
@@ -176,6 +178,6 @@
       (mt/with-dynamic-fn-redefs [qp/process-query (fn [& args]
                                                      (first args))]
         (is (=? [[:> {}
-                  [:field {:base-type :type/Integer} (:id field2)]
+                  [:field {:base-type :type/Integer} "group_id"]
                   int?]]
                 (lib/filters (table-rows-sample/table-rows-sample table [] (constantly conj)))))))))

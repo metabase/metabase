@@ -10,7 +10,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -22,6 +21,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (defn- optional [& args] (lib/parsed-optional-param args))
 
@@ -1244,7 +1245,7 @@
                                :display-name "Checkin Date"
                                :type         :dimension
                                :widget-type  :date/all-options
-                               :dimension    (lib/ref (lib.metadata/field mp (meta/id :checkins :date)))}})
+                               :field-id     (meta/id :checkins :date)}})
                     (assoc :parameters [{:type   :date/single
                                          :target [:dimension [:template-tag "date"]]
                                          :value  "2016-07-01"}])))))))))
@@ -1258,7 +1259,7 @@
                           {"cat" {:name         "cat"
                                   :display-name "Cat"
                                   :type         :dimension
-                                  :dimension    (lib/ref (meta/field-metadata :products :category))
+                                  :field-id     (meta/id :products :category)
                                   :widget-type  :string/=
                                   :required     true
                                   :default      ["Doohickey"]}})))))))

@@ -4,8 +4,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -101,7 +104,7 @@
                                           {}
                                           [:field
                                            {:effective-type :type/BigInteger, :base-type :type/BigInteger}
-                                           ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
+                                           "ID"]
                                           1]]
                           :aggregation  [[:count {:lib/uuid (fake-uuid 0)}]]
                           :order-by     [[:asc

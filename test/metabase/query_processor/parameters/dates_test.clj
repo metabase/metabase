@@ -14,6 +14,8 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (deftest ^:parallel date-string->filter-test
   (testing "year and month"
     (is (=? [:between
@@ -50,7 +52,7 @@
   (testing "single hour-granular value"
     (is (=? [:=
              {}
-             [:field {:temporal-unit :minute} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :minute} "CREATED_AT"]
              "2025-04-01T09:00:00"]
             (params.dates/date-string->filter
              "2025-04-01T09"

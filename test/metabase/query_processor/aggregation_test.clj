@@ -19,6 +19,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Test that no aggregation just returns rows as-is."
@@ -476,7 +478,7 @@
           query       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                           (lib/aggregate measure)
                           (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))]
-      (is (=? {:stages [{:aggregation [[:sum {:lib/uuid (=?/same :uuid)} [:field {} (mt/id :venues :price)]]]
+      (is (=? {:stages [{:aggregation [[:sum {:lib/uuid (=?/same :uuid)} [:field {} "PRICE"]]]
                          :order-by    [[:asc {} [:aggregation {} (=?/same :uuid)]]]}]}
               (qp.preprocess/preprocess query))))))
 

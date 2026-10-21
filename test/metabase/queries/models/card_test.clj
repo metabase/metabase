@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -35,6 +36,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -448,8 +451,7 @@
                         :name         "cat"
                         :display-name "Category"
                         :type         :dimension
-                        :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-                                       (meta/id :products :category)]
+                        :field-id    (meta/id :products :category)
                         :widget-type  :category}})]
       (is (= [{:id       "_CAT_"
                :type     :category
