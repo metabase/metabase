@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
@@ -56,21 +57,33 @@
       (testing "keeps the query in structured-output so chart memory stores it for later edits"
         (is (= stub-query (get-in result [:structured-output :query])))))))
 
-(deftest create-chart-keeps-mbql5-temporal-filter-test
+(deftest chart-tools-keep-mbql5-temporal-filter-test
   (testing "the generated_entity part carries a during filter through JSON intact (BOT-1972)"
-    (let [date   (meta/field-metadata :checkins :date)
-          query  (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
-                     (lib/filter [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]))
-          memory (atom {:state {:queries {"q-1" query}}})
-          result (binding [shared/*memory-atom* memory]
-                   (test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
-                                                                  :viz_settings {:chart_type "bar"}
-                                                                  :title        "Check-ins in July"
-                                                                  :description  "Check-ins during July 2026."}))
-          sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
-      (is (= "mbql/query" (:lib/type sent)))
-      (is (= (lib/filters query)
-             (-> sent lib/normalize :stages first :filters))))))
+    (let [date  (meta/field-metadata :checkins :date)
+          query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/filter [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]))
+          state {:queries {"q-1" query}
+                 :charts  {"c-1" {:chart_id               "c-1"
+                                  :query_id               "q-1"
+                                  :queries                [query]
+                                  :visualization_settings {:chart_type :bar}}}}]
+      (doseq [[tool-name run-tool] [["create_chart"
+                                     #(test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                                                                     :viz_settings {:chart_type "bar"}
+                                                                                     :title        "Check-ins in July"
+                                                                                     :description  "Check-ins during July 2026."})]
+                                    ["edit_chart"
+                                     #(test-util/call-tool charts/edit-chart-tool {:chart_id         "c-1"
+                                                                                   :new_viz_settings {:chart_type "line"}
+                                                                                   :title            "Check-ins in July"
+                                                                                   :description      "Check-ins during July 2026."})]]]
+        (testing tool-name
+          (let [result (binding [shared/*memory-atom* (atom {:state state})]
+                         (run-tool))
+                sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+            (is (= "mbql/query" (:lib/type sent)))
+            (is (= (lib/filters query)
+                   (-> sent lib/normalize :stages first :filters)))))))))
 
 (deftest create-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"
@@ -78,6 +91,28 @@
       (let [result (run-create-chart chart-type)]
         (is (= (keyword chart-type) (get-in result [:structured-output :chart-type])))
         (is (= chart-type (get-in result [:data-parts 0 :data :display])))))))
+
+(deftest create-chart-query-keeps-date-filter-through-dataset-api-test
+  (testing "POST /api/dataset, where the chart in the conversation sends its query, applies its date filter (BOT-1972)"
+    (let [mp   (mt/metadata-provider)
+          date (lib.metadata/field mp (mt/id :checkins :date))]
+      (doseq [[filter-desc filter-clause]
+              {"during"
+               [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2014-07-01" :month]
+               "between with absolute-datetime bounds"
+               (lib/between date (lib/absolute-datetime "2014-07-01" :day) (lib/absolute-datetime "2014-07-31" :day))}]
+        (testing filter-desc
+          (let [query  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                           (lib/filter filter-clause)
+                           (lib/aggregate (lib/count)))
+                result (binding [shared/*memory-atom* (atom {:state {:queries {"q-1" query}}})]
+                         (test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                                                        :viz_settings {:chart_type "scalar"}
+                                                                        :title        "Check-ins in July 2014"
+                                                                        :description  "Check-ins during July 2014."}))
+                body   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode json/decode)]
+            (is (= (mt/first-row (mt/process-query query))
+                   (mt/first-row (mt/user-http-request :crowberto :post 202 "dataset" body))))))))))
 
 (deftest edit-chart-query-fallback-test
   (testing "edit_chart resolves the query from queries-state when chart memory has no query"
