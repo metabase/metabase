@@ -53,11 +53,12 @@
 
 (defmethod driver/host-carrying-parameters :starburst
   [_driver]
-  ["httpProxy" "socksProxy"])
+  ["httpProxy" "socksProxy" "oauth2TokenEndpoint"])
 
 (defmethod driver/non-host-parameters :starburst
   [_driver]
-  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"
+   "disallowLocalRedirect"])
 
 (set! *warn-on-reflection* true)
 
