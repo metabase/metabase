@@ -2,7 +2,10 @@ import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnginesEndpoint } from "__support__/server-mocks";
+import {
+  setupCreateDatabaseEndpointError,
+  setupEnginesEndpoint,
+} from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
@@ -44,13 +47,13 @@ const POSTGRES_ENGINE = createMockEngine({
 });
 
 interface SetupOpts {
-  createDatabaseErrorBody?: unknown;
+  createDatabaseErrorBody?: string | Record<string, unknown>;
 }
 
 const setup = ({ createDatabaseErrorBody }: SetupOpts = {}) => {
   setupEnginesEndpoint(createMockEngines({ postgres: POSTGRES_ENGINE }));
   if (createDatabaseErrorBody !== undefined) {
-    fetchMock.post("path:/api/database", {
+    setupCreateDatabaseEndpointError({
       status: 400,
       body: createDatabaseErrorBody,
     });

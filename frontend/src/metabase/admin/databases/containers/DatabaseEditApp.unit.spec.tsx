@@ -2,13 +2,14 @@ import fetchMock from "fetch-mock";
 
 import {
   setupDatabaseEndpoints,
+  setupDatabaseNotFoundEndpoint,
   setupDatabaseUsageInfoEndpoint,
   setupEnginesEndpoint,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { Database } from "metabase-types/api";
+import type { Database, DatabaseId } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockEngines,
@@ -19,7 +20,25 @@ import { DatabaseEditApp } from "./DatabaseEditApp";
 
 const NON_EXISTING_DATABASE_ID = 999;
 
-const setup = ({ database }: { database: Database }) => {
+const SAMPLE_DATABASE = createMockDatabase({
+  name: "Sample Database",
+  is_sample: true,
+});
+
+interface SetupOpts {
+  database: Database;
+  hasNullDetails?: boolean;
+}
+
+const setup = ({ database, hasNullDetails = false }: SetupOpts) => {
+  if (hasNullDetails) {
+    // Registered before `setupDatabaseEndpoints` so that this route matches
+    // first. The backend can send `details: null`, which `Database` does not allow.
+    fetchMock.get(`path:/api/database/${database.id}`, {
+      ...database,
+      details: null,
+    });
+  }
   setupEnginesEndpoint({});
   setupDatabaseEndpoints(database);
   setupEnginesEndpoint(createMockEngines());
@@ -34,34 +53,26 @@ const setup = ({ database }: { database: Database }) => {
     settings: {},
   });
 
-  renderWithProviders(
-    <Route path="/admin/databases/:databaseId" element={<DatabaseEditApp />} />,
-    {
-      withRouter: true,
-      initialRoute: `/admin/databases/${database.id}`,
-      storeInitialState: createMockState({
-        currentUser: createMockUser({ is_superuser: true }),
-      }),
-    },
-  );
+  renderDatabaseEditApp(database.id);
 };
 
 const setupNonExistingDatabase = () => {
   setupEnginesEndpoint(createMockEngines());
-  fetchMock.get(`path:/api/database/${NON_EXISTING_DATABASE_ID}`, {
-    status: 404,
-    body: "Not found.",
-  });
+  setupDatabaseNotFoundEndpoint(NON_EXISTING_DATABASE_ID);
   fetchMock.get(
     `path:/api/database/${NON_EXISTING_DATABASE_ID}/settings-available`,
     { status: 404, body: "Not found." },
   );
 
+  renderDatabaseEditApp(NON_EXISTING_DATABASE_ID);
+};
+
+const renderDatabaseEditApp = (databaseId: DatabaseId) => {
   renderWithProviders(
     <Route path="/admin/databases/:databaseId" element={<DatabaseEditApp />} />,
     {
       withRouter: true,
-      initialRoute: `/admin/databases/${NON_EXISTING_DATABASE_ID}`,
+      initialRoute: `/admin/databases/${databaseId}`,
       storeInitialState: createMockState({
         currentUser: createMockUser({ is_superuser: true }),
       }),
@@ -101,13 +112,7 @@ describe("DatabaseEditApp", () => {
   });
 
   it("shows the database and lets admins remove it when its details are null (metabase#25715)", async () => {
-    setup({
-      database: createMockDatabase({
-        name: "Sample Database",
-        is_sample: true,
-        details: undefined,
-      }),
-    });
+    setup({ database: SAMPLE_DATABASE, hasNullDetails: true });
 
     expect(
       await screen.findByTestId("database-connection-info-section"),
@@ -122,12 +127,8 @@ describe("DatabaseEditApp", () => {
 
   it("shows a cloud-attached database without editing or removing it", async () => {
     setup({
-      database: createMockDatabase({
-        name: "Sample Database",
-        is_sample: true,
-        is_attached_dwh: true,
-        details: undefined,
-      }),
+      database: { ...SAMPLE_DATABASE, is_attached_dwh: true },
+      hasNullDetails: true,
     });
 
     const connectionSection = await screen.findByTestId(

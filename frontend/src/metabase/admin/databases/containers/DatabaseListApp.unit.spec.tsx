@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
+  setupDatabaseListEndpointError,
   setupEnginesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -31,7 +32,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   setupEnginesEndpoint(createMockEngines());
   if (hasListError) {
-    fetchMock.get("path:/api/database", {
+    setupDatabaseListEndpointError({
       status: 500,
       body: { message: LIST_ERROR_MESSAGE },
     });
@@ -83,20 +84,26 @@ describe("DatabaseListApp", () => {
     );
   });
 
-  it("shows a generic error with hidden details when the databases fail to load (metabase#20471)", async () => {
-    setup({ hasListError: true });
+  it.each([
+    { hasAdvancedPermissions: false },
+    { hasAdvancedPermissions: true },
+  ])(
+    "shows a generic error with hidden details when the databases fail to load (metabase#20471) (advanced permissions: $hasAdvancedPermissions)",
+    async ({ hasAdvancedPermissions }) => {
+      setup({ hasListError: true, hasAdvancedPermissions });
 
-    expect(
-      await screen.findByText(/Something.s gone wrong/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /We.ve run into an error\. You can try refreshing the page, or just go back\./,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText(LIST_ERROR_MESSAGE)).not.toBeVisible();
+      expect(
+        await screen.findByText(/Something.s gone wrong/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /We.ve run into an error\. You can try refreshing the page, or just go back\./,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText(LIST_ERROR_MESSAGE)).not.toBeVisible();
 
-    await userEvent.click(screen.getByText("Show error details"));
-    expect(screen.getByText(LIST_ERROR_MESSAGE)).toBeVisible();
-  });
+      await userEvent.click(screen.getByText("Show error details"));
+      expect(screen.getByText(LIST_ERROR_MESSAGE)).toBeVisible();
+    },
+  );
 });
