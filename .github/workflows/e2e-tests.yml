@@ -81,7 +81,6 @@ jobs:
           path: target/cljs_dev
 
       - name: Prepare back-end environment
-        if: steps.prebuilt-cljs.outcome != 'success'
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
