@@ -19,7 +19,8 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli :as mu]))
 
 (defn- invoke-sql-tool
   [profile memory tool-name args]
@@ -524,3 +525,19 @@
         old-string (str/replace sql "SELECT" "select")]
     (is (= [0 (count sql)] (#'sql.edit/closest-span sql old-string)))
     (is (nil? (#'sql.edit/closest-span sql (str old-string " missing"))))))
+
+(deftest blank-sql-creation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [engine [:h2 :postgres]]
+      (mt/with-temp [:model/Database {db-id :id} {:engine engine}]
+        (doseq [profile [:internal :sql]
+                sql ["" " \n\t"]
+                enforce-schema? [true false]]
+          (testing (str engine " / " profile " / schema checks: " enforce-schema? " / " (pr-str sql))
+            (let [invoke #(invoke-sql-tool profile editor-memory "create_sql_query" {:database_id db-id :sql_query sql})
+                  result (if enforce-schema? (invoke) (mu/disable-enforcement (invoke)))]
+              (is (= {:class :recoverable :code ::sql.common/blank-sql} (:error result)))
+              (is (str/includes? (:output result) "No changes were saved"))
+              (is (str/includes? (:output result) "Provide nonblank SQL"))
+              (is (nil? (:structured-output result)))
+              (is (empty? (:data-parts result))))))))))

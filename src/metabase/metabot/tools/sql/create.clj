@@ -65,6 +65,7 @@
 
   ;; Validate access
   (validate-database-access database-id)
+  (metabot.tools.sql.common/check-nonblank-sql! sql)
 
   (let [dialect (metabot.tools.sql.validation/database-id->dialect database-id)
 
