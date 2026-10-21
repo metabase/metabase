@@ -190,7 +190,9 @@
   #{"document_construct_sql_chart" "document_construct_model_chart"})
 
 (defn- answer-producing?
-  "Whether a tool output delivered an answer, requiring structured output from legacy terminal tools."
+  "Return whether a tool output contains a successful answer.
+
+  Legacy terminal tools must return structured output to distinguish answers from failures."
   [tool-name part]
   (and (successful-tool-output? part)
        (or (not (contains? legacy-terminal-tool-names tool-name))

@@ -1,5 +1,5 @@
 (ns metabase.metabot.tools.sql-test
-  "Runtime coverage for SQL creation, editing, replacement, and model-facing recovery."
+  "Tests for SQL query tools and the recovery instructions returned to the model."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -324,16 +324,16 @@
                    (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) "SELECT 1"))]
             [tool-name args code excerpt]
             [["replace_sql_query" {:new_query ""} ::sql.common/blank-sql "would contain no SQL"]
-             ["replace_sql_query" {:new_query " \n\t"} ::sql.common/blank-sql "nonblank SQL"]
+             ["replace_sql_query" {:new_query " \n\t"} ::sql.common/blank-sql "SQL that is not blank"]
              ["edit_sql_query" {:edits [{:old_string "SELECT 1" :new_string ""}]}
               ::sql.common/blank-sql "No changes were saved"]
              ["edit_sql_query" {:edits [{:old_string "SELECT 1" :new_string " \n"}]}
-              ::sql.common/blank-sql "nonblank SQL"]
+              ::sql.common/blank-sql "SQL that is not blank"]
              ["edit_sql_query" {:edits []} ::sql.edit/empty-edits "at least one edit"]
              ["edit_sql_query" {:edits [{:old_string "" :new_string "X"}]}
-              ::sql.edit/empty-old-string "old_string must not be empty"]
+              ::sql.edit/empty-old-string "cannot have an empty `old_string`"]
              ["edit_sql_query" {:edits [{:old_string "" :new_string "X" :replace_all true}]}
-              ::sql.edit/empty-old-string "old_string must not be empty"]]]
+              ::sql.edit/empty-old-string "cannot have an empty `old_string`"]]]
       (testing (str profile " / " args)
         (let [result (invoke-sql-tool profile {:state {:queries {"q1" query}}} tool-name args)]
           (is (= {:class :recoverable :code code} (:error result)))
@@ -538,7 +538,7 @@
                   result (if enforce-schema? (invoke) (mu/disable-enforcement (invoke)))]
               (is (= {:class :recoverable :code ::sql.common/blank-sql} (:error result)))
               (is (str/includes? (:output result) "No changes were saved"))
-              (is (str/includes? (:output result) "Provide nonblank SQL"))
+              (is (str/includes? (:output result) "Provide SQL that is not blank"))
               (is (nil? (:structured-output result)))
               (is (empty? (:data-parts result))))))))))
 

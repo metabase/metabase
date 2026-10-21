@@ -176,8 +176,9 @@
                       {:where where})))))
 
 (def max-output-length
-  "Maximum rendered failure length, including recovery steps. Declarations that include excerpts
-  should budget against this cap so the runtime keeps their recovery steps intact."
+  "Maximum number of characters in a rendered failure, including recovery steps.
+
+  Leave room for recovery steps when including excerpts."
   4000)
 
 (defn render

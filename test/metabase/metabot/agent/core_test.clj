@@ -402,7 +402,7 @@
                 blank-result (some #(when (and (= :tool-output (:type %)) (= "blank" (:id %)))
                                       (:result %)) replaced)
                 final-state (some #(when (= "state" (:data-type %)) (:data %)) replaced)]
-            (testing (str profile " keeps an invalid replacement recoverable after an edit stores MBQL 5")
+            (testing (str profile " can retry a blank replacement after an edit stores the query as MBQL 5")
               (is (= :mbql/query (keyword (get-in state [:queries "q1" :lib/type]))))
               (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries "q1"]))))
               (is (= :recoverable (get-in blank-result [:error :class])))

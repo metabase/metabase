@@ -45,12 +45,12 @@
              [:query-id :string]
              [:available [:sequential :string]]]}
   [{:keys [query-id available]}]
-  {:message (str "Query " (quoting/quoted query-id) " not found. Available query IDs: "
+  {:message (str "Query " (quoting/quoted query-id) " was not found. Available query IDs: "
                  (if (seq available) (str/join ", " (map quoting/quoted available)) "none") ".")
    :recovery [(if (seq available)
                 {:uses #{} :text "Use an available query ID from this conversation."}
                 {:uses #{"create_sql_query"}
-                 :text "Use `create_sql_query` to create a SQL query, then use its returned query ID."})]})
+                 :text "Use `create_sql_query` to create a SQL query, then use the returned query ID."})]})
 
 (defrecoverable unknown-database!
   "The requested database does not exist."

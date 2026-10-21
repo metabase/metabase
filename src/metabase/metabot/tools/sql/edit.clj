@@ -45,7 +45,9 @@
         {:text (str builder) :offsets (persistent! offsets)}))))
 
 (defn- closest-span
-  "Find stored text differing only in case and whitespace. This is a hint, never an edit."
+  "Find stored text that differs only in case and whitespace.
+
+  Use the match as a hint, never as an edit."
   [^String sql old-string]
   (let [^String needle (:text (normalized-match-text old-string))]
     (when (seq needle)
@@ -92,7 +94,7 @@
                  (conj (str "[... " (- (count sql) end) " SQL characters omitted ...]"))))))
 
 (defn- quoted-sql-context
-  "Budget the escaped text, not the raw SQL, so recovery survives the runtime's 4,000-character cap."
+  "Limit the escaped text so recovery steps fit within the 4,000-character limit."
   [sql spans budget]
   (let [full (quoting/quoted sql)]
     (if (<= (count full) budget)
@@ -111,7 +113,7 @@
                 (recur low (dec radius) result)))))))))
 
 (defn- line-runs
-  "Consecutive lines with the same number of matches share one range."
+  "Group consecutive lines that have the same number of matches."
   [lines]
   (reduce (fn [runs group]
             (let [line (first group)
@@ -149,8 +151,8 @@
         starts (line-starts sql)
         closest (first spans)
         prefix (str "Edit " edit-index " for query "
-                    (metabot.tools.sql.common/bounded-quote query-id 128) ": "
-                    (if ambiguous? "text to replace found multiple times." "text to replace not found.")
+                    (metabot.tools.sql.common/bounded-quote query-id 128) " failed because "
+                    (if ambiguous? "the text to replace appears more than once." "the text to replace was not found.")
                     (when (and (not ambiguous?) closest)
                       (str " Closest match ignoring case and whitespace at line " (line-number starts (first closest))
                            ": " (metabot.tools.sql.common/bounded-quote (subs sql (first closest) (second closest)) 1024)
@@ -165,7 +167,7 @@
      :recovery recovery}))
 
 (tools/defrecoverable edit-not-found!
-  "An edit's old text is absent from the SQL at that step."
+  "An edit's old text does not appear in the SQL at that step."
   {:payload edit-error-payload}
   [payload]
   (edit-failure payload false
@@ -175,11 +177,11 @@
                   :text "Or use `replace_sql_query` with the complete corrected SQL."}]))
 
 (tools/defrecoverable edit-ambiguous!
-  "An edit's old text matches more than once without replace_all."
+  "An edit matches more than once without `replace_all` enabled."
   {:payload edit-error-payload}
   [payload]
   (edit-failure payload true
-                [{:uses #{} :text (str "Include enough surrounding SQL to match once, or set replace_all to true "
+                [{:uses #{} :text (str "Include enough surrounding SQL to match only once, or set `replace_all` to true "
                                        "if every occurrence should change. Retry the complete edit list, including earlier edits.")}
                  {:uses #{"replace_sql_query"}
                   :text "Or use `replace_sql_query` with the complete corrected SQL."}]))
@@ -189,15 +191,15 @@
   {:payload [:map {:closed true} [:query-id :string]]}
   [{:keys [query-id]}]
   {:message (str "Query " (quoting/quoted query-id) " needs at least one edit. No edits were saved.")
-   :recovery [{:uses #{} :text "Provide at least one edit with nonempty old_string and the intended new_string."}]})
+   :recovery [{:uses #{} :text "Provide at least one edit with a nonempty `old_string` and the intended `new_string`."}]})
 
 (tools/defrecoverable empty-old-string!
   "An edit has an empty search string, which cannot identify stored text."
   {:payload [:map {:closed true} [:query-id :string] [:edit-index :int]]}
   [{:keys [query-id edit-index]}]
   {:message (str "Edit " edit-index " for query " (quoting/quoted query-id)
-                 ": old_string must not be empty, even with replace_all. No edits were saved.")
-   :recovery [{:uses #{} :text "Set old_string to the exact stored SQL you want to replace, then retry the complete edit list."}]})
+                 " cannot have an empty `old_string`, even when `replace_all` is true. No edits were saved.")
+   :recovery [{:uses #{} :text "Set `old_string` to the exact stored SQL you want to replace, then retry the complete edit list."}]})
 
 (defn- apply-sql-edit
   [context sql [index {old-string :old_string new-string :new_string replace-all :replace_all}]]

@@ -37,7 +37,7 @@
    :recovery [(if (seq available)
                 {:uses #{} :text "Choose one of the available SQL query IDs."}
                 {:uses #{"create_sql_query"}
-                 :text "Use `create_sql_query` to create a SQL query, then use its returned query ID."})]})
+                 :text "Use `create_sql_query` to create a SQL query, then use the returned query ID."})]})
 
 (defn bounded-quote
   "Quote text within a character budget, adding an ellipsis when text is omitted."
@@ -65,17 +65,17 @@
      :recovery recovery}))
 
 (tools/defrecoverable blank-sql!
-  "A creation, replacement, or edit would contain no SQL."
+  "Creating, replacing, or editing the query would leave it with no SQL."
   {:payload [:map {:closed true} [:query-id {:optional true} :string]]}
   [{:keys [query-id]}]
   {:message (str (if query-id (str "Query " (quoting/quoted query-id)) "The proposed query")
                  " would contain no SQL. No changes were saved.")
    :recovery [{:uses #{} :text (if query-id
-                                 "Provide nonblank SQL, then retry the replacement or the complete edit list."
-                                 "Provide nonblank SQL, then retry creating the query.")}]})
+                                 "Provide SQL that is not blank, then retry the replacement or the complete edit list."
+                                 "Provide SQL that is not blank, then retry creating the query.")}]})
 
 (defn check-nonblank-sql!
-  "Return SQL unless it is blank, which is recoverable before validation or query updates."
+  "Return the SQL or raise a recoverable error if it is blank."
   ([sql]
    (check-nonblank-sql! nil sql))
   ([query-id sql]
