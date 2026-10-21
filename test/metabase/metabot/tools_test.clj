@@ -282,20 +282,20 @@
                (construct-tool-failure-for-thrown e)))))))
 
 (deftest construct-notebook-query-tool-malformed-clauses-test
-  (testing "a malformed stage or stage key is an error the model can fix, not the end of the turn"
+  (testing "the model can retry after a malformed stage or clause"
     (let [orders   {:lib/type     "mbql.stage/mbql"
                     :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]}
           post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
       (mt/with-current-user (mt/user->id :rasta)
         (doseq [[label stages] {"a number as `aggregation`"
                                 [(assoc orders :aggregation 42)]
-                                "an empty aggregation clause, sorted by an empty clause"
+                                "an empty aggregation clause used in `order-by`"
                                 [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]
                                 "a number as `joins`"
                                 [(assoc orders :joins 42)]
-                                "a number as `order-by`, beside a post-aggregation filter"
+                                "a post-aggregation filter with a number as `order-by`"
                                 [(assoc post-agg :order-by 42)]
-                                "a number as `fields`, beside a post-aggregation filter"
+                                "a post-aggregation filter with a number as `fields`"
                                 [(assoc post-agg :fields 42)]
                                 "a number as a later stage"            [orders 42]
                                 "an aggregation list as a later stage" [orders [["count" {}]]]}]

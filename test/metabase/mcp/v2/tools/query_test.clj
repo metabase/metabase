@@ -930,13 +930,13 @@
           post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
       (doseq [[label path stages] [["a number as `aggregation`" "[0] \"aggregation\":"
                                     [(assoc orders :aggregation 42)]]
-                                   ["an empty aggregation clause, sorted by an empty clause" "[0] \"aggregation\":"
+                                   ["an empty aggregation clause used in `order-by`" "[0] \"aggregation\":"
                                     [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]]
                                    ["a number as `joins`" "[0] \"joins\":"
                                     [(assoc orders :joins 42)]]
-                                   ["a number as `order-by`, beside a post-aggregation filter" "[0] \"order-by\":"
+                                   ["a post-aggregation filter with a number as `order-by`" "[0] \"order-by\":"
                                     [(assoc post-agg :order-by 42)]]
-                                   ["a number as `fields`, beside a post-aggregation filter" "[0] \"fields\":"
+                                   ["a post-aggregation filter with a number as `fields`" "[0] \"fields\":"
                                     [(assoc post-agg :fields 42)]]
                                    ["a number as a later stage" "[1]" [orders 42]]
                                    ["an aggregation list as a later stage" "[1]" [orders [["count" {}]]]]]]

@@ -375,18 +375,18 @@
         (is (re-find #"aggregation" (:message response)))))))
 
 (deftest construct-query-rejects-malformed-clauses-test
-  (testing "a malformed stage or stage key is a 400 naming the invalid structure, not a 500"
+  (testing "a malformed stage or clause returns HTTP 400 with an error about the query structure"
     (doseq [[label query] (let [post-agg (orders-query :aggregation [["count" {}]]
                                                        :filters     [[">" {} ["aggregation" {} 0] 1]])]
                             {"a number as `aggregation`"
                              (assoc-in (orders-query) [:stages 0 :aggregation] 42)
-                             "an empty aggregation clause, sorted by an empty clause"
+                             "an empty aggregation clause used in `order-by`"
                              (orders-query :aggregation [[]] :order-by [["desc" {} []]])
                              "a number as `joins`"
                              (assoc-in (orders-query) [:stages 0 :joins] 42)
-                             "a number as `order-by`, beside a post-aggregation filter"
+                             "a post-aggregation filter with a number as `order-by`"
                              (assoc-in post-agg [:stages 0 :order-by] 42)
-                             "a number as `fields`, beside a post-aggregation filter"
+                             "a post-aggregation filter with a number as `fields`"
                              (assoc-in post-agg [:stages 0 :fields] 42)
                              "a number as a later stage"
                              (update (orders-query) :stages conj 42)

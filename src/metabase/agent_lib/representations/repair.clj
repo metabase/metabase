@@ -1585,8 +1585,9 @@
        (contains? #{"asc" "desc"} (first clause))))
 
 (defn- rewrite-order-by-inline-aggs-in-stage
-  "Apply the inline-agg-in-`order-by` rewrite to a single string-keyed stage map. Returns the
-  updated stage. No-op when the stage has no `order-by`, or no `aggregation` list of clauses."
+  "Rewrite inline aggregations in a stage's `order-by` clauses.
+
+  Leave the stage unchanged if `order-by` is missing or `aggregation` isn't a list of clauses."
   [stage]
   (let [aggs    (get stage "aggregation")
         ord     (get stage "order-by")]
@@ -1762,7 +1763,6 @@
   [stage]
   (let [aggs (get stage "aggregation")]
     (cond
-      ;; Not a stage map - left for validation to report.
       (not (map? stage))
       stage
 
@@ -1958,17 +1958,16 @@
    form))
 
 (defn- split-post-agg-filter-stage
-  "Detect post-agg-filter shape in `stage`. Return `[stage]` if no split is needed, or
-  `[stage' new-stage]` if the stage was split. Throws `:agent-error?` ex-info when split is
-  required but unsafe to perform automatically.
+  "Split a stage whose filters refer to its own aggregations.
 
-  Auto-fix is intentionally narrow: it moves the offending filter(s) into a second stage and
-  rewrites their agg-refs to cross-stage `[\"field\" {} \"<col-name>\"]` clauses. It does
-  NOT move `order-by` / `limit` / `fields` — those frequently reference pre-aggregation
-  columns that don't survive the split, and silently relocating them produces either a
-  hard-to-diagnose 'no matching field' error or, worse, a different-row-count query. When
-  any of those keys is present we refuse and ask the LLM to author two stages explicitly. An
-  `order-by` or `fields` that `seq` can't read, such as a number, is left for validation to report."
+  Return `[stage]` if no split is needed, or `[stage' new-stage]` after a split.
+  Rewrite aggregation references in the new stage as cross-stage field references.
+  Throw an `:agent-error?` exception if a split is needed but can't be done safely.
+
+  Moving `order-by`, `limit` or `fields` could change the results because those clauses
+  may refer to columns absent from the aggregation output. Ask the LLM to write two stages
+  explicitly in that case. Leave the stage unchanged for validation if `order-by` or `fields`
+  can't be read as a sequence."
   [stage]
   (let [aggs              (get stage "aggregation")
         same-stage-uuids  (when (vector? aggs) (collect-stage-agg-uuids stage))]

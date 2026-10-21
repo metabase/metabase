@@ -2830,7 +2830,7 @@
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
 (deftest ^:parallel split-post-agg-refuses-when-order-by-is-a-string-test
-  (testing "a string `order-by` beside a post-agg filter gets the same refusal, not a validation error"
+  (testing "a string `order-by` with a post-aggregation filter gets advice to split the stage"
     (is (=? {:error :post-agg-filter-with-trailing-clauses}
             (try
               (repair/repair trivial-mp {"lib/type" "mbql/query"
@@ -3020,21 +3020,21 @@
                        ["stages" 1 "filters"])))))))
 
 (deftest ^:parallel malformed-clauses-reach-validation-test
-  (testing "a malformed stage or stage key gets through repair, so validation can name it"
+  (testing "repair leaves malformed stages and clauses for validation"
     ;; ORDERS has to resolve for the cross-stage pass to reach a later stage
     (let [orders   {"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}
           post-agg (assoc orders "aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]])]
       (doseq [[label stages] {"a number as `aggregation`"
                               [(assoc orders "aggregation" 42)]
-                              "an empty aggregation clause, sorted by an empty clause"
+                              "an empty aggregation clause used in `order-by`"
                               [(assoc orders "aggregation" [[]] "order-by" [["desc" {} []]])]
                               "a number as `joins`"
                               [(assoc orders "joins" 42)]
-                              "a number as `joins`, beside a join-alias reference"
+                              "a join-alias reference with a number as `joins`"
                               [(assoc orders "joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]])]
-                              "a number as `order-by`, beside a post-aggregation filter"
+                              "a post-aggregation filter with a number as `order-by`"
                               [(assoc post-agg "order-by" 42)]
-                              "a number as `fields`, beside a post-aggregation filter"
+                              "a post-aggregation filter with a number as `fields`"
                               [(assoc post-agg "fields" 42)]
                               "a number as a later stage"            [orders 42]
                               "a string as a later stage"            [orders "ORDERS"]
