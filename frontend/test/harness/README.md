@@ -25,6 +25,10 @@ jest's `--ignoreProjects` takes every argument after it, up to the next option.
 So the scripts end with `--runner`, and a spec pattern after the script name
 reaches jest as a pattern.
 
+A run with more than 100 spec files for each worker runs them in path order,
+which is faster there. A smaller run keeps jest's order: the files that failed
+last time first, then the slowest.
+
 `it.only`, `describe.only`, `it.skip`, `it.todo`, `it.failing` and `it.each`
 work as they do in jest.
 

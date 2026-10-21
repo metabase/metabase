@@ -104,6 +104,11 @@ type OnTestSuccess = (test: Test, result: TestResult) => Promise<void>;
 type OnTestFailure = (test: Test, error: SerializableError) => Promise<void>;
 
 const DEFAULT_SLOW_TEST_THRESHOLD_S = 5;
+// jest runs the files that failed last time first, then the slowest. On a
+// large run that starts the heaviest files together in workers that have not
+// warmed up, and path order is faster. On a smaller run jest's order is
+// faster, because no slow file starts last.
+const PATH_ORDER_MIN_FILES_PER_WORKER = 100;
 
 // jest formats a file's failures with jest-message-util, which is not a
 // dependency of the repository, so it is loaded from where jest loads it.
@@ -176,7 +181,9 @@ export default class HarnessRunner {
       },
     });
     try {
-      await pool.run([...testsByFile.keys()]);
+      await pool.run(
+        runOrder([...testsByFile.keys()], this.#globalConfig.maxWorkers),
+      );
     } finally {
       pool.close();
     }
@@ -191,6 +198,12 @@ export default class HarnessRunner {
       ...(process.stdout.isTTY && { FORCE_COLOR: "1" }),
     };
   }
+}
+
+function runOrder(files: string[], workers: number): string[] {
+  return files.length > PATH_ORDER_MIN_FILES_PER_WORKER * workers
+    ? [...files].sort()
+    : files;
 }
 
 function testOf(testsByFile: Map<string, Test>, file: string): Test {
