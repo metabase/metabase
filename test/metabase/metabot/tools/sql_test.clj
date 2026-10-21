@@ -541,3 +541,26 @@
               (is (str/includes? (:output result) "Provide nonblank SQL"))
               (is (nil? (:structured-output result)))
               (is (empty? (:data-parts result))))))))))
+
+(deftest long-parser-error-keeps-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
+      (mt/with-db db
+        (mt/with-dynamic-fn-redefs [sql-tools/transpile-sql
+                                    (constantly {:status :error
+                                                 :error-message (str "Invalid expression\n" (apply str (repeat 1500 "\u001b")))})]
+          (doseq [profile [:internal :sql]
+                  tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+            (let [memory (assoc editor-memory :state {:queries {"q1" (lib/native-query (mt/metadata-provider) "SELECT 1")}})
+                  result (invoke-sql-tool profile memory tool-name
+                                          {:database_id db-id :sql_query "SELECT ="
+                                           :edits [{:old_string "1" :new_string "="}] :new_query "SELECT ="})
+                  output (:output result)]
+              (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
+              (is (<= (count output) 4000))
+              (is (str/includes? output "Parser details: \"Invalid expression\\n"))
+              (is (str/includes? output "...\""))
+              (is (not (str/includes? output "\u001b")))
+              (is (str/includes? output "Fix the SQL syntax and retry"))
+              (is (str/includes? output "Common issues to check:"))
+              (is (str/ends-with? output "Case sensitivity of identifiers\n")))))))))

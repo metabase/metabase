@@ -17,6 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.recoverable.common :as recoverable]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.metabot.util :as metabot.u]
@@ -38,16 +39,30 @@
                 {:uses #{"create_sql_query"}
                  :text "Use `create_sql_query` to create a SQL query, then use its returned query ID."})]})
 
+(defn bounded-quote
+  "Quote text within a character budget, adding an ellipsis when text is omitted."
+  [s budget]
+  (loop [length (count s)]
+    (let [quoted (quoting/quoted (str (subs s 0 length) (when (< length (count s)) "...")))]
+      (cond
+        (<= (count quoted) budget) quoted
+        (zero? length) ""
+        :else (recur (quot length 2))))))
+
 (tools/defrecoverable sql-syntax-error!
   "The proposed SQL failed syntax validation."
   {:payload [:map {:closed true}
              [:dialect [:maybe :string]]
              [:error-message :string]]}
   [{:keys [dialect error-message]}]
-  {:message (str "The SQL query has a syntax error"
-                 (when dialect (str " for dialect " (quoting/quoted dialect)))
-                 ". Parser details: " (quoting/quoted error-message))
-   :recovery [{:uses #{} :text (str "Fix the SQL syntax and retry. No changes were saved.\n\n" instructions/sql-dialect-checklist)}]})
+  (let [prefix (str "The SQL query has a syntax error"
+                    (when dialect (str " for dialect " (quoting/quoted dialect)))
+                    ". Parser details: ")
+        recovery [{:uses #{} :text (str "Fix the SQL syntax and retry. No changes were saved.\n\n"
+                                        instructions/sql-dialect-checklist)}]
+        budget (- tools.runtime/max-output-length (count prefix) (reduce + (map (comp inc count :text) recovery)))]
+    {:message (str prefix (bounded-quote error-message budget))
+     :recovery recovery}))
 
 (tools/defrecoverable blank-sql!
   "A creation, replacement, or edit would contain no SQL."

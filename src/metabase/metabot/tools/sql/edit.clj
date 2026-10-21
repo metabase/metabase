@@ -67,14 +67,6 @@
         index (if (neg? found) (- (- found) 2) found)]
     {:line (inc index) :column (inc (- position (aget starts index)))}))
 
-(defn- bounded-quote
-  [s budget]
-  (loop [length (count s)]
-    (let [quoted (quoting/quoted (str (subs s 0 length) (when (< length (count s)) "...")))]
-      (if (<= (count quoted) budget)
-        quoted
-        (recur (quot length 2))))))
-
 (defn- excerpt-ranges
   [length positions radius]
   (reduce (fn [ranges position]
@@ -156,11 +148,13 @@
                 (some-> (closest-span sql old-string) vector))
         starts (line-starts sql)
         closest (first spans)
-        prefix (str "Edit " edit-index " for query " (bounded-quote query-id 128) ": "
+        prefix (str "Edit " edit-index " for query "
+                    (metabot.tools.sql.common/bounded-quote query-id 128) ": "
                     (if ambiguous? "text to replace found multiple times." "text to replace not found.")
                     (when (and (not ambiguous?) closest)
                       (str " Closest match ignoring case and whitespace at line " (:line (location starts (first closest)))
-                           ": " (bounded-quote (subs sql (first closest) (second closest)) 1024) " (not applied)."))
+                           ": " (metabot.tools.sql.common/bounded-quote (subs sql (first closest) (second closest)) 1024)
+                           " (not applied)."))
                     (when ambiguous? (str " Match lines: " (match-lines starts spans) "."))
                     " No edits were saved. "
                     (when earlier-edits? "The SQL below includes earlier unsaved edits in this call. ")
