@@ -6,6 +6,7 @@
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
@@ -50,8 +51,13 @@
       (testing id
         (is (= {:output (str "No skill with ID \"" id "\" can be loaded here. Skill IDs you can load: "
                              "construct-notebook-query-core, read-resource.")
-                :error  {:class :recoverable :code ::tools.skills/unknown-skill}}
+                :error  {:class :recoverable :code ::tools.core/all-items-failed}}
                (load-skills [:read-resource :construct-notebook-query-core] [id]))))))
+  (testing "each skill that doesn't load is the declared error"
+    (binding [scope/*current-loadable-skill-ids* (atom #{})]
+      (let [e (is (thrown? clojure.lang.ExceptionInfo
+                           (tools.core/handle tools.skills/load-skill-tool {:id "read-resource"} {})))]
+        (is (= ::tools.skills/unknown-skill (:code (tools.error/classify e)))))))
   (testing "when the request may load no skills, the model is told so"
     (is (= "No skill with ID \"read-resource\" can be loaded here. No skills can be loaded here."
            (:output (load-skills [] ["read-resource"])))))
