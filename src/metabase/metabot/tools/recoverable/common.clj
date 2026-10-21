@@ -59,4 +59,6 @@
   [{:keys [database-id]}]
   {:message (str "Database " database-id " was not found.")
    :recovery [{:uses #{"read_resource"}
-               :text "Read `metabase://databases` with `read_resource` to choose an available database ID, then retry."}]})
+               :text "Read `metabase://databases` with `read_resource` to choose an available database ID, then retry."}
+              {:uses #{"document_schema_collect"}
+               :text "Call `document_schema_collect`, then retry with the `database_id` it returns."}]})

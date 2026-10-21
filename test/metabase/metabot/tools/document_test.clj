@@ -14,6 +14,7 @@
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.document :as document-tools]
    [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.metabot.tools.recoverable.common :as recoverable]
    [metabase.metabot.tools.recoverable.pipeline :as recoverable.pipeline]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.sql.common :as sql.common]
@@ -169,6 +170,16 @@
         (is (<= (count output) tools.runtime/max-output-length))
         (is (str/includes? output "...\""))
         (is (str/ends-with? output "\nFix the SQL and retry."))))))
+
+(deftest document-construct-sql-chart-unknown-database-test
+  (testing "an unknown database ID sends the model back to the tool that returns the mentioned database's ID"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [result (invoke-document-tool "document_construct_sql_chart"
+                                         (assoc sql-chart-args :database_id Integer/MAX_VALUE))]
+        (is (= {:class :recoverable :code ::recoverable/unknown-database} (:error result)))
+        (is (= (str "Database " Integer/MAX_VALUE " was not found.\n"
+                    "Call `document_schema_collect`, then retry with the `database_id` it returns.")
+               (:output result)))))))
 
 (deftest document-construct-model-chart-tool-test
   (testing "builds chart draft payload from a query on a model"
