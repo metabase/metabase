@@ -4,7 +4,6 @@
    [metabase-enterprise.data-apps.generate.schemas.action :as schemas.action]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]))
 
 (defn- standalone-action-schema
@@ -39,7 +38,7 @@
                                     :display-name "Created At"
                                     :type         :dimension
                                     :widget-type  :date/single
-                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :categories :name)))}}))))))))
+                                    :field-id     (mt/id :categories :name)}}))))))))
 
 (deftest action-schema-tolerates-an-empty-query-test
   (testing "an action whose stored query degraded to {} still builds, typing parameters from their own types"

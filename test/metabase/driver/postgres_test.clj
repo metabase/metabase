@@ -1174,7 +1174,7 @@
                                  {"type" {:name         "type"
                                           :display-name "Type"
                                           :type         :dimension
-                                          :dimension    (lib/ref type-field)
+                                          :field-id     (:id type-field)
                                           :widget-type  :string/=}}))
                            :parameters [{:type   :string/=
                                          :target [:dimension [:template-tag "type"]]

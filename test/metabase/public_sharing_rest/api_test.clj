@@ -339,7 +339,7 @@
                                          :name         "price"
                                          :display-name "Price"
                                          :type         :dimension
-                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                         :field-id     (mt/id :venues :price)
                                          :widget-type  :category}
                     "snippet: greeting" {:type         :snippet
                                          :name         "snippet: greeting"
@@ -580,7 +580,7 @@
                        :name         "price"
                        :display-name "Price"
                        :type         :dimension
-                       :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                       :field-id     (mt/id :venues :price)
                        :widget-type  :category}})
            :parameters [{:id "_PRICE_" :type :category :target [:dimension [:template-tag "price"]]}]})]
         (is (=? {:status     "completed"
@@ -1604,7 +1604,7 @@
                                                                   :name         "category"
                                                                   :display-name "Category"
                                                                   :type         :dimension
-                                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                  :field-id     (mt/id :venues :category_id)
                                                                   :widget-type  :id}})))]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -1719,13 +1719,13 @@
                                                                             :name         "id"
                                                                             :display-name "ID"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                            :field-id     (mt/id :venues :id)
                                                                             :widget-type  :id}
                                                                 "category" {:id           "_CATEGORY_"
                                                                             :name         "category"
                                                                             :display-name "Category"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                            :field-id     (mt/id :venues :category_id)
                                                                             :widget-type  :id}})))]
           (testing ":name_field of a PK, the :dimensions :human_readable_field, and no FK :target without a session"
             (is (= {:_ID_       [(assoc venues-id :name_field venues-name, :dimensions [])]
@@ -1751,7 +1751,7 @@
                                                                                     :name         "category"
                                                                                     :display-name "Category"
                                                                                     :type         :dimension
-                                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                                    :field-id     (mt/id :venues :category_id)
                                                                                     :widget-type  :id}}))}
                        :model/DashboardCard _    {:dashboard_id       (:id dash)
                                                   :card_id            (:id card)

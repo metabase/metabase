@@ -6244,7 +6244,7 @@
     (let [mp       (mt/metadata-provider)
           cat-tag  (-> (lib/native-query mp "select count(*) from products where {{cat}}")
                        (lib/with-template-tags {"cat" {:id "_CAT_TAG_" :name "cat" :display-name "Cat" :type :dimension
-                                                       :dimension (lib/ref (lib.metadata/field mp (mt/id :products :category)))
+                                                       :field-id (mt/id :products :category)
                                                        :widget-type :string/=}}))]
       (mt/with-temp [:model/Card card {:dataset_query cat-tag}
                      :model/Dashboard dashboard {:parameters [{:id "p" :type :string/= :name "p" :slug "p"}]}

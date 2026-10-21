@@ -56,7 +56,7 @@
                                        :name         "date"
                                        :display-name "Check-In Date"
                                        :type         :dimension
-                                       :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :checkins :date)))
+                                       :field-id     (mt/id :checkins :date)
                                        :widget-type  :date/all-options}})))
 
 (defn field-filter-query-between
@@ -67,7 +67,7 @@
                                              :name         "quantities"
                                              :display-name "Quantity Range"
                                              :type         :dimension
-                                             :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity)))
+                                             :field-id     (mt/id :orders :quantity)
                                              :widget-type  :number/between}})))
 
 (defn non-field-filter-query

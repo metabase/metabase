@@ -62,7 +62,7 @@
                               :name         "ff1"
                               :display-name "ff1"
                               :id           "id1"
-                              :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                              :field-id     (mt/id :venues :price)
                               :widget-type  :id}})
                     (assoc :parameters [{:type   :id
                                          :target [:dimension [:template-tag "ff1"]]
@@ -79,7 +79,7 @@
                    :name         tag-name
                    :display-name tag-name
                    :id           tag-name
-                   :dimension    (lib/ref (lib.metadata/field mp field-id))
+                   :field-id    field-id
                    :widget-type  :id})
           query (-> (lib/native-query mp "SELECT * FROM VENUES WHERE {{ff1}} AND {{ff2}} AND {{ff3}}")
                     (lib/with-template-tags

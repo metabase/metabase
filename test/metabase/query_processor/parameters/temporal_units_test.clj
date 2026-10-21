@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
@@ -144,7 +143,7 @@
                        q0 {"unit" (merge existing
                                          {:display-name "Unit"
                                           :type         :temporal-unit
-                                          :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :created_at)))
+                                          :field-id     (mt/id :people :created_at)
                                           :default      default})})))]
         (testing "the clause is included and bucketed when a default value is present"
           (let [rows (mt/rows (qp/process-query (make "year")))]

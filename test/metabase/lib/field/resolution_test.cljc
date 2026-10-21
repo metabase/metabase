@@ -15,7 +15,6 @@
    [metabase.lib.metadata.result-metadata-test]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -27,8 +26,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
