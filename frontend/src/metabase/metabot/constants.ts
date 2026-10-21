@@ -130,10 +130,6 @@ export const TOOL_MESSAGES = {
     active: () => t`Retrieving table metadata`,
     done: () => t`Retrieved table metadata`,
   },
-  get_transform_details: {
-    active: () => t`Getting transform details`,
-    done: () => t`Got transform details`,
-  },
   list_available_fields: { active: () => undefined, done: () => undefined },
   load_skill: { active: () => undefined, done: () => undefined },
   read_resource: {
@@ -169,12 +165,6 @@ export const TOOL_MESSAGES = {
     active: () => t`Searching database tables`,
     done: () => t`Searched database tables`,
   },
-  search_transforms: {
-    active: () => t`Searching transforms`,
-    done: () => t`Searched transforms`,
-  },
-  todo_read: { active: () => t`Planning`, done: () => t`Planned` },
-  todo_write: { active: () => t`Planning`, done: () => t`Planned` },
   write_transform_python: {
     active: () => t`Writing Python`,
     done: () => t`Wrote Python`,
@@ -183,6 +173,17 @@ export const TOOL_MESSAGES = {
     active: () => t`Writing SQL`,
     done: () => t`Wrote SQL`,
   },
+  // These tool labels only serve old conversations
+  get_transform_details: {
+    active: () => t`Getting transform details`,
+    done: () => t`Got transform details`,
+  },
+  search_transforms: {
+    active: () => t`Searching transforms`,
+    done: () => t`Searched transforms`,
+  },
+  todo_read: { active: () => t`Planning`, done: () => t`Planned` },
+  todo_write: { active: () => t`Planning`, done: () => t`Planned` },
 } satisfies Record<string, ToolMessage>;
 
 // widened view for lookups by dynamic (server-supplied) tool names
