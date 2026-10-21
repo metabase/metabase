@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
@@ -1070,12 +1071,17 @@
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
   - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
-  - At completion, waits for all tools and appends results
+  - At completion, waits for all tools and appends results, in the order of the calls
+
+  The results come in the order of the calls because that is how history replays a step (see
+  `metabase.metabot.persistence/history`): when the next turn's request puts them in a different order, it does not
+  start with the bytes that this turn sent. The map of calls is ordered for that. A plain map of more than 8 entries
+  is a hash map, which has no order.
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
-    (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+    (let [active   (volatile! (ordered-map/ordered-map)) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
           errored? (volatile! false)]
       (fn
         ([result]

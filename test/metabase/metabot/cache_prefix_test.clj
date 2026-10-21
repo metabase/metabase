@@ -111,6 +111,23 @@
     :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
     :responses [(answer "msg-3" "Last month there were 1,412.")]}])
 
+(def ^:private many-parallel-call-turns
+  "Two turns. The first LLM call of the first turn calls `load_skill` ten times, and the ten calls run in parallel. A
+  plain map of more than 8 entries is a hash map, so a map of the calls by id gives them in an order of its own.
+
+  The ten calls are the same, so their results are too. Gemini sends no call ids, so its requests are the same in
+  any order of the results. Each other adapter sends the id of the call with each result."
+  [{:message   "How many orders do we have?"
+    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :responses [(mut/mock-llm-response (into [{:type :start :id "msg-1"}]
+                                             (for [i (range 1 11)]
+                                               {:type :tool-input :id (str "msg-1-call-" i) :function "load_skill"
+                                                :arguments {:ids ["read-resource"]}})))
+                (answer "msg-2" "There are 18,760 orders.")]}
+   {:message   "And last month?"
+    :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :responses [(answer "msg-3" "Last month there were 1,412.")]}])
+
 ;;; ------------------------------------------------ Prefix comparison -----------------------------------------------
 
 (defn- strip-cache-control
@@ -222,5 +239,16 @@
       (is (= 2 (count first-turn)))
       (is (= [:user :text :tool-input :tool-input :tool-output :tool-output]
              (kinds (last first-turn)))))
+    ;; Not DeepSeek, for the reason in [[streamed-text-replays-as-one-part-test]].
+    (check-turn-edges turns #{"deepseek"})))
+
+(deftest many-parallel-tool-calls-send-their-results-in-call-order-test
+  (let [[first-turn :as turns] (run-turns! many-parallel-call-turns)
+        ids                    (fn [kind opts] (keep #(when (= kind (:type %)) (:id %)) (:input opts)))]
+    (testing "the results of ten parallel calls are sent in the order of the calls"
+      (is (= 2 (count first-turn)))
+      (is (= 10 (count (ids :tool-output (last first-turn)))))
+      (is (= (ids :tool-input (last first-turn))
+             (ids :tool-output (last first-turn)))))
     ;; Not DeepSeek, for the reason in [[streamed-text-replays-as-one-part-test]].
     (check-turn-edges turns #{"deepseek"})))
