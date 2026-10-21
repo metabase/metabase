@@ -1735,7 +1735,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [pattern (str (children-location collection) "%")]
     (if-let [archive-operation-id (:archive_operation_id collection)]
-      (collections.db/archived-collection-ids-in-operation-with-location-like pattern archive-operation-id)
+      (set (collections.db/archived-collection-ids-in-operation-with-location-like pattern archive-operation-id))
       (let [candidates       (collections.db/archived-collections-without-operation-with-location-like pattern)
             archived-apart   (into #{} (comp (filter :archived_directly) (map :id)) candidates)]
         (into #{}
