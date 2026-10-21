@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as m.document]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
@@ -438,9 +439,8 @@
 
 (deftest content-gate-verdict-is-memoized-within-a-scope-test
   (testing "every Card in a Summary document shares one document, and therefore one verdict. Without
-            memoization each card re-runs the whole rollup — ~20 app-DB queries apiece — so a
-            document's cards cost N times what one costs. Bulk read paths scope the cache
-            themselves; see the callers of `with-content-gate-cache`."
+            memoization each card re-runs the whole rollup — ~20 app-DB queries apiece. Bulk read
+            paths scope the cache themselves; see the callers of `with-content-gate-cache`."
     (let [thread  (thread-with-snapshots! (repeat 5 {:creator-id (mt/user->id :lucky)
                                                      :table :venues :token {}}))
           expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
@@ -457,14 +457,16 @@
                                                         :display "table" :visualization_settings {}
                                                         :collection_id coll-id :document_id doc-id})))]
           (request/with-current-user (mt/user->id :rasta)
+            ;; Count calls to the registered gate rather than app-DB queries: each Card still reads
+            ;; its own document and snapshots, and the rollup's cost differs between editions.
             (let [cards (t2/select :model/Card :id [:in card-ids])
-                  measure (fn [instances]
-                            (documents/with-content-gate-cache
-                              (t2/with-call-count [call-count]
-                                (doseq [card instances] (mi/can-read? card))
-                                (call-count))))
-                  one (measure [(first cards)])
-                  ten (measure cards)]
-              (is (< ten (* 2 one))
-                  (format "one verdict should serve every card (1 card: %d queries, 10 cards: %d)"
-                          one ten)))))))))
+                  gate  @#'m.document/doc-content-visibility-fn
+                  orig  @gate
+                  calls (atom 0)]
+              (try
+                (reset! gate (fn [doc] (swap! calls inc) (orig doc)))
+                (documents/with-content-gate-cache
+                  (is (every? mi/can-read? cards)))
+                (is (= 1 @calls) "one verdict should serve every card")
+                (finally
+                  (reset! gate orig))))))))))
