@@ -2107,15 +2107,15 @@
 ;;; ------------------------------------------------- Error Responses ---------------------------------------------
 
 (defn- reject-app-db-lookup
-  "Stands in for an app DB lookup with a statement the app DB rejects, so the failure carries the app DB's own SQL
-  text, exception chain and stack trace."
+  "Throw an app DB lookup error without leaving the surrounding transaction aborted."
   [& _]
-  (t2/query ["SELECT no_such_column FROM metabase_field"]))
+  (t2/with-transaction [_conn]
+    (t2/query ["SELECT no_such_column FROM metabase_field"])))
 
 (defn- logs-app-db-error?
   "Whether captured log `messages` include the app DB error that [[reject-app-db-lookup]] causes."
   [messages]
-  (some #(str/includes? (str (:message %) (some-> (:e %) ex-message)) "NO_SUCH_COLUMN") messages))
+  (some #(re-find #"(?i)no_such_column" (str (:message %) (some-> (:e %) ex-message))) messages))
 
 (deftest unexpected-error-is-generic-test
   (testing "An unexpected failure is a generic 500 whatever `hide-stacktraces` says, and the log gets the detail"
