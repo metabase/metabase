@@ -244,7 +244,7 @@
                {:lib/uuid       string?
                 :base-type      :type/DateTimeWithLocalTZ
                 :effective-type :type/DateTimeWithLocalTZ}
-               (meta/id :orders :created-at)]
+               "CREATED_AT"]
               (lib.equality/find-matching-ref column (map lib/ref haystack)))))))
 
 (deftest ^:parallel mark-selected-columns-ignore-temporal-unit-test
@@ -277,14 +277,14 @@
                          :base-type :type/Text
                          :join-alias "Cat"}
                  (meta/id :categories :name)]]
-      (is (=? [[:field {} (meta/id :venues :id)]
-               [:field {} (meta/id :venues :name)]
-               [:field {} (meta/id :venues :category-id)]
-               [:field {} (meta/id :venues :latitude)]
-               [:field {} (meta/id :venues :longitude)]
-               [:field {} (meta/id :venues :price)]
-               [:field {} (meta/id :categories :id)]
-               [:field {} (meta/id :categories :name)]]
+      (is (=? [[:field {} "ID"]
+               [:field {} "NAME"]
+               [:field {} "CATEGORY_ID"]
+               [:field {} "LATITUDE"]
+               [:field {} "LONGITUDE"]
+               [:field {} "PRICE"]
+               [:field {} "ID"]
+               [:field {} "NAME"]]
               refs))
       (is (= (nth cols 7)
              (lib.equality/find-matching-column a-ref cols)

@@ -1,6 +1,7 @@
 (ns metabase.lib.validate
   "Checks and validation for queries."
   (:require
+   [medley.core :as m]
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.join :as lib.join]
@@ -70,7 +71,12 @@
       ;; Case 1: implicit join ref - find the table of its FK field
       (lib.util/implicit-join-options? opts)
       (when-let [field-metadata (some->> (or (:source-field opts)
-                                             (:fk-field-id (lib.metadata.calculation/metadata query stage-number field-ref)))
+                                             (:id (lib.metadata.calculation/metadata
+                                                   query stage-number
+                                                   [:field
+                                                    (m/assoc-some {:lib/uuid (str (random-uuid)), :base-type :type/*}
+                                                                  :join-alias (:source-field-join-alias opts))
+                                                    (:source-field-name opts)])))
                                          (lib.metadata/field query))]
         (when-let [table-id (:table-id field-metadata)]
           {:source-entity-type :table

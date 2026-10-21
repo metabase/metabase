@@ -196,11 +196,15 @@
      "multi-stage query"
      variant-with-count-filter-stage)))
 
+(defn- implicitly-joinable-column [field-id]
+  (m/find-first #(= (:id %) field-id)
+                (lib/breakoutable-columns (lib/query meta/metadata-provider (meta/table-metadata :orders)))))
+
 (deftest ^:parallel legend-zoom-binning-numeric-test
   ;; Sum of Subtotal by month and Product->Rating with binning, then click a rating to zoom in.
   (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
-                    (lib/breakout  (-> (meta/field-metadata :products :rating)
+                    (lib/breakout  (-> (implicitly-joinable-column (meta/id :products :rating))
                                        (lib/with-binning {:strategy :default})))
                     (lib/breakout  (-> (meta/field-metadata :orders :created-at)
                                        (lib/with-temporal-bucket :month))))
@@ -220,8 +224,8 @@
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
       (testing "filters to the zoomed range"
-        (is (=? [[:>= {} [:field {} "RATING"] 4.5]
-                 [:<  {} [:field {} "RATING"] 5.125]]
+        (is (=? [[:>= {} [:field {:source-field-name "PRODUCT_ID"} "RATING"] 4.5]
+                 [:<  {} [:field {:source-field-name "PRODUCT_ID"} "RATING"] 5.125]]
                 (lib/filters drilled)))))))
 
 ;; This actually checks pivot tables too.
@@ -229,7 +233,7 @@
   ;; Sum of Subtotal by month and People->Latitude with binning, then click a latitude range to zoom in.
   (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                      (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
-                     (lib/breakout  (-> (meta/field-metadata :people :latitude)
+                     (lib/breakout  (-> (implicitly-joinable-column (meta/id :people :latitude))
                                         (lib/with-binning {:strategy :default})))
                      (lib/breakout  (-> (meta/field-metadata :orders :created-at)
                                         (lib/with-temporal-bucket :month))))
@@ -249,8 +253,8 @@
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
       (testing "filters to the zoomed range"
-        (is (=? [[:>= {} [:field {} "LATITUDE"] 30]
-                 [:<  {} [:field {} "LATITUDE"] 40.0]]
+        (is (=? [[:>= {} [:field {:source-field-name "USER_ID"} "LATITUDE"] 30]
+                 [:<  {} [:field {:source-field-name "USER_ID"} "LATITUDE"] 40.0]]
                 (lib/filters drilled)))))))
 
 (deftest ^:parallel nil-aggregation-value-test

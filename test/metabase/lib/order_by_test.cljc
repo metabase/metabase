@@ -891,7 +891,8 @@
     (let [query    (lib/query meta/metadata-provider (meta/table-metadata :products))
           category (m/find-first #(= (:name %) "CATEGORY")
                                  (lib/orderable-columns query))
-          a-ref    (lib.ref/ref category)
+          a-ref    (lib.options/update-options [:field {:lib/uuid (str (random-uuid))} (:id category)]
+                                               assoc :base-type :type/Text :effective-type :type/Text)
           query'   (lib/order-by query a-ref)
           ref-no-types (lib.options/update-options a-ref dissoc :base-type :effective-type)
           query''  (lib/order-by query' ref-no-types)]

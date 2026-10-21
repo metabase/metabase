@@ -301,12 +301,9 @@ are known to be the same."
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (if (lib.util/implicit-join-options? opts)
     (plausible-matches-for-name-no-join-alias ref-name (filter #(matching-join? a-ref %) columns))
-    (or (when-let [join-alias (:join-alias opts)]
-          (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
-              ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
-              (do (log/warn "Failed to find match for column with its join alias, looking for match without join alias...")
-                  nil)))
-        (plausible-matches-for-name-no-join-alias ref-name columns))))
+    (if-let [join-alias (:join-alias opts)]
+      (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
+      (plausible-matches-for-name-no-join-alias ref-name columns))))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
