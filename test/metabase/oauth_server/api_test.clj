@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
@@ -1132,6 +1133,21 @@
                                        :redirect_uri "https://example.com/callback"}
                                       :ip-address "198.51.100.8"
                                       :authorization (basic-auth-header client-id client-secret)))))))))
+
+(deftest token-client-throttle-keys-on-the-stored-client-id-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (create-test-client! {:client_id "mixed-case-client"})
+      ;; MySQL and MariaDB match these spellings to the client, while H2 and Postgres match none
+      (let [spellings ["MIXED-CASE-CLIENT" "míxed-case-client" "mixed-case-client "]]
+        (dotimes [i 10]
+          (is (= "invalid_request"
+                 (:error (token-request! {:grant_type    "refresh_token"
+                                          :client_id     (nth spellings (mod i 3))
+                                          :refresh_token "bogus-token"}
+                                         :ip-address (str "198.51.100." (+ 20 i)) :expected-status 400)))))
+        (is (= (if (= :mysql (mdb/db-type)) {"mixed-case-client" 10} {})
+               (frequencies (map first @(:attempts @#'api.oauth/token-client-throttler)))))))))
 
 (deftest token-basic-auth-determines-client-throttle-key-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
