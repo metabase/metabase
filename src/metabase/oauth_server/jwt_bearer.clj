@@ -78,13 +78,26 @@
     (or (own-reason-errors error) (<= 400 (or status-code 0) 499))
     (str message)))
 
+(defn- verified-login-refusal?
+  "Whether a refused JWT login `result` comes from an assertion that passed verification.
+
+  An allowlist, so an unrecognised failure counts toward the throttles rather than skipping them. Verified refusals
+  are the ones Metabase raises itself once the signature and time claims check out: a returned failure in
+  [[own-reason-errors]], or an exception it throws with a 4xx status, such as user provisioning being off. A failed
+  verification returns `:invalid-jwt`, and anything else, including a caught exception with no `:error` or status,
+  is treated as unverified."
+  [{:keys [error status-code]}]
+  (and (not= :invalid-jwt error)
+       (boolean (or (own-reason-errors error)
+                    (<= 400 (or status-code 0) 499)))))
+
 (defn- log-in!
   "Log in through JWT authentication without creating a session.
 
   Return the user named in the JWT `assertion`, which must have `exp` and `iat` claims.
   Throw `ex-info` carrying `invalid_grant` and the [[refusal-description]] when the login is refused."
   [assertion request]
-  (let [{:keys [success? user message error] :as result}
+  (let [{:keys [success? user message] :as result}
         (try
           (auth-identity/login! :provider/jwt (assoc request
                                                      :token                    assertion
@@ -98,7 +111,7 @@
       user
       (throw (ex-info (str message) {:error             "invalid_grant"
                                      :error-description (refusal-description result)
-                                     ::verified?        (not= :invalid-jwt error)})))))
+                                     ::verified?        (verified-login-refusal? result)})))))
 
 (defn- check-mcp-access!
   "Throws `ex-info` carrying `unsupported_grant_type` unless the groups of the User with `user-id` allow MCP."

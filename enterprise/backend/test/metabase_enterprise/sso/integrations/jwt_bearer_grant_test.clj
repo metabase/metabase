@@ -6,9 +6,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.mcp.test-util :as mcp.tu]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.test-util]
+   [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.system.core :as system]
    [metabase.test :as mt]
@@ -318,6 +320,16 @@
                 (doseq [[expected sign] (take limit (cycle unverified))]
                   (is (= expected (error 400 sign))))
                 (is (= "too_many_requests" (error 429 (second (first unverified)))))))))))))
+
+(deftest exchange-unverified-login-error-counts-test
+  (testing "a login that throws without a known post-verification error counts toward the throttles"
+    (with-jwt-bearer-setup!
+      (oauth-server.tu/reset-token-throttlers!)
+      (with-redefs [auth-identity/login! (fn [& _] (throw (ex-info "boom" {})))]
+        (is (= "invalid_grant"
+               (get-in (token-response 400 {:assertion (assertion {:email "jwt-bearer-boom@metabase.com"})})
+                       [:body :error])))
+        (is (= 1 (count @(:attempts @#'api.oauth/token-ip-throttler))))))))
 
 (deftest token-drives-mcp-test
   (testing "MCP calls run as the user named in the JWT, and usage and audit rows belong to that user"
