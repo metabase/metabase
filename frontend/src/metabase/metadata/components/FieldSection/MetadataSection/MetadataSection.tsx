@@ -78,10 +78,10 @@ const MetadataSectionBase = ({
         description={t`What this data represents`}
         field={field}
         idFields={idFields}
-        isLoadingIdFields={isLoadingIdFields}
         label={t`Semantic type`}
         selectProps={{ disabled }}
         semanticTypeError={semanticTypeError}
+        isLoadingIdFields={isLoadingIdFields}
         onChange={handleChange}
       />
     </TitledSection>

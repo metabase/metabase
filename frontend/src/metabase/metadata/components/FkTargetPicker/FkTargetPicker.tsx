@@ -32,18 +32,18 @@ export type FkTargetPickerField = {
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: FkTargetPickerField;
   idFields: Field[];
-  isLoading?: boolean;
   value: FieldId | null;
+  isLoading?: boolean;
   onChange: (value: FieldId | null) => void;
 }
 
 export const FkTargetPicker = ({
-  comboboxProps,
-  disabled,
   field,
   idFields,
-  isLoading,
   value,
+  comboboxProps,
+  disabled,
+  isLoading,
   onChange,
   ...props
 }: Props) => {

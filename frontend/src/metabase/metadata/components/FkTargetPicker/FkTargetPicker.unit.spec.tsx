@@ -42,29 +42,29 @@ const ID_FIELD_2 = createMockField({
 const ID_FIELDS = [ID_FIELD_1, ID_FIELD_2];
 
 interface SetupOpts {
-  disabled?: boolean;
   field?: Field;
   idFields?: Field[];
-  isLoading?: boolean;
   value?: FieldId | null;
+  disabled?: boolean;
+  isLoading?: boolean;
 }
 
 function setup({
-  disabled,
   field = FIELD,
   idFields = ID_FIELDS,
-  isLoading,
   value = null,
+  disabled,
+  isLoading,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
   const { rerender } = render(
     <FkTargetPicker
-      disabled={disabled}
       field={field}
       idFields={idFields}
-      isLoading={isLoading}
       value={value}
+      disabled={disabled}
+      isLoading={isLoading}
       onChange={onChange}
     />,
   );

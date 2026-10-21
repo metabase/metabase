@@ -15,10 +15,10 @@ interface SemanticTypeAndTargetPickerProps {
   description?: string;
   field: Field;
   idFields: Field[];
-  isLoadingIdFields?: boolean;
   label?: string;
   selectProps?: Omit<SelectProps, "data" | "value" | "onChange">;
   semanticTypeError?: ReactNode;
+  isLoadingIdFields?: boolean;
   onChange: (
     patch: Partial<
       Pick<Field, "semantic_type" | "fk_target_field_id" | "settings">
@@ -30,10 +30,10 @@ export const SemanticTypeAndTargetPicker = ({
   description,
   field,
   idFields,
-  isLoadingIdFields,
   label,
   selectProps,
   semanticTypeError,
+  isLoadingIdFields,
   onChange,
 }: SemanticTypeAndTargetPickerProps) => {
   const showFKTargetSelect = isFK(field);
