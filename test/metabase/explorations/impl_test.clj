@@ -5,6 +5,7 @@
    [metabase.explorations.impl :as explorations.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metrics.core :as metrics]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -34,19 +35,20 @@
       (thunk))))
 
 (defn- insert-n-metrics!
-  "Insert `n` metric Cards and return the set of their ids."
+  "Insert and sync `n` metric Cards, returning the set of their IDs."
   [n]
   (let [q (count-metric-query :orders)]
     (set (for [_ (range n)]
-           (t2/insert-returning-pk! :model/Card
-                                    {:name                   (mt/random-name)
-                                     :type                   :metric
-                                     :creator_id             (mt/user->id :crowberto)
-                                     :database_id            (mt/id)
-                                     :table_id               (mt/id :orders)
-                                     :display                :scalar
-                                     :visualization_settings {}
-                                     :dataset_query          q})))))
+           (u/prog1 (t2/insert-returning-pk! :model/Card
+                                             {:name                   (mt/random-name)
+                                              :type                   :metric
+                                              :creator_id             (mt/user->id :crowberto)
+                                              :database_id            (mt/id)
+                                              :table_id               (mt/id :orders)
+                                              :display                :scalar
+                                              :visualization_settings {}
+                                              :dataset_query          q})
+             (metrics/sync-dimensions! :metadata/metric <>))))))
 
 (deftest target-resolvable?-test
   (testing "target-resolvable? reuses a prebuilt query and breakoutable columns"
@@ -84,7 +86,7 @@
         (is (= 2 @calls))))))
 
 (deftest query-count-does-not-scale-with-metric-count-test
-  (testing "exploration-data issues a ~constant number of DB queries regardless of metric count"
+  (testing "exploration-data issues a ~constant number of DB queries for synced metrics"
     ;; Before batching, each extra metric added ~2 permission queries (an N+1). After batching,
     ;; adding metrics must not add per-metric queries.
     (mt/with-test-user :rasta
