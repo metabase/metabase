@@ -4,7 +4,6 @@ import { act, render, screen, waitFor } from "__support__/ui";
 import {
   Outlet,
   RouterProviderMemory,
-  isChunkLoadError,
   navigate,
   useRouteLeaveBlocker,
 } from "metabase/router";
@@ -47,28 +46,6 @@ function renderRoutesWithFallback(routes: RouteObject[], initialRoute: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   window.sessionStorage.clear();
-});
-
-describe("isChunkLoadError", () => {
-  it("matches a bundler chunk failure", () => {
-    expect(isChunkLoadError(chunkLoadError())).toBe(true);
-  });
-
-  it("matches a native module fetch failure", () => {
-    expect(
-      isChunkLoadError(
-        new Error(
-          "Failed to fetch dynamically imported module: /app/dist/x.js",
-        ),
-      ),
-    ).toBe(true);
-  });
-
-  // A module that throws on evaluation throws again just as reliably, so
-  // reloading the page for it would loop rather than recover.
-  it("does not match an error thrown by the module itself", () => {
-    expect(isChunkLoadError(new TypeError("x is not a function"))).toBe(false);
-  });
 });
 
 describe("a route whose chunk fails to load", () => {

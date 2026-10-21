@@ -24,7 +24,10 @@ import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
-import { ChunkLoadFailed } from "metabase/common/components/ErrorPages";
+import {
+  ChunkLoadFailed,
+  SmallGenericError,
+} from "metabase/common/components/ErrorPages";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
@@ -47,6 +50,7 @@ import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
 import { captureConsoleErrors } from "metabase/utils/errors";
+import { setChunkErrorFallback } from "metabase/utils/lazy-chunk";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
@@ -88,6 +92,10 @@ async function _init(
   // The catalogues are already in the page as installed chunks, so this resolves
   // without a request. Rendering before it would paint the app in English.
   await applyDocumentLocales();
+
+  // What a lazily loaded component renders when its chunk is missing. Set
+  // before anything renders, so no slot can fail ahead of it.
+  setChunkErrorFallback(SmallGenericError);
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
   // Uses bootstrap data so it's available before the first API call.
