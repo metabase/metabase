@@ -24,9 +24,9 @@
       :has_more_values    (:has_more_values fvs)})))
 
 (defn- get-or-create-fingerprint!
-  "The fingerprint of `field`, computed now when it has none.
+  "Return the fingerprint of `field`, computing it if needed.
 
-  Nil when sampling saved none, and `::unavailable` when the database couldn't be sampled."
+  Return nil if sampling saves no fingerprint, or `::unavailable` if the database can't be sampled."
   [{:keys [id fingerprint] :as field}]
   (or fingerprint
       (let [result (try
@@ -35,7 +35,7 @@
                      (catch Exception e
                        (log/warnf "Could not fingerprint field %d: %s" id (ex-message e))
                        nil))]
-        ;; When sync can't sample the database it returns `:sync/no-connection` or a Throwable, not a stats map
+        ;; Sync returns `:sync/no-connection` or a Throwable when it can't sample the database
         (cond
           (not (map? result))                   ::unavailable
           (pos? (:updated-fingerprints result)) (metabot.db/field-fingerprint id)))))

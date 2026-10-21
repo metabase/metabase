@@ -920,9 +920,9 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation exactly, plus a note on how many values the
-   field has when only some of them are listed, and one when the database couldn't be sampled for statistics.
-   Note: Tables are used with |safe in the template, so values must be escaped."
+   Matches Python FieldValuesMetadata.llm_representation, with notes when only some values are listed
+   or when the database couldn't be sampled for statistics.
+   Tables use |safe in the template, so values must be escaped."
   [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
   (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)

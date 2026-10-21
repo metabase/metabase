@@ -1514,8 +1514,7 @@
           (is (not (str/includes? output "This list shows"))))))))
 
 (deftest read-table-field-whose-database-cannot-be-sampled-test
-  (testing "a field with no fingerprint still reads when computing one fails, for each way sync reports
-           the failure: the details come back without statistics, with a note saying why"
+  (testing "field details include a note and no statistics when sync can't compute a fingerprint"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [field-id (mt/id :orders :total)
             uri      (str "metabase://table/" (mt/id :orders) "/fields/" field-id)]
