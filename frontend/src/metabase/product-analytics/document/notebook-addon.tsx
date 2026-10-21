@@ -1,4 +1,5 @@
 import { useEditorState } from "@tiptap/react";
+import { t } from "ttag";
 
 import type {
   DocumentPageAddon,
@@ -7,6 +8,7 @@ import type {
 import { Box } from "metabase/ui";
 import { getProductAnalyticsDocumentContext } from "metabase-types/guards";
 
+import { ANALYSIS_KINDS, getAnalysisConfig } from "../analyses/config";
 import { DEFAULT_DATE_RANGE } from "../date-range";
 import { usePrototypeTable } from "../use-prototype-table";
 
@@ -16,6 +18,7 @@ import { findAnalysisNode } from "./analysis-node-utils";
 import { readDocumentContext } from "./document-context";
 import {
   ANALYSIS_DOCUMENT_EXTENSIONS,
+  ANALYSIS_ICONS,
   useEventAnalysisCommands,
 } from "./editor-host";
 import { useAnalysisDocumentState } from "./use-analysis-document-state";
@@ -69,7 +72,22 @@ export const useNotebookAnalysesAddon: UseDocumentPageAddon = ({
         }
       : null;
 
+  const startActions: DocumentPageAddon["startActions"] = [
+    {
+      key: "event-analysis",
+      label: t`New event analysis`,
+      icon: "funnel",
+      options: ANALYSIS_KINDS.map((kind) => ({
+        key: kind,
+        label: getAnalysisConfig(kind).name,
+        icon: ANALYSIS_ICONS[kind],
+        onSelect: () => state.insertAnalysis(kind),
+      })),
+    },
+  ];
+
   return {
+    startActions,
     extraExtensions: ANALYSIS_DOCUMENT_EXTENSIONS,
     hostOverride: NOTEBOOK_EDITOR_HOST,
     wrap: (children) => (

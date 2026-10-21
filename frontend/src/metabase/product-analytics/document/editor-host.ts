@@ -15,7 +15,7 @@ import { useAnalysisDocument } from "./AnalysisDocumentContext";
 import { AnalysisNode } from "./AnalysisNode";
 import { AnalysisDocumentAttributes } from "./document-context";
 
-const ANALYSIS_ICONS: Record<AnalysisKind, IconName> = {
+export const ANALYSIS_ICONS: Record<AnalysisKind, IconName> = {
   funnel: "funnel",
   paths: "sankey",
   habit: "calendar",

@@ -1,4 +1,5 @@
 import { useForceUpdate } from "@mantine/hooks";
+import { useEditorState } from "@tiptap/react";
 import {
   type ReactNode,
   useCallback,
@@ -25,7 +26,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { Outlet, useLocation, useNavigate, useParams } from "metabase/router";
-import { Box } from "metabase/ui";
+import { Box, Transition, type TransitionProps } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
 import { getProductAnalyticsDocumentContext } from "metabase-types/guards";
@@ -67,11 +68,20 @@ import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import { EmbedTimelineSidebar } from "./EmbedTimelineSidebar";
+import { NotebookStartActions } from "./NotebookStartActions";
 import { SidePanelResizeHandle } from "./SidePanelResizeHandle";
 import {
   type UseDocumentPageAddon,
   useNoDocumentPageAddon,
 } from "./document-page-addon";
+
+// Fades and collapses, so the editor slides up as the start buttons go.
+const START_ACTIONS_TRANSITION: TransitionProps["transition"] = {
+  in: { opacity: 1, maxHeight: "20rem" },
+  out: { opacity: 0, maxHeight: 0 },
+  common: { overflow: "hidden" },
+  transitionProperty: "opacity, max-height",
+};
 
 // The prefetch queue tracks every card embed's in-flight load, so it doubles
 // as the print-readiness signal: printing waits until nothing is loading.
@@ -180,6 +190,12 @@ export const DocumentPage = ({
       dispatch(setErrorPage(error));
     }
   }, [dispatch, error]);
+
+  const isEditorEmpty =
+    useEditorState({
+      editor: editorInstance,
+      selector: ({ editor }) => editor?.isEmpty ?? false,
+    }) ?? false;
 
   const addon = useAddon({
     editor: editorInstance,
@@ -319,6 +335,22 @@ export const DocumentPage = ({
                     onArchive={() => handleUpdate({ archived: true })}
                     onShowHistory={handleShowHistory}
                   />
+                  {editorInstance !== null && (
+                    <Transition
+                      mounted={isEditorEmpty && canWrite && !isDocumentLoading}
+                      transition={START_ACTIONS_TRANSITION}
+                      duration={250}
+                      timingFunction="ease"
+                    >
+                      {(style) => (
+                        <NotebookStartActions
+                          editor={editorInstance}
+                          style={style}
+                          extraActions={addon.startActions}
+                        />
+                      )}
+                    </Transition>
+                  )}
                   <Editor
                     extraExtensions={addon.extraExtensions}
                     hostOverride={addon.hostOverride}
