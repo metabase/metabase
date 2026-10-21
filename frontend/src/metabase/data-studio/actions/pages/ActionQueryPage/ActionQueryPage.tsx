@@ -16,6 +16,7 @@ import { Button, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, WritebackQueryAction } from "metabase-types/api";
 
+import { ActionDefinitionContent } from "../../components/ActionDefinitionContent";
 import { ActionEditor } from "../../components/ActionEditor";
 import { ActionEditorPane } from "../../components/ActionEditorPane";
 import { ActionHeader } from "../../components/ActionHeader";
@@ -83,33 +84,25 @@ function ActionDefinitionPage({
   databases,
   canEditQuery,
 }: ActionDefinitionPageProps) {
-  const [uiState, setUiState] = useState(getInitialUiState);
-
   return (
     <PageContainer data-testid="action-definition">
       <ActionHeader action={action} />
-      <ActionEditorPane>
-        <ActionEditor
-          datasetQuery={action.dataset_query}
-          uiState={uiState}
-          databases={databases}
-          readOnly
-          topBarInnerContent={
-            canEditQuery && (
-              <Button
-                component={Link}
-                to={Urls.dataStudioActionEdit(action.id)}
-                size="sm"
-                style={{ flexShrink: 0 }}
-              >
-                {t`Edit definition`}
-              </Button>
-            )
-          }
-          onChangeDatasetQuery={() => undefined}
-          onChangeUiState={setUiState}
-        />
-      </ActionEditorPane>
+      <ActionDefinitionContent
+        action={action}
+        databases={databases}
+        topBarInnerContent={
+          canEditQuery && (
+            <Button
+              component={Link}
+              to={Urls.dataStudioActionEdit(action.id)}
+              size="sm"
+              style={{ flexShrink: 0 }}
+            >
+              {t`Edit definition`}
+            </Button>
+          )
+        }
+      />
     </PageContainer>
   );
 }

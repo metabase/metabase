@@ -6,28 +6,26 @@ import {
   SortableList,
 } from "metabase/common/components/Sortable";
 import { Stack, Text, Title } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import type { WritebackActionId } from "metabase-types/api";
 
 import type { ActionField } from "../hooks";
 
 import { ActionFieldItem } from "./ActionFieldItem";
 
 type ActionFieldListProps = {
-  actionId: WritebackActionId;
   fields: ActionField[];
   activeFieldId: string | undefined;
   readOnly: boolean;
+  getFieldUrl: (fieldId: string) => string;
   onReorder: (fieldIds: string[]) => void;
 };
 
 const getFieldId = (field: ActionField) => field.parameter.id;
 
 export function ActionFieldList({
-  actionId,
   fields,
   activeFieldId,
   readOnly,
+  getFieldUrl,
   onReorder,
 }: ActionFieldListProps) {
   const pointerSensor = useSensor(PointerSensor, {
@@ -58,7 +56,7 @@ export function ActionFieldList({
             <ActionFieldItem
               key={field.parameter.id}
               field={field}
-              href={Urls.dataStudioActionFields(actionId, field.parameter.id)}
+              href={getFieldUrl(field.parameter.id)}
               isActive={field.parameter.id === activeFieldId}
               isDraggable={isDraggable}
             />
