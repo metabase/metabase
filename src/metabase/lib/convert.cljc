@@ -748,13 +748,19 @@
                 (update-list->legacy-boolean-expression :filters :filter))
             (disj stage-keys :aggregation :breakout :filters :expressions))))
 
+(defn- field-id->dimension
+  "Replace the `:field-id` of a template tag with the legacy `:dimension` `:field` ref, unless it already has one."
+  [{:keys [field-id], :as tag}]
+  (cond-> (dissoc tag :field-id)
+    (and field-id (not (:dimension tag))) (assoc :dimension [:field {:lib/uuid (str (random-uuid))} field-id])))
+
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
       (m/update-existing :template-tags (fn [tags]
                                           (if (map? tags)
-                                            (update-vals tags #(dissoc % :field-id))
-                                            (mapv #(dissoc % :field-id) tags))))
+                                            (update-vals tags field-id->dimension)
+                                            (mapv field-id->dimension tags))))
       (update-vals ->legacy-MBQL)
       ;; a native stage becomes
       ;;

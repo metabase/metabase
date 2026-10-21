@@ -355,6 +355,21 @@
              (binding [serdes/*import-table-fk* (constantly 42)]
                (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
 
+(deftest ^:parallel export-template-tag-dimension-test
+  (testing "a template tag with only a :field-id gets the legacy :dimension on export"
+    (is (= {"state" {:name         "state"
+                     :display-name "State"
+                     :type         :dimension
+                     :widget-type  :string/=
+                     :field-id     ["DB" "SCHEMA" "TABLE" "STATE"]
+                     :dimension    [:field {} ["DB" "SCHEMA" "TABLE" "STATE"]]}}
+           (binding [serdes/*export-field-fk* (constantly ["DB" "SCHEMA" "TABLE" "STATE"])]
+             (serdes/export-mbql {"state" {:name         "state"
+                                           :display-name "State"
+                                           :type         :dimension
+                                           :widget-type  :string/=
+                                           :field-id     42}}))))))
+
 (deftest ^:parallel template-tag-table-id-deps-test
   (testing "template tag :table-id is not a dependency — the referenced Database and Table are synthesized on import if
             missing"

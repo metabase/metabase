@@ -155,6 +155,19 @@
                        :lib/type :mbql.stage/native}]
            :lib/type :mbql/query}))))
 
+(deftest ^:parallel native-query-field-id-only-tag->legacy-test
+  (is (=? {:native {:template-tags {"NAME" {:dimension [:field 866 nil]}}}}
+          (lib.convert/->legacy-MBQL
+           {:database 76
+            :stages   [{:native        "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                        :template-tags [{:field-id     866
+                                         :display-name "Name"
+                                         :name         "NAME"
+                                         :type         :dimension
+                                         :widget-type  :string/=}]
+                        :lib/type      :mbql.stage/native}]
+            :lib/type :mbql/query}))))
+
 (deftest ^:parallel ->mbql5-joins-default-alias-test
   (let [original {:database (meta/id)
                   :type     :query

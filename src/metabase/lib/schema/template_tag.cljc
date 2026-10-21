@@ -110,19 +110,23 @@
   (when (sequential? dimension)
     (some #(when (pos-int? %) %) (rest dimension))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *omit-dimension*
+  "Whether Lib stops adding the legacy `:dimension` ref next to the `:field-id` of a template tag."
+  false)
+
 (defn sync-field-id-and-dimension
-  "Make the `:field-id` of a template tag and its legacy `:dimension` ref name the same Field: `:field-id` wins, and
-  either one is filled in from the other."
+  "Make the `:field-id` of a template tag and its legacy `:dimension` ref name the same Field: `:field-id` wins, either
+  one is filled in from the other, and `:dimension` is dropped when [[*omit-dimension*]] is set."
   [{:keys [field-id dimension], :as tag}]
   (let [dimension-id (dimension-field-id dimension)]
-    (cond
-      (and field-id (not= field-id dimension-id))
-      (assoc tag :dimension [:field {:lib/uuid (str (random-uuid))} field-id])
-
-      (and (nil? field-id) dimension-id)
-      (assoc tag :field-id dimension-id)
-
-      :else
+    (if-some [field-id (or field-id dimension-id)]
+      (cond
+        *omit-dimension*          (-> tag (assoc :field-id field-id) (dissoc :dimension))
+        (= field-id dimension-id) (assoc tag :field-id field-id)
+        :else                     (assoc tag
+                                         :field-id  field-id
+                                         :dimension [:field {:lib/uuid (str (random-uuid))} field-id]))
       tag)))
 
 ;; Example:

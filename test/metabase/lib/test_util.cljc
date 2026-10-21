@@ -15,6 +15,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.merged-mock :as providers.merged-mock]
@@ -408,4 +409,10 @@
   "Test fixture that makes Lib generate `:field` refs that name their column rather than refer to its Field by ID."
   [thunk]
   (binding [lib.field.util/*name-based-refs* true]
+    (thunk)))
+
+(defn with-omitted-template-tag-dimensions
+  "Test fixture that makes Lib stop adding the legacy `:dimension` ref next to the `:field-id` of a template tag."
+  [thunk]
+  (binding [lib.schema.template-tag/*omit-dimension* true]
     (thunk)))

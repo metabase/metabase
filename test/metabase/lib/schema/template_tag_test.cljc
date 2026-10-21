@@ -86,3 +86,14 @@
     (testing "`:field-id` wins when the two disagree"
       (is (=? {:field-id 12, :dimension [:field {} 12]}
               (normalize {:type :dimension, :field-id 12, :dimension [:field 10 nil]}))))))
+
+(deftest ^:parallel normalize-omits-dimension-test
+  (binding [lib.schema.template-tag/*omit-dimension* true]
+    (let [normalize #(lib/normalize ::lib.schema.template-tag/template-tag
+                                    (merge {:name "x", :display-name "X", :id "1", :widget-type :category} %))]
+      (testing "a legacy `:dimension` is replaced by the `:field-id` it refers to"
+        (is (= {:name "x", :display-name "X", :id "1", :widget-type :category, :type :dimension, :field-id 10}
+               (normalize {:type :dimension, :dimension [:field 10 nil]}))))
+      (testing "a `:field-id` gets no legacy `:dimension`"
+        (is (= {:name "x", :display-name "X", :id "1", :widget-type :category, :type :temporal-unit, :field-id 11}
+               (normalize {:type :temporal-unit, :field-id 11})))))))
