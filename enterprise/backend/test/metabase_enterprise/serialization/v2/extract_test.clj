@@ -311,8 +311,7 @@
                                                                [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
                                                                18]]
                                                :aggregation  [[:count {}]]}]
-                                   :database "My Database"}
-                   :created_at    string?}
+                                   :database "My Database"}}
                   ser))
           (is (not (contains? ser :id)))
           (testing "cards depend on their Collection and the query's Database (not the Tables/Fields it references)"
@@ -327,8 +326,7 @@
                    :parameter_mappings [{:parameter_id "deadbeef"
                                          :card_id      c1-eid
                                          :target       [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
-                                                                    {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}]
-                   :created_at         string?}
+                                                                    {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}]}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id always skipped for cards — re-derived on import")
@@ -363,8 +361,7 @@
                       :fieldRef [:field "Average order total" {:base-type :type/Float}]
                       :enabled  true}]
                     :column_settings
-                    {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                   :created_at    string?}
+                    {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}}
                   ser))
           (is (not (contains? ser :id)))
           (testing "cards depend on their Database (kept, query empty) and Collection (not the Fields in visualization_settings)"
@@ -378,8 +375,7 @@
                    :collection_id coll-eid
                    :dataset_query {:stages   [{:source-card c4-eid
                                                :aggregation [[:count {}]]}]
-                                   :database "My Database"}
-                   :created_at    string?}
+                                   :database "My Database"}}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id stripped")
@@ -410,10 +406,8 @@
                                                 :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                                 :enabled  true}]
                                               :column_settings
-                                              {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                     :created_at             string?}
-                    {:action_id action-eid}]
-                   :created_at  string?}
+                                              {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}}
+                    {:action_id action-eid}]}
                   ser))
           (is (not (contains? ser :id)))
           (testing "and depend on all referenced cards and actions, plus the Database of fields referenced in visualization_settings"
@@ -554,7 +548,6 @@
                                           {:model "Field", :id "email"}]]]
                        [:dimensions  [:sequential
                                       [:map
-                                       [:created_at :string]
                                        [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
                       ser))
           (is (not (contains? ser :id)))
@@ -575,13 +568,11 @@
                        [:fk_target_field_id [:= ["My Database" "PUBLIC" "Customers" "id"]]]
                        [:dimensions         [:sequential
                                              [:map
-                                              [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]
-                                              [:created_at              :string]]]]]
+                                              [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]]]]]
                       ser))
           (is (not (contains? ser :id)))
           (testing "dimensions are properly inlined"
-            (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
-                      :created_at              string?}]
+            (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]}]
                     (:dimensions ser))))
           (testing "depend only on the Database; the Table, FK target and human-readable Fields are synthesized on import if missing"
             (is (= #{[{:model "Database"   :id "My Database"}]}
@@ -626,8 +617,7 @@
                                       :id    s1-eid
                                       :label "snippet_1"}]
                      :collection_id coll-eid
-                     :creator_id    "ann@heart.band"
-                     :created_at    string?}
+                     :creator_id    "ann@heart.band"}
                     ser))
             (is (not (contains? ser :id)))
             (testing "and depend on the Collection"
@@ -643,7 +633,6 @@
                                              :id    s2-eid
                                              :label "snippet_2"}]]]
                          [:creator_id  [:= "ann@heart.band"]]
-                         [:created_at  :string]
                          [:collection_id {:optional true} :nil]]
                         ser))
             (is (not (contains? ser :id)))
@@ -784,8 +773,7 @@
           (let [ser (ts/extract-one "Timeline" empty-id)]
             (is (=? {:serdes/meta   [{:model "Timeline" :id empty-eid :label "empty_timeline"}]
                      :collection_id coll-eid
-                     :creator_id    "ann@heart.band"
-                     :created_at    string?}
+                     :creator_id    "ann@heart.band"}
                     ser))
             (is (not (contains? ser :id)))
             (testing "depend on the Collection"
@@ -796,10 +784,8 @@
             (is (=? {:serdes/meta   [{:model "Timeline" :id line-eid :label "populated_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    string?
                      :events        [{:timestamp  "2020-04-11T00:00:00Z"
-                                      :creator_id "ann@heart.band"
-                                      :created_at string?}]}
+                                      :creator_id "ann@heart.band"}]}
                     ser))
             (is (not (contains? ser :id)))
             (is (not (contains? (-> ser :events first) :id)))
@@ -832,8 +818,7 @@
                                  :stages   [{:source-table ["My Database" nil "Schemaless Table"],
                                              :filters      [[:< {}
                                                              [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
-                                                             18]]}]}
-                   :created_at  string?}
+                                                             18]]}]}}
                   ser))
           (is (not (contains? ser :id)))
           (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
@@ -873,8 +858,7 @@
                        :definition  {:database "My Database"
                                      :lib/type :mbql/query
                                      :stages [{:source-table ["My Database" nil "Schemaless Table"]
-                                               :aggregation  [[:sum {} [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]]]}]}
-                       :created_at  string?}
+                                               :aggregation  [[:sum {} [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]]]}]}}
                       ser))
               (is (not (contains? ser :id)))
               (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
@@ -1030,7 +1014,6 @@
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
                          :type        "implicit"
-                         :created_at  string?
                          :model_id    card-eid-1
                          :implicit    [{:kind :row/update}]}
                         ser))
@@ -1038,6 +1021,31 @@
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/deserialization-dependencies ser)))))))))))))
+
+(deftest collection-export-includes-model-actions-test
+  (testing "GHY-4722: exporting a collection exports the actions of its models, though a model doesn't reference them"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}      {:name "My Database"}
+                         :model/Collection {coll-id :id}    {:name "Models"}
+                         :model/Card       {model-id :id}   {:name          "Model"
+                                                             :type          :model
+                                                             :database_id   db-id
+                                                             :collection_id coll-id
+                                                             :dataset_query {:database db-id
+                                                                             :type     :native
+                                                                             :native   {:query "select 1"}}}
+                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id}
+                         :model/Action     {archived-id :id} {:name "Old Action" :type :implicit :model_id model-id
+                                                              :archived true}]
+        (let [eid (fn [id] (t2/select-one-fn :entity_id :model/Action :id id))]
+          (is (= #{(eid action-id) (eid archived-id)}
+                 (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                          :no-data-model true}))))
+          (testing "with :skip-archived, the archived action is left out"
+            (is (= #{(eid action-id)}
+                   (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                            :no-data-model true
+                                                            :skip-archived true}))))))))))
 
 (deftest query-action-test
   (mt/with-empty-h2-app-db!
@@ -1069,7 +1077,6 @@
                                         :label "my_action"}]
                          :type        "query"
                          :creator_id  "ann@heart.band"
-                         :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
                                                         :lib/type :mbql/query
                                                         :stages   [{:lib/type :mbql.stage/native
@@ -1111,7 +1118,6 @@
                                  {:model "Table"    :id "Schemaless Table"}
                                  {:model "Field"    :id "Some Field"}
                                  {:model "FieldValues" :id "0"}] ; Always 0.
-                   :created_at  string?
                    :values      values}
                   ser))
           (is (not (contains? ser :id)))
@@ -1148,7 +1154,6 @@
                                       {:model "Table"    :id "Schemaless Table"}
                                       {:model "Field"    :id "Some Field"}
                                       {:model "FieldUserSettings" :id "1"}] ; Always 1.
-                   :created_at       string?
                    :description      description
                    :data_sensitivity :PII}
                   ser))
@@ -1963,13 +1968,15 @@
                                                      :collection_id coll-id}
        :model/DashboardTab  {tab-id-1 :id
                              tab-eid-1 :entity_id}  {:dashboard_id dash-id
-                                                     :name "Tab 1"}
+                                                     :name "Tab 1"
+                                                     :position 0}
        :model/DashboardCard  _                      {:dashboard_id dash-id
                                                      :dashboard_tab_id tab-id-1
                                                      :card_id card-id-1}
        :model/DashboardTab  {tab-id-2 :id
                              tab-eid-2 :entity_id}  {:dashboard_id dash-id
-                                                     :name "Tab 2"}
+                                                     :name "Tab 2"
+                                                     :position 1}
        :model/DashboardCard _                       {:dashboard_id dash-id
                                                      :dashboard_tab_id tab-id-2
                                                      :card_id card-id-2}]
@@ -2012,9 +2019,7 @@
                               :entity_id metabot-prompt-eid
                               :card_id model-eid
                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                              :created_at string?}]
-                   :created_at string?}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]}]}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
@@ -2057,9 +2062,7 @@
                               :entity_id metabot-prompt-eid
                               :card_id card-eid
                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                              :created_at string?}]
-                   :created_at string?}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]}]}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
@@ -2115,9 +2118,7 @@
                                                  "model" "dashboard"}}]}
                    :creator_id (:email user)
                    :collection_id (:entity_id collection)
-                   :content_type "application/json+vnd.prose-mirror"
-                   :updated_at string?
-                   :created_at string?}
+                   :content_type "application/json+vnd.prose-mirror"}
                   ser))
           (is (not (contains? ser :archived)))
           (is (not (contains? ser :archived_directly)))
@@ -2204,8 +2205,7 @@
               (is (=? {:serdes/meta [{:model "TransformTag"
                                       :id hourly-tag-eid}]
                        :name "hourly"
-                       :built_in_type "hourly"
-                       :created_at string?}
+                       :built_in_type "hourly"}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/deserialization-dependencies ser)))))
@@ -2213,8 +2213,7 @@
             (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id custom-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
                                       :id custom-tag-eid}]
-                       :name "custom-etl"
-                       :created_at string?}
+                       :name "custom-etl"}
                       ser))
               (is (not (contains? ser :built_in_type)))
               (is (not (contains? ser :id)))
@@ -2310,8 +2309,7 @@
               (is (=? {:serdes/meta [{:model "Transform"
                                       :id transform-eid}]
                        :name "Test Transform"
-                       :description "A test transform for serialization"
-                       :created_at string?}
+                       :description "A test transform for serialization"}
                       ser))
               (is (not (contains? ser :id))))
             (testing "source and target MBQL export"
@@ -2482,8 +2480,7 @@
                        :name "Hourly job"
                        :description "Executes transforms tagged with 'hourly' every hour"
                        :schedule "0 0 * * * ? *"
-                       :built_in_type "hourly"
-                       :created_at string?}
+                       :built_in_type "hourly"}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has associated tags"
@@ -2499,8 +2496,7 @@
                                       :id custom-job-eid}]
                        :name "Custom ETL Job"
                        :description "Custom data processing job"
-                       :schedule "0 0 2 * * ? *"
-                       :created_at string?}
+                       :schedule "0 0 2 * * ? *"}
                       ser))
               (is (not (contains? ser :built_in_type)))
               (is (not (contains? ser :id)))
@@ -2610,8 +2606,7 @@
                                   :id    lib-entity-id}]
                    :path        "common.py"
                    :source      "def helper():\n    return 42"
-                   :entity_id   lib-entity-id
-                   :created_at  string?}
+                   :entity_id   lib-entity-id}
                   ser))
           (is (not (contains? ser :id)))
           (testing "has no dependencies"
@@ -2636,8 +2631,7 @@
                    :identifier   "test-plugin"
                    :manifest     {}
                    :bundle_hash  "deadbeef"
-                   :bundle       string?
-                   :created_at   string?}
+                   :bundle       string?}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :status)))
@@ -2763,8 +2757,7 @@
                    :name "Email Channel"
                    :type :channel/email
                    :description "An email channel"
-                   :details {:host "smtp.example.com" :port 587}
-                   :created_at string?}
+                   :details {:host "smtp.example.com" :port 587}}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :active)))))
@@ -2776,8 +2769,7 @@
                    :description "An HTTP channel"
                    :details {:url "https://example.com/webhook"
                              :method "POST"
-                             :auth-method "none"}
-                   :created_at string?}
+                             :auth-method "none"}}
                   ser))))
       (testing "channel storage-path uses top-level channels directory"
         (let [ser (ts/extract-one "Channel" email-id)]
@@ -2907,9 +2899,7 @@
                                   :label "light"}]
                    :entity_id  light-eid
                    :name       "Light"
-                   :settings   {}
-                   :created_at string?
-                   :updated_at string?}
+                   :settings   {}}
                   ser))
           (is (not (contains? ser :id)))
           (testing "embedding themes have no dependencies"

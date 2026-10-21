@@ -1,5 +1,4 @@
 built_in_type: daily
-created_at: '2026-04-02T02:00:48.043249Z'
 description: Executes transforms tagged with 'daily' once per day
 entity_id: PJahvcoF61oX5T4uCT_FY
 job_tags:

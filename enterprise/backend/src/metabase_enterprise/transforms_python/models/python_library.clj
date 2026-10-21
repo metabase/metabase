@@ -78,15 +78,15 @@
   [path source]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (let [id (transforms-python.db/upsert-python-library-source! normalized-path source)]
+    (let [id (transforms-python.db/upsert-python-library-source!
+              normalized-path source {:entity_id builtin-entity-id})]
       (transforms-python.db/python-library id))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/make-spec "PythonLibrary"
   [_model-name _opts]
-  {:copy      [:path :source :entity_id]
-   :transform {:created_at (serdes/date)}})
+  {:copy      [:path :source :entity_id]})
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
