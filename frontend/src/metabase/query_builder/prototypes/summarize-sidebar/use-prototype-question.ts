@@ -239,7 +239,10 @@ export function usePrototypeQuestion(sourceCard: Card) {
   }, [buildQuestion, runQuestion, sourceCard]);
 
   useEffect(() => {
-    runQuestion(buildQuestion(sourceCard));
+    // a sidebar that summarizes as it mounts has already started its own run, which this would abort
+    if (abortControllerRef.current == null) {
+      runQuestion(buildQuestion(sourceCard));
+    }
     return () => abortControllerRef.current?.abort();
     // runs the source once per mount; later changes go through `updateQuestion`
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,9 +1,11 @@
 import { SummarySidebar } from "../../../components/view/SummarySidebar";
 
 import { SummarySidebar as BreakoutsSummarySidebar } from "./breakouts";
+import { SummarySidebar as ClickToSwapSummarySidebar } from "./click-to-swap";
 import { SummarySidebar as RoomySummarySidebar } from "./roomy";
 import { SummarySidebar as RowsOnDemandSummarySidebar } from "./rows-on-demand";
 import { SummarySidebar as SectionsSummarySidebar } from "./sections";
+import { SummarySidebar as SectionsSwapSummarySidebar } from "./sections-swap";
 import { SummarySidebar as SectionsTopSummarySidebar } from "./sections-top";
 import { SummarySidebar as SideBySideSummarySidebar } from "./side-by-side";
 import type { SummarizeSidebarVariant } from "./types";
@@ -59,6 +61,12 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
     Sidebar: WellsLeftSummarySidebar,
   },
   {
+    slug: "click-to-swap",
+    name: "Click to swap",
+    axis: "Wells left, from Count of rows: a click swaps the breakout, ⌥-click or a drag adds one, a drag below Breakouts pivots",
+    Sidebar: ClickToSwapSummarySidebar,
+  },
+  {
     slug: "sections",
     name: "Sections",
     axis: "No tabs: one list with Metrics on top and a collapsible section per table",
@@ -69,5 +77,11 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
     name: "Sections top",
     axis: "Sections' field list with Breakouts' wells, wells on top",
     Sidebar: SectionsTopSummarySidebar,
+  },
+  {
+    slug: "sections-swap",
+    name: "Sections swap",
+    axis: "Click to swap with Sections' field list: one searchable list of collapsible sections",
+    Sidebar: SectionsSwapSummarySidebar,
   },
 ];
