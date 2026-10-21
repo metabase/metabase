@@ -76,6 +76,9 @@
               (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.db nil modules)))
       (is (=? [{:type :metabase/t2-query-namespace}]
               (lint-query-call '(t2/query {:select [:*]}) 'metabase.metabot.llm.models.db nil modules))))
+    (testing "a sub-namespace of a module's db namespace is allowed"
+      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.queries.db.fetch nil modules)))
+      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.metabot.llm.db.fetch nil modules))))
     (testing "enterprise modules resolve through the metabase-enterprise root"
       (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.sandbox.db nil modules))))))
 

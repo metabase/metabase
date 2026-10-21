@@ -9,6 +9,7 @@
   returns its input unchanged so Kondo's normal analysis of the call (arity, var usage) still runs."
   (:require
    [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]
    [hooks.common.modules :as modules]))
 
 (def ^:private driver-db-namespace
@@ -20,7 +21,9 @@
     (boolean
      ;; Resolve ownership first: a nested `.db` name alone does not make a module.
      (or (when-let [module (modules/module config ns-sym)]
-           (= ns-str (str (modules/module-ns-prefix (:metabase/modules config) module) ".db")))
+           (let [db-ns (str (modules/module-ns-prefix (:metabase/modules config) module) ".db")]
+             (or (= ns-str db-ns)
+                 (str/starts-with? ns-str (str db-ns ".")))))
          (re-matches driver-db-namespace ns-str)))))
 
 (defn- test-file?
