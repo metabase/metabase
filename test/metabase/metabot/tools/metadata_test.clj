@@ -421,3 +421,21 @@
                                (str "Field missing was not found in question " card-id "."
                                     " No accessible field IDs are available for this data source."
                                     "\nChoose another data source.")))))))))
+
+(deftest virtual-column-statistics-require-known-source-tables-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "SELECT 17 AS \"bird_count\"")
+          columns (-> query qp/process-query :data :results_metadata :columns)
+          statistics (merge {:distinct-count 1 :percent-null 0.0}
+                            (get-in columns [0 :fingerprint :type :type/Number]))]
+      (doseq [[sql expected] [["SELECT 17 AS \"bird_count\"" {:statistics statistics}]
+                              ["SELECT 17 AS \"bird_count\" FROM \"missing_statistics_source\"" nil]]]
+        (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (lib/native-query mp sql)
+                                                  :result_metadata columns}]
+          (doseq [profile [:document-generate-content :slackbot]]
+            (let [result (invoke-metadata profile "get_field_values"
+                                          {:data_source "question" :source_id card-id :field_id "bird_count"})]
+              (is (nil? (:error result)))
+              (is (= {:result-type :field-metadata :field_id "bird_count" :value_metadata expected}
+                     (:structured-output result))))))))))

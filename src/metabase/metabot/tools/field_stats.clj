@@ -2,14 +2,19 @@
   (:require
    [clojure.set :as set]
    [metabase.lib.core :as lib]
+   [metabase.lib.walk :as lib.walk]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.request.core :as request]
-   [metabase.sync.core :as sync]))
+   [metabase.sync.core :as sync]
+   [metabase.util.log :as log]))
 
 (defn- build-field-statistics [fvs fp limit]
   (merge
@@ -28,14 +33,38 @@
       (and (pos? (:updated-fingerprints (request/as-admin (sync/refingerprint-field! field))))
            (metabot.db/field-fingerprint id))))
 
+(defn- query-row-restricted?
+  [query]
+  (try
+    (let [query (binding [qp.i/*skip-middleware-because-app-db-access* true]
+                  (request/as-admin (qp.preprocess/preprocess query)))
+          table-ids (volatile! (set (lib/all-source-table-ids query)))]
+      (lib.walk/walk-stages
+       query
+       (fn [query _path stage]
+         (when (= (:lib/type stage) :mbql.stage/native)
+           (let [{:keys [tables error]} (query-analyzer/tables-for-native (lib/query query stage))]
+             (vswap! table-ids
+                     (fn [ids]
+                       (when (and ids (not error) (coll? tables) (every? (comp int? :table-id) tables))
+                         (into ids (map :table-id) tables))))))
+         nil))
+      (or (nil? @table-ids)
+          (boolean (seq (metabot.perms/row-restricted-table-ids @table-ids)))))
+    (catch Exception e
+      (log/debug e "Could not determine source tables for virtual column statistics")
+      true)))
+
 (defn- field-statistics
   "Fingerprint statistics are global (computed across every row of the table), so they're withheld
   for a user whose actual row access is narrowed by sandboxing, connection impersonation, or
   database routing -- and a missing fingerprint is never computed on demand for such a user either,
   since that would run an unrestricted warehouse sample and persist its result to the shared
   `Field` row. The restriction check uses the persisted Field's owning table rather than the
-  caller's column metadata, since saved Card result metadata can be stale or user-edited."
-  [{:keys [id fingerprint]} limit]
+  caller's column metadata, since saved Card result metadata can be stale or user-edited.
+  Virtual-column fingerprints are withheld if any table read by the query is restricted, or the
+  query's source tables cannot be determined."
+  [query {:keys [id fingerprint]} limit]
   (if id
     (let [field (metabot.db/field id)
           table-id (:table_id field)
@@ -45,7 +74,7 @@
           fp (when-not restricted?
                (or fingerprint (get-or-create-fingerprint! field)))]
       (build-field-statistics fvs fp limit))
-    (build-field-statistics nil fingerprint limit)))
+    (build-field-statistics nil (when (and fingerprint (not (query-row-restricted? query))) fingerprint) limit)))
 
 (defn- field-metadata-output
   "Build the `:field-metadata` tool result for `col` of `query`. Surfaces the column's portable
@@ -54,7 +83,7 @@
   [query col field-id limit]
   {:structured-output (merge {:result-type    :field-metadata
                               :field_id       field-id
-                              :value_metadata (field-statistics col limit)}
+                              :value_metadata (field-statistics query col limit)}
                              (select-keys (metabot.tools.u/->result-column query col)
                                           [:portable_fk :table_reference]))})
 

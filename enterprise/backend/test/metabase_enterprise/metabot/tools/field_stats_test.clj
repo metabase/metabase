@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -189,3 +190,61 @@
                   [(mt/id :venues :price) Integer/MAX_VALUE])]
         (is (= (mapv :error responses) (repeat 2 (:error (first responses)))))
         (is (apply = (map #(second (str/split (:output %) #"\. Valid field IDs: " 2)) responses)))))))
+
+(defn- count-query []
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :categories))) (lib/count))))
+
+(defn- count-field-metadata [profile card-id]
+  (binding [scope/*current-user-scope* #{"*"}]
+    (let [entries (metabot.tools/->entries (:tools (profiles/get-profile profile)) nil nil profile)]
+      ((get-in entries ["get_field_values" :fn])
+       {:data_source "question" :source_id card-id :field_id "count"}))))
+
+(defn- check-count-fingerprint [query restricted?]
+  (let [columns (mt/as-admin (-> query qp/process-query :data :results_metadata :columns))
+        fingerprint (:fingerprint (first columns))
+        global-count (get-in fingerprint [:type :type/Number :max])]
+    (is (nil? (:id (first columns))))
+    (is (pos? global-count))
+    (mt/with-temp [:model/Card {card-id :id} {:type :question :database_id (mt/id)
+                                              :dataset_query query :result_metadata columns}]
+      (doseq [profile [:document-generate-content :slackbot]]
+        (let [unrestricted (mt/as-admin (count-field-metadata profile card-id))
+              user-result (count-field-metadata profile card-id)]
+          (is (= {:result-type :field-metadata :field_id "count"
+                  :value_metadata {:statistics (merge {:distinct-count 1 :percent-null 0.0}
+                                                      (get-in fingerprint [:type :type/Number]))}}
+                 (:structured-output unrestricted)))
+          (if restricted?
+            (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                   (:structured-output user-result)))
+            (is (= unrestricted user-result))))))))
+
+(deftest virtual-column-fingerprint-withheld-for-sandboxed-user-test
+  (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
+    (let [mp (mt/metadata-provider)
+          query (count-query)
+          table (lib.metadata/table mp (mt/id :categories))
+          joined-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                           (lib/join (lib/join-clause table
+                                                      [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                              (lib.metadata/field mp (mt/id :categories :id)))]))
+                           (lib/aggregate (lib/count)))
+          native-query (lib/native-query mp (str "SELECT COUNT(*) AS \"count\" FROM \"" (:name table) "\""))]
+      (is (= [[2]] (:rows (:data (qp/process-query query)))))
+      (doseq [query [query joined-query native-query]]
+        (check-count-fingerprint query true))
+      (mt/with-temp [:model/Card {card-id :id} {:type :question :database_id (mt/id) :dataset_query query}]
+        (check-count-fingerprint (lib/query mp (lib.metadata/card mp card-id)) true)))))
+
+(deftest virtual-column-fingerprint-withheld-for-impersonated-user-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (impersonation.util-test/with-impersonations!
+      {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+       :attributes {"impersonation_attr" "impersonation_role"}}
+      (check-count-fingerprint (count-query) true))))
+
+(deftest virtual-column-fingerprint-returned-for-unrestricted-user-test
+  (mt/with-test-user :rasta
+    (check-count-fingerprint (count-query) false)))
