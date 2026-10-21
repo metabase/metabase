@@ -401,3 +401,15 @@
           (let [result (invoke-field-detail profile data-source card-id "bird_count")]
             (is (nil? (:error result)))
             (is (str/includes? (:output result) "bird_count"))))))))
+
+(deftest empty-field-suggestions-offer-another-source-test
+  (mt/as-admin
+    (let [query (lib/native-query (mt/metadata-provider) "SELECT 17 AS \"bird_count\"")]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query query :result_metadata []}]
+        (doseq [profile [:document-generate-content :slackbot :internal]]
+          (let [{:keys [error output]} (invoke-field-detail profile "question" card-id "missing")]
+            (is (= :recoverable (:class error)))
+            (is (str/includes? output
+                               (str "Field missing was not found in question " card-id "."
+                                    " No accessible field IDs are available for this data source."
+                                    "\nChoose another data source.")))))))))

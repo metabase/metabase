@@ -70,9 +70,14 @@
              [:remaining-count :int]]}
   [{:keys [field-id entity-type entity-id available-ids remaining-count]}]
   {:message (str "Field " field-id " was not found in " entity-type " " entity-id
-                 ". Valid field IDs: " (pr-str available-ids)
-                 (when (pos? remaining-count) (str " and " remaining-count " more")) ".")
-   :recovery [{:text "Retry with one of these field IDs." :uses #{}}]})
+                 (if (seq available-ids)
+                   (str ". Valid field IDs: " (pr-str available-ids)
+                        (when (pos? remaining-count) (str " and " remaining-count " more")) ".")
+                   ". No accessible field IDs are available for this data source."))
+   :recovery [{:text (if (seq available-ids)
+                       "Retry with one of these field IDs."
+                       "Choose another data source.")
+               :uses #{}}]})
 
 (defn- field-column
   [entity-type entity-id field-id columns]
