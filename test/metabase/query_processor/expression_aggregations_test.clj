@@ -423,7 +423,7 @@
 
 (deftest aggregate-datetime-add-on-timestamp-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics :set-timezone)
-    (mt/dataset attempted-murders
+    (mt/dataset attempted-murders-no-time
       (mt/with-report-timezone-id! "America/Toronto"
         (let [mp          (mt/metadata-provider)
               attempts    (lib.metadata/table mp (mt/id :attempts))

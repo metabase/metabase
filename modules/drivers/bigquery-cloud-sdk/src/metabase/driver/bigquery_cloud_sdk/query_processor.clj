@@ -925,6 +925,20 @@
       driver
       clause))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :case]
+  [driver clause]
+  ;; Bigquery requires all case expressions to have the same type, so coerce all temporal expressions to the same type
+  (let [[tag & args :as form] ((get-method sql.qp/->honeysql [:sql :case]) driver clause)]
+    (if-let [target-type (temporal-type form)]
+      (into [tag]
+            (map-indexed (fn [i arg]
+                           (let [arg-type (when (odd? i) (temporal-type arg))]
+                             (if (and arg-type (not= arg-type target-type))
+                               (->temporal-type target-type arg)
+                               arg))))
+            args)
+      form)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
