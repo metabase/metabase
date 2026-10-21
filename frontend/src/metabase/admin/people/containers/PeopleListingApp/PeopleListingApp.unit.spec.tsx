@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupGroupsEndpoint,
@@ -27,6 +29,7 @@ const setup = ({
   }),
   tenants = [],
   useTenants = true,
+  passwordLoginEnabled = true,
 }: {
   external?: boolean;
   showInviteButton?: boolean;
@@ -35,12 +38,14 @@ const setup = ({
   currentUser?: User;
   tenants?: Tenant[];
   useTenants?: boolean;
+  passwordLoginEnabled?: boolean;
 } = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       tenants: true,
     }),
     "use-tenants": useTenants,
+    "enable-password-login": passwordLoginEnabled,
   });
 
   setupEnterprisePlugins();
@@ -120,6 +125,28 @@ describe("user strategy button", () => {
     expect(
       await screen.findByRole("button", { name: /gear/i }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("user actions menu (metabase#23630)", () => {
+  const user = createMockUser({ id: 20, common_name: "Other User" });
+
+  it("should offer to reset the password when password login is enabled", async () => {
+    setup({ users: [user] });
+
+    await userEvent.click(await screen.findByLabelText("ellipsis icon"));
+
+    expect(await screen.findByText("Edit user")).toBeInTheDocument();
+    expect(screen.getByText("Reset password")).toBeInTheDocument();
+  });
+
+  it("should not offer to reset the password when password login is disabled", async () => {
+    setup({ users: [user], passwordLoginEnabled: false });
+
+    await userEvent.click(await screen.findByLabelText("ellipsis icon"));
+
+    expect(await screen.findByText("Edit user")).toBeInTheDocument();
+    expect(screen.queryByText("Reset password")).not.toBeInTheDocument();
   });
 });
 

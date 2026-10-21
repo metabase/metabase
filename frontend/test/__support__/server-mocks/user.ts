@@ -64,3 +64,7 @@ export function setupUserRecipientsEndpoint({
 }) {
   fetchMock.get("path:/api/user/recipients", { data: users });
 }
+
+export function setupCreateUserEndpoint(user: User) {
+  fetchMock.post("path:/api/user", user);
+}

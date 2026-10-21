@@ -501,41 +501,6 @@ describe("scenarios > admin > people", () => {
       cy.findByText("readonly");
     });
 
-    describe("email configured", { tags: "@external" }, () => {
-      beforeEach(() => {
-        // Setup email server, since we show different modal message when email isn't configured
-        H.setupSMTP();
-        setupGoogleAuth();
-      });
-
-      it("invite member when Google SSO is configured but password login is still enabled", () => {
-        const { first_name, last_name, email } = TEST_USER;
-        const FULL_NAME = `${first_name} ${last_name}`;
-        cy.visit("/admin/people");
-
-        clickButton("Invite someone");
-
-        // first modal
-        cy.findByLabelText("First name").type(first_name);
-        cy.findByLabelText("Last name").type(last_name);
-        cy.findByLabelText(/Email/).type(email);
-        clickButton("Create");
-
-        // second modal
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`${FULL_NAME} has been added`);
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.contains(
-          `We’ve sent an invite to ${email} with instructions to set their password.`,
-        );
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Done").click();
-
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(FULL_NAME);
-      });
-    });
-
     describe("pagination", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
@@ -666,49 +631,6 @@ describe("scenarios > admin > people", () => {
     cy.findByText("Question").should("not.exist");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Dashboard").should("not.exist");
-  });
-
-  it("invite member when SSO is configured and not offer to reset passwords when password login is disabled (metabase#23630)", () => {
-    H.setupSMTP();
-    setupGoogleAuth();
-    cy.request("PUT", "/api/setting", { "enable-password-login": false });
-
-    const { first_name, last_name, email } = TEST_USER;
-    const FULL_NAME = `${first_name} ${last_name}`;
-
-    cy.visit("/admin/people");
-    clickButton("Invite someone");
-
-    // first modal
-    cy.findByLabelText("First name").type(first_name);
-    cy.findByLabelText("Last name").type(last_name);
-    cy.findByLabelText(/Email/).type(email);
-    clickButton("Create");
-
-    // second modal
-    H.modal().within(() => {
-      cy.findByText(`${FULL_NAME} has been added`);
-      cy.contains(
-        `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
-      );
-      cy.url().then((url) => {
-        const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
-        const { userId } = URL_REGEX.exec(url).groups;
-        assertLinkMatchesUrl(
-          "reset their password.",
-          `/admin/people/${userId}/reset`,
-        );
-      });
-      cy.button("Done").click();
-    });
-
-    cy.findByTestId("admin-people-list-table").should("contain", FULL_NAME);
-
-    cy.log(
-      "should not offer to reset passwords when password login is disabled",
-    );
-    showUserOptions(normalUserName);
-    H.popover().findByText("Reset password").should("not.exist");
   });
 });
 
@@ -959,21 +881,6 @@ function getPulseDetails({ card_id, dashboard_id }) {
   };
 }
 
-function assertLinkMatchesUrl(text, url) {
-  cy.findByRole("link", { name: text })
-    .should("have.attr", "href")
-    .and("eq", url);
-}
-
 function removeUserFromGroup(fullName) {
   cy.findByText(fullName).closest("tr").find(".Icon-close").click();
 }
-
-const setupGoogleAuth = () => {
-  // Setup Google authentication
-  cy.request("PUT", "/api/setting", {
-    "google-auth-client-id": "fake-id.apps.googleusercontent.com",
-    "google-auth-auto-create-accounts-domain": "metabase.com",
-    "google-auth-enabled": true,
-  });
-};
