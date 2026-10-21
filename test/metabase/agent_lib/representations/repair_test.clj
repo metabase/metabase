@@ -2990,6 +2990,21 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
+(deftest ^:parallel split-post-agg-refuses-when-order-by-is-a-string-test
+  (testing "a string `order-by` with a post-aggregation filter gets advice to split the stage"
+    (is (=? {:error :post-agg-filter-with-trailing-clauses}
+            (try
+              (repair/repair trivial-mp {"lib/type" "mbql/query"
+                                         "database" "Sample"
+                                         "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                      "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}]]
+                                                      "filters"      [[">" {} ["aggregation" {} 0] 10]]
+                                                      "order-by"     "TOTAL"}]})
+              nil
+              (catch clojure.lang.ExceptionInfo e
+                (ex-data e)))))))
+
 (deftest ^:parallel split-post-agg-refuses-when-raw-column-order-by-test
   (testing (str "specifically the pre-agg `order-by [desc TOTAL]` case the reviewer flagged "
                 "as silent-intent-destruction in the prior implementation: TOTAL doesn't "
@@ -3164,6 +3179,35 @@
                (get-in (repair/repair trivial-mp
                                       (build ["count-where" {} ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]))
                        ["stages" 1 "filters"])))))))
+
+(deftest ^:parallel malformed-clauses-reach-validation-test
+  (testing "repair leaves malformed stages and clauses for validation"
+    ;; ORDERS has to resolve for the cross-stage pass to reach a later stage
+    (let [orders   {"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders "aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label stages] {"a number as `aggregation`"
+                              [(assoc orders "aggregation" 42)]
+                              "an empty aggregation clause used in `order-by`"
+                              [(assoc orders "aggregation" [[]] "order-by" [["desc" {} []]])]
+                              "a number as `joins`"
+                              [(assoc orders "joins" 42)]
+                              "a join-alias reference with a number as `joins`"
+                              [(assoc orders "joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]])]
+                              "a post-aggregation filter with a number as `order-by`"
+                              [(assoc post-agg "order-by" 42)]
+                              "a post-aggregation filter with a number as `fields`"
+                              [(assoc post-agg "fields" 42)]
+                              "a number as a later stage"            [orders 42]
+                              "a string as a later stage"            [orders "ORDERS"]
+                              "true as a later stage"                [orders true]
+                              "an empty list as a later stage"       [orders []]
+                              "an aggregation list as a later stage" [orders [["count" {}]]]}]
+        (testing label
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Representations query has an invalid structure"
+                                (repr/validate-query
+                                 (repair/repair mp-fks {"lib/type" "mbql/query"
+                                                        "database" "Sample"
+                                                        "stages"   stages})))))))))
 
 ;;; ============================================================
 ;;; Pass 6 - friendly error messages (E1..E6)
