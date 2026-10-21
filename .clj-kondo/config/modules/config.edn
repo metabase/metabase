@@ -118,7 +118,8 @@
            users
            util
            warehouse-schema-overlay
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
@@ -981,7 +982,8 @@
            util.config
            warehouse-schema-overlay
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   embedding
@@ -1749,7 +1751,8 @@
            task.history
            tracing
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -2354,7 +2357,8 @@
            users
            util
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2867,7 +2871,8 @@
            util.config
            warehouse-schema-overlay
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3092,7 +3097,8 @@
            sync
            transforms.indexes
            util
-           warehouse-schema-overlay}}
+           warehouse-schema-overlay
+           workspaces}}
 
   transforms.feature-gating
   {:team "Graphy"
@@ -3171,7 +3177,8 @@
            sync
            util
            warehouse-schema-overlay
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3569,7 +3576,8 @@
            sync
            users
            util
-           warehouses}
+           warehouses
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/analytics
@@ -3906,7 +3914,8 @@
            settings
            util
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -4704,7 +4713,8 @@
            app-db
            cache
            driver
-           lib
+           lib.metadata
+           lib.schema
            models
            permissions
            premium-features
@@ -4713,8 +4723,8 @@
            settings
            sql-tools
            util
+           warehouse-schema-overlay
            workspaces}
-   :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table
                     :model/User}}}

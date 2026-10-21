@@ -318,7 +318,7 @@
       (mt/with-premium-features #{:config-text-file :workspaces}
         (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
           (reset! (lock-atom) false)
-          (with-redefs [advanced-config.file/config-from-disk
+          (mt/with-dynamic-fn-redefs [advanced-config.file/config-from-disk
                         (constantly {:version 1
                                      :config  {:workspace (workspace-section "ws-test-db")}})]
             (advanced-config.file/boot-initialize!))
@@ -328,7 +328,7 @@
   (testing "boot-initialize! with no :workspace section in the config leaves the lock false"
     (mt/with-empty-h2-app-db!
       (reset! (lock-atom) false)
-      (with-redefs [advanced-config.file/config-from-disk
+      (mt/with-dynamic-fn-redefs [advanced-config.file/config-from-disk
                     (constantly {:version 1
                                  :config  {:settings {}}})]
         (advanced-config.file/boot-initialize!))
@@ -338,7 +338,7 @@
   (testing "boot-initialize! when no config.yml is present (config-from-disk returns nil) leaves the lock false"
     (mt/with-empty-h2-app-db!
       (reset! (lock-atom) false)
-      (with-redefs [advanced-config.file/config-from-disk (constantly nil)]
+      (mt/with-dynamic-fn-redefs [advanced-config.file/config-from-disk (constantly nil)]
         (advanced-config.file/boot-initialize!))
       (is (false? (ws/workspace-locked-by-config?))))))
 

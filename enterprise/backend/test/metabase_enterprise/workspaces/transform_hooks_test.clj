@@ -13,7 +13,7 @@
 
 (deftest resolve-transform-target-no-workspace-passthrough-test
   (testing "without a provisioned WorkspaceDatabase, target passes through unchanged"
-    (with-redefs [ws/db-workspace-namespace  (constantly nil)
+    (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly nil)
                   ws.table-remapping/add-transform-target-mapping!
                   (fn [& _] (throw (ex-info "add-transform-target-mapping! must not be called when no workspace is active" {})))]
       (let [target {:schema "public" :name "orders" :type :table}]
@@ -22,7 +22,7 @@
 (deftest resolve-transform-target-rewrites-schema-test
   (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the recorded to-spec"
     (let [recorded (atom nil)]
-      (with-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
+      (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
                       (reset! recorded {:db-id db-id :target target})
@@ -40,7 +40,7 @@
 (deftest resolve-transform-target-records-remapping-test
   (testing "with a workspace active, the canonical->workspace remapping is recorded"
     (let [recorded (atom nil)]
-      (with-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
+      (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
                       (reset! recorded {:db-id db-id :target target})

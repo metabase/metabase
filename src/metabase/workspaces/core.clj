@@ -49,7 +49,7 @@
    populate. Empty-string `\"\"` is reserved for the storage layer; the atom
    carries `nil`/missing for absent slots."
   [:and
-   [:map
+   [:map {:closed true}
     [:db     {:optional true} [:maybe :string]]
     [:schema {:optional true} [:maybe :string]]]
    [:fn {:error/message "table namespace must populate at least one of :db or :schema"}
@@ -61,7 +61,7 @@
    on drivers with no schema layer (e.g. MySQL), where the bound DB itself acts
    as the implicit input namespace; `:output` is a single namespace map (the
    workspace's isolation schema, expanded with the warehouse catalog at boot)."
-  [:map
+  [:map {:closed true}
    [:input_schemas [:vector :string]]
    [:output        ::table-namespace]])
 
@@ -70,7 +70,7 @@
    config.yml loader has resolved database names to ids. Database keys are integer
    ids (post-resolution); the wire format with name keys lives in
    `metabase-enterprise.advanced-config.file.workspace`."
-  [:map
+  [:map {:closed true}
    [:name      [:string {:min 1}]]
    [:databases [:map-of
                 {:decode/json #(update-keys % (fn [k] (cond-> k (keyword? k) (-> name parse-long))))}

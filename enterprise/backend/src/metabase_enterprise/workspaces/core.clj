@@ -32,6 +32,7 @@
          └──────────────────────────────────────── provisioned"
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -40,8 +41,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as ws]
-   [toucan2.core :as t2]))
+   [metabase.workspaces.core :as ws]))
 
 (set! *warn-on-reflection* true)
 
@@ -132,7 +132,7 @@
 (defn clear-all-remappings!
   "Delete every `:model/TableRemapping` row across all databases."
   []
-  (t2/delete! :model/TableRemapping)
+  (ws.db/delete-all-table-remappings!)
   nil)
 
 (defn instance-workspace
@@ -168,17 +168,17 @@
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."
   []
-  (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+  (ws.db/table-remappings))
 
 ;;; ------------------------------------- Manager-side helpers ------------------------------------------------
 
 (defn- assert-workspace-exists [workspace-id]
-  (when-not (t2/exists? :model/Workspace :id workspace-id)
+  (when-not (ws.db/workspace-exists? workspace-id)
     (throw (ex-info "Workspace not found"
                     {:status-code 404 :workspace_id workspace-id}))))
 
 (defn- assert-database-exists [database-id]
-  (or (t2/select-one :model/Database :id database-id)
+  (or (ws.db/database database-id)
       (throw (ex-info "Database not found"
                       {:status-code 404 :database_id database-id}))))
 
@@ -240,7 +240,7 @@
                                  (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner)
                                  nil
                                  (catch Throwable t t))))
-                       (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))]
+                       (ws.db/workspace-databases workspace-id))]
     (when (seq failures)
       (throw (combined-exception failures)))))
 

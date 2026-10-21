@@ -7,12 +7,13 @@
    [medley.core :as m]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -23,7 +24,8 @@
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
+   ;; when omitted, the workspace gets every database with workspaces enabled
+   [:database_ids {:optional true} [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -93,27 +95,33 @@
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking)."
+   for workspaces) — or, when `database_ids` is omitted, to every database with
+   workspaces enabled — and provision it (blocking)."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (present-workspace
-   (ws/create-workspace!
-    (assoc params :creator_id api/*current-user-id*))))
+  (let [database-ids (or (:database_ids params)
+                         (workspace-database/workspaces-enabled-database-ids))]
+    (api/check-400 (seq database-ids) "No databases have workspaces enabled.")
+    (present-workspace
+     (ws/create-workspace!
+      (assoc params
+             :database_ids database-ids
+             :creator_id   api/*current-user-id*)))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
   (api/write-check :model/Workspace id)
   (when (:name params)
-    (t2/update! :model/Workspace :id id {:name (:name params)}))
+    (ws.db/update-workspace-name! id (:name params)))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -122,7 +130,7 @@
   deleted) or kept; when any teardown fails the workspace is kept too — with the
   failed rows, so the delete can be retried — and the combined failure is
   returned as the error. 204 on success, no response body."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
   nil)
@@ -130,13 +138,13 @@
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config"
-  :- [:map
+  :- [:map {:closed true}
       [:status  [:= 200]]
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]
     {:status  200

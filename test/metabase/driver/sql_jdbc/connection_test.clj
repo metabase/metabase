@@ -32,6 +32,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
@@ -1016,7 +1017,7 @@
             swap-details {:test-swap true}
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-        (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]
@@ -1047,7 +1048,7 @@
             swap-details {:test-swap true}
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-        (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]
@@ -1079,7 +1080,7 @@
             db-id        (u/the-id db)
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-        (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]

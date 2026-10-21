@@ -3479,7 +3479,7 @@
               (is (= "new-admin-host" (get-in db [:admin_details :host])))
               (is (= "original-pass" (get-in db [:admin_details :password]))))))))
     (testing "Returns 402 without :workspaces feature"
-      (with-redefs [premium-features/has-feature? (constantly false)]
+      (mt/with-premium-features #{}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)

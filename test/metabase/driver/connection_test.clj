@@ -112,6 +112,7 @@
        (testing "effective-details returns admin_details when :admin and details exist"
          (testing "with kebab-case key (Lib metadata style)"
            (let [database {:lib/type      :metadata/database
+                           :id            1
                            :details       details
                            :admin-details admin-details}]
              (driver.conn/with-admin-connection
@@ -131,6 +132,7 @@
     (let [details {:host "read-host" :port 5432}]
       (testing "effective-details falls back to :details when :admin but no admin details"
         (let [database {:lib/type      :metadata/database
+                        :id            1
                         :details       details
                         :admin-details nil}]
           (driver.conn/with-admin-connection
@@ -138,6 +140,7 @@
                     (driver.conn/effective-details database)))))
         (testing "also when :admin_details key is missing entirely"
           (let [database {:lib/type :metadata/database
+                          :id       1
                           :details  details}]
             (driver.conn/with-admin-connection
               (is (=? details

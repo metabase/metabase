@@ -272,6 +272,7 @@
       thunk)
     (thunk)))
 
+;; one end-to-end lifecycle per driver: create, provision, transform, remap, read, destroy share state step to step
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:synchronized workspace-full-e2e-test
   (mt/test-drivers workspaces-supported-drivers

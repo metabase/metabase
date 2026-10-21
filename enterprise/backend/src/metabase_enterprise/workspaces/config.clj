@@ -2,13 +2,13 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
-   [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]))
+   [metabase.util.yaml :as yaml]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
@@ -96,21 +96,14 @@
    Excludes the sample DB (emitted separately by `sample-database-entries`), the
    audit DB, and routing-target databases (destinations with `:router_database_id` set)."
   [workspace-db-ids]
-  (t2/select :model/Database
-             {:where [:and
-                      [:= :is_sample false]
-                      [:= :is_audit  false]
-                      [:= :router_database_id nil]
-                      (if (seq workspace-db-ids)
-                        [:not-in :id workspace-db-ids]
-                        true)]}))
+  (ws.db/stub-candidate-databases workspace-db-ids))
 
 (defn- sample-database-entries
   "If the instance has a Sample Database, emit a single placeholder entry the
    import side will use to recreate it. Always uses the canonical name/engine —
    the entry is a directive (\"there should be a sample DB here\"), not a snapshot."
   []
-  (when (t2/exists? :model/Database :is_sample true)
+  (when (ws.db/sample-database-exists?)
     [{:name      sample-data/sample-database-name
       :engine    "h2"
       :details   {}
@@ -142,7 +135,7 @@
       (let [workspace-db-ids (mapv :database_id wsds)
             dbs-by-id        (if-let [ids (seq workspace-db-ids)]
                                (into {} (map (juxt :id identity))
-                                     (t2/select :model/Database :id [:in ids]))
+                                     (ws.db/databases ids))
                                {})
             pairs            (for [wsd wsds
                                    :let [db (get dbs-by-id (:database_id wsd))]]

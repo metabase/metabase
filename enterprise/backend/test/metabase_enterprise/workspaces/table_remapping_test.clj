@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
@@ -13,6 +14,7 @@
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -161,16 +163,14 @@
       (clean-db-fixture!
        (mt/id)
        (fn []
-         (with-redefs [t2/select-one (let [orig t2/select-one]
-                                       (fn [model & args]
-                                         (let [row (apply orig model args)]
-                                           (if (and row
-                                                    (= model :model/Database)
-                                                    (= (:id row) (mt/id)))
-                                             (-> row
-                                                 (assoc :engine :sqlserver
-                                                        :details {:db "AnalyticsDB"}))
-                                             row))))]
+         (mt/with-dynamic-fn-redefs [ws.db/database (let [orig (dynamic-redefs/original-fn #'ws.db/database)]
+                                                      (fn [database-id]
+                                                        (let [row (orig database-id)]
+                                                          (if (and row (= (:id row) (mt/id)))
+                                                            (assoc row
+                                                                   :engine :sqlserver
+                                                                   :details {:db "AnalyticsDB"})
+                                                            row))))]
            (with-provisioned-workspace-db-namespace!
              (mt/id) {:db "WS_DB" :schema "ws_alice"}
              (fn []
@@ -797,7 +797,7 @@
          ;; and workspace-isolation schemas.
          (let [fake-metadata {:tables #{{:schema "public"      :name "dev_1898_orders"}
                                         {:schema "ws_dev_1898" :name "dev_1898_orders"}}}]
-           (with-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
+           (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
              (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
          (let [created-pairs (set (t2/select-fn-set (juxt :schema :name)
                                                     :model/Table
@@ -975,7 +975,7 @@
          ;; ws_canonical_keep does not physically exist on the warehouse.
          (let [fake-metadata {:tables #{{:schema "public"   :name "unrelated_table"}
                                         {:schema "ws_alice" :name "ws_canonical_keep"}}}]
-           (with-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
+           (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
              (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
          (let [{:keys [active]} (t2/select-one [:model/Table :active] :db_id (mt/id) :name "ws_canonical_keep")]
            (is (true? active)
