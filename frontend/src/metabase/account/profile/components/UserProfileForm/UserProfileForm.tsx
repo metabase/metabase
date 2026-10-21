@@ -139,9 +139,7 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
 const ColorSchemeSwitcher = () => {
   return (
     <Box mb="lg">
-      <Text mt="xxs" fw="bold">
-        {t`Theme`}
-      </Text>
+      <Text fw="bold">{t`Theme`}</Text>
 
       <ColorSchemeSelect />
     </Box>

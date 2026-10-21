@@ -1349,8 +1349,7 @@
    form))
 
 ;;; ============================================================
-;;; Pass 1.55 -- normalise `fields:` on a stage / join when the LLM wrote a single clause
-;;; instead of a sequential of clauses.
+;;; Pass 1.55 -- wrap a single `fields:` or `aggregation:` clause in a list
 ;;;
 ;;; The repr schema for both stage and join requires
 ;;; `"fields": [:sequential [:ref ::clause]]` (joins additionally accept the enum strings
@@ -1382,6 +1381,20 @@
     {"fields" (:and single-clause
                     [(_ :guard string?) (_ :guard map?) & _])}
     (assoc &match "fields" [single-clause])))
+
+(defn- normalise-aggregation-clauses*
+  "Wrap a stage's bare aggregation clause in a one-element list."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (update query "stages"
+            (fn [stages]
+              (mapv (fn [stage]
+                      (let [aggregation (get stage "aggregation")]
+                        (cond-> stage
+                          (and (vector? aggregation) (string? (first aggregation)))
+                          (assoc "aggregation" [aggregation]))))
+                    stages)))))
 
 ;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
@@ -1770,6 +1783,10 @@
       (throw (ex-info (tru "Found an integer-indexed aggregation reference but this stage has no `aggregation:` clause")
                       {:agent-error? true
                        :error        :aggregation-ref-no-aggregations}))
+
+      ;; Let query validation report malformed aggregation entries.
+      (not-every? clause-like? aggs)
+      stage
 
       :else
       (let [[stamped-aggs index->uuid] (ensure-aggregation-uuids aggs)
@@ -3096,6 +3113,7 @@
       swap-between-bounds*
       normalise-case-clauses*
       normalise-fields-shape*
+      normalise-aggregation-clauses*
       normalize-expressions-shape*
       ensure-lib-types*))
 

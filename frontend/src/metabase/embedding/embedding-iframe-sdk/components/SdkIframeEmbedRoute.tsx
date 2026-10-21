@@ -238,7 +238,7 @@ const SdkIframeEmbedView = ({
         },
         (settings) => (
           <DashboardParametersBridge>
-            {({ onParametersChange }) => (
+            {({ onParametersChange, onNavigatedEntityParametersChange }) => (
               <InteractiveDashboard
                 key={rerenderKey}
                 className={SdkIframeEmbedRouteS.Dashboard}
@@ -253,6 +253,10 @@ const SdkIframeEmbedView = ({
                 onParametersChange={onParametersChange}
                 hiddenParameters={settings.hiddenParameters}
                 enableEntityNavigation={settings.enableEntityNavigation}
+                navigatedEntityParameters={settings.navigatedEntityParameters}
+                onNavigatedEntityParametersChange={
+                  onNavigatedEntityParametersChange
+                }
                 drillThroughQuestionHeight="100%"
                 drillThroughQuestionProps={{ isSaveEnabled: false }}
               />

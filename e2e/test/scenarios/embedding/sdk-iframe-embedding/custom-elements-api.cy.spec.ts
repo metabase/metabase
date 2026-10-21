@@ -550,6 +550,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
             const questionId = response.id;
 
             cy.log("Open the question");
+            cy.signInAsAdmin();
             H.visitQuestion(questionId)?.then(() => {
               // Name of the collection should be visible at the top of the page
               // findAllBy because there are two "first_collection", one in the sidebar and one at the top
