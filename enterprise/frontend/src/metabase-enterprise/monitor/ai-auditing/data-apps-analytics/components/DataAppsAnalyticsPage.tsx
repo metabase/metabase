@@ -6,10 +6,12 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
+import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
 import {
   DATA_APP_LOG_VIEW,
   buildDataAppLogCountQuery,
   getMissingDataAppLogColumns,
+  scopeToDataApps,
 } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
 import { dataAppsAnalyticsUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/url-state";
 import {
@@ -83,6 +85,14 @@ export function DataAppsAnalyticsPage() {
   return (
     <AiAnalyticsSectionLayout
       title={t`Data app analytics`}
+      filtersAction={
+        hasFilterColumns && (
+          <NewQuestionButton
+            viewName={DATA_APP_LOG_VIEW}
+            scopeQuery={scopeToDataApps}
+          />
+        )
+      }
       filters={
         <DataAppsAnalyticsFilterBar
           date={date}
