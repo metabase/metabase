@@ -19,6 +19,7 @@
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]))
@@ -474,7 +475,9 @@
   (try
     (:query (qp.compile/compile query))
     (catch Exception e
-      (fail-query! (ex-message e)))))
+      (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+        (fail-query! (ex-message e))
+        (throw e)))))
 
 (defn- read-only-problem
   "A sentence saying why `sql` is not a single read-only SELECT statement for `driver`, so the model knows what to
@@ -605,17 +608,19 @@
 
 (defn- run-page!
   "Run `query` for one page of rows through [[query-execution/execute-page!]].
-   Throw this tool's declared errors for permission failures, query failures, cancellation and timeouts."
+   Throw this tool's declared errors for permission failures, failures of the query or its database, cancellation and
+   timeouts, and rethrow a failure inside Metabase."
   [query-id query row-limit]
   (try
     (query-execution/execute-page! query row-limit :metabot (run-options))
     (catch clojure.lang.ExceptionInfo e
-      (let [{:keys [error query-error permissions-error? timeout-ms]} (ex-data e)]
+      (let [{:keys [error query-error permissions-error? caller-facing? timeout-ms]} (ex-data e)]
         (case error
           ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
-          :query-failed    (if permissions-error?
-                             (no-permission! {:query-id query-id})
-                             (fail-query! query-error))
+          :query-failed    (cond
+                             permissions-error? (no-permission! {:query-id query-id})
+                             caller-facing?     (fail-query! query-error)
+                             :else              (throw e))
           :query-canceled  (query-canceled! {})
           :query-timed-out (query-timed-out! {:seconds (quot timeout-ms 1000)})
           (throw e))))))
