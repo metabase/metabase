@@ -25,6 +25,8 @@
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.static-viz :as static-viz]
    [metabase.metabot.tools.subscriptions :as subscriptions]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -989,6 +991,35 @@
             (let [answer (run published)]
               (is (not (str/includes? answer "only uses curated content")))
               (is (re-find #"(?i)permission" answer)))))))))
+
+(deftest library-table-read-grant-comes-from-user-settings-test
+  (testing "a table published through the Data Studio keeps its published flag in its user settings, and the read
+            check sees it: a user with no query permission reads it through its Library collection"
+    (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library"}
+                   :model/Table {table-id :id} {:db_id      (mt/id)
+                                                :name       "published_by_settings"
+                                                :schema     "LIBRARY_SCHEMA"
+                                                :active     true
+                                                :data_layer :final}
+                   :model/TableUserSettings _ {:table_id      table-id
+                                               :is_published  true
+                                               :collection_id lib}
+                   :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [[resource] (read-uris metabot :internal (str "metabase://table/" table-id))]
+            (is (nil? (:error resource)) (:error resource))
+            (is (= table-id (get-in resource [:content :structured-output :id]))))
+          (testing "and the listings, which keep the tables and schemas the user can read"
+            (let [items (fn [uri]
+                          (let [[resource] (read-uris metabot :internal uri)]
+                            (is (nil? (:error resource)) (:error resource))
+                            (into #{} (map :name) (get-in resource [:content :structured-output :items]))))
+                  db    (str "metabase://database/" (mt/id))]
+              (is (contains? (items (str db "/tables")) "published_by_settings"))
+              (is (contains? (items (str db "/schemas")) "LIBRARY_SCHEMA"))
+              (is (contains? (items (str db "/schemas/LIBRARY_SCHEMA/tables")) "published_by_settings")))))))))
 
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (testing "a missing id gets the handler's own answer, not a curation verdict"
