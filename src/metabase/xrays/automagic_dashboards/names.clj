@@ -86,10 +86,10 @@
    question :- ::ads/card-or-question]
   (let [aggregations (->> (lib/aggregations (:dataset_query question))
                           (metric->description root))
-        field-ids    (into
-                      #{}
-                      (mapcat lib/all-field-ids)
-                      (lib/breakouts (:dataset_query question)))
+        query        (:dataset_query question)
+        field-ids    (into #{}
+                           (keep #(:id (lib/breakout-column query %)))
+                           (lib/breakouts query))
         dimensions   (->> field-ids
                           (mapv (partial magic.util/->field root))
                           (mapv :display_name)

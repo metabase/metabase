@@ -566,8 +566,8 @@
     (is (= source-card-id
            (lib/primary-source-card-id magic-card-query)))
     (doseq [breakout (lib/breakouts magic-card-query)
-            field-id (lib/all-field-ids breakout)]
-      (is (contains? valid-source-ids field-id)))))
+            :let     [column (lib/breakout-column magic-card-query breakout)]]
+      (is (contains? valid-source-ids ((some-fn :id :name) column))))))
 
 (defn- ensure-dashboard-sourcing [source-card dashboard]
   (doseq [magic-card (->> dashboard

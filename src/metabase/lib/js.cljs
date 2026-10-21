@@ -2654,9 +2654,9 @@
   (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
 
 (defn ^:export all-field-ids
-  "Return a JS array of all field IDs referenced anywhere in `a-query`."
+  "Return a JS array of the IDs of all the fields that the field refs anywhere in `a-query` resolve to."
   [a-query]
-  (clj->js (vec (or (lib.core/all-field-ids a-query) #{}))))
+  (clj->js (vec (lib.core/all-field-ids a-query))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

@@ -65,6 +65,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -410,22 +411,35 @@
      query
      joins)))
 
-(mu/defn- tighten-join-projections :- ::lib.schema/query
-  "Narrow each join's inner-stage `:fields` to exactly the field-ids `query` references whose `:table-id` matches the
-  join's source table.
+(defn- first-stage-join-alias->refs
+  "The `:field` refs in the first stage of `query`, including the conditions of its joins, grouped by join alias."
+  [query]
+  (let [refs (volatile! [])]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query path-type path clause]
+       (when (and (lib/clause-of-type? clause :field)
+                  (lib/current-join-alias clause)
+                  (= [:stages 0] (cond-> path
+                                   (= path-type :lib.walk/join) lib.walk/join-parent-stage-path)))
+         (vswap! refs conj clause))
+       nil))
+    (group-by lib/current-join-alias @refs)))
 
-  Assumes no two joins in stage 0 target the same `:table-id` (true for chain-filter's `joined-table-alias`
-  convention). If that ever breaks, both joins get the union of fields — still correct, only over-projection.
+(mu/defn- tighten-join-projections :- ::lib.schema/query
+  "Narrow each join's inner-stage `:fields` to exactly the columns of its source table that `query` references.
 
   Semi-joins (see [[add-semi-joins]]) are left alone: their sub-select returns only its breakout column already."
   [query :- ::lib.schema/query]
   (if (empty? (lib/joins query))
     query
-    ;; Bucket by `:table-id`, not by join alias: aliases are stage-scoped and the same string can recur in nested
-    ;; scopes referring to different things. Table-id is the field's natural grain.
-    (let [field-ids   (lib/all-field-ids query)
-          cols        (lib.metadata/bulk-metadata query :metadata/column field-ids)
-          cols-by-tid (group-by :table-id cols)]
+    (let [join-alias->refs (first-stage-join-alias->refs query)]
+      (when-let [table-ids (not-empty (into #{}
+                                            (comp (map #(lib/joined-thing query %))
+                                                  (filter #(= :metadata/table (:lib/type %)))
+                                                  (map :id))
+                                            (lib/joins query)))]
+        (lib.metadata/metadatas query {:lib/type :metadata/column, :table-ids table-ids}))
       (lib.walk/walk
        query
        (fn [query path-type path a-join]
@@ -435,12 +449,16 @@
                     (= (lib.walk/join-parent-stage-path path) [:stages 0]))
            (let [thing       (lib/joined-thing query a-join)
                  summarized? (seq (lib.walk/apply-f-for-stage-at-path
-                                   lib/breakouts query (lib.walk/join-last-stage-path path a-join)))
-                 tid         (when (and (= :metadata/table (:lib/type thing))
-                                        (not summarized?))
-                               (:id thing))]
-             (when tid
-               (lib/with-join-source-fields a-join (get cols-by-tid tid))))))))))
+                                   lib/breakouts query (lib.walk/join-last-stage-path path a-join)))]
+             (when (and (= :metadata/table (:lib/type thing))
+                        (not summarized?))
+               (let [table-cols (lib/returned-columns query thing)]
+                 (lib/with-join-source-fields
+                   a-join
+                   (into []
+                         (comp (keep #(lib/find-matching-column (lib/with-join-alias % nil) table-cols))
+                               (m/distinct-by :name))
+                         (join-alias->refs (:alias a-join)))))))))))))
 
 (defn- one-to-many-join?
   "Whether `join-info` follows an FK backwards, from the Field it references to the referencing Field, so that one row
@@ -600,12 +618,9 @@
 
 (def ^:private max-results 1000)
 
-(mu/defn- chain-filter-mbql-query :- ::lib.schema/query
-  "Generate the MBQL query powering `chain-filter`."
-  [field-id                          :- ::lib.schema.id/field
-   constraints                       :- [:maybe ::constraints]
-   {:keys [original-field-id limit]} :- [:maybe ::options]]
-  (log/tracef "Chain filter %s with %d constraint(s)" (name-for-logging :model/Field field-id) (count constraints))
+(defn- chain-filter-plan
+  "The metadata provider, source Table, and joins of the `chain-filter` query for `field-id`."
+  [field-id constraints original-field-id]
   ;; `field-id->database-id` is the one place we still bootstrap from a raw field-id: we need the Database before we
   ;; can build a (per-Database) metadata provider. Every other table-id/db-id below comes from `mp`.
   (let [database-id       (field/field-id->database-id field-id)
@@ -621,7 +636,23 @@
         remap-field-ids   (cond-> #{}
                             reversed?       (conj field-id)
                             (not reversed?) (cond-> original-field-id (conj original-field-id)))
-        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints remap-field-ids)
+        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints remap-field-ids)]
+    {:mp                mp
+     :field-table-id    field-table-id
+     :original-table-id original-table-id
+     :reversed?         reversed?
+     :source-table-id   source-table-id
+     :joins             joins
+     :semi-join-paths   semi-join-paths}))
+
+(mu/defn- chain-filter-mbql-query :- ::lib.schema/query
+  "Generate the MBQL query powering `chain-filter`."
+  [field-id                          :- ::lib.schema.id/field
+   constraints                       :- [:maybe ::constraints]
+   {:keys [original-field-id limit]} :- [:maybe ::options]]
+  (log/tracef "Chain filter %s with %d constraint(s)" (name-for-logging :model/Field field-id) (count constraints))
+  (let [{:keys [mp field-table-id original-table-id reversed? source-table-id joins semi-join-paths]}
+        (chain-filter-plan field-id constraints original-field-id)
         joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
         field             (cond-> (lib.metadata/field mp field-id)
                             reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
@@ -1014,15 +1045,17 @@
   [field-id         :- ::lib.schema.id/field
    filter-field-ids :- [:maybe [:set ::lib.schema.id/field]]]
   (when (seq filter-field-ids)
-    (let [mbql-query (chain-filter-mbql-query field-id
-                                              (for [id filter-field-ids]
-                                                {:field-id id, :op :=, :value nil})
-                                              nil)
-          ;; constraints on Tables behind one-to-many joins are filters of the semi-joins' sub-selects, so collect the
-          ;; filters of every stage, including the stages inside joins
-          filters    (volatile! [])]
-      (lib.walk/walk-stages mbql-query
-                            (fn [query path _stage]
-                              (vswap! filters into (lib.walk/apply-f-for-stage-at-path lib/filters query path))
-                              nil))
-      (into #{} (mapcat lib/all-field-ids) @filters))))
+    (let [{:keys [mp source-table-id joins semi-join-paths]}
+          (chain-filter-plan field-id
+                             (for [id filter-field-ids]
+                               {:field-id id, :op :=, :value nil})
+                             nil)
+          ;; constraints on Tables behind one-to-many joins are filters of the semi-joins' sub-selects
+          filterable-table-ids (into #{source-table-id}
+                                     cat
+                                     [(map #(get-in % [:rhs :table]) joins)
+                                      (keys semi-join-paths)])]
+      (into #{}
+            (comp (filter #(contains? filterable-table-ids (:table-id %)))
+                  (map :id))
+            (lib.metadata/bulk-metadata mp :metadata/column filter-field-ids)))))

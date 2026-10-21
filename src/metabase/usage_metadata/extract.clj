@@ -22,6 +22,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.source-swap.core :as source-swap]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -288,16 +289,18 @@
           (or (lib/breakouts query stage-number) []))))
 
 (defn extract-usage-facts
-  "Extract fact-level usage tuples from a normalized MBQL query."
+  "Extract fact-level usage tuples from a normalized MBQL query. Field refs are upgraded first, so the same column
+  referenced in different ref styles yields the same facts."
   [query]
-  (reduce
-   (fn [{:keys [segments composites metrics dimensions]} stage-number]
-     {:segments   (into segments (segment-facts-for-stage query stage-number))
-      :composites (into composites (composite-facts-for-stage query stage-number))
-      :metrics    (into metrics (metric-facts-for-stage query stage-number))
-      :dimensions (into dimensions (dimension-facts-for-stage query stage-number))})
-   {:segments   []
-    :composites []
-    :metrics    []
-    :dimensions []}
-   (range (lib/stage-count query))))
+  (let [query (source-swap/upgrade-field-refs-in-query query)]
+    (reduce
+     (fn [{:keys [segments composites metrics dimensions]} stage-number]
+       {:segments   (into segments (segment-facts-for-stage query stage-number))
+        :composites (into composites (composite-facts-for-stage query stage-number))
+        :metrics    (into metrics (metric-facts-for-stage query stage-number))
+        :dimensions (into dimensions (dimension-facts-for-stage query stage-number))})
+     {:segments   []
+      :composites []
+      :metrics    []
+      :dimensions []}
+     (range (lib/stage-count query)))))

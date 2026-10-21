@@ -1741,7 +1741,6 @@
   all-field-ids
   all-referenced-entity-ids
   all-referenced-entity-ids-recursive
-  all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
   all-segment-ids

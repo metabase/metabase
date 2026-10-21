@@ -191,7 +191,7 @@
                                                        (keep (fn [[_tag opts]] (:source-field-name opts)))
                                                        field-refs)))
         ignore-source-field-name? (fn [[_tag {:keys [source-field source-field-name], :as _opts} _id-or-name :as _ref]]
-                                    (when source-field-name
+                                    (when (and source-field source-field-name)
                                       (let [source-field-names-for-source-field (source-field->names source-field)]
                                         (< (count source-field-names-for-source-field) 2))))]
     (into

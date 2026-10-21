@@ -3,12 +3,12 @@
   (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.set :as set]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.template-tags :as lib.template-tags]
@@ -184,50 +184,46 @@
        nil))
     @has-native-stage?))
 
+(defn- walk-field-refs
+  "Call `(f query stage-path field-ref)` for every `:field` ref in `query`, with the path of the stage it is resolved in."
+  [query f]
+  (lib.walk/walk-clauses
+   query
+   (fn [query path-type path clause]
+     (when (lib.util/clause-of-type? clause :field)
+       (f query
+          (cond-> path
+            (= path-type :lib.walk/join) lib.walk/join-parent-stage-path)
+          clause))
+     nil)))
+
 (mu/defn all-field-ids :- [:set ::lib.schema.id/field]
-  "Set of all Field IDs referenced in `:field` refs in a query or MBQL clause."
-  [query-or-clause :- [:or
-                       ::lib.schema/query
-                       ::lib.schema.mbql-clause/clause]]
-  (let [field-ids (volatile! (transient #{}))
-        walk-clause (fn [clause]
-                      (match/match-one clause
-                        [:field _opts (id :guard pos-int?)]
-                        (vswap! field-ids conj! id)
-
-                        _ nil)
-                      nil)]
-    (if (map? query-or-clause)
-      (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _stage-or-join-path clause]
-                                               (walk-clause clause)))
-      (lib.walk/walk-clause query-or-clause walk-clause))
+  "Set of the IDs of the Fields that the `:field` refs in `query` resolve to."
+  [query :- ::lib.schema/query]
+  (let [field-ids (volatile! (transient #{}))]
+    (walk-field-refs query (fn [query stage-path field-ref]
+                             (when-some [field-id (:id (lib.walk/apply-f-for-stage-at-path
+                                                        lib.field.resolution/resolve-field-ref query stage-path field-ref))]
+                               (vswap! field-ids conj! field-id))))
     (persistent! @field-ids)))
-
-(mu/defn all-implicitly-joined-field-ids :- [:set ::lib.schema.id/field]
-  "Set of all Field IDs from implicitly joined tables."
-  [query-or-clause :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]]
-  (let [joined-field-ids (volatile! (transient #{}))
-        implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
-        walk-clause (fn [clause]
-                      (match/match-one clause
-                        [:field (_opts :guard implicit-join-field-opt?) (id :guard pos-int?)]
-                        (vswap! joined-field-ids conj! id)
-
-                        _ nil)
-                      nil)]
-    (if (map? query-or-clause)
-      (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _path clause]
-                                               (walk-clause clause)))
-      (lib.walk/walk-clause query-or-clause walk-clause))
-    (persistent! @joined-field-ids)))
 
 (mu/defn all-implicitly-joined-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Set of all Table IDs referenced via implicit joins in `query` or nil if no such IDs can be found."
   [query :- ::lib.schema/query]
-  (->> (all-implicitly-joined-field-ids query)
-       (lib.metadata/bulk-metadata query :metadata/column)
-       (into #{} (keep :table-id))
-       not-empty))
+  (let [table-ids (volatile! (transient #{}))]
+    (walk-field-refs query (fn [query stage-path [_tag opts _name, :as field-ref]]
+                             (when (and (or (:source-field opts) (:source-field-name opts))
+                                        (not (:join-alias opts)))
+                               (when-some [table-id (:table-id (lib.walk/apply-f-for-stage-at-path
+                                                                lib.field.resolution/resolve-field-ref
+                                                                query stage-path field-ref))]
+                                 (vswap! table-ids conj! table-id)))))
+    (not-empty (persistent! @table-ids))))
+
+(defn- dimension-field-ids
+  "The Field IDs of the `:dimension` ref of a template tag, which refers to a Field by ID."
+  [dimension]
+  (into #{} (filter pos-int?) (match/match-many dimension [:field _opts id] id)))
 
 (mu/defn all-template-tags-id->field-ids :- [:maybe
                                              [:map-of
@@ -244,7 +240,7 @@
          (comp (filter :dimension)
                (filter :id)
                (map (fn [template-tag]
-                      [(:id template-tag) (all-field-ids (:dimension template-tag))])))
+                      [(:id template-tag) (dimension-field-ids (:dimension template-tag))])))
          (all-template-tags query))))
 
 (mu/defn all-template-tag-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
@@ -253,7 +249,7 @@
   (not-empty
    (into #{}
          (comp (keep :dimension)
-               (mapcat all-field-ids))
+               (mapcat dimension-field-ids))
          (all-template-tags query))))
 
 (mu/defn all-template-tag-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
@@ -322,7 +318,7 @@
     {:keys [include-implicitly-joinable?]} :- [:maybe ::referenced-entity-ids.options]]
    (let [source-table-ids (into #{} (mapcat all-source-table-ids) queries)
          source-card-ids (into #{} (mapcat all-source-card-ids) queries)
-         implicitly-joined-field-ids (into #{} (mapcat all-implicitly-joined-field-ids) queries)
+         implicitly-joined-table-ids (into #{} (mapcat all-implicitly-joined-table-ids) queries)
          template-tag-field-ids (into #{} (mapcat all-template-tag-field-ids) queries)
          template-tag-table-ids (into #{} (mapcat all-template-tag-table-ids) queries)
          template-tag-card-ids (into #{} (mapcat all-template-tag-card-ids) queries)
@@ -331,15 +327,15 @@
          measure-ids (into #{} (mapcat all-measure-ids) queries)
          segment-ids (into #{} (mapcat all-segment-ids) queries)
          all-card-ids (set/union source-card-ids template-tag-card-ids)
-         field-ids (set/union implicitly-joined-field-ids template-tag-field-ids)
-         all-field-table-ids (if (seq queries)
-                               (->> (lib.metadata/bulk-metadata (first queries) :metadata/column field-ids)
-                                    (into #{} (keep :table-id)))
-                               #{})
+         template-tag-field-table-ids (if (seq queries)
+                                        (->> (lib.metadata/bulk-metadata (first queries) :metadata/column template-tag-field-ids)
+                                             (into #{} (keep :table-id)))
+                                        #{})
          joinable-table-ids (if (and include-implicitly-joinable? (seq queries))
                               (implicitly-joinable-table-ids (first queries) source-table-ids all-card-ids)
                               #{})]
-     {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids joinable-table-ids)
+     {:table (set/union source-table-ids implicitly-joined-table-ids template-tag-field-table-ids template-tag-table-ids
+                        joinable-table-ids)
       :card all-card-ids
       :metric metric-ids
       :measure measure-ids

@@ -68,13 +68,14 @@
 (defn- extract-mbql-visited-fields
   "Extract field IDs from semantically important MBQL clauses."
   [query]
-  (let [extract-ids (fn [clauses] (into #{} (mapcat lib/all-field-ids) clauses))
-        filter-fields   (some-> (lib/filters query 0) extract-ids)
-        group-by-fields (some-> (lib/breakouts query 0) extract-ids)
-        order-by-fields (some-> (lib/order-bys query 0) extract-ids)
-        join-fields     (some->> (lib/joins query 0)
-                                 (into #{} (mapcat #(mapcat lib/all-field-ids (:conditions %)))))]
-    {:all (into #{} cat [join-fields filter-fields group-by-fields order-by-fields])}))
+  (let [expressions (concat (lib/filters query 0)
+                            (lib/breakouts query 0)
+                            (map last (lib/order-bys query 0))
+                            (mapcat :conditions (lib/joins query 0)))]
+    {:all (into #{}
+                (comp (mapcat #(lib/referenced-columns query 0 %))
+                      (keep :id))
+                expressions)}))
 
 (defn analyze-mbql-query
   "Analyze an MBQL query for join structure and visited fields.

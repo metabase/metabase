@@ -1,7 +1,9 @@
 (ns metabase.lib.walk.util-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
@@ -10,6 +12,8 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.malli :as mu]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel all-source-table-ids-test
   (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
@@ -38,16 +42,18 @@
                                                &U.users.id]}]})))))))
 
 (deftest ^:parallel all-field-ids-test
-  (mu/disable-enforcement
-    (is (= #{1 2}
-           (lib/all-field-ids
-            {:lib/type :mbql/query
-             :database 1
-             :stages   [{:lib/type     :mbql.stage/mbql
-                         :fields       [[:field {} 1]
-                                        [:field {} 2]
-                                        [:field {} "wow"]]
-                         :source-table 1}]})))))
+  (let [query     (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        cols      (lib/visible-columns query)
+        category  (m/find-first #(and (= (:id %) (meta/id :categories :name))
+                                      (= (:fk-field-id %) (meta/id :venues :category-id)))
+                                cols)
+        legacy-id [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} (meta/id :venues :price)]
+        query     (-> query
+                      (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
+                      (lib/filter (lib/> legacy-id 1))
+                      (lib/breakout category))]
+    (is (= #{(meta/id :venues :id) (meta/id :venues :name) (meta/id :venues :price) (meta/id :categories :name)}
+           (lib/all-field-ids query)))))
 
 (deftest ^:parallel all-source-card-ids-legacy-native-query-template-tags-test
   (let [query {:database 1
@@ -102,90 +108,14 @@
     (is (= #{(meta/id :orders)}
            (lib.walk.util/all-template-tag-table-ids query)))))
 
-(deftest ^:parallel all-implicitly-joined-field-ids-test
-  (testing "Returns field IDs from implicitly joined tables (fields with :source-field but no :join-alias)"
-    (is (= (lib.tu.macros/$ids nil #{%venues.name %users.name})
-           (lib/all-implicitly-joined-field-ids
-            (lib/query
-             meta/metadata-provider
-             (lib.tu.macros/mbql-query nil
-               {:source-table $$checkins
-                :fields [[:field $venues.name {:source-field %checkins.venue-id}]
-                         [:field $users.name {:source-field %checkins.user-id}]]})))))))
-
-(deftest ^:parallel all-implicitly-joined-field-ids-test-2
-  (testing "Ignores explicit joins (fields with both :source-field and :join-alias)"
-    (is (= #{}
-           (lib/all-implicitly-joined-field-ids
-            (lib/query
-             meta/metadata-provider
-             (lib.tu.macros/mbql-query nil
-               {:source-table $$checkins
-                :fields [[:field $venues.name {:source-field %checkins.venue-id
-                                               :join-alias "V"}]]
-                :joins [{:source-table $$venues
-                         :alias "V"
-                         :condition [:= $checkins.venue-id &V.venues.id]}]})))))))
-
-(deftest ^:parallel all-implicitly-joined-field-ids-test-3
-  (testing "Works with breakouts and aggregations"
-    (is (= (lib.tu.macros/$ids nil #{%venues.name})
-           (lib/all-implicitly-joined-field-ids
-            (lib/query
-             meta/metadata-provider
-             (lib.tu.macros/mbql-query nil
-               {:source-table $$checkins
-                :breakout [[:field $venues.name {:source-field %checkins.venue-id}]]
-                :aggregation [[:count]]})))))))
-
-(deftest ^:parallel all-implicitly-joined-field-ids-test-4
-  (testing "Works with filters"
-    (is (= (lib.tu.macros/$ids nil #{%venues.name})
-           (lib/all-implicitly-joined-field-ids
-            (lib/query
-             meta/metadata-provider
-             (lib.tu.macros/mbql-query nil
-               {:source-table $$checkins
-                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]})))))))
-
-(deftest ^:parallel all-implicitly-joined-field-ids-test-5
-  (testing "Works with aggregations"
-    (is (= (lib.tu.macros/$ids nil #{%venues.price})
-           (lib/all-implicitly-joined-field-ids
-            (lib/query
-             meta/metadata-provider
-             (lib.tu.macros/mbql-query nil
-               {:source-table $$checkins
-                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]})))))))
-
-(deftest ^:parallel all-implicitly-joined-field-ids-test-6
-  (testing "Works with order-by"
-    (is (= (lib.tu.macros/$ids nil #{%venues.name})
-           (lib/all-implicitly-joined-field-ids
-            (lib/query
-             meta/metadata-provider
-             (lib.tu.macros/mbql-query nil
-               {:source-table $$checkins
-                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]})))))))
-
-(deftest ^:parallel all-implicitly-joined-field-ids-test-7
-  (testing "Works in join conditions"
-    (is (= (lib.tu.macros/$ids nil #{%categories.name})
-           (lib/all-implicitly-joined-field-ids
-            (lib/query
-             meta/metadata-provider
-             (lib.tu.macros/mbql-query nil
-               {:source-table $$venues
-                :joins [{:source-table $$users
-                         :alias "U"
-                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
-
-(deftest ^:parallel all-implicitly-joined-field-ids-test-8
-  (testing "Ignores string field names (should only collect integer field IDs) - GHY-3085"
-    (mu/disable-enforcement
-      (is (= #{}
-             (lib.walk.util/all-implicitly-joined-field-ids
-              [:field {:source-field 1} "CITY"]))))))
+(deftest ^:parallel all-implicitly-joined-table-ids-source-field-name-test
+  (testing "Resolves implicit join refs that name their FK column with :source-field-name"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/breakout [:field
+                                   {:lib/uuid (str (random-uuid)), :base-type :type/Text, :source-field-name "VENUE_ID"}
+                                   "NAME"]))]
+      (is (= #{(meta/id :venues)}
+             (lib/all-implicitly-joined-table-ids query))))))
 
 (deftest ^:parallel all-implicitly-joined-table-ids-test
   (testing "Returns table IDs from implicit joins by resolving FK relationships"
