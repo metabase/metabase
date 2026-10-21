@@ -44,6 +44,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "hiddenParameters",
     "drills",
     "enableEntityNavigation",
+    "navigatedEntityParameters",
     "customContext",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
