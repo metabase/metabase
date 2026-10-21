@@ -1,6 +1,5 @@
 import type { AnalysisSpec, HabitSpec } from "../../spec/types";
 
-import { startOf } from "./base";
 import {
   type EventCountAttribute,
   eventActivityBase,
@@ -9,7 +8,6 @@ import {
   expectedOutcomeCte,
 } from "./event-activity";
 import type { InsightPopulation } from "./insights";
-import { FIRST_SEEN_EXTRA_COLUMN } from "./lifecycle";
 import {
   IN_RANGE_FLAG,
   MONTHLY_ACTIVE_PERIODS,
@@ -27,8 +25,8 @@ const SUB_PERIODS_PER_WEEK: Record<HabitSpec["subPeriod"], number> = {
   week: 1,
 };
 
-/** Questions by number: new in the week, or anyone else. */
-export const HABIT_INSIGHT_QUESTIONS = { new: 1, rest: 2 } as const;
+/** Habit asks one question, of everyone. */
+export const HABIT_INSIGHT_QUESTION = 1;
 
 /** The most sub-periods someone can be active in over the window. */
 export const getHabitWindowSize = (habit: HabitSpec): number =>
@@ -36,20 +34,19 @@ export const getHabitWindowSize = (habit: HabitSpec): number =>
 
 /**
  * Habit's insight population, `habit_regulars`: one row per actor per week
- * they were active in, so the people who show up most count most. Question k
- * is 1 in the week they were first seen and 2 otherwise, or 2 for everyone
- * without a first seen column. Attributes are whether they did each event at
- * least so many times that week.
+ * they were active in, so the people who show up most count most, all at one
+ * question. Attributes are whether they did each event at least so many times
+ * that week.
  *
  * They convert, becoming regulars, when they're active in at least a
  * threshold of the sub-periods (days or weeks) of the next 4 weeks. Every row
  * gets a full 4 weeks ahead, inside the range and before its last week, which
  * may be cut short. The threshold is the smallest that makes at most 20% of
  * rows regulars, or the whole window when more than that are active in all of
- * it, and is each question's `label`.
+ * it, and is the question's `label`.
  *
- * Each row's `expected` chance is the rate of everyone at its question who was
- * as active that week, like lifecycle's.
+ * Each row's `expected` chance is the rate of everyone who was as active that
+ * week, like lifecycle's.
  */
 export const habitInsightPopulation = (
   spec: AnalysisSpec,
@@ -60,19 +57,9 @@ export const habitInsightPopulation = (
     return undefined;
   }
   const hasLookback = getLookbackDays(spec) > 0;
-  const base = eventActivityBase(
-    spec,
-    habit.active,
-    attributes,
-    habit.hasFirstSeen
-      ? [{ as: FIRST_SEEN_EXTRA_COLUMN, sql: FIRST_SEEN_EXTRA_COLUMN }]
-      : [],
-  );
+  const base = eventActivityBase(spec, habit.active, attributes);
   const activity = eventActivityCte(spec, "week", attributes, [
     `${hasLookback ? `max(${IN_RANGE_FLAG})` : "1"} AS in_range`,
-    ...(habit.hasFirstSeen
-      ? [`min(${FIRST_SEEN_EXTRA_COLUMN}) AS first_seen_at`]
-      : []),
   ]);
   // Active days are counted per week, so a week's days add up as its own.
   const subPeriods = habit.subPeriod === "day" ? "active_units" : "1";
@@ -88,17 +75,14 @@ export const habitInsightPopulation = (
       `FROM ${activity.name}`,
     ].join("\n"),
   };
-  const isNew = habit.hasFirstSeen
-    ? `period = ${startOf("week", "first_seen_at")}`
-    : "0";
   const weeks = {
     name: "habit_weeks",
-    note: `one row per active week in the range with ${HABIT_WINDOW_WEEKS} full weeks after it: whether it was new, the activity ahead, and the attributes`,
+    note: `one row per active week in the range with ${HABIT_WINDOW_WEEKS} full weeks after it: the activity ahead and the attributes`,
     deps: [ahead.name, activity.name],
     body: [
       "SELECT",
       "  actor,",
-      `  if(${isNew}, ${HABIT_INSIGHT_QUESTIONS.new}, ${HABIT_INSIGHT_QUESTIONS.rest}) AS k,`,
+      `  ${HABIT_INSIGHT_QUESTION} AS k,`,
       "  next_active,",
       eventActivityRowColumns(attributes)
         .map((column) => `  ${column}`)
@@ -142,7 +126,7 @@ export const habitInsightPopulation = (
   const expected = expectedOutcomeCte(
     "habit_regulars",
     outcomes.name,
-    "each row's chance of becoming a regular, at the rate of the people at its question who were as active",
+    "each row's chance of becoming a regular, at the rate of the people who were as active",
   );
 
   return {

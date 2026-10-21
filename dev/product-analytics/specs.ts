@@ -90,7 +90,6 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
           active: { flag: FLAG.active },
           subPeriod: "day",
           measure: "histogram",
-          hasFirstSeen: true,
         },
         output: {},
       };

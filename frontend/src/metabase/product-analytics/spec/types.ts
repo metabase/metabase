@@ -106,11 +106,6 @@ export interface HabitSpec {
   subPeriod: Extract<Period, "day" | "week">;
   /** "ratio": DAU/MAU, or WAU/MAU by week. */
   measure: "histogram" | "ratio";
-  /**
-   * Whether `events_base` has when each actor was first seen, as the
-   * `first_seen` column. Insights only ask about new people with it.
-   */
-  hasFirstSeen: boolean;
 }
 
 export type LifecycleStateName =

@@ -38,10 +38,7 @@ import type {
 } from "../../frontend/src/metabase/product-analytics/spec/types";
 import type { EventCountAttribute } from "../../frontend/src/metabase/product-analytics/sql/analyses/event-activity";
 import { funnelInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-insights";
-import {
-  HABIT_INSIGHT_QUESTIONS,
-  habitInsightPopulation,
-} from "../../frontend/src/metabase/product-analytics/sql/analyses/habit-insights";
+import { habitInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit-insights";
 import {
   type AttributeAsOf,
   type InsightPopulation,
@@ -570,7 +567,7 @@ const checkLifecycle = async (): Promise<string[]> => {
  * Habit insights ask what people do in a week that makes them regulars over
  * the next 4. Inviting someone in the first week and connecting an integration
  * later both raise how often people are active from then on, so they should
- * show up for new people and everyone else.
+ * show up.
  *
  * By day, errors shouldn't show up, as in lifecycle. By week, being active
  * every week of the next 4 is a coarse outcome, and errors come out slightly
@@ -594,27 +591,18 @@ const checkHabit = async (
     title: `Habit, by ${habit.subPeriod}, ${habit.measure}`,
     spec,
     population,
-    questionName: (question) =>
-      question === HABIT_INSIGHT_QUESTIONS.new ? "new" : "everyone else",
+    questionName: () => "everyone",
     unit: "active weeks",
   });
   expectFound(
     failures,
-    `habit by ${habit.subPeriod} new | Sent an invite, higher`,
-    insights.some(
-      (insight) =>
-        insight.question === HABIT_INSIGHT_QUESTIONS.new &&
-        isHigherForSegment(insight, FLAG.invite),
-    ),
+    `habit by ${habit.subPeriod} | Sent an invite, higher`,
+    insights.some((insight) => isHigherForSegment(insight, FLAG.invite)),
   );
   expectFound(
     failures,
-    `habit by ${habit.subPeriod} everyone else | Connected an integration, higher`,
-    insights.some(
-      (insight) =>
-        insight.question === HABIT_INSIGHT_QUESTIONS.rest &&
-        isHigherForSegment(insight, FLAG.integration),
-    ),
+    `habit by ${habit.subPeriod} | Connected an integration, higher`,
+    insights.some((insight) => isHigherForSegment(insight, FLAG.integration)),
   );
   if (habit.subPeriod === "day") {
     expectNotFound(

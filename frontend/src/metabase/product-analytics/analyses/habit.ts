@@ -2,17 +2,13 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { FIRST_SEEN_COLUMN } from "../columns";
-import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, HabitSpec } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
-import { FIRST_SEEN_EXTRA_COLUMN } from "../sql/analyses/lifecycle";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
-import { getDateColumnOptions, isDateColumnInTable } from "./column-roles";
 import { commonSettings } from "./common-settings";
 import {
   getAxisTitleSettings,
@@ -40,10 +36,6 @@ const MEASURES: readonly HabitSettings["habit.measure"][] = [
   "histogram",
   "ratio",
 ];
-
-/** First seen only says when a person started, so other counting has no new people. */
-const getFirstSeenColumn = (settings: HabitSettings): string | null =>
-  settings.counting === "person" ? settings["habit.first_seen_column"] : null;
 
 const ratioName = (granularity: Granularity): string =>
   toSubPeriod(granularity) === "week" ? t`WAU/MAU` : t`DAU/MAU`;
@@ -76,26 +68,6 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
       ],
     }),
   },
-  "habit.first_seen_column": withWidgetProps({
-    getTitle: () => t`When each person was first seen`,
-    getHint: () =>
-      t`Insights ask what people do in the week they're first seen that makes them regulars. Without this column, they don't single out new people.`,
-    getSection: () => "setup",
-    secondary: true,
-    widget: ColumnPickerWidget,
-    getDefault: (context) =>
-      isDateColumnInTable(context.table, FIRST_SEEN_COLUMN)
-        ? FIRST_SEEN_COLUMN
-        : null,
-    isValid: (value, context) =>
-      value === null || isDateColumnInTable(context.table, value),
-    getHidden: (_context, settings) => settings.counting !== "person",
-    getProps: (context) => ({
-      columns: getDateColumnOptions(context.table),
-      isRequired: false,
-    }),
-    readDependencies: ["counting"],
-  }),
 };
 
 export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
@@ -120,16 +92,9 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         active: active === null ? undefined : { flag: events.flagFor(active) },
         subPeriod,
         measure: settings["habit.measure"],
-        hasFirstSeen: getFirstSeenColumn(settings) !== null,
       },
       output: {},
     });
-  },
-  getExtraColumns: (settings) => {
-    const column = getFirstSeenColumn(settings);
-    return column !== null
-      ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" }]
-      : [];
   },
   getDisplay: (settings) => {
     switch (settings["habit.measure"]) {

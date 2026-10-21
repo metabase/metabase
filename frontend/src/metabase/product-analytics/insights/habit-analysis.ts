@@ -1,9 +1,7 @@
-import { c, t } from "ttag";
+import { c } from "ttag";
 
-import { getStateName } from "../analyses/lifecycle";
 import type { HabitSpec } from "../spec/types";
 import {
-  HABIT_INSIGHT_QUESTIONS,
   HABIT_WINDOW_WEEKS,
   getHabitWindowSize,
   habitInsightPopulation,
@@ -31,17 +29,10 @@ const getOutcomeLabel = (habit: HabitSpec, threshold: number): string => {
   }
 };
 
-const getQuestionName = (habit: HabitSpec, question: number): string => {
-  if (question === HABIT_INSIGHT_QUESTIONS.new) {
-    return getStateName("new");
-  }
-  return habit.hasFirstSeen ? t`Everyone else` : t`Everyone`;
-};
-
 /**
  * Insights into who becomes a regular over the next few weeks, by what they
- * did in a week: one question for people new that week, and one for everyone
- * else. People are compared with others as active as them that week.
+ * did in a week, headed by what makes a regular. People are compared with
+ * others as active as them that week.
  */
 export const HABIT_INSIGHTS: InsightsAnalysis = {
   getOutcome: () => getRegularOutcome(),
@@ -62,24 +53,19 @@ export const HABIT_INSIGHTS: InsightsAnalysis = {
     if (habit === undefined) {
       return [];
     }
-    return totals
-      .flatMap(({ question, reached, converted }) => {
-        const threshold = Number(labels.get(question));
-        return Number.isInteger(threshold)
-          ? [
-              {
-                question,
-                labels: [
-                  getQuestionName(habit, question),
-                  getOutcomeLabel(habit, threshold),
-                ],
-                reached,
-                converted,
-              },
-            ]
-          : [];
-      })
-      .sort((a, b) => a.question - b.question);
+    return totals.flatMap(({ question, reached, converted }) => {
+      const threshold = Number(labels.get(question));
+      return Number.isInteger(threshold)
+        ? [
+            {
+              question,
+              labels: [getOutcomeLabel(habit, threshold)],
+              reached,
+              converted,
+            },
+          ]
+        : [];
+    });
   },
   // A person active in several weeks counts once for each.
   getCheckedCount: (questions) =>

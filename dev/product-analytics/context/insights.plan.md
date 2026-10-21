@@ -415,7 +415,7 @@ The search reads rows of (question, attribute values, reached, converted). For f
 | Funnel | reached step k | reached step k+1 |
 | Paths (bounces) | visits that landed on page k | had no other step |
 | Cohorts | started in the cohort | returned in period N |
-| Habit | active in a week, as new or not | active on N+ days (or weeks) of the next 4 weeks |
+| Habit | active in a week | active on N+ days (or weeks) of the next 4 weeks |
 | Lifecycle | active in a period, as new, returning or resurrected | active in the next period |
 
 Paths as a whole isn't a rate, but its bounces are (see [Bounces](#bounces)). Exits are too, but left out for now: every visit exits somewhere, so a group with shorter visits exits more from every page, and the "explained by" rule only compares insights within one question, so it can't fold those together.
@@ -495,10 +495,10 @@ Known issues:
 - **Who:** one row per person per week they were active in the range, so a person active in 9 weeks counts 9 times ("active weeks"). Rows are calendar weeks at either granularity.
 - **Success, "became a regular":** active on N or more days of the **next 4 weeks**, or in N or more of the 4 weeks by week. A fixed window ahead means no exposure bias: people who stop count as not regular, and nobody has less time to be active in. 4 weeks is the month of WAU/MAU, close to DAU/MAU's 30 days: a person's active days in the next 4 weeks over 28 is their own DAU/MAU for the month ahead.
 - **The range** only decides which weeks are rows: a week needs 4 full weeks after it, before the range's last week, which may be cut short. With the default 90 days (14 calendar weeks, the first and last partial), rows come from the first 9, and the rest only supply outcomes. A range spanning fewer than 6 calendar weeks has no insights.
-- **N without asking:** one N over all rows, the smallest that makes at most 20% of them regulars, so "regular" means the same thing at every question. It's in each question's heading ("New → Active 14+ days in the next 4 weeks"), passed as the population's `label`. Active days are small integers with many ties, so it can't be an exact 20%.
+- **N without asking:** one N over all rows, the smallest that makes at most 20% of them regulars. It's the question's heading ("Active 14+ days in the next 4 weeks"), passed as the population's `label`. Active days are small integers with many ties, so it can't be an exact 20%.
 - **By week,** N can only be 0–4, and about half of rows are active in all 4 following weeks, so N is the whole window ("Active every week of the next 4") with about 50% regulars. It still means something, "never missed a week", but is less selective. A longer window would sharpen it but leave few weeks with a full window in a 90-day range.
-- **Questions:** new (the week someone was first seen) and everyone else. Not split into returning and resurrected like lifecycle, since the expected chance already holds activity fixed. Without the "When each person was first seen" setting, everyone is one question, "Everyone".
-- **Expected chance:** the same strata as lifecycle, the week's active days and events to a power of 2, at each question.
+- **One question, of everyone.** It was once split into new (the week someone was first seen) and everyone else, but nothing in the chart says who's new, and it needed a first-seen setting that only changed the insights panel. Not split into returning and resurrected like lifecycle either, since the expected chance already holds activity fixed. The cost is tenure, under known issues.
+- **Expected chance:** the same strata as lifecycle, the week's active days and events to a power of 2.
 - **DAU/MAU and WAU/MAU** show the same insights: the population doesn't depend on the measure.
 - **SQL** (`sql/analyses/habit-insights.ts`): the per-person-per-period activity CTE, shared with lifecycle in `sql/analyses/event-activity.ts`, then the activity ahead as a window sum over the following rows by week number (`toRelativeWeekNum`, `RANGE BETWEEN 1 FOLLOWING AND 4 FOLLOWING`). Weeks without activity have no row and add nothing. The threshold is one CTE over the rows' distribution of activity ahead.
 
@@ -510,14 +510,14 @@ The generator's invite bonus only happens in someone's first week, so nothing wa
 
 `check-insights.ts` checks habit by day (histogram) and by week (WAU/MAU) over all the data, with "Was active" as the activity:
 
-- **By day,** N is 14: 25.7% of 2,867 new weeks and 18.2% of 68,136 other weeks are regulars. "Sent an invite" among new people (61.4% vs 31.1% expected) and "Connected an integration" among everyone else (51.1% vs 40.3%) are found, and "Hit an error" isn't.
-- **By week,** N is 4 (every week): 53.6% and 47.8%. Both planted effects are found (80.3% vs 57.7%, 85.4% vs 73.1%).
+- **By day,** N is 14: 18.5% of 71,003 active weeks are regulars. "Sent an invite" (62.6% vs 24.7% expected) and "Connected an integration" (51.1% vs 40.9%) are found, and "Hit an error" isn't. "Started trial" (18.2% vs 14.1%) marks newness, and "Created a report 3+" persona.
+- **By week,** N is 4 (every week): 48.1%. Both planted effects are found (81.5% vs 54.9%, 85.4% vs 73.4%).
 - **Lifecycle** finds the integration too, among returning people (96.0% vs 92.1%).
 
-With the app's defaults (any event, last 90 days, by day, the README's 8 original segments) there are 13 insights, all singles; adding "Connected an integration" makes 14. N is 14 days, with 11,628 new weeks (20.2% regulars) and 62,294 others (18.2%). Only "Sent an invite" (new: 60.7% vs 35.0% expected; everyone else: 63.5% vs 31.6%) and the integration were planted. The rest:
+With the app's defaults (any event, last 90 days, by day, the README's 8 original segments), measured while new people were a question of their own, there were 13 insights, all singles; adding "Connected an integration" made 14. N was 14 days. Only "Sent an invite" (new: 60.7% vs 35.0% expected; everyone else: 63.5% vs 31.6%) and the integration were planted. The rest:
 
 - **"Was active" as a segment** (5): with "Any action or event", it splits app weeks from marketing-page weeks, like lifecycle's "Segments that are the activity". With "Was active" as the activity there are 9 insights, integration included.
-- **The week a visitor becomes a user** (2): "Signed up" (18.8% vs 11.4%) and "Started trial". First seen is the first marketing visit, often a week before signing up, so the signup week counts under everyone else, and people early in their life are more active in the weeks ahead than others as active that week. See tenure under [Later](#later).
+- **The week a visitor becomes a user** (2): "Signed up" (18.8% vs 11.4%) and "Started trial". People early in their life are more active in the weeks ahead than others as active that week. See tenure under known issues.
 - **Persona proxies** (2): "Created a report 3+" and "Viewed pricing".
 - **Inside the activity** (1): "Purchased" comes out lower (17.0% vs 20.5%), since its events count as activity.
 
@@ -525,8 +525,8 @@ Known issues, beyond lifecycle's:
 
 - **Rows aren't independent.** A person's weeks are correlated, and someone active in 9 weeks counts 9 times, so p-values are too small for people with many weeks. Lifecycle has the same problem. The fix keeps the rows and changes only the variance: sum each person's (outcome − expected) over their rows before squaring, a cluster-robust variance. The singles query would need to unpivot attributes into rows first. One row per person (say, the first 80% of the range against the rest) would fix it too, but attributes would saturate over a long window, the windows would change with the range, and it would stop weighting heavy users.
 - **Weeks that are already regular add little.** 96% of 7-of-7-day weeks became regulars (by day), so they can barely beat their expected chance, and add little weight to the test. Insights come mostly from 3–6-day weeks. In the generator, a 7-day week is nearly always a power user.
-- **Few new weeks with a narrow activity.** With "Was active" as the activity, most people were first seen on marketing pages days before first using the app, often in an earlier week, so only 2,867 rows are new. Their first active week falls under everyone else, which is why "Sent an invite" is found there too (63.2% vs 28.7%). With the app's default of any event, first seen is first active. See "First active, not first seen" under [Later](#later).
-- **Persona proxies.** By day, "Created a report 3+" among everyone else comes out slightly positive (95.5% vs 93.5%): power users create reports from more of their report page views, so it marks persona beyond activity. Nothing about reports was planted. By week, "Hit an error" comes out slightly negative (78.4% vs 79.5%), like "Created a report" in lifecycle: errors are activity, so people with errors are compared with people busier than them.
+- **Tenure.** New people are more active in the weeks ahead than older people as active that week, so whatever marks being new, like "Signed up" or "Started trial", looks like a reason to become a regular. The split into new and everyone else was a rough control for it, and not a clean one: first seen is often a marketing visit a week before signing up, so the signup week counted under everyone else anyway. See tenure under [Later](#later).
+- **Persona proxies.** By day, "Created a report 3+" comes out slightly positive (95.5% vs 93.5%): power users create reports from more of their report page views, so it marks persona beyond activity. Nothing about reports was planted. By week, "Hit an error" comes out slightly negative (78.3% vs 79.7%), like "Created a report" in lifecycle: errors are activity, so people with errors are compared with people busier than them.
 
 ## Implementation
 
@@ -585,8 +585,8 @@ A fix needs both: some way to test a pair against an explanation with a third co
 - **Cluster-robust variance** for populations with several rows per person, lifecycle and habit (see [Habit](#habit), known issues).
 - **Event attributes for funnels:** what people did between steps, like "what does someone do on their trial that makes them likely to buy?". Counting events between reaching step k and converting leaks: fast converters have less time to do anything, and the events of converting predict it perfectly. Count them in a fixed window after reaching step k, among people who hadn't converted by its end.
 - **Pairs with expected outcomes:** an interaction test against expected outcomes, so lifecycle and habit can look for pairs too.
-- **First active, not first seen,** for lifecycle's and habit's new when being active is a narrower event than any event (see [Who's new](#whos-new)). It needs each person's first time doing that event, so it reads history, unless it's stamped on events like first seen.
-- **Tenure in the expected chance,** for habit and maybe lifecycle: weeks since first seen (0, 1, 2, 3, 4+) alongside activity, since habits fade with time since signup in the generator and in real products. Tried on habit with the app's defaults: "Signed up" goes from 18.8% vs 11.4% expected to 18.8% vs 16.3%, "Started trial" drops out, and 14 insights become 11 (9 become 8 with "Was active" as the activity). It doesn't touch persona proxies or "Was active". One more column in the strata, but it thins each stratum.
+- **First active, not first seen,** for lifecycle's new when being active is a narrower event than any event (see [Who's new](#whos-new)). It needs each person's first time doing that event, so it reads history, unless it's stamped on events like first seen.
+- **Tenure in the expected chance,** for habit and maybe lifecycle: weeks since first seen (0, 1, 2, 3, 4+) alongside activity, since habits fade with time since signup in the generator and in real products. For habit, read from `person__first_seen_at` when the table has it, with no setting: it only sharpens "expected for people as active". Tried on habit, while it was split into new and everyone else, with the app's defaults: "Signed up" goes from 18.8% vs 11.4% expected to 18.8% vs 16.3%, "Started trial" drops out, and 14 insights become 11 (9 become 8 with "Was active" as the activity). It doesn't touch persona proxies or "Was active". One more column in the strata, but it thins each stratum.
 - **Choosing N from the histogram:** selecting bars could set what makes a regular. The bars count days over the whole range, not the 4 weeks ahead, so it would need its own wording.
 - **Popular events** in place of the first 20 segments (see post-prototype.md).
 - `event_data` map keys as candidate columns. Real Track data keeps sparse properties there.

@@ -130,7 +130,9 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
         : null,
     isValid: (value, context) =>
       value === null || isDateColumnInTable(context.table, value),
-    getHidden: (_context, settings) => settings.counting !== "person",
+    // getHidden: (_context, settings) => settings.counting !== "person",
+    // this is hidden like the column role settings - should maybe be configured one time per table rather than per analysis
+    getHidden: () => true,
     getProps: (context) => ({
       columns: getDateColumnOptions(context.table),
       isRequired: false,

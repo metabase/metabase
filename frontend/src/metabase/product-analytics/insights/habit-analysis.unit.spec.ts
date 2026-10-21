@@ -5,18 +5,15 @@ import type { GroupCounts } from "./types";
 
 type SetupOpts = {
   subPeriod?: HabitSpec["subPeriod"];
-  hasFirstSeen?: boolean;
   threshold: string;
 };
 
 const TOTALS: GroupCounts[] = [
-  { question: 2, reached: 900, converted: 180, conditions: [] },
-  { question: 1, reached: 100, converted: 30, conditions: [] },
+  { question: 1, reached: 1000, converted: 210, conditions: [] },
 ];
 
 const createSpec = ({
   subPeriod = "day",
-  hasFirstSeen = true,
 }: Omit<SetupOpts, "threshold">): AnalysisSpec => ({
   kind: "habit",
   timeRange: { preset: "", tz: "UTC" },
@@ -24,7 +21,7 @@ const createSpec = ({
   measure: { agg: "uniq" },
   bucket: { granularity: subPeriod },
   scope: { kind: "group", joiner: "and", negated: false, items: [] },
-  habit: { subPeriod, measure: "histogram", hasFirstSeen },
+  habit: { subPeriod, measure: "histogram" },
   output: {},
 });
 
@@ -32,10 +29,7 @@ const setup = ({ threshold, ...opts }: SetupOpts) =>
   HABIT_INSIGHTS.getQuestions(
     createSpec(opts),
     TOTALS,
-    new Map([
-      [1, threshold],
-      [2, threshold],
-    ]),
+    new Map([[1, threshold]]),
   );
 
 describe("HABIT_INSIGHTS", () => {
@@ -46,50 +40,40 @@ describe("HABIT_INSIGHTS", () => {
     expect(
       HABIT_INSIGHTS.appliesTo({
         ...spec,
-        habit: { subPeriod: "day", measure: "ratio", hasFirstSeen: true },
+        habit: { subPeriod: "day", measure: "ratio" },
       }),
     ).toBe(true);
   });
 
-  it("heads new people first, then everyone else, with how many days make a regular", () => {
+  it("heads everyone by how many days make a regular", () => {
     const questions = setup({ threshold: "14" });
 
     expect(questions).toEqual([
       {
         question: 1,
-        labels: ["New", "Active 14+ days in the next 4 weeks"],
-        reached: 100,
-        converted: 30,
-      },
-      {
-        question: 2,
-        labels: ["Everyone else", "Active 14+ days in the next 4 weeks"],
-        reached: 900,
-        converted: 180,
+        labels: ["Active 14+ days in the next 4 weeks"],
+        reached: 1000,
+        converted: 210,
       },
     ]);
     expect(HABIT_INSIGHTS.getCheckedCount(questions)).toBe(1000);
   });
 
   it("says when a regular is active in the whole window", () => {
-    expect(setup({ threshold: "28" })[0].labels[1]).toBe(
+    expect(setup({ threshold: "28" })[0].labels).toEqual([
       "Active every day of the next 4 weeks",
-    );
-    expect(setup({ subPeriod: "week", threshold: "3" })[0].labels[1]).toBe(
+    ]);
+    expect(setup({ subPeriod: "week", threshold: "3" })[0].labels).toEqual([
       "Active in 3+ of the next 4 weeks",
-    );
-    expect(setup({ subPeriod: "week", threshold: "4" })[0].labels[1]).toBe(
+    ]);
+    expect(setup({ subPeriod: "week", threshold: "4" })[0].labels).toEqual([
       "Active every week of the next 4",
-    );
+    ]);
   });
 
-  it("calls everyone everyone without knowing when people were first seen", () => {
-    const questions = HABIT_INSIGHTS.getQuestions(
-      createSpec({ hasFirstSeen: false }),
-      [TOTALS[0]],
-      new Map([[2, "14"]]),
-    );
-
-    expect(questions.map(({ labels }) => labels[0])).toEqual(["Everyone"]);
+  it("has no question without a threshold", () => {
+    expect(
+      HABIT_INSIGHTS.getQuestions(createSpec({}), TOTALS, new Map()),
+    ).toEqual([]);
   });
 });
