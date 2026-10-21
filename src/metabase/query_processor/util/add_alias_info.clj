@@ -412,6 +412,7 @@
     (lib/update-options field-ref #(-> %
                                        (assoc ::source-alias source-alias
                                               ::source-table source-table)
+                                       (u/assoc-default :base-type (:base-type col))
                                        (add-column-info-to-options query col)))))
 
 (defn- cartesian-join-condition-exception
