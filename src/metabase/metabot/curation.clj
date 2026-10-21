@@ -275,16 +275,16 @@
 
 (defn- measure-and-segment-tables
   "Map of `[kind id]` (`:measure` or `:segment`) to the set of Table ids the entity depends on: its own Table and the
-  Tables its definition reads. An id `mp` can't resolve, or one in the trash, maps to nil, so the caller fails closed
-  on it."
+  Tables its definition reads. An id `mp` can't resolve, one in the trash, or one whose definition can't be built,
+  maps to nil, so the caller fails closed on it."
   [mp measure-ids segment-ids]
   (let [tables-of (fn [{:keys [table-id definition]}]
-                    (cond-> #{}
-                      table-id (conj table-id)
-                      :always  (into (some->> (definition-query mp definition)
-                                              vector
-                                              lib/all-referenced-entity-ids
-                                              :table))))
+                    (when-let [definition-tables (some->> (definition-query mp definition)
+                                                          vector
+                                                          lib/all-referenced-entity-ids
+                                                          :table)]
+                      (cond-> (set definition-tables)
+                        table-id (conj table-id))))
         ;; a by-id lookup returns trashed rows too; one in the trash is judged like one that is missing
         found     (fn [kind metadata-type ids]
                     (let [by-id (u/index-by :id (remove :archived (lib.metadata/bulk-metadata mp metadata-type ids)))]
