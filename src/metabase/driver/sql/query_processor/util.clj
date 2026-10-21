@@ -25,11 +25,13 @@
 
 (defn json-field
   "The `:nfc-path` and `:database-type` of the JSON column a `:field` clause with alias info refers to, as
-  [[metabase.driver.sql.query-processor/json-query]] takes them, or nil if it is not a JSON column."
+  [[metabase.driver.sql.query-processor/json-query]] takes them, or nil if it is not a JSON column, or a column read
+  from the source query, whose JSON was already extracted there."
   [field-options]
   (when-some [nfc-path (driver-api/qp.add.nfc-path field-options)]
-    {:nfc-path      nfc-path
-     :database-type (driver-api/qp.add.database-type field-options)}))
+    (when-not (= (driver-api/qp.add.source-table field-options) driver-api/qp.add.source)
+      {:nfc-path      nfc-path
+       :database-type (driver-api/qp.add.database-type field-options)})))
 
 (defn field-with-tz?
   "Given a clause, possibly a `:field` ref, return true iff its type is known to have timezone information."

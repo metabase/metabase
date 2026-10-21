@@ -1207,13 +1207,16 @@
             x-month             (-> (lib/expression-ref q "X")
                                     (lib/with-temporal-bucket :month))
             products-month    (lib/with-temporal-bucket products-created :month)
-            query             (-> q
+            joined            (-> q
                                   (lib/join (-> (lib/join-clause products-table
                                                                  [(lib/= x-month products-month)])
                                                 (lib/with-join-fields [products-id products-created])))
                                   (lib/with-fields [orders-id (lib/expression-ref q "X")])
-                                  (lib/order-by orders-id :asc)
-                                  (lib/order-by products-id :asc)
+                                  (lib/order-by orders-id :asc))
+            joined-products-id (m/find-first #(and (= (mt/id :products :id) (:id %)) (:lib/join-alias %))
+                                             (lib/orderable-columns joined))
+            query             (-> joined
+                                  (lib/order-by joined-products-id :asc)
                                   (lib/limit 3))]
         (is (= [[1 "2019-02-12T21:40:27Z" 9 "2019-02-07T08:26:25Z"]
                 [1 "2019-02-12T21:40:27Z" 137 "2019-02-16T22:36:43Z"]

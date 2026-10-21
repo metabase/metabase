@@ -345,9 +345,10 @@
               (is (= [:=
                       [::bigquery.qp/extract :dayofweek expected-identifier nil]
                       [:inline 1]]
-                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= {} [:field {:lib/uuid          (str (random-uuid))
-                                                                            :temporal-unit     :day-of-week
-                                                                            ::add/source-table "ABC"} (:id field)] 1]))))))))))
+                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= {} [:field {:lib/uuid           (str (random-uuid))
+                                                                            :temporal-unit      :day-of-week
+                                                                            ::add/source-table  "ABC"
+                                                                            ::add/database-type (:database-type field)} (:id field)] 1]))))))))))
 
 (deftest reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"

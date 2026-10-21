@@ -707,7 +707,7 @@
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
-        (if (and (driver-api/qp.add.nfc-path opts)
+        (if (and (sql.qp.u/json-field opts)
                  (or (::sql.qp/forced-alias opts)
                      (= source-table driver-api/qp.add.source)))
           (h2x/identifier :field-alias source-alias)

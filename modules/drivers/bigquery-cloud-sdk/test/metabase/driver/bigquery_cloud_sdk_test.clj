@@ -1814,13 +1814,13 @@
                          FROM %s.products p
                          WHERE 1=1 [[ AND {{category}} ]]
                          ORDER BY p.title ASC;" (get-test-data-name))
-          product-category (lib/ref (lib.metadata/field mp (mt/id :products :category)))
+          product-category (mt/id :products :category)
           query (-> (lib/native-query mp sql)
                     (lib/with-template-tags {"category" {:name "category"
                                                          :alias "p.category"
                                                          :display-name "Category"
                                                          :type :dimension
-                                                         :dimension product-category
+                                                         :field-id product-category
                                                          :widget-type :text}})
                     (assoc :parameters [{:type :text
                                          :target [:dimension [:template-tag "category"]]

@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
@@ -465,9 +466,10 @@
     (mt/test-driver :athena
       (let [metadata-provider (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:fields [{:id   (meta/id :venues :name)
                                                                                                       :name "name?"}]})
+            name-col          (lib.metadata/field metadata-provider (meta/id :venues :name))
             query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
-                                  (lib/with-fields [(meta/field-metadata :venues :name)])
-                                  (lib/filter (lib/= (meta/field-metadata :venues :name) "BBQ"))
+                                  (lib/with-fields [name-col])
+                                  (lib/filter (lib/= name-col "BBQ"))
                                   (lib/limit 1))
             executed-query    (atom nil)]
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/execute-reducible-query (let [orig (mt/original-fn #'sql-jdbc.execute/execute-reducible-query)]

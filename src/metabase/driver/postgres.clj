@@ -834,11 +834,9 @@
 
       json-field
       (cond
-        (::sql.qp/forced-alias opts)
+        (or (::sql.qp/forced-alias opts)
+            (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
         (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
-
-        (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source)
-        identifier
 
         ;; The field is referenced through a join (source-table is a join-alias
         ;; string). The join target is compiled as a subquery that already

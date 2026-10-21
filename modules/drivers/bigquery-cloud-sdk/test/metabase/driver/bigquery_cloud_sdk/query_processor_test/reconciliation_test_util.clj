@@ -108,11 +108,14 @@
 
    :field-ref-fns
    {:basic                               (fn [field]
-                                           [:field {:lib/uuid (str (random-uuid)), ::add/source-table "ABC"} (:id field)])
+                                           [:field {:lib/uuid           (str (random-uuid))
+                                                    ::add/source-table  "ABC"
+                                                    ::add/database-type (:database-type field)} (:id field)])
     :default-temporal-unit               (fn [field]
-                                           [:field {:lib/uuid          (str (random-uuid))
-                                                    :temporal-unit     :default
-                                                    ::add/source-table "ABC"} (:id field)])
+                                           [:field {:lib/uuid           (str (random-uuid))
+                                                    :temporal-unit      :default
+                                                    ::add/source-table  "ABC"
+                                                    ::add/database-type (:database-type field)} (:id field)])
     :base-type                           (fn [field]
                                            [:field {:lib/uuid          (str (random-uuid))
                                                     :base-type         (:base-type field)
