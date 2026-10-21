@@ -119,6 +119,24 @@ describe("TransformTestOverviewPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("links to all runs of the test", async () => {
+    setup({
+      test: createMockTransformTest({
+        id: 2,
+        transform_id: 1,
+        last_run: createMockTransformTestRun({ status: "passed" }),
+      }),
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "See all runs" }),
+    ).toHaveAttribute("href", Urls.transformTestRuns(1, 2));
+    expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute(
+      "href",
+      Urls.transformTestRuns(1, 2),
+    );
+  });
+
   it("shows a failed last run as failed", async () => {
     setup({
       test: createMockTransformTest({

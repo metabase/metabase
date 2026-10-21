@@ -17,6 +17,7 @@ import type {
   TransformRunStatus,
   TransformTagId,
   TransformTestId,
+  TransformTestRunStatus,
 } from "metabase-types/api";
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
@@ -90,6 +91,36 @@ export function transformTest(
   testId: TransformTestId,
 ) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/tests/${testId}`;
+}
+
+export type TransformTestRunListParams = {
+  page?: number;
+  statuses?: TransformTestRunStatus[];
+  startTime?: string;
+  endTime?: string;
+};
+
+export function transformTestRuns(
+  transformId: TransformId,
+  testId: TransformTestId,
+  { page, statuses, startTime, endTime }: TransformTestRunListParams = {},
+) {
+  const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  statuses?.forEach((status) => {
+    searchParams.append("statuses", status);
+  });
+  if (startTime != null) {
+    searchParams.set("start-time", startTime);
+  }
+  if (endTime != null) {
+    searchParams.set("end-time", endTime);
+  }
+  const queryString = searchParams.toString();
+  const baseUrl = `${transformTest(transformId, testId)}/runs`;
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
 export function transformDependencies(transformId: TransformId) {
