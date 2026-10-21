@@ -209,7 +209,6 @@ type SelectFilter = {
 };
 
 type GroupFilter = SelectFilter & {
-  /** The option that turns the group filter off. */
   noFilterValue: string;
 };
 
