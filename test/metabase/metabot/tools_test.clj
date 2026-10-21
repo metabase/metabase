@@ -13,6 +13,9 @@
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
    [metabase.notification.models :as models.notification]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -232,6 +235,68 @@
     (testing "without run_query the chart is shown whatever the argument says"
       (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
              (construct! #{"construct_notebook_query"} {:show_chart false}))))))
+
+(deftest construct-notebook-query-tool-wrong-source-field-test
+  (let [db       (t2/select-one-fn :name :model/Database (mt/id))
+        fk       (fn [table column] [db "PUBLIC" table column])
+        venue-id (fk "CHECKINS" "VENUE_ID")
+        args     (fn [stage]
+                   {:query       {:lib/type "mbql/query"
+                                  :stages   [(merge {:lib/type     "mbql.stage/mbql"
+                                                     :source-table [db "PUBLIC" "CHECKINS"]
+                                                     :aggregation  [["count" {}]]}
+                                                    stage)]}
+                    :title       "Check-ins"
+                    :description "Check-ins by category."})
+        refusal  (fn [source-field field]
+                   (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                           (args {:breakout [["field" {:source-field source-field} field]]})
+                                           #{"read_resource"}))
+        refused  (fn [& sentences]
+                   {:class :recoverable
+                    :code  :metabase.metabot.tools.recoverable.pipeline/wrong-source-field
+                    :text  (str (apply str sentences) "\n"
+                                "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source "
+                                "table to list the available foreign-key columns.")})]
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a field reached through a foreign key to another table is refused, naming the path that reaches it"
+        (is (= (refused "Field " (pr-str (fk "CATEGORIES" "NAME")) " is on table \"CATEGORIES\", but its "
+                        "`source-field` " (pr-str venue-id) " is a foreign key to table \"VENUES\", so the field "
+                        "cannot be reached through it. \"VENUES\" has a foreign key to \"CATEGORIES\": join "
+                        "\"VENUES\" explicitly on " (pr-str venue-id) " and leave out `source-field`, so the "
+                        "field is reached through that join.")
+               (refusal venue-id (fk "CATEGORIES" "NAME")))))
+      (testing "a source-field that is not a foreign key is refused"
+        (is (= (refused "Field " (pr-str (fk "VENUES" "NAME")) " is on table \"VENUES\", but its `source-field` "
+                        (pr-str (fk "CHECKINS" "DATE")) " is not a foreign key to that table, so the field cannot "
+                        "be reached through it. Use a `source-field` that is a foreign key to \"VENUES\", or join "
+                        "\"VENUES\" explicitly and reference the field with its `join-alias`.")
+               (refusal (fk "CHECKINS" "DATE") (fk "VENUES" "NAME")))))
+      (testing "a one-hop reference builds and runs, and so does the path the refusal names"
+        (doseq [stage [{:breakout [["field" {:source-field venue-id} (fk "VENUES" "NAME")]]}
+                       {:joins    [{:alias      "Venues"
+                                    :strategy   "left-join"
+                                    :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" "VENUES"]}]
+                                    :conditions [["=" {}
+                                                  ["field" {} venue-id]
+                                                  ["field" {:join-alias "Venues"} (fk "VENUES" "ID")]]]}]
+                        :breakout [["field" {} (fk "CATEGORIES" "NAME")]]}]]
+          (testing (pr-str stage)
+            (is (seq (mt/rows (qp/process-query
+                               (get-in (test-util/call-tool agent-tools/construct-notebook-query-tool (args stage))
+                                       [:structured-output :query])))))))))
+    (testing "the table the foreign key points at is not named when the user cannot query it"
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (doseq [table [:checkins :categories]]
+          (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/create-queries :query-builder))
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= (refused "Field " (pr-str (fk "CATEGORIES" "NAME")) " is on table \"CATEGORIES\", but its "
+                          "`source-field` " (pr-str venue-id) " is not a foreign key to that table, so the field "
+                          "cannot be reached through it. Use a `source-field` that is a foreign key to "
+                          "\"CATEGORIES\", or join \"CATEGORIES\" explicitly and reference the field with its "
+                          "`join-alias`.")
+                 (refusal venue-id (fk "CATEGORIES" "NAME")))))))))
 
 (defn- construct-tool-failure-for-thrown
   "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the

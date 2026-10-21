@@ -16,6 +16,7 @@
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
@@ -639,6 +640,73 @@
                        :status-code  400
                        :error        :missing-source-in-first-stage})))))
 
+;;; ---------------------------------------- Implicit joins ----------------------------------------
+
+(defn- referenced-field
+  "The field named by `target`, a field reference's portable FK or numeric id, or nil when there is none."
+  [metadata-provider resolver target]
+  (some->> (cond
+             (and serdes.resolve/*numeric-ids-allowed?* (pos-int? target))
+             target
+
+             (portable-field-fk-table target)
+             (try
+               (serdes.resolve/import-field-fk resolver target)
+               (catch Exception _ nil)))
+           (fetch-field metadata-provider)))
+
+(defn- source-field-refs
+  "The field references in `parsed-query` that reach their column through a `source-field` foreign key. References
+  through an explicit join's `join-alias` are left out, since the query processor ignores their `source-field`."
+  [parsed-query]
+  (filter (fn [node]
+            (and (vector? node)
+                 (not (map-entry? node))
+                 (= "field" (nth node 0 nil))
+                 (map? (nth node 1 nil))
+                 (contains? (nth node 1) "source-field")
+                 (not (contains? (nth node 1) "join-alias"))))
+          (tree-seq coll? seq parsed-query)))
+
+(defn- wrong-source-field-error
+  "The agent error for `field-ref`, whose column is on table `table-id` while its `source-field` points at table
+  `fk-table-id`, or at no table when it is not a foreign key."
+  [metadata-provider [_ {source-field "source-field"} target] table-id fk-table-id]
+  (let [table-name    (pr-str (:name (lib.metadata.protocols/table metadata-provider table-id)))
+        ;; The metadata provider skips permission checks, so name the key's table only if the user may query it
+        fk-table-name (when (and fk-table-id (contains? (metabot.perms/queryable-table-ids #{fk-table-id}) fk-table-id))
+                        (pr-str (:name (lib.metadata.protocols/table metadata-provider fk-table-id))))
+        via-fk-table? (and fk-table-name
+                           (= 1 (count (filter #(= table-id (:target-table-id %))
+                                               (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)))))]
+    (ex-info (str (if fk-table-name
+                    (tru "Field {0} is on table {1}, but its `source-field` {2} is a foreign key to table {3}, so the field cannot be reached through it."
+                         (pr-str target) table-name (pr-str source-field) fk-table-name)
+                    (tru "Field {0} is on table {1}, but its `source-field` {2} is not a foreign key to that table, so the field cannot be reached through it."
+                         (pr-str target) table-name (pr-str source-field)))
+                  " "
+                  (if via-fk-table?
+                    (tru "{0} has a foreign key to {1}: join {2} explicitly on {3} and leave out `source-field`, so the field is reached through that join."
+                         fk-table-name table-name fk-table-name (pr-str source-field))
+                    (tru "Use a `source-field` that is a foreign key to {0}, or join {1} explicitly and reference the field with its `join-alias`."
+                         table-name table-name)))
+             {:agent-error? true
+              :status-code  400
+              :error        :wrong-source-field})))
+
+(defn- assert-source-fields-reach-their-tables!
+  "Reject a field reference whose `source-field` is not a foreign key to the table its column is on. The query
+  processor joins whatever table that key points at and looks for the column there, so the query would build and
+  then fail when it runs."
+  [metadata-provider parsed-query]
+  (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
+    (doseq [[_ {source-field "source-field"} target :as field-ref] (source-field-refs parsed-query)
+            :let  [table-id    (:table-id (referenced-field metadata-provider resolver target))
+                   fk-field    (referenced-field metadata-provider resolver source-field)
+                   fk-table-id (some->> (:fk-target-field-id fk-field) (fetch-field metadata-provider) :table-id)]
+            :when (and table-id fk-field (not= table-id fk-table-id))]
+      (throw (wrong-source-field-error metadata-provider field-ref table-id fk-table-id)))))
+
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
 (defn- result-columns-for-query
@@ -726,6 +794,9 @@
        top-level `database:`, auto-wire `source-field` for implicit joins, rewrite inline
        `order-by` aggregations to refs, etc.).
     5. Sanity-check the post-repair shape against the portable repair schema.
+    5.5. Reject a field reference whose `source-field` is not a foreign key to the table its column
+       is on ([[assert-source-fields-reach-their-tables!]]). Such a query builds, and fails only
+       when it runs.
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
     6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
@@ -782,6 +853,7 @@
                             (repr.repair/repair mp parsed permission-aware-content-store))
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
+            _fks-ok       (assert-source-fields-reach-their-tables! mp repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
                             (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Problem in {0}."
