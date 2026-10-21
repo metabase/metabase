@@ -539,6 +539,17 @@
             data)
     (map vector data)))
 
+(defn- part->llm-messages
+  "The LLM history messages for one stored `part`: a text message, a tool call and its result, or nil."
+  [part]
+  (cond
+    (schema.v2/text-part? part)
+    (when-not (str/blank? (:text part))
+      [{:role :assistant :content (:text part)}])
+
+    (schema.v2/tool-part? part)
+    (tool-part->llm-messages part)))
+
 (defn- step->llm-messages
   "The LLM history messages for the `parts` of one step: its text and tool calls in order, then the results of those
   calls in the same order. This is how the agent loop sends a step, because the tools of a step run in parallel and
@@ -546,20 +557,23 @@
   puts each result after its call, a step with parallel calls replays in a different order, and the next turn's
   request does not start with the bytes that this turn sent."
   [parts]
-  (let [replayed (keep (fn [part]
-                         (cond
-                           (schema.v2/text-part? part)
-                           (when-not (str/blank? (:text part))
-                             [{:role :assistant :content (:text part)}])
-
-                           (schema.v2/tool-part? part)
-                           (tool-part->llm-messages part)))
-                       parts)]
+  (let [replayed (keep part->llm-messages parts)]
     (concat (map first replayed) (keep second replayed))))
 
 (defn- assistant-row->llm-messages
+  "The LLM history messages for the assistant row: each step before the last as [[step->llm-messages]] replays it,
+  then the last step with each result right after its call.
+
+  The last step is where the turn stopped. The agent loop did not send it to the model, so its order does not change
+  the prefix of the next turn's request. The agent can add text after the results of that step, with no
+  `step-start` before it: the message of a terminal error (see `metabase.metabot.agent.core`). In the step order,
+  that text would replay before the results that it comes after."
   [{:keys [data]}]
-  (into [] (mapcat step->llm-messages) (row-steps data)))
+  (let [steps (row-steps data)]
+    (into []
+          cat
+          [(mapcat step->llm-messages (butlast steps))
+           (mapcat part->llm-messages (last steps))])))
 
 (defn- rows->turns
   [rows]

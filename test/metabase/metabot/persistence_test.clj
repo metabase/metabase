@@ -1487,7 +1487,24 @@
                                [{:type :start} {:type :text :text "done"}])))))
       (testing "a row with no step-start parts, as a row migrated from v1 is, replays each result after its call"
         (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
-               (replay (concat (parts "c1") (parts "c2")))))))))
+               (replay (concat (parts "c1") (parts "c2"))))))
+      (testing (str "the message of a terminal error, which the agent adds after the results of the turn's last step, "
+                    "replays after those results")
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (result "c1")
+                {:role :assistant :tool_calls [{:id "c2" :name "search" :arguments (json/encode {:q "c2"})}]}
+                {:role :tool :tool_call_id "c2" :content "You don't have access to that table."}
+                {:role :assistant :content "You don't have permission to see that table."}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (parts "c1")
+                               [{:type :start}
+                                {:type :tool-input :id "c2" :function "search" :arguments {:q "c2"}}
+                                {:type   :tool-output :id "c2"
+                                 :result {:output "You don't have access to that table."
+                                          :error  {:class        :unrecoverable
+                                                   :code         :permission-denied
+                                                   :user-message "You don't have permission to see that table."}}}
+                                {:type :text :text "You don't have permission to see that table."}]))))))))
 
 (deftest history-tool-output-shapes-test
   (testing "bare-scalar, nil, and errored tool outputs each coerce to a string tool result"
