@@ -360,7 +360,17 @@
                          :catalog "ccc"
                          :additional-options "IgnoreTransactions=0;bla=1"}
                         (sql-jdbc.conn/connection-details->spec :databricks)
-                        :subname))))))
+                        :subname))))
+    (testing "Thrift client can be selected"
+      (let [details {:host "localhost",
+                     :engine "databricks",
+                     :catalog "ccc"
+                     :additional-options "UseThriftClient=1"}
+            details2 (dissoc details :additional-options)]
+        (is (= 1 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
+                                                                           details))))
+        (is (= 0 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
+                                                                           details2))))))))
 
 (deftest multi-level-schema-test
   (mt/test-driver :databricks
