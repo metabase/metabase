@@ -230,6 +230,45 @@ describe("getChartLayout", () => {
     );
   });
 
+  it("keeps room for the min and max y-axis labels below rotated x-axis labels on the smallest card", () => {
+    const chartContext: RenderingContext = {
+      ...getChartContext(),
+      theme: getVisualizationTheme({
+        theme: DEFAULT_METABASE_COMPONENT_THEME,
+        cartesianSize: "small",
+      }),
+      measureText: (text) => text.length * 7,
+    };
+    const { fontSize } = chartContext.theme.cartesian.ticks;
+    const categories = ["Doohickey", "Gadget", "Gizmo", "Widget"];
+    const chartLayout = getChartLayout(
+      {
+        ...input,
+        xAxisModel: { ...xAxisModel, valuesCount: categories.length },
+        transformedDataset: categories.map((category) => ({
+          [X_AXIS_DATA_KEY]: category,
+          price: 1500,
+        })),
+      },
+      createMockVisualizationSettings({
+        ...settings,
+        "graph.x_axis.axis_enabled": true,
+        "graph.x_axis.scale": "ordinal",
+      }),
+      false,
+      136,
+      85,
+      chartContext,
+    );
+
+    expect(chartLayout.axisEnabledSetting).toBe("rotate-90");
+    expect(
+      chartLayout.outerHeight -
+        chartLayout.padding.top -
+        chartLayout.padding.bottom,
+    ).toBeGreaterThanOrEqual(fontSize * 2);
+  });
+
   it("does not reserve padding for empty x- or y-axis titles", () => {
     const chartContext = getChartContext();
     const {

@@ -282,6 +282,8 @@ const getXAxisTicksHeight = (
 };
 
 const X_LABEL_HEIGHT_RATIO_THRESHOLD = 0.7; // x-axis labels cannot be taller than 70% of chart height
+// room for the min and max y-axis labels to render without overlapping
+const MIN_PLOT_HEIGHT_FONT_FACTOR = 2;
 
 const X_LABEL_ROTATE_45_THRESHOLD_FACTOR = 2.1;
 const X_LABEL_ROTATE_90_THRESHOLD_FACTOR = 1.2;
@@ -331,6 +333,7 @@ const getXTickWidthCap = (
   settings: ComputedVisualizationSettings,
   autoAxisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   outerHeight: number,
+  { theme }: RenderingContext,
 ) => {
   if (
     settings["graph.x_axis.scale"] !== "ordinal" &&
@@ -338,13 +341,26 @@ const getXTickWidthCap = (
   ) {
     return Infinity;
   }
-  if (autoAxisEnabledSetting === "rotate-90") {
-    return X_LABEL_HEIGHT_RATIO_THRESHOLD * outerHeight;
+  if (
+    autoAxisEnabledSetting !== "rotate-90" &&
+    autoAxisEnabledSetting !== "rotate-45"
+  ) {
+    return Infinity;
   }
-  if (autoAxisEnabledSetting === "rotate-45") {
-    return X_LABEL_HEIGHT_RATIO_THRESHOLD * outerHeight * Math.SQRT2;
-  }
-  return Infinity;
+  const { fontSize, marginX } = theme.cartesian.ticks;
+  const maxLabelsHeight = Math.max(
+    Math.min(
+      X_LABEL_HEIGHT_RATIO_THRESHOLD * outerHeight,
+      outerHeight -
+        CHART_STYLE.padding.y * 2 -
+        marginX -
+        MIN_PLOT_HEIGHT_FONT_FACTOR * fontSize,
+    ),
+    0,
+  );
+  return autoAxisEnabledSetting === "rotate-90"
+    ? maxLabelsHeight
+    : maxLabelsHeight * Math.SQRT2;
 };
 
 const X_TICKS_TO_MEASURE_COUNT = 50;
@@ -469,6 +485,7 @@ const getTicksDimensions = (
       settings,
       axisEnabledSetting,
       outerHeight,
+      renderingContext,
     );
     ticksDimensions.xTickWidthCap = xTickWidthCap;
 
