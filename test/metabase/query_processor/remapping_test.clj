@@ -20,6 +20,8 @@
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.util.date-2 :as u.date]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (deftest ^:parallel basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (qp.store/with-metadata-provider (-> (mt/metadata-provider)
@@ -506,17 +508,17 @@
                       (lib/limit 2)))]
       (is (=? {:stages [{:joins [{:alias      "Orders"
                                   :stages     [{:source-table (mt/id :orders)}]
-                                  :fields     [[:field {:join-alias "Orders"} (mt/id :orders :user_id)]
-                                               [:field {:join-alias "Orders"} (mt/id :orders :product_id)]
-                                               [:field {:join-alias "Orders"} (mt/id :orders :subtotal)]
-                                               [:field {:join-alias "Orders"} (mt/id :orders :tax)]
-                                               [:field {:join-alias "Orders"} (mt/id :orders :total)]
-                                               [:field {:join-alias "Orders"} (mt/id :orders :discount)]
-                                               [:field {:join-alias "Orders"} (mt/id :orders :created_at)]
-                                               [:field {:join-alias "Orders"} (mt/id :orders :quantity)]]
+                                  :fields     [[:field {:join-alias "Orders"} "USER_ID"]
+                                               [:field {:join-alias "Orders"} "PRODUCT_ID"]
+                                               [:field {:join-alias "Orders"} "SUBTOTAL"]
+                                               [:field {:join-alias "Orders"} "TAX"]
+                                               [:field {:join-alias "Orders"} "TOTAL"]
+                                               [:field {:join-alias "Orders"} "DISCOUNT"]
+                                               [:field {:join-alias "Orders"} "CREATED_AT"]
+                                               [:field {:join-alias "Orders"} "QUANTITY"]]
                                   :conditions [[:= {}
-                                                [:field {} (mt/id :people :id)]
-                                                [:field {:join-alias "Orders"} (mt/id :orders :user_id)]]]}]}]}
+                                                [:field {} "ID"]
+                                                [:field {:join-alias "Orders"} "USER_ID"]]]}]}]}
               query))
       (doseq [f [#'lib/returned-columns
                  #'qp.preprocess/query->expected-cols]]

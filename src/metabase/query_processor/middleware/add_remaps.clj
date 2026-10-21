@@ -202,11 +202,17 @@
         remap-infos))
 
 (mu/defn- new-field-keys :- [:set ::simplified-ref]
-  "The [[simplify-ref-options]] keys of the remapped column of `info`: its legacy ID ref with `:source-field`, and the
-  name ref that the same column can be referenced by."
-  [{:keys [new-field-clause new-field-name-clause]} :- ::remap-info]
-  (hash-set (simplify-ref-options new-field-clause)
-            (simplify-ref-options new-field-name-clause)))
+  "The [[simplify-ref-options]] keys of the remapped column of `info`: the ref add-remaps adds, and the ID ref with
+  `:source-field` and the name ref with `:source-field-name` that the same column can be referenced by."
+  [{:keys [new-field-clause new-field-name-clause dimension]} :- ::remap-info]
+  (let [[tag opts _name] new-field-name-clause]
+    (hash-set (simplify-ref-options new-field-clause)
+              (simplify-ref-options new-field-name-clause)
+              (simplify-ref-options [tag
+                                     (-> opts
+                                         (dissoc :source-field-name :base-type)
+                                         (assoc :source-field (:field-id dimension)))
+                                     (:human-readable-field-id dimension)]))))
 
 (mu/defn- existing-field-keys :- [:set ::simplified-ref]
   "The [[simplify-ref-options]] keys of `a-ref`, also without `:source-field` or `:source-field-name` when it names
@@ -325,9 +331,9 @@
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [new-fields         (add-fk-remaps-to-fields infos fields)
             ;; make a map of field-id-clause -> fk-clause from the tuples
-            original->remapped (let [broken-out (into #{} (map simplify-ref-options) breakout)]
-                                 (m/remove-vals #(broken-out (simplify-ref-options %))
-                                                (original-fields->new-fields infos)))
+            original->remapped (let [broken-out (into #{} (mapcat existing-field-keys) breakout)]
+                                 (original-fields->new-fields
+                                  (remove #(some broken-out (new-field-keys %)) infos)))
             ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)
@@ -375,7 +381,8 @@
         (let [infos      (for [info last-stage-infos]
                            (-> info
                                (update :original-field-clause lib/with-join-alias (:alias join))
-                               (update :new-field-clause      lib/with-join-alias (:alias join))))
+                               (update :new-field-clause      lib/with-join-alias (:alias join))
+                               (update :new-field-name-clause lib/with-join-alias (:alias join))))
               new-fields (into
                           []
                           (m/distinct-by simplify-ref-options)
