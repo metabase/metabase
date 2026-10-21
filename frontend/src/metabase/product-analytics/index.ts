@@ -1,1 +1,1 @@
-export { getRoutes, notebookPage } from "./routes";
+export { getRoutes, documentWithAnalysesPage } from "./routes";

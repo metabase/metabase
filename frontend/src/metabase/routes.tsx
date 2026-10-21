@@ -34,8 +34,8 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import {
+  documentWithAnalysesPage,
   getRoutes as getProductAnalyticsRoutes,
-  notebookPage,
 } from "metabase/product-analytics";
 import {
   QuestionHashRedirect,
@@ -232,7 +232,7 @@ registerPagePrefetch("/question", queryBuilder);
 registerPagePrefetch("/model", queryBuilder);
 registerPagePrefetch("/table/", queryBuilder);
 registerPagePrefetch("/question/ask", metabotQueryBuilder);
-registerPagePrefetch("/document/", notebookPage);
+registerPagePrefetch("/document/", documentWithAnalysesPage);
 // The sidesheet is a chunk of its own, and its route carries the document id
 // before the segment that names it, so a prefix cannot single it out. Registered
 // against the document prefix instead: 15 kb fetched alongside a page of 337 kb,
@@ -323,7 +323,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "document/:entityId",
-                lazy: notebookPage,
+                lazy: documentWithAnalysesPage,
                 children: [
                   lazyModalRoute("comments/:childTargetId", commentsSidesheet, {
                     noWrap: true,

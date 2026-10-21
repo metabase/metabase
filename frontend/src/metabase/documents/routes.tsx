@@ -23,7 +23,7 @@ export const DocumentPageOuter = ({
 
   // Remounts DocumentPage when navigating to a different document.
   // Prevents data, state, undo history, etc from bleeding between documents.
-  // A new notebook that auto-save just created keeps its page, so the editor
+  // A new document that auto-save just created keeps its page, so the editor
   // doesn't reload under the person typing in it.
   const pageKeyRef = useRef(documentId);
   const isCreatedFromNew =

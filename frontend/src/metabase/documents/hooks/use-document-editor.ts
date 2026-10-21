@@ -425,7 +425,7 @@ export function useDocumentEditor({
         const name =
           documentTitle.trim() ||
           (isAutoSaveEnabled
-            ? t`Untitled notebook`
+            ? t`Untitled document`
             : t`Untitled document - ${getFormattedTime(new Date(), "day", { local: true })}`);
 
         const newDocumentData = {

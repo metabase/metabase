@@ -15,28 +15,28 @@ import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shar
 import { Icon, Menu, Text, UnstyledButton } from "metabase/ui";
 import type { CardId, IconName } from "metabase-types/api";
 
-import type { NotebookStartAction } from "../document-page-addon";
+import type { DocumentStartAction } from "../document-page-addon";
 import { CreateNativeQuestionModal } from "../editor-extensions/CardEmbed/modals/CreateNativeQuestionModal";
 import { CreateStructuredQuestionModal } from "../editor-extensions/CardEmbed/modals/CreateStructuredQuestionModal";
 
-import S from "./NotebookStartActions.module.css";
+import S from "./DocumentStartActions.module.css";
 
 type OpenModal = "notebook" | "native" | "picker" | null;
 
-type NotebookStartActionsProps = {
+type DocumentStartActionsProps = {
   editor: Editor;
-  /** Lets the buttons fade and collapse away, e.g. once the notebook has content. */
+  /** Lets the buttons fade and collapse away, e.g. once the document has content. */
   style?: CSSProperties;
   /** Actions a feature adds, e.g. a new event analysis, after the queries. */
-  extraActions?: NotebookStartAction[];
+  extraActions?: DocumentStartAction[];
 };
 
-/** Big buttons that start an empty notebook off with a chart. */
-export const NotebookStartActions = ({
+/** Big buttons that start an empty document off with a chart. */
+export const DocumentStartActions = ({
   editor,
   style,
   extraActions = [],
-}: NotebookStartActionsProps) => {
+}: DocumentStartActionsProps) => {
   const [openModal, setOpenModal] = useState<OpenModal>(null);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 

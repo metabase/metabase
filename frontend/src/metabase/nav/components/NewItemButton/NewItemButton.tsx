@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Button, Icon } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -10,18 +10,23 @@ export interface NewItemButtonProps {
   collectionId?: CollectionId;
 }
 
-/** Prototype: notebooks are the only thing to create from the app bar. */
-const NewItemButton = (_props: NewItemButtonProps) => (
-  <Button
-    variant="filled"
-    component={ForwardRefLink}
-    to="/document/new"
-    leftSection={<Icon name="add" size={16} />}
-    onClick={() => trackAppNewButtonClicked()}
-  >
-    {t`Notebook`}
-  </Button>
-);
+const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
+  return (
+    <NewItemMenu
+      trigger={
+        <Button
+          variant="filled"
+          leftSection={<Icon name="add" size={16} />}
+          aria-label={t`New`}
+          onClick={() => trackAppNewButtonClicked()}
+        >
+          {t`New`}
+        </Button>
+      }
+      collectionId={collectionId}
+    />
+  );
+};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewItemButton;

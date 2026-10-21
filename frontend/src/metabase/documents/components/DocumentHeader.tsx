@@ -126,7 +126,7 @@ export const DocumentHeader = ({
               onTitleChange(value);
             }
           }}
-          placeholder={t`New notebook`}
+          placeholder={t`New document`}
           readOnly={!canWrite}
           maxLength={DOCUMENT_TITLE_MAX_LENGTH}
           classNames={{ input: S.titleInput }}

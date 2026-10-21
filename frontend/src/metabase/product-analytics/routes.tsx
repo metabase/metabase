@@ -6,10 +6,12 @@ const analysisDocumentPage = () =>
   }));
 
 /** Loads the document page, able to hold event analyses. */
-export const notebookPage = () =>
-  import(/* webpackChunkName: "documents" */ "./pages/NotebookPage").then(
-    ({ NotebookPage }) => ({ Component: NotebookPage }),
-  );
+export const documentWithAnalysesPage = () =>
+  import(
+    /* webpackChunkName: "documents" */ "./pages/DocumentWithAnalysesPage"
+  ).then(({ DocumentWithAnalysesPage }) => ({
+    Component: DocumentWithAnalysesPage,
+  }));
 
 const dataAppGuidePage = () =>
   import("./pages/DataAppGuidePage").then(({ DataAppGuidePage }) => ({

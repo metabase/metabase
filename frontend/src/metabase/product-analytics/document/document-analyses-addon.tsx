@@ -23,16 +23,16 @@ import {
 } from "./editor-host";
 import { useAnalysisDocumentState } from "./use-analysis-document-state";
 
-const NOTEBOOK_EDITOR_HOST: DocumentPageAddon["hostOverride"] = {
+const DOCUMENT_EDITOR_HOST: DocumentPageAddon["hostOverride"] = {
   useEventAnalysisCommands,
 };
 
 /**
- * Event analyses inside a notebook. Unlike an analysis document, a notebook
+ * Event analyses inside a document. Unlike an analysis document, a plain document
  * has no table or date-range pickers: its analyses read the prototype events
  * table over the default range unless the saved document says otherwise.
  */
-export const useNotebookAnalysesAddon: UseDocumentPageAddon = ({
+export const useDocumentAnalysesAddon: UseDocumentPageAddon = ({
   editor,
   canWrite,
   savedContent,
@@ -89,7 +89,7 @@ export const useNotebookAnalysesAddon: UseDocumentPageAddon = ({
   return {
     startActions,
     extraExtensions: ANALYSIS_DOCUMENT_EXTENSIONS,
-    hostOverride: NOTEBOOK_EDITOR_HOST,
+    hostOverride: DOCUMENT_EDITOR_HOST,
     wrap: (children) => (
       <AnalysisDocumentProvider value={state}>
         {children}

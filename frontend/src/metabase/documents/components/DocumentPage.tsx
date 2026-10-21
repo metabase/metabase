@@ -65,10 +65,10 @@ import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
 import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
+import { DocumentStartActions } from "./DocumentStartActions";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import { EmbedTimelineSidebar } from "./EmbedTimelineSidebar";
-import { NotebookStartActions } from "./NotebookStartActions";
 import { SidePanelResizeHandle } from "./SidePanelResizeHandle";
 import {
   type UseDocumentPageAddon,
@@ -139,7 +139,7 @@ export const DocumentPage = ({
   >(null);
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
-  // New notebooks are auto-saved to the creator's personal collection.
+  // New documents are auto-saved to the creator's personal collection.
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
 
   const {
@@ -343,7 +343,7 @@ export const DocumentPage = ({
                       timingFunction="ease"
                     >
                       {(style) => (
-                        <NotebookStartActions
+                        <DocumentStartActions
                           editor={editorInstance}
                           style={style}
                           extraActions={addon.startActions}

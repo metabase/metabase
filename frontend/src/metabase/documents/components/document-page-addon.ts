@@ -11,8 +11,8 @@ export type DocumentPageAddonArgs = {
   savedContent: DocumentContent | null | undefined;
 };
 
-/** A big button in an empty notebook that opens a menu of `options`. */
-export type NotebookStartAction = {
+/** A big button in an empty document that opens a menu of `options`. */
+export type DocumentStartAction = {
   key: string;
   label: string;
   icon: IconName;
@@ -26,8 +26,8 @@ export type NotebookStartAction = {
 
 /** What a feature adds to the document page: editor nodes, slash-menu commands, and a side panel. */
 export type DocumentPageAddon = {
-  /** Shown with the query buttons in an empty notebook. */
-  startActions?: NotebookStartAction[];
+  /** Shown with the query buttons in an empty document. */
+  startActions?: DocumentStartAction[];
   extraExtensions?: Extensions;
   hostOverride?: Partial<DocumentEditorHost>;
   /** Wraps the page, e.g. in the providers the extensions read. */
