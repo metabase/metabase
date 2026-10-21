@@ -9,7 +9,6 @@
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.util :as u]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
   (:import
@@ -978,10 +977,11 @@
     (dotimes [i 100]
       (is (= (if (< i 50) "invalid_request" "too_many_requests")
              (:error (token-request! {:grant_type "authorization_code"
-                                      :client_id  (str (random-uuid) (apply str (repeat 219 "a")))
+                                      :client_id  (str (random-uuid))
                                       :code       "bogus-code"}
                                      :expected-status (if (< i 50) 400 429))))))
-    (is (= 50 (count @(:attempts @#'api.oauth/token-client-throttler))))))
+    ;; Each client ID names no client, so none gets a client bucket; the IP bucket carries the whole run.
+    (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))))
 
 (deftest token-ip-throttles-do-not-extend-client-lockout-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -1088,19 +1088,26 @@
                                        :authorization (basic-auth-header client-id client-secret)
                                        :expected-status 429))))))))
 
-(deftest token-client-throttle-ignores-letter-case-test
+(deftest token-unknown-client-id-uses-only-ip-throttle-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [{client-id :client_id} (create-test-client! {:client_id "Mixed-Case-Client"})
-            refresh-error          (fn [client-id expected-status]
-                                     (:error (token-request! {:grant_type    "refresh_token"
-                                                              :client_id     client-id
-                                                              :refresh_token "bogus-token"}
-                                                             :expected-status expected-status)))]
-        (dotimes [i 10]
+      (mt/user-http-request :crowberto :get 200 "api/user/current")
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
+        ;; A client ID that names no oauth_client row gets no client bucket, as with no ID at all.
+        (dotimes [_ 11]
           (is (= "invalid_request"
-                 (refresh-error (if (even? i) (u/upper-case-en client-id) (u/lower-case-en client-id)) 400))))
-        (is (= "too_many_requests" (refresh-error client-id 429)))))))
+                 (:error (token-request! {:grant_type    "refresh_token"
+                                          :client_id     "no-such-client"
+                                          :refresh_token "bogus-token"}
+                                         :ip-address "198.51.100.7" :expected-status 400)))))
+        (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+        (is (string? (:access_token
+                      (token-request! {:grant_type   "authorization_code"
+                                       :client_id    client-id
+                                       :code         (authorize-and-get-code! client-id)
+                                       :redirect_uri "https://example.com/callback"}
+                                      :ip-address "198.51.100.8"
+                                      :authorization (basic-auth-header client-id client-secret)))))))))
 
 (deftest token-basic-auth-determines-client-throttle-key-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

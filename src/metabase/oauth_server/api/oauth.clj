@@ -10,13 +10,13 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
    [metabase.system.core :as system]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.throttle :as u.throttle]
@@ -305,11 +305,12 @@
 
 (defn- do-with-token-throttling
   "Apply the token throttles to `f`.
-   Requests use only the IP limit if the client ID is missing, empty or longer than 255 characters.
-   The client limit ignores letter case, as the app DB does when it finds a client on MySQL and MariaDB."
+   The client limit keys on the stored `client_id` of the client the given ID resolves to, found the same way
+   the token request finds it, so the two agree on which client an ID names however the app DB compares strings.
+   Requests use only the IP limit when the client ID is missing, longer than 255 characters, or names no client."
   [ip-address client-id f]
   (let [client-id (when (and (seq client-id) (<= (count client-id) max-client-id-length))
-                    (u/lower-case-en client-id))
+                    (:client_id (oauth-server.db/oauth-client client-id)))
         response  (with-throttling-429 [token-ip-throttler ip-address]
                     (if client-id
                       (with-throttling-429 [token-client-throttler client-id]
