@@ -2990,6 +2990,29 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
+(deftest ^:parallel split-post-agg-refuses-trailing-clauses-with-malformed-sequences-test
+  (doseq [trailing-clauses [{"fields" 42, "order-by" [["desc" {} ["aggregation" {} 0]]]}
+                            {"fields" 42, "limit" 5}
+                            {"order-by" 42, "fields" [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                            {"order-by" 42, "limit" 5}
+                            {"order-by" 42, "fields" 42, "limit" 5}]]
+    (testing (pr-str trailing-clauses)
+      (let [stage (merge {"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]}
+                         trailing-clauses)]
+        (try
+          (repair/repair trivial-mp {"lib/type" "mbql/query"
+                                     "database" "Sample"
+                                     "stages"   [stage]})
+          (is false "Expected advice to split the stage")
+          (catch clojure.lang.ExceptionInfo e
+            (is (=? {:agent-error? true
+                     :error        :post-agg-filter-with-trailing-clauses}
+                    (ex-data e)))
+            (is (re-find #"Please author this as two stages explicitly" (ex-message e)))))))))
+
 (deftest ^:parallel split-post-agg-refuses-when-order-by-is-a-string-test
   (testing "a string `order-by` with a post-aggregation filter gets advice to split the stage"
     (is (=? {:error :post-agg-filter-with-trailing-clauses}
