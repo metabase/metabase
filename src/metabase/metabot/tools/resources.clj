@@ -607,9 +607,6 @@
     (api/read-check (collection/root-collection-with-ui-details nil))
     (api/read-check :model/Collection (parse-long id-str))))
 
-(defn- child-collection-location [{:keys [id location]}]
-  (if (= id "root") "/" (str location id "/")))
-
 (defn- fetch-collection [id-str]
   (let [coll (readable-collection id-str)]
     (entity-result (present-collection coll))))
@@ -627,7 +624,7 @@
                               (filter mi/can-read?))
           subcollections (->> (if (= id-str "root")
                                 (metabot.db/navigable-collections false)
-                                (metabot.db/unarchived-collections-at-location (child-collection-location coll)))
+                                (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -639,7 +636,7 @@
   (let [coll    (readable-collection id-str)
         subs    (->> (if (= id-str "root")
                        (metabot.db/navigable-collections false)
-                       (metabot.db/unarchived-collections-at-location (child-collection-location coll)))
+                       (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
