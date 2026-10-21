@@ -36,13 +36,21 @@ const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
 ];
 
+interface SetupOpts {
+  shouldWaitForLoader?: boolean;
+  showUpdatedPermissionModal?: boolean;
+  deferDatabaseMetadata?: boolean;
+  database?: Database;
+}
+
 const setup = async ({
   shouldWaitForLoader = true,
   showUpdatedPermissionModal = false,
   deferDatabaseMetadata = false,
-} = {}) => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
+  database = TEST_DATABASE,
+}: SetupOpts = {}) => {
+  setupDatabasesEndpoints([database]);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, [database]);
   setupGroupsEndpoint(TEST_GROUPS);
 
   const databaseMetadata = defer<Database>();
@@ -149,6 +157,18 @@ describe("DatabasesPermissionsPage", () => {
       await editDatabasePermission();
       expect(screen.getByText("Cancel")).toBeInTheDocument();
       expect(screen.getByText("Save changes")).toBeInTheDocument();
+    });
+
+    it("marks a database with routing enabled in the breadcrumbs", async () => {
+      await setup({
+        database: createSampleDatabase({ router_user_attribute: "role" }),
+      });
+
+      expect(
+        within(screen.getByTestId("permissions-editor-breadcrumbs")).getByText(
+          "(Database routing enabled)",
+        ),
+      ).toBeInTheDocument();
     });
   });
 
