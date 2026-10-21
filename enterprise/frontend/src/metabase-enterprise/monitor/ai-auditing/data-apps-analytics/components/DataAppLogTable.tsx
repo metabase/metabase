@@ -25,7 +25,6 @@ import { formatNumber } from "metabase/utils/formatting";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 import {
   DATA_APP_LOG_COLUMNS,
-  DATA_APP_LOG_ID_COLUMN,
   DEFAULT_SORTING,
   type DataAppLogColumn,
   type DataAppLogFilters,
@@ -34,9 +33,10 @@ import {
 } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import * as Lib from "metabase-lib";
-import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
+import type { RowValue, SortingOptions } from "metabase-types/api";
 
 import { getEntityTypeLabel } from "./EntityTypeFilterSelect";
+import { type LogRow, getEffectiveSorting, getLogRows } from "./utils";
 
 /** Installed data apps' display names, by slug. */
 type DataAppNames = ReadonlyMap<string, string>;
@@ -153,8 +153,6 @@ function useDataAppNames(): DataAppNames {
   );
 }
 
-type LogRow = { id: string } & Partial<Record<DataAppLogColumn, RowValue>>;
-
 type DataAppLogTableProps = {
   provider: Lib.MetadataProvider | null;
   table: Lib.TableMetadata | Lib.CardMetadata | null;
@@ -199,14 +197,14 @@ function DataAppLogTableInner({
   const dataAppNames = useDataAppNames();
   const columns = useMemo(() => getLogColumns(hasPii), [hasPii]);
 
-  // A sort on a column hidden here, e.g. a PII column after retention was turned off, falls back to newest first.
-  const effectiveSorting = useMemo(() => {
-    const isVisibleSortColumn = columns.some(
-      (column) =>
-        isSortable(column) && column.key === sortingOptions.sort_column,
-    );
-    return isVisibleSortColumn ? sortingOptions : DEFAULT_SORTING;
-  }, [columns, sortingOptions]);
+  const effectiveSorting = useMemo(
+    () =>
+      getEffectiveSorting(
+        sortingOptions,
+        columns.filter(isSortable).map((column) => column.key),
+      ),
+    [columns, sortingOptions],
+  );
 
   const jsQuery = useMemo(() => {
     const query = buildDataAppLogRowsQuery({
@@ -223,38 +221,17 @@ function DataAppLogTableInner({
 
   const { data, isFetching, error } = useGetAdhocQueryQuery(jsQuery);
 
-  // Warehouses return column names in upper or lower case, so match them case-insensitively.
-  // A column remapped to a human-readable one (a question's id to its name) reads from that one.
-  const columnIndex = useMemo(() => {
-    const cols = data?.data?.cols ?? [];
-    const indexByName = new Map(
-      cols.map((col, index) => [col.name.toLowerCase(), index]),
-    );
-    return new Map(
-      cols.map((col, index) => {
-        const remappedIndex =
-          col.remapped_to === undefined
-            ? undefined
-            : indexByName.get(col.remapped_to.toLowerCase());
-        return [col.name.toLowerCase(), remappedIndex ?? index];
-      }),
-    );
-  }, [data]);
-
-  const rows = useMemo<LogRow[]>(() => {
-    const rawRows: RowValues[] = data?.data?.rows ?? [];
-    const idIndex = columnIndex.get(DATA_APP_LOG_ID_COLUMN);
-    return rawRows.map((rawRow, rowIndex) => {
-      const values = Object.fromEntries(
-        columns.map((column) => {
-          const index = columnIndex.get(column.key);
-          return [column.key, index === undefined ? null : rawRow[index]];
-        }),
-      );
-      const id = idIndex === undefined ? null : rawRow[idIndex];
-      return { id: String(id ?? `${page}-${rowIndex}`), ...values };
-    });
-  }, [data, columns, columnIndex, page]);
+  const rows = useMemo(
+    () =>
+      data?.data
+        ? getLogRows(
+            data.data,
+            columns.map((column) => column.key),
+            page,
+          )
+        : [],
+    [data, columns, page],
+  );
 
   const treeColumns = useMemo<TreeTableColumnDef<LogRow>[]>(
     () =>

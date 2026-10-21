@@ -6,12 +6,18 @@ import {
   type DataAppEntityType,
   parseDataAppEntityType,
 } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
-import { FILTER_WIDTH } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
+import { FILTER_WIDTH } from "metabase-enterprise/monitor/constants";
 
 const ALL_ENTITY_TYPES = "";
 
-export const getEntityTypeLabel = (entityType: DataAppEntityType) =>
-  entityType === "action" ? t`Action` : t`Question`;
+export function getEntityTypeLabel(entityType: DataAppEntityType): string {
+  switch (entityType) {
+    case "question":
+      return t`Question`;
+    case "action":
+      return t`Action`;
+  }
+}
 
 type EntityTypeFilterSelectProps = {
   value: DataAppEntityType | null;
