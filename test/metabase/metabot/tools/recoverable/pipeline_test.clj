@@ -10,6 +10,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
@@ -125,15 +127,16 @@
                        :metabase.metabot.tools.recoverable.pipeline/unknown-table
                        tables-uri))
       (testing "an ambiguous table names the query's database"
-        ;; The unique keys let two tables share a name only when one is a defective duplicate without a schema
-        (mt/with-temp [:model/Database {other-db :id other-db-name :name} {}
-                       :model/Table    _ {:db_id other-db :schema nil :name "ORDERS" :active true}
-                       :model/Table    _ {:db_id other-db :schema nil :name "ORDERS" :active true
-                                          :is_defective_duplicate true}]
-          (check-failure {"source-table" [other-db-name nil "ORDERS"]
-                          "aggregation"  [["count" {}]]}
-                         :metabase.metabot.tools.recoverable.pipeline/ambiguous-table
-                         (str "metabase://database/" other-db "/tables"))))
+        ;; The app DB's unique keys forbid a duplicate table, so both tables exist only in the metadata provider
+        (let [mp (lib.tu/mock-metadata-provider
+                  (mt/metadata-provider)
+                  {:tables [{:id 99999901 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}
+                            {:id 99999902 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}]})]
+          (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly mp)]
+            (check-failure {"source-table" [db "PUBLIC" "SHIPMENTS"]
+                            "aggregation"  [["count" {}]]}
+                           :metabase.metabot.tools.recoverable.pipeline/ambiguous-table
+                           tables-uri))))
       (testing "an unknown column names its table"
         (check-failure {"source-table" [db "PUBLIC" "ORDERS"]
                         "aggregation"  [["count" {}]]
