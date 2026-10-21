@@ -54,7 +54,7 @@
         (is (=? {:query {:source-table (meta/id :orders)
                          :order-by     [[:asc
                                          [:field
-                                          (meta/id :orders :id)
+                                          "ID"
                                           {:base-type :type/BigInteger}]]]}}
                 (lib.convert/->legacy-MBQL (lib/drill-thru query -1 nil drill "asc"))))))
     (is (=? {:stages [{:lib/type :mbql.stage/mbql

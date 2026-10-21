@@ -421,7 +421,7 @@
                             (lib/available-drill-thrus query context))
         drilled (lib/drill-thru query -1 nil drill "=")]
     (is (=? [[:= {}
-              [:field {:binning {:strategy :default}} (:id total-col)]
+              [:field {:binning {:strategy :default}} (:name total-col)]
               40]]
             (lib/filters drilled)))
     (testing "the binning that lands in the query is plain options, with none of the `:lib/type`/`:metadata-fn`
