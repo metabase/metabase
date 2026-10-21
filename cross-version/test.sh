@@ -20,6 +20,7 @@ TARGET_VERSION=""
 METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
+GRACE_PERIOD="${GRACE_PERIOD:-3}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -251,9 +252,77 @@ migrate_down_step() {
   fi
 
   if grep -q "not rolled back" <<<"$output"; then
+    if changesets_in_grace_period "$output"; then
+      return 2
+    fi
     error "migrate down had changesets that were not rolled back (check logs above)"
     return 1
   fi
+}
+
+fetch_history() {
+  local git_=(git -C "$REPO_ROOT") head
+  [[ "$("${git_[@]}" rev-parse --is-shallow-repository)" == "true" ]] || return 0
+  head=$("${git_[@]}" rev-parse HEAD)
+  "${git_[@]}" fetch -q --no-tags --shallow-since="${GRACE_PERIOD} days ago" origin "$head" &&
+    "${git_[@]}" fetch -q --no-tags --deepen=1 origin "$head"
+}
+
+changesets_in_grace_period() {
+  local ids id id_line commit added now age_hours base json=""
+  ids=$(grep "not in the changelog file:" <<<"$1" | sed 's/.*not in the changelog file://' |
+    grep -oE 'v[0-9]+\.[0-9A-Za-z:._-]+' | sort -u || true)
+  if [[ -z "$ids" ]]; then
+    warn "Could not read the changeset ids that were not rolled back"
+    return 1
+  fi
+
+  if ! fetch_history; then
+    warn "Could not fetch the git history"
+    return 1
+  fi
+
+  base=$(git -C "$REPO_ROOT" rev-list -1 --first-parent --before="${GRACE_PERIOD} days ago" HEAD)
+  if [[ -z "$base" ]]; then
+    warn "Could not find the commit from ${GRACE_PERIOD} day(s) ago"
+    return 1
+  fi
+
+  now=$(date +%s)
+  for id in $ids; do
+    id_line="^[[:space:]]*id:[[:space:]]*['\"]?${id//./\\.}['\"]?[[:space:]]*$"
+    if git -C "$REPO_ROOT" grep -qE "$id_line" "$base" -- resources/migrations; then
+      warn "$id was already in ${base:0:11}, which is older than ${GRACE_PERIOD} day(s)"
+      return 1
+    fi
+    commit="" added=""
+    read -r commit added < <(git -C "$REPO_ROOT" -c log.showRoot=false log --since="${GRACE_PERIOD} days ago" \
+      -E -G "$id_line" --format='%H %ct' HEAD -- resources/migrations | tail -1) || true
+    if [[ -z "${commit:-}" ]]; then
+      warn "$id was not added in the last ${GRACE_PERIOD} day(s)"
+      return 1
+    fi
+    age_hours=$(( (now - added) / 3600 ))
+    warn "$id was added ${age_hours}h ago in ${commit:0:11}, which is in the grace period of ${GRACE_PERIOD} day(s)"
+    json+="${json:+,}{\"id\":\"$id\",\"commit\":\"$commit\",\"age_hours\":$age_hours}"
+  done
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "unreleased_migrations=[$json]" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+skip_for_unreleased_changesets() {
+  local message="Skipped $SOURCE_VERSION → $TARGET_VERSION: master has migrations that the released images do not have yet. The test runs in full again after the release."
+  warn "$message"
+  echo "::warning title=Cross-version test skipped::$message"
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    echo "⚠️ $message" >> "$GITHUB_STEP_SUMMARY"
+  fi
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "skipped=true" >> "$GITHUB_OUTPUT"
+  fi
+  exit 0
 }
 
 # Cascading migrate down: rolls back multiple major versions one at a time
@@ -285,7 +354,11 @@ cascading_migrate_down() {
     log "--------------------------------------------"
     log "Cascade step $step/$steps: $version"
     log "--------------------------------------------"
-    if ! migrate_down_step "$version"; then
+    local step_rc=0
+    migrate_down_step "$version" || step_rc=$?
+    if (( step_rc == 2 )); then
+      return 2
+    elif (( step_rc != 0 )); then
       error "Migrate down failed at step $step ($version)"
       return 1
     fi
@@ -476,7 +549,11 @@ main() {
 
     log ""
     log "Step 5: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
-    if ! cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION"; then
+    local cascade_rc=0
+    cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION" || cascade_rc=$?
+    if (( cascade_rc == 2 )); then
+      skip_for_unreleased_changesets
+    elif (( cascade_rc != 0 )); then
       error "❌ migrate down failed"
       exit 1
     fi

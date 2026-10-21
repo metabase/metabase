@@ -19,6 +19,11 @@ on:
         description: "Target version (e.g., v1.58.7 or HEAD)"
         required: true
         type: string
+      grace_period:
+        description: "Time (in days) before a migration targeting a release version is expected to exist in that release branch."
+        required: false
+        type: string
+        default: 3
 
 jobs:
   generate-test-matrix:
@@ -27,6 +32,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      oldest-target: ${{ steps.set-matrix.outputs.oldest-target }}
     steps:
       - name: Require HEAD digest
         if: inputs.digest == ''
@@ -61,6 +67,7 @@ jobs:
             const { config } = buildCrossVersionMatrix(supportedMajors);
             const matrix = JSON.stringify({ include: config });
             core.setOutput("matrix", matrix);
+            core.setOutput("oldest-target", `v1.${Math.min(...supportedMajors)}.x`);
             console.log("matrix:", matrix);
 
   cross-version-test:
@@ -80,6 +87,10 @@ jobs:
       REPO_ID: ${{ github.event.repository.id }}
       COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+      # Number of days we don't fail a cross version test that is missing a migration that was recently merged to master
+      # but targets a different version. For example: a migration for v63 is added to master but master is on v66. Cross
+      # version tests will fail until that is backported and released on v63 but we should give people time to do that.
+      GRACE_PERIOD: 3
 
     steps:
       - uses: actions/checkout@v7
@@ -112,7 +123,7 @@ jobs:
       - uses: ./.github/actions/resolve-job-id
 
       - name: Run cross-version test
-        id: run-tests
+        id: run-test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           HEAD_DIGEST: ${{ inputs.digest }}
@@ -135,13 +146,43 @@ jobs:
           test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
 
       - name: Quarantine gate
-        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
         timeout-minutes: 3
         uses: ./.github/actions/quarantine-gate
         with:
           adapter: e2e
           test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
           enforce-quarantine: "true"
+
+      - name: Notify Slack about migrations that need a backport or a release
+        continue-on-error: true
+        if: >-
+          github.ref_name == 'master' &&
+          steps.run-test.outputs.skipped == 'true' &&
+          steps.run-test.outputs.unreleased_migrations != '' &&
+          matrix.target == needs.generate-test-matrix.outputs.oldest-target
+        uses: actions/github-script@v9
+        env:
+          UNRELEASED_MIGRATIONS: ${{ steps.run-test.outputs.unreleased_migrations }}
+          NOTIFY_AFTER_HOURS: 24
+          REPEAT_AFTER_HOURS: 24
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: 'engineering-ci'
+        with:
+          script: | # js
+            const { getRecentSlackMessages, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { notifyOverdueChangesets } = require('${{ github.workspace }}/.github/scripts/notify-unreleased-migrations');
+
+            await notifyOverdueChangesets({
+              context,
+              migrations: JSON.parse(process.env.UNRELEASED_MIGRATIONS),
+              notifyAfterHours: Number(process.env.NOTIFY_AFTER_HOURS),
+              repeatAfterHours: Number(process.env.REPEAT_AFTER_HOURS),
+              gracePeriodDays: Number(process.env.GRACE_PERIOD),
+              channelName: process.env.SLACK_CHANNEL,
+              getRecentSlackMessages,
+              sendSlackMessage,
+            });
 
       - name: Upload Cypress Artifacts
         uses: actions/upload-artifact@v7
@@ -154,7 +195,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Show logs on failure
-        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
         run: |
           for f in cross-version/logs/*.log; do
             [ -e "$f" ] || continue
@@ -168,6 +209,8 @@ jobs:
     if: inputs.source_version != ''
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
+    env:
+      GRACE_PERIOD: ${{ inputs.grace_period }}
 
     steps:
       - uses: actions/checkout@v7
