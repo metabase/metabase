@@ -669,7 +669,7 @@
                     "  GROUPING("
                     "    \"__mb_source\".\"region\","
                     "    \"__mb_source\".\"__mb_pivot_nfc\""
-                    "  ) ASC,"
+                    "  ) DESC,"
                     "  \"__mb_source\".\"__mb_pivot_nfc\" ASC,"
                     "  \"__mb_source\".\"region\" ASC"]
                    (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
