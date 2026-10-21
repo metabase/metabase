@@ -684,7 +684,7 @@
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
     (api/check-404 (or (nil? (:sso_source user))
-                       (sso/sso-source-enabled? (:sso_source user))))
+                       (not (sso/sso-source-enabled? (:sso_source user)))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated
