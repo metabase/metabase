@@ -123,7 +123,7 @@
   "Run `serialized-query` for one page of at most `row-limit` rows, recorded under the QP `context`.
    Returns `{:cols :rows :returned :truncated?}`.
    The `truncated?` flag is true only when more rows exist, so a result that fills the page exactly is complete.
-   A run that doesn't complete throws an agent error whose message carries the QP's error text, quoted.
+   A query failure throws an agent error with the QP's error text in quotes.
    Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`, with a true
    `:permissions-error?` when the QP refused the query because the current user may not run it.
 
