@@ -400,6 +400,9 @@ On failure:
 { "status": "failed", "error": "Query error message" }
 ```
 
+When the run fails inside Metabase rather than in the query or its database,
+`error` is `Something went wrong`, and the details go to the server log.
+
 Row limits:
 
 - Simple queries (no aggregation): 2000 rows max
@@ -630,5 +633,6 @@ Response:
 | 401         | Authentication failure                                                                             |
 | 403         | Insufficient permissions                                                                           |
 | 404         | Entity not found                                                                                   |
+| 500         | Unexpected failure inside Metabase. The body is `{"message": "Something went wrong"}`              |
 
 ---

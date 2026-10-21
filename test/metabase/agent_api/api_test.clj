@@ -12,12 +12,14 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.mcp.core :as mcp]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.resources :as metabot-resources]
+   [metabase.metabot.tools.search :as metabot-search]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -1911,9 +1913,8 @@
     (let [resp (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql"
                                      {:database_id (mt/id)
                                       :sql         "SELECT * FROM table_that_does_not_exist"})]
-      ;; The streaming pipeline wraps the failure in :via[0]/:status.
-      (is (= "failed" (some-> resp :via first :status)))
-      (is (string? (some-> resp :via first :error)))))
+      (is (=? {:status "failed" :error #"TABLE_THAT_DOES_NOT_EXIST" :error_type "invalid-query"} resp))
+      (is (= #{:status :error :error_type} (set (keys resp))))))
   (testing "A successful query records a QueryExecution audit row tagged :agent"
     ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
     ;; written. Verify a row lands and carries the agent context. QueryExecutions are saved in async batches by
@@ -2040,3 +2041,52 @@
       (is (not (contains? q :qp/source-card-id)))
       (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
           "internal keys are stripped from every stage"))))
+
+;;; ------------------------------------------------- Error Responses ---------------------------------------------
+
+(defn- reject-app-db-lookup
+  "Stands in for an app DB lookup with a statement the app DB rejects, so the failure carries the app DB's own SQL
+  text, exception chain and stack trace."
+  [& _]
+  (t2/query ["SELECT no_such_column FROM metabase_field"]))
+
+(defn- logs-app-db-error?
+  "Whether captured log `messages` include the app DB error that [[reject-app-db-lookup]] causes."
+  [messages]
+  (some #(str/includes? (str (:message %) (some-> (:e %) ex-message)) "NO_SUCH_COLUMN") messages))
+
+(deftest unexpected-error-is-generic-test
+  (testing "An unexpected failure is a generic 500 whatever `hide-stacktraces` says, and the log gets the detail"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-dynamic-fn-redefs [metabot-search/search reject-app-db-lookup]
+        (doseq [hide-stacktraces? [false true]]
+          (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
+            (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+              (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+                (is (= {:message "Something went wrong"}
+                       (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+                (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))
+                (is (logs-app-db-error? (messages)))))))))))
+
+(deftest client-error-has-no-stacktrace-test
+  (testing "A 400 keeps its message and error code but no stack trace, whatever `hide-stacktraces` says"
+    (doseq [hide-stacktraces? [false true]]
+      (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
+        (let [body (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                         {:query (orders-query :aggregation [(orders-field-ref "ID")])})]
+          (is (=? {:message string? :error "aggregation-entry-not-aggregation"} body))
+          (is (= #{:message :error} (set (keys body)))))))))
+
+(deftest query-run-app-db-failure-is-generic-test
+  (testing "A query run that fails in an app DB lookup is a generic failure, and the log gets the detail"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-limit-query 5)}]
+      (let [handle (u/encode-base64 (json/encode (lib/prepare-for-serialization (orders-limit-query 5))))]
+        (mt/with-dynamic-fn-redefs [lib-be.db/columns reject-app-db-lookup]
+          (doseq [[endpoint body] [["agent/v1/execute" {:query handle}]
+                                   ["agent/v2/query" {:query handle}]
+                                   [(format "agent/v1/question/%d/query" card-id) {}]]]
+            (testing endpoint
+              (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+                (is (= {:status "failed" :error "Something went wrong"}
+                       (mt/user-http-request :crowberto :post 500 endpoint body)))
+                (is (logs-app-db-error? (messages)))))))))))
