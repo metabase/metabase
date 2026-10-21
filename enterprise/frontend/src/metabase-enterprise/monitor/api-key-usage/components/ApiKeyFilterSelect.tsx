@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/admin/settings/api/api-key";
+import { FILTER_WIDTH } from "metabase/monitor/constants";
 import { Select } from "metabase/ui";
 import { apiKeyMatchesScope } from "metabase-enterprise/monitor/api-key-usage/query-utils";
-import { FILTER_WIDTH } from "metabase-enterprise/monitor/constants";
 
 type Props = {
   value: string | null;

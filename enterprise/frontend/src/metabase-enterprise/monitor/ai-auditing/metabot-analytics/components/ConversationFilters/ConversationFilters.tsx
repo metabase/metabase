@@ -4,6 +4,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
+import { FILTER_WIDTH } from "metabase/monitor/constants";
 import { getOperatorDefaultValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import type {
   DatePickerOperator,
@@ -17,7 +18,6 @@ import {
 } from "metabase/querying/parameters/utils/parsing";
 import { useSetting } from "metabase/settings";
 import { Flex, Icon, Popover, Select } from "metabase/ui";
-import { FILTER_WIDTH } from "metabase-enterprise/monitor/constants";
 
 const DATE_OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];
 const RELATIVE_DIRECTIONS: RelativeIntervalDirection[] = ["past", "current"];
