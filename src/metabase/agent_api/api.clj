@@ -730,12 +730,7 @@
   that did read. Only the first five URIs are read; later entries report that they were skipped."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
-           :description (str "Read Metabase entities by metabase:// URI. "
-                             "Examples: metabase://databases, metabase://database/{id}/tables, "
-                             "metabase://collection/{id}/items, metabase://question/{id}, "
-                             "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
-                             "Only the first 5 URIs are read per call; later URIs are reported as skipped. "
-                             "List endpoints cap at 25 items.")}}
+           :description (:description (tools.core/validate-tool! metabot-resources/read-resource-tool))}}
   [_route-params
    _query-params
    body :- ::read-resource-request]

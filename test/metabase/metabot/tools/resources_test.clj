@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
+   [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -445,8 +446,8 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   result))
           (is (str/includes? (:output result) dashboard-name))))
-      (testing "rejects sub-resources"
-        (is (=? {:resources [{:error string?}]}
+      (testing "fetches dashboard items through the cards alias"
+        (is (=? {:resources [{:content {:structured-output {:list-type :dashboard-items}}}]}
                 (read-uris {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
       (testing "returns error for unknown dashboard"
         (is (=? {:resources [{:error string?}]}
@@ -1995,3 +1996,26 @@
   (let [uri "metabase://document/not-a-number"
         error (-> (read-uris {:uris [uri]}) :resources first :error)]
     (is (str/includes? (or error "") "Resource URIs use the numeric entity id"))))
+
+(deftest document-read-view-test
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-temp [:model/Document {id :id} {:name "Plan" :view_count 0}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (not (error? (read-uris {:uris [(str "metabase://document/" id)]}))))
+        (is (= 0 (t2/select-one-fn :view_count :model/Document id)))
+        (documents/get-document id)
+        (is (= 1 (t2/select-one-fn :view_count :model/Document id)))))))
+
+(deftest ^:parallel uri-aspect-aliases-test
+  (doseq [[alias canonical] [["metabase://table/1/columns/2" "metabase://table/1/fields/2"]
+                             ["metabase://model/1/columns" "metabase://model/1/fields"]
+                             ["metabase://question/1/columns/2" "metabase://question/1/fields/2"]
+                             ["metabase://dashboard/1/cards?page=2" "metabase://dashboard/1/items?page=2"]]]
+    (is (= (#'read-resource/parse-uri canonical) (#'read-resource/parse-uri alias)))))
+
+(deftest ^:parallel description-lists-uri-forms-test
+  (let [description (:description (tools/validate-tool! read-resource/read-resource-tool))]
+    (doseq [uri (mapcat val @#'read-resource/uri-templates)]
+      (is (str/includes? description uri) uri))
+    (doseq [wording ["collection/root" "columns" "cards" "case-sensitive" "skipped"]]
+      (is (str/includes? description wording) wording))))

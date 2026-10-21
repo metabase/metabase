@@ -354,6 +354,13 @@
                      (when k [(keyword k) (or v "")])))))
          (into {}))))
 
+(def ^:private uri-aspect-aliases
+  "Alternate aspect names accepted for each resource kind."
+  {"table"    {"columns" "fields"}
+   "model"    {"columns" "fields"}
+   "question" {"columns" "fields"}
+   "dashboard" {"cards" "items"}})
+
 (defn- parse-uri
   "Parse a metabase:// URI into a vector of path segments and a query-params map.
 
@@ -374,7 +381,9 @@
                        (mapv codec/url-decode))]
     (when (zero? (count segments))
       (malformed-uri! {:uri uri}))
-    {:segments     segments
+    {:segments     (if-let [aspect (get-in uri-aspect-aliases [(first segments) (get segments 2)])]
+                     (assoc segments 2 aspect)
+                     segments)
      :query-params (parse-query-string qs)}))
 
 ;; ----- Item presenters (list-row shapes) -----
@@ -943,7 +952,7 @@
   "Present a document as an indexed outline of its top-level blocks. The indices are the
   `position` values the `save_entity` tool accepts when inserting a chart into the document."
   [id-str]
-  (let [document (documents/get-document (parse-long id-str))
+  (let [document (documents/get-document (parse-long id-str) :log-view? false)
         blocks   (get-in document [:document :content])]
     (entity-result
      {:type        "document"
@@ -1249,45 +1258,20 @@
 
   A value rather than a docstring: the batched form has to add its own per-call limits to it, and a
   docstring cannot be computed."
-  (str
-   "Read detailed information about Metabase resources via URI patterns. Use this to navigate\n"
-   "the instance and drill into specific entities. URIs returned by `search` can be fed directly\n"
-   "back here. Only numeric IDs accepted, never alphanumeric entity-id's.\n"
-   "\n"
-   "NAVIGATION (top-level lists):\n"
-   "- metabase://databases - all databases\n"
-   "- metabase://collections - root collections\n"
-   "- metabase://collections?tree=true - flat list of all collections (use :location for hierarchy)\n"
-   "- metabase://user/recent-items - your recently-viewed items\n"
-   "\n"
-   "DATABASE DRILL-DOWN:\n"
-   "- metabase://database/{id}\n"
-   "- metabase://database/{id}/tables\n"
-   "- metabase://database/{id}/models\n"
-   "- metabase://database/{id}/schemas\n"
-   "- metabase://database/{id}/schemas/{schemaName}/tables\n"
-   "\n"
-   "COLLECTION DRILL-DOWN:\n"
-   "- metabase://collection/{id}\n"
-   "- metabase://collection/{id}/items - subcollections + leaves\n"
-   "- metabase://collection/{id}/subcollections\n"
-   "\n"
-   "ENTITY DRILL-DOWN:\n"
-   "- metabase://table/{id}[/fields[/{field_id}]] [/derived]\n"
-   "- metabase://model/{id}[/fields[/{field_id}]] [/sources]\n"
-   "- metabase://question/{id}[/fields[/{field_id}]] [/sources]\n"
-   "- metabase://metric/{id}[/dimensions[/{dim_id}]]\n"
-   "- metabase://measure/{id}\n"
-   "- metabase://segment/{id}\n"
-   "- metabase://transform/{id}[/sources|/target]\n"
-   "- metabase://dashboard/{id}[/items]\n"
-   "- metabase://document/{id} - name + indexed outline of the document's top-level blocks\n"
-   "  (the indices are valid `position` values for `save_entity` document destinations)\n"
-   "\n"
-   "CONVERSATION STATE (charts and queries generated in or pasted into this conversation,\n"
-   "e.g. referenced in a user message as [name](metabase://chart/{id})):\n"
-   "- metabase://chart/{chart_id} - the chart's type and its query\n"
-   "- metabase://query/{query_id} - a query from this conversation's state"))
+  (str "Read detailed information about Metabase resources. Copy URIs from `search` or navigation results.\n"
+       "Entity IDs are numeric. Use `collection/root` for the root collection; chart and query IDs come\n"
+       "from this conversation's state. Schema names are case-sensitive and URI path segments must be URL-encoded.\n\n"
+       "SUPPORTED URI FORMS:\n"
+       (str/join "\n" (for [[_ templates] (sort-by key uri-templates)
+                            uri templates]
+                        (str "- " uri)))
+       "\n\nALIASES (the same trailing segments are accepted):\n"
+       (str/join "\n" (for [[kind aliases] (sort-by key uri-aspect-aliases)
+                            [alias canonical] (sort-by key aliases)]
+                        (str "- metabase://" kind "/{id}/" alias " is an alias for /" canonical)))
+       "\n\nDocuments return a name and an indexed outline of top-level blocks. The indices are valid\n"
+       "`position` values for `save_entity` document destinations. Chart URIs return the chart type\n"
+       "and its query; query URIs return a query from this conversation."))
 
 (def ^:private batch-note
   "What the batched form adds to [[tool-description]]: the limits that exist only because one call
