@@ -49,6 +49,15 @@
    :recovery [{:uses #{"search"}
                :text "Call `search` to find a table, model or metric to X-ray instead."}]})
 
+(tools/defrecoverable unsupported-native-query!
+  "The conversation query is native."
+  {:payload [:map {:closed true}
+             [:query-id :string]]}
+  [{:keys [query-id]}]
+  {:message  (str "Query " query-id " is an unsaved native query, which X-ray does not support.")
+   :recovery [{:uses #{"search"}
+               :text "Call `search` to find a table, model, metric or saved question to X-ray instead."}]})
+
 (defn- readable-source
   "The `kind` entity with `id` and its X-ray path, if the current user can read it and it is still in use."
   [kind id]
@@ -97,9 +106,12 @@
         (when-not (mr/validate :metabase.lib.schema/query mbql-query)
           (incomplete-query! {:query-id query_id}))
         ;; For queries, we create a transient card-like structure
-        {:entity (tools/with-entity {:kind :query :id query_id}
-                   (xrays/adhoc-query-read-check {:dataset_query query}))
-         :path   (str "/auto/dashboard/adhoc/" (xrays/encode-base64-json query))}))))
+        (let [entity (tools/with-entity {:kind :query :id query_id}
+                       (xrays/adhoc-query-read-check {:dataset_query query}))]
+          (when (lib/native? mbql-query)
+            (unsupported-native-query! {:query-id query_id}))
+          {:entity entity
+           :path   (str "/auto/dashboard/adhoc/" (xrays/encode-base64-json query))})))))
 
 ;;; Response Messages
 
