@@ -320,18 +320,20 @@
               (sort-by :rrf >)
               (map :search-result)))))))
 
-(defn- join-results-by-rrf
-  "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
-   Items appearing in multiple result lists are boosted in the final ranking.
-   May return more results than requested limit."
+(defn- run-searches
+  "Execute multiple search queries in parallel. Returns one `{:ranked results}` per query, or `{:error e}` for a
+  query whose search threw, so one failed query doesn't discard the others' results."
   [search-fn search-engine all-queries]
-  ;; Zero queries case is handled nicely by the >1 branch
-  (if (= 1 (count all-queries))
-    (search-fn (first all-queries) search-engine)
-    ;; Create futures for parallel execution
-    (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)
-          result-lists (mapv deref futures)]
-      (reciprocal-rank-fusion result-lists))))
+  (let [attempt (fn [query]
+                  (try
+                    {:ranked (search-fn query search-engine)}
+                    (catch Exception e
+                      {:error e})))]
+    ;; Zero queries case is handled nicely by the >1 branch
+    (if (= 1 (count all-queries))
+      [(attempt (first all-queries))]
+      ;; Create futures for parallel execution
+      (mapv deref (mapv #(future (attempt %)) all-queries)))))
 
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
@@ -341,14 +343,16 @@
   `archived`, `collection-id` (numeric, scopes to the collection subtree; overrides the metabot's
   own confined collection), `offset`. `filters-only?` makes a call with no queries run a single
   nil-query search — a pure listing over the active filters — instead of returning nothing.
+  `partial-results?` keeps the other queries' results when a query's search fails, unless every
+  search failed; without it, any failure fails the call.
 
   Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
   fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
-  `:total` metadata."
+  `:total` metadata, and the queries whose search failed as `:failed-queries`."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot profile-id search-native-query weights
-           created-by archived collection-id offset filters-only?]}]
+           created-by archived collection-id offset filters-only? partial-results?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
               :semantic-query-count (count semantic-queries)
@@ -424,30 +428,42 @@
                                        (frequencies (map :model ranked)))
                             ranked))
         ranked-fn*      (fn [search-engine queries]
-                          (let [queries (search.engine/disjunction search-engine queries)]
-                            (join-results-by-rrf ranked-fn search-engine queries)))
+                          (let [searches (search.engine/disjunction search-engine queries)
+                                ;; A disjunction either keeps the queries apart or folds them all into one search.
+                                covered  (if (= 1 (count searches)) [queries] (map vector queries))]
+                            (mapv #(assoc %1 :queries %2) (run-searches ranked-fn search-engine searches) covered)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
                           (search.engine/fallback-engine semantic-engine))
-        fused-ranked    (cond
+        engine-outcomes (cond
                           ;; A pure listing over the filters: one search with no search string.
                           (and filters-only?
                                (empty? term-queries)
                                (empty? semantic-queries))
-                          (ranked-fn nil nil)
+                          [[{:ranked (ranked-fn nil nil)}]]
 
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           semantic-engine
-                          (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
+                          (into []
+                                (keep (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries))))
                                 {semantic-engine semantic-queries
-                                 fallback-engine term-queries}))
+                                 fallback-engine term-queries})
 
                           ;; Search for all the terms on equal footing, using the default engine.
                           :else
-                          (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
+                          [(ranked-fn* nil (distinct (concat term-queries semantic-queries)))])
+        outcomes        (apply concat engine-outcomes)
+        failed          (filter :error outcomes)
+        _               (when (seq failed)
+                          (when (or (not partial-results?) (every? :error outcomes))
+                            (throw (:error (first failed))))
+                          (doseq [{:keys [error]} failed]
+                            (log/error error "[METABOT-SEARCH] A search query failed; returning the other queries' results")))
+        fused-ranked    (reciprocal-rank-fusion
+                         (for [engine-outcome engine-outcomes]
+                           (reciprocal-rank-fusion (keep :ranked engine-outcome))))
         ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
         ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
         ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
@@ -473,7 +489,9 @@
              enrich-with-metric-sources
              enrich-with-measure-segment-base-tables
              (validate-and-enrich-documents (boolean archived)))
-        (vary-meta assoc :total total))))
+        (vary-meta assoc
+                   :total total
+                   :failed-queries (into [] (comp (mapcat :queries) (distinct)) failed)))))
 
 (defn- table-refs->results
   [ids]
@@ -583,12 +601,17 @@
 (defn- format-search-output
   "Format search results as an LLM-ready string."
   [results]
-  (let [results-xml (llm-shape/search-results->xml results)]
+  (let [results-xml              (llm-shape/search-results->xml results)
+        {:keys [failed-queries]} (meta results)]
     (te/lines
      "<result>"
      results-xml
      ""
      (str "Total results: " (count results))
+     (when (seq failed-queries)
+       (str "The search failed for " (str/join ", " (map #(str "\"" (llm-shape/escape-xml %) "\"") failed-queries))
+            ", so these results may be incomplete. "
+            "If what you need isn't listed, tell the user the search was incomplete."))
      "</result>"
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
@@ -632,10 +655,11 @@
 (defn- do-search
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
   (let [results (search (merge {:semantic-queries semantic_queries
-                                :term-queries    keyword_queries
-                                :entity-types    (or (seq entity_types) (vec default-types))
-                                :limit           (min max-search-limit
-                                                      (or limit default-search-limit))}
+                                :term-queries     keyword_queries
+                                :entity-types     (or (seq entity_types) (vec default-types))
+                                :limit            (min max-search-limit
+                                                       (or limit default-search-limit))
+                                :partial-results? true}
                                search-opts))]
     {:output (format-search-output results)
      :structured-output {:result-type :search

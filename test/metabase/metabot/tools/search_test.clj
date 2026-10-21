@@ -34,6 +34,36 @@
                 "Remove blank entries from every query list, then call `search` again "
                 "with non-blank queries in `keyword_queries`.")})
 
+(defn- do-with-search-stub!
+  "Call `thunk` with the engines set to `engines`, `ranked-results` answering each search string from
+  `string->ranked`, and `search-results` paginating whatever ranking it is handed. A search string that
+  `string->ranked` has no entry for throws, as a failing query would."
+  [engines string->ranked thunk]
+  (with-redefs [perms/impersonated-user?     (constantly false)
+                perms/sandboxed-user?        (constantly false)
+                search.engine/active-engines (constantly engines)
+                search.engine/disjunction    (fn [_ terms] terms)
+                search-core/ranked-results   (fn [{:keys [search-string]}]
+                                               (or (string->ranked search-string)
+                                                   (throw (ex-info "Search index unavailable" {}))))
+                search-core/search-results   (fn [{:keys [limit-int]} _ ranked]
+                                               {:data  (vec (cond->> ranked limit-int (take limit-int)))
+                                                :total (count ranked)})]
+    (thunk)))
+
+(defn- result-notes
+  "The lines a search output adds after its results, up to `</result>`."
+  [output]
+  (->> (str/split-lines output)
+       (drop-while #(not= "</search-results>" %))
+       rest
+       (take-while #(not= "</result>" %))
+       (remove str/blank?)))
+
+(def ^:private failed-note
+  (str "The search failed for \"broken\", so these results may be incomplete. "
+       "If what you need isn't listed, tell the user the search was incomplete."))
+
 (deftest ^:parallel search-requires-query-test
   (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]
     (doseq [[tool-var extra-args] [[#'search/search-tool {}]
@@ -108,6 +138,21 @@
                                    :data {:results [] :total_count 0}}]}
                     (invoke-search [tool-var] (merge extra-args queries) metabot "internal")))
             (is (=? (merge {:metabot metabot} search-opts) @captured))))))))
+
+(deftest search-result-notes-test
+  (mt/with-test-user :rasta
+    (do-with-search-stub!
+     [:search.engine/appdb]
+     {"orders" (for [id [1 2 3]] {:id id :model "card" :name (str "Orders " id)})}
+     (fn []
+       (testing "a query that fails is named, and the other query's results are kept"
+         (let [result (invoke-search [#'search/search-tool] {:keyword_queries ["orders" "broken"]})]
+           (is (nil? (:error result)))
+           (is (= [1 2 3] (map :id (get-in result [:structured-output :data]))))
+           (is (= ["Total results: 3" failed-note] (result-notes (:output result))))))
+       (testing "a search whose every query fails still fails"
+         (is (= {:class :unrecoverable :code :internal}
+                (:error (invoke-search [#'search/search-tool] {:keyword_queries ["broken"]})))))))))
 
 (deftest ^:parallel unsupported-search-entity-types-test
   (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]
@@ -291,6 +336,32 @@
           ;; three distinct items survive fusion; total counts them once, not 2+2=4
           (is (= 3 (:total (meta results))))
           (is (= #{1 2 3} (set (map :id results)))))))))
+
+(deftest partial-results-test
+  (mt/with-test-user :rasta
+    (doseq [[engines queries] [[[:search.engine/appdb]
+                                {:term-queries ["orders" "broken"]}]
+                               [[:search.engine/semantic :search.engine/appdb]
+                                {:term-queries ["orders"] :semantic-queries ["broken"]}]]]
+      (testing (str "engines " engines)
+        (do-with-search-stub!
+         engines
+         {"orders" [{:id 1 :model "card" :name "Orders"}]}
+         (fn []
+           (let [search* #(search/search (merge queries {:entity-types ["question"]} %))]
+             (testing "partial-results? keeps the other queries' results, lists the failed ones and logs the failure"
+               (mt/with-log-messages-for-level [logs [metabase.metabot.tools.search :error]]
+                 (let [results (search* {:partial-results? true})]
+                   (is (= [1] (map :id results)))
+                   (is (= {:total 1 :failed-queries ["broken"]} (meta results)))
+                   (is (=? [{:level :error :e #(= "Search index unavailable" (ex-message %))}] (logs))))))
+             (testing "without partial-results?, any failure fails the search"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable" (search* {}))))
+             (testing "a search where every query fails still fails"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
+                                     (search* {:term-queries     ["broken" "also broken"]
+                                               :semantic-queries []
+                                               :partial-results? true})))))))))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
