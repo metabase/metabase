@@ -307,9 +307,9 @@
   "Apply the token throttles to `f`.
    The client limit keys on the stored `client_id` of the client the given ID resolves to, found the same way
    the token request finds it, so the two agree on which client an ID names however the app DB compares strings.
-   Requests use only the IP limit when the client ID is missing, longer than 255 characters, or names no client."
+   Requests use only the IP limit when the client ID is missing or names no client."
   [ip-address client-id f]
-  (let [client-id (when (and (seq client-id) (<= (count client-id) max-client-id-length))
+  (let [client-id (when (seq client-id)
                     (:client_id (oauth-server.db/oauth-client client-id)))
         response  (with-throttling-429 [token-ip-throttler ip-address]
                     (if client-id

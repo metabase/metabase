@@ -1139,12 +1139,13 @@
     (t2/with-transaction [_conn nil {:rollback-only true}]
       (create-test-client! {:client_id "mixed-case-client"})
       ;; MySQL and MariaDB match these spellings to the client, while H2 and Postgres match none
-      (let [spellings ["MIXED-CASE-CLIENT" "míxed-case-client" "mixed-case-client "]]
+      (let [spellings ["MIXED-CASE-CLIENT" "míxed-case-client" "mixed-case-client "
+                       (str "mixed-case-client" (apply str (repeat 250 " ")))]]
         (dotimes [i 10]
           (is (= "invalid_request"
-                 (:error (token-request! {:grant_type    "refresh_token"
-                                          :client_id     (nth spellings (mod i 3))
-                                          :refresh_token "bogus-token"}
+                 (:error (token-request! {:grant_type "refresh_token" :refresh_token "bogus-token"}
+                                         :authorization (basic-auth-header (nth spellings (mod i (count spellings)))
+                                                                           "wrong-secret")
                                          :ip-address (str "198.51.100." (+ 20 i)) :expected-status 400)))))
         (is (= (if (= :mysql (mdb/db-type)) {"mixed-case-client" 10} {})
                (frequencies (map first @(:attempts @#'api.oauth/token-client-throttler)))))))))
