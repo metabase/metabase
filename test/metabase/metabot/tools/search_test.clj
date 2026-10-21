@@ -405,7 +405,21 @@
                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
                                      (search* {:term-queries     ["broken" "also broken"]
                                                :semantic-queries []
-                                               :partial-results? true})))))))))))
+                                               :partial-results? true})))))))))
+    (testing "a failed search that folded several queries into one lists every one of them"
+      (do-with-search-stub!
+       [:search.engine/semantic :search.engine/appdb]
+       {"orders" [{:id 1 :model "card" :name "Orders"}]}
+       (fn []
+         (with-redefs [search.engine/disjunction (fn [engine terms]
+                                                   (if (= :search.engine/appdb engine)
+                                                     [(str/join " OR " terms)]
+                                                     terms))]
+           (is (= {:total 1 :failed-queries ["a" "b"]}
+                  (meta (search/search {:semantic-queries ["orders"]
+                                        :term-queries     ["a" "b"]
+                                        :entity-types     ["question"]
+                                        :partial-results? true}))))))))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
