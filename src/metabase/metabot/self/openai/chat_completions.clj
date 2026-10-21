@@ -158,10 +158,7 @@
                                                                         (json/encode (or args {}))))}}]}
                   :tool-output {:role         "tool"
                                 :tool_call_id (:id part)
-                                :content      (or (get-in part [:result :output])
-                                                  (when-let [err (:error part)]
-                                                    (str "Error: " (:message err)))
-                                                  (pr-str (:result part)))}
+                                :content      (core/tool-result-text (:result part))}
                   ;; User messages pass through
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))

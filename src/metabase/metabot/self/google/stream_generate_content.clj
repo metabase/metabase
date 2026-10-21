@@ -109,10 +109,7 @@
                                           {:name     (or (:function part)
                                                          (id->name (:id part))
                                                          "unknown_function")
-                                           :response {:output (or (get-in part [:result :output])
-                                                                  (when-let [err (:error part)]
-                                                                    (str "Error: " (:message err)))
-                                                                  (pr-str (:result part)))}}}]}
+                                           :response {:output (core/tool-result-text (:result part))}}}]}
                    ;; Reasoning is display-only: thought summaries never go back to Gemini. The
                    ;; model keeps its reasoning continuity through the functionCall
                    ;; thoughtSignatures replayed above. The empty :parts vector is dropped by
