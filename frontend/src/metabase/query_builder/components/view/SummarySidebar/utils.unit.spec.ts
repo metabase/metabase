@@ -15,6 +15,7 @@ import type {
 import {
   addExpressionDimension,
   addExpressionValue,
+  addHelperColumn,
   buildSummaryQuery,
   canDropOnWell,
   dropOnWell,
@@ -24,9 +25,11 @@ import {
   getSummaryBase,
   pivotSummary,
   removeItem,
+  replaceHelperColumn,
   replaceWithExpression,
   swapRowsAndColumns,
   unpivotSummary,
+  withHelperColumns,
 } from "./utils";
 
 const EMPTY_DEFINITION: SummaryDefinition = {
@@ -375,5 +378,103 @@ describe("getDefaultFormulaName", () => {
     const name = getDefaultFormulaName(`[Total] + ${"1 + ".repeat(20)}1`);
     expect(name).toHaveLength(40);
     expect(name.endsWith("…")).toBe(true);
+  });
+});
+
+describe("helper columns", () => {
+  function setupHelperColumn() {
+    const sourceBase = createBase();
+    const helperColumns = addHelperColumn(
+      sourceBase,
+      [],
+      createExpression(sourceBase, "Net", "[Total] - [Tax]", "expression"),
+    );
+    const base = withHelperColumns(sourceBase, helperColumns);
+    const definition = dropColumn(
+      base,
+      dropColumn(base, EMPTY_DEFINITION, "Net", "rows"),
+      "Quantity",
+      "values",
+    );
+    return { sourceBase, helperColumns, base, definition };
+  }
+
+  it("can be grouped by like any column", () => {
+    const { base, definition } = setupHelperColumn();
+
+    const query = buildSummaryQuery(base, definition);
+
+    expect(query && getColumnNames(query, base.stageIndex)).toEqual([
+      "Net",
+      "Sum of Quantity",
+    ]);
+  });
+
+  it("is renamed when its name is taken", () => {
+    const base = createBase();
+
+    const helperColumns = addHelperColumn(
+      base,
+      [],
+      createExpression(base, "Total", "[Total] * 2", "expression"),
+    );
+
+    expect(helperColumns.map(({ name }) => name)).toEqual(["Total (2)"]);
+  });
+
+  it("removes the groupings built on a removed helper column", () => {
+    const { sourceBase, helperColumns, definition } = setupHelperColumn();
+
+    const result = replaceHelperColumn(
+      sourceBase,
+      helperColumns,
+      definition,
+      0,
+      null,
+    );
+
+    expect(result.helperColumns).toEqual([]);
+    expect(result.definition.rows).toEqual([]);
+    expect(result.definition.values).toEqual(definition.values);
+  });
+
+  it("keeps the groupings built on a helper column whose formula changes", () => {
+    const { sourceBase, helperColumns, definition } = setupHelperColumn();
+
+    const result = replaceHelperColumn(
+      sourceBase,
+      helperColumns,
+      definition,
+      0,
+      createExpression(sourceBase, "Net", "[Total] - [Discount]", "expression"),
+    );
+
+    expect(result.definition).toBe(definition);
+    expect(
+      buildSummaryQuery(
+        withHelperColumns(sourceBase, result.helperColumns),
+        result.definition,
+      ),
+    ).not.toBeNull();
+  });
+
+  it("removes the groupings built on a renamed helper column", () => {
+    const { sourceBase, helperColumns, definition } = setupHelperColumn();
+
+    const result = replaceHelperColumn(
+      sourceBase,
+      helperColumns,
+      definition,
+      0,
+      createExpression(
+        sourceBase,
+        "Net total",
+        "[Total] - [Tax]",
+        "expression",
+      ),
+    );
+
+    expect(result.helperColumns.map(({ name }) => name)).toEqual(["Net total"]);
+    expect(result.definition.rows).toEqual([]);
   });
 });

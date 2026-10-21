@@ -197,6 +197,8 @@ type SummaryWellInputProps = {
   wellId: SummaryWellId;
   definition: SummaryDefinition;
   isEmpty: boolean;
+  /** Overrides the default placeholder while the well is empty. */
+  emptyPlaceholder?: string;
   canWriteFormula: boolean;
   inputRef?: Ref<HTMLInputElement>;
   onChange: (definition: SummaryDefinition) => void;
@@ -214,6 +216,7 @@ export function SummaryWellInput({
   wellId,
   definition,
   isEmpty,
+  emptyPlaceholder,
   canWriteFormula,
   inputRef,
   onChange,
@@ -281,7 +284,10 @@ export function SummaryWellInput({
           className={S.wellInput}
           variant="unstyled"
           size="xs"
-          placeholder={getPlaceholder(isValues, isEmpty)}
+          placeholder={
+            (isEmpty ? emptyPlaceholder : undefined) ??
+            getPlaceholder(isValues, isEmpty)
+          }
           value={searchText}
           aria-label={
             isValues ? t`Add a value by name` : t`Add a grouping by name`

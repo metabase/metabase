@@ -3,7 +3,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0.75rem 1rem 0;
+  padding: 0.75rem var(--summary-gutter) 0;
 }
 
 .fieldListScroll {
@@ -47,47 +47,89 @@
   color: var(--mb-color-text-secondary);
 }
 
+.fieldActions {
+  display: flex;
+  margin-left: auto;
+  visibility: hidden;
+
+  .fieldItem:hover &,
+  .fieldItem:focus-within & {
+    visibility: visible;
+  }
+
+  & + .grabber {
+    margin-left: 0;
+  }
+}
+
 .isDragging {
   opacity: 0.4;
 }
 
-.wells {
+/* the design tokens every variant shares, so their frames, cues, and motion stay alike */
+.summarySidebar {
   --summary-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --summary-frame-radius: 8px;
   --summary-cue-inset: 3px;
+  --summary-gutter: 1rem;
+}
 
+.wells {
   flex: 0 1 auto;
   max-height: 60%;
   overflow-y: auto;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem var(--summary-gutter);
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
-/* laid out like the pivot table itself: Columns across the top, Rows down the side, Values in the body */
-.pivotFrame {
+/* the wells sit under the columns they're dragged down from */
+.wellsAtBottom {
+  flex-shrink: 0;
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-bottom: none;
+}
+
+/* takes what the wells leave, and scrolls */
+.fieldListOnTop {
+  flex: 1 1 0;
+}
+
+.frame {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--summary-frame-radius);
   overflow: hidden;
 }
 
-.pivotHeaderCells,
-.pivotBody {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+/* one well per line; a collapsed well draws its own divider, so it leaves none behind */
+.frameList {
+  display: flex;
+  flex-direction: column;
+
+  & > * + *:not(.collapse) {
+    border-top: 1px solid var(--mb-color-border-neutral);
+  }
+
+  & > .formulaRow {
+    border-bottom: none;
+  }
 }
 
-/* Columns slides open from nothing when pivoting; a 0fr track animates to the content's height */
-.pivotHeader {
+.frameListDivided {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+/* opens from nothing, e.g. Columns when pivoting; a 0fr track animates to the content's height */
+.collapse {
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows 220ms var(--summary-ease-out);
 }
 
-.pivotHeaderIsOpen {
+.collapseIsOpen {
   grid-template-rows: 1fr;
 }
 
-.pivotHeaderCells {
+.collapseContent {
   min-height: 0;
   overflow: hidden;
   opacity: 0;
@@ -97,20 +139,27 @@
   transition:
     opacity 150ms var(--summary-ease-out),
     visibility 0s 220ms;
-}
 
-.pivotHeaderIsOpen .pivotHeaderCells {
-  opacity: 1;
-  visibility: visible;
-  transition:
-    opacity 220ms var(--summary-ease-out) 40ms,
-    visibility 0s;
+  .collapseIsOpen > & {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 220ms var(--summary-ease-out) 40ms,
+      visibility 0s;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pivotHeader {
+  .collapse {
     transition: none;
   }
+}
+
+/* variant A: laid out like the pivot table itself, Columns across the top, Rows down the side, Values in the body */
+.pivotHeaderCells,
+.pivotBody {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
 }
 
 .pivotCorner,
@@ -120,9 +169,6 @@
 }
 
 .pivotCorner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-right: 1px solid var(--mb-color-border-neutral);
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }
@@ -135,8 +181,9 @@
   border-right: 1px solid var(--mb-color-border-neutral);
 }
 
-.pivotFormula {
-  padding: 0.5rem;
+/* the formula editor of a well, full width under it, since wells are too narrow to type in */
+.formulaRow {
+  padding: 0.5rem 0.625rem;
   border-bottom: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-primary);
 
@@ -150,8 +197,8 @@
   position: relative;
   isolation: isolate;
   min-width: 0;
-  min-height: 4.5rem;
-  padding: 0.5rem;
+  min-height: 3.5rem;
+  padding: 0.5rem 0.625rem;
   cursor: text;
   transition: opacity 150ms var(--summary-ease-out);
 }
@@ -186,7 +233,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  margin-bottom: 0.375rem;
+  margin-bottom: 0.25rem;
   font-size: 0.625rem;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -236,6 +283,99 @@
 .wellIsFormulaTarget::after {
   opacity: 1;
   box-shadow: inset 0 0 0 2px var(--mb-color-core-brand);
+}
+
+/* variant B: one clause of "Show … by … split by …" per line, the leading word in a column of its own */
+.sentenceClause {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  align-items: center;
+  min-height: 3rem;
+}
+
+.sentenceWord {
+  font-size: 0.8125rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.wellsHint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.helperColumnsEmpty {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px dashed var(--mb-color-border-neutral);
+  border-radius: 6px;
+  color: var(--mb-color-text-primary);
+  transition: border-color 150ms var(--summary-ease-out);
+
+  &:hover {
+    border-color: var(--mb-color-core-brand);
+  }
+
+  svg {
+    margin-top: 0.25rem;
+    color: var(--mb-color-core-brand);
+  }
+}
+
+/* prototype-only: dashed and tinted so it doesn't read as part of the feature */
+.variantSwitcher {
+  margin: 0.5rem var(--summary-gutter);
+  padding: 0.25rem 0.25rem 0.25rem 0.625rem;
+  border: 1px dashed var(--mb-color-feedback-warning);
+  border-radius: 8px;
+  background-color: var(--mb-color-background_surface-warning);
+}
+
+.variantSwitcherLabel {
+  font-size: 0.6875rem;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+}
+
+.variantOptions {
+  gap: 0.125rem;
+}
+
+.variantOption {
+  min-width: 1.75rem;
+  height: 1.5rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-align: center;
+  color: var(--mb-color-text-secondary);
+  transition:
+    background-color 150ms var(--summary-ease-out),
+    color 150ms var(--summary-ease-out),
+    transform 160ms var(--summary-ease-out);
+
+  &:hover {
+    color: var(--mb-color-text-primary);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.variantOptionIsActive {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-text-primary);
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+  }
 }
 
 .chip {

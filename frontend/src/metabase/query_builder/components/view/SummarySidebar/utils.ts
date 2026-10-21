@@ -231,7 +231,7 @@ function getDimensionExpressionNames(
   return names;
 }
 
-function findExpressionColumn(
+export function findExpressionColumn(
   query: Lib.Query,
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
@@ -370,6 +370,17 @@ export function getItemLabels(
   return labels;
 }
 
+/** The names of the summary query's value columns, in the order of `definition.values`. */
+export function getValueColumnNames(
+  summaryQuery: Lib.Query,
+  stageIndex: number,
+): string[] {
+  return Lib.returnedColumns(summaryQuery, stageIndex)
+    .map((column) => Lib.displayInfo(summaryQuery, stageIndex, column))
+    .filter((info) => info.isAggregation)
+    .map((info) => info.name);
+}
+
 export type SummaryPivotConfig = {
   columnSplit: PivotTableColumnSplitSetting;
   pivotRows: number[];
@@ -387,9 +398,6 @@ export function getPivotConfig(
   const breakoutNames = columnInfos
     .filter((info) => info.isBreakout)
     .map((info) => info.name);
-  const aggregationNames = columnInfos
-    .filter((info) => info.isAggregation)
-    .map((info) => info.name);
   const rowCount = definition.rows.length;
   const dimensionCount = rowCount + definition.columns.length;
 
@@ -397,7 +405,7 @@ export function getPivotConfig(
     columnSplit: {
       rows: breakoutNames.slice(0, rowCount),
       columns: breakoutNames.slice(rowCount, dimensionCount),
-      values: aggregationNames,
+      values: getValueColumnNames(summaryQuery, stageIndex),
     },
     pivotRows: _.range(0, rowCount),
     pivotCols: _.range(rowCount, dimensionCount),
@@ -740,4 +748,132 @@ export function isSummaryDragItem(value: unknown): value is SummaryDragItem {
       value.kind === "metric" ||
       value.kind === "chip")
   );
+}
+
+/** The base with spreadsheet-style helper columns added as custom columns, so they can be grouped by and aggregated. */
+export function withHelperColumns(
+  base: SummaryBase,
+  helperColumns: readonly SummaryExpression[],
+): SummaryBase {
+  return {
+    ...base,
+    query: helperColumns.reduce(
+      (query, { name, clause }) =>
+        Lib.expression(query, base.stageIndex, name, clause),
+      base.query,
+    ),
+  };
+}
+
+/** A name for a new helper column that doesn't clash with the base's columns. */
+export function getHelperColumnName(base: SummaryBase, name: string): string {
+  const { query, stageIndex } = base;
+  const usedNames = new Set(
+    Lib.returnedColumns(query, stageIndex).map((column) =>
+      Lib.displayInfo(query, stageIndex, column).displayName.toLowerCase(),
+    ),
+  );
+  return getUniqueName(name, usedNames);
+}
+
+/** Removes every grouping and value built on `column`, e.g. after the helper column it comes from is removed. */
+export function removeColumnItems(
+  base: SummaryBase,
+  definition: SummaryDefinition,
+  column: Lib.ColumnMetadata,
+): SummaryDefinition {
+  const columnKey = getItemKey(base, column);
+  const isOtherColumn = (itemColumn: Lib.ColumnMetadata) =>
+    getItemKey(base, itemColumn) !== columnKey;
+  const isKeptDimension = (dimension: SummaryDimension) =>
+    !("column" in dimension) || isOtherColumn(dimension.column);
+  return {
+    ...definition,
+    rows: definition.rows.filter(isKeptDimension),
+    columns: definition.columns.filter(isKeptDimension),
+    values: definition.values.filter(
+      (value) => value.type !== "column" || isOtherColumn(value.column),
+    ),
+  };
+}
+
+/** Adds a helper column, renamed if its name is taken. */
+export function addHelperColumn(
+  base: SummaryBase,
+  helperColumns: readonly SummaryExpression[],
+  { name, clause }: SummaryExpression,
+): SummaryExpression[] {
+  return [...helperColumns, { name: getHelperColumnName(base, name), clause }];
+}
+
+/**
+ * Replaces the helper column at `index` with `expression`, or removes it when `expression` is `null`.
+ * Groupings and values built on a removed or renamed helper column are removed with it.
+ */
+export function replaceHelperColumn(
+  sourceBase: SummaryBase,
+  helperColumns: readonly SummaryExpression[],
+  definition: SummaryDefinition,
+  index: number,
+  expression: SummaryExpression | null,
+): { helperColumns: SummaryExpression[]; definition: SummaryDefinition } {
+  const helperColumn = helperColumns[index];
+  if (helperColumn == null) {
+    return { helperColumns: [...helperColumns], definition };
+  }
+  const otherHelperColumns = helperColumns.filter(
+    (_column, otherIndex) => otherIndex !== index,
+  );
+  if (expression == null) {
+    return {
+      helperColumns: otherHelperColumns,
+      definition: withoutHelperColumnItems(
+        sourceBase,
+        helperColumns,
+        definition,
+        helperColumn,
+      ),
+    };
+  }
+
+  const isRenamed =
+    expression.name.toLowerCase() !== helperColumn.name.toLowerCase();
+  const name = isRenamed
+    ? getHelperColumnName(
+        withHelperColumns(sourceBase, otherHelperColumns),
+        expression.name,
+      )
+    : helperColumn.name;
+  return {
+    helperColumns: helperColumns.map((column, otherIndex) =>
+      otherIndex === index ? { name, clause: expression.clause } : column,
+    ),
+    definition: isRenamed
+      ? withoutHelperColumnItems(
+          sourceBase,
+          helperColumns,
+          definition,
+          helperColumn,
+        )
+      : definition,
+  };
+}
+
+function withoutHelperColumnItems(
+  sourceBase: SummaryBase,
+  helperColumns: readonly SummaryExpression[],
+  definition: SummaryDefinition,
+  helperColumn: SummaryExpression,
+): SummaryDefinition {
+  const base = withHelperColumns(sourceBase, helperColumns);
+  const { query, stageIndex } = base;
+  const column = findExpressionColumn(
+    query,
+    stageIndex,
+    Lib.breakoutableColumns(query, stageIndex),
+    helperColumn.name,
+  );
+  return column != null
+    ? removeColumnItems(base, definition, column)
+    : definition;
 }

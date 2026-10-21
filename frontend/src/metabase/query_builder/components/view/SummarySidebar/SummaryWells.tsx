@@ -24,13 +24,17 @@ import {
   SummaryWellInput,
   canWriteWellFormula,
 } from "./SummaryWellInput";
-import type {
-  SummaryBase,
-  SummaryDefinition,
-  SummaryDimension,
-  SummaryDragItem,
-  SummaryValue,
-  SummaryWellId,
+import {
+  SUMMARY_VALUE_FORMATS,
+  type SummaryBase,
+  type SummaryDefinition,
+  type SummaryDimension,
+  type SummaryDimensionWellId,
+  type SummaryDragItem,
+  type SummaryValue,
+  type SummaryValueFormat,
+  type SummaryValueFormats,
+  type SummaryWellId,
 } from "./types";
 import {
   canDropOnWell,
@@ -57,42 +61,194 @@ type SummaryFormulaDraft = {
   source: string;
 };
 
-type SummaryWellsProps = {
+/** What every prototype layout of the wells is given; they differ only in how they lay the wells out. */
+export type SummaryLayoutProps = {
   base: SummaryBase;
   definition: SummaryDefinition;
   itemLabels: Map<string, string>;
   draggedItem: SummaryDragItem | null;
+  valueFormats: SummaryValueFormats;
   onChange: (definition: SummaryDefinition) => void;
+  onChangeValueFormat: (itemId: string, format: SummaryValueFormat) => void;
 };
 
 /**
- * The summary's groupings and values side by side, like the table it produces. Pivoting opens Columns
- * across the top, so the wells are laid out like the pivot table: Columns across the top, Rows down the
- * side, and Values in the body. Each well is both a drop target and an input to type columns, metrics, or formulas into.
+ * Prototype variant A: the summary's groupings and values side by side, like the table it produces.
+ * Pivoting opens Columns across the top, so the wells are laid out like the pivot table: Columns across
+ * the top, Rows down the side, and Values in the body. Each well is both a drop target and an input to
+ * type columns, metrics, or formulas into.
  */
 export function SummaryWells({
   base,
   definition,
   itemLabels,
   draggedItem,
+  valueFormats,
   onChange,
-}: SummaryWellsProps) {
+  onChangeValueFormat,
+}: SummaryLayoutProps) {
+  const database = useSummaryDatabase(base);
+  const { isPivot } = definition;
+  const editing = useSummaryWellEditing(definition, onChange, {
+    isColumnsVisible: isPivot,
+  });
+  const { formulaWellId } = editing;
+
+  const wellProps = {
+    base,
+    database,
+    definition,
+    isPivot,
+    draggedItem,
+    formulaWellId,
+    onChange,
+    onRemove: editing.handleRemove,
+    onStartFormula: editing.handleStartFormula,
+  };
+  const chipProps = {
+    base,
+    database,
+    definition,
+    itemLabels,
+    editingItemId: editing.editingItemId,
+    onChange,
+    onEditFormula: editing.handleEditFormula,
+    onRemove: editing.handleRemove,
+  };
+
+  // the formula editor spans the frame, under the well it writes to, since the cells are too narrow to type in
+  const formulaRow = formulaWellId != null && (
+    <SummaryWellFormulaRow
+      base={base}
+      database={database}
+      definition={definition}
+      editing={editing}
+      caption={<WellCaption wellId={formulaWellId} isPivot={isPivot} />}
+      onChange={onChange}
+    />
+  );
+
+  return (
+    <Box className={S.wells} data-testid="summary-wells">
+      <Box className={S.frame}>
+        <Box
+          className={cx(S.collapse, { [S.collapseIsOpen]: isPivot })}
+          data-testid="summary-pivot-header"
+        >
+          <Box className={cx(S.collapseContent, S.pivotHeaderCells)}>
+            <Box className={S.pivotCorner} />
+            <SummaryWell
+              {...wellProps}
+              wellId="columns"
+              className={S.pivotColumns}
+              isDisabled={!isPivot}
+            >
+              <SummaryDimensionChips {...chipProps} wellId="columns" />
+            </SummaryWell>
+          </Box>
+        </Box>
+        {formulaWellId === "columns" && formulaRow}
+        <Box className={S.pivotBody}>
+          <SummaryWell {...wellProps} wellId="rows" className={S.pivotRows}>
+            <SummaryDimensionChips {...chipProps} wellId="rows" />
+          </SummaryWell>
+          <SummaryWell {...wellProps} wellId="values">
+            <SummaryValueChips
+              {...chipProps}
+              valueFormats={valueFormats}
+              onChangeValueFormat={onChangeValueFormat}
+            />
+          </SummaryWell>
+        </Box>
+        {formulaWellId !== "columns" && formulaRow}
+      </Box>
+    </Box>
+  );
+}
+
+type SummaryPivotActionsProps = {
+  definition: SummaryDefinition;
+  onChange: (definition: SummaryDefinition) => void;
+};
+
+/** Pivot and Unpivot, plus swapping rows and columns once pivoted; shown in the sidebar's header. */
+export function SummaryPivotActions({
+  definition,
+  onChange,
+}: SummaryPivotActionsProps) {
+  const { isPivot } = definition;
+  const hasDimensions =
+    definition.rows.length > 0 || definition.columns.length > 0;
+
+  return (
+    <Flex align="center" gap="xs">
+      {isPivot && (
+        <Tooltip label={t`Swap rows and columns`}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Swap rows and columns`}
+            disabled={!hasDimensions}
+            onClick={() => onChange(swapRowsAndColumns(definition))}
+          >
+            <Icon name="sync" />
+          </ActionIcon>
+        </Tooltip>
+      )}
+      <Tooltip
+        label={
+          isPivot
+            ? t`Group by a single list of columns again`
+            : t`Split the values across columns, as a pivot table`
+        }
+      >
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          leftSection={<Icon name="pivot_table" />}
+          aria-pressed={isPivot}
+          onClick={() =>
+            onChange(
+              isPivot ? unpivotSummary(definition) : pivotSummary(definition),
+            )
+          }
+        >
+          {isPivot ? t`Unpivot` : t`Pivot`}
+        </Button>
+      </Tooltip>
+    </Flex>
+  );
+}
+
+/** The database the summary queries, for checking which formulas it supports; `undefined` while loading. */
+export function useSummaryDatabase(base: SummaryBase): Database | undefined {
   const databaseId = Lib.databaseID(base.query);
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
+  return database;
+}
+
+export type SummaryWellEditing = ReturnType<typeof useSummaryWellEditing>;
+
+/** Which item's formula is being edited, or which well a new formula is being written in. */
+export function useSummaryWellEditing(
+  definition: SummaryDefinition,
+  onChange: (definition: SummaryDefinition) => void,
+  { isColumnsVisible }: { isColumnsVisible: boolean },
+) {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [formulaDraft, setFormulaDraft] = useState<SummaryFormulaDraft | null>(
     null,
   );
   const formulaEdit = getFormulaEdit(definition, editingItemId);
+  const draftWellId = formulaDraft?.wellId ?? null;
+  // a formula started in Columns is dropped once Columns closes, e.g. on unpivoting
+  const visibleDraftWellId =
+    draftWellId === "columns" && !isColumnsVisible ? null : draftWellId;
   const formulaWellId =
     formulaEdit != null
       ? getItemWellId(definition, formulaEdit.itemId)
-      : (formulaDraft?.wellId ?? null);
-  const { isPivot } = definition;
-  const hasDimensions =
-    definition.rows.length > 0 || definition.columns.length > 0;
+      : visibleDraftWellId;
 
   const handleRemove = (itemId: string) => {
     onChange(removeItem(definition, itemId));
@@ -116,27 +272,43 @@ export function SummaryWells({
     setFormulaDraft(null);
   };
 
-  const handleTogglePivot = () => {
-    handleFormulaEnd();
-    onChange(isPivot ? unpivotSummary(definition) : pivotSummary(definition));
-  };
-
-  const wellProps = {
-    base,
-    database,
-    definition,
-    isPivot,
-    draggedItem,
+  return {
+    editingItemId,
+    formulaDraft: visibleDraftWellId != null ? formulaDraft : null,
+    formulaEdit,
     formulaWellId,
-    onChange,
-    onRemove: handleRemove,
-    onStartFormula: handleStartFormula,
+    handleRemove,
+    handleEditFormula,
+    handleStartFormula,
+    handleFormulaEnd,
   };
+}
 
-  // the formula editor spans the frame, under the well it writes to, since the cells are too narrow to type in
-  const formulaRow = formulaWellId != null && (
-    <Box className={S.pivotFormula}>
-      <WellCaption wellId={formulaWellId} isPivot={isPivot} />
+type SummaryWellFormulaRowProps = {
+  base: SummaryBase;
+  database: Database | undefined;
+  definition: SummaryDefinition;
+  editing: SummaryWellEditing;
+  caption: ReactNode;
+  onChange: (definition: SummaryDefinition) => void;
+};
+
+/** The formula editor of the well being written in, laid out full width under it. */
+export function SummaryWellFormulaRow({
+  base,
+  database,
+  definition,
+  editing,
+  caption,
+  onChange,
+}: SummaryWellFormulaRowProps) {
+  const { formulaWellId, formulaEdit, formulaDraft } = editing;
+  if (formulaWellId == null) {
+    return null;
+  }
+  return (
+    <Box className={S.formulaRow}>
+      {caption}
       <SummaryWellFormula
         base={base}
         database={database}
@@ -145,126 +317,8 @@ export function SummaryWells({
         formulaEdit={formulaEdit}
         initialSource={formulaDraft?.source ?? ""}
         onChange={onChange}
-        onEnd={handleFormulaEnd}
+        onEnd={editing.handleFormulaEnd}
       />
-    </Box>
-  );
-
-  return (
-    <Box className={S.wells} data-testid="summary-wells">
-      <Flex justify="flex-end" mb="sm">
-        <Tooltip
-          label={
-            isPivot
-              ? t`Group by a single list of columns again`
-              : t`Split the values across columns, as a pivot table`
-          }
-        >
-          <Button
-            variant="subtle"
-            size="compact-sm"
-            leftSection={<Icon name="pivot_table" />}
-            aria-pressed={isPivot}
-            onClick={handleTogglePivot}
-          >
-            {isPivot ? t`Unpivot` : t`Pivot`}
-          </Button>
-        </Tooltip>
-      </Flex>
-      <Box className={S.pivotFrame}>
-        <Box
-          className={cx(S.pivotHeader, {
-            [S.pivotHeaderIsOpen]: isPivot,
-          })}
-          data-testid="summary-pivot-header"
-        >
-          <Box className={S.pivotHeaderCells}>
-            <Box className={S.pivotCorner}>
-              <Tooltip label={t`Swap rows and columns`}>
-                <ActionIcon
-                  variant="subtle"
-                  aria-label={t`Swap rows and columns`}
-                  disabled={!isPivot || !hasDimensions}
-                  onClick={() => onChange(swapRowsAndColumns(definition))}
-                >
-                  <Icon name="sync" />
-                </ActionIcon>
-              </Tooltip>
-            </Box>
-            <SummaryWell
-              {...wellProps}
-              wellId="columns"
-              className={S.pivotColumns}
-              isDisabled={!isPivot}
-              itemIds={definition.columns.map(({ id }) => id)}
-            >
-              {definition.columns.map((dimension) => (
-                <DimensionChip
-                  key={dimension.id}
-                  wellId="columns"
-                  dimension={dimension}
-                  label={itemLabels.get(dimension.id) ?? ""}
-                  isEditing={dimension.id === editingItemId}
-                  onEditFormula={handleEditFormula}
-                  onRemove={handleRemove}
-                />
-              ))}
-            </SummaryWell>
-          </Box>
-        </Box>
-        {formulaWellId === "columns" && formulaRow}
-        <Box className={S.pivotBody}>
-          <SummaryWell
-            {...wellProps}
-            wellId="rows"
-            className={S.pivotRows}
-            itemIds={definition.rows.map(({ id }) => id)}
-          >
-            {definition.rows.map((dimension) => (
-              <DimensionChip
-                key={dimension.id}
-                wellId="rows"
-                dimension={dimension}
-                label={itemLabels.get(dimension.id) ?? ""}
-                isEditing={dimension.id === editingItemId}
-                onEditFormula={handleEditFormula}
-                onRemove={handleRemove}
-              />
-            ))}
-          </SummaryWell>
-          <SummaryWell
-            {...wellProps}
-            wellId="values"
-            itemIds={definition.values.map(({ id }) => id)}
-          >
-            {definition.values.map((value) => (
-              <ValueChip
-                key={value.id}
-                base={base}
-                value={value}
-                label={itemLabels.get(value.id) ?? ""}
-                isEditing={value.id === editingItemId}
-                onChangeOperator={(operatorShortName) =>
-                  onChange(
-                    changeValueOperator(
-                      definition,
-                      value.id,
-                      operatorShortName,
-                    ),
-                  )
-                }
-                onEditFormula={
-                  canWriteWellFormula(database, "values")
-                    ? () => handleEditFormula(value.id)
-                    : undefined
-                }
-                onRemove={handleRemove}
-              />
-            ))}
-          </SummaryWell>
-        </Box>
-        {formulaWellId !== "columns" && formulaRow}
-      </Box>
     </Box>
   );
 }
@@ -339,36 +393,41 @@ type SummaryWellProps = {
   database: Database | undefined;
   wellId: SummaryWellId;
   className?: string;
+  /** Replaces the well's icon and title. */
+  caption?: ReactNode;
+  /** The input's placeholder while the well is empty. */
+  emptyPlaceholder?: string;
   definition: SummaryDefinition;
   isPivot: boolean;
   /** A well that's collapsed out of view takes no drops. */
   isDisabled?: boolean;
   draggedItem: SummaryDragItem | null;
   formulaWellId: SummaryWellId | null;
-  itemIds: string[];
   children: ReactNode;
   onChange: (definition: SummaryDefinition) => void;
   onRemove: (itemId: string) => void;
   onStartFormula: (wellId: SummaryWellId, source: string) => void;
 };
 
-/** A cell of the pivot frame: its chips, followed by an input, like a token field. */
-function SummaryWell({
+/** A drop target holding a well's chips, followed by an input, like a token field. */
+export function SummaryWell({
   base,
   database,
   wellId,
   className,
+  caption,
+  emptyPlaceholder,
   definition,
   isPivot,
   isDisabled = false,
   draggedItem,
   formulaWellId,
-  itemIds,
   children,
   onChange,
   onRemove,
   onStartFormula,
 }: SummaryWellProps) {
+  const itemIds = definition[wellId].map(({ id }) => id);
   const { setNodeRef, isOver } = useDroppable({
     id: `summary-well:${wellId}`,
     data: { wellId },
@@ -411,7 +470,7 @@ function SummaryWell({
       data-testid={`summary-well-${wellId}`}
       onClick={handleClick}
     >
-      <WellCaption wellId={wellId} isPivot={isPivot} />
+      {caption ?? <WellCaption wellId={wellId} isPivot={isPivot} />}
       <Box className={S.wellItems}>
         {children}
         {!isFormulaTarget && (
@@ -420,6 +479,7 @@ function SummaryWell({
             wellId={wellId}
             definition={definition}
             isEmpty={itemIds.length === 0}
+            emptyPlaceholder={emptyPlaceholder}
             canWriteFormula={canWriteWellFormula(database, wellId)}
             inputRef={inputRef}
             onChange={onChange}
@@ -480,6 +540,85 @@ function WellChip({
   );
 }
 
+type SummaryChipsProps = {
+  base: SummaryBase;
+  database: Database | undefined;
+  definition: SummaryDefinition;
+  itemLabels: Map<string, string>;
+  editingItemId: string | null;
+  onChange: (definition: SummaryDefinition) => void;
+  onEditFormula: (itemId: string) => void;
+  onRemove: (itemId: string) => void;
+};
+
+type SummaryDimensionChipsProps = SummaryChipsProps & {
+  wellId: SummaryDimensionWellId;
+};
+
+/** The chips of the groupings in Rows (Group by) or Columns. */
+export function SummaryDimensionChips({
+  wellId,
+  definition,
+  itemLabels,
+  editingItemId,
+  onEditFormula,
+  onRemove,
+}: SummaryDimensionChipsProps) {
+  return definition[wellId].map((dimension) => (
+    <DimensionChip
+      key={dimension.id}
+      wellId={wellId}
+      dimension={dimension}
+      label={itemLabels.get(dimension.id) ?? ""}
+      isEditing={dimension.id === editingItemId}
+      onEditFormula={onEditFormula}
+      onRemove={onRemove}
+    />
+  ));
+}
+
+type SummaryValueChipsProps = SummaryChipsProps & {
+  /** Set to let values be formatted from their chip's menu. */
+  valueFormats?: SummaryValueFormats;
+  onChangeValueFormat?: (itemId: string, format: SummaryValueFormat) => void;
+};
+
+/** The chips of the values, with menus to change how each is calculated, and optionally formatted. */
+export function SummaryValueChips({
+  base,
+  database,
+  definition,
+  itemLabels,
+  editingItemId,
+  valueFormats,
+  onChange,
+  onChangeValueFormat,
+  onEditFormula,
+  onRemove,
+}: SummaryValueChipsProps) {
+  const canEditFormula = canWriteWellFormula(database, "values");
+  return definition.values.map((value) => (
+    <ValueChip
+      key={value.id}
+      base={base}
+      value={value}
+      label={itemLabels.get(value.id) ?? ""}
+      isEditing={value.id === editingItemId}
+      format={valueFormats?.[value.id] ?? "number"}
+      onChangeOperator={(operatorShortName) =>
+        onChange(changeValueOperator(definition, value.id, operatorShortName))
+      }
+      onChangeFormat={
+        onChangeValueFormat
+          ? (format) => onChangeValueFormat(value.id, format)
+          : undefined
+      }
+      onEditFormula={canEditFormula ? () => onEditFormula(value.id) : undefined}
+      onRemove={onRemove}
+    />
+  ));
+}
+
 type DimensionChipProps = {
   wellId: SummaryWellId;
   dimension: SummaryDimension;
@@ -534,12 +673,46 @@ function FormulaChipLabel({ label, onEdit }: FormulaChipLabelProps) {
   );
 }
 
+const VALUE_ICONS: Record<SummaryValue["type"], IconName | null> = {
+  count: "sum",
+  column: null,
+  metric: "metric",
+  expression: "function",
+};
+
+function getValueFormatLabel(format: SummaryValueFormat) {
+  switch (format) {
+    case "number":
+      return t`Number`;
+    case "currency":
+      return t`Currency`;
+    case "percent":
+      return t`Percent`;
+  }
+}
+
+/** Metrics aren't formulas, and neither is a plain count. */
+function getFormulaEditLabel(value: SummaryValue) {
+  switch (value.type) {
+    case "expression":
+      return t`Edit formula`;
+    case "column":
+      return t`Edit as formula`;
+    case "count":
+    case "metric":
+      return null;
+  }
+}
+
 type ValueChipProps = {
   base: SummaryBase;
   value: SummaryValue;
   label: string;
   isEditing: boolean;
+  format: SummaryValueFormat;
   onChangeOperator: (operatorShortName: string) => void;
+  /** Omitted when values can't be formatted from their chips. */
+  onChangeFormat?: (format: SummaryValueFormat) => void;
   /** Omitted when the database can't aggregate with a formula. */
   onEditFormula?: () => void;
   onRemove: (itemId: string) => void;
@@ -550,11 +723,26 @@ function ValueChip({
   value,
   label,
   isEditing,
+  format,
   onChangeOperator,
+  onChangeFormat,
   onEditFormula,
   onRemove,
 }: ValueChipProps) {
-  if (value.type === "expression") {
+  const operatorOptions =
+    value.type === "column" ? getColumnOperatorOptions(base, value.column) : [];
+  const formulaEditLabel = getFormulaEditLabel(value);
+  const canEditFormula = onEditFormula != null && formulaEditLabel != null;
+  const hasMenu = value.type === "column" || onChangeFormat != null;
+  const iconName = VALUE_ICONS[value.type];
+  const content = (
+    <>
+      {iconName && <Icon name={iconName} size={12} />}
+      <span className={S.chipLabel}>{label}</span>
+    </>
+  );
+
+  if (!hasMenu) {
     return (
       <WellChip
         wellId="values"
@@ -563,26 +751,14 @@ function ValueChip({
         isEditing={isEditing}
         onRemove={onRemove}
       >
-        <FormulaChipLabel label={label} onEdit={onEditFormula} />
+        {value.type === "expression" ? (
+          <FormulaChipLabel label={label} onEdit={onEditFormula} />
+        ) : (
+          content
+        )}
       </WellChip>
     );
   }
-
-  if (value.type !== "column") {
-    return (
-      <WellChip
-        wellId="values"
-        itemId={value.id}
-        label={label}
-        onRemove={onRemove}
-      >
-        <Icon name={value.type === "metric" ? "metric" : "sum"} size={12} />
-        <span className={S.chipLabel}>{label}</span>
-      </WellChip>
-    );
-  }
-
-  const operatorOptions = getColumnOperatorOptions(base, value.column);
 
   return (
     <WellChip
@@ -596,9 +772,13 @@ function ValueChip({
         <Menu.Target>
           <UnstyledButton
             className={S.chipButton}
-            aria-label={t`Change how ${label} is calculated`}
+            aria-label={
+              value.type === "column"
+                ? t`Change how ${label} is calculated`
+                : t`Options for ${label}`
+            }
           >
-            <span className={S.chipLabel}>{label}</span>
+            {content}
             <Icon name="chevrondown" size={10} />
           </UnstyledButton>
         </Menu.Target>
@@ -607,6 +787,7 @@ function ValueChip({
             <Menu.Item
               key={option.shortName}
               rightSection={
+                value.type === "column" &&
                 option.shortName === value.operatorShortName ? (
                   <Icon name="check" />
                 ) : null
@@ -616,15 +797,34 @@ function ValueChip({
               {option.displayName}
             </Menu.Item>
           ))}
-          {onEditFormula && (
+          {canEditFormula && (
             <>
-              <Menu.Divider />
+              {operatorOptions.length > 0 && <Menu.Divider />}
               <Menu.Item
                 leftSection={<Icon name="function" />}
                 onClick={onEditFormula}
               >
-                {t`Edit as formula`}
+                {formulaEditLabel}
               </Menu.Item>
+            </>
+          )}
+          {onChangeFormat && (
+            <>
+              {(operatorOptions.length > 0 || canEditFormula) && (
+                <Menu.Divider />
+              )}
+              <Menu.Label>{t`Show as`}</Menu.Label>
+              {SUMMARY_VALUE_FORMATS.map((option) => (
+                <Menu.Item
+                  key={option}
+                  rightSection={
+                    option === format ? <Icon name="check" /> : null
+                  }
+                  onClick={() => onChangeFormat(option)}
+                >
+                  {getValueFormatLabel(option)}
+                </Menu.Item>
+              ))}
             </>
           )}
         </Menu.Dropdown>
