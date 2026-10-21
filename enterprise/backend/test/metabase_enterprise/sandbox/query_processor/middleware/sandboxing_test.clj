@@ -1241,7 +1241,7 @@
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
                             (-> (m/filter-keys simple-keyword? col)
-                                (dissoc :field_ref :id :table_id :fk_field_id :options :position :fk_target_field_id)))
+                                (dissoc :field_ref :id :table_id :fk_field_id :fk_field_name :options :position :fk_target_field_id)))
                           (format-results [results]
                             (-> results
                                 (update-in [:data :cols] (partial map format-col))
