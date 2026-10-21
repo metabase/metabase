@@ -749,8 +749,7 @@
 (deftest ^:parallel coalese-type-test
   (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
-          price (-> (lib/ref (meta/field-metadata :venues :price))
-                    (lib.options/update-options dissoc :base-type :effective-type))]
+          price [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :price)]]
       (are [expr expected-type] (= expected-type
                                    (lib.metadata.calculation/type-of query expr))
         (lib/coalesce price 1)
@@ -776,8 +775,7 @@
 (deftest ^:parallel case-type-test
   (testing "Should be able to calculate type info for :case with field refs without type info (#30397, QUE-147)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
-          price (-> (lib/ref (meta/field-metadata :venues :price))
-                    (lib.options/update-options dissoc :base-type :effective-type))]
+          price [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :price)]]
       (are [expr expected-type] (= expected-type
                                    (lib.metadata.calculation/type-of query expr))
         (lib/case
@@ -942,7 +940,7 @@
                  :lib/source-column-alias                          "my_expression"
                  :lib/type                                         :metadata/column
                  :metabase.lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
-                (lib/metadata query -1 (lib/ref (meta/field-metadata :venues :name)))))))))
+                (lib/metadata query -1 [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :name)])))))))
 
 (deftest ^:parallel unique-expression-name-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :people))]

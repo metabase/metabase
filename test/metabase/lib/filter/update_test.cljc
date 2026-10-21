@@ -231,7 +231,7 @@
     (doseq [[table field field-type] [[:users    :last-login :type/DateTime]
                                       [:products :created-at :type/DateTimeWithLocalTZ]]]
       (testing (str field-type " column, specifically " table " " field)
-        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata table))
                         (lib/breakout (-> (meta/field-metadata table field)
                                           (lib/with-temporal-bucket :day)))
                         (lib/filter (lib/= (-> (meta/field-metadata table field)
@@ -241,10 +241,10 @@
                                          ;; `:day` should have been changed to `:hour`, because there aren't enough days
                                          ;; between `2024-01-02` and `2024-01-03`
                                          {:temporal-unit :hour}
-                                         (meta/id table field)]]
+                                         (:name (meta/field-metadata table field))]]
                              :filters  [[:between
                                          {}
-                                         [:field {} (meta/id table field)]
+                                         [:field {} (:name (meta/field-metadata table field))]
                                          "2024-01-02"
                                          "2024-01-03"]]}]}
                   (lib/update-temporal-filter query
