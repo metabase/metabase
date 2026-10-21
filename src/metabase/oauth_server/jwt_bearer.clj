@@ -84,7 +84,7 @@
   Return the user named in the JWT `assertion`, which must have `exp` and `iat` claims.
   Throw `ex-info` carrying `invalid_grant` and the [[refusal-description]] when the login is refused."
   [assertion request]
-  (let [{:keys [success? user message] :as result}
+  (let [{:keys [success? user message error] :as result}
         (try
           (auth-identity/login! :provider/jwt (assoc request
                                                      :token                    assertion
@@ -96,7 +96,9 @@
              :status-code (:status-code (ex-data e))}))]
     (if success?
       user
-      (throw (ex-info (str message) {:error "invalid_grant", :error-description (refusal-description result)})))))
+      (throw (ex-info (str message) {:error             "invalid_grant"
+                                     :error-description (refusal-description result)
+                                     ::verified?        (not= :invalid-jwt error)})))))
 
 (defn- check-mcp-access!
   "Throws `ex-info` carrying `unsupported_grant_type` unless the groups of the User with `user-id` allow MCP."
@@ -105,14 +107,22 @@
               (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
     (throw (ex-info (str "MCP access is not enabled for the groups of user " user-id)
                     {:error             "unsupported_grant_type"
-                     :error-description "MCP access is not enabled for this user's groups."}))))
+                     :error-description "MCP access is not enabled for this user's groups."
+                     ::verified?        true}))))
+
+(defn verified-refusal?
+  "Return whether `e` refuses a JWT bearer grant whose assertion passed verification.
+
+  These are the JWT login's refusals other than `:invalid-jwt`, and refusals of users whose groups don't allow MCP."
+  [e]
+  (boolean (::verified? (ex-data e))))
 
 (defn exchange-jwt-for-token!
   "Issue an MCP access token to the user named in the JWT `assertion`.
 
   Return the RFC 6749 token response. The token carries `scopes`, or every MCP scope when `scopes` is nil,
   and is bound to the MCP endpoint, which `resource` must name when it is given.
-  Throw `ex-info` carrying the RFC 6749 `:error` when the request is refused."
+  Throw `ex-info` carrying the RFC 6749 `:error` when the request is refused; see [[verified-refusal?]]."
   [provider request {:keys [assertion scopes resource]}]
   (let [scopes  (or scopes (mcp/v2-scopes))
         _       (check-request! assertion scopes resource)

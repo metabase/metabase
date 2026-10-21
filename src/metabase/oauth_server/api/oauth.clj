@@ -452,6 +452,19 @@
       (:error_description data)
       fallback))
 
+(defn- token-error-response
+  "The token endpoint's response to an exception `e` thrown while handling a token request."
+  [e]
+  (log/warnf "OAuth token request failed: %s" (ex-message e))
+  (let [data  (ex-data e)
+        error (token-error-code data)]
+    {:status  (if (= error "invalid_client") 401 400)
+     :headers {"Content-Type"  "application/json"
+               "Cache-Control" "no-store"
+               "Pragma"        "no-cache"}
+     :body    {:error             error
+               :error_description (error-description data invalid-token-request-description)}}))
+
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
    then narrowed to the `resource` indicator it names. Throws `ex-info` carrying `:oauth-error` and
@@ -673,32 +686,30 @@
     (try
       (do-with-token-throttling ip-address client-id
                                 (fn []
-                                  (or (when-let [provider (oauth-server/get-provider)]
-                                        (check-resource-indicators! (:resource body))
-                                        (let [response (if (= jwt-bearer/grant-type (:grant_type body))
-                                                         (jwt-bearer/exchange-jwt-for-token!
-                                                          provider request
-                                                          {:assertion (:assertion body)
-                                                           :scopes    (when (some? (:scope body))
-                                                                        (or (scope-tokens (:scope body)) []))
-                                                           :resource  (:resource body)})
-                                                         (oidc/token-request provider body authorization-header))]
-                                          {:status  200
-                                           :headers {"Content-Type"  "application/json"
-                                                     "Cache-Control" "no-store"
-                                                     "Pragma"        "no-cache"}
-                                           :body    response}))
-                                      {:status 404 :body {:error "not_found"}})))
+                                  (try
+                                    (or (when-let [provider (oauth-server/get-provider)]
+                                          (check-resource-indicators! (:resource body))
+                                          (let [response (if (= jwt-bearer/grant-type (:grant_type body))
+                                                           (jwt-bearer/exchange-jwt-for-token!
+                                                            provider request
+                                                            {:assertion (:assertion body)
+                                                             :scopes    (when (some? (:scope body))
+                                                                          (or (scope-tokens (:scope body)) []))
+                                                             :resource  (:resource body)})
+                                                           (oidc/token-request provider body authorization-header))]
+                                            {:status  200
+                                             :headers {"Content-Type"  "application/json"
+                                                       "Cache-Control" "no-store"
+                                                       "Pragma"        "no-cache"}
+                                             :body    response}))
+                                        {:status 404 :body {:error "not_found"}})
+                                    (catch ExceptionInfo e
+                                      ;; A refused JWT that passed verification is no guess, so it returns uncounted
+                                      (if (jwt-bearer/verified-refusal? e)
+                                        (token-error-response e)
+                                        (throw e))))))
       (catch ExceptionInfo e
-        (log/warnf "OAuth token request failed: %s" (ex-message e))
-        (let [data  (ex-data e)
-              error (token-error-code data)]
-          {:status  (if (= error "invalid_client") 401 400)
-           :headers {"Content-Type"  "application/json"
-                     "Cache-Control" "no-store"
-                     "Pragma"        "no-cache"}
-           :body    {:error             error
-                     :error_description (error-description data invalid-token-request-description)}})))))
+        (token-error-response e)))))
 
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]

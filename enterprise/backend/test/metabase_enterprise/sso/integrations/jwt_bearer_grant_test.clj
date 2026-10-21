@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.test-util]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -17,6 +18,13 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
+
+(use-fixtures :each (fn [thunk]
+                      (oauth-server.tu/reset-token-throttlers!)
+                      (try
+                        (thunk)
+                        (finally
+                          (oauth-server.tu/reset-token-throttlers!)))))
 
 (defmacro ^:private with-jwt-bearer-setup!
   "Run `body` with JWT authentication set up, deleting the tokens and audit rows it creates."
@@ -288,6 +296,28 @@
               (let [{:keys [access_token]} (:body (token-response 200 {:assertion (assertion {:email  email
                                                                                               :groups ["agents"]})}))]
                 (is (some? (mcp-session access_token)))))))))))
+
+(deftest exchange-refusal-throttling-test
+  (testing "refusals of a JWT that passed verification don't count toward the token endpoint's limits, unlike unverified ones"
+    (with-jwt-bearer-setup!
+      (mcp.tu/with-group-level-mode
+        (let [verified   [["unsupported_grant_type" #(assertion {:email "jwt-bearer-no-mcp@metabase.com"})]
+                          ["invalid_grant"          #(assertion {:first_name "Jay"})]]
+              unverified [["invalid_grant" #(jwt/sign {:email "jwt-bearer-forged@metabase.com"} "not-the-secret")]
+                          ["invalid_grant" #(assertion {:email "jwt-bearer-expired@metabase.com"
+                                                        :exp   (- (buddy-util/now) 60)})]]]
+          (doseq [[client-id limit] [[nil 50] ["jwt-bearer-backend" 10]]]
+            (testing (if client-id "with a client ID" "without a client ID")
+              (oauth-server.tu/reset-token-throttlers!)
+              (let [error (fn [status sign]
+                            (get-in (token-response status (cond-> {:assertion (sign)}
+                                                             client-id (assoc :client_id client-id)))
+                                    [:body :error]))]
+                (doseq [[expected sign] (take (inc limit) (cycle verified))]
+                  (is (= expected (error 400 sign))))
+                (doseq [[expected sign] (take limit (cycle unverified))]
+                  (is (= expected (error 400 sign))))
+                (is (= "too_many_requests" (error 429 (second (first unverified)))))))))))))
 
 (deftest token-drives-mcp-test
   (testing "MCP calls run as the user named in the JWT, and usage and audit rows belong to that user"
