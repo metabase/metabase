@@ -322,8 +322,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     function assertPopoverSide(trigger, side) {
       trigger().then(($trigger) => {
-        const triggerRect = $trigger[0].getBoundingClientRect();
         H.popover().should(($popover) => {
+          const triggerRect = $trigger[0].getBoundingClientRect();
           const popoverRect = $popover[0].getBoundingClientRect();
           if (side === "above") {
             expect(popoverRect.bottom).to.be.at.most(triggerRect.top);
