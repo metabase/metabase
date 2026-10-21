@@ -664,6 +664,7 @@
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
       (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
+      (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
         (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!

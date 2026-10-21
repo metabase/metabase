@@ -1859,6 +1859,38 @@
             (set-password! 204)
             (is (not= original-hash (password-hash)))))))))
 
+(deftest reset-password-audit-log-test
+  (testing "PUT /api/user/:id/password records who changed whose password in the audit log"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (auth-identity/set-password! user-id "oldPASSWORD12!!")
+        (testing "when an admin sets another user's password"
+          (mt/user-http-request :crowberto :put 204 (format "user/%d/password" user-id)
+                                {:password "adminSET12!!pw"})
+          (is (= {:topic    :password-changed
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "User"
+                  :model_id user-id
+                  :details  {}}
+                 (mt/latest-audit-log-entry :password-changed user-id))))
+        (testing "when a user changes their own password"
+          (mt/user-http-request user-id :put 200 (format "user/%d/password" user-id)
+                                {:password     "selfSET12!!pw"
+                                 :old_password "adminSET12!!pw"})
+          (is (= {:topic    :password-changed
+                  :user_id  user-id
+                  :model    "User"
+                  :model_id user-id
+                  :details  {}}
+                 (mt/latest-audit-log-entry :password-changed user-id)))))
+      (testing "nothing is recorded when the change is refused"
+        (mt/with-temp [:model/User {sso-user-id :id} {:sso_source "google"}]
+          (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                             google-auth-enabled   true]
+            (mt/user-http-request :crowberto :put 404 (format "user/%d/password" sso-user-id)
+                                  {:password "whateverUP12!!"})
+            (is (nil? (mt/latest-audit-log-entry :password-changed sso-user-id)))))))))
+
 (deftest reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"
