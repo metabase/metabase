@@ -137,7 +137,7 @@
     (is (str/includes? (text-for! #{"browse_data"}) "portable FK")
         "the dialect-specific, tool-free step reaches the numeric-id surface")))
 
-(deftest ^:parallel the-two-hint-tables-cover-the-same-codes-test
+(deftest ^:parallel shared-recovery-codes-have-hints-on-both-surfaces-test
   (testing "the shared recovery codes have a hint on each surface and a declaration in the catalog"
     (let [codes [:uri-in-source-table :unknown-table :unknown-table-id :ambiguous-table
                  :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
