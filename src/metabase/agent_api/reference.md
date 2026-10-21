@@ -633,6 +633,6 @@ Response:
 | 401         | Authentication failure                                                                             |
 | 403         | Insufficient permissions                                                                           |
 | 404         | Entity not found                                                                                   |
-| 500         | Unexpected failure inside Metabase. The body is `{"message": "Something went wrong"}`              |
+| 500         | Server error. A failure inside Metabase says only `Something went wrong`                           |
 
 ---
