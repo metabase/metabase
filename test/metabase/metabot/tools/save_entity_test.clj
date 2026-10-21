@@ -350,11 +350,31 @@
                 (is (thrown? clojure.lang.ExceptionInfo (save! {:target_type "collection"}))))))))))
 
 (defn- invoke-save-entity
-  "Call `save_entity` with `args` through the tool runtime and return the outcome."
-  [args]
-  (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
-                  (metabot.tools/->entries [#'save-entity/save-entity-tool] (chart-memory) nil :internal))]
-    ((:fn (get entries "save_entity")) args)))
+  "Call `save_entity` with `args` through the tool runtime, in a conversation whose memory is `memory`, and return the
+  outcome. The profile also offers the tools that the recovery steps name."
+  ([args]
+   (invoke-save-entity (chart-memory) args))
+  ([memory args]
+   (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
+                   (metabot.tools/->entries [#'save-entity/save-entity-tool
+                                             #'metabot.tools/construct-notebook-query-tool
+                                             #'metabot.tools/create-chart-tool]
+                                            memory nil :internal))]
+     ((:fn (get entries "save_entity")) args))))
+
+(deftest unknown-chart-among-many-test
+  (testing "with more than 30 charts, the error lists the first 30 and counts the rest, so the recovery steps fit"
+    (let [query  (venues-query)
+          ids    (map #(format "%08d-0000-4000-8000-000000000000" %) (range 120))
+          memory (atom {:state {:charts (into {} (map (fn [id] [id {:chart_id id :queries [query]}])) ids)}})]
+      (is (= {:output (str "No chart with ID \"c-9\" exists in this conversation. The available chart IDs are "
+                           (str/join ", " (take 30 ids)) " and 90 more.\n"
+                           "To make a new chart, call `construct_notebook_query` and use the chart ID that it returns.\n"
+                           "To chart a query from this conversation, call `create_chart` with its query ID.")
+              :error  {:class :recoverable :code ::recoverable.common/unknown-chart-id}}
+             (invoke-save-entity memory (assoc chart-args
+                                               :chart_id    "c-9"
+                                               :destination {:target_type "collection" :collection_id nil})))))))
 
 (deftest card-create-event-failure-test
   (mt/with-current-user (mt/user->id :crowberto)
