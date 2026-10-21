@@ -586,7 +586,6 @@
   same guard for the `get_field_values` tool."
   [table-id]
   (when-let [table (api/read-check :model/Table table-id)]
-    (api/check-404 (:active table))
     (check-resource-database (:db_id table))))
 
 (defn check-card-resource-database
@@ -633,8 +632,10 @@
         result))))
 
 (defn- fetch-table-field [id-str field-id]
-  (let [table-id (parse-long id-str)]
-    (check-table-resource-database table-id)
+  (let [table-id (parse-long id-str)
+        table    (api/read-check :model/Table table-id)]
+    (api/check-404 (:active table))
+    (check-resource-database (:db_id table))
     (field-values {:entity-type "table"
                    :entity-id   table-id
                    :field-id    field-id

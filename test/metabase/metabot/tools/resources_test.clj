@@ -1169,6 +1169,26 @@
             (with-redefs [mi/can-read? (constantly false)]
               (is (error? (read-uris {:uris [(str "metabase://segment/" segment-id)]}))))))))))
 
+(deftest read-measure-and-segment-on-inactive-table-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Measure {measure-id :id}
+                       {:name       "Order Revenue"
+                        :table_id   orders
+                        :creator_id (mt/user->id :crowberto)
+                        :definition (measure-definition orders total)}
+                       :model/Segment {segment-id :id}
+                       {:name       "Big Orders"
+                        :table_id   orders
+                        :definition (segment-definition orders total 100)}]
+          (mt/with-temp-vals-in-db :model/Table orders {:active false}
+            (is (=? {:resources [{:content {:structured-output {:type :measure :name "Order Revenue"}}}
+                                 {:content {:structured-output {:type :segment :name "Big Orders"}}}]}
+                    (read-uris {:uris [(str "metabase://measure/" measure-id)
+                                       (str "metabase://segment/" segment-id)]})))))))))
+
 (deftest read-dashboard-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
