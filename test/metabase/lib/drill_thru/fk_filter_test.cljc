@@ -167,7 +167,7 @@
                           :column-name "Product ID"
                           :table-name  string?}
         :expected-query  {:stages [(-> (get lib.drill-thru.tu/test-queries "ORDERS") :aggregated :query :stages first)
-                                   {:filters [[:= {} [:field {} (meta/id :orders :product-id)]
+                                   {:filters [[:= {} [:field {} "PRODUCT_ID"]
                                                (get-in lib.drill-thru.tu/test-queries
                                                        ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}
         :expected-native {:stages [{:filters [[:= {} [:field {} "PRODUCT_ID"]

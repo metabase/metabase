@@ -67,7 +67,7 @@
                          :many-pks? false}
         :expected-query {:stages [{:source-table (meta/id :products)
                                    :filters      [[:= {}
-                                                   [:field {} (meta/id :products :id)]
+                                                   [:field {} "ID"]
                                                    column-value]]}]}}))))
 
 (deftest ^:parallel apply-fk-details-test-2
@@ -85,7 +85,7 @@
                          :many-pks? false}
         :expected-query {:stages [{:source-table (meta/id :people)
                                    :filters      [[:= {}
-                                                   [:field {} (meta/id :people :id)]
+                                                   [:field {} "ID"]
                                                    column-value]]}]}}))))
 
 (deftest ^:parallel fk-details-on-model-test

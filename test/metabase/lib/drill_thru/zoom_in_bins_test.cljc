@@ -186,7 +186,7 @@
                                                    quantity-field]
                                                   [:field
                                                    {:temporal-unit :month}
-                                                   (meta/id :orders :created-at)]]
+                                                   "CREATED_AT"]]
                                    :filters      [[:>= {}
                                                    [:field {} quantity-field]
                                                    10]

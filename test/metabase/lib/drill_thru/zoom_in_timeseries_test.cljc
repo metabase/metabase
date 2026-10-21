@@ -208,7 +208,7 @@
                    ;; the "underlying" dimension is reconstructed from the row.
                    :dimension {:column     {:name          "CREATED_AT"
                                             :lib/breakout? true}
-                               :column-ref [:field {} (meta/id :orders :created-at)]
+                               :column-ref [:field {} "CREATED_AT"]
                                :value      "2022-12-01T00:00:00+02:00"}}}))
 
 (deftest ^:parallel returns-zoom-in-timeseries-e2e-test-2
@@ -299,7 +299,7 @@
               :expected       {:type         :drill-thru/zoom-in.timeseries
                                :display-name (str "See this " (name unit1) " by " (name unit2))
                                :dimension    {:column     {:name "CREATED_AT"}
-                                              :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                              :column-ref [:field {:temporal-unit unit1} "CREATED_AT"]
                                               :value      "2022-12-09T11:22:33+02:00"}
                                :next-unit    unit2}
               :expected-query expected-query})))))))
@@ -325,16 +325,16 @@
           :expected       {:type         :drill-thru/zoom-in.timeseries
                            :display-name (str "See this " (name unit1) " by " (name unit2))
                            :dimension    {:column     {:name "CREATED_AT"}
-                                          :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                          :column-ref [:field {:temporal-unit unit1} "CREATED_AT"]
                                           :value      "2022-12-09"}
                            :next-unit    unit2}
           :expected-query {:stages [{:source-table (meta/id :orders)
                                      :aggregation  [[:count {}]]
                                      :breakout     [[:field
                                                      {:temporal-unit unit2}
-                                                     (meta/id :orders :created-at)]]
+                                                     "CREATED_AT"]]
                                      :filters      [[:= {}
-                                                     [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                                     [:field {:temporal-unit unit1} "CREATED_AT"]
                                                      "2022-12-09"]]}]}})))))
 
 (deftest ^:parallel zoom-in-with-expression-breakout-test

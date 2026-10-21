@@ -358,7 +358,7 @@
         :drill-args     ["="]
         ;; the emitted filter keeps the full bigint precision (stored as a string in the :value clause)
         :expected-query {:stages [{:filters [[:= {}
-                                              [:field {} (meta/id :orders :quantity)]
+                                              [:field {} "QUANTITY"]
                                               [:value {:base-type :type/BigInteger} big]]]}]}}))))
 
 (deftest ^:parallel quick-filter-drill-on-expression-column-test
