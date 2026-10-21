@@ -23,7 +23,6 @@ interface TimelineListArchiveModalContainerProps {
 function TimelineListArchiveModalContainer({
   params,
   onClose,
-  ...props
 }: TimelineListArchiveModalContainerProps) {
   const navigate = useNavigate();
   const archive = useSetArchive();
@@ -65,7 +64,6 @@ function TimelineListArchiveModalContainer({
 
   return (
     <TimelineListModal
-      {...props}
       onClose={onClose}
       collection={collection}
       timelines={timelines}

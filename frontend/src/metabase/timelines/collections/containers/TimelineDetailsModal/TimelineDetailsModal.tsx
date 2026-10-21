@@ -23,7 +23,6 @@ interface TimelineDetailsModalContainerProps {
 function TimelineDetailsModalContainer({
   params,
   onClose,
-  ...props
 }: TimelineDetailsModalContainerProps) {
   const navigate = useNavigate();
   const archive = useSetArchive();
@@ -62,7 +61,6 @@ function TimelineDetailsModalContainer({
 
   return (
     <TimelineDetailsModal
-      {...props}
       onClose={onClose}
       timeline={timeline}
       isOnlyTimeline={timelines.length <= 1}

@@ -20,7 +20,6 @@ interface TimelineListModalContainerProps {
 function TimelineListModalContainer({
   params,
   onClose,
-  ...props
 }: TimelineListModalContainerProps) {
   const collectionId = Urls.extractCollectionId(params.slug);
   const {
@@ -51,7 +50,6 @@ function TimelineListModalContainer({
 
   return (
     <TimelineListModal
-      {...props}
       onClose={onClose}
       collection={collection}
       timelines={timelines}
