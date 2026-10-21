@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
@@ -128,6 +129,37 @@
   [_ {:keys [database-name]} {:keys [table-name]}]
   (let [db-name database-name]
     (format "IF object_id('%s.dbo.%s') IS NOT NULL DROP TABLE \"%s\".dbo.\"%s\";" db-name table-name db-name table-name)))
+
+(defn- escape-extended-property-literal
+  [s]
+  (str/replace s "'" "''"))
+
+(defn- extended-property-sql
+  "Attach `MS_Description` with `sp_addextendedproperty`. Level names are string literals, not bracketed identifiers."
+  [{:keys [level1-type level1-name level2-name value]}]
+  (str "EXEC sp_addextendedproperty "
+       "@name=N'MS_Description', "
+       "@value=N'" (escape-extended-property-literal value) "', "
+       "@level0type=N'Schema', @level0name=N'dbo', "
+       "@level1type=N'" level1-type "', @level1name=N'" (escape-extended-property-literal level1-name) "'"
+       (when level2-name
+         (str ", @level2type=N'Column', @level2name=N'" (escape-extended-property-literal level2-name) "'"))
+       ";"))
+
+(defmethod sql.tx/standalone-table-comment-sql :sqlserver
+  [driver _dbdef {:keys [table-name table-comment]}]
+  (when (seq table-comment)
+    (extended-property-sql {:level1-type "TABLE"
+                            :level1-name (ddl.i/format-name driver table-name)
+                            :value       table-comment})))
+
+(defmethod sql.tx/standalone-column-comment-sql :sqlserver
+  [driver _dbdef {:keys [table-name]} {:keys [field-name field-comment]}]
+  (when (seq field-comment)
+    (extended-property-sql {:level1-type "TABLE"
+                            :level1-name (ddl.i/format-name driver table-name)
+                            :level2-name (ddl.i/format-name driver field-name)
+                            :value       field-comment})))
 
 (defmethod sql.tx/qualified-name-components :sqlserver
   ([_ db-name]                       [db-name])
