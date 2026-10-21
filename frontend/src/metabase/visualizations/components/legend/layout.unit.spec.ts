@@ -371,13 +371,16 @@ describe("getLegendLayout auto", () => {
       layout(createSeriesNames(20), {
         width: 420,
         height: 300,
-        chartAreaHeight: SM.contentMargin.rightLegend.top + 169,
+        chartAreaHeight:
+          SM.contentMargin.rightLegend.top +
+          SM.contentMargin.rightLegend.bottom +
+          169,
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 7 });
   });
 
   it("should leave the column's top margin out of its rows", () => {
-    // (169 - 10 - 2 + 8) / (13.8 + 8) = 7 rows, 6 items + "+ 14 more"
+    // (169 - 10 - 8 - 2 + 8) / (13.8 + 8) = 7 rows, 6 items + "+ 14 more"
     expect(
       layout(createSeriesNames(20), {
         width: 420,
@@ -419,7 +422,9 @@ describe("getLegendLayout auto", () => {
         width: 700,
         height: 400,
         chartAreaHeight:
-          LEGEND_SIZES.largeCard.contentMargin.rightLegend.top + 200,
+          LEGEND_SIZES.largeCard.contentMargin.rightLegend.top +
+          LEGEND_SIZES.largeCard.contentMargin.rightLegend.bottom +
+          200,
         size: "largeCard",
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 7 });
