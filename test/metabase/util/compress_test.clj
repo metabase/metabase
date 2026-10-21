@@ -137,7 +137,7 @@
           (finally
             (io/delete-file archive true))))))
   (testing "only regular files are read, hidden entries are skipped, and the limits of untgz apply"
-    (let [content (.getBytes (apply str (repeat 1024 \a)) "UTF-8")
+    (let [content (.getBytes ^String (apply str (repeat 1024 \a)) "UTF-8")
           archive (create-multi-entry-tgz 10 content)]
       (try
         (is (= (into {} (for [i (range 10)] [(format "file-%d" i) (seq content)]))
