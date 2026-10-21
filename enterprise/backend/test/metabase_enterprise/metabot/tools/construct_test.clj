@@ -11,6 +11,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -55,12 +56,14 @@
         (binding [qp.pipeline/*execute* (fn [& _]
                                           (swap! executions inc)
                                           (throw (ex-info "Unexpected query execution" {})))]
-          (doseq [tool [construct/construct-notebook-query-tool
-                        slackbot-query/slackbot-construct-notebook-query-tool]]
-            (let [built (get-in (test-util/call-tool tool {:query query :reasoning "count orders"})
-                                [:structured-output :query])]
-              (is (= 1 (lib/stage-count built)))
-              (is (= (mt/id :orders) (get-in built [:stages 0 :source-table]))))))
+          (log.capture/with-log-messages-for-level [logs [metabase.metabot.tools.construct :warn]]
+            (doseq [tool [construct/construct-notebook-query-tool
+                          slackbot-query/slackbot-construct-notebook-query-tool]]
+              (let [built (get-in (test-util/call-tool tool {:query query :reasoning "count orders"})
+                                  [:structured-output :query])]
+                (is (= 1 (lib/stage-count built)))
+                (is (= (mt/id :orders) (get-in built [:stages 0 :source-table])))))
+            (is (empty? (logs)))))
         (is (zero? @compilations))
         (is (zero? @executions))))))
 
