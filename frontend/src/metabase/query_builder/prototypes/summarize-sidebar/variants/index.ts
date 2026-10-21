@@ -1,5 +1,6 @@
 import { SummarySidebar } from "../../../components/view/SummarySidebar";
 
+import { SummarySidebar as AiFormulaSummarySidebar } from "./ai-formula";
 import { SummarySidebar as BreakoutsSummarySidebar } from "./breakouts";
 import { SummarySidebar as ClickToSwapSummarySidebar } from "./click-to-swap";
 import { SummarySidebar as OriginalSummarySidebar } from "./original";
@@ -89,5 +90,11 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
     name: "Sections swap",
     axis: "Click to swap with Sections' field list; now shipped in the query builder, the same sidebar as Default",
     Sidebar: SummarySidebar,
+  },
+  {
+    slug: "ai-formula",
+    name: "AI formula",
+    axis: "Sections swap, plus: text that matches nothing in a well is a description, and Enter has AI write the formula",
+    Sidebar: AiFormulaSummarySidebar,
   },
 ];
