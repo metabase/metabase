@@ -458,34 +458,23 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Update Docker Hub README (${{ matrix.edition }})
-        uses: actions/github-script@v9
+        working-directory: release
         env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-        with:
-          script: | # js
-            const { generateDockerReadme, pushDockerReadme } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const fs = require('fs');
-
-            const template = fs.readFileSync('${{ github.workspace }}/${{ matrix.template }}', 'utf8');
-
-            const readme = await generateDockerReadme({
-              github,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              latestMajorVersion: '${{ vars.LATEST_MAJOR_VERSION }}',
-              edition: '${{ matrix.edition }}',
-              template,
-            });
-
-            console.log(readme);
-
-            await pushDockerReadme({
-              readme,
-              repository: '${{ vars.DOCKERHUB_OWNER }}/${{ matrix.repository }}',
-              username: process.env.DOCKERHUB_USERNAME,
-              token: process.env.DOCKERHUB_TOKEN,
-            });
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          LATEST_MAJOR_VERSION: ${{ vars.LATEST_MAJOR_VERSION }}
+          DOCKERHUB_RELEASE_USERNAME: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+          DOCKERHUB_RELEASE_TOKEN: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+          EDITION: ${{ matrix.edition }}
+          TEMPLATE: ${{ github.workspace }}/${{ matrix.template }}
+          REPOSITORY: ${{ vars.DOCKERHUB_OWNER }}/${{ matrix.repository }}
+        run: |
+          bun run docker-readme \
+            --edition "$EDITION" \
+            --template "$TEMPLATE" \
+            --repository "$REPOSITORY" \
+            --publish
 
   trigger-cloud-issues:
     # Only create issues in the cloud ops repository if this release happens in https://github.com/metabase/metabase.

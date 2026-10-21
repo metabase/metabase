@@ -1,6 +1,5 @@
 export * from "./alert-upgrade-versions";
 export * from "./backports";
-export * from "./docker-readme";
 export * from "./github";
 export * from "./linked-issues";
 export * from "./milestones";
