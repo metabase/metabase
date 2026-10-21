@@ -1,16 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
-import type {
-  ConcreteTableId,
-  SingleSeries,
-  UnsavedCard,
-} from "metabase-types/api";
+import type { ConcreteTableId } from "metabase-types/api";
 
 import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
-import { getCohortTableSettings } from "../cohorts/retention-curves";
 import type { InsightsFocus } from "../components/supporting/InsightsPanel";
 import {
   getFunnelPathsRange,
@@ -35,7 +30,6 @@ import { type Insights, useInsights } from "../insights/use-insights";
 import { type PathSteps, usePathSteps } from "../path-steps/use-path-steps";
 import type { AnalysisSpec, FunnelSpec } from "../spec/types";
 import type { FunnelPathsRange } from "../sql/analyses/funnel-paths";
-import { useAnalysisQuery } from "../use-analysis-query";
 
 import { getShowInsightsAction, getShowPathsAction } from "./click-actions";
 
@@ -78,21 +72,11 @@ export type PathsSupport = {
   steps: PathSteps;
 };
 
-/** The cohort table below the retention curves. */
-export type CohortsSupport = {
-  /** The table, once the per-cohort query's result is in. */
-  series: SingleSeries<UnsavedCard> | undefined;
-  isLoading: boolean;
-  error: string | undefined;
-};
-
 export type SupportingAnalyses = {
   /** Set while the analysis is a funnel. */
   funnel: FunnelSupport | undefined;
   /** Set while the analysis is paths. */
   paths: PathsSupport | undefined;
-  /** Set while the analysis is cohorts. */
-  cohorts: CohortsSupport | undefined;
   /** The insights side panel's content; every kind has one. */
   insights: InsightsSupport;
   /** The chart click actions that lead to a supporting analysis. */
@@ -123,7 +107,7 @@ const getInsightsAnalysis = (
  * click actions that bring one of them into view. Each kind of analysis
  * contributes its own: a funnel shows the paths between its steps and the
  * insights into who converts, paths show their steps' entrances and exits
- * and the insights into who bounces, and cohorts show their table.
+ * and the insights into who bounces.
  */
 export const useSupportingAnalyses = ({
   spec,
@@ -133,41 +117,7 @@ export const useSupportingAnalyses = ({
   onShowInsights,
 }: UseSupportingAnalysesArgs): SupportingAnalyses => {
   const isFunnel = spec?.kind === "funnel";
-  const isCohorts = spec?.kind === "cohorts";
   const isPaths = spec?.kind === "paths";
-
-  // A row per cohort even when the chart shows their average. When the chart
-  // shows each cohort, the SQL is the same and the result comes from the cache.
-  const cohortTableSpec = useMemo(
-    (): AnalysisSpec | undefined =>
-      spec?.kind === "cohorts"
-        ? { ...spec, output: { ...spec.output, cohortsLines: "each" } }
-        : undefined,
-    [spec],
-  );
-  const cohortTable = useAnalysisQuery({
-    spec: cohortTableSpec,
-    tableId,
-    base,
-  });
-  const cohortsSeries = useMemo((): SingleSeries<UnsavedCard> | undefined => {
-    const { dataset, datasetQuery } = cohortTable;
-    if (
-      cohortTableSpec === undefined ||
-      dataset?.data === undefined ||
-      datasetQuery === undefined
-    ) {
-      return undefined;
-    }
-    return {
-      card: {
-        display: "cohort",
-        dataset_query: datasetQuery,
-        visualization_settings: getCohortTableSettings(cohortTableSpec),
-      },
-      data: dataset.data,
-    };
-  }, [cohortTableSpec, cohortTable]);
 
   const insights = useInsights({
     spec,
@@ -257,13 +207,6 @@ export const useSupportingAnalyses = ({
         }
       : undefined,
     paths: isPaths ? { steps: pathSteps } : undefined,
-    cohorts: isCohorts
-      ? {
-          series: cohortsSeries,
-          isLoading: cohortTable.isLoading,
-          error: cohortTable.error,
-        }
-      : undefined,
     insights: { insights, focus: insightsFocus, idleLabel: insightsIdleLabel },
     getClickActions,
   };

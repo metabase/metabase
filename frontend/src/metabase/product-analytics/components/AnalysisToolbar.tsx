@@ -65,6 +65,7 @@ export const AnalysisToolbar = ({
         </Group>
 
         <Group gap="sm">
+          <ToolbarSetting setting={findSetting(widgets, "breakout")} />
           <ToolbarSetting setting={findSetting(widgets, "date_range")} />
           <ToolbarSetting setting={findSetting(widgets, "granularity")} />
           <ActionIcon

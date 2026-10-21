@@ -1,6 +1,5 @@
 import type { SupportingAnalyses as SupportingAnalysesState } from "../../supporting/use-supporting-analyses";
 
-import { CohortTablePanel } from "./CohortTablePanel";
 import { FunnelPathsPanel } from "./FunnelPathsPanel";
 import { PathStepsPanel } from "./PathStepsPanel";
 
@@ -13,10 +12,7 @@ type SupportingAnalysesProps = {
  * live in their own side panel.
  */
 export const SupportingAnalyses = ({ supporting }: SupportingAnalysesProps) => {
-  const { funnel, paths, cohorts } = supporting;
-  if (cohorts !== undefined) {
-    return <CohortTablePanel cohorts={cohorts} />;
-  }
+  const { funnel, paths } = supporting;
   if (paths !== undefined) {
     return <PathStepsPanel steps={paths.steps} />;
   }

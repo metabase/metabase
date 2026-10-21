@@ -5,9 +5,9 @@ import * as Lib from "metabase-lib";
 
 import {
   type RetentionCurvesView,
+  getCohortTableSettings,
   getRetentionCurvesSettings,
 } from "../cohorts/retention-curves";
-import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { countPeriodsInDateRange } from "../date-range";
@@ -18,8 +18,7 @@ import {
   toCohortPeriod,
 } from "../sql/analyses/cohorts";
 
-import { getUserPropertyOptions, isUserPropertyColumn } from "./column-roles";
-import { commonSettings, getColumnRoles } from "./common-settings";
+import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
@@ -34,6 +33,7 @@ import type {
   CohortsSettings,
 } from "./types";
 
+const VIEWS: readonly CohortsSettings["cohorts.view"][] = ["table", "curves"];
 const RETURN_RULES: readonly CohortsSettings["cohorts.return_rule"][] = [
   "exactly",
   "onOrAfter",
@@ -56,12 +56,19 @@ const DEFAULT_HORIZON: Record<Granularity, number> = {
   month: 6,
 };
 
+/** Broken out, cohorts are a property's values rather than start periods. */
 const isGrouped = (settings: Partial<CohortsSettings>) =>
-  (settings["cohorts.attribute"] ?? null) !== null;
+  (settings.breakout ?? null) !== null;
 
-/** Grouped by an attribute, each line already pools every start period. */
+const isTable = (settings: Partial<CohortsSettings>) =>
+  settings["cohorts.view"] !== "curves";
+
+/**
+ * The table has a row per cohort, and grouped by an attribute, each line
+ * already pools every start period.
+ */
 const canShowEachOrAverage = (settings: Partial<CohortsSettings>) =>
-  !isGrouped(settings);
+  !isTable(settings) && !isGrouped(settings);
 
 /**
  * Dates line up a bad week across cohorts, but only when returning means
@@ -87,6 +94,7 @@ const getView = (settings: CohortsSettings): RetentionCurvesView => {
 const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   ...commonSettings({
     granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
+    breakout: true,
   }),
   "cohorts.start": withWidgetProps({
     getTitle: () => t`What do they have to do to start?`,
@@ -112,15 +120,18 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
       emptyLabel: t`Any action or event`,
     }),
   }),
-  "cohorts.attribute": withWidgetProps({
-    getTitle: () => t`Property to group users by`,
+  "cohorts.view": withWidgetProps({
+    getTitle: () => t`How to display the cohorts`,
     getSection: () => "setup",
-    widget: ColumnPickerWidget,
-    getDefault: () => null,
-    isValid: (value, context) =>
-      value === null || isUserPropertyColumn(context, value),
-    getProps: (context, settings) => ({
-      columns: getUserPropertyOptions(context, getColumnRoles(settings)),
+    widget: SegmentedControl,
+    getDefault: () => "table",
+    isValid: (value) => isOneOf(VIEWS, value),
+    getProps: () => ({
+      data: [
+        { label: t`Table`, value: "table" as const },
+        { label: t`Retention curves`, value: "curves" as const },
+      ],
+      w: "100%",
     }),
   }),
   "cohorts.display": withWidgetProps({
@@ -176,7 +187,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
       ],
       w: "100%",
     }),
-    readDependencies: ["cohorts.attribute"],
+    readDependencies: ["cohorts.view", "breakout"],
   }),
   "cohorts.x_axis": withWidgetProps({
     getTitle: () => t`X-axis`,
@@ -200,7 +211,8 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
       };
     },
     readDependencies: [
-      "cohorts.attribute",
+      "cohorts.view",
+      "breakout",
       "cohorts.lines",
       "cohorts.return_rule",
     ],
@@ -261,7 +273,7 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
     });
   },
   getExtraColumns: (settings, context) => {
-    const column = settings["cohorts.attribute"];
+    const column = settings.breakout;
     return column === null
       ? []
       : [
@@ -273,9 +285,15 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
         ];
   },
   getDisplay: (settings) => {
+    if (isTable(settings)) {
+      return "cohort";
+    }
     const view = getView(settings);
     // Counts by date stack into active people per period, by the cohort they started in.
     return view.xAxis === "date" && !view.isPercent ? "area" : "line";
   },
-  getVizSettings: (settings) => getRetentionCurvesSettings(getView(settings)),
+  getVizSettings: (settings) =>
+    isTable(settings)
+      ? getCohortTableSettings(getView(settings))
+      : getRetentionCurvesSettings(getView(settings)),
 };

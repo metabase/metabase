@@ -1,5 +1,3 @@
-import type { AnalysisSpec } from "../spec/types";
-
 import {
   type RetentionCurvesView,
   getCohortTableSettings,
@@ -12,19 +10,6 @@ const VIEW: RetentionCurvesView = {
   lines: "each",
   xAxis: "sinceStart",
 };
-
-const createSpec = (
-  granularity: AnalysisSpec["bucket"]["granularity"],
-  cohortsDisplay: "percent" | "counts" = "percent",
-): AnalysisSpec => ({
-  kind: "cohorts",
-  timeRange: { preset: "Last 30 days", tz: "UTC" },
-  grain: "person",
-  measure: { agg: "uniq" },
-  bucket: { granularity },
-  scope: { kind: "group", joiner: "and", negated: false, items: [] },
-  output: { cohortsDisplay },
-});
 
 describe("getRetentionCurvesSettings", () => {
   it("draws a line per cohort over the period offsets", () => {
@@ -49,10 +34,12 @@ describe("getRetentionCurvesSettings", () => {
 });
 
 describe("getCohortTableSettings", () => {
-  it("follows the granularity and the value shown", () => {
-    expect(getCohortTableSettings(createSpec("hour", "counts"))).toEqual({
-      "cohort.period": "day",
-      "cohort.value_format": "counts",
-    });
+  it("shows the cohort period and the value format", () => {
+    expect(getCohortTableSettings({ period: "day", isPercent: false })).toEqual(
+      {
+        "cohort.period": "day",
+        "cohort.value_format": "counts",
+      },
+    );
   });
 });
