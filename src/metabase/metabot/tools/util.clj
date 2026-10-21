@@ -7,7 +7,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
@@ -156,9 +157,10 @@
       api/read-check))
 
 (defn get-table
-  "Get the `fields` of the table with ID `id`."
+  "Get the `fields` of the table with ID `id`. `is_published` and `collection_id` always come along: the read check
+  grants a Library table through its collection, and needs them to."
   [id & fields]
-  (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
+  (-> (metabot.db/active-table-with-columns (into [:model/Table :id :is_published :collection_id] fields) id)
       api/read-check))
 
 (defn get-card
@@ -188,6 +190,42 @@
       (lib/query mp (cond-> (lib.metadata/card mp card-id)
                       ;; pivot questions have strange result-columns so we work with the dataset-query
                       (#{:question} (:type card)) (get :dataset-query))))))
+
+(defn card-results-query
+  "Return a query over the result columns of the card with ID `card-id`, whatever its type: what the card exposes,
+  rather than what its definition reads. [[card-query]] widens this to the definition for questions."
+  [card-id]
+  (when-let [card (get-card card-id)]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+      (lib/query mp (lib.metadata/card mp card-id)))))
+
+(defn card-definition-table-ids
+  "The ids of the Tables the definition of the card with ID `card-id` reads, plus the Tables one FK hop away from
+  them, following source Cards to their own definitions (ten levels at most), or nil when the card is missing or
+  its query can't be built. A native definition names no Tables and contributes none: its result metadata can map
+  a column to any Field, so it is not trusted to say which Tables it exposes."
+  [card-id]
+  (when-let [card (get-card card-id)]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+      (try
+        (loop [todo #{card-id} seen #{} tables #{} depth 0]
+          (if (or (empty? todo) (= depth 10))
+            tables
+            (let [queries (into []
+                                (comp (keep (fn [{:keys [dataset-query]}] (some->> dataset-query (lib/query mp))))
+                                      (remove lib/any-native-stage?))
+                                (lib.metadata/bulk-metadata mp :metadata/card todo))
+                  refs    (if (seq queries)
+                            (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})
+                            {})
+                  seen    (into seen todo)]
+              (recur (into #{} (remove seen) (:card refs))
+                     seen
+                     (into tables (:table refs))
+                     (inc depth)))))
+        (catch Exception e
+          (log/debug e "Can't walk the card's definition; treating its tables as unknown")
+          nil)))))
 
 (defn metric-query
   "Return a query based on the metric with ID `metric-id`."

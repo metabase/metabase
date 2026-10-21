@@ -15,6 +15,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -25,6 +26,7 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
@@ -530,6 +532,95 @@
                table-fks))
      already-checked)))
 
+(defn- uncurated-source!
+  "Reject the query: a curated-only Metabot may not read `uncurated`, the `[kind id]` pairs it names."
+  [uncurated]
+  (throw (ex-info (tru (str "This Metabot only uses curated content (verified, official, or Library content), "
+                            "and the query reads a table, model, or metric that is not curated."))
+                  {:agent-error? true
+                   :status-code  400
+                   :error        :uncurated-source
+                   :uncurated    (vec uncurated)})))
+
+(defn- portable-metric-refs
+  "The ids the metric references in `parsed-query` carry: `[\"metric\" opts id]` or `[\"metric\" id]`, with `id` an
+  entity id or, on the numeric-id surface, a card id."
+  [parsed-query]
+  (into []
+        (comp (filter #(and (vector? %) (not (map-entry? %)) (= "metric" (nth % 0 nil))))
+              (keep #(let [id (if (map? (nth % 1 nil)) (nth % 2 nil) (nth % 1 nil))]
+                       (when (or (string? id) (pos-int? id)) id)))
+              (distinct))
+        (tree-seq coll? seq parsed-query)))
+
+(defn- source-card-refs
+  "Every `source-card:` in `parsed-query`, first stage, later stages, and joins: entity ids, or card ids on the
+  numeric-id surface."
+  [parsed-query]
+  (into []
+        (comp (filter map?)
+              (keep #(get % "source-card"))
+              (filter #(or (string? %) (pos-int? %)))
+              (distinct))
+        (tree-seq coll? seq parsed-query)))
+
+(defn- readable-card-by-ref
+  "The Card `ref` names, when it exists and the current user can read it; nil otherwise, which leaves a missing or
+  unreadable Card to resolve's own answer."
+  [ref]
+  (when-let [card (cond
+                    (string? ref)                           (metabot.db/card-by-entity-id ref)
+                    serdes.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
+    (when (mi/can-read? card)
+      card)))
+
+(defn- check-curated-portable-sources!
+  "Under [[shared/curated-only?]], before repair reads the query: reject it when its first-stage source, a Card it
+  reads, or a table it references is neither curated nor reachable from curated content it references. Repair's
+  errors name the columns of the tables and cards they touch, so an uncurated source has to be refused before it
+  runs. This is the coarse gate: it judges the ids the portable query names by the rule of
+  [[curation/uncurated-sources]], the tables every field reference names included and measures and segments
+  excluded; [[check-curated-query-sources!]] judges the resolved query by the same rule. `table-ids` are the tables
+  [[check-source-table-query-permissions!]] resolved."
+  [metadata-provider parsed-query table-ids]
+  (when (shared/curated-only?)
+    (let [cards        (into [] (keep readable-card-by-ref) (source-card-refs parsed-query))
+          metric-ids   (into #{}
+                             (comp (keep readable-card-by-ref) (map :id))
+                             (portable-metric-refs parsed-query))
+          ;; a metric Card used as a source is judged as a metric, as the full rule judges it
+          metric-ids   (into metric-ids (comp (filter #(= :metric (:type %))) (map :id)) cards)
+          card-ids     (into #{} (comp (remove #(= :metric (:type %))) (map :id)) cards)
+          source-card  (some-> (or (first-stage-source-card-eid parsed-query)
+                                   (when serdes.resolve/*numeric-ids-allowed?*
+                                     (first-stage-numeric-source-card parsed-query)))
+                               readable-card-by-ref
+                               :id)
+          source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
+                                         (when serdes.resolve/*numeric-ids-allowed?*
+                                           (first-stage-numeric-source-table parsed-query)))]
+                         (resolve-table-fk metadata-provider
+                                           (resolve.mp/import-resolver metadata-provider
+                                                                       permission-aware-content-store)
+                                           fk))
+          uncurated    (curation/uncurated-sources metadata-provider
+                                                   {:source-table source-table
+                                                    :source-card  source-card
+                                                    :table        (set table-ids)
+                                                    :card         card-ids
+                                                    :metric       metric-ids})]
+      (when (seq uncurated)
+        (uncurated-source! uncurated)))))
+
+(defn- check-curated-query-sources!
+  "Under [[shared/curated-only?]], reject `pmbql-query` unless everything it reads is curated, or covered by curated
+  content it reads (see [[curation/uncurated-query-sources]] for the rule)."
+  [metadata-provider pmbql-query]
+  (when (shared/curated-only?)
+    (let [uncurated (curation/uncurated-query-sources (lib/query metadata-provider pmbql-query))]
+      (when (seq uncurated)
+        (uncurated-source! uncurated)))))
+
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
 
@@ -769,7 +860,8 @@
         _refs       (assert-numeric-ids-are-referenceable! mp parsed)
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
-        checked     (check-source-table-query-permissions! mp parsed)]
+        checked     (check-source-table-query-permissions! mp parsed)
+        _curated    (check-curated-portable-sources! mp parsed checked)]
     ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
     ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
@@ -783,6 +875,7 @@
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            _curated      (check-curated-query-sources! mp pmbql-query)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
                             (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Problem in {0}."
                                                  why)

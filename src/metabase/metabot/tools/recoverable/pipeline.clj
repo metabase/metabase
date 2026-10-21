@@ -104,6 +104,14 @@
      {:message  (:message payload#)
       :recovery ~recovery}))
 
+;;; Curation
+
+(defpipeline-error uncurated-source!
+  "The query reads a table, model, metric, measure, or segment that a curated-only Metabot may not use."
+  [{:uses #{"search"}
+    :text (str "Call `search` to find curated tables, models, or metrics and build the query on those instead. "
+               "A table related to a curated one may be joined, but not used as the query's source.")}])
+
 ;;; Table resolution
 
 (defpipeline-error unknown-table!
