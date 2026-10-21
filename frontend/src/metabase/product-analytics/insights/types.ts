@@ -89,10 +89,10 @@ export type Insight = GroupCounts & {
 /** A question's heading in the insights panel, with its totals. */
 export type InsightQuestion = Counts & {
   question: number;
-  /** Above the title, like "Step 1 → 2" or "Landing page". */
-  caption?: string;
-  /** The title's parts, shown with arrows between them. */
+  /** The title's parts, shown with arrows between them, like "Step 1 → Step 2". */
   labels: string[];
+  /** What the labels stand for, a line each in the title's tooltip. */
+  details?: string[];
 };
 
 /** How an analysis asks for insights. */

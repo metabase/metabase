@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { bounceInsightPopulation } from "../sql/analyses/bounce-insights";
 import { canShowBounces } from "../sql/analyses/path-steps";
@@ -31,8 +31,7 @@ export const BOUNCE_INSIGHTS: InsightsAnalysis = {
           ? [
               {
                 question,
-                caption: t`Landing page`,
-                labels: [label],
+                labels: [c("{0} is a page path").t`Landing page ${label}`],
                 reached,
                 converted,
               },

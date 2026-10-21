@@ -6,6 +6,13 @@ import { getColumnAttributeRules } from "./candidates";
 import { getConversionOutcome } from "./outcomes";
 import type { InsightsAnalysis } from "./types";
 
+const stepLabel = (step: number) =>
+  c("{0} is a funnel step number").t`Step ${step}`;
+
+const stepDetail = (step: number, label: string) =>
+  c("{0} is a funnel step number, {1} is what the step counts")
+    .t`Step ${step}: ${label}`;
+
 /** Insights into who reaches each funnel step from the one before. */
 export const FUNNEL_INSIGHTS: InsightsAnalysis = {
   getOutcome: getConversionOutcome,
@@ -26,9 +33,11 @@ export const FUNNEL_INSIGHTS: InsightsAnalysis = {
           ? [
               {
                 question,
-                caption: c("{0} and {1} are funnel step numbers")
-                  .t`Step ${question} → ${question + 1}`,
-                labels: [from.label, to.label],
+                labels: [stepLabel(question), stepLabel(question + 1)],
+                details: [
+                  stepDetail(question, from.label),
+                  stepDetail(question + 1, to.label),
+                ],
                 reached,
                 converted,
               },

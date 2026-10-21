@@ -30,7 +30,7 @@ import { useSaveAnalysis } from "../use-save-analysis";
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
-import { FilterPills } from "./FilterPills";
+import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
@@ -70,6 +70,11 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const [hintedPanel, setHintedPanel] = useState<HintedPanel | null>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const openInsights = useCallback(() => setIsInsightsOpen(true), []);
+  // Like the query builder: a new analysis shows its filters, a saved one
+  // starts with them collapsed behind the Filter button's badge.
+  const [areFiltersExpanded, setAreFiltersExpanded] = useState(
+    savedCard === undefined,
+  );
   const {
     stored,
     hasUnsavedChanges,
@@ -99,6 +104,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     stored,
     onChangeSettings,
   });
+  const filterCount = useFilterCount(computed.filters, table);
   const supporting = useSupportingAnalyses({
     spec,
     tableId,
@@ -208,12 +214,17 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             onToggleSetup={() => setPanel(isSetupOpen ? null : "setup")}
             onHintPanel={setHintedPanel}
             onSave={handleSave}
+            filterCount={filterCount}
+            areFiltersExpanded={areFiltersExpanded}
+            onToggleFilters={() => setAreFiltersExpanded((isOpen) => !isOpen)}
           />
-          <FilterPills
-            value={computed.filters}
-            table={table}
-            onChange={handleFiltersChange}
-          />
+          {areFiltersExpanded && (
+            <FilterPills
+              value={computed.filters}
+              table={table}
+              onChange={handleFiltersChange}
+            />
+          )}
         </Stack>
         <Group
           gap="lg"

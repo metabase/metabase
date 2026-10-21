@@ -45,6 +45,26 @@ type FilterPillsProps = {
   onChange?: (value: AnalysisFilters) => void;
 };
 
+/** The filter query and its filters, read with the table's metadata. */
+const useFilterItems = (value: AnalysisFilters, table: Table | undefined) => {
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+  const query = useMemo(
+    () => readFilterQuery(metadataProvider, value),
+    [metadataProvider, value],
+  );
+  const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
+  return { query, items };
+};
+
+/** How many pills `FilterPills` shows for the filters, without extra labels. */
+export const useFilterCount = (
+  value: AnalysisFilters,
+  table: Table | undefined,
+): number => {
+  const { items } = useFilterItems(value, table);
+  return value.people.length + value.cohorts.length + items.length;
+};
+
 /** A pill per filter, like the query builder's filter panel. */
 export const FilterPills = ({
   value,
@@ -52,12 +72,7 @@ export const FilterPills = ({
   extraLabels = [],
   onChange,
 }: FilterPillsProps) => {
-  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
-  const query = useMemo(
-    () => readFilterQuery(metadataProvider, value),
-    [metadataProvider, value],
-  );
-  const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
+  const { query, items } = useFilterItems(value, table);
 
   if (
     value.cohorts.length === 0 &&

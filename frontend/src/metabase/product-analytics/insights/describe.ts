@@ -16,24 +16,29 @@ const MULTIPLIER_FROM = 2;
 // Below this, a whole-number percentage would hide the difference.
 const PRECISE_DIFFERENCE_BELOW = 0.1;
 
-/** How much more or less likely the group is to have the outcome than everyone else. */
-export const describeLift = (
-  { rate, restRate }: Pick<Insight, "rate" | "restRate">,
-  outcome: InsightOutcome,
-): string => {
+/**
+ * How much more or less likely the group is to have the outcome than everyone
+ * else, like "53% less likely". The question's rate names the outcome.
+ */
+export const describeLift = ({
+  rate,
+  restRate,
+}: Pick<Insight, "rate" | "restRate">): string => {
   const ratio = restRate > 0 ? rate / restRate : Infinity;
   if (ratio >= MULTIPLIER_FROM) {
     const multiplier = Number.isFinite(ratio)
       ? formatNumber(ratio, { maximumFractionDigits: 1 })
       : "∞";
-    return outcome.describeMultiple(multiplier);
+    return c("{0} is a multiplier, like 2.5").t`${multiplier}× as likely`;
   }
   const difference = Math.abs(ratio - 1);
   const percent = formatNumber(difference, {
     number_style: "percent",
     maximumFractionDigits: difference < PRECISE_DIFFERENCE_BELOW ? 1 : 0,
   });
-  return outcome.describeDifference(percent, ratio >= 1);
+  return ratio >= 1
+    ? c("{0} is a percentage").t`${percent} more likely`
+    : c("{0} is a percentage").t`${percent} less likely`;
 };
 
 /** The outcomes the group gained or lost against everyone else's rate. */
@@ -125,7 +130,7 @@ export const describeCondition = (
 };
 
 /**
- * What an attribute means, for an info tooltip: its column description, or a
+ * What an attribute means, for an insight's details: its column description, or a
  * built-in one for whether the person was identified. `undefined` when there's
  * nothing to add.
  */

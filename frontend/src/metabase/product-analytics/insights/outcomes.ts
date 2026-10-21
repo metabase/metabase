@@ -15,10 +15,6 @@ export type InsightOutcome = {
   describeRate: (rate: string) => string;
   /** "34% converted vs. 20% of everyone else · 1,200 people" */
   describeComparison: (rate: string, restRate: string, size: string) => string;
-  /** "2.5× as likely to convert" */
-  describeMultiple: (multiplier: string) => string;
-  /** "20% more likely to convert", or less. */
-  describeDifference: (percent: string, isMore: boolean) => string;
   /** "About 340 more conversions than at everyone else's rate", or fewer. */
   describeExcess: (count: number, formatted: string, isMore: boolean) => string;
   /** When no insight stands out. */
@@ -50,12 +46,6 @@ export const getConversionOutcome = (): InsightOutcome => ({
   describeComparison: (rate, restRate, size) =>
     c("{0} and {1} are percentages, {2} is a number of people")
       .t`${rate} converted vs. ${restRate} of everyone else · ${size} people`,
-  describeMultiple: (multiplier) =>
-    c("{0} is a multiplier, like 2.5").t`${multiplier}× as likely to convert`,
-  describeDifference: (percent, isMore) =>
-    isMore
-      ? c("{0} is a percentage").t`${percent} more likely to convert`
-      : c("{0} is a percentage").t`${percent} less likely to convert`,
   describeExcess: (count, formatted, isMore) =>
     isMore
       ? ngettext(
@@ -88,12 +78,6 @@ export const getBounceOutcome = (): InsightOutcome => ({
   describeComparison: (rate, restRate, size) =>
     c("{0} and {1} are percentages, {2} is a number of visits")
       .t`${rate} bounced vs. ${restRate} of other visits · ${size} visits`,
-  describeMultiple: (multiplier) =>
-    c("{0} is a multiplier, like 2.5").t`${multiplier}× as likely to bounce`,
-  describeDifference: (percent, isMore) =>
-    isMore
-      ? c("{0} is a percentage").t`${percent} more likely to bounce`
-      : c("{0} is a percentage").t`${percent} less likely to bounce`,
   describeExcess: (count, formatted, isMore) =>
     isMore
       ? ngettext(
@@ -160,12 +144,6 @@ export const getReturnOutcome = (period: Period): InsightOutcome => {
         "{0} and {1} are percentages, {2} is a number, {3} is a plural like 'active weeks'",
       )
         .t`${rate} returned vs. ${expectedRate} expected for people as active · ${size} ${active}`,
-    describeMultiple: (multiplier) =>
-      c("{0} is a multiplier, like 2.5").t`${multiplier}× as likely to return`,
-    describeDifference: (percent, isMore) =>
-      isMore
-        ? c("{0} is a percentage").t`${percent} more likely to return`
-        : c("{0} is a percentage").t`${percent} less likely to return`,
     describeExcess: (count, formatted, isMore) =>
       isMore
         ? ngettext(
@@ -206,13 +184,6 @@ export const getRegularOutcome = (): InsightOutcome => ({
   describeComparison: (rate, expectedRate, size) =>
     c("{0} and {1} are percentages, {2} is a number of active weeks")
       .t`${rate} became regulars vs. ${expectedRate} expected for people as active · ${size} active weeks`,
-  describeMultiple: (multiplier) =>
-    c("{0} is a multiplier, like 2.5")
-      .t`${multiplier}× as likely to become a regular`,
-  describeDifference: (percent, isMore) =>
-    isMore
-      ? c("{0} is a percentage").t`${percent} more likely to become a regular`
-      : c("{0} is a percentage").t`${percent} less likely to become a regular`,
   describeExcess: (count, formatted, isMore) =>
     isMore
       ? ngettext(

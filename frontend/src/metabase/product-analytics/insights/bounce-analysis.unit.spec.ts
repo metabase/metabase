@@ -47,15 +47,13 @@ describe("BOUNCE_INSIGHTS", () => {
     expect(questions).toEqual([
       {
         question: 1,
-        caption: "Landing page",
-        labels: ["/pricing"],
+        labels: ["Landing page /pricing"],
         reached: 100,
         converted: 20,
       },
       {
         question: 2,
-        caption: "Landing page",
-        labels: ["/"],
+        labels: ["Landing page /"],
         reached: 40,
         converted: 4,
       },

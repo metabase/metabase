@@ -294,27 +294,28 @@ const QuestionHeading = ({ question, outcome }: QuestionHeadingProps) => {
   const rate = formatRate(
     question.reached > 0 ? question.converted / question.reached : 0,
   );
+  const details = question.details ?? [];
   return (
-    <Group justify="space-between" align="flex-end" wrap="nowrap" gap="md">
-      <Stack gap={2} miw={0}>
-        {question.caption && (
-          <Text size="sm" c="text-secondary">
-            {question.caption}
-          </Text>
-        )}
-        <Title order={5}>
+    <Group justify="space-between" wrap="nowrap" gap="md">
+      <Tooltip
+        label={details.map((detail, index) => (
+          <div key={index}>{detail}</div>
+        ))}
+        disabled={details.length === 0}
+        multiline
+        maw={320}
+      >
+        <Title order={5} miw={0}>
           <Group component="span" gap="sm">
             {question.labels.map((label, index) => (
               <Fragment key={index}>
-                {index > 0 && (
-                  <Icon name="arrow_right" c="text-secondary" aria-hidden />
-                )}
+                {index > 0 && <Icon name="arrow_right" aria-hidden />}
                 <span>{label}</span>
               </Fragment>
             ))}
           </Group>
         </Title>
-      </Stack>
+      </Tooltip>
       <Text c="text-secondary" style={{ flexShrink: 0 }}>
         {outcome.describeRate(rate)}
       </Text>
@@ -361,17 +362,12 @@ const InsightItem = ({
           />
         }
       >
-        <Group component="span" gap="xs">
-          <Text component="span" fw="bold">
+        <Group component="span" justify="space-between" wrap="nowrap" gap="md">
+          <Text component="span" miw={0}>
             {title}
           </Text>
-          {explanation !== "" && (
-            <Tooltip label={explanation} multiline maw={280}>
-              <Icon name="info" c="text-secondary" />
-            </Tooltip>
-          )}
-          <Text component="span" c={isBetter ? "success" : "error"}>
-            {describeLift(insight, outcome)}
+          <Text component="span" fw="bold" style={{ flexShrink: 0 }}>
+            {describeLift(insight)}
           </Text>
         </Group>
       </Accordion.Control>
@@ -379,6 +375,7 @@ const InsightItem = ({
         {isOpen && (
           <InsightDetails
             insight={insight}
+            explanation={explanation}
             outcome={outcome}
             getExplore={getExplore}
           />
@@ -390,12 +387,15 @@ const InsightItem = ({
 
 type InsightDetailsProps = {
   insight: Insight;
+  /** What the insight's attributes mean; empty when there's nothing to add. */
+  explanation: string;
   outcome: InsightOutcome;
   getExplore: Insights["getExplore"];
 };
 
 const InsightDetails = ({
   insight,
+  explanation,
   outcome,
   getExplore,
 }: InsightDetailsProps) => {
@@ -406,6 +406,7 @@ const InsightDetails = ({
 
   return (
     <Stack gap="md" pt="sm">
+      {explanation !== "" && <Text size="sm">{explanation}</Text>}
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={2} miw={0}>
           <Text size="sm" c="text-secondary">

@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Button, Group, Icon } from "metabase/ui";
+import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
@@ -23,6 +23,10 @@ type AnalysisToolbarProps = {
   isSaveDisabled: boolean;
   isSetupOpen: boolean;
   onToggleSetup: () => void;
+  /** The number of filter pills, shown as a badge that shows and hides them. */
+  filterCount: number;
+  areFiltersExpanded: boolean;
+  onToggleFilters: () => void;
   /** The panel whose button is hovered, so the panel can show it's the one. */
   onHintPanel: (panel: HintedPanel | null) => void;
   onSave: () => void;
@@ -40,10 +44,15 @@ export const AnalysisToolbar = ({
   isSaveDisabled,
   isSetupOpen,
   onToggleSetup,
+  filterCount,
+  areFiltersExpanded,
+  onToggleFilters,
   onHintPanel,
   onSave,
 }: AnalysisToolbarProps) => {
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
+  const filtersSetting = findSetting(widgets, "filters");
+  const filtersLabel = areFiltersExpanded ? t`Hide filters` : t`Show filters`;
 
   return (
     <>
@@ -58,9 +67,34 @@ export const AnalysisToolbar = ({
           >
             {setupLabel}
           </Button>
+          <ToolbarSetting setting={findSetting(widgets, "counting")} />
           <Button.Group>
-            <ToolbarSetting setting={findSetting(widgets, "counting")} />
-            <ToolbarSetting setting={findSetting(widgets, "filters")} />
+            <ToolbarSetting setting={filtersSetting} />
+            {filtersSetting !== undefined &&
+              !filtersSetting.hidden &&
+              filterCount > 0 && (
+                <Tooltip label={filtersLabel}>
+                  <Button
+                    variant="default"
+                    aria-label={filtersLabel}
+                    aria-expanded={areFiltersExpanded}
+                    onClick={onToggleFilters}
+                  >
+                    <Badge
+                      size="xs"
+                      variant="filled"
+                      color="neutral"
+                      bg={areFiltersExpanded ? "core-filter-strong" : undefined}
+                      c={
+                        areFiltersExpanded ? "text-primary-inverse" : undefined
+                      }
+                      style={{ cursor: "inherit" }}
+                    >
+                      {filterCount}
+                    </Badge>
+                  </Button>
+                </Tooltip>
+              )}
           </Button.Group>
         </Group>
 

@@ -9,30 +9,20 @@ import { getBounceOutcome, getConversionOutcome } from "./outcomes";
 
 describe("describeLift", () => {
   it.each([
-    { rate: 0.3, restRate: 0.2, expected: "50% more likely to convert" },
-    { rate: 0.12, restRate: 0.2, expected: "40% less likely to convert" },
-    { rate: 0.5, restRate: 0.2, expected: "2.5× as likely to convert" },
-    { rate: 0.4, restRate: 0.2, expected: "2× as likely to convert" },
-    { rate: 0.0105, restRate: 0.01, expected: "5% more likely to convert" },
-    { rate: 0.0099, restRate: 0.01, expected: "1% less likely to convert" },
-    { rate: 0.1003, restRate: 0.1, expected: "0.3% more likely to convert" },
+    { rate: 0.3, restRate: 0.2, expected: "50% more likely" },
+    { rate: 0.12, restRate: 0.2, expected: "40% less likely" },
+    { rate: 0.5, restRate: 0.2, expected: "2.5× as likely" },
+    { rate: 0.4, restRate: 0.2, expected: "2× as likely" },
+    { rate: 0.2, restRate: 0, expected: "∞× as likely" },
+    { rate: 0.0105, restRate: 0.01, expected: "5% more likely" },
+    { rate: 0.0099, restRate: 0.01, expected: "1% less likely" },
+    { rate: 0.1003, restRate: 0.1, expected: "0.3% more likely" },
   ])(
     "describes $rate vs. $restRate as “$expected”",
     ({ rate, restRate, expected }) => {
-      expect(describeLift({ rate, restRate }, getConversionOutcome())).toBe(
-        expected,
-      );
+      expect(describeLift({ rate, restRate })).toBe(expected);
     },
   );
-
-  it("describes the analysis's outcome", () => {
-    expect(describeLift({ rate: 0.5, restRate: 0.2 }, getBounceOutcome())).toBe(
-      "2.5× as likely to bounce",
-    );
-    expect(describeLift({ rate: 0.1, restRate: 0.2 }, getBounceOutcome())).toBe(
-      "50% less likely to bounce",
-    );
-  });
 });
 
 describe("describeExcess", () => {

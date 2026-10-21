@@ -31,3 +31,9 @@
 .item[data-dragging="true"] {
   opacity: 0.5;
 }
+
+/* The filter purple, like a segment's filter pill. */
+.segmentIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-core-filter);
+}

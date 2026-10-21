@@ -73,17 +73,20 @@ export const PaletteSegmentItem = ({
         }
       }}
       gap={0}
-      bdrs="sm"
+      bdrs="md"
       onDragStart={(event) => startDrag(segment, event)}
       onDragEnd={() => {
         endDrag();
         setHovering(null);
       }}
     >
-      <Group gap="xs" wrap="nowrap" p="xs">
+      <Group gap="sm" wrap="nowrap" p="xs">
         <Box c="text-tertiary" display="flex" style={{ flexShrink: 0 }}>
           <Icon name="grabber" size={12} />
         </Box>
+        {segment.status === "saved" && (
+          <Icon name="segment" className={S.segmentIcon} aria-hidden />
+        )}
         <Tooltip
           label={segment.description}
           disabled={!segment.description}
