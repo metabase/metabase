@@ -26,10 +26,19 @@ interface StatsBase {
  */
 export function getStatsBase(
   query: Lib.Query,
-  stageIndex: number,
+  givenStageIndex: number,
   column: Lib.ColumnMetadata,
   filter: Lib.Filterable | undefined,
 ): StatsBase | null {
+  // Some callers use -1 for the last stage. The code below compares the index
+  // with the stage count, so it needs the real index.
+  const stageCount = Lib.stageCount(query);
+  const stageIndex =
+    givenStageIndex < 0 ? stageCount + givenStageIndex : givenStageIndex;
+  if (stageIndex < 0 || stageIndex >= stageCount) {
+    return null;
+  }
+
   let newQuery = query;
   const ownFilter = Lib.filters(query, stageIndex).find(
     (clause) => clause === filter,
@@ -38,7 +47,11 @@ export function getStatsBase(
     newQuery = Lib.removeClause(newQuery, stageIndex, ownFilter);
   }
   while (Lib.stageCount(newQuery) > stageIndex + 1) {
-    newQuery = Lib.dropStage(newQuery);
+    const droppedQuery = Lib.dropStage(newQuery);
+    if (Lib.stageCount(droppedQuery) >= Lib.stageCount(newQuery)) {
+      return null;
+    }
+    newQuery = droppedQuery;
   }
   for (const orderBy of Lib.orderBys(newQuery, stageIndex)) {
     newQuery = Lib.removeClause(newQuery, stageIndex, orderBy);
@@ -177,4 +190,37 @@ export function parseHistogramRows(rows: RowValue[][]): number[] {
     }
   }
   return counts;
+}
+
+/**
+ * Slider step: 1 for integer columns, else a power of ten close to 1/1000 of
+ * the range.
+ */
+export function getSliderStep(min: number, max: number, isInteger: boolean) {
+  if (isInteger) {
+    return 1;
+  }
+  const rawStep = (max - min) / 1000;
+  return rawStep > 0 ? 10 ** Math.floor(Math.log10(rawStep)) : 1;
+}
+
+export function roundToStep(
+  value: number,
+  step: number,
+  round: (value: number) => number = Math.round,
+) {
+  const decimals = Math.max(0, -Math.floor(Math.log10(step)));
+  return Number((round(value / step) * step).toFixed(decimals));
+}
+
+/**
+ * Slider and histogram bounds: the data range, with the min rounded down and
+ * the max rounded up to the step. The slider moves in steps from its min, so
+ * with the exact data bounds its ends could miss the smallest and the largest
+ * values.
+ */
+export function getSliderRange(min: number, max: number, step: number) {
+  const start = roundToStep(min, step, Math.floor);
+  const end = roundToStep(max, step, Math.ceil);
+  return { min: start, max: end > start ? end : start + step };
 }

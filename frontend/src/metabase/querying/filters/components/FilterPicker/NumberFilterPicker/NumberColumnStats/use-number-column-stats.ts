@@ -9,6 +9,8 @@ import {
   BUCKET_COUNT,
   type NumberColumnStats,
   getHistogramQuery,
+  getSliderRange,
+  getSliderStep,
   getStatsBase,
   getSummaryQuery,
   parseHistogramRows,
@@ -24,7 +26,11 @@ interface UseNumberColumnStatsProps {
 
 export interface NumberColumnStatsResult {
   stats: NumberColumnStats;
+  /** Row counts in equal buckets from `range.min` to `range.max`. */
   histogram: number[];
+  /** Bounds of the slider and the histogram. */
+  range: { min: number; max: number };
+  step: number;
 }
 
 interface UseNumberColumnStatsResult {
@@ -101,12 +107,20 @@ export function useNumberColumnStats({
 
   const hasRange =
     stats?.min != null && stats?.max != null && stats.min < stats.max;
+  const isInteger = Lib.isInteger(column);
+  const sliderRange = useMemo(() => {
+    if (stats?.min == null || stats?.max == null) {
+      return null;
+    }
+    const step = getSliderStep(stats.min, stats.max, isInteger);
+    return { ...getSliderRange(stats.min, stats.max, step), step };
+  }, [stats?.min, stats?.max, isInteger]);
   const histogramQuery = useMemo(
     () =>
-      base != null && hasRange && stats?.min != null && stats?.max != null
-        ? getHistogramQuery(base, stats.min, stats.max)
+      base != null && hasRange && sliderRange != null
+        ? getHistogramQuery(base, sliderRange.min, sliderRange.max)
         : null,
-    [base, hasRange, stats?.min, stats?.max],
+    [base, hasRange, sliderRange],
   );
   const histogramJsQuery = useStableJsQuery(histogramQuery);
   const { data: histogramDataset } = useGetPrototypeStatsQueryQuery(
@@ -129,8 +143,16 @@ export function useNumberColumnStats({
   }, [stats, hasRange, histogramDataset]);
 
   const result = useMemo(
-    () => (stats != null && histogram != null ? { stats, histogram } : null),
-    [stats, histogram],
+    () =>
+      stats != null && histogram != null && sliderRange != null
+        ? {
+            stats,
+            histogram,
+            range: { min: sliderRange.min, max: sliderRange.max },
+            step: sliderRange.step,
+          }
+        : null,
+    [stats, histogram, sliderRange],
   );
   return { isFast, result };
 }

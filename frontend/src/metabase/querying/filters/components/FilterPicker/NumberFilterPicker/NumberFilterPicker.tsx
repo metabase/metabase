@@ -158,25 +158,22 @@ function NumberValueInput({
   columnStats,
   onChange,
 }: NumberValueInputProps) {
-  const { stats, histogram } = columnStats ?? {};
   const inputCount = hasMultipleValues ? 1 : valueCount;
   if (
-    stats?.min != null &&
-    stats?.max != null &&
-    histogram != null &&
+    columnStats != null &&
     inputCount > 0 &&
     (!hasMultipleValues || values.length <= 1)
   ) {
     return (
       <SliderValueInput
         autoFocus={autoFocus}
-        column={column}
         operator={operator}
         values={values}
         inputCount={inputCount}
-        histogram={histogram}
-        min={stats.min}
-        max={stats.max}
+        histogram={columnStats.histogram}
+        min={columnStats.range.min}
+        max={columnStats.range.max}
+        step={columnStats.step}
         onChange={onChange}
       />
     );
@@ -237,13 +234,13 @@ function NumberValueInput({
 
 interface SliderValueInputProps {
   autoFocus: boolean;
-  column: Lib.ColumnMetadata;
   operator: Lib.NumberFilterOperator;
   values: NumberOrEmptyValue[];
   inputCount: number;
   histogram: number[];
   min: number;
   max: number;
+  step: number;
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
@@ -251,13 +248,13 @@ interface SliderValueInputProps {
 // prototype dataset only.
 function SliderValueInput({
   autoFocus,
-  column,
   operator,
   values,
   inputCount,
   histogram,
   min,
   max,
+  step,
   onChange,
 }: SliderValueInputProps) {
   const numberValues = Array.from({ length: inputCount }, (_, index) =>
@@ -305,7 +302,7 @@ function SliderValueInput({
           histogram={histogram}
           min={min}
           max={max}
-          isInteger={Lib.isInteger(column)}
+          step={step}
           values={numberValues}
           onChange={onChange}
         />
