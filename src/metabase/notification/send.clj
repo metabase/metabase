@@ -373,7 +373,8 @@
   (take-notification-with-timeout! [this timeout-ms] "Take the next notification from the queue, returning nil if timeout is reached.")
   (queue-size [this] "Get the current size of the queue."))
 
-;; A priority queue that deduplicates notifications by id
+;; A priority queue that deduplicates notifications by queue key: `:notification/queue-key` in the
+;; notification's metadata, else its `:id`
 (deftype ^:private DedupPriorityQueue
          [^java.util.PriorityQueue                  items-list
           ^java.util.concurrent.ConcurrentHashMap   id->notification
@@ -418,9 +419,9 @@
 
 (defn- create-dedup-priority-queue
   "A thread-safe, prioritized notification queue with the following properties:
-  - Notifications are identified by unique IDs
+  - Notifications are identified by their queue key: `:notification/queue-key` in the metadata, else `:id`
   - Prioritized by deadline
-  - Adding a notification with an ID already in the queue replaces the existing one
+  - Adding a notification with a queue key already in the queue replaces the existing one
   - Taking from an empty queue blocks until a notification is available
   - Multiple threads can safely add and take from the queue concurrently"
   []
@@ -468,13 +469,13 @@
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
-  There can only be one notification with the same id in the queue. A notification can set a different queue key as
-  `:notification/queue-key` in its metadata, for example each channel of a dashboard subscription, which all have the
-  pulse id as `:id`.
-  - if a notification of the same id is already in the queue, then replace it
+  There can only be one notification with the same queue key in the queue. The queue key is
+  `:notification/queue-key` in the notification's metadata, else its `:id`. Each channel of a dashboard
+  subscription sets its own queue key, because all channels have the pulse id as `:id`.
+  - if a notification with the same queue key is already in the queue, then replace it
   (we keep the latest version because it likely contains the most up-to-date information
   such as: creator_id, active status, handlers info etc.)
-  - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)
+  - if a notification has no queue key and no id, put it into the queue regardless (used to send unsaved notifications)
 
   Returns a map with :dispatch-fn and :shutdown-fn."
   [pool-size queue]
