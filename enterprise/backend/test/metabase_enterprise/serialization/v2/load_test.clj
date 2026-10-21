@@ -102,6 +102,57 @@
                 (is (some (partial re-find #"Invalid input.*:template-tags") messages))
                 (is (not (ours? messages)))))))))))
 
+(deftest query-schema-preflight-test
+  (testing (str "GHY-4249: queries this version's schema rejects are all refused before anything is written. "
+                "load-one! commits each entity on its own, so refusing mid-load left the appdb half-imported and "
+                "named only the first bad entity.")
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db         (ts/create! :model/Database :name "my-db")
+              coll       (ts/create! :model/Collection :name "Synced content")
+              native     (fn [card-name]
+                           (ts/create! :model/Card
+                                       :name          card-name
+                                       :collection_id (:id coll)
+                                       :dataset_query {:database (:id db)
+                                                       :type     :native
+                                                       :native   {:template-tags {"id" {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                        :name         "id"
+                                                                                        :display-name "ID"
+                                                                                        :type         :number}}
+                                                                  :query         "SELECT 1 WHERE x = {{id}}"}}))
+              [good bad-1 bad-2] (map native ["Good" "Bad one" "Bad two"])]
+          (reset! extracted {:db    (serdes/extract-one "Database" {} db)
+                             :coll  (serdes/extract-one "Collection" {} coll)
+                             :good  (serdes/extract-one "Card" {} good)
+                             :bad-1 (serdes/extract-one "Card" {} bad-1)
+                             :bad-2 (serdes/extract-one "Card" {} bad-2)})))
+      (let [{:keys [db coll good bad-1 bad-2]} @extracted
+            ;; a tag type this version has no representation for - what an export from a newer Metabase that
+            ;; introduced one would look like
+            break     #(assoc-in % [:dataset_query :stages 0 :template-tags]
+                                 {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
+            ingestion #(ts/ingestion-in-memory [db coll good (break bad-1) (break bad-2)])]
+        (testing "the preflight"
+          (mt/with-empty-h2-app-db!
+            (let [thrown (try (serdes.load/check-query-schemas! (ingestion)) nil (catch Exception e e))]
+              (testing "the import is refused as a query schema refusal"
+                (is (serdes/query-schema-refusal? thrown)))
+              (testing "naming every bad entity, not just the first"
+                (is (re-find (re-pattern (:entity_id bad-1)) (ex-message thrown)))
+                (is (re-find (re-pattern (:entity_id bad-2)) (ex-message thrown))))
+              (testing "and nothing is committed"
+                (is (not (t2/exists? :model/Database :name "my-db")))
+                (is (not (t2/exists? :model/Collection :entity_id (:entity_id coll))))
+                (is (not (t2/exists? :model/Card)))))))
+        (testing "passes an import whose queries all match"
+          (mt/with-empty-h2-app-db!
+            (is (nil? (serdes.load/check-query-schemas! (ts/ingestion-in-memory [db coll good]))))))
+        (testing "is skipped when MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION is set"
+          (mt/with-empty-h2-app-db!
+            (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
+              (is (nil? (serdes.load/check-query-schemas! (ingestion)))))))))))
+
 (deftest http-action-dashcards-are-dropped-test
   (testing "an older export's HTTP action does not load, and only the dashboard buttons that ran it are dropped"
     (let [serialized (atom nil)]

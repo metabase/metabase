@@ -79,6 +79,49 @@
       (is (= :error (:status result)))
       (is (re-find #"Branch error:" (:message result))))))
 
+(defn- card-with-query-yaml
+  "Card YAML whose `dataset_query` is `query-yaml`, a YAML block indented under the key."
+  [entity-id card-name collection-id query-yaml]
+  (str/replace (test-helpers/generate-card-yaml entity-id card-name collection-id)
+               "dataset_query: {}\n"
+               (str "dataset_query:\n" query-yaml)))
+
+(deftest import!-refuses-query-schema-mismatches-before-writing-test
+  (testing (str "GHY-4249: queries this version's schema rejects refuse the pull before anything is written, and the "
+                "error names every one. Loading commits entity by entity, so refusing mid-load left the app DB "
+                "half-imported and named only the first.")
+    (let [task-id   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+          ;; a template tag type this version has no representation for
+          bad-query "  lib/type: mbql/query
+  database: test-data (h2)
+  stages:
+  - lib/type: mbql.stage/native
+    native: SELECT 1 WHERE x = {{id}}
+    template-tags:
+      id:
+        type: tag-type-from-the-future
+        name: id
+        display-name: ID
+        id: abc-123
+"
+          files     {"main" {"collections/main/test/test.yaml"
+                             (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                             "collections/main/test/good.yaml"
+                             (test-helpers/generate-card-yaml "good-card-xxxxxxxxxx" "Good" "coll01xxxxxxxxxxxxx")
+                             "collections/main/test/bad_one.yaml"
+                             (card-with-query-yaml "bad-card-1xxxxxxxxxx" "Bad one" "coll01xxxxxxxxxxxxx" bad-query)
+                             "collections/main/test/bad_two.yaml"
+                             (card-with-query-yaml "bad-card-2xxxxxxxxxx" "Bad two" "coll01xxxxxxxxxxxxx" bad-query)}}
+          result    (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
+      (is (= :error (:status result)))
+      (testing "the message names every bad entity and the opt-out"
+        (is (re-find #"bad-card-1xxxxxxxxxx" (:message result)))
+        (is (re-find #"bad-card-2xxxxxxxxxx" (:message result)))
+        (is (re-find #"MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION" (:message result))))
+      (testing "nothing is written"
+        (is (not (t2/exists? :model/Collection :entity_id "coll01xxxxxxxxxxxxx")))
+        (is (not (t2/exists? :model/Card :entity_id [:in ["good-card-xxxxxxxxxx" "bad-card-1xxxxxxxxxx" "bad-card-2xxxxxxxxxx"]])))))))
+
 (deftest import!-unparseable-yaml-should-not-silently-succeed-test
   (testing "import! should fail when a YAML file in the snapshot is unparseable, not silently skip it"
     (let [task-id   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})

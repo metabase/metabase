@@ -39,6 +39,7 @@
   read-timestamps
   parse-key]
  [metabase-enterprise.serialization.v2.load
+  check-query-schemas!
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
   store!]
