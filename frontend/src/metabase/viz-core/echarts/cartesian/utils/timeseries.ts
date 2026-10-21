@@ -352,8 +352,7 @@ export function computeTimeseriesTicksInterval(
     const interval = TICKS_TIMESERIES_INTERVALS[i];
     const maxTickCount = maxTicksForChartWidth(
       chartLayout,
-      interval.unit,
-      getFormatter(formatter, xInterval.unit, interval.unit),
+      getLongestTickLabel(formatter, xInterval.unit, interval.unit),
     );
     const intervalTicksCount = expectedTickCount(
       interval,
@@ -391,25 +390,50 @@ export function getFormatter(
   return formatter;
 }
 
+// A chart lays out several times (legend candidates, final layout, axis
+// options), so the longest representative label of each unit pair is kept per formatter
+const longestTickLabels = new WeakMap<
+  TimeSeriesAxisFormatter,
+  Map<string, string>
+>();
+
+function getLongestTickLabel(
+  formatter: TimeSeriesAxisFormatter,
+  dataUnit: CartesianChartDateTimeAbsoluteUnit,
+  chartUnit: CartesianChartDateTimeAbsoluteUnit,
+): string {
+  let labelsByUnit = longestTickLabels.get(formatter);
+  if (labelsByUnit == null) {
+    labelsByUnit = new Map();
+    longestTickLabels.set(formatter, labelsByUnit);
+  }
+  const key = `${dataUnit}/${chartUnit}`;
+  const cachedLabel = labelsByUnit.get(key);
+  if (cachedLabel != null) {
+    return cachedLabel;
+  }
+  const unitFormatter = getFormatter(formatter, dataUnit, chartUnit);
+  const longestLabel = getRepresentativeDates(chartUnit)
+    .map((date) => getPaddedAxisLabel(unitFormatter(date)))
+    .reduce((longest, label) =>
+      label.length > longest.length ? label : longest,
+    );
+  labelsByUnit.set(key, longestLabel);
+  return longestLabel;
+}
+
 function maxTicksForChartWidth(
   chartLayout: Pick<ChartLayout, "outerWidth" | "padding" | "ticksDimensions">,
-  unit: CartesianChartDateTimeAbsoluteUnit,
-  formatter: TimeSeriesAxisFormatter,
+  longestLabel: string,
 ) {
   const availableWidth =
     chartLayout.outerWidth -
     chartLayout.padding.left -
     chartLayout.padding.right;
   const TICK_BUFFER_PIXELS = 4;
-  const representativeDates = getRepresentativeDates(unit).map((date) =>
-    getPaddedAxisLabel(formatter(date)),
-  );
-  const longestDate = representativeDates.reduce((longest, date) => {
-    return date.length > longest.length ? date : longest;
-  });
-  const longestDateWidth =
-    chartLayout.ticksDimensions.getXTickWidth(longestDate);
-  return Math.floor(availableWidth / (longestDateWidth + TICK_BUFFER_PIXELS));
+  const longestLabelWidth =
+    chartLayout.ticksDimensions.getXTickWidth(longestLabel);
+  return Math.floor(availableWidth / (longestLabelWidth + TICK_BUFFER_PIXELS));
 }
 
 /**
