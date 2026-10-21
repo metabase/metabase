@@ -9,6 +9,7 @@
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
+   [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]))
 
 (defn- build-field-statistics [fvs fp limit]
@@ -33,8 +34,11 @@
                      ;; Run with admin perms to match behavior during normal sync.
                      (request/as-admin (sync/refingerprint-field! field))
                      (catch Exception e
-                       (log/warnf e "Could not fingerprint field %d" id)
-                       nil))]
+                       (if (sync-util/transient-exception? e)
+                         (do
+                           (log/warnf e "Could not fingerprint field %d" id)
+                           nil)
+                         (throw e))))]
         ;; Sync returns `:sync/no-connection` or a Throwable when it can't sample the database
         (cond
           (not (map? result))                   ::unavailable
