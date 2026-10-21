@@ -953,8 +953,8 @@
 ;;;
 ;;; `metabase.metabot.agent.links/->frontend-query` converts a structured query that does not
 ;;; normalize to valid MBQL 5 to legacy MBQL. If that conversion fails too, as it does for a query
-;;; stripped of its `:lib/*` keys whose aggregation ref no longer resolves, the raw MBQL 5 query goes
-;;; out instead. In legacy MBQL, JSON turns the unit into a string, and the legacy schema cannot
+;;; stripped of its `:lib/*` keys whose aggregation ref points at one of several aggregations, the
+;;; raw MBQL 5 query goes out instead. In legacy MBQL, JSON turns the unit into a string, and the legacy schema cannot
 ;;; decode it for `absolute-datetime` / `during`, so the frontend drops the clause (BOT-1972). A
 ;;; `temporal-unit` on a ref decodes correctly (`legacy-json-round-trip-temporal-filters-test`). The
 ;;; query builder also writes the hoisted form.

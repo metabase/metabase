@@ -4,6 +4,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.schema]
    [metabase.metabot.db :as metabot.db]
@@ -28,6 +29,41 @@
 
 ;;; Query/Chart URL Generation
 
+(defn- repoint-dangling-aggregation-refs-in-stage
+  "Point every `[:aggregation opts uuid]` ref in `stage` that names none of the stage's aggregations at the stage's
+  only aggregation. With several aggregations the target is unknown, so the refs stay as they are."
+  [stage]
+  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
+    (if (not= 1 (count uuids))
+      stage
+      (let [sole (first uuids)
+            repoint (fn [x]
+                      (if (and (vector? x)
+                               (= :aggregation (first x))
+                               (= 3 (count x))
+                               (string? (nth x 2))
+                               (not (contains? uuids (nth x 2))))
+                        (assoc x 2 sole)
+                        x))]
+        (reduce-kv (fn [stage k v]
+                     (cond-> stage
+                       (not (#{:aggregation :joins} k)) (assoc k (walk/postwalk repoint v))))
+                   stage
+                   stage)))))
+
+(defn- normalize-query
+  "Normalize `query` as MBQL 5 and repoint its dangling aggregation refs.
+
+  A query that lost its `:lib/*` keys, such as one in conversation state persisted before the viewing context
+  kept them, gets a fresh `:lib/uuid` on each aggregation from normalization, so a ref to an aggregation, such
+  as an order-by on it, points at a uuid that no longer exists. When the stage has one aggregation the ref can
+  only mean that one, and it is pointed there; see [[repoint-dangling-aggregation-refs-in-stage]]."
+  [query]
+  (let [normalized (lib/normalize :metabase.lib.schema/query query)]
+    (cond-> normalized
+      (vector? (:stages normalized))
+      (update :stages (partial mapv repoint-dangling-aggregation-refs-in-stage)))))
+
 (defn ->legacy-mbql
   "Convert an MBQL 5 query to legacy MBQL.
 
@@ -36,20 +72,16 @@
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query)
-           ;; `:stages` alone (no `:lib/type`) also counts: a query round-tripped through
-           ;; the frontend's viewing context (`user_is_viewing` / `chart_configs`) comes
-           ;; back MBQL 5 but stripped of its internal `:lib/*` keys. Guarding on
-           ;; `:lib/type` alone let such a query fall through unconverted, leaking raw
-           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with
-           ;; "Stage 0 does not exist" (BOT-1604 follow-up).
+           ;; `:stages` alone (no `:lib/type`) also counts: a query stripped of its internal `:lib/*` keys is
+           ;; still MBQL 5. Guarding on `:lib/type` alone let such a query fall through unconverted, leaking raw
+           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with "Stage 0 does not exist"
+           ;; (BOT-1604 follow-up).
            (or (:lib/type query) (:stages query)))
     (try
-      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (lib/->legacy-MBQL (normalize-query query))
       (catch Exception e
-        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
-        ;; match positional aggregation/expression refs embedded elsewhere in the query
-        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
-        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        ;; A ref that [[normalize-query]] cannot repoint, such as one of several aggregations in a `:lib/*`-stripped
+        ;; query, fails conversion. Fall back to the raw query rather than failing the whole agent turn over a link.
         (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
         query))
     query))
@@ -62,12 +94,12 @@
   Native-only queries use legacy MBQL because the embedding SDK opens its SQL editor only when
   `dataset_query.type` is `\"native\"`.
 
-  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query.
-  All other values go through [[->legacy-mbql]]."
+  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query; see
+  [[normalize-query]] for the refs it repairs on the way. All other values go through [[->legacy-mbql]]."
   [query]
   (or (when (and (map? query) (or (:lib/type query) (:stages query)))
         (try
-          (let [normalized (lib/normalize :metabase.lib.schema/query query)]
+          (let [normalized (normalize-query query)]
             (when (and (not (lib/native-only-query? normalized))
                        (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized)))
               (cond-> (lib/prepare-for-serialization normalized)
