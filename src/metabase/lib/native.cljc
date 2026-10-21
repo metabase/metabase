@@ -11,7 +11,6 @@
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -277,7 +276,7 @@
   (assert-native-stage (lib.util/query-stage query 0))
   (let [stages-without-fields (->> (:stages query)
                                    (mapv (fn [stage]
-                                           (update stage :template-tags update-vals #(dissoc % :dimension)))))]
+                                           (update stage :template-tags update-vals #(dissoc % :dimension :field-id)))))]
     (lib.query/query-with-stages metadata-provider stages-without-fields)))
 
 (mu/defn native-extras :- [:maybe ::native-extras]
@@ -445,13 +444,13 @@
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validate a single template tag, returning a list of errors."
   [_query :- ::lib.schema/query
-   {tag-type :type tag-name :name, :keys [display-name dimension table-id]} :- ::lib.schema.template-tag/template-tag]
+   {tag-type :type tag-name :name, :keys [display-name field-id table-id]} :- ::lib.schema.template-tag/template-tag]
   (cond-> []
     (empty? display-name)
     (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
            :tag-name tag-name})
 
-    (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
+    (and (#{:dimension :temporal-unit} tag-type) (nil? field-id))
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
            :tag-name tag-name})
 
@@ -481,7 +480,7 @@
   (:engine (lib.metadata/database query)))
 
 (defn- get-parameter-value
-  [query tag-name {:keys [id dimension], param-type :type}]
+  [query tag-name {:keys [id field-id], param-type :type}]
   ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
   ;; value so that the query will compile.
   (case param-type
@@ -501,10 +500,7 @@
                     :type   :boolean/=,
                     :value  [false],
                     :target ["variable" ["template-tag" tag-name]]}
-    :dimension     (let [effective-type (->> dimension
-                                             lib.ref/field-ref-id
-                                             (lib.metadata/field query)
-                                             :effective-type)]
+    :dimension     (let [effective-type (:effective-type (lib.metadata/field query field-id))]
                      (merge {:id     id,
                              :type   :string/=,
                              :value  ["foo"],

@@ -63,6 +63,8 @@
     [:type [:= :temporal-unit]]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
+    [:field-id    {:optional true} ::id/field]
+    ;; legacy, kept in sync with `:field-id` for older readers
     [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
 (mr/def ::field-filter.options
@@ -86,7 +88,9 @@
    [:ref ::value.common]
    [:map
     [:type        [:= :dimension]]
-    ;; field filters can have missing dimension before it is set
+    ;; field filters can have a missing field before it is set
+    [:field-id    {:optional true} ::id/field]
+    ;; legacy, kept in sync with `:field-id` for older readers
     [:dimension   {:optional true} [:ref :mbql.clause/field]]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
@@ -97,7 +101,29 @@
     [:options {:optional true} [:maybe ::field-filter.options]]]])
 
 (mr/def ::disallow-dimension
-  (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))
+  (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension and :temporal-unit template tags"
+                           :field-id  ":field-id is only allowed for :type :dimension and :temporal-unit template tags"}))
+
+(defn- dimension-field-id
+  "The Field ID a legacy or MBQL 5 `:dimension` `:field` ref of a template tag refers to."
+  [dimension]
+  (when (sequential? dimension)
+    (some #(when (pos-int? %) %) (rest dimension))))
+
+(defn sync-field-id-and-dimension
+  "Make the `:field-id` of a template tag and its legacy `:dimension` ref name the same Field: `:field-id` wins, and
+  either one is filled in from the other."
+  [{:keys [field-id dimension], :as tag}]
+  (let [dimension-id (dimension-field-id dimension)]
+    (cond
+      (and field-id (not= field-id dimension-id))
+      (assoc tag :dimension [:field {:lib/uuid (str (random-uuid))} field-id])
+
+      (and (nil? field-id) dimension-id)
+      (assoc tag :field-id dimension-id)
+
+      :else
+      tag)))
 
 ;; Example:
 ;;
@@ -198,8 +224,10 @@
   [:and
    {:decode/normalize (fn [tag]
                         (when-some [tag (common/normalize-map tag)]
-                          (cond-> tag
-                            (:type tag) (update :type common/normalize-keyword))))
+                          (let [tag (cond-> tag
+                                      (:type tag) (update :type common/normalize-keyword))]
+                            (cond-> tag
+                              (#{:dimension :temporal-unit} (:type tag)) sync-field-id-and-dimension))))
     :decode/api       common/remove-internal-keys
     :encode/serialize common/remove-internal-keys}
    [:multi {:dispatch #(keyword (:type %))}

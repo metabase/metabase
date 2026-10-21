@@ -45,6 +45,7 @@
           :display-name "State"
           :type         :dimension
           :options      {:case-sensitive false}
+          :field-id     1
           :dimension    [:field
                          {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
                          1]
@@ -72,3 +73,16 @@
                                          :display-name "id"
                                          :type         :temporal-unit
                                          :dimension    [:field 1]}})))))
+
+(deftest ^:parallel normalize-syncs-field-id-and-dimension-test
+  (let [normalize #(lib/normalize ::lib.schema.template-tag/template-tag
+                                  (merge {:name "x", :display-name "X", :id "1", :widget-type :category} %))]
+    (testing "a legacy `:dimension` gets the `:field-id` it refers to"
+      (is (=? {:field-id 10, :dimension [:field {} 10]}
+              (normalize {:type :dimension, :dimension [:field 10 nil]}))))
+    (testing "a `:field-id` gets the legacy `:dimension` for older readers"
+      (is (=? {:field-id 11, :dimension [:field {:lib/uuid string?} 11]}
+              (normalize {:type :temporal-unit, :field-id 11}))))
+    (testing "`:field-id` wins when the two disagree"
+      (is (=? {:field-id 12, :dimension [:field {} 12]}
+              (normalize {:type :dimension, :field-id 12, :dimension [:field 10 nil]}))))))

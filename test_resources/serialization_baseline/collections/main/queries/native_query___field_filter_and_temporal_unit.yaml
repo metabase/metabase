@@ -24,6 +24,11 @@ dataset_query:
           - PRODUCTS
           - CATEGORY
         display-name: Category
+        field-id:
+        - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
         id: bb000001-0000-0000-0000-000000000001
         name: category_filter
         type: dimension
@@ -37,6 +42,11 @@ dataset_query:
           - ORDERS
           - CREATED_AT
         display-name: Group By
+        field-id:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
         id: bb000003-0000-0000-0000-000000000003
         name: created_at
         sectionid: date
@@ -49,6 +59,11 @@ dataset_query:
           - ORDERS
           - CREATED_AT
         display-name: Order Date
+        field-id:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
         id: bb000002-0000-0000-0000-000000000002
         name: date_filter
         type: dimension

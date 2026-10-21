@@ -751,6 +751,10 @@
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
+      (m/update-existing :template-tags (fn [tags]
+                                          (if (map? tags)
+                                            (update-vals tags #(dissoc % :field-id))
+                                            (mapv #(dissoc % :field-id) tags))))
       (update-vals ->legacy-MBQL)
       ;; a native stage becomes
       ;;
