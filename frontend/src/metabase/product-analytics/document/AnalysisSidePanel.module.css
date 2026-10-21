@@ -31,3 +31,15 @@
 .tabList {
   flex-wrap: nowrap;
 }
+
+/* Bordered like the table picker beside it, a default Button. */
+.pickerRowButton {
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: 6px;
+  background-color: var(--mb-color-background-primary);
+  box-shadow: var(--mantine-shadow-xs);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}

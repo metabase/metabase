@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useLazyGetTableQuery } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { SidePanelResizeHandle } from "metabase/documents/components/SidePanelResizeHandle";
 import { useSidePanelWidths } from "metabase/documents/hooks/use-side-panel-widths";
 import {
@@ -14,9 +16,13 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { ProductAnalyticsNodeDefinition } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  ProductAnalyticsNodeDefinition,
+} from "metabase-types/api";
 
 import { isOneOf } from "../analyses/setting-helpers";
+import { EventTablePicker } from "../components/EventTablePicker";
 import { type InsightAction, InsightsPanel } from "../components/InsightsPanel";
 import { SettingsList, hasPanelSettings } from "../components/SettingsPanel";
 import { SegmentPalette } from "../components/palette/SegmentPalette";
@@ -27,6 +33,7 @@ import type { Insight } from "../insights/types";
 import { useFunnelInsights } from "../insights/use-funnel-insights";
 import { SegmentDragProvider } from "../segments/drag-context";
 import type { SegmentSource } from "../segments/types";
+import { usePrototypeTable } from "../use-prototype-table";
 
 import {
   ANALYSIS_PANEL_TABS,
@@ -34,9 +41,14 @@ import {
   useAnalysisDocument,
 } from "./AnalysisDocumentContext";
 import S from "./AnalysisSidePanel.module.css";
+import { updateAnalysisNodeTable } from "./analysis-node-utils";
 import { useDocumentAnalysis } from "./use-document-analysis";
 
 const INSIGHTS_WIDTH = 400;
+/** A medium button's height, so the segments toggle matches the table picker. */
+const TABLE_PICKER_HEIGHT = 32;
+/** Shared by the table picker row and the segments title so the tabs line up. */
+const TITLE_ROW_HEIGHT = "4rem";
 /** Shared by the settings and palette headers so their borders line up. */
 const HEADER_HEIGHT = "3.25rem";
 
@@ -56,6 +68,9 @@ export const AnalysisSidePanel = ({
   panelTab,
 }: AnalysisSidePanelProps) => {
   const analysisDocument = useAnalysisDocument();
+  const prototype = usePrototypeTable();
+  const [fetchTable] = useLazyGetTableQuery();
+  const [sendToast] = useToast();
   const analysis = useDocumentAnalysis({ nodeId, definition, isEnabled: true });
   const hasInsights = definition.kind === "funnel";
   const hasAdvanced = hasPanelSettings(analysis.widgets, "advanced");
@@ -92,7 +107,7 @@ export const AnalysisSidePanel = ({
 
   const insights = useFunnelInsights({
     spec: analysis.spec,
-    tableId: analysisDocument.tableId,
+    tableId: analysis.tableId,
     base: analysis.base,
     context: analysis.context,
     isEnabled: tab === "insights",
@@ -133,6 +148,22 @@ export const AnalysisSidePanel = ({
   };
 
   const closePanel = () => analysisDocument.setPanelTab(null);
+
+  // Prototype: the generated SQL is ClickHouse-only, as on the analysis page.
+  const handleTableChange = async (id: ConcreteTableId) => {
+    const { data: table } = await fetchTable({ id }, true);
+    const { editor } = analysisDocument;
+    if (table && prototype.clickHouseDatabaseIds.includes(table.db_id)) {
+      if (editor !== null) {
+        updateAnalysisNodeTable(editor, nodeId, id);
+      }
+    } else {
+      sendToast({
+        icon: "warning",
+        message: t`For now, only tables in ClickHouse databases can be analyzed.`,
+      });
+    }
+  };
 
   if (tab === "insights") {
     return (
@@ -203,6 +234,37 @@ export const AnalysisSidePanel = ({
               aria-label={t`Analysis settings`}
             >
               <Group
+                h={TITLE_ROW_HEIGHT}
+                px="lg"
+                gap="sm"
+                align="flex-end"
+                wrap="nowrap"
+                style={{ flexShrink: 0 }}
+              >
+                <Box flex={1} miw={0}>
+                  <EventTablePicker
+                    tableId={analysis.tableId}
+                    isLoading={false}
+                    fullWidth
+                    onChange={handleTableChange}
+                  />
+                </Box>
+                <Tooltip
+                  label={isPaletteOpen ? t`Hide segments` : t`Show segments`}
+                >
+                  <ActionIcon
+                    className={S.pickerRowButton}
+                    size={TABLE_PICKER_HEIGHT}
+                    c={isPaletteOpen ? "brand" : "text-secondary"}
+                    aria-label={t`Segments`}
+                    aria-pressed={isPaletteOpen}
+                    onClick={togglePalette}
+                  >
+                    <Icon name="segment" />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+              <Group
                 h={HEADER_HEIGHT}
                 justify="space-between"
                 align="flex-end"
@@ -232,21 +294,6 @@ export const AnalysisSidePanel = ({
                     )}
                   </Tabs.List>
                 </Tabs>
-                <Group gap="xs" wrap="nowrap" style={{ alignSelf: "center" }}>
-                  <Tooltip
-                    label={isPaletteOpen ? t`Hide segments` : t`Show segments`}
-                  >
-                    <ActionIcon
-                      variant="subtle"
-                      c={isPaletteOpen ? "brand" : "text-secondary"}
-                      aria-label={t`Segments`}
-                      aria-pressed={isPaletteOpen}
-                      onClick={togglePalette}
-                    >
-                      <Icon name="segment" />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
               </Group>
               <Box
                 flex={1}
@@ -280,6 +327,8 @@ export const AnalysisSidePanel = ({
                 <SegmentPalette
                   table={analysis.table}
                   usersTable={analysis.context.usersTable}
+                  titleRowHeight={TITLE_ROW_HEIGHT}
+                  titleRowControlHeight={TABLE_PICKER_HEIGHT}
                   headerHeight={HEADER_HEIGHT}
                   activeTab={segmentTab}
                   onTabChange={(segmentTab) =>

@@ -129,7 +129,7 @@ const AnalysisCard = ({
     isLoading: query.isLoading || !shouldLoadData,
     error:
       query.error ??
-      (analysisDocument.tableId === undefined
+      (analysis.tableId === undefined
         ? t`Pick the event data to analyze.`
         : undefined),
     missing: analysis.missing,

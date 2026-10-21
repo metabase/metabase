@@ -1,3 +1,4 @@
+import { useEditorState } from "@tiptap/react";
 import { useCallback, useMemo } from "react";
 
 import type { ProductAnalyticsNodeDefinition } from "metabase-types/api";
@@ -6,7 +7,11 @@ import type { StoredSettings } from "../settings/types";
 import { useAnalysis } from "../use-analysis";
 
 import { useAnalysisDocument } from "./AnalysisDocumentContext";
-import { updateAnalysisNodeSettings } from "./analysis-node-utils";
+import {
+  findAnalysisNode,
+  getAnalysisNodeTableId,
+  updateAnalysisNodeSettings,
+} from "./analysis-node-utils";
 
 type UseDocumentAnalysisArgs = {
   nodeId: string;
@@ -16,8 +21,8 @@ type UseDocumentAnalysisArgs = {
 };
 
 /**
- * Runs the analysis a document node holds, with the document's table. Its date
- * range is its own when set, or the document's. Setting changes are written to
+ * Runs the analysis a document node holds. Its table and date range are its
+ * own when set, or the document's. Setting changes are written to
  * the node, so they can be undone.
  */
 export const useDocumentAnalysis = ({
@@ -25,7 +30,21 @@ export const useDocumentAnalysis = ({
   definition,
   isEnabled,
 }: UseDocumentAnalysisArgs) => {
-  const { editor, tableId, dateRange } = useAnalysisDocument();
+  const { editor, tableId: documentTableId, dateRange } = useAnalysisDocument();
+  // The card's own table when it picked one, or the document's.
+  const nodeTableId = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      const found =
+        editor !== null
+          ? findAnalysisNode(editor.state.doc, nodeId)
+          : undefined;
+      return found !== undefined
+        ? getAnalysisNodeTableId(found.node)
+        : undefined;
+    },
+  });
+  const tableId = nodeTableId ?? documentTableId;
   const stored = useMemo(
     () => ({ date_range: dateRange, ...definition.settings }),
     [definition.settings, dateRange],
@@ -38,10 +57,11 @@ export const useDocumentAnalysis = ({
     },
     [editor, nodeId],
   );
-  return useAnalysis({
+  const analysis = useAnalysis({
     kind: definition.kind,
     tableId: isEnabled ? tableId : undefined,
     stored,
     onChangeSettings: handleChangeSettings,
   });
+  return { ...analysis, tableId };
 };

@@ -13,12 +13,15 @@ import type { ConcreteTableId, TableId } from "metabase-types/api";
 type EventTablePickerProps = {
   tableId: ConcreteTableId | undefined;
   isLoading: boolean;
+  /** Fills its container, as at the top of an analysis's side panel. */
+  fullWidth?: boolean;
   onChange: (tableId: ConcreteTableId) => void;
 };
 
 export const EventTablePicker = ({
   tableId,
   isLoading,
+  fullWidth = false,
   onChange,
 }: EventTablePickerProps) => {
   const [isOpened, setIsOpened] = useState(false);
@@ -64,8 +67,10 @@ export const EventTablePicker = ({
       >
         <Button
           variant="default"
-          size="lg"
+          size={fullWidth ? "md" : "lg"}
           fw="bold"
+          fullWidth={fullWidth}
+          justify={fullWidth ? "flex-start" : undefined}
           loading={isLoading || table.isLoading}
           leftSection={<Icon name="database" />}
         >

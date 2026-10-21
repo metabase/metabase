@@ -41,7 +41,11 @@ type SegmentPaletteProps = {
   table: Table | undefined;
   /** The table its person column links to, if any. */
   usersTable: UsersTable | undefined;
-  /** Lines the header up with the side panel's. */
+  /** Lines the title row up with the side panel's table picker row. */
+  titleRowHeight: string;
+  /** The height of the controls in the side panel's title row. */
+  titleRowControlHeight: number;
+  /** Lines the tabs up with the side panel's. */
   headerHeight: string;
   activeTab: SegmentSource;
   onTabChange: (tab: SegmentSource) => void;
@@ -58,11 +62,23 @@ const isSegmentSource = (value: string | null): value is SegmentSource =>
 export const SegmentPalette = ({
   table,
   usersTable,
+  titleRowHeight,
+  titleRowControlHeight,
   headerHeight,
   activeTab,
   onTabChange,
 }: SegmentPaletteProps) => (
   <Stack h="100%" gap={0} aria-label={t`Segments`}>
+    <Group
+      h={titleRowHeight}
+      px="md"
+      align="flex-end"
+      style={{ flexShrink: 0 }}
+    >
+      <Group h={titleRowControlHeight}>
+        <Text fw="bold">{t`Segments`}</Text>
+      </Group>
+    </Group>
     <Group
       h={headerHeight}
       px="sm"
@@ -85,8 +101,8 @@ export const SegmentPalette = ({
         }}
       >
         <Tabs.List className={S.tabList}>
-          <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
-          <Tabs.Tab value="people">{getPeopleTitle(usersTable)}</Tabs.Tab>
+          <Tabs.Tab value="event">{t`Events`}</Tabs.Tab>
+          <Tabs.Tab value="people">{t`People`}</Tabs.Tab>
         </Tabs.List>
       </Tabs>
     </Group>
@@ -115,11 +131,6 @@ export const SegmentPalette = ({
     </ScrollArea>
   </Stack>
 );
-
-const getPeopleTitle = (usersTable: UsersTable | undefined): string => {
-  const name = usersTable?.table.display_name ?? "";
-  return /user/i.test(name) ? t`User segments` : t`Customer segments`;
-};
 
 type PaletteSectionProps = {
   source: SegmentSource;
