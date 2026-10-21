@@ -365,27 +365,33 @@
               (is (str/includes? output "Available query IDs: none"))
               (is (str/includes? output "create_sql_query")))))))))
 
+(defn- invoke-with-proposed-sql
+  "Invoke `tool-name` so that the SQL it proposes is `sql`: created, replaced, or edited from a stored `SELECT 1`
+  against the current test database."
+  [profile tool-name db-id sql]
+  (invoke-sql-tool profile (assoc editor-memory :state {:queries {"q1" (lib/native-query (mt/metadata-provider) "SELECT 1")}})
+                   tool-name
+                   {:database_id db-id :sql_query sql :new_query sql
+                    :edits [{:old_string "SELECT 1" :new_string sql}]}))
+
 (deftest sql-syntax-error-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
       (mt/with-db db
         (doseq [profile [:internal :sql]
                 tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]
-                parser [(mt/original-fn #'sql-tools/transpile-sql)
-                        (constantly {:status :error :error-message "Invalid expression\nSELECT \u001b[4m=\u001b[0m"})]]
+                [parser details] [[(mt/original-fn #'sql-tools/transpile-sql)
+                                   "\"Required keyword: 'this' missing. Line 1, Col: 8.\\n  SELECT =\\n         ^\""]
+                                  [(constantly {:status :error :error-message "Invalid expression\nSELECT \u001b[4m=\u001b[0m"})
+                                   "\"Invalid expression\\nSELECT \\u001b[4m=\\u001b[0m\""]]]
           (mt/with-dynamic-fn-redefs [sql-tools/transpile-sql parser]
-            (let [memory (assoc editor-memory :state {:queries {"q1" (lib/native-query (mt/metadata-provider) "SELECT 1")}})
-                  result (invoke-sql-tool profile memory tool-name
-                                          {:database_id db-id :sql_query "SELECT ="
-                                           :edits [{:old_string "1" :new_string "="}] :new_query "SELECT ="})
+            (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT =")
                   output (:output result)]
               (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
               (is (str/includes? output "syntax error"))
               (is (str/includes? output "Fix the SQL syntax and retry"))
-              (is (str/includes? output "Parser details: \""))
+              (is (str/includes? output (str "Parser details: " details)))
               (is (not (str/includes? output "\u001b")))
-              (when (str/includes? output "Invalid expression")
-                (is (str/includes? output "Parser details: \"Invalid expression\\nSELECT \\u001b[4m=\\u001b[0m\"")))
               (doseq [text ["Common issues to check:" "DATE_TRUNC vs TRUNC" "Quote style for identifiers"
                             "String concatenation operators" "Date/time literal syntax"
                             "NULL handling differences" "Case sensitivity of identifiers"]]
@@ -551,10 +557,7 @@
                                                  :error-message (str "Invalid expression\n" (apply str (repeat 1500 "\u001b")))})]
           (doseq [profile [:internal :sql]
                   tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
-            (let [memory (assoc editor-memory :state {:queries {"q1" (lib/native-query (mt/metadata-provider) "SELECT 1")}})
-                  result (invoke-sql-tool profile memory tool-name
-                                          {:database_id db-id :sql_query "SELECT ="
-                                           :edits [{:old_string "1" :new_string "="}] :new_query "SELECT ="})
+            (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT =")
                   output (:output result)]
               (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
               (is (<= (count output) 4000))

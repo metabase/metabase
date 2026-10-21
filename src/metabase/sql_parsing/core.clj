@@ -74,6 +74,16 @@
       (str/replace #"<Token [^>]*?text: ([^,>]*),[^>]*>" "'$1'")
       (str/replace #"but got None\b" "but got the end of the query")))
 
+(defn- diagnostic
+  "`reported`, the message sqlglot gives for a failure, as the diagnostic [[parse-error-message]] describes."
+  [reported]
+  (let [[detail snippet] (str/split reported #"\n" 2)]
+    (->> [(without-parser-internals detail)
+          (some-> snippet (str/replace ansi-escape ""))
+          (some-> snippet caret-line)]
+         (remove nil?)
+         (str/join "\n"))))
+
 (defn parse-error-message
   "The parse failure `e` reports, as a diagnostic its reader can act on: what the parser could not read, where
   (`Line`/`Col`), and the offending SQL with a caret under the token it stopped at.
@@ -86,12 +96,7 @@
   message of its own."
   [e]
   (when-let [reported (or (some-> (ex-cause e) ex-message) (ex-message e))]
-    (let [[detail snippet] (str/split reported #"\n" 2)]
-      (->> [(without-parser-internals detail)
-            (some-> snippet (str/replace ansi-escape ""))
-            (some-> snippet caret-line)]
-           (remove nil?)
-           (str/join "\n")))))
+    (diagnostic reported)))
 
 ;;; ------------------------------------- Large literal-list stripping -----------------------------------------
 
@@ -614,10 +619,12 @@
   (-> result
       (perf/update-keys (comp keyword u/->kebab-case-en))
       (m/update-existing :status (comp keyword u/->kebab-case-en))
-      (m/update-existing :reason (comp keyword u/->kebab-case-en))))
+      (m/update-existing :reason (comp keyword u/->kebab-case-en))
+      (m/update-existing :error-message diagnostic)))
 
 (defn transpile-sql
-  "Transpiles sql string from one dialect to another."
+  "Transpiles sql string from one dialect to another. An `:error-message` is cleaned of the parser's internals as
+  [[parse-error-message]] cleans a parse failure."
   [sql from-dialect to-dialect]
   (normalize-transpilation-result
    (protocol/transpile-sql (parser) sql from-dialect to-dialect)))

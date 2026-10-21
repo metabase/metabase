@@ -149,6 +149,15 @@
         (is (= :error status))
         (is (str/includes? error-message "Multiple SQL statements"))))))
 
+(deftest ^:parallel transpile-sql-parse-error-message-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "a parse error names the token and its place, without the parser's internals or terminal escapes"
+      (is (= {:status        :error
+              :error-message (str "Expected table name but got 'where'. Line 1, Col: 17.\n"
+                                  "  select from where venues\n"
+                                  "              ^^^^^")}
+             (sql-tools/transpile-sql "select from where venues" "postgres" "postgres"))))))
+
 (deftest ^:parallel transpile-sql-preserves-query-structure-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
     (testing "Transpilation preserves query structure"
