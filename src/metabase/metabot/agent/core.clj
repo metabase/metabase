@@ -378,8 +378,8 @@
    parts))
 
 (defn- step-parts
-  "The `parts` of an iteration as memory keeps them, which is how the history of a later turn replays them: each run
-  of text parts as one part, and no text that is only whitespace. Text streams as one part per delta, and
+  "The `parts` of an iteration as memory keeps them, which is how the history of a later turn replays them: each text
+  block as one part, and no text that is only whitespace. Text streams as one part per delta, and
   [[metabase.metabot.persistence/history]] replays the merged text the turn stored, without the blank parts. When
   memory keeps the deltas, the next turn's history does not start with the bytes that this turn sent, and the
   provider's prompt cache misses."
