@@ -18,6 +18,8 @@ import {
   createMockCollection,
   createMockDashboardDependencyNode,
   createMockDashboardDependencyNodeData,
+  createMockDataAppDependencyNode,
+  createMockDataAppDependencyNodeData,
   createMockDatabase,
   createMockDocumentDependencyNode,
   createMockDocumentDependencyNodeData,
@@ -140,6 +142,10 @@ describe("getNodeIcon", () => {
       node: createMockActionDependencyNode(),
       expectedIcon: "bolt",
     },
+    {
+      node: createMockDataAppDependencyNode(),
+      expectedIcon: "app",
+    },
   ])("should get the $node.type node icon", ({ node, expectedIcon }) => {
     expect(getNodeIcon(node)).toBe(expectedIcon);
   });
@@ -225,6 +231,15 @@ describe("getNodeLink", () => {
       expectedLink: {
         label: "View this action",
         url: "/data-studio/actions/1",
+      },
+    },
+    {
+      node: createMockDataAppDependencyNode({
+        data: createMockDataAppDependencyNodeData({ name: "bird-sightings" }),
+      }),
+      expectedLink: {
+        label: "View this data app",
+        url: "/apps/bird-sightings",
       },
     },
   ])("should get the $node.type node link", ({ node, expectedLink }) => {
@@ -356,6 +371,15 @@ describe("getNodeLabel", () => {
     {
       node: createMockSandboxDependencyNode({ data: { table_id: 1 } }),
       expected: "Row and column security rule",
+    },
+    {
+      node: createMockDataAppDependencyNode({
+        data: createMockDataAppDependencyNodeData({
+          name: "bird-sightings",
+          display_name: "Bird sightings",
+        }),
+      }),
+      expected: "Bird sightings",
     },
   ])("should get label for $node.type", ({ node, expected }) => {
     expect(getNodeLabel(node)).toBe(expected);
@@ -570,6 +594,11 @@ describe("getNodeLocationInfo", () => {
     const node = createMockTransformDependencyNode();
     expect(getNodeLocationInfo(node)).toBeNull();
   });
+
+  it("should return null for data app", () => {
+    const node = createMockDataAppDependencyNode();
+    expect(getNodeLocationInfo(node)).toBeNull();
+  });
 });
 
 describe("getNodeCreatedAt", () => {
@@ -589,6 +618,14 @@ describe("getNodeCreatedAt", () => {
     {
       node: createMockSandboxDependencyNode(),
       expected: null,
+    },
+    {
+      node: createMockDataAppDependencyNode({
+        data: createMockDataAppDependencyNodeData({
+          created_at: "2021-02-03T00:00:00Z",
+        }),
+      }),
+      expected: "2021-02-03T00:00:00Z",
     },
   ])("should get created_at for $node.type", ({ node, expected }) => {
     expect(getNodeCreatedAt(node)).toBe(expected);
@@ -771,6 +808,10 @@ describe("getDependencyGroupType", () => {
       node: createMockActionDependencyNode(),
       expected: "action",
     },
+    {
+      node: createMockDataAppDependencyNode(),
+      expected: "data-app",
+    },
   ])("should get group type for $node.type", ({ node, expected }) => {
     expect(getDependencyGroupType(node)).toBe(expected);
   });
@@ -789,6 +830,10 @@ describe("getDependencyGroupTypeInfo", () => {
     {
       groupType: "action",
       expected: { label: "Data action", color: "text-secondary" },
+    },
+    {
+      groupType: "data-app",
+      expected: { label: "Data app", color: "accent4" },
     },
     {
       groupType: "metric",
@@ -864,6 +909,13 @@ describe("getDependentGroups", () => {
     const node = createMockCardDependencyNode({ dependents_count: {} });
     expect(getDependentGroups(node)).toEqual([]);
   });
+
+  it("should return the data apps that depend on the node", () => {
+    const node = createMockCardDependencyNode({
+      dependents_count: { "data-app": 2 },
+    });
+    expect(getDependentGroups(node)).toEqual([{ type: "data-app", count: 2 }]);
+  });
 });
 
 describe("getDependencyGroupTitle", () => {
@@ -898,6 +950,8 @@ describe("getDependentGroupLabel", () => {
     { type: "model", count: 3, expected: "3 models" },
     { type: "dashboard", count: 1, expected: "1 dashboard" },
     { type: "dashboard", count: 2, expected: "2 dashboards" },
+    { type: "data-app", count: 1, expected: "1 data app" },
+    { type: "data-app", count: 2, expected: "2 data apps" },
   ])("should format $count $type", ({ type, count, expected }) => {
     expect(getDependentGroupLabel({ type, count })).toBe(expected);
   });
