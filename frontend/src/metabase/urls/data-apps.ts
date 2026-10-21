@@ -31,6 +31,14 @@ export function dataAppsSettings() {
   return `/admin/settings/${DATA_APP_URL_SEGMENT}`;
 }
 
+export function dataAppGroupsSettings(name: string) {
+  return `${dataAppsSettings()}/${encodeURIComponent(name)}/groups`;
+}
+
 export function dataStudioDataApps() {
   return `/data-studio/${DATA_APP_URL_SEGMENT}`;
+}
+
+export function dataStudioDataApp(name: string) {
+  return `${dataStudioDataApps()}/${encodeURIComponent(name)}`;
 }
