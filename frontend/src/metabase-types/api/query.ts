@@ -109,6 +109,8 @@ export interface ReferenceOptions {
   "join-alias"?: string;
   "base-type"?: string;
   "source-field"?: number;
+  "source-field-name"?: string;
+  "source-field-join-alias"?: string;
 }
 
 type BinningOptions =
@@ -132,6 +134,8 @@ interface BinWidthBinningOptions {
 
 export type ReferenceOptionsKeys =
   | "source-field"
+  | "source-field-name"
+  | "source-field-join-alias"
   | "base-type"
   | "join-alias"
   | "temporal-unit"

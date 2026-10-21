@@ -36,6 +36,7 @@ import type {
 
 import {
   type ParameterMappingOption,
+  getFieldIdTarget,
   getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "./mapping-options";
@@ -927,5 +928,65 @@ describe("getMappingOptionByTarget", () => {
         undefined,
       );
     });
+  });
+});
+
+describe("getFieldIdTarget", () => {
+  const card = structured({
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  });
+  const question = new Question(card, metadata);
+
+  it("should resolve a column name target to the field it refers to", () => {
+    const target: ParameterTarget = [
+      "dimension",
+      ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+    ];
+
+    expect(
+      getFieldIdTarget(target, question, createMockParameter({ type: "id" })),
+    ).toEqual(["dimension", ["field", ORDERS.PRODUCT_ID, null]]);
+  });
+
+  it("should keep the temporal unit of the target", () => {
+    const breakoutQuestion = new Question(
+      structured({
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          },
+        ],
+      }),
+      metadata,
+    );
+    const target: ParameterTarget = [
+      "dimension",
+      [
+        "field",
+        "CREATED_AT",
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ];
+
+    expect(
+      getFieldIdTarget(
+        target,
+        breakoutQuestion,
+        createMockParameter({ type: "temporal-unit" }),
+      ),
+    ).toEqual([
+      "dimension",
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+    ]);
+  });
+
+  it("should return a target that is not a column unchanged", () => {
+    const target: ParameterTarget = ["variable", ["template-tag", "source"]];
+
+    expect(getFieldIdTarget(target, question, createMockParameter())).toBe(
+      target,
+    );
   });
 });

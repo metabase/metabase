@@ -343,6 +343,54 @@ export function getMappingOptionByTarget(
   return undefined;
 }
 
+export function getFieldIdTarget(
+  target: ParameterTarget,
+  question?: Question,
+  parameter?: Parameter,
+): ParameterTarget {
+  if (!question || !isStructuredDimensionTarget(target)) {
+    return target;
+  }
+
+  const { query, columns } = getParameterColumns(question, parameter);
+  const targetStageIndex = getStageIndexFromTarget(target);
+  const stageIndexes =
+    targetStageIndex != null
+      ? [targetStageIndex]
+      : _.uniq(columns.map(({ stageIndex }) => stageIndex)).sort(
+          (a, b) => b - a,
+        );
+  const fieldRef = normalize(target)[1];
+  const fieldId = stageIndexes
+    .map((stageIndex) => {
+      const stageColumns = columns
+        .filter((column) => column.stageIndex === stageIndex)
+        .map(({ column }) => column);
+      const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+        query,
+        stageIndex,
+        stageColumns,
+        [fieldRef],
+      );
+      const column = stageColumns[columnIndex];
+      return column ? Lib.fieldValuesSearchInfo(query, column).fieldId : null;
+    })
+    .find((id) => id != null);
+
+  if (fieldId == null) {
+    return target;
+  }
+  const temporalUnit = fieldRef[2]?.["temporal-unit"];
+  const fieldIdRef: DimensionReference = [
+    "field",
+    fieldId,
+    temporalUnit ? { "temporal-unit": temporalUnit } : null,
+  ];
+  return target[2] != null
+    ? ["dimension", fieldIdRef, target[2]]
+    : ["dimension", fieldIdRef];
+}
+
 function getStageIndexFromTarget(target: ParameterTarget): number | undefined {
   if (isStructuredDimensionTarget(target)) {
     return target[2]?.["stage-number"];

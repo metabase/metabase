@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupAdhocQueryMetadataEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import type {
+  CardQueryMetadata,
   DatasetQuery,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
@@ -12,8 +14,10 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockDatabase,
+  createMockField,
   createMockTable,
 } from "metabase-types/api/mocks";
 
@@ -126,16 +130,21 @@ const renderCodeEditPills = (messageId = "message-1") => {
 const renderMbqlPills = ({
   messageId = "message-1",
   query,
+  metadata = createMockCardQueryMetadata(),
 }: {
   messageId?: string;
   query: StructuredQuery;
-}) =>
-  renderWithProviders(
+  metadata?: CardQueryMetadata;
+}) => {
+  setupAdhocQueryMetadataEndpoint(metadata);
+
+  return renderWithProviders(
     <GeneratedCardTablePills
       messageId={messageId}
       value={createMbqlCard(query)}
     />,
   );
+};
 
 describe("MetabotAgentDataSourcePills", () => {
   it("sends a feedback request when clicking source feedback buttons", async () => {
@@ -250,6 +259,63 @@ describe("MetabotAgentDataSourcePills", () => {
     expect(
       fetchMock.callHistory.calls(FIELD_TABLE_IDS_ENDPOINT, {
         body: { field_ids: [10, 11] },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("resolves name-based implicit join refs to the fields of the joined table", async () => {
+    const productId = createMockField({
+      id: 21,
+      table_id: ORDERS_TABLE.id,
+      name: "PRODUCT_ID",
+      semantic_type: "type/FK",
+      fk_target_field_id: 30,
+    });
+    const productsId = createMockField({
+      id: 30,
+      table_id: PRODUCTS_TABLE.id,
+      name: "ID",
+      semantic_type: "type/PK",
+    });
+    const category = createMockField({
+      id: 31,
+      table_id: PRODUCTS_TABLE.id,
+      name: "CATEGORY",
+      base_type: "type/Text",
+    });
+    setupTableEndpoints(ORDERS_TABLE, PRODUCTS_TABLE);
+    fetchMock.post(FIELD_TABLE_IDS_ENDPOINT, {
+      table_ids: [PRODUCTS_TABLE.id],
+    });
+
+    renderMbqlPills({
+      messageId: "message-name-refs",
+      query: {
+        "source-table": ORDERS_TABLE.id,
+        breakout: [
+          [
+            "field",
+            "CATEGORY",
+            { "base-type": "type/Text", "source-field-name": "PRODUCT_ID" },
+          ],
+        ],
+      },
+      metadata: createMockCardQueryMetadata({
+        databases: [DATABASE],
+        tables: [
+          { ...ORDERS_TABLE, fields: [productId] },
+          { ...PRODUCTS_TABLE, fields: [productsId, category] },
+        ],
+        fields: [productId, productsId, category],
+      }),
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Products" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(FIELD_TABLE_IDS_ENDPOINT, {
+        body: { field_ids: [category.id] },
       }),
     ).toHaveLength(1);
   });
@@ -451,6 +517,7 @@ describe("MetabotAgentDataSourcePills", () => {
     renderMbqlPills({
       messageId: "message-6",
       query: {
+        "source-table": ORDERS_TABLE.id,
         fields: [["field", 10, null]],
       },
     });
