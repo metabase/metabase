@@ -10,6 +10,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test.data.env :as tx.env]
    [metabase.util :as u])
   (:import
    (java.sql Driver DriverPropertyInfo)
@@ -80,8 +81,20 @@
     (driver/the-initialized-driver driver)
     (catch Throwable _ nil)))
 
+(defn- drivers-to-check
+  "The drivers whose clients this run asks about. Nothing here connects, so the answer depends only on the JDBC
+  clients on the classpath, not on which database the run is for. The H2 run checks every driver in
+  [[probe-details]], so that a client upgrade is still caught when its driver has no job of its own; every other run
+  checks only its own drivers, so that it does not fail on a client it is not testing."
+  []
+  (let [test-drivers (tx.env/test-drivers)]
+    (sort (if (contains? test-drivers :h2)
+            (keys probe-details)
+            (filter probe-details test-drivers)))))
+
 (deftest ^:parallel host-parameters-are-declared-or-reviewed-test
-  (doseq [[driver details] (sort-by key probe-details)]
+  (doseq [driver (drivers-to-check)
+          :let   [details (probe-details driver)]]
     (testing driver
       (if-not (loaded-driver driver)
         (is (not (always-on-the-classpath driver))
@@ -107,9 +120,10 @@
 
 (deftest ^:parallel host-less-details-name-a-host-or-fail-closed-test
   (testing "a client that fills in its own host does not thereby slip past the network policy"
-    (doseq [[driver details] (sort-by key probe-details)
-            :when            (and (not (opens-no-connection-without-a-host driver))
-                                  (loaded-driver driver))]
+    (doseq [driver (drivers-to-check)
+            :let   [details (probe-details driver)]
+            :when  (and (not (opens-no-connection-without-a-host driver))
+                        (loaded-driver driver))]
       (testing driver
         (let [hosts (try
                       (not-empty (vec (driver/connection-hosts driver (dissoc details :host))))
