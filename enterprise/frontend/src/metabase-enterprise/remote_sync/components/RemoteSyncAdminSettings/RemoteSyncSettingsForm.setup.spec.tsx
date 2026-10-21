@@ -60,6 +60,7 @@ const setupEndpoints = ({
   envSettings = [],
   isDevInstance,
   upsellDismissed,
+  useTenants,
 }: {
   remoteSyncEnabled?: boolean;
   remoteSyncUrl?: string;
@@ -77,6 +78,7 @@ const setupEndpoints = ({
   envSettings?: EnterpriseSettingKey[];
   isDevInstance?: boolean;
   upsellDismissed?: boolean;
+  useTenants?: boolean;
 } = {}) => {
   const settings = createMockSettings({
     "remote-sync-enabled": remoteSyncEnabled,
@@ -89,6 +91,7 @@ const setupEndpoints = ({
     "remote-sync-custom-collections-enabled":
       remoteSyncCustomCollectionsEnabled,
     "development-mode?": isDevInstance,
+    "use-tenants": useTenants,
   });
 
   const settingDefinitions: SettingDefinition[] = envSettings.map((key) =>
@@ -127,12 +130,14 @@ const createStoreState = ({
   remoteSyncEnabled = false,
   remoteSyncType = "read-only" as const,
   remoteSyncCustomCollectionsEnabled = true,
+  useTenants = false,
 }: {
   isAdmin?: boolean;
   isDevInstance?: boolean;
   remoteSyncEnabled?: boolean;
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncCustomCollectionsEnabled?: boolean;
+  useTenants?: boolean;
 } = {}) => {
   return createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -142,6 +147,7 @@ const createStoreState = ({
       "remote-sync-type": remoteSyncType,
       "remote-sync-custom-collections-enabled":
         remoteSyncCustomCollectionsEnabled,
+      "use-tenants": useTenants,
     }),
   });
 };
@@ -166,6 +172,7 @@ interface SetupOpts {
   upsellDismissed?: boolean;
   hasLibraryFeature?: boolean;
   createdLibraryCollection?: Collection;
+  useTenants?: boolean;
 }
 
 export const setup = ({
@@ -188,6 +195,7 @@ export const setup = ({
   upsellDismissed = false,
   hasLibraryFeature = false,
   createdLibraryCollection = createMockLibraryCollection(),
+  useTenants = false,
 }: SetupOpts = {}) => {
   PLUGIN_LIBRARY.isEnabled = hasLibraryFeature;
   setupCreateLibraryEndpoint(createdLibraryCollection);
@@ -207,6 +215,7 @@ export const setup = ({
     envSettings,
     isDevInstance,
     upsellDismissed,
+    useTenants,
   });
 
   renderWithProviders(
@@ -217,6 +226,7 @@ export const setup = ({
         remoteSyncEnabled,
         remoteSyncType,
         remoteSyncCustomCollectionsEnabled,
+        useTenants,
       }),
     },
   );

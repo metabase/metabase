@@ -4,7 +4,10 @@ import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { waitForRequestsToSettle } from "__support__/utils";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollectionItem,
+  createMockCollectionItemFromCollection,
+} from "metabase-types/api/mocks";
 
 import {
   createMockLibraryCollection,
@@ -1073,6 +1076,94 @@ describe("RemoteSyncSettingsForm", () => {
 
       // Collections section (which includes transforms row) should not appear in modal variant
       expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("set up button", () => {
+    it("should stay disabled until a repository URL is entered (#65653)", async () => {
+      setup({ remoteSyncEnabled: false, remoteSyncType: "read-only" });
+
+      const getSetUpButton = () =>
+        screen.getByRole("button", { name: /Set up remote sync/i });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-only")).toBeChecked();
+      });
+      expect(getSetUpButton()).toBeDisabled();
+
+      await userEvent.click(
+        screen.getByRole("switch", { name: /Auto-sync with git/ }),
+      );
+      expect(getSetUpButton()).toBeDisabled();
+
+      await userEvent.type(
+        screen.getByLabelText(/Access Token/i),
+        "SecretToken",
+      );
+      expect(getSetUpButton()).toBeDisabled();
+
+      await userEvent.type(
+        screen.getByLabelText(/Repository URL/i),
+        "https://github.com/foo/bar.git",
+      );
+      expect(getSetUpButton()).toBeEnabled();
+    });
+  });
+
+  describe("shared tenant collections", () => {
+    const regularCollection = createMockCollectionItem({
+      id: 21,
+      model: "collection",
+      name: "Regular Collection",
+    });
+
+    it("should hide collections to sync before remote sync is set up in read-only mode", async () => {
+      setup({
+        remoteSyncEnabled: false,
+        remoteSyncType: "read-only",
+        useTenants: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-only")).toBeChecked();
+      });
+      expect(
+        screen.getByRole("button", { name: /Set up remote sync/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+
+    it("should show shared collections with an empty state when remote sync is set up and tenants are enabled", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        rootCollectionItems: [regularCollection],
+        useTenants: true,
+      });
+
+      expect(await screen.findByText("Shared collections")).toBeInTheDocument();
+      expect(
+        await screen.findByText("No shared tenant collections found"),
+      ).toBeInTheDocument();
+    });
+
+    it("should hide shared collections when tenants are disabled", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        rootCollectionItems: [regularCollection],
+        useTenants: false,
+      });
+
+      expect(
+        await screen.findByText("Collections to sync"),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText(regularCollection.name),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Shared collections")).not.toBeInTheDocument();
     });
   });
 });

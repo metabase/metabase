@@ -512,36 +512,6 @@ describe("Remote Sync", () => {
       H.getGitSyncControls().should("contain.text", "main");
     });
 
-    it("should disable 'Set up remote sync' button if git url is not set (#65653)", () => {
-      cy.visit("/admin/settings/remote-sync");
-      cy.button("Set up remote sync").should("be.disabled");
-
-      cy.findByRole("switch", { name: /Auto-sync with git/ }).click({
-        force: true,
-      });
-
-      // Trivial dirty state should not be enough to enable the button
-      cy.button("Set up remote sync").should("be.disabled");
-
-      cy.findByLabelText(/Access Token/i)
-        .should("be.visible")
-        .click()
-        .clear()
-        .type("SecretToken");
-      // Still disabled - url is not set
-      cy.button("Set up remote sync").should("be.disabled");
-
-      cy.findByLabelText(/repository url/i)
-        .scrollIntoView()
-        .should("be.visible")
-        .click()
-        .clear()
-        .type(LOCAL_GIT_URL);
-
-      // Enabled now - url is set
-      cy.button("Set up remote sync").should("be.enabled");
-    });
-
     it("shows an error if git settings are invalid", () => {
       cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       cy.visit("/admin/settings/remote-sync");
@@ -900,37 +870,6 @@ describe("Remote Sync", () => {
     });
 
     describe("admin settings", () => {
-      it("shows the shared tenant collections section, with an empty state, only when remote sync is configured and tenants are enabled", () => {
-        cy.log(
-          "Collections to sync section is hidden when remote sync is not enabled",
-        );
-        cy.visit("/admin/settings/remote-sync");
-        cy.findByTestId("admin-layout-content").within(() => {
-          // Wait for the form to render so the negative assertion is meaningful
-          cy.button("Set up remote sync").should("exist");
-          cy.findByText("Collections to sync").should("not.exist");
-        });
-
-        H.configureGitAndPullChanges("read-write");
-        cy.visit("/admin/settings/remote-sync");
-
-        cy.findByTestId("admin-layout-content").within(() => {
-          cy.findByText("Shared collections").should("exist");
-          cy.findByText("No shared tenant collections found").should("exist");
-        });
-
-        cy.log(
-          "Shared collections sub-section is hidden when tenants are disabled",
-        );
-        cy.request("PUT", "/api/setting/use-tenants", { value: false });
-        cy.reload();
-        cy.findByTestId("admin-layout-content").within(() => {
-          // Wait for the section to render so the negative assertion is meaningful
-          cy.findByText("Collections to sync").should("exist");
-          cy.findByText("Shared collections").should("not.exist");
-        });
-      });
-
       it("should disable sync toggles in read-only mode", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
