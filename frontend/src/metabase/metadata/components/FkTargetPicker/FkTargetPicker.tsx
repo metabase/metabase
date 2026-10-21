@@ -32,14 +32,17 @@ export type FkTargetPickerField = {
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: FkTargetPickerField;
   idFields: Field[];
+  isLoading?: boolean;
   value: FieldId | null;
   onChange: (value: FieldId | null) => void;
 }
 
 export const FkTargetPicker = ({
   comboboxProps,
+  disabled,
   field,
   idFields,
+  isLoading,
   value,
   onChange,
   ...props
@@ -99,7 +102,7 @@ export const FkTargetPicker = ({
         ...comboboxProps,
       }}
       data={data}
-      disabled={!hasIdFields}
+      disabled={disabled || isLoading || !hasIdFields}
       filter={({ options, search }) => {
         const query = search.toLowerCase().trim();
 
@@ -121,7 +124,11 @@ export const FkTargetPicker = ({
         });
       }}
       nothingFoundMessage={t`Didn't find any results`}
-      placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
+      placeholder={
+        isLoading
+          ? t`Loading…`
+          : getFkFieldPlaceholder(field, comparableIdFields)
+      }
       renderOption={(item) => {
         const field = getFieldFromValue(item.option.value);
         const selected = getFieldIdFromValue(item.option.value) === value;

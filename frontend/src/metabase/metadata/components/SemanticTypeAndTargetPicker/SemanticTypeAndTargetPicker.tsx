@@ -15,6 +15,7 @@ interface SemanticTypeAndTargetPickerProps {
   description?: string;
   field: Field;
   idFields: Field[];
+  isLoadingIdFields?: boolean;
   label?: string;
   selectProps?: Omit<SelectProps, "data" | "value" | "onChange">;
   semanticTypeError?: ReactNode;
@@ -29,6 +30,7 @@ export const SemanticTypeAndTargetPicker = ({
   description,
   field,
   idFields,
+  isLoadingIdFields,
   label,
   selectProps,
   semanticTypeError,
@@ -99,6 +101,7 @@ export const SemanticTypeAndTargetPicker = ({
             {...selectProps}
             field={field}
             idFields={idFields}
+            isLoading={isLoadingIdFields}
             value={field.fk_target_field_id}
             onChange={handleChangeTarget}
           />

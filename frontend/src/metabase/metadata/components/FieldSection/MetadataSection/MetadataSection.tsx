@@ -35,10 +35,11 @@ const MetadataSectionBase = ({
   onTrackMetadataChange,
 }: MetadataSectionBaseProps) => {
   const id = getRawTableFieldId(field);
-  const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
-    id: table.db_id,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  });
+  const { data: idFields = [], isLoading: isLoadingIdFields } =
+    useListDatabaseIdFieldsQuery({
+      id: table.db_id,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    });
   const [updateField] = useUpdateFieldMutation();
   const semanticTypeError = useMemo(() => {
     return getSemanticTypeError(table, field, getFieldHref);
@@ -77,6 +78,7 @@ const MetadataSectionBase = ({
         description={t`What this data represents`}
         field={field}
         idFields={idFields}
+        isLoadingIdFields={isLoadingIdFields}
         label={t`Semantic type`}
         selectProps={{ disabled }}
         semanticTypeError={semanticTypeError}

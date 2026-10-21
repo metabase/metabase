@@ -42,22 +42,28 @@ const ID_FIELD_2 = createMockField({
 const ID_FIELDS = [ID_FIELD_1, ID_FIELD_2];
 
 interface SetupOpts {
+  disabled?: boolean;
   field?: Field;
   idFields?: Field[];
+  isLoading?: boolean;
   value?: FieldId | null;
 }
 
 function setup({
+  disabled,
   field = FIELD,
   idFields = ID_FIELDS,
+  isLoading,
   value = null,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
   const { rerender } = render(
     <FkTargetPicker
+      disabled={disabled}
       field={field}
       idFields={idFields}
+      isLoading={isLoading}
       value={value}
       onChange={onChange}
     />,
@@ -163,5 +169,34 @@ describe("FkTargetPicker", () => {
     expect(
       screen.getByPlaceholderText("Field access denied"),
     ).toBeInTheDocument();
+  });
+
+  it("should show a loading placeholder instead of the no access one while the keys load", () => {
+    setup({
+      field: createMockField({
+        ...FIELD,
+        semantic_type: "type/FK",
+        fk_target_field_id: getNextId(),
+      }),
+      idFields: [],
+      isLoading: true,
+    });
+
+    expect(screen.getByPlaceholderText("Loading…")).toBeDisabled();
+    expect(
+      screen.queryByPlaceholderText("Field access denied"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should stay disabled without keys even when not disabled by the caller", () => {
+    setup({ idFields: [], disabled: false });
+
+    expect(screen.getByPlaceholderText("No key available")).toBeDisabled();
+  });
+
+  it("should be disabled when disabled by the caller", () => {
+    setup({ disabled: true });
+
+    expect(screen.getByPlaceholderText("Select a target")).toBeDisabled();
   });
 });
