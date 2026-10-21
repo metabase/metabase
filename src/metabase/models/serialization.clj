@@ -1974,7 +1974,8 @@
 
 (defn nested
   "Nested entities; `opts` may give `:sort-by`, or `:sort-by-parent`, a fn of the parent returning the `:sort-by` fn,
-  `:key-field` and `:delete-children!`, a fn of the parent id."
+  `:key-field` and `:delete-children!`, a fn of the parent id. `:sort-by-parent` sorts these children only and is not
+  passed on to their own nested entities."
   [model backward-fk opts]
   (let [model-name       (name model)
         sorter           (if-let [sort-by-parent (:sort-by-parent opts)]

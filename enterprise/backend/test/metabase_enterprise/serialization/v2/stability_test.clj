@@ -44,13 +44,16 @@
           (extract/extract extract-opts))))
 
 (defn- shift-local-ids!
-  "Make every identity column of the H2 app DB start at a different number past `start`, so loaded entities get other
-  local ids."
+  "Make every identity column of the H2 app DB start at a different number past its seeded rows and `start`, so loaded
+  entities get other local ids."
   [start]
   (doseq [[i {table :table_name column :column_name}]
           (map-indexed vector (t2/query ["SELECT table_name, column_name FROM information_schema.columns
-                                          WHERE is_identity = 'YES' AND table_schema = 'PUBLIC'"]))]
-    (t2/query [(format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" RESTART WITH %d" table column (+ start (* 37 i)))])))
+                                          WHERE is_identity = 'YES' AND table_schema = 'PUBLIC'
+                                          ORDER BY table_name, column_name"]))
+          :let [seeded-max (:max (first (t2/query [(format "SELECT MAX(\"%s\") AS \"max\" FROM \"%s\"" column table)])))]]
+    (t2/query [(format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" RESTART WITH %d"
+                       table column (+ (or seeded-max 0) start (* 37 i)))])))
 
 (defn- export-of-load!
   "Load `dir` into an empty app DB with local ids past `start`, store its export into `out-dir` and return

@@ -623,6 +623,8 @@
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
+               ;; older exports copied the local user id; re-importing those files on the same instance, e.g. a
+               ;; remote sync pull before the first new export, keeps the right owner, where nil would drop it
                :owner_user_id  (update (serdes/fk :model/User) :import
                                        (fn [import-user] #(if (int? %) % (import-user %))))
                :transform_id   (serdes/fk :model/Transform)}
