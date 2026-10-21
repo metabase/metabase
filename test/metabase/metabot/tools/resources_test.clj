@@ -292,13 +292,13 @@
    ["metabase://model/4/fields"                            :card-fields                ["model" "4"]]
    ["metabase://model/4/fields/99"                         :card-field                 ["model" "4" "99"]]
    ["metabase://model/4/fields/c75/17"                     :card-field                 ["model" "4" "c75/17"]]
-   ["metabase://model/4/sources"                           :card-sources               ["4" nil]]
-   ["metabase://model/4/sources?page=2"                    :card-sources               ["4" {:page "2"}]]
+   ["metabase://model/4/sources"                           :card-sources               ["model" "4" nil]]
+   ["metabase://model/4/sources?page=2"                    :card-sources               ["model" "4" {:page "2"}]]
    ;; ----- Question (a card type) -----
    ["metabase://question/5"                                :card                       ["question" "5"]]
    ["metabase://question/5/fields"                         :card-fields                ["question" "5"]]
    ["metabase://question/5/fields/99"                      :card-field                 ["question" "5" "99"]]
-   ["metabase://question/5/sources"                        :card-sources               ["5" nil]]
+   ["metabase://question/5/sources"                        :card-sources               ["question" "5" nil]]
    ;; ----- Metric -----
    ["metabase://metric/6"                                  :metric                     ["6"]]
    ["metabase://metric/6/dimensions"                       :metric-dimensions          ["6"]]
@@ -391,7 +391,7 @@
     (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
                           (#'read-resource/dispatch "metabase://table/orders")))
     (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
-                          (#'read-resource/dispatch "metabase://collection/root"))))
+                          (#'read-resource/dispatch "metabase://collection/our-analytics"))))
   (testing "the error carries agent-error metadata"
     (let [e (try
               (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")
@@ -1506,14 +1506,6 @@
         (is (= :recoverable class))
         (is (str/includes? text (str "**Error:** Table " (mt/id :products) " was not found.")))))))
 
-(deftest read-inactive-field-parent-test
-  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :active false}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (let [uri (str "metabase://table/" table-id "/fields/123")
-            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
-        (is (= :recoverable class))
-        (is (str/includes? text (str "**Error:** Table " table-id " was not found.")))))))
-
 (deftest read-field-refusal-test
   (mt/with-current-user (mt/user->id :crowberto)
     (doseq [status [403 404]]
@@ -1937,3 +1929,69 @@
       (let [output (:output (read-uris {:uris [(str "metabase://table/" (mt/id :orders))]}))]
         (is (str/includes? output "### Related Tables") "premise: ORDERS renders related tables")
         (is (not (re-find #"(?i)for SQL queries" output)))))))
+
+(deftest card-kind-canonical-uri-test
+  (let [mp (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+    (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
+                   :model/Card {model-id :id} {:type :model :dataset_query query}
+                   :model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate query (lib/count))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [[actual id] [["question" question-id] ["model" model-id] ["metric" metric-id]]
+                requested ["question" "model"]
+                :when (not= actual requested)
+                suffix ["" "/fields" "/fields/123" "/sources"]
+                :let [canonical-suffix (if (= actual "metric")
+                                         (case suffix "/fields" "/dimensions"
+                                               "/fields/123" "/dimensions/123" "")
+                                         suffix)
+                      uri (str "metabase://" requested "/" id suffix)
+                      canonical (str "metabase://" actual "/" id canonical-suffix)]]
+          (testing uri
+            (is (= (str "Card " id " is a " actual ", not a " requested ".\n"
+                        "Read `" canonical "` instead.")
+                   (-> (read-uris {:uris [uri]}) :resources first :error)))))))))
+
+(deftest inactive-table-resources-test
+  (mt/with-temp [:model/Table {id :id} {:db_id (mt/id) :active false}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [suffix ["" "/fields" "/fields/123" "/derived"]]
+        (let [uri (str "metabase://table/" id suffix)]
+          (testing uri
+            (is (str/starts-with? (or (-> (read-uris {:uris [uri]}) :resources first :error) "")
+                                  (str "Table " id " is inactive.")))))))))
+
+(deftest missing-schema-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table _ {:db_id db-id :schema "PUBLIC" :active true}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [schema ["public" "missing"]]
+        (let [uri (str "metabase://database/" db-id "/schemas/" schema "/tables")
+              error (-> (read-uris {:uris [uri]}) :resources first :error)]
+          (is (str/includes? (or error "") "Schema names are case-sensitive."))
+          (is (str/includes? (or error "") (str "metabase://database/" db-id "/schemas")))))
+      (is (not (error? (read-uris {:uris [(str "metabase://database/" db-id "/schemas/PUBLIC/tables")]})))))))
+
+(deftest root-collection-resources-test
+  (mt/with-temp [:model/Collection {coll-id :id} {:location "/"}
+                 :model/Card {card-id :id} {:collection_id nil}
+                 :model/Dashboard {dash-id :id} {:collection_id nil}
+                 :model/Document {doc-id :id} {:collection_id nil}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [[suffix ids] [["" #{["collection" "root"]}]
+                            ["/items" #{["collection" coll-id] ["question" card-id]
+                                        ["dashboard" dash-id] ["document" doc-id]}]
+                            ["/subcollections" #{["collection" coll-id]}]]]
+        (let [result (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+              structured (get-in result [:resources 0 :content :structured-output])]
+          (is (not (error? result)))
+          (is (set/subset? ids (set (map (juxt :type :id) (if (= suffix "") [structured] (:items structured)))))))))
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [suffix ["" "/items" "/subcollections"]]
+          (is (error? (read-uris {:uris [(str "metabase://collection/root" suffix)]}))))))))
+
+(deftest ^:parallel document-numeric-id-test
+  (let [uri "metabase://document/not-a-number"
+        error (-> (read-uris {:uris [uri]}) :resources first :error)]
+    (is (str/includes? (or error "") "Resource URIs use the numeric entity id"))))

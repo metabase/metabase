@@ -68,6 +68,7 @@
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
@@ -121,7 +122,10 @@
                   "metabase://database/{id}/schemas/{schema_name}/tables"]
    "collection"  ["metabase://collection/{id}"
                   "metabase://collection/{id}/items"
-                  "metabase://collection/{id}/subcollections"]
+                  "metabase://collection/{id}/subcollections"
+                  "metabase://collection/root"
+                  "metabase://collection/root/items"
+                  "metabase://collection/root/subcollections"]
    "table"       ["metabase://table/{id}"
                   "metabase://table/{id}/fields"
                   "metabase://table/{id}/fields/{field_id}"
@@ -217,12 +221,41 @@
    :recovery [{:uses #{}
                :text (str "Read `" card-uri "` instead.")}]})
 
+(tools/defrecoverable wrong-card-kind!
+  "Report a question or model URI that names a different kind of card."
+  {:payload [:map {:closed true}
+             [:id :int]
+             [:expected [:enum "question" "model"]]
+             [:actual [:enum "question" "model" "metric"]]
+             [:uri :string]]}
+  [{:keys [id expected actual uri]}]
+  {:message (str "Card " id " is a " actual ", not a " expected ".")
+   :recovery [{:uses #{} :text (str "Read `" uri "` instead.")}]})
+
 (tools/defrecoverable skipped-uri!
   "Report a URI beyond the per-call read limit."
   {:payload [:map {:closed true}]}
   [_]
   {:message (str "Skipped: only the first " max-concurrent-uris " URIs are read per call.")
    :recovery [{:uses #{} :text "Request this URI in another call."}]})
+
+(tools/defrecoverable inactive-table!
+  "Report a readable table that is no longer active."
+  {:payload [:map {:closed true} [:id :int] [:database-id :int]]}
+  [{:keys [id database-id]}]
+  {:message (str "Table " id " is inactive.")
+   :recovery [{:uses #{}
+               :text (str "Read `metabase://database/" database-id "/tables` to find active tables.")}]})
+
+(tools/defrecoverable missing-schema!
+  "Report a database schema with no active tables."
+  {:payload [:map {:closed true} [:database-id :int] [:schema :string]]
+   :status-code 404}
+  [{:keys [database-id schema]}]
+  {:message (str "Schema " (pr-str schema) " was not found in database " database-id "."
+                 " Schema names are case-sensitive.")
+   :recovery [{:uses #{}
+               :text (str "Read `metabase://database/" database-id "/schemas` for available schema names.")}]})
 
 (tools/defrecoverable invalid-page!
   "A `?page=N` outside the list's range."
@@ -550,21 +583,32 @@
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        tables (->> (metabot.db/active-tables-in-schema db-id schema-name)
+        rows   (metabot.db/active-tables-in-schema db-id schema-name)
+        _      (when-not (seq rows)
+                 (missing-schema! {:database-id db-id :schema schema-name}))
+        tables (->> rows
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-schema-tables tables query-params)))
 
 ;; ----- Collection drill-down -----
 
+(defn- readable-collection [id-str]
+  (if (= id-str "root")
+    (api/read-check (collection/root-collection-with-ui-details nil))
+    (api/read-check :model/Collection (parse-long id-str))))
+
+(defn- child-collection-location [{:keys [id location]}]
+  (if (= id "root") "/" (str location id "/")))
+
 (defn- fetch-collection [id-str]
-  (let [coll (api/read-check :model/Collection (parse-long id-str))]
+  (let [coll (readable-collection id-str)]
     (entity-result (present-collection coll))))
 
 (defn- fetch-collection-items [id-str query-params]
   (documents/with-content-gate-cache
     (let [coll-id        (parse-long id-str)
-          coll           (api/read-check :model/Collection coll-id)
+          coll           (readable-collection id-str)
           cards          (->> (metabot.db/cards-in-collection coll-id)
                               (filter mi/can-read?))
           dashboards     (->> (metabot.db/dashboards-in-collection coll-id)
@@ -572,7 +616,7 @@
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
           documents      (->> (metabot.db/documents-in-collection coll-id)
                               (filter mi/can-read?))
-          subcollections (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
+          subcollections (->> (metabot.db/unarchived-collections-at-location (child-collection-location coll))
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -581,9 +625,8 @@
       (list-result :collection-items items query-params))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
-  (let [coll-id (parse-long id-str)
-        coll    (api/read-check :model/Collection coll-id)
-        subs    (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
+  (let [coll    (readable-collection id-str)
+        subs    (->> (metabot.db/unarchived-collections-at-location (child-collection-location coll))
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
@@ -599,12 +642,13 @@
     (warehouses/get-database db-id)))
 
 (defn check-table-resource-database
-  "Require that `table-id`'s backing database is addressable as a Metabot resource (see
-  [[check-resource-database]]). Exported for [[metabase.metabot.tools.metadata]], which needs the
-  same guard for the `get_field_values` tool."
+  "Require that `table-id`'s backing database is addressable as a Metabot resource and return the table.
+
+  See [[check-resource-database]]. Also used by [[metabase.metabot.tools.metadata]]."
   [table-id]
   (when-let [table (api/read-check :model/Table table-id)]
-    (check-resource-database (:db_id table))))
+    (check-resource-database (:db_id table))
+    table))
 
 (defn check-card-resource-database
   "Require that `card-id`'s backing database is addressable as a Metabot resource, and return the card.
@@ -622,13 +666,30 @@
                         :model/Segment (metabot.db/segment-table-id id))]
     (check-table-resource-database table-id)))
 
+(defn- active-table-resource [id]
+  (let [table (check-table-resource-database id)]
+    (when-not (:active table)
+      (inactive-table! {:id id :database-id (:db_id table)}))
+    table))
+
+(defn- check-card-kind [id expected & path-segments]
+  (let [{actual :type :as card} (check-card-resource-database id)]
+    (when-not (= actual expected)
+      (let [path-segments (if (= actual :metric)
+                            (when (= (first path-segments) "fields")
+                              (cons "dimensions" (rest path-segments)))
+                            path-segments)]
+        (wrong-card-kind! {:id id :expected (name expected) :actual (name actual)
+                           :uri (apply llm-shape/metabase-uri actual id path-segments)})))
+    card))
+
 (defn- table-details
   "Shared `entity-details/get-table-details` call for both /table/{id} and /table/{id}/fields.
    `entity-type` is :table, :model, or :question."
   [entity-type id with-fields?]
   (case entity-type
-    :table (check-table-resource-database id)
-    (:model :question) (check-card-resource-database id))
+    :table (active-table-resource id)
+    (:model :question) (apply check-card-kind id entity-type (when with-fields? ["fields"])))
   (entity-details/get-table-details {:entity-type          entity-type
                                      :entity-id            id
                                      :with-fields?         with-fields?
@@ -653,10 +714,8 @@
         result))))
 
 (defn- fetch-table-field [id-str field-id]
-  (let [table-id (parse-long id-str)
-        table    (api/read-check :model/Table table-id)]
-    (api/check-404 (:active table))
-    (check-resource-database (:db_id table))
+  (let [table-id (parse-long id-str)]
+    (active-table-resource table-id)
     (field-values {:entity-type "table"
                    :entity-id   table-id
                    :field-id    field-id
@@ -664,9 +723,8 @@
 
 (defn- fetch-table-derived [id-str query-params]
   (let [table-id   (parse-long id-str)
-        table      (api/read-check :model/Table table-id)
+        table      (active-table-resource table-id)
         db-id      (:db_id table)
-        _          (check-resource-database db-id)
         cards      (->> (metabot.db/cards-for-table table-id)
                         (filter mi/can-read?)
                         (mapv present-card))
@@ -693,15 +751,14 @@
 
 (defn- fetch-card-field [type-str id-str field-id]
   (let [card-id (parse-long id-str)]
-    (check-card-resource-database card-id)
+    (check-card-kind card-id (keyword type-str) "fields" field-id)
     (field-values {:entity-type type-str
                    :entity-id   card-id
                    :field-id    field-id
                    :limit       30})))
 
-(defn- fetch-card-sources [id-str query-params]
-  (let [card (api/read-check :model/Card (parse-long id-str))]
-    (check-resource-database (:database_id card))
+(defn- fetch-card-sources [type-str id-str query-params]
+  (let [card (check-card-kind (parse-long id-str) (keyword type-str) "sources")]
     (list-result :card-sources (card-sources-items card) query-params)))
 
 ;; ----- Metric -----
@@ -961,7 +1018,7 @@
 (def ^:private numeric-id-uri-types
   "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
   #{"database" "collection" "table" "model" "question" "metric"
-    "measure" "segment" "transform" "dashboard"})
+    "measure" "segment" "transform" "dashboard" "document"})
 
 (defn- check-numeric-id-segment!
   "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
@@ -971,6 +1028,7 @@
   [uri [type-seg id-seg]]
   (when (and (numeric-id-uri-types type-seg)
              (some? id-seg)
+             (not (and (= type-seg "collection") (= id-seg "root")))
              (nil? (parse-long id-seg)))
     (non-numeric-id! {:uri uri :kind type-seg :id id-seg})))
 
@@ -1001,7 +1059,8 @@
   [[type-seg id-seg]]
   (if-let [kind (get uri-entity-kinds type-seg)]
     (cond-> {:kind kind}
-      (some-> id-seg parse-long) (assoc :id (parse-long id-seg)))
+      (some-> id-seg parse-long) (assoc :id (parse-long id-seg))
+      (and (= type-seg "collection") (= id-seg "root")) (assoc :id "root"))
     {}))
 
 (defn- dispatch
@@ -1047,7 +1106,7 @@
              [(t :guard #{"model" "question"}) id]            (fetch-card t id)
              [(t :guard #{"model" "question"}) id "fields"]   (fetch-card-fields t id)
              [(t :guard #{"model" "question"}) id "fields" & rst] (fetch-card-field t id (str/join "/" rst))
-             [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources id query-params)
+             [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources t id query-params)
 
              ;; Metric
              ["metric" id]                                    (fetch-metric id)
