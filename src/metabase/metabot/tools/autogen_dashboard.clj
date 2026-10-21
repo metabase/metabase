@@ -41,20 +41,20 @@
                :text "Call `search` to find another source and use an id from the results."}]})
 
 (tools/defrecoverable incomplete-query!
-  "The conversation query is incomplete, as a draft is before the user picks its data."
+  "The conversation query is incomplete."
   {:payload [:map {:closed true}
              [:query-id :string]]}
   [{:keys [query-id]}]
-  {:message  (str "Query " query-id " is not complete enough for an X-ray, since it has no data source yet.")
+  {:message  (str "Query " query-id " has no data source yet, so X-ray cannot analyze it.")
    :recovery [{:uses #{"search"}
                :text "Call `search` to find a table, model or metric to X-ray instead."}]})
 
 (tools/defrecoverable unsupported-native-query!
-  "The conversation query is native."
+  "X-ray cannot analyze an unsaved SQL query."
   {:payload [:map {:closed true}
              [:query-id :string]]}
   [{:keys [query-id]}]
-  {:message  (str "Query " query-id " is an unsaved native query, which X-ray does not support.")
+  {:message  (str "Query " query-id " is an unsaved SQL query, which X-ray does not support.")
    :recovery [{:uses #{"search"}
                :text "Call `search` to find a table, model, metric or saved question to X-ray instead."}]})
 
@@ -68,12 +68,13 @@
     (when (or (:archived entity) (false? (:active entity)))
       (unavailable-source! {:kind kind :id id}))
     {:entity entity
-     ;; X-ray has no page for metrics, and its question page takes a card of any type
+     ;; X-ray has no page for metrics, but its question page accepts any card type
      :path   (str "/auto/dashboard/" (name (if (= :metric kind) :question kind)) "/" id)}))
 
 (defn- source-value?
-  "Whether `v` names a source, rather than being a placeholder for a field the model does not use.
-  The model sometimes sends `nil`, `0` or `\"\"` there instead of leaving the field out."
+  "Return whether `v` identifies a source.
+
+  The model sometimes sends `nil`, `0` or `\"\"` for unused fields instead of leaving them out."
   [v]
   (or (pos-int? v)
       (and (string? v) (not (str/blank? v)))))
@@ -92,7 +93,6 @@
       report_id (readable-source :question report_id)
 
       query_id
-      ;; For query_id, we need to resolve from memory
       (let [queries-state (get-in memory [:state :queries] {})
             query (get queries-state query_id)
             mbql-query (when (and (:database query) (lib/normalized-query-type query))
@@ -105,7 +105,6 @@
                            :available-queries (keys queries-state)})))
         (when-not (mr/validate :metabase.lib.schema/query mbql-query)
           (incomplete-query! {:query-id query_id}))
-        ;; For queries, we create a transient card-like structure
         (let [entity (tools/with-entity {:kind :query :id query_id}
                        (xrays/adhoc-query-read-check {:dataset_query query}))]
           (when (lib/native? mbql-query)
