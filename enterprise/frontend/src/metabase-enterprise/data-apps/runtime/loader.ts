@@ -8,11 +8,11 @@ import { pick } from "underscore";
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
 import { DATA_APP_REALM_HOST_URL, getSubpathSafeUrl } from "metabase/urls";
-import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
+import { createDataAppSandbox } from "metabase-enterprise/data-apps/sandbox/sandbox";
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
   type DataAppMetabaseProviderProps,
-} from "metabase-enterprise/data_apps/sandbox/types";
+} from "metabase-enterprise/data-apps/sandbox/types";
 
 export interface LoadedDataApp {
   component: React.ComponentType<Record<string, unknown>>;

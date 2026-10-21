@@ -3,8 +3,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ManageDataAppGroupsPage } from "./admin/ManageDataAppGroupsPage";
 import { ManageDataAppsPage } from "./admin/ManageDataAppsPage";
+import { getRoutes, registerDataAppsPagePrefetch } from "./host/routes";
 import { DataAppsNavbarSection } from "./navbar/DataAppsNavbarSection";
-import { getRoutes, registerDataAppsPagePrefetch } from "./routes";
 
 /**
  * Initialize data-apps plugin features.

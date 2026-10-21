@@ -1,6 +1,6 @@
 import { type ComponentType, useEffect, useState } from "react";
 
-import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data_apps/sandbox/types";
+import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
 import {
   DataAppBundleError,

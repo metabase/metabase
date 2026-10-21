@@ -9,7 +9,7 @@ import {
   DATA_APP_ERROR_MESSAGE_TYPE,
   DATA_APP_LOAD_TIMEOUT_MS,
   DATA_APP_READY_MESSAGE_TYPE,
-} from "../../constants";
+} from "../../../constants";
 
 import { DataAppView } from "./DataAppView";
 

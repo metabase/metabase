@@ -28,7 +28,7 @@ import {
   DATA_APP_READY_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
   getOutdatedDataAppMessage,
-} from "../../constants";
+} from "../../../constants";
 import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "../../lib/derive-iframe-src";
 import { isCrossOriginError } from "../../lib/is-cross-origin-error";
