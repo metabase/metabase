@@ -1,7 +1,7 @@
 (ns metabase.lib.field-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
@@ -28,6 +28,8 @@
    [metabase.lib.validate :as lib.validate]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -414,7 +416,7 @@
 (deftest ^:parallel field-with-temporal-bucket-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))
         field (lib/ref (lib/with-temporal-bucket (meta/field-metadata :checkins :date) :day-of-month))]
-    (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
+    (is (=? [:field {:temporal-unit :day-of-month} "DATE"]
             field))
     (testing "(lib/temporal-bucket <field-ref>)"
       (is (= {:lib/type :option/temporal-bucketing
@@ -469,7 +471,7 @@
                     :base-type      :type/Text
                     :effective-type effective-type
                     :temporal-unit  unit}
-                   integer?]
+                   string?]
                   (lib/ref x')))))
       (testing "remove the temporal unit"
         (let [x'' (lib/with-temporal-bucket x' nil)]
@@ -553,7 +555,7 @@
                              :lib/type    ::lib.binning/binning
                              :metadata-fn fn?)
         field         (lib/ref (lib/with-binning (meta/field-metadata :orders :subtotal) binning))]
-    (is (=? [:field {:binning binning} (meta/id :orders :subtotal)]
+    (is (=? [:field {:binning binning} "SUBTOTAL"]
             field))
     (testing "(lib/binning <column-metadata>)"
       (is (=? binning-typed
@@ -585,7 +587,7 @@
         (is (=? [:field
                  {:lib/uuid string?
                   :binning  binning1}
-                 integer?]
+                 string?]
                 (lib/ref x'))))
       (testing "remove the binning setting"
         (let [x'' (lib/with-binning x' nil)]
@@ -737,7 +739,7 @@
         (testing "Implicitly joinable columns should NOT be given a join alias"
           (is (=? {:stages [{:order-by [[:asc {} [:field
                                                   (complement :join-alias)
-                                                  (meta/id :categories :name)]]]}]}
+                                                  "NAME"]]]}]}
                   query')))
         (is (= "Venues, Sorted by Category → Name ascending"
                (lib/describe-query query'))))
@@ -944,7 +946,7 @@
                                  (first (lib.binning/numeric-binning-strategies)))))))))
 
 (defn- sorted-fields [fields]
-  (sort-by (comp str last) fields))
+  (sort-by (juxt (comp str last) (comp str :source-field-name second)) fields))
 
 (defn- fields-of
   ([query] (fields-of query -1))
@@ -953,15 +955,15 @@
 
 (deftest ^:parallel populate-fields-for-stage-test
   (testing "simple table query"
-    (is (=? [[:field {} (meta/id :orders :id)]
-             [:field {} (meta/id :orders :subtotal)]
-             [:field {} (meta/id :orders :total)]
-             [:field {} (meta/id :orders :tax)]
-             [:field {} (meta/id :orders :discount)]
-             [:field {} (meta/id :orders :quantity)]
-             [:field {} (meta/id :orders :created-at)]
-             [:field {} (meta/id :orders :product-id)]
-             [:field {} (meta/id :orders :user-id)]]
+    (is (=? (sorted-fields [[:field {} "ID"]
+                            [:field {} "SUBTOTAL"]
+                            [:field {} "TOTAL"]
+                            [:field {} "TAX"]
+                            [:field {} "DISCOUNT"]
+                            [:field {} "QUANTITY"]
+                            [:field {} "CREATED_AT"]
+                            [:field {} "PRODUCT_ID"]
+                            [:field {} "USER_ID"]])
             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                 (#'lib.field/populate-fields-for-stage -1)
                 fields-of)))))
@@ -970,7 +972,7 @@
   (testing "aggregated"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate -1 (lib/count)))]
-      (is (=? [[:aggregation {} (-> query lib/aggregations first lib.options/uuid)]]
+      (is (=? (sorted-fields [[:aggregation {} (-> query lib/aggregations first lib.options/uuid)]])
               (-> query
                   (#'lib.field/populate-fields-for-stage -1)
                   fields-of))))))
@@ -982,7 +984,7 @@
           breakoutable (lib/breakoutable-columns query -1)
           created-at   (first (filter #(= (:name %) "CREATED_AT") breakoutable))
           query        (lib/breakout query -1 (lib/with-temporal-bucket created-at :month))]
-      (is (=? (sorted-fields [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
+      (is (=? (sorted-fields [[:field {:temporal-unit :month} "CREATED_AT"]
                               [:aggregation {} (-> query lib/aggregations first lib.options/uuid)]])
               (-> query
                   (#'lib.field/populate-fields-for-stage -1)
@@ -995,22 +997,22 @@
                    (lib/join <> -1 (->> (meta/table-metadata :people)
                                         (lib/suggested-join-conditions <> -1)
                                         (lib/join-clause (meta/table-metadata :people)))))
-          fields [[:field {} (meta/id :orders :id)]
-                  [:field {} (meta/id :orders :subtotal)]
-                  [:field {} (meta/id :orders :total)]
-                  [:field {} (meta/id :orders :tax)]
-                  [:field {} (meta/id :orders :discount)]
-                  [:field {} (meta/id :orders :quantity)]
-                  [:field {} (meta/id :orders :created-at)]
-                  [:field {} (meta/id :orders :product-id)]
-                  [:field {} (meta/id :orders :user-id)]]]
+          fields [[:field {} "ID"]
+                  [:field {} "SUBTOTAL"]
+                  [:field {} "TOTAL"]
+                  [:field {} "TAX"]
+                  [:field {} "DISCOUNT"]
+                  [:field {} "QUANTITY"]
+                  [:field {} "CREATED_AT"]
+                  [:field {} "PRODUCT_ID"]
+                  [:field {} "USER_ID"]]]
       (testing "when set to :all"
-        (is (=? fields
+        (is (=? (sorted-fields fields)
                 (-> query
                     (#'lib.field/populate-fields-for-stage -1)
                     fields-of))))
       (testing "when given as a list"
-        (is (=? fields
+        (is (=? (sorted-fields fields)
                 (let [returned (lib/returned-columns query -1 (first (lib/joins query -1)))]
                   (-> query
                       (lib.util/update-query-stage -1 update-in [:joins 0] lib/with-join-fields (take 3 returned))
@@ -1023,8 +1025,8 @@
       (testing "starts with no :fields"
         (is (nil? (-> query (lib.util/query-stage -1) :fields))))
       (testing "populates correctly"
-        (is (=? [[:field {} "USER_ID"]
-                 [:field {} "count"]]
+        (is (=? (sorted-fields [[:field {} "USER_ID"]
+                                [:field {} "count"]])
                 (-> query
                     (#'lib.field/populate-fields-for-stage -1)
                     fields-of)))))))
@@ -1040,14 +1042,14 @@
       ;; sanity check that the query is constructed properly.
       (is (=? (sorted-fields subset)
               (fields-of field-query)))
-      (let [subset-ids (set (map last subset))]
-        (is (not (subset-ids (:id created-at)))))
+      (let [subset-names (set (map last subset))]
+        (is (not (subset-names (:name created-at)))))
       (testing "does nothing with implicit :all"
         (is (nil? (-> query
                       (lib/add-field -1 created-at)
                       (lib/fields -1)))))
       (testing "adds the column to the :fields list if missing"
-        (is (=? (sorted-fields (conj subset [:field {} (:id created-at)]))
+        (is (=? (sorted-fields (conj subset [:field {} (:name created-at)]))
                 (-> field-query
                     (lib/add-field -1 created-at)
                     fields-of))))
@@ -1205,12 +1207,12 @@
                     " everything from the stage before that)")
         (is (nil? (fields-of query))))
       (testing "removing the column coming from the first breakout"
-        (is (=? [[:field {} "CREATED_AT_2"] [:field {} "count"]]
+        (is (=? (sorted-fields [[:field {} "CREATED_AT_2"] [:field {} "count"]])
                 (-> query
                     (lib/remove-field 1 (first columns))
                     fields-of))))
       (testing "removing the column coming from the second breakout"
-        (is (=? [[:field {} "CREATED_AT"] [:field {} "count"]]
+        (is (=? (sorted-fields [[:field {} "CREATED_AT"] [:field {} "count"]])
                 (-> query
                     (lib/remove-field 1 (second columns))
                     fields-of))))
@@ -1254,7 +1256,7 @@
                         first)
           result   (lib/add-field query -1 join-col)]
       (is (= :none (lib/join-fields (first (lib/joins query)))))
-      (is (=? [[:field {} (:id join-col)]]
+      (is (=? [[:field {} (:name join-col)]]
               (lib/join-fields (first (lib/joins result))))))))
 
 (deftest ^:parallel remove-field-expression-from-explicit-fields-test
@@ -1314,7 +1316,7 @@
               (fields-of field-query)))
       (testing "removes the column from the :fields list if present"
         (is (=? (->> subset
-                     (remove (comp #{(meta/id :orders :id)} last))
+                     (remove (comp #{"ID"} last))
                      (map #(lib.options/update-options % assoc :lib/uuid string?))
                      sorted-fields)
                 (-> field-query
@@ -1554,11 +1556,11 @@
     (let [query   (lib.tu/query-with-source-card)
           columns (lib/visible-columns query)]
       (testing "allows removing each of the fields"
-        (is (=? [[:field {} "USER_ID"]]
+        (is (=? (sorted-fields [[:field {} "USER_ID"]])
                 (-> query
                     (lib/remove-field -1 (second columns))
                     fields-of)))
-        (is (=? [[:field {} "count"]]
+        (is (=? (sorted-fields [[:field {} "count"]])
                 (-> query
                     (lib/remove-field -1 (first columns))
                     fields-of))))
@@ -1583,17 +1585,17 @@
           [created-at sum] (lib/visible-columns query 1)]
       (testing "populating :fields"
         (is (nil? (:fields stage1)))
-        (is (=? [[:field {} "CREATED_AT"]
-                 [:field {} "sum"]]
+        (is (=? (sorted-fields [[:field {} "CREATED_AT"]
+                                [:field {} "sum"]])
                 (-> query
                     (#'lib.field/populate-fields-for-stage 1)
                     fields-of))))
       (testing "removing each field"
-        (is (=? [[:field {} "CREATED_AT"]]
+        (is (=? (sorted-fields [[:field {} "CREATED_AT"]])
                 (-> query
                     (lib/remove-field 1 sum)
                     fields-of)))
-        (is (=? [[:field {} "sum"]]
+        (is (=? (sorted-fields [[:field {} "sum"]])
                 (-> query
                     (lib/remove-field 1 created-at)
                     fields-of))))
@@ -1620,11 +1622,11 @@
         (let [query   (lib/append-stage native-query)
               columns (lib/visible-columns query 1)]
           (testing "removing each field"
-            (is (=? [[:field {} "sum"]]
+            (is (=? (sorted-fields [[:field {} "sum"]])
                     (-> query
                         (lib/remove-field 1 (first columns))
                         fields-of)))
-            (is (=? [[:field {} "abc"]]
+            (is (=? (sorted-fields [[:field {} "abc"]])
                     (-> query
                         (lib/remove-field 1 (second columns))
                         fields-of))))
@@ -2627,7 +2629,7 @@
       (let [query-with-reviews-id (lib/add-field query-without-reviews-cols -1 reviews-id)
             query-joins (lib/joins query-with-reviews-id)]
         (testing "reviews.ID is added to the Reviews join, not the ID column in the native model join"
-          (is (=? [[:field {:join-alias "Reviews"} (meta/id :reviews :id)]]
+          (is (=? [[:field {:join-alias "Reviews"} "ID"]]
                   (->> query-joins
                        (m/find-first #(= (:alias %) "Reviews"))
                        (lib/join-fields)))))
@@ -2648,10 +2650,7 @@
       (is (=? {:fk-field-id   (meta/id :orders :product-id)
                :fk-field-name "PRODUCT_ID"}
               category))
-      (is (=? [:field
-               {:source-field      (meta/id :orders :product-id)
-                :source-field-name "PRODUCT_ID"}
-               (meta/id :products :category)]
+      (is (=? [:field {:source-field-name "PRODUCT_ID"} "CATEGORY"]
               (lib/ref category))))))
 
 (deftest ^:parallel resolve-implicit-join-ref-without-fk-name-test

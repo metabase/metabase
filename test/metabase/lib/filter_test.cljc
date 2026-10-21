@@ -1,17 +1,20 @@
 (ns metabase.lib.filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.matrix :as matrix]
    [metabase.util.number :as u.number]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -38,11 +41,11 @@
         (test-clause
          [op
           {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :category-id)]
+          [:field {:lib/uuid string?} "CATEGORY_ID"]
           [:field {:base-type    :type/BigInteger
                    :lib/uuid     string?
-                   :source-field (meta/id :venues :category-id)}
-           (meta/id :categories :id)]]
+                   :source-field-name "CATEGORY_ID"}
+           "ID"]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -50,12 +53,12 @@
       (test-clause
        [:between
         {:lib/uuid string?}
-        [:field {:lib/uuid string?} (meta/id :venues :category-id)]
+        [:field {:lib/uuid string?} "CATEGORY_ID"]
         42
         [:field {:base-type    :type/BigInteger
                  :lib/uuid     string?
-                 :source-field (meta/id :venues :category-id)}
-         (meta/id :categories :id)]]
+                 :source-field-name "CATEGORY_ID"}
+         "ID"]]
        lib/between
        venues-category-id-metadata
        42
@@ -64,8 +67,8 @@
       (test-clause
        [:inside
         {:lib/uuid string?}
-        [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :latitude)]
-        [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :longitude)]
+        [:field {:base-type :type/Float, :lib/uuid string?} "LATITUDE"]
+        [:field {:base-type :type/Float, :lib/uuid string?} "LONGITUDE"]
         42.7 13 4 27.3]
        lib/inside
        venues-latitude-metadata
@@ -79,7 +82,7 @@
         (test-clause
          [op
           {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :name)]]
+          [:field {:lib/uuid string?} "NAME"]]
          f
          venues-name-metadata)))
     (testing "string tests"
@@ -90,7 +93,7 @@
         (test-clause
          [op
           {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :name)]
+          [:field {:lib/uuid string?} "NAME"]
           "part"]
          f
          venues-name-metadata
@@ -99,7 +102,7 @@
       (test-clause
        [:time-interval
         {:lib/uuid string?}
-        [:field {:base-type :type/Date, :lib/uuid string?} (meta/id :checkins :date)]
+        [:field {:base-type :type/Date, :lib/uuid string?} "DATE"]
         3
         :day]
        lib/time-interval
@@ -120,7 +123,7 @@
         original-filter
         [:between
          {:lib/uuid string?}
-         [:field {:base-type :type/Integer :lib/uuid string?} (meta/id :venues :category-id)]
+         [:field {:base-type :type/Integer :lib/uuid string?} "CATEGORY_ID"]
          42
          100]
         simple-filtered-query
@@ -155,18 +158,18 @@
                               {:lib/uuid string?}
                               [:field
                                {:base-type :type/Integer, :lib/uuid string?}
-                               (meta/id :venues :category-id)]
+                               "CATEGORY_ID"]
                               42
                               100]
         first-result-filter  first-filter
         second-filter        [:starts-with
                               {:lib/uuid string?}
-                              [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                              [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]
                               "prefix"]
         second-result-filter second-filter
         third-filter         [:contains
                               {:lib/uuid string?}
-                              [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                              [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]
                               "part"]
         third-result-filter  third-filter
         first-add            (lib/filter simple-query
@@ -190,7 +193,7 @@
                                         second-filter
                                         [:contains
                                          {:lib/uuid string?}
-                                         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                                         [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]
                                          "part"]])]
     (testing "adding an initial filter"
       (is (=? filtered-query first-add))
@@ -265,9 +268,10 @@
   (let [metadata-provider (lib/composed-metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:fields [last-online-time is-active]})
-                           meta/metadata-provider)
-        query (lib/query metadata-provider (meta/table-metadata :venues))]
-    (doseq [{exp :name [op & args] :clause options :options} tests]
+                           meta/metadata-provider)]
+    (doseq [{exp :name [op & args] :clause options :options} tests
+            :let [table-id (or (some #(when (map? %) (:table-id %)) args) (meta/id :venues))
+                  query    (lib/query metadata-provider (lib.metadata/table metadata-provider table-id))]]
       (testing exp
         (is (= exp (lib/display-name
                     query -1
