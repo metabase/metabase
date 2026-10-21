@@ -3570,7 +3570,7 @@
                            ["field" {} ["S" "P" "T" "C"]] "x"
                            {"case-sensitive" false}])))))
 
-(deftest ^:parallel merge-string-filter-trailing-options-nested-in-and-test
+(deftest ^:parallel merge-string-filter-trailing-options-nested-in-or-test
   (testing (str "a contains clause with trailing case-sensitivity options, nested inside `or`\n"
                 "inside the stage filters (the gmail-customers repro), is repaired via postwalk")
     (let [q   {"lib/type" "mbql/query"
