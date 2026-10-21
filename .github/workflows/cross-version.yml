@@ -71,7 +71,7 @@ jobs:
             console.log("matrix:", matrix);
 
   test:
-    name: cross-verison test ${{ matrix.source }} → ${{ matrix.target }}
+    name: cross-version test ${{ matrix.source }} → ${{ matrix.target }}
     needs: generate-test-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30

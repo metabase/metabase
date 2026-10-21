@@ -21,6 +21,7 @@ METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 GRACE_PERIOD="${GRACE_PERIOD:-3}"
+CYPRESS_FAILURES_RECORDED=0
 
 # Colors for output
 RED='\033[0;31m'
@@ -101,8 +102,23 @@ run_e2e() {
   fi
 
   log "Running @${phase} e2e tests for ${version} from: e2e/cross-version/${specs_dir##*/}/"
-  CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
-    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
+  local recorded_before
+  recorded_before=$(count_recorded_failures)
+  if ! CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
+    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"; then
+    if (( $(count_recorded_failures) > recorded_before )); then
+      CYPRESS_FAILURES_RECORDED=1
+    fi
+    return 1
+  fi
+}
+
+count_recorded_failures() {
+  if [[ -n "${QUARANTINE_FAILURES_FILE:-}" && -f "$QUARANTINE_FAILURES_FILE" ]]; then
+    wc -l < "$QUARANTINE_FAILURES_FILE" | tr -d ' '
+  else
+    echo 0
+  fi
 }
 
 
@@ -445,6 +461,9 @@ write_junit_result() {
 record_result() {
   local code="$1"
   local name="$SOURCE_VERSION -> $TARGET_VERSION"
+  if (( CYPRESS_FAILURES_RECORDED == 1 )); then
+    code=0
+  fi
   if [[ -n "${CROSS_VERSION_JUNIT_FILE:-}" ]]; then
     write_junit_result "$code" "$name"
   fi
