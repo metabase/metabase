@@ -33,11 +33,15 @@ type UseSaveAnalysisArgs = {
 };
 
 /**
- * Saving a new analysis opens the save modal. Afterwards it moves to the saved
- * analysis, or to the dashboard it was saved into. Saving a saved one updates
- * its card in place, and is only enabled when there are unsaved changes.
+ * Saving opens the save modal, as in the query builder. For a new analysis it
+ * names the card and picks where it goes. For a saved one it offers to replace
+ * the original or save a copy; users who can't edit the original can only save
+ * a copy. Saving a saved analysis is only enabled when there are unsaved
+ * changes. A new card, or a copy, opens at its saved URL, or in the dashboard
+ * it was saved into.
  *
- * `isLocationAllowed` lets the navigation after a save through the
+ * `handleRename` renames a saved analysis right away, like the query builder's
+ * title. `isLocationAllowed` lets the navigation after a save through the
  * unsaved-changes guard.
  */
 export const useSaveAnalysis = ({
@@ -52,51 +56,59 @@ export const useSaveAnalysis = ({
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const navigate = useNavigate();
   const [sendToast] = useToast();
-  const [cardToCreate, setCardToCreate] = useState<AnalysisCard>();
-  const [isUpdating, setIsUpdating] = useState(false);
+  // What Save was clicked on; the modal is open while it's set.
+  const [saveRequest, setSaveRequest] = useState<SaveRequest>();
   // A ref, not state: the route blocker reads it during the navigation, which
   // happens in the same tick as the save finishing.
   const isLeavingAfterSaveRef = useRef(false);
 
-  const questionToCreate = useMemo(
-    () => (cardToCreate !== undefined ? new Question(cardToCreate) : undefined),
-    [cardToCreate],
+  const saveModal = useMemo(
+    () =>
+      saveRequest !== undefined ? getSaveModalProps(saveRequest) : undefined,
+    [saveRequest],
   );
 
+  const canRename =
+    savedCard !== undefined && savedCard.can_write && !savedCard.archived;
   const canSave =
     savedCard !== undefined
-      ? savedCard.can_write && !savedCard.archived
+      ? !savedCard.archived &&
+        (savedCard.can_write || canWriteToCollections === true)
       : canWriteToCollections === true;
   const isSaveDisabled =
-    card === undefined ||
-    isUpdating ||
-    (savedCard !== undefined && !hasUnsavedChanges);
+    card === undefined || (savedCard !== undefined && !hasUnsavedChanges);
 
-  const handleSave = async () => {
-    if (card === undefined || isSaveDisabled) {
+  const handleSave = () => {
+    if (card !== undefined && !isSaveDisabled) {
+      setSaveRequest({ card, savedCard });
+    }
+  };
+
+  // Errors surface in the save modal, which stays open.
+  const handleReplace = async (question: Question) => {
+    const { id, display, dataset_query, visualization_settings } =
+      question.card();
+    await updateCard({
+      id,
+      display,
+      dataset_query,
+      visualization_settings,
+    }).unwrap();
+    onSaved();
+    sendToast({ message: t`Saved` });
+  };
+
+  const handleRename = async (name: string) => {
+    if (savedCard === undefined || name === savedCard.name) {
       return;
     }
-    if (savedCard === undefined) {
-      setCardToCreate(card);
-      return;
-    }
-    setIsUpdating(true);
     try {
-      await updateCard({
-        id: savedCard.id,
-        display: card.display,
-        dataset_query: card.dataset_query,
-        visualization_settings: card.visualization_settings,
-      }).unwrap();
-      onSaved();
-      sendToast({ message: t`Saved` });
+      await updateCard({ id: savedCard.id, name }).unwrap();
     } catch (error) {
       sendToast({
-        message: getErrorMessage(error, t`Couldn't save this analysis`),
+        message: getErrorMessage(error, t`Couldn't rename this analysis`),
         icon: "warning",
       });
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -168,13 +180,29 @@ export const useSaveAnalysis = ({
   return {
     canSave,
     isSaveDisabled,
-    questionToCreate,
+    canRename,
+    saveModal,
     handleSave,
     handleCreate,
-    handleCloseSaveModal: () => setCardToCreate(undefined),
+    handleReplace,
+    handleRename,
+    handleCloseSaveModal: () => setSaveRequest(undefined),
     isLocationAllowed: () => isLeavingAfterSaveRef.current,
   };
 };
+
+type SaveRequest = {
+  card: AnalysisCard;
+  savedCard: Card | undefined;
+};
+
+const getSaveModalProps = ({ card, savedCard }: SaveRequest) =>
+  savedCard !== undefined
+    ? {
+        question: new Question({ ...savedCard, ...card }),
+        originalQuestion: new Question(savedCard),
+      }
+    : { question: new Question(card), originalQuestion: null };
 
 const getDashcardSize = (
   display: CardDisplayType,

@@ -149,9 +149,12 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const {
     canSave,
     isSaveDisabled,
-    questionToCreate,
+    canRename,
+    saveModal,
     handleSave,
     handleCreate,
+    handleReplace,
+    handleRename,
     handleCloseSaveModal,
     isLocationAllowed,
   } = useSaveAnalysis({
@@ -193,6 +196,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             kind={kind}
             tableName={tableName}
             savedName={savedCard?.name}
+            onRename={canRename ? handleRename : undefined}
           />
           <AnalysisToolbar
             widgets={widgets}
@@ -298,13 +302,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           )}
         </Group>
       </Stack>
-      {questionToCreate !== undefined && (
+      {saveModal !== undefined && (
         <SaveQuestionModal
           opened
-          question={questionToCreate}
-          originalQuestion={null}
+          question={saveModal.question}
+          originalQuestion={saveModal.originalQuestion}
           onCreate={handleCreate}
-          onSave={async () => undefined}
+          onSave={handleReplace}
           onClose={handleCloseSaveModal}
           closeOnSuccess
         />

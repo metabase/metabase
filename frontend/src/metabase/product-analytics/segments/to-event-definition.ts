@@ -34,7 +34,7 @@ const segmentFilterables = (
 ): Lib.Filterable[] => {
   switch (segment.status) {
     case "draft": {
-      const query = readDefinition(metadataProvider, segment.query);
+      const query = readSegmentDefinition(metadataProvider, segment.query);
       return query !== undefined ? Lib.filters(query, STAGE_INDEX) : [];
     }
     case "saved": {
@@ -42,7 +42,7 @@ const segmentFilterables = (
       if (metadata !== null) {
         return [metadata];
       }
-      const query = readDefinition(
+      const query = readSegmentDefinition(
         metadataProvider,
         segment.segment.definition,
       );
@@ -93,7 +93,7 @@ export const segmentToEventDefinition = (
       const query =
         metadata !== null
           ? Lib.filter(tableQuery, STAGE_INDEX, metadata)
-          : readDefinition(metadataProvider, segment.segment.definition);
+          : readSegmentDefinition(metadataProvider, segment.segment.definition);
       return query !== undefined
         ? { name: segment.name, query: Lib.toJsQuery(query) }
         : undefined;
@@ -103,7 +103,8 @@ export const segmentToEventDefinition = (
   }
 };
 
-const readDefinition = (
+/** A segment's definition as a query; undefined when it has no readable conditions. */
+export const readSegmentDefinition = (
   metadataProvider: Lib.MetadataProvider,
   definition: DatasetQuery,
 ): Lib.Query | undefined => {

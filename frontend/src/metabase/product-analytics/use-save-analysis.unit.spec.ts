@@ -1,4 +1,4 @@
-import { act, waitFor } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -6,7 +6,6 @@ import {
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { renderHookWithProviders } from "__support__/ui";
-import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -77,10 +76,20 @@ describe("useSaveAnalysis", () => {
       expect(result.current.canSave).toBe(false);
     });
 
-    it("hides saving an analysis the user can't write to", () => {
+    it("lets users save a copy of an analysis they can't write to, but not rename it", () => {
       const { result } = setup({
         savedCard: createMockCard({ id: 5, can_write: false }),
         hasUnsavedChanges: true,
+      });
+      expect(result.current.canSave).toBe(true);
+      expect(result.current.canRename).toBe(false);
+    });
+
+    it("hides saving an analysis the user can't write to or copy", () => {
+      const { result } = setup({
+        savedCard: createMockCard({ id: 5, can_write: false }),
+        hasUnsavedChanges: true,
+        canWriteToCollections: false,
       });
       expect(result.current.canSave).toBe(false);
     });
@@ -105,30 +114,63 @@ describe("useSaveAnalysis", () => {
       ).toBe(false);
     });
 
-    it("sends one update while a save is in flight", async () => {
-      const response = defer<Card>();
-      fetchMock.put("path:/api/card/5", () => response.promise);
-      const { result, onSaved } = setup({
-        savedCard: createMockCard({ id: 5 }),
-        hasUnsavedChanges: true,
-      });
+    it("offers to replace the original or save a copy", () => {
+      const savedCard = createMockCard({ id: 5, name: "Signups" });
+      const { result } = setup({ savedCard, hasUnsavedChanges: true });
 
-      act(() => {
-        result.current.handleSave();
-      });
-      expect(result.current.isSaveDisabled).toBe(true);
+      act(() => result.current.handleSave());
 
-      act(() => {
-        result.current.handleSave();
-      });
-      await act(async () => {
-        response.resolve(createMockCard({ id: 5 }));
-        await response.promise;
-      });
+      const saveModal = checkNotNull(result.current.saveModal);
+      expect(saveModal.originalQuestion?.id()).toBe(5);
+      expect(saveModal.question.id()).toBe(5);
+      expect(saveModal.question.display()).toBe(ANALYSIS_CARD.display);
+    });
 
-      await waitFor(() => expect(result.current.isSaveDisabled).toBe(false));
-      expect(fetchMock.callHistory.calls("path:/api/card/5")).toHaveLength(1);
+    it("replaces the original with the changes, keeping its name", async () => {
+      fetchMock.put("path:/api/card/5", createMockCard({ id: 5 }));
+      const savedCard = createMockCard({ id: 5, name: "Signups" });
+      const { result, onSaved } = setup({ savedCard, hasUnsavedChanges: true });
+
+      act(() => result.current.handleSave());
+      const { question } = checkNotNull(result.current.saveModal);
+      await act(() => result.current.handleReplace(question));
+
+      const body =
+        fetchMock.callHistory.lastCall("path:/api/card/5")?.options.body;
+      const request: unknown = JSON.parse(String(body));
+      expect(request).toEqual({
+        display: ANALYSIS_CARD.display,
+        dataset_query: ANALYSIS_CARD.dataset_query,
+        visualization_settings: ANALYSIS_CARD.visualization_settings,
+      });
       expect(onSaved).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("renaming a saved analysis", () => {
+    it("updates only the name", async () => {
+      fetchMock.put("path:/api/card/5", createMockCard({ id: 5 }));
+      const { result } = setup({
+        savedCard: createMockCard({ id: 5, name: "Signups" }),
+      });
+
+      await act(() => result.current.handleRename("Weekly signups"));
+
+      const body =
+        fetchMock.callHistory.lastCall("path:/api/card/5")?.options.body;
+      const request: unknown = JSON.parse(String(body));
+      expect(request).toEqual({ name: "Weekly signups" });
+    });
+
+    it("doesn't send an update when the name is unchanged", async () => {
+      fetchMock.put("path:/api/card/5", createMockCard({ id: 5 }));
+      const { result } = setup({
+        savedCard: createMockCard({ id: 5, name: "Signups" }),
+      });
+
+      await act(() => result.current.handleRename("Signups"));
+
+      expect(fetchMock.callHistory.calls("path:/api/card/5")).toHaveLength(0);
     });
   });
 

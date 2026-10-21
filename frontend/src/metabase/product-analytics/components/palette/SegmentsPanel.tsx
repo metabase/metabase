@@ -34,6 +34,7 @@ import { useTableQuery } from "../events/use-table-query";
 
 import { NewSegmentModal } from "./NewSegmentModal";
 import { PaletteSegmentItem } from "./PaletteSegmentItem";
+import { SegmentDefinition } from "./SegmentDefinition";
 import S from "./SegmentsPanel.module.css";
 
 type SegmentsPanelProps = {
@@ -178,6 +179,11 @@ const PaletteSection = ({
           <PaletteSegmentItem
             key={segment.key}
             segment={segment}
+            definition={
+              segment.status === "saved" ? (
+                <SegmentDefinition segment={segment.segment} table={table} />
+              ) : undefined
+            }
             onSelect={handleSelect}
             onEditDraft={() => setEditingDraftId(segment.key)}
             onSaveDraft={() => {

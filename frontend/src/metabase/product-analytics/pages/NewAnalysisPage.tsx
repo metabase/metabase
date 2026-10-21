@@ -44,6 +44,10 @@ export const NewAnalysisPage = () => {
 
   return (
     <AnalysisWorkspace
+      // New → Event analysis from this page keeps the same route, so the old
+      // table picker and panels would stay. Starting over without a table
+      // remounts it; picking one keeps it.
+      key={tableId === undefined ? location.key : "table"}
       kind={kind}
       tableId={tableId}
       onTableChange={handleTableChange}

@@ -17,6 +17,10 @@ import type { ConcreteTableId, TableId } from "metabase-types/api";
 
 const EVENT_TABLE_ENTITY_TYPE = "entity/EventTable";
 
+// The label is a flex item, so a long table name would push past the dropdown
+// instead of truncating.
+const ITEM_STYLES = { itemLabel: { minWidth: 0 } };
+
 type EventTablePickerProps = {
   tableId: ConcreteTableId | undefined;
   /** Opens the picker on mount, for a page that has no table yet. */
@@ -89,7 +93,7 @@ export const EventTablePicker = ({
             {label}
           </Button>
         </Menu.Target>
-        <Menu.Dropdown miw="18rem">
+        <Menu.Dropdown miw="18rem" mah="60vh" style={{ overflowY: "auto" }}>
           <Menu.Label>{t`Event tables`}</Menu.Label>
           {tables.isLoading && <Loader size="xs" mx="md" my="sm" />}
           {!tables.isLoading && eventTables.length === 0 && (
@@ -107,6 +111,7 @@ export const EventTablePicker = ({
                 </Text>
               }
               fw={item.id === tableId ? "bold" : undefined}
+              styles={ITEM_STYLES}
               onClick={() => handleChange(item.id)}
             >
               <Ellipsified>{item.display_name}</Ellipsified>
