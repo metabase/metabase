@@ -14,7 +14,7 @@ import {
 } from "metabase/ui";
 import type { TransformRunMethod } from "metabase-types/api";
 
-import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
+import { FILTER_WIDGET_MIN_WIDTH } from "../../constants";
 import { FilterFieldSet } from "../FilterFieldSet";
 
 const RUN_METHODS: TransformRunMethod[] = ["manual", "cron"];

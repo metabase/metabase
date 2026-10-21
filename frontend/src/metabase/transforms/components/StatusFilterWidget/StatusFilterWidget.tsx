@@ -11,33 +11,31 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { TransformRunStatus } from "metabase-types/api";
 
-import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
-import { formatStatus } from "../../../../utils";
+import { FILTER_WIDGET_MIN_WIDTH } from "../../constants";
 import { FilterFieldSet } from "../FilterFieldSet";
 
-const STATUSES: TransformRunStatus[] = [
-  "started",
-  "succeeded",
-  "failed",
-  "timeout",
-];
-
-type StatusFilterWidgetProps = {
+export type StatusFilterOption<T extends string> = {
+  value: T;
   label: string;
-  statuses: TransformRunStatus[];
-  onChange: (statuses: TransformRunStatus[]) => void;
 };
 
-export function StatusFilterWidget({
+type StatusFilterWidgetProps<T extends string> = {
+  label: string;
+  statuses: T[];
+  options: StatusFilterOption<T>[];
+  onChange: (statuses: T[]) => void;
+};
+
+export function StatusFilterWidget<T extends string>({
   label,
   statuses,
+  options,
   onChange,
-}: StatusFilterWidgetProps) {
+}: StatusFilterWidgetProps<T>) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
-  const handleSubmit = (statuses: TransformRunStatus[]) => {
+  const handleSubmit = (statuses: T[]) => {
     close();
     onChange(statuses);
   };
@@ -52,45 +50,60 @@ export function StatusFilterWidget({
         <FilterFieldSet
           label={label}
           icon="check_filled"
-          displayValue={getDisplayValue(statuses)}
+          displayValue={getDisplayValue(statuses, options)}
           onClick={toggle}
           onRemove={handleRemove}
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <StatusFilterForm statuses={statuses} onSubmit={handleSubmit} />
+        <StatusFilterForm
+          statuses={statuses}
+          options={options}
+          onSubmit={handleSubmit}
+        />
       </Popover.Dropdown>
     </Popover>
   );
 }
 
-function getDisplayValue(statuses: TransformRunStatus[]) {
+function getDisplayValue<T extends string>(
+  statuses: T[],
+  options: StatusFilterOption<T>[],
+) {
   const count = statuses.length;
   switch (count) {
     case 0:
       return null;
     case 1:
-      return formatStatus(statuses[0]);
+      return (
+        options.find((option) => option.value === statuses[0])?.label ??
+        statuses[0]
+      );
     default:
       return ngettext(msgid`${count} status`, `${count} statuses`, count);
   }
 }
 
-type StatusFilterForm = {
-  statuses: TransformRunStatus[];
-  onSubmit: (statuses: TransformRunStatus[]) => void;
+type StatusFilterFormProps<T extends string> = {
+  statuses: T[];
+  options: StatusFilterOption<T>[];
+  onSubmit: (statuses: T[]) => void;
 };
 
-function StatusFilterForm({
+function StatusFilterForm<T extends string>({
   statuses: initialStatuses,
+  options,
   onSubmit,
-}: StatusFilterForm) {
+}: StatusFilterFormProps<T>) {
   const [statuses, setStatuses] = useState(initialStatuses);
   const isValid = statuses.length > 0;
 
   const handleChange = (values: string[]) => {
-    // Unjustified type cast. FIXME
-    setStatuses(values as TransformRunStatus[]);
+    setStatuses(
+      options
+        .filter((option) => values.includes(option.value))
+        .map((option) => option.value),
+    );
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -104,11 +117,11 @@ function StatusFilterForm({
     <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       <Checkbox.Group value={statuses} onChange={handleChange}>
         <Stack p="lg">
-          {STATUSES.map((status) => (
+          {options.map((option) => (
             <Checkbox
-              key={status}
-              value={status}
-              label={formatStatus(status)}
+              key={option.value}
+              value={option.value}
+              label={option.label}
             />
           ))}
         </Stack>
