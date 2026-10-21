@@ -27,12 +27,13 @@ A module is `metabase.<module>` (OSS, `src/`) or `metabase-enterprise.<module>` 
 
 If a setting, task, or event handler never takes effect, look for a missing link in the `.init` chain.
 
-## Keep app-DB access in `<module>.db`
+## Keep app-DB access in `<module>.db` (and `<module>.db.fetch`)
 
 Call Toucan 2 query functions (`t2/select*`, `t2/insert!`, `t2/update!`, `t2/delete!`, `t2/count`,
 `t2/exists?`, `t2/query`, ...) and the `metabase.app-db.core` wrappers (`mdb/query`,
-`mdb/update-or-insert!`, ...) only from `metabase[-enterprise].<module>.db`. Driver code uses
-`metabase.driver.<driver>.db`. Every other namespace calls functions from its own module's `db`.
+`mdb/update-or-insert!`, ...) only from `metabase[-enterprise].<module>.db`, or from
+`metabase[-enterprise].<module>.db.fetch` for reads that a namespace `db` requires needs (which would otherwise be a
+require cycle). No other `.db.*` sub-namespace may query. Driver code uses `metabase.driver.<driver>.db`. Every other namespace calls functions from its own module's `db`.
 The kondo hook `hooks.metabase.toucan.db-ns` reports violations as `:metabase/t2-query-namespace`.
 Test files are exempt.
 
