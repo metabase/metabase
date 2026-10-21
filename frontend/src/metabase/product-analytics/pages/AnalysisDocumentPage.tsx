@@ -273,13 +273,7 @@ const AnalysisDocumentEditor = ({
           </ScrollContainerProvider>
         </Box>
         {sidePanel !== null && (
-          <Box
-            h="100%"
-            style={{
-              flexShrink: 0,
-              borderLeft: "1px solid var(--mb-color-border)",
-            }}
-          >
+          <Box h="100%" style={{ flexShrink: 0 }}>
             <AnalysisSidePanel key={sidePanel.nodeId} {...sidePanel} />
           </Box>
         )}

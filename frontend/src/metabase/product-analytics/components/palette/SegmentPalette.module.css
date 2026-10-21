@@ -1,9 +1,3 @@
-.root {
-  background-color: var(--mb-color-background-secondary);
-  border-left: 1px solid var(--mb-color-border);
-  box-shadow: inset 8px 0 10px -10px var(--mb-color-shadow);
-}
-
 .section {
   border: 1px dashed transparent;
   border-radius: var(--mantine-radius-sm);
@@ -18,4 +12,13 @@
 
 .section[data-drop-over="true"] {
   background-color: var(--mb-color-background-brand);
+}
+
+/* Two tabs share the palette's narrow header, so they sit tighter than the default. */
+.tabs[data-variant="default"] {
+  --tab-padding-inline: var(--mantine-spacing-sm);
+}
+
+.tabList {
+  flex-wrap: nowrap;
 }

@@ -43,6 +43,8 @@ const getEventFilter = (
 
 export type BaseQueryInput = {
   dateRange: string;
+  /** Filters on the event table; see `CommonSettings["filters"]`. Absent means none. */
+  filters?: EventDefinition | null;
   columns: ColumnRoles;
   events: readonly AllocatedEvent[];
   extraColumns: readonly ExtraColumn[];
@@ -144,7 +146,14 @@ const joinUsersTable = (
 export const buildBaseQuery = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
-  { dateRange, columns, events, extraColumns, usersTable }: BaseQueryInput,
+  {
+    dateRange,
+    filters = null,
+    columns,
+    events,
+    extraColumns,
+    usersTable,
+  }: BaseQueryInput,
 ): BuiltBaseQuery => {
   const tableMetadata = getTableMetadata(metadataProvider, tableId);
   if (columns.timestamp === null) {
@@ -163,6 +172,16 @@ export const buildBaseQuery = (
       STAGE,
       getDateFilterClause(findColumn(query, columns.timestamp), dateFilter),
     );
+  }
+
+  if (filters !== null) {
+    const filtersQuery = readEventQuery(metadataProvider, filters);
+    if (filtersQuery === null) {
+      throw new Error(t`The filters can't be read.`);
+    }
+    for (const clause of Lib.filters(filtersQuery, STAGE)) {
+      query = Lib.filter(query, STAGE, clause);
+    }
   }
 
   const usersColumns = extraColumns.filter(({ from }) => from === "users");

@@ -389,7 +389,9 @@
   (case mode
     :any  "*"
     :self "'self'"
-    (or (interactive-embedding-origins) "'none'")))
+    ;; Prototype: same-origin framing is always allowed, so a notebook can open a
+    ;; question in a modal iframe.
+    (str/join " " (cons "'self'" (some-> (interactive-embedding-origins) vector)))))
 
 (defn- content-security-policy-header-with-frame-ancestors
   [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
@@ -423,7 +425,7 @@
     :self {"X-Frame-Options" "SAMEORIGIN"}
     {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
-                         "DENY")}))
+                         "SAMEORIGIN")}))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"

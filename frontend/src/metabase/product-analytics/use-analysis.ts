@@ -91,6 +91,7 @@ export const useAnalysis = <K extends AnalysisKind>({
   // After `toSpec`, which gives a flag to each event it uses.
   const base = useStableValue<BaseQueryInput>({
     dateRange: computed.date_range,
+    filters: computed.filters,
     columns: getColumnRoles(computed),
     events: flags.events,
     extraColumns: config.getExtraColumns?.(computed, context) ?? [],

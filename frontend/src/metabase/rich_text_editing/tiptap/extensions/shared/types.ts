@@ -8,4 +8,5 @@ export type SuggestionPickerViewMode =
   | "linkTo"
   | "embedQuestion"
   | "newQuestionType"
+  | "eventAnalysisType"
   | null;

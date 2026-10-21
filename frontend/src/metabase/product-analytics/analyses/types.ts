@@ -45,6 +45,8 @@ export type CommonSettings = ColumnRoleSettings & {
   /** A serialized date filter, e.g. "past90days". See `date-range.ts`. */
   date_range: string;
   granularity: Granularity;
+  /** Filters on the event table, applied before anything else. */
+  filters: EventDefinition | null;
 };
 
 export type FunnelSettings = CommonSettings & {

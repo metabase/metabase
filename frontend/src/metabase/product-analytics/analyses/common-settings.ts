@@ -2,11 +2,13 @@ import { t } from "ttag";
 
 import type { ColumnRole, ColumnRoles } from "../columns";
 import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
-import { CountingMenu } from "../components/toolbar/CountingMenu";
+import { CountingWidget } from "../components/settings/CountingWidget";
+import { FiltersWidget } from "../components/settings/FiltersWidget";
 import { DateRangeButton } from "../components/toolbar/DateRangeButton";
 import { GranularityButton } from "../components/toolbar/GranularityButton";
 import { DEFAULT_DATE_RANGE, parseDateRange } from "../date-range";
 import type { SettingDefinition } from "../settings/types";
+import { withWidgetProps } from "../settings/with-widget-props";
 import type { Grain, Granularity } from "../spec/types";
 
 import {
@@ -14,7 +16,11 @@ import {
   getDefaultColumn,
   isColumnInTable,
 } from "./column-roles";
-import { isOneOf } from "./setting-helpers";
+import {
+  getEventDefinitionProps,
+  isOneOf,
+  isOptionalEventDefinition,
+} from "./setting-helpers";
 import type {
   AnalysisContext,
   AnalysisSettingDefinitions,
@@ -79,6 +85,17 @@ const granularitySetting = (
   getProps: () => ({ units: options?.units ?? [] }),
 });
 
+const getFiltersTitle = (grain: Grain): string => {
+  switch (grain) {
+    case "person":
+      return t`Filter people`;
+    case "session":
+      return t`Filter sessions`;
+    case "event":
+      return t`Filter events`;
+  }
+};
+
 /**
  * Settings every analysis has: the toolbar controls and the column roles.
  * Pass `granularity: null` for analyses without a time grain.
@@ -96,8 +113,9 @@ export const commonSettings = ({
       typeof value === "string" && parseDateRange(value) !== undefined,
   },
   counting: {
-    getSection: () => "toolbar",
-    widget: CountingMenu,
+    getSection: () => "advanced",
+    getTitle: () => t`What to count`,
+    widget: CountingWidget,
     getDefault: () => "person",
     isValid: (value, _context, settings) =>
       isOneOf(GRAINS, value) && isCountable(value, settings),
@@ -107,6 +125,14 @@ export const commonSettings = ({
     readDependencies: ["columns.person", "columns.session", "columns.event_id"],
   },
   granularity: granularitySetting(granularity),
+  filters: withWidgetProps({
+    getTitle: (_context, settings) => getFiltersTitle(settings.counting),
+    getSection: () => "filters",
+    widget: FiltersWidget,
+    getDefault: () => null,
+    isValid: (value) => isOptionalEventDefinition(value),
+    getProps: getEventDefinitionProps,
+  }),
   "columns.timestamp": columnRoleSetting(
     "timestamp",
     () => t`Event time`,

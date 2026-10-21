@@ -1,0 +1,31 @@
+/* Lines up with the editor's column. Padding, not margin, so the spacing
+   collapses with the buttons when they fade out. */
+.actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--mantine-spacing-md);
+  max-width: 900px;
+  margin: 0 auto;
+  padding-bottom: var(--mantine-spacing-xl);
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-md);
+  color: var(--mb-color-brand);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-brand);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-brand);
+  }
+}

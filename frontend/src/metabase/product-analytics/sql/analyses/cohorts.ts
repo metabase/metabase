@@ -28,7 +28,10 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   const warnings: string[] = [];
 
   const base = scopedEvents(spec, undefined, [
-    { as: "is_return", sql: flagSql(cohorts.return.flag) },
+    {
+      as: "is_return",
+      sql: cohorts.return ? flagSql(cohorts.return.flag) : "1",
+    },
     { as: cohortColumn, sql: cohortColumn },
   ]);
   warnings.push(...base.warnings);

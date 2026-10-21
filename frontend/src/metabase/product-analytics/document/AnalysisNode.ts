@@ -38,6 +38,31 @@ export const AnalysisNode = Node.create({
   addAttributes() {
     return {
       ...createIdAttribute(),
+      // The table this card analyzes. Null means the document's table.
+      tableId: {
+        default: null,
+        parseHTML: (element) => {
+          const value = parseInt(
+            element.getAttribute("data-table-id") ?? "",
+            10,
+          );
+          return Number.isFinite(value) ? value : null;
+        },
+        renderHTML: (attributes) =>
+          attributes.tableId == null
+            ? {}
+            : { "data-table-id": attributes.tableId },
+      },
+      // The card's height in px, set by dragging its resize handle. Null until resized.
+      height: {
+        default: null,
+        parseHTML: (element) => {
+          const value = parseInt(element.getAttribute("data-height") ?? "", 10);
+          return Number.isFinite(value) ? value : null;
+        },
+        renderHTML: (attributes) =>
+          attributes.height == null ? {} : { "data-height": attributes.height },
+      },
       definition: {
         default: null,
         parseHTML: (element) =>

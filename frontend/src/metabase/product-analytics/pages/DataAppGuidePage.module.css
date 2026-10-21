@@ -1,0 +1,42 @@
+.page {
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--mb-color-background-primary);
+}
+
+.stepNumber {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  font-weight: 700;
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-brand);
+}
+
+.codeSnippet {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-secondary);
+}
+
+.wrappedCode {
+  white-space: pre-wrap;
+}
+
+.copyButton {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--mb-color-text-secondary);
+}
+
+.copyButton:hover {
+  color: var(--mb-color-brand);
+}

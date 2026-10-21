@@ -1,0 +1,5 @@
+/* A still outline of the chart to come, not a loading state, so it doesn't pulse. */
+.skeleton svg {
+  animation: none;
+  opacity: 0.1;
+}

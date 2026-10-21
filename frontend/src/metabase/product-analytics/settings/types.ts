@@ -6,7 +6,7 @@ import type { ComponentType } from "react";
  * place of the series.
  */
 
-export type SettingSection = "toolbar" | "setup" | "advanced";
+export type SettingSection = "toolbar" | "setup" | "advanced" | "filters";
 
 export type SettingGroup = "columns";
 

@@ -2,14 +2,18 @@ import { useCallback, useLayoutEffect } from "react";
 
 import { MenuItemComponent } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 
-import type { NewQuestionMenuItem, NewQuestionModals } from "./types";
+import type {
+  NewQuestionMenuItem,
+  NewQuestionModalType,
+  NewQuestionModals,
+} from "./types";
 
 interface Props {
   menuItems: NewQuestionMenuItem[];
   selectedIndex: number;
   setSelectedIndex: (index: number) => void;
-  newQuestionType: "notebook" | "native" | null;
-  setNewQuestionType: (type: "notebook" | "native" | null) => void;
+  newQuestionType: NewQuestionModalType | null;
+  setNewQuestionType: (type: NewQuestionModalType | null) => void;
   onSave: (id: number, name: string) => void;
   onClose: () => void;
   modals: NewQuestionModals;
@@ -35,9 +39,9 @@ export const NewQuestionTypeMenuView = ({
 
   useLayoutEffect(() => {
     if (menuItems.length === 1) {
-      setNewQuestionType(menuItems[0].value);
+      menuItems[0].action();
     }
-  }, [menuItems, setNewQuestionType]);
+  }, [menuItems]);
 
   return (
     <>
@@ -46,7 +50,7 @@ export const NewQuestionTypeMenuView = ({
           key={item.value}
           item={item}
           isSelected={selectedIndex === index}
-          onClick={() => setNewQuestionType(item.value)}
+          onClick={() => item.action()}
           onMouseEnter={() => setSelectedIndex(index)}
         />
       ))}

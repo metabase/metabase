@@ -22,6 +22,24 @@ import {
 
 const HIGHLIGHT_DURATION_MS = 2000;
 
+/** Marks an analysis card, which handles clicks on itself. */
+export const ANALYSIS_CARD_ATTRIBUTE = "data-analysis-card";
+
+/** The page's scrolling canvas the editor sits on. */
+const findCanvas = (element: HTMLElement): HTMLElement | null => {
+  for (
+    let current = element.parentElement;
+    current !== null;
+    current = current.parentElement
+  ) {
+    const { overflowY } = window.getComputedStyle(current);
+    if (overflowY === "auto" || overflowY === "scroll") {
+      return current;
+    }
+  }
+  return null;
+};
+
 type UseAnalysisDocumentStateArgs = {
   editor: Editor | null;
   tableId: ConcreteTableId | undefined;
@@ -48,8 +66,8 @@ const scrollNodeIntoView = (editor: Editor, nodeId: string) => {
 
 /**
  * Edit mode and inserting analyses. Edit mode ends when the selection moves
- * off the analysis, on Escape in the document, or through `stopEditing`.
- * Clicks outside the editor, like in the side panel, keep it.
+ * off the analysis, on Escape in the document, on a click on the page canvas,
+ * or through `stopEditing`. Clicks in the side panel keep it.
  */
 export const useAnalysisDocumentState = ({
   editor,
@@ -120,11 +138,27 @@ export const useAnalysisDocumentState = ({
         stopEditing();
       }
     };
+    // A click anywhere on the canvas but a card closes the panels. The side
+    // panel and popovers sit outside the canvas, so clicks there keep them.
+    const canvas = findCanvas(editor.view.dom);
+    const handlePointerDown = (event: PointerEvent) => {
+      const { target } = event;
+      const isOnCanvas =
+        target instanceof Element && canvas !== null && canvas.contains(target);
+      const isOnCard =
+        target instanceof Element &&
+        target.closest(`[${ANALYSIS_CARD_ATTRIBUTE}]`) !== null;
+      if (isOnCanvas && !isOnCard) {
+        stopEditing();
+      }
+    };
     editor.on("transaction", handleTransaction);
     document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
     return () => {
       editor.off("transaction", handleTransaction);
       document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [editor, editingNodeId, stopEditing]);
 

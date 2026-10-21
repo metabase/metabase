@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { DocumentEditorHost } from "metabase/documents/components/Editor/DocumentEditorHost";
-import type { CommandSection } from "metabase/rich_text_editing/tiptap/extensions/Command/types";
+import type {
+  CommandOption,
+  CommandSection,
+} from "metabase/rich_text_editing/tiptap/extensions/Command/types";
 import type { IconName } from "metabase-types/api";
 
 import { ANALYSIS_KINDS, getAnalysisConfig } from "../analyses/config";
@@ -12,7 +15,7 @@ import { useAnalysisDocument } from "./AnalysisDocumentContext";
 import { AnalysisNode } from "./AnalysisNode";
 import { AnalysisDocumentAttributes } from "./document-context";
 
-const ANALYSIS_ICONS: Record<AnalysisKind, IconName> = {
+export const ANALYSIS_ICONS: Record<AnalysisKind, IconName> = {
   funnel: "funnel",
   paths: "sankey",
   habit: "calendar",
@@ -20,23 +23,24 @@ const ANALYSIS_ICONS: Record<AnalysisKind, IconName> = {
   cohorts: "grid",
 };
 
-const useAnalysisCommandSections = (): CommandSection[] => {
+export const useEventAnalysisCommands = (): CommandOption[] => {
   const { insertAnalysis } = useAnalysisDocument();
   return useMemo(
-    () => [
-      {
-        title: t`Analyses`,
-        items: ANALYSIS_KINDS.map((kind) => ({
-          icon: ANALYSIS_ICONS[kind],
-          label: getAnalysisConfig(kind).name,
-          command: `productAnalysis.${kind}`,
-          isAllowedAtPosition: (editor) => !editor.isActive("supportingText"),
-          run: () => insertAnalysis(kind),
-        })),
-      },
-    ],
+    (): CommandOption[] =>
+      ANALYSIS_KINDS.map((kind) => ({
+        icon: ANALYSIS_ICONS[kind],
+        label: getAnalysisConfig(kind).name,
+        command: `productAnalysis.${kind}`,
+        isAllowedAtPosition: (editor) => !editor.isActive("supportingText"),
+        run: () => insertAnalysis(kind),
+      })),
     [insertAnalysis],
   );
+};
+
+const useAnalysisCommandSections = (): CommandSection[] => {
+  const items = useEventAnalysisCommands();
+  return useMemo(() => [{ title: t`Analyses`, items }], [items]);
 };
 
 export const ANALYSIS_DOCUMENT_EXTENSIONS = [
@@ -51,4 +55,5 @@ export const analysisDocumentEditorHost: Partial<DocumentEditorHost> = {
     canOpenCardInQueryBuilder: true,
   },
   useExtraCommandSections: useAnalysisCommandSections,
+  useEventAnalysisCommands,
 };

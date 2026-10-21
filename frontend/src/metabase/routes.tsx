@@ -33,7 +33,10 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { getRoutes as getProductAnalyticsRoutes } from "metabase/product-analytics";
+import {
+  getRoutes as getProductAnalyticsRoutes,
+  notebookPage,
+} from "metabase/product-analytics";
 import {
   QuestionHashRedirect,
   loadMetabotQueryBuilder,
@@ -132,13 +135,6 @@ const tableDetailPage = () =>
     /* webpackChunkName: "table-detail" */ "metabase/detail-view/pages/TableDetailPage"
   ).then(({ TableDetailPage }) => ({ Component: TableDetailPage }));
 
-const documentPage = () =>
-  import(/* webpackChunkName: "documents" */ "metabase/documents/routes").then(
-    ({ DocumentPageOuter }) => ({
-      Component: DocumentPageOuter,
-    }),
-  );
-
 const setupPage = () =>
   import(
     /* webpackChunkName: "setup" */ "metabase/setup/components/Setup"
@@ -236,7 +232,7 @@ registerPagePrefetch("/question", queryBuilder);
 registerPagePrefetch("/model", queryBuilder);
 registerPagePrefetch("/table/", queryBuilder);
 registerPagePrefetch("/question/ask", metabotQueryBuilder);
-registerPagePrefetch("/document/", documentPage);
+registerPagePrefetch("/document/", notebookPage);
 // The sidesheet is a chunk of its own, and its route carries the document id
 // before the segment that names it, so a prefix cannot single it out. Registered
 // against the document prefix instead: 15 kb fetched alongside a page of 337 kb,
@@ -327,7 +323,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "document/:entityId",
-                lazy: documentPage,
+                lazy: notebookPage,
                 children: [
                   lazyModalRoute("comments/:childTargetId", commentsSidesheet, {
                     noWrap: true,

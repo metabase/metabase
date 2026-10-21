@@ -11,11 +11,23 @@ export type MetabotCommandConfig = {
 export const getAllCommandSections = (
   metabotCommand: MetabotCommandConfig | null | undefined,
   capabilities: EditorCapabilities,
+  canCreateQuery: boolean,
   extraSections: CommandSection[] = [],
 ): CommandSection[] => {
   return [
     {
       items: [
+        ...(canCreateQuery && capabilities.canEmbedCharts
+          ? ([
+              {
+                icon: "insight",
+                label: t`Query`,
+                command: "newQuery",
+                isAllowedAtPosition: (editor) =>
+                  !editor.isActive("supportingText"),
+              },
+            ] satisfies CommandSection["items"])
+          : []),
         ...(metabotCommand && capabilities.canUseMetabot
           ? ([
               {

@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type {
   ActorPredicate,
   AnalysisKind,
@@ -88,6 +90,14 @@ export const missingIf = (
 
 export const getEventDefinitionProps = (context: AnalysisContext) => ({
   table: context.table,
+});
+
+/** For event settings where leaving it empty means any event counts. */
+export const getAnyEventDefinitionProps = (context: AnalysisContext) => ({
+  table: context.table,
+  get emptyLabel() {
+    return t`Any event or action`;
+  },
 });
 
 const EMPTY_SCOPE: ActorPredicate = {

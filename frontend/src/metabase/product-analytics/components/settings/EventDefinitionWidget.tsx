@@ -20,6 +20,8 @@ import { useTableQuery } from "../events/use-table-query";
 
 type EventDefinitionWidgetProps = SettingWidgetProps<EventDefinition | null> & {
   table: Table | undefined;
+  /** What an empty value means, for settings that work without one. */
+  emptyLabel?: string;
 };
 
 /**
@@ -32,12 +34,13 @@ export const EventDefinitionWidget = ({
   value,
   onChange,
   table,
+  emptyLabel,
 }: EventDefinitionWidgetProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const { isPaletteOpen } = useSegmentDrag();
-  const placeholder = isPaletteOpen
-    ? t`Drag an event segment here`
-    : t`Click to define this`;
+  const placeholder =
+    emptyLabel ??
+    (isPaletteOpen ? t`Drag an event segment here` : t`Click to define this`);
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
@@ -49,7 +52,8 @@ export const EventDefinitionWidget = ({
 
   const handleClear = () => {
     onChange(null);
-    setIsEditing(true);
+    // An empty value is a complete answer when there's an `emptyLabel`.
+    setIsEditing(emptyLabel === undefined);
   };
 
   // A drop on an empty well defines the event; on a filled one, it adds a condition.

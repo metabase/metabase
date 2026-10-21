@@ -4,6 +4,7 @@
   gap: 0.125rem;
   min-width: max-content;
   padding: 0.25rem;
+  font-size: var(--mantine-font-size-md);
 }
 
 /* The header row and each row's cohort label and size stick while the

@@ -22,12 +22,10 @@ const setup = ({
   documentTitle = "Test Document",
   isNewDocument = false,
   canWrite = true,
-  showSaveButton = false,
   isBookmarked = false,
   isAdmin = false,
   isPublicSharingEnabled = false,
   onTitleChange = jest.fn(),
-  onSave = jest.fn(),
   onMove = jest.fn(),
   onDuplicate = jest.fn(),
   onToggleBookmark = jest.fn(),
@@ -41,10 +39,9 @@ const setup = ({
     documentTitle,
     isNewDocument,
     canWrite,
-    showSaveButton,
+    saveStatus: null,
     isBookmarked,
     onTitleChange,
-    onSave,
     onMove,
     onDuplicate,
     onToggleBookmark,
@@ -119,28 +116,6 @@ describe("DocumentHeader", () => {
       setup();
       expect(screen.getByText("John Doe")).toBeInTheDocument();
       expect(screen.getByText("January 15, 2024")).toBeInTheDocument();
-    });
-  });
-
-  describe("Save button", () => {
-    it("should show save button when showSaveButton is true", () => {
-      setup({ showSaveButton: true });
-      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    });
-
-    it("should not show save button when showSaveButton is false", () => {
-      setup({ showSaveButton: false });
-      expect(
-        screen.queryByRole("button", { name: "Save" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should call onSave when save button is clicked", async () => {
-      const onSave = jest.fn();
-      setup({ showSaveButton: true, onSave });
-
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      expect(onSave).toHaveBeenCalled();
     });
   });
 

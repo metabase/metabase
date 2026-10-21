@@ -1,5 +1,12 @@
 import type { JSONContent } from "@tiptap/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import _ from "underscore";
 
 import { useDispatch } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
@@ -8,10 +15,20 @@ import type { DocumentContent } from "metabase-types/api";
 import { setCardEmbeds } from "../documents.slice";
 import { doesDocumentNeedMigration } from "../utils/editorNodeUtils";
 
-export function useDocumentState(documentData?: {
-  name: string;
-  document: DocumentContent;
-}) {
+type SavedDocument = { name: string; document: JSONContent };
+
+/**
+ * `lastSavedRef` holds what an auto-save last sent. When a reload matches it,
+ * the editor already shows it, so the title and content aren't reset (which
+ * would move the cursor and drop edits made while saving).
+ */
+export function useDocumentState(
+  documentData?: {
+    name: string;
+    document: DocumentContent;
+  },
+  lastSavedRef?: RefObject<SavedDocument | null>,
+) {
   const dispatch = useDispatch();
   const [documentTitle, setDocumentTitle] = useState("");
   const [documentContent, setDocumentContent] = useState<JSONContent | null>(
@@ -22,8 +39,16 @@ export function useDocumentState(documentData?: {
 
   useEffect(() => {
     if (documentData) {
-      setDocumentTitle(documentData.name);
-      setDocumentContent(documentData.document);
+      const lastSaved = lastSavedRef?.current ?? null;
+      if (lastSaved === null || lastSaved.name !== documentData.name) {
+        setDocumentTitle(documentData.name);
+      }
+      if (
+        lastSaved === null ||
+        !_.isEqual(lastSaved.document, documentData.document)
+      ) {
+        setDocumentContent(documentData.document);
+      }
       setDocumentNeedsMigration(
         doesDocumentNeedMigration(documentData.document),
       );
@@ -31,7 +56,7 @@ export function useDocumentState(documentData?: {
       setDocumentContent(null);
       setDocumentNeedsMigration(false);
     }
-  }, [documentData]);
+  }, [documentData, lastSavedRef]);
 
   const updateCardEmbeds = useCallback(
     (newEmbeds: CardEmbedRef[]) => {

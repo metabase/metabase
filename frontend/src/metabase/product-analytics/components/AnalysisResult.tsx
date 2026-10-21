@@ -1,8 +1,9 @@
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { Alert, Box, Button, Loader, Stack, Text, Title } from "metabase/ui";
+import { Alert, Box, Loader, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import type { ClickActionsMode } from "metabase/visualizations/types";
 import type {
   CardDisplayType,
@@ -14,6 +15,8 @@ import type {
 
 import type { MissingSetting } from "../analyses/types";
 
+import S from "./AnalysisResult.module.css";
+
 const SYNTHETIC_CARD_ID = -1;
 
 type AnalysisResultProps = {
@@ -24,13 +27,9 @@ type AnalysisResultProps = {
   datasetQuery: DatasetQuery | undefined;
   isLoading: boolean;
   error: string | undefined;
-  /** Settings still to fill in. When non-empty, this replaces the result. */
+  /** Settings still to fill in. When non-empty, a skeleton of the chart replaces the result. */
   missing: MissingSetting[];
-  setupLabel: string;
-  /** Omit when the setup panel is already open. */
-  onOpenSetup?: () => void;
   mode?: ClickActionsMode;
-  onUpdateWarnings: (warnings: string[]) => void;
 };
 
 type ResultState = {
@@ -87,18 +86,22 @@ export const getResultState = ({
 
 /** The analysis result: setup, an error, loading, or the chart. */
 export const AnalysisResult = (props: AnalysisResultProps) => {
-  const { missing, setupLabel, onOpenSetup, isLoading, error, mode } = props;
+  const { display, isLoading, error, mode } = props;
   const { rawSeries, isIncomplete, isShowingVisualization } =
     getResultState(props);
 
   return (
     <Stack gap="sm" flex={1} mih={0} h="100%">
       {isIncomplete && (
-        <IncompleteSettings
-          missing={missing}
-          setupLabel={setupLabel}
-          onOpenSetup={onOpenSetup}
-        />
+        <Stack
+          className={S.skeleton}
+          flex={1}
+          mih={0}
+          p="md"
+          aria-label={t`Chart preview`}
+        >
+          {getChartSkeletonImage(display)}
+        </Stack>
       )}
       {!isIncomplete && error && <Alert color="error">{error}</Alert>}
       {!isIncomplete && isLoading && (
@@ -115,7 +118,6 @@ export const AnalysisResult = (props: AnalysisResultProps) => {
             rawSeries={rawSeries}
             isQueryBuilder={false}
             mode={mode}
-            onUpdateWarnings={props.onUpdateWarnings}
             onChangeCardAndRun={noop}
           />
         </Box>
@@ -123,31 +125,3 @@ export const AnalysisResult = (props: AnalysisResultProps) => {
     </Stack>
   );
 };
-
-type IncompleteSettingsProps = {
-  missing: MissingSetting[];
-  setupLabel: string;
-  onOpenSetup?: () => void;
-};
-
-const IncompleteSettings = ({
-  missing,
-  setupLabel,
-  onOpenSetup,
-}: IncompleteSettingsProps) => (
-  <Stack align="center" justify="center" gap="sm" flex={1} ta="center">
-    <Title order={4} c="text-secondary">
-      {t`Finish setting up this analysis`}
-    </Title>
-    {missing.map(({ key, message }) => (
-      <Text key={key} c="text-secondary">
-        {message}
-      </Text>
-    ))}
-    {onOpenSetup && (
-      <Button variant="filled" onClick={onOpenSetup}>
-        {setupLabel}
-      </Button>
-    )}
-  </Stack>
-);

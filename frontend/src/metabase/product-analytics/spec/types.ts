@@ -109,7 +109,8 @@ export interface PathsSpec {
 }
 
 export interface HabitSpec {
-  active: FlagRef;
+  /** Absent when any event counts. */
+  active?: FlagRef;
   lookback: Duration;
   subPeriod: Extract<Period, "day" | "week">;
   measure: "histogram" | "ratio" | "threshold";
@@ -123,7 +124,8 @@ export type LifecycleStateName =
   | "dormant";
 
 export interface LifecycleSpec {
-  active: FlagRef;
+  /** Absent when any event counts. */
+  active?: FlagRef;
   period: Period;
 }
 
@@ -134,7 +136,8 @@ export interface CohortsSpec {
    * their clock started; see `planCohorts`.
    */
   by: "startDate" | "attribute";
-  return: FlagRef;
+  /** Absent when any event counts. */
+  return?: FlagRef;
   returnRule: "exactly" | "onOrAfter";
   horizon: number;
 }

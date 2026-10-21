@@ -18,12 +18,19 @@ export interface CommandSection {
   items: CommandOption[];
 }
 
+export type NewQuestionType = "ai" | "event-analysis" | "notebook" | "native";
+
+export type NewQuestionModalType = Extract<
+  NewQuestionType,
+  "notebook" | "native"
+>;
+
 export interface NewQuestionMenuItem extends MenuItem {
-  value: "native" | "notebook";
+  value: NewQuestionType;
 }
 
 export interface NewQuestionOption {
-  value: "native" | "notebook";
+  value: NewQuestionType;
   label: string;
   icon: IconName;
 }

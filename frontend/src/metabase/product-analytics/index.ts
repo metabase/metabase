@@ -1,1 +1,1 @@
-export { getRoutes } from "./routes";
+export { getRoutes, notebookPage } from "./routes";

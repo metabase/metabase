@@ -5,7 +5,11 @@ import _ from "underscore";
 
 import { ID_ATTRIBUTE_NAME } from "metabase/rich_text_editing/tiptap/extensions/NodeIds";
 import { uuid } from "metabase/utils/uuid";
-import type { ProductAnalyticsNodeDefinition } from "metabase-types/api";
+import {
+  type ConcreteTableId,
+  type ProductAnalyticsNodeDefinition,
+  isConcreteTableId,
+} from "metabase-types/api";
 import { getProductAnalyticsNodeDefinition } from "metabase-types/guards";
 
 import type { CommonSettings } from "../analyses/types";
@@ -14,10 +18,13 @@ import type { StoredSettings } from "../settings/types";
 
 export const ANALYSIS_NODE_TYPE = "productAnalysis";
 
-/** Settings the document holds for every analysis, so nodes never store them. */
-const DOCUMENT_SETTING_KEYS = [
-  "date_range",
-] as const satisfies readonly (keyof CommonSettings)[];
+/**
+ * Settings the document holds for every analysis, so nodes never store them.
+ * None for now: a card's date range defaults to the document's, but each card
+ * can set its own.
+ */
+const DOCUMENT_SETTING_KEYS =
+  [] as const satisfies readonly (keyof CommonSettings)[];
 
 type FoundAnalysisNode = {
   node: ProseMirrorNode;
@@ -60,10 +67,35 @@ export const findAnalysisNode = (
 export const createAnalysisNodeContent = (
   definition: ProductAnalyticsNodeDefinition,
   nodeId: string = uuid(),
+  tableId: ConcreteTableId | null = null,
 ): JSONContent => ({
   type: ANALYSIS_NODE_TYPE,
-  attrs: { [ID_ATTRIBUTE_NAME]: nodeId, definition },
+  attrs: { [ID_ATTRIBUTE_NAME]: nodeId, definition, tableId },
 });
+
+/** The table the analysis picked for itself, if any. */
+export const getAnalysisNodeTableId = (
+  node: ProseMirrorNode,
+): ConcreteTableId | undefined => {
+  const tableId: unknown = node.attrs.tableId;
+  return typeof tableId === "number" && isConcreteTableId(tableId)
+    ? tableId
+    : undefined;
+};
+
+/** Points the analysis at another table, in one undoable step. */
+export const updateAnalysisNodeTable = (
+  editor: Editor,
+  nodeId: string,
+  tableId: ConcreteTableId,
+) => {
+  const found = findAnalysisNode(editor.state.doc, nodeId);
+  if (found !== undefined) {
+    editor.view.dispatch(
+      editor.state.tr.setNodeAttribute(found.pos, "tableId", tableId),
+    );
+  }
+};
 
 export const withoutDocumentSettings = (
   settings: StoredSettings,
@@ -112,9 +144,15 @@ export const insertAnalysisNodeAfter = (
     found !== undefined
       ? found.pos + found.node.nodeSize
       : editor.state.doc.content.size;
+  // An analysis added from another one analyzes the same table.
+  const tableId =
+    found !== undefined ? (getAnalysisNodeTableId(found.node) ?? null) : null;
   editor
     .chain()
-    .insertContentAt(pos, createAnalysisNodeContent(definition, nodeId))
+    .insertContentAt(
+      pos,
+      createAnalysisNodeContent(definition, nodeId, tableId),
+    )
     .run();
   return nodeId;
 };
