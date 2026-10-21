@@ -128,6 +128,9 @@ describe("TransformTestListPage", () => {
     setup({ tests: [] });
 
     expect(await screen.findByText("No tests yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("Create tests with the mb CLI or with remote sync."),
+    ).toBeInTheDocument();
   });
 
   it("filters the tests by name", async () => {

@@ -36,8 +36,6 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
     onGlobalFilterChange: setSearchQuery,
   });
 
-  const emptyMessage = searchQuery ? t`No tests found` : t`No tests yet`;
-
   return (
     <Stack>
       <TextInput
@@ -50,7 +48,16 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
       <Card withBorder p={0}>
         <TreeTable
           instance={treeTableInstance}
-          emptyState={<ListEmptyState label={emptyMessage} />}
+          emptyState={
+            searchQuery ? (
+              <ListEmptyState label={t`No tests found`} />
+            ) : (
+              <ListEmptyState
+                label={t`No tests yet`}
+                description={t`Create tests with the mb CLI or with remote sync.`}
+              />
+            )
+          }
           ariaLabel={t`Transform tests`}
         />
       </Card>
