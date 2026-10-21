@@ -988,8 +988,8 @@
 ;;; `date-field-with-day-bucketing?`, so the literal-side form becomes a negated range
 ;;; (`d < x OR d >= x+1`, dropping NULL rows) while the hoisted one stays an `!=` and gets the
 ;;; `IS NULL` disjunct `sql.qp` adds to every other `!=` (`correct-null-behaviour`). Hoisting is the
-;;; only option here, not just the better one: every `!=` shape that survives the JSON hop compiles
-;;; to `<> ... OR ... IS NULL`, and the one shape that does not is the broken one above. Pinned by
+;;; only option here, not just the better one: the `/question#` link carries the literal-side form
+;;; intact as MBQL 5, and the query engine then runs it as that negated range. Pinned by
 ;;; `optimize-date-not-equals-null-semantics-test`. The divergence is about *which rows*; inside a
 ;;; `case` under `expressions` that becomes a difference in a computed value rather than in the
 ;;; filter.
@@ -1299,11 +1299,13 @@
 ;;;   ["temporal-extract", {}, <col>, "week-of-year-iso"]     => ["get-week", {}, <col>, "iso"]
 ;;;   ["temporal-extract", {}, <col>, "day-of-week", "us"]    => ["get-day-of-week", {}, <col>]
 ;;;
-;;; Same hazard as Pass 2.95: the unit lands in the legacy `::TemporalExtractUnit` enum, which has
-;;; no decoder, so the question page 400s. A `get-*` clause carries no unit. The week-mode units keep
-;;; their meaning through the trailing argument `get-week` / `get-day-of-week` already take. The
-;;; clause's own optional mode slot (third example) is dropped: SQL compilation reads only the unit
-;;; (`:temporal-extract` in `metabase.driver.sql.query-processor`), so it never mattered.
+;;; The unit lands in the legacy `::TemporalExtractUnit` enum, which has no decoder, so a question
+;;; that opens from legacy MBQL 400s. The `/question#` link carries a structured query as MBQL 5,
+;;; where the clause survives, so this matters only when a query falls back to legacy MBQL. A
+;;; `get-*` clause carries no unit. The week-mode units keep their meaning through the trailing
+;;; argument `get-week` / `get-day-of-week` already take. The clause's own optional mode slot (third
+;;; example) is dropped: SQL compilation reads only the unit (`:temporal-extract` in
+;;; `metabase.driver.sql.query-processor`), so it never mattered.
 ;;;
 ;;; An exact synonym wherever the clause appears, so not scoped to `filters`. Idempotent: the new
 ;;; head is not `temporal-extract`.
@@ -3042,7 +3044,7 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+               (tru "Move the temporal unit in `{0}` off the literal. Put it on the column - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
                     (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
@@ -3114,16 +3116,17 @@
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
-    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, so its unit no longer sits
-       where legacy normalization cannot decode it (examples in the pass header);
+    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, which survives a fallback
+       to legacy MBQL (examples in the pass header);
     1.87. rewrite a known-misspelled `\"lib/type\"` marker to its canonical value (e.g. the
        join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
     2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
-       `absolute-datetime` literal and onto the ref it is compared to, for the same reason
-       (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
+       `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
+       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
+       form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
