@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupListSlowFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -89,6 +90,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router } = renderWithProviders(

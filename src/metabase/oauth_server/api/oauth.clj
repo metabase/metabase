@@ -10,6 +10,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
@@ -626,6 +627,7 @@
    _query-params
    body :- [:map {:closed true, :decode/api {:enter (fn [body] (if (map? body) body {}))}}
             [:grant_type    {:optional true} [:maybe :string]]
+            [:assertion     {:optional true} [:maybe :string]]
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
             [:refresh_token {:optional true} [:maybe :string]]
@@ -645,7 +647,13 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider body authorization-header)]
+                (let [response (if (= jwt-bearer/grant-type (:grant_type body))
+                                 (jwt-bearer/exchange-jwt-for-token! provider request
+                                                                     {:assertion (:assertion body)
+                                                                      :scopes    (when (some? (:scope body))
+                                                                                   (or (scope-tokens (:scope body)) []))
+                                                                      :resource  (:resource body)})
+                                 (oidc/token-request provider body authorization-header))]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"
