@@ -237,25 +237,32 @@
 
 (mu/defn archived-collection-ids-in-operation-with-location-like :- [:set ::lib.schema.id/collection]
   "The IDs of the archived Collections of the archive operation with `archive-operation-id` whose location matches
-  the SQL `pattern`."
+  the SQL `pattern`, except those archived directly."
   [pattern              :- :string
    archive-operation-id :- :string]
   (set (t2/select-pks-set :model/Collection
                           :location [:like pattern]
                           :archive_operation_id [:= archive-operation-id]
-                          :archived [:= true])))
+                          :archived [:= true]
+                          :archived_directly [:not= true])))
 
-(mu/defn archived-collections-without-operation-with-location-like :- [:sequential [:map
-                                                                                    [:id ::lib.schema.id/collection]
-                                                                                    [:location :string]
-                                                                                    [:archived_directly [:maybe :boolean]]]]
+(mu/defn archived-collections-without-operation-with-locations-like :- [:sequential [:map
+                                                                                     [:id ::lib.schema.id/collection]
+                                                                                     [:location :string]
+                                                                                     [:archived_directly [:maybe :boolean]]]]
   "The `:id`, `:location` and `:archived_directly` of the archived Collections without an archive operation, i.e.
-  archived elsewhere, whose location matches the SQL `pattern`."
-  [pattern :- :string]
+  archived elsewhere, whose location matches one of the SQL `patterns`."
+  [patterns :- [:sequential {:min 1} :string]]
   (t2/select [:model/Collection :id :location :archived_directly]
-             :location [:like pattern]
-             :archive_operation_id nil
-             :archived [:= true]))
+             {:where [:and
+                      (into [:or] (map (fn [pattern] [:like :location pattern])) patterns)
+                      [:= :archive_operation_id nil]
+                      [:= :archived true]]}))
+
+(mu/defn archive-operation-ids :- [:map-of ::lib.schema.id/collection [:maybe :string]]
+  "A map of ID to `:archive_operation_id` for `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select-pk->fn :archive_operation_id :model/Collection :id [:in collection-ids]))
 
 (mu/defn collection-ids-of-type
   "The IDs of the Collections among `collection-ids` of `type`."
