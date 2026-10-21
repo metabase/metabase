@@ -710,7 +710,12 @@
                                                             (dissoc % :alias)
                                                             %)
                                                          joins))))
-          home-cols   (lib.metadata.calculation/visible-columns query stage-number)
+          ;; the columns of the join being named are not home columns, even before it has an alias
+          home-cols   (lib.metadata.calculation/visible-columns
+                       (lib.util/update-query-stage query stage-number
+                                                    m/update-existing :joins (fn [joins]
+                                                                               (filterv #(not= % a-join) joins)))
+                       stage-number)
           join-alias  (default-alias query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
