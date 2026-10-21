@@ -363,7 +363,11 @@
   "Whether a curated-only Metabot may read the Card with `metric-id` where a metric is expected: the same judgement
   [[uncurated-query-sources]] makes for a metric a query uses (see [[metric-ok?]]). A curated Card of any type
   passes on its own curation; only a live metric Card is judged by its definition, so an uncurated question or
-  model named here is denied like anywhere else, and a missing or archived Card is."
+  model named here is denied like anywhere else, and a missing or archived Card is.
+
+  The definition is judged without a permission check on the Tables it reads, as [[check-curated-query!]] judges a
+  conversation query: a user who can read the metric but not its base Table learns from the verdict whether that
+  Table is curated. Accepted, for the same reason; the metric's details name no Table the user cannot query."
   [metric-id]
   (let [curated?   (fn [model id] (contains? (curated-ids [[model id]]) [model id]))
         definition (when-let [{:keys [database_id dataset_query archived]} (metabot.db/card-of-type metric-id :metric)]

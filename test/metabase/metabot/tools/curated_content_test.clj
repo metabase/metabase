@@ -1312,6 +1312,33 @@
             (is (= (mt/id :reviews) (:base_table_id (details metabot metric))) "a metric's base table is its source")
             (is (= (mt/id :reviews) (:base_table_id (details nil question))) "the unrestricted Metabot shows it")))))))
 
+(deftest uncurated-metric-verdict-follows-its-definition-before-permissions-test
+  (testing "an uncurated metric the user can read is judged by its definition whether or not they can query its table:
+            the one over an uncurated table is refused, the one over a curated table is served without its base table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
+                                                 :is_published true :data_layer :final}
+                   :model/Table {raw :id} {:db_id db-id :name "hidden_raw" :active true}
+                   :model/Field _ {:table_id published :name "A" :base_type :type/Integer}
+                   :model/Field _ {:table_id raw :name "A" :base_type :type/Integer}
+                   :model/Card {over-published :id} {:type :metric :name "count over published" :database_id db-id
+                                                     :table_id published
+                                                     :dataset_query {:database db-id :type :query
+                                                                     :query {:source-table published
+                                                                             :aggregation  [[:count]]}}}
+                   :model/Card {over-raw :id} {:type :metric :name "count over raw" :database_id db-id :table_id raw
+                                               :dataset_query {:database db-id :type :query
+                                                               :query {:source-table raw :aggregation [[:count]]}}}
+                   :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [read (fn [id] (first (read-uris metabot :internal (str "metabase://metric/" id))))]
+            (is (denied? (read over-raw)))
+            (let [served (read over-published)]
+              (is (nil? (:error served)) (:error served))
+              (is (not (contains? (get-in served [:content :structured-output]) :base_table_id))
+                  "the base table the user cannot query is not named"))))))))
+
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (testing "a missing id gets the handler's own answer, not a curation verdict"
     (mt/with-current-user (mt/user->id :crowberto)
