@@ -1,0 +1,45 @@
+.histogram {
+  display: block;
+}
+
+.bar {
+  fill: var(--mb-color-border-neutral);
+
+  &[data-highlighted="true"] {
+    /* Prototype: the design uses palm/30, which has no semantic token. */
+    fill: color-mix(
+      in srgb,
+      var(--mb-color-core-summarize) 75%,
+      var(--mb-color-background_page-primary)
+    );
+  }
+}
+
+.slider {
+  margin-top: var(--mantine-spacing-lg);
+}
+
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.15;
+}
+
+/* In inverted mode the track has the fill color and the bar has the track
+   color. The track color is translucent, so the bar also needs an opaque
+   layer under it. */
+.invertedBar[data-inverted="true"] {
+  background:
+    linear-gradient(
+      var(--mb-color-background_surface-secondary),
+      var(--mb-color-background_surface-secondary)
+    ),
+    var(--mb-color-background_page-primary);
+}
+
+.hiddenBar {
+  display: none;
+}

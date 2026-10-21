@@ -1,0 +1,180 @@
+import * as Lib from "metabase-lib";
+import type { RowValue } from "metabase-types/api";
+
+export const BUCKET_COUNT = 80;
+
+const BUCKET_EXPRESSION_NAME = "prototype_stats_bucket";
+
+export interface NumberColumnStats {
+  count: number;
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  sum: number | null;
+}
+
+interface StatsBase {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+}
+
+/**
+ * The query that the stats describe: the user's query without the filter that
+ * the user edits now, cut at the filter stage, with no sort and no limit. When
+ * the stage aggregates, a new stage reads its results.
+ */
+export function getStatsBase(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  filter: Lib.Filterable | undefined,
+): StatsBase | null {
+  let newQuery = query;
+  const ownFilter = Lib.filters(query, stageIndex).find(
+    (clause) => clause === filter,
+  );
+  if (ownFilter != null) {
+    newQuery = Lib.removeClause(newQuery, stageIndex, ownFilter);
+  }
+  while (Lib.stageCount(newQuery) > stageIndex + 1) {
+    newQuery = Lib.dropStage(newQuery);
+  }
+  for (const orderBy of Lib.orderBys(newQuery, stageIndex)) {
+    newQuery = Lib.removeClause(newQuery, stageIndex, orderBy);
+  }
+  newQuery = Lib.limit(newQuery, stageIndex, null);
+
+  let newStageIndex = stageIndex;
+  if (
+    Lib.aggregations(newQuery, stageIndex).length > 0 ||
+    Lib.breakouts(newQuery, stageIndex).length > 0
+  ) {
+    newQuery = Lib.appendStage(newQuery);
+    newStageIndex = stageIndex + 1;
+  }
+
+  const newColumn = Lib.findMatchingColumn(
+    newQuery,
+    newStageIndex,
+    column,
+    Lib.expressionableColumns(newQuery, newStageIndex),
+  );
+  return newColumn != null
+    ? { query: newQuery, stageIndex: newStageIndex, column: newColumn }
+    : null;
+}
+
+function findAggregationOperator(
+  query: Lib.Query,
+  stageIndex: number,
+  shortName: string,
+) {
+  return Lib.availableAggregationOperators(query, stageIndex).find(
+    (operator) =>
+      Lib.displayInfo(query, stageIndex, operator).shortName === shortName,
+  );
+}
+
+function aggregate(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata | null,
+  shortName: string,
+): Lib.Query | null {
+  const operator = findAggregationOperator(query, stageIndex, shortName);
+  if (operator == null) {
+    return null;
+  }
+  if (column == null) {
+    return Lib.aggregate(query, stageIndex, Lib.aggregationClause(operator));
+  }
+  const operatorColumn = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.aggregationOperatorColumns(operator),
+  );
+  return operatorColumn != null
+    ? Lib.aggregate(
+        query,
+        stageIndex,
+        Lib.aggregationClause(operator, operatorColumn),
+      )
+    : null;
+}
+
+/** Count, min, max, average and sum of the column, in this order. */
+export function getSummaryQuery({
+  query,
+  stageIndex,
+  column,
+}: StatsBase): Lib.Query | null {
+  let newQuery: Lib.Query | null = aggregate(query, stageIndex, null, "count");
+  for (const shortName of ["min", "max", "avg", "sum"]) {
+    if (newQuery == null) {
+      return null;
+    }
+    newQuery = aggregate(newQuery, stageIndex, column, shortName);
+  }
+  return newQuery;
+}
+
+export function parseSummaryRow(row: RowValue[]): NumberColumnStats {
+  const [count, min, max, avg, sum] = row.map((value) =>
+    typeof value === "number" ? value : null,
+  );
+  return { count: count ?? 0, min, max, avg, sum };
+}
+
+/**
+ * Row counts in BUCKET_COUNT equal buckets from min to max. The bucket of a
+ * value is floor((value - min) * BUCKET_COUNT / (max - min)).
+ */
+export function getHistogramQuery(
+  { query, stageIndex, column }: StatsBase,
+  min: number,
+  max: number,
+): Lib.Query | null {
+  const bucketClause = Lib.expressionClause("floor", [
+    Lib.expressionClause("/", [
+      Lib.expressionClause("*", [
+        Lib.expressionClause("-", [column, min]),
+        BUCKET_COUNT,
+      ]),
+      max - min,
+    ]),
+  ]);
+  const newQuery = Lib.expression(
+    query,
+    stageIndex,
+    BUCKET_EXPRESSION_NAME,
+    bucketClause,
+  );
+  const bucketColumn = Lib.breakoutableColumns(newQuery, stageIndex).find(
+    (column) =>
+      Lib.displayInfo(newQuery, stageIndex, column).name ===
+      BUCKET_EXPRESSION_NAME,
+  );
+  if (bucketColumn == null) {
+    return null;
+  }
+  return aggregate(
+    Lib.breakout(newQuery, stageIndex, bucketColumn),
+    stageIndex,
+    null,
+    "count",
+  );
+}
+
+export function parseHistogramRows(rows: RowValue[][]): number[] {
+  const counts = new Array(BUCKET_COUNT).fill(0);
+  for (const [bucket, count] of rows) {
+    if (typeof bucket === "number" && typeof count === "number") {
+      // The max value is on the upper bound, so it gets bucket BUCKET_COUNT.
+      const index = Math.min(Math.max(bucket, 0), BUCKET_COUNT - 1);
+      counts[index] += count;
+    }
+  }
+  return counts;
+}
