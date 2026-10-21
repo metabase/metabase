@@ -397,6 +397,6 @@
                             {:dashboard_id inapp-dash-id :slack_channel "data-team"}
                             #(subscription-schedules inapp-dash-id) expected-subscription]]]
                     (testing (str tool)
-                      (is (=? {:output #"^Created (alert|subscription) \d+ "}
+                      (is (=? {:output #"^Created (alert|subscription) \d+ .*"}
                               (tools.core/call @tool (assoc args :schedule schedule) ctx)))
                       (is (= [expected] (stored-schedules))))))))))))))
