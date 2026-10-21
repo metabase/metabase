@@ -1184,6 +1184,54 @@
                                                               :stages   [{:lib/type "mbql.stage/mbql" :source-card %}]})
                    curated-eid plain-eid)))))))
 
+(deftest unreadable-entities-in-listings-answer-the-same-whether-curated-test
+  (testing "a listing under curated-only judges only what the user can read, so its membership reveals nothing about
+            the curation of an entity they cannot read"
+    (testing "the schema listing and a model's sources, with tables the user cannot read"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {published :id} {:db_id db-id :schema "A" :name "a_published" :active true
+                                                   :is_published true :data_layer :final}
+                     :model/Table {raw :id} {:db_id db-id :schema "B" :name "b_raw" :active true}
+                     :model/Field _ {:table_id published :name "X" :base_type :type/Integer}
+                     :model/Field _ {:table_id raw :name "X" :base_type :type/Integer}
+                     :model/Collection {official :id} {:name "official" :authority_level "official"}
+                     :model/Card {over-published :id} {:collection_id official :type :model :name "over published"
+                                                       :database_id db-id :table_id published
+                                                       :dataset_query {:database db-id :type :query
+                                                                       :query {:source-table published}}}
+                     :model/Card {over-raw :id} {:collection_id official :type :model :name "over raw"
+                                                 :database_id db-id :table_id raw
+                                                 :dataset_query {:database db-id :type :query
+                                                                 :query {:source-table raw}}}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [items (fn [uri]
+                          (let [[resource] (read-uris metabot :internal uri)]
+                            (is (nil? (:error resource)) (:error resource))
+                            (get-in resource [:content :structured-output :items])))]
+              (is (empty? (items (str "metabase://database/" db-id "/schemas")))
+                  "neither schema is listed: the user can read no table in them")
+              (is (= (map :type (items (str "metabase://model/" over-published "/sources")))
+                     (map :type (items (str "metabase://model/" over-raw "/sources"))))
+                  "the sources listings of the two models have the same shape"))))))
+    (testing "the metrics embedded in a table's details, with metrics the user cannot read"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {official :id} {:name "official" :authority_level "official"}
+                       :model/Collection {plain :id} {:name "plain"}
+                       :model/Card {curated-metric :id} {:collection_id official :type :metric :name "official count"
+                                                         :dataset_query (count-metric-query (orders-query))}
+                       :model/Card {plain-metric :id} {:collection_id plain :type :metric :name "plain count"
+                                                       :dataset_query (count-metric-query (orders-query))}
+                       :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [[resource] (read-uris metabot :internal (str "metabase://table/" (mt/id :orders)))
+                    metric-ids (into #{} (map :id) (get-in resource [:content :structured-output :metrics]))]
+                (is (nil? (:error resource)) (:error resource))
+                (is (not (contains? metric-ids curated-metric)) "an unreadable curated metric is not listed")
+                (is (not (contains? metric-ids plain-metric)))))))))))
+
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (testing "a missing id gets the handler's own answer, not a curation verdict"
     (mt/with-current-user (mt/user->id :crowberto)

@@ -555,9 +555,11 @@
     (list-result :database-models models query-params)))
 
 (defn- curated-table-schemas
-  "The schemas of the Database with `db-id` that hold at least one curated active Table."
+  "The schemas of the Database with `db-id` that hold at least one curated active Table the current user can read.
+   Readable first, then curated, so the listing reveals nothing about a Table the user cannot read."
   [db-id]
-  (let [tables  (metabot.db/active-tables-for-database db-id)
+  (let [_       (perms/prime-table-perms-cache {:db-ids #{db-id}})
+        tables  (filter mi/can-read? (metabot.db/active-tables-for-database db-id))
         curated (curation/curated-ids (map (fn [{:keys [id]}] ["table" id]) tables))]
     (into #{}
           (comp (filter (fn [{:keys [id]}] (contains? curated ["table" id])))
@@ -652,10 +654,12 @@
 
 (defn- usable-metrics
   "The `metrics` embedded in a table's or card's details that a `metric/{id}` read would serve (see
-   [[curation/usable-metric-ids]])."
+   [[curation/usable-metric-ids]]). Only metrics the current user can read are judged, so the listing reveals nothing
+   about the curation of one they cannot."
   [metrics]
-  (let [usable (curation/usable-metric-ids (map :id metrics))]
-    (filterv (fn [{:keys [id]}] (contains? usable id)) metrics)))
+  (let [readable (filterv (fn [{:keys [id]}] (mi/can-read? :model/Card id)) metrics)
+        usable   (curation/usable-metric-ids (map :id readable))]
+    (filterv (fn [{:keys [id]}] (contains? usable id)) readable)))
 
 (defn- curated-only-details
   "Under [[shared/curated-only?]], trim a table's or card's details `result` to what this Metabot may use: the
@@ -735,10 +739,22 @@
                                :field-id    field-id
                                :limit       30})))
 
+(defn- readable-source-item?
+  "Whether the current user can read the table or card a `card-sources-items` entry names."
+  [{:keys [type id]}]
+  (case type
+    "table"                      (mi/can-read? :model/Table id)
+    ("model" "metric" "question") (mi/can-read? :model/Card id)
+    true))
+
 (defn- fetch-card-sources [id-str query-params]
   (let [card (api/read-check :model/Card (parse-long id-str))]
     (check-resource-database (:database_id card))
-    (list-result :card-sources (card-sources-items card) query-params)))
+    ;; under curated-only the list is filtered by curation, so what the user cannot read is dropped first
+    (list-result :card-sources
+                 (cond->> (card-sources-items card)
+                   (shared/curated-only?) (filterv readable-source-item?))
+                 query-params)))
 
 ;; ----- Metric -----
 
