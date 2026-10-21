@@ -365,6 +365,12 @@
                  :pivot?                 pivot-results?
                  :js-int-to-string?      false}))
 
+(defn- +content-gate-cache
+  [handler]
+  (fn [request respond raise]
+    (m.document/with-content-gate-cache
+      (handler request respond raise))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/document/` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth +content-gate-cache))
