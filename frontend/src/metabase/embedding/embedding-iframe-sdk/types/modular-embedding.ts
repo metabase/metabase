@@ -102,6 +102,21 @@ export interface MetabaseDashboardAttributes {
   "enable-entity-navigation"?: boolean;
 
   /**
+   * Filter values for dashboards and SQL questions the user reaches through
+   * entity navigation. Needs `enable-entity-navigation`. Keyed by the `navigationId` that the
+   * `navigated-entity-parameters-change` DOM event reports, e.g.
+   * `{ '<navigationId>': { 'productId': '42' } }`.
+   * Each navigation gets a new `navigationId`, going back keeps it.
+   * Each entry works like `parameters` and replaces the values of that visit:
+   * keys you omit use their default, `null` clears a value. To keep the values
+   * the click set, start from the event's `clickParameters`. A visit
+   * without an entry keeps the click-behavior values and is not controlled.
+   *
+   * @remarks Pro/Enterprise
+   */
+  "navigated-entity-parameters"?: object;
+
+  /**
    * Optional custom context string passed through to the guest token endpoint.
    *
    * @remarks Guest embed

@@ -206,6 +206,17 @@
                           :text (str "Call `search` and build the URI from a result's numeric `id`"
                                      " attribute, or copy its `uri` attribute as-is.")}]))})
 
+(tools/defrecoverable not-a-metric!
+  "Report a metric URI that refers to a question or model."
+  {:payload [:map {:closed true}
+             [:id       :int]
+             [:type     [:enum "question" "model"]]
+             [:card-uri :string]]}
+  [{:keys [id type card-uri]}]
+  {:message  (str "Card " id " is a " type ", not a metric.")
+   :recovery [{:uses #{}
+               :text (str "Read `" card-uri "` instead.")}]})
+
 (tools/defrecoverable invalid-page!
   "A `?page=N` outside the list's range."
   {:payload [:map {:closed true}
@@ -589,11 +600,14 @@
     (check-resource-database (:db_id table))))
 
 (defn check-card-resource-database
-  "Require that `card-id`'s (model/question/metric) backing database is addressable as a Metabot
-  resource (see [[check-resource-database]]). Exported for [[metabase.metabot.tools.metadata]]."
+  "Require that `card-id`'s backing database is addressable as a Metabot resource, and return the card.
+
+  `card-id` names a model, question or metric; see [[check-resource-database]]. Exported for
+  [[metabase.metabot.tools.metadata]]."
   [card-id]
   (when-let [card (api/read-check :model/Card card-id)]
-    (check-resource-database (:database_id card))))
+    (check-resource-database (:database_id card))
+    card))
 
 (defn- check-measure-or-segment-resource-database [model id]
   (when-let [table-id (case model
@@ -674,23 +688,34 @@
 
 ;; ----- Metric -----
 
+(defn- check-metric-resource
+  "Require that `metric-id` is a metric whose backing database is addressable as a Metabot resource.
+
+  The error for a question or model includes its resource URI with `path-segments` appended."
+  [metric-id & path-segments]
+  (let [{card-type :type} (check-card-resource-database metric-id)]
+    (when-not (= :metric card-type)
+      (not-a-metric! {:id       metric-id
+                      :type     (name card-type)
+                      :card-uri (apply llm-shape/metabase-uri card-type metric-id path-segments)}))))
+
 (defn- fetch-metric [id-str]
   (let [metric-id (parse-long id-str)]
-    (check-card-resource-database metric-id)
+    (check-metric-resource metric-id)
     (entity-details/get-metric-details {:metric-id                  metric-id
                                         :with-queryable-dimensions? false
                                         :with-field-values?         false})))
 
 (defn- fetch-metric-dimensions [id-str]
   (let [metric-id (parse-long id-str)]
-    (check-card-resource-database metric-id)
+    (check-metric-resource metric-id "fields")
     (entity-details/get-metric-details {:metric-id                  metric-id
                                         :with-queryable-dimensions? true
                                         :with-field-values?         false})))
 
 (defn- fetch-metric-dimension [id-str dim-id]
   (let [metric-id (parse-long id-str)]
-    (check-card-resource-database metric-id)
+    (check-metric-resource metric-id "fields" dim-id)
     (field-stats/field-values {:entity-type "metric"
                                :entity-id   metric-id
                                :field-id    dim-id
