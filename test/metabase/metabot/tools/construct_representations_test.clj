@@ -2183,7 +2183,7 @@
             wrap  (fn [cause] (ex-info "Error preprocessing query in middleware: private detail"
                                        {:type :qp :fn #'qp/preprocess} cause))
             forbidden (ex-info "private permission detail" {:status-code 403})]
-        (doseq [e [(wrap (ex-info "another wrapper" {} forbidden))
+        (doseq [e [(wrap (ex-info "another wrapper" {:type :invalid-query} forbidden))
                    (ex-info "private setup failure" {})
                    (wrap (RuntimeException. "private programming failure"))
                    (wrap (ex-info "private DB failure" {:type :invalid-query}
