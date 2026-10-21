@@ -31,7 +31,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -389,6 +388,13 @@
 
 (declare with-rvalue-temporal-bucketing)
 
+(defn- nested-document-path
+  "The document path of the nested column a `:field` clause with alias info refers to: its parent names and its own
+  name, or nil when it is not nested."
+  [{parent-names driver-api/qp.add.parent-names, column-name driver-api/qp.add.column-name}]
+  (when (and (seq parent-names) column-name)
+    (conj (vec parent-names) column-name)))
+
 (mu/defn- scope-with-join-field :- :string
   "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
   [field-name   :- [:maybe :string]
@@ -532,14 +538,17 @@ function(bin) {
   [query stage-number ag-ref :- :mbql.clause/aggregation]
   (driver-api/mbql-5-aggregation-name query stage-number ag-ref))
 
+(defn- field-ref-name
+  "The name a `:field` clause refers to its column by: its own name, or the name of the Field it refers to by ID."
+  [query [_tag _opts id-or-name]]
+  (if (string? id-or-name)
+    id-or-name
+    (:name (driver-api/field query id-or-name))))
+
 (mu/defmethod ->lvalue :field
-  [query stage-number [_ {:keys [join-alias] :as opts} id-or-name :as field] :- :mbql.clause/field]
-  (if (pos-int? id-or-name)
-    (or (find-mapped-field-name field)
-        (->lvalue query stage-number (assoc (driver-api/field query id-or-name)
-                                            ::source-alias (driver-api/qp.add.source-alias opts)
-                                            ::join-field (get-join-alias join-alias))))
-    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (driver-api/qp.add.source-alias opts))))
+  [query _stage-number [_ {:keys [join-alias] :as opts} _id-or-name :as field] :- :mbql.clause/field]
+  (or (find-mapped-field-name field)
+      (scope-with-join-field (field-ref-name query field) (get-join-alias join-alias) (driver-api/qp.add.source-alias opts))))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -668,20 +677,17 @@ function(bin) {
 (mu/defmethod ->rvalue :field
   [query                                                                :- ::lib.schema/query
    stage-number                                                         :- :int
-   [_ {:keys [temporal-unit join-alias] :as opts} id-or-name :as field] :- :mbql.clause/field]
-  (let [join-field   (get-join-alias join-alias)
-        source-alias (driver-api/qp.add.source-alias opts)
-        rvalue       (if (pos-int? id-or-name)
-                       (if-let [mapped (find-mapped-field-name field)]
-                         (str \$ mapped)
-                         (->rvalue query stage-number (assoc (driver-api/field query id-or-name)
-                                                             ::source-alias source-alias
-                                                             ::join-field   join-field
-                                                             ::inherited?   (not (or (pos-int? (driver-api/qp.add.source-table opts))
-                                                                                     (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table opts))))))
-                       (if-let [mapped (find-mapped-field-name field)]
-                         (str \$ mapped)
-                         (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))]
+   [_ {:keys [temporal-unit join-alias] :as opts} _id-or-name :as field] :- :mbql.clause/field]
+  (let [rvalue (if-let [mapped (find-mapped-field-name field)]
+                 (str \$ mapped)
+                 (->rvalue query stage-number {:lib/type          :metadata/column
+                                               :name              (field-ref-name query field)
+                                               :base-type         (:base-type opts :type/*)
+                                               :coercion-strategy (driver-api/qp.add.coercion-strategy opts)
+                                               ::source-alias     (driver-api/qp.add.source-alias opts)
+                                               ::join-field       (get-join-alias join-alias)
+                                               ::inherited?       (not (or (pos-int? (driver-api/qp.add.source-table opts))
+                                                                           (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table opts)))}))]
     (if temporal-unit
       (with-rvalue-temporal-bucketing query rvalue temporal-unit)
       rvalue)))
@@ -2232,33 +2238,14 @@ function(bin) {
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
-(defn- field-id->path
-  "Return the full document-path components for `field-id` as a vector of strings. Uses [[col->name-components]],
-  which prefers `:nfc-path` and falls back to walking `:parent-id` for fields synced before `:nfc-path` was populated."
-  [metadata-providerable field-id]
-  (vec (col->name-components metadata-providerable (driver-api/field metadata-providerable field-id))))
-
-(mu/defn- field-clauses->id->path :- [:map-of
-                                      [:or ::lib.schema.id/field :string]
-                                      [:sequential :string]]
-  "Build a map of `field-id-or-name -> path-vector` for all `:field` clauses in `clauses`. Integer IDs are
-  resolved via the metadata provider; for string refs (e.g. from a wrapper stage), the path is derived from
-  the opts `:source-alias` populated by `add-alias-info` (and path-prepended by [[HACK-update-aliases]] for
-  nested fields), falling back to `id-or-name` when no source-alias is present. The path-joined string is
-  split on the Mongo path delimiter."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   clauses               :- [:sequential ::lib.schema.mbql-clause/clause]]
-  (into {}
-        (keep (fn [[tag opts id-or-name]]
-                (when (= tag :field)
-                  (cond
-                    (pos-int? id-or-name)
-                    [id-or-name (field-id->path metadata-providerable id-or-name)]
-
-                    (string? id-or-name)
-                    [id-or-name (raw-path->components
-                                 (get opts driver-api/qp.add.source-alias id-or-name))]))))
-        clauses))
+(defn- field-clause-path
+  "The document path of a `:field` clause as a vector of strings: the parent names and the name of a nested column, or
+  else the opts `:source-alias` populated by `add-alias-info` (path-prepended by [[HACK-update-aliases]] for nested
+  fields), falling back to the field name."
+  [[tag opts field-name]]
+  (when (= tag :field)
+    (or (nested-document-path opts)
+        (raw-path->components (get opts driver-api/qp.add.source-alias field-name)))))
 
 (mu/defn- remove-parent-fields :- [:sequential ::lib.schema.mbql-clause/clause]
   "Removes any and all entries in `clauses` that are parents of another `:field` in `clauses` This is necessary because
@@ -2266,17 +2253,15 @@ function(bin) {
   `https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields`).
 
   Removing parents is useful when sorting, because leaf fields sort."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   clauses               :- [:sequential ::lib.schema.mbql-clause/clause]]
-  (let [id->path     (field-clauses->id->path metadata-providerable clauses)
-        parent-paths (into #{}
-                           (keep (fn [path]
-                                   (when (> (count path) 1)
-                                     (vec (butlast path)))))
-                           (vals id->path))]
-    (remove (fn [[tag _opts id-or-name]]
-              (and (= tag :field)
-                   (contains? parent-paths (id->path id-or-name))))
+  [clauses :- [:sequential ::lib.schema.mbql-clause/clause]]
+  (let [parent-paths (into #{}
+                           (keep (fn [clause]
+                                   (when-let [path (field-clause-path clause)]
+                                     (when (> (count path) 1)
+                                       (vec (butlast path))))))
+                           clauses)]
+    (remove (fn [clause]
+              (some->> (field-clause-path clause) (contains? parent-paths)))
             clauses)))
 
 (mu/defn- remove-child-fields :- [:sequential ::lib.schema.mbql-clause/clause]
@@ -2286,16 +2271,12 @@ function(bin) {
 
   Removing children is useful when projecting, because the return value of a mongo query is json, and so a parent
   includes all of its children."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   clauses               :- [:sequential ::lib.schema.mbql-clause/clause]]
-  (let [id->path  (field-clauses->id->path metadata-providerable clauses)
-        all-paths (set (vals id->path))]
-    (remove (fn [[tag _opts id-or-name :as _clause]]
-              (when (= tag :field)
-                (let [path (id->path id-or-name)]
-                  (and path
-                       (> (count path) 1)
-                       (contains? all-paths (vec (butlast path)))))))
+  [clauses :- [:sequential ::lib.schema.mbql-clause/clause]]
+  (let [all-paths (into #{} (keep field-clause-path) clauses)]
+    (remove (fn [clause]
+              (when-let [path (field-clause-path clause)]
+                (and (> (count path) 1)
+                     (contains? all-paths (vec (butlast path))))))
             clauses)))
 
 (mu/defn- handle-order-by :- ::compiled-pipeline
@@ -2306,7 +2287,7 @@ function(bin) {
         breakouts               (lib/breakouts query stage-number)
         aggregations            (lib/aggregations query stage-number)
         breakout-fields         (set breakouts)
-        sort-fields             (for [field (remove-parent-fields query (map last order-bys))
+        sort-fields             (for [field (remove-parent-fields (map last order-bys))
                                       ;; We only care about expressions and bucketing not added as breakout
                                       :when (and (not (some #(lib.equality/= % field)
                                                             breakout-fields))
@@ -2363,7 +2344,7 @@ function(bin) {
   (let [fields (lib/fields query stage-number)]
     (if (empty? fields)
       pipeline-ctx
-      (let [new-projections (for [field (remove-child-fields query fields)]
+      (let [new-projections (for [field (remove-child-fields fields)]
                               [(field-alias query stage-number field) (->rvalue query stage-number field)])]
         (-> pipeline-ctx
             ;; we can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
@@ -2478,9 +2459,9 @@ function(bin) {
 ;;; values added by add-alias-info.
 (defn- HACK-update-aliases-in-field-refs
   [query]
-  (letfn [(raw-mongo-path [id-or-name]
-            (when (pos-int? id-or-name)
-              (field->name query (driver-api/field query id-or-name))))
+  (letfn [(raw-mongo-path [opts]
+            (when-let [path (nested-document-path opts)]
+              (str/join \. path)))
           (prepend-nfc-path [raw-path
                              {nfc-path      driver-api/qp.add.nfc-path,
                               source-alias  driver-api/qp.add.source-alias
@@ -2501,8 +2482,7 @@ function(bin) {
                        (= source-table driver-api/qp.add.source))
               (dissoc opts :join-alias)))
           (update-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
-            (when (and join-alias
-                       source-table
+            (when (and (string? source-table)
                        (not= join-alias source-table))
               (assoc opts :join-alias source-table)))
           (update-opts [raw-path opts]
@@ -2517,12 +2497,10 @@ function(bin) {
               update-name
               remove-bad-join-alias
               update-join-alias]))
-          (update-field-ref [[_tag {source-alias driver-api/qp.add.source-alias, :as _opts} id-or-name, :as field-ref]]
-            (let [field-ref' (lib/update-options field-ref (partial update-opts (raw-mongo-path id-or-name)))]
+          (update-field-ref [[_tag {source-alias driver-api/qp.add.source-alias, :as opts} _field-name, :as field-ref]]
+            (let [field-ref' (lib/update-options field-ref (partial update-opts (raw-mongo-path opts)))]
               (cond-> field-ref'
-                (and (string? id-or-name)
-                     source-alias)
-                (assoc 2 source-alias))))]
+                source-alias (assoc 2 source-alias))))]
     ;; disable enforcement as the query won't be fully valid until finishing [[HACK-update-aliases-in-joins]]
     (mu/disable-enforcement
       (lib.walk/walk-clauses
