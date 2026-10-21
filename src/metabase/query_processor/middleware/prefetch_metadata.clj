@@ -7,7 +7,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.util.log :as log]))
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.match :as match]))
 
 (defn- card->referenced-entity-ids
   [metadata-provider card]
@@ -34,6 +37,20 @@
                (into seen-card-ids new-card-ids))
         referenced-ids))))
 
+(defn- check-field-ids-exist!
+  "Throw if a `:field` ref in `query` refers to a Field by an ID that does not exist."
+  [query]
+  (when-let [field-ids (not-empty (set (match/match-many (:stages query)
+                                         [:field _opts (id :guard pos-int?)]
+                                         id)))]
+    (try
+      (lib.metadata/bulk-metadata-or-throw query :metadata/column field-ids)
+      (catch Throwable e
+        (throw (ex-info (tru "Error resolving Fields in query: {0}" (ex-message e))
+                        {:field-ids field-ids
+                         :type      qp.error-type/qp}
+                        e))))))
+
 (defn prefetch-metadata
   "Bulk-load the metadata for everything referenced by `query` -- tables, cards (recursively), metrics, measures,
   segments, snippets, and the fields referenced by template tags or implicit joins -- into the metadata provider's
@@ -43,4 +60,5 @@
   (let [metadata-provider (lib.metadata/->metadata-provider query)]
     (when (lib.metadata.protocols/cached-metadata-provider-with-cache? metadata-provider)
       (lib-be/bulk-load-query-metadata! metadata-provider (all-referenced-entity-ids metadata-provider query))))
+  (check-field-ids-exist! query)
   query)

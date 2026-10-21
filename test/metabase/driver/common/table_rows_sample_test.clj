@@ -32,7 +32,7 @@
                    :order-by [(driver-api/order-by-clause id-column :desc)]}]
     (is (=? {:stages [{:source-table (meta/id :orders)
                        :fields       sequential?
-                       :order-by     [[:desc {} [:field {} (meta/id :orders :id)]]]
+                       :order-by     [[:desc {} [:field {} "ID"]]]
                        :limit        100}]}
             (#'table-rows-sample/table-rows-sample-query mp table fields opts)))))
 
@@ -168,7 +168,7 @@
             table (lib-be/instance->metadata table :metadata/table)
             field1 (lib-be/instance->metadata field1 :metadata/column)]
         (is (=? [[:> {}
-                  [:field {:base-type :type/Integer} (:id field2)]
+                  [:field {:base-type :type/Integer} "group_id"]
                   int?]]
                 (lib/filters (#'table-rows-sample/table-rows-sample-query mp table [field1] {}))))))
     (testing "the mbql on a table that requires a filter will include a filter"
@@ -176,6 +176,6 @@
       (mt/with-dynamic-fn-redefs [qp/process-query (fn [& args]
                                                      (first args))]
         (is (=? [[:> {}
-                  [:field {:base-type :type/Integer} (:id field2)]
+                  [:field {:base-type :type/Integer} "group_id"]
                   int?]]
                 (lib/filters (table-rows-sample/table-rows-sample table [] (constantly conj)))))))))

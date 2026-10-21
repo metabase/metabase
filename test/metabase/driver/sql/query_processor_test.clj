@@ -251,8 +251,9 @@
                                        :alias        "card"
                                        :strategy     :left-join
                                        :condition    [:=
-                                                      [:field (meta/id :checkins :venue-id) {::add/source-table (meta/id :checkins)
-                                                                                             ::add/source-alias "VENUE_ID"}]
+                                                      [:field (meta/id :checkins :venue-id) {::add/source-table  (meta/id :checkins)
+                                                                                             ::add/source-alias  "VENUE_ID"
+                                                                                             ::add/database-type "integer"}]
                                                       [:field "id" {:join-alias        "card"
                                                                     :base-type         :type/Integer
                                                                     ::add/source-table "card"

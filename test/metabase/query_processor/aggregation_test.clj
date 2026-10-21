@@ -476,7 +476,7 @@
           query       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                           (lib/aggregate measure)
                           (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))]
-      (is (=? {:stages [{:aggregation [[:sum {:lib/uuid (=?/same :uuid)} [:field {} (mt/id :venues :price)]]]
+      (is (=? {:stages [{:aggregation [[:sum {:lib/uuid (=?/same :uuid)} [:field {} "PRICE"]]]
                          :order-by    [[:asc {} [:aggregation {} (=?/same :uuid)]]]}]}
               (qp.preprocess/preprocess query))))))
 

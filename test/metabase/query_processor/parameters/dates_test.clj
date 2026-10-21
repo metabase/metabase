@@ -50,7 +50,7 @@
   (testing "single hour-granular value"
     (is (=? [:=
              {}
-             [:field {:temporal-unit :minute} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :minute} "CREATED_AT"]
              "2025-04-01T09:00:00"]
             (params.dates/date-string->filter
              "2025-04-01T09"

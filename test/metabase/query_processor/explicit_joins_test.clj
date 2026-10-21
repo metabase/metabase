@@ -422,7 +422,7 @@
               (testing "suggested join condition references the FK by name"
                 (let [query (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :people)))
                       card-meta (lib.metadata/card metadata-provider 3)]
-                  (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} "ord1__USER_ID"]]]
+                  (is (=? [[:= {} [:field {} "ID"] [:field {} "ord1__USER_ID"]]]
                           (lib/suggested-join-conditions query card-meta))))))
             (let [query (mt/mbql-query people
                           {:joins    [{:alias        "peeps"

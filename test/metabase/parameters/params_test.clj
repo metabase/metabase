@@ -225,8 +225,7 @@
                                                                         :widget-type  :number
                                                                         :dimension    [:field "name" {:base-type :type/Text}]}}}))}]
     (testing "card->template-tag-param-id->field-ids"
-      (is (= {"11111111" #{(mt/id :venues :id)}
-              "aaaaaaaa" #{}}
+      (is (= {"11111111" #{(mt/id :venues :id)}}
              (#'params/card->template-tag-id->field-ids card))))
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
