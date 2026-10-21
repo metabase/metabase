@@ -1070,14 +1070,14 @@
                   :template-tags  {"category_filter" {:type         :dimension
                                                       :name         "category_filter"
                                                       :display-name "Category Filter"
-                                                      :dimension    (meta/id :venues :category-id)
+                                                      :field-id    (meta/id :venues :category-id)
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE {{category_filter}}"))
       (is (=? [{:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :field-id    "CATEGORY_ID"
+                :field-id    (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 
@@ -1090,13 +1090,13 @@
                   :template-tags  {"date_unit" {:type         :temporal-unit
                                                 :name         "date_unit"
                                                 :display-name "Date Unit"
-                                                :dimension    (meta/id :orders :created-at)}}})]
+                                                :field-id    (meta/id :orders :created-at)}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders WHERE {{date_unit}}"))
       (is (=? [{:type         :temporal-unit
                 :name         "date_unit"
                 :display-name "Date Unit"
-                :field-id    "CREATED_AT"}]
+                :field-id    (meta/id :orders :created-at)}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
@@ -1150,7 +1150,7 @@
                                    "category_filter" {:type         :dimension
                                                       :name         "category_filter"
                                                       :display-name "Category Filter"
-                                                      :dimension    (meta/id :venues :category-id)
+                                                      :field-id    (meta/id :venues :category-id)
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE name = {{name}} AND price > {{min_price}} AND {{category_filter}}"))
@@ -1163,7 +1163,7 @@
                {:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :field-id    "CATEGORY_ID"
+                :field-id    (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 

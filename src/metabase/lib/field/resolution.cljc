@@ -384,8 +384,10 @@
           ;; When :source-field-name or :source-field-join-alias are present, also match on :fk-field-name /
           ;; :fk-join-alias to disambiguate columns that share the same FK field ID.
           previous-stage-cols (filter (fn [col]
-                                        (and (= ((some-fn :fk-field-id :lib/original-fk-field-id) col)
-                                                source-field)
+                                        (and (if source-field
+                                               (= ((some-fn :fk-field-id :lib/original-fk-field-id) col)
+                                                  source-field)
+                                               (some? ((some-fn :fk-field-id :lib/original-fk-field-id) col)))
                                              (or (nil? source-field-name)
                                                  (= ((some-fn :fk-field-name :lib/original-fk-field-name) col)
                                                     source-field-name))
@@ -393,7 +395,11 @@
                                                  (= ((some-fn :fk-join-alias :lib/original-fk-join-alias) col)
                                                     source-field-join-alias))))
                                       (lib.metadata.calculation/returned-columns query previous-stage-number))]
-      (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-cols id-or-name))))
+      (or (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-cols id-or-name)
+          ;; the columns are already narrowed down to the ones joined through this FK, so the plain name is unambiguous
+          (when (string? id-or-name)
+            (some-> (m/find-first #(= (:name %) id-or-name) previous-stage-cols)
+                    lib.field.util/update-keys-for-col-from-previous-stage))))))
 
 (mu/defn- find-reified-implicit-join-with-fk-field-id :- [:maybe [:tuple ::lib.schema.join/join :int]]
   "Find the reified implicit join (i.e., a join added by
@@ -463,10 +469,11 @@
     (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
                 (pr-str id-or-name) (pr-str source-field-id) (pr-str stage-number))
     (or (resolve-in-implicit-join-previous-stage query stage-number source-field-info id-or-name)
-        (resolve-unreturned-column-in-reified-implicit-join-in-previous-stage query stage-number source-field-id id-or-name)
-        ;; if there is no previous stage or we were unable to find the column in a previous stage then that means the
-        ;; implicit join is happening in the current stage.
-        (resolve-in-implicit-join-current-stage query source-field-id id-or-name))))
+        (when source-field-id
+          (or (resolve-unreturned-column-in-reified-implicit-join-in-previous-stage query stage-number source-field-id id-or-name)
+              ;; if there is no previous stage or we were unable to find the column in a previous stage then that means
+              ;; the implicit join is happening in the current stage.
+              (resolve-in-implicit-join-current-stage query source-field-id id-or-name))))))
 
 (mu/defn- resolve-in-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   [query                 :- ::lib.schema/query
@@ -680,7 +687,7 @@
 (mu/defn- resolve-field-ref* :- ::lib.metadata.calculation/visible-column
   [query                                                                                                  :- ::lib.schema/query
    stage-number                                                                                           :- :int
-   [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as #?(:clj field-ref :cljs _field-ref)] :- :mbql.clause/field]
+   [_tag {:keys [source-field source-field-name join-alias], :as opts} id-or-name, :as #?(:clj field-ref :cljs _field-ref)] :- :mbql.clause/field]
   ;; this is just for easier debugging
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
@@ -688,7 +695,7 @@
          [{:lib/type :metadata/column}
           (or (when join-alias
                 (resolve-in-join query stage-number join-alias source-field id-or-name))
-              (when source-field
+              (when (or source-field source-field-name)
                 (resolve-in-implicit-join query stage-number opts id-or-name))
               (merge
                (or (resolve-from-previous-stage-or-source query stage-number id-or-name)
