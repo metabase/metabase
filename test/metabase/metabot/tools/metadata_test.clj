@@ -256,9 +256,9 @@
                                                      [metric-id "metric" "model"]
                                                      [model-id "model" "metric"]
                                                      [question-id "question" "metric"]]
-              :let [message (str (if (= expected-type "metric") "Card " "ID ")
-                                 source-id " is a " actual-type ", not a " expected-type "."
-                                 "\nRetry using a " expected-type " ID.")]]
+              :let [message (str "Card " source-id " is a " actual-type ", not a " expected-type "."
+                                 "\nRetry using a " expected-type " ID."
+                                 "\nSet `data_source` to \"" actual-type "\" in `get_field_values` for this card.")]]
         (let [result (invoke-metadata profile "list_available_fields"
                                       (assoc {:table_ids [(mt/id :products)] :model_ids [] :metric_ids []}
                                              (keyword (str expected-type "_ids")) [source-id]))]
@@ -273,7 +273,8 @@
       (doseq [profile [:document-generate-content :slackbot]
               [source-id actual-type] [[question-id "question"] [model-id "model"]]]
         (is (= {:error {:class :recoverable :code ::tools.u/wrong-source-type}
-                :output (str "Card " source-id " is a " actual-type ", not a metric.\nRetry using a metric ID.")}
+                :output (str "Card " source-id " is a " actual-type ", not a metric.\nRetry using a metric ID."
+                             "\nSet `data_source` to \"" actual-type "\" in `get_field_values` for this card.")}
                (invoke-metadata profile "get_field_values"
                                 {:data_source "metric" :source_id source-id :field_id (mt/id :orders :id)})))))))
 
@@ -361,12 +362,14 @@
                             :metabase.metabot.tools.core/all-items-failed
                             ::tools.u/wrong-source-type)} error))
             (is (str/includes? (or output "")
-                               (str (if (= expected-type "metric") "Card " "ID ")
-                                    source-id " is a " actual-type ", not a " expected-type "."
-                                    (if (and (= profile :internal) (= expected-type "metric"))
-                                      (str "\nRead `metabase://" actual-type "/" source-id "/fields/"
+                               (str "Card " source-id " is a " actual-type ", not a " expected-type "."
+                                    (if (= profile :internal)
+                                      (str "\nRead `metabase://" actual-type "/" source-id
+                                           (if (= actual-type "metric") "/dimensions/" "/fields/")
                                            (mt/id :orders :id) "` instead.")
-                                      (str "\nRetry using a " expected-type " ID.")))))))))))
+                                      (str "\nRetry using a " expected-type " ID."
+                                           "\nSet `data_source` to \"" actual-type
+                                           "\" in `get_field_values` for this card.")))))))))))
 
 (deftest question-field-details-use-returned-columns-test
   (mt/as-admin
@@ -447,3 +450,22 @@
               (is (str/includes? output (str "Field missing was not found in metric " metric-id ".")))
               (doseq [field-id valid-ids]
                 (is (str/includes? output (str field-id)))))))))))
+
+(deftest card-resource-types-name-the-real-kind-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (doseq [actual-type [:model :question :metric]]
+        (mt/with-temp [:model/Card {card-id :id} {:type actual-type
+                                                  :dataset_query (if (= actual-type :metric)
+                                                                   (lib/aggregate query (lib/count)) query)}]
+          (doseq [expected-type [:model :question :metric]
+                  :when (not= expected-type actual-type)
+                  path (if (= expected-type :metric) ["" "/dimensions"] ["" "/fields" "/sources"])]
+            (let [{:keys [error output]} (invoke-metadata :internal "read_resource"
+                                                          {:uris [(str "metabase://" (name expected-type)
+                                                                       "/" card-id path)]})]
+              (is (= :recoverable (:class error)))
+              (is (str/includes? output (str "Card " card-id " is a " (name actual-type)
+                                             ", not a " (name expected-type) ".")))
+              (is (str/includes? output (str "metabase://" (name actual-type) "/" card-id))))))))))

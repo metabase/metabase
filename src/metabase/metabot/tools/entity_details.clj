@@ -329,7 +329,7 @@
   "Get metric details as returned by tools."
   ([id] (metric-details id nil))
   ([id options]
-   (when-let [card (metabot.tools.u/get-card id)]
+   (when-let [card (metabot.tools.u/get-card id :metric)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider options]
    (metric-details card metadata-provider options nil))
@@ -341,6 +341,7 @@
                                    with-queryable-dimensions?      true
                                    with-segments?                  false}}
     card-read-verdicts]
+   (metabot.tools.u/check-card-type card :metric)
    (let [id (:id card)
          ;; Database metadata so the LLM can build portable FKs — metrics are always
          ;; referenced from a query targeting a specific database, and the LLM needs the
@@ -616,7 +617,7 @@
    (when-not (int? id)
      (throw (ex-info "Invalid card id format"
                      {:agent-error? true :status-code 400})))
-   (when-let [card (metabot.tools.u/get-card id)]
+   (when-let [card (metabot.tools.u/get-card id (:expected-type options))]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?
                                    with-measures? with-segments?]
@@ -774,20 +775,8 @@
       (metabot.perms/with-cache
         (let [options (arguments->options arguments)
               details (cond
-                        (= :model entity-type)
-                        (let [card (card-details entity-id (assoc options :only-model true))]
-                          (if (= :model (:type card))
-                            card
-                            (throw (ex-info (format "ID %s is not a valid model id, it's a question" entity-id)
-                                            {:agent-error? true :status-code 400}))))
-
-                        (= :question entity-type)
-                        (let [card (card-details entity-id options)]
-                          (if (= :question (:type card))
-                            card
-                            (throw (ex-info (format "ID %s is not a valid question id, it's a %s"
-                                                    entity-id (:type card))
-                                            {:agent-error? true :status-code 400}))))
+                        (#{:model :question} entity-type)
+                        (card-details entity-id (assoc options :expected-type entity-type))
 
                         (and (= :table entity-type)
                              (int? entity-id))

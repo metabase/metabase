@@ -402,3 +402,10 @@
 
       {:source_unavailable true}
       {:database-name "Sample"})))
+
+(deftest ^:parallel declared-errors-keep-their-recovery-test
+  (let [error (try
+                (metabot.tools.util/wrong-source-type! {:id 1 :expected-type :metric :actual-type :question})
+                (catch clojure.lang.ExceptionInfo e e))]
+    (doseq [handle-error [metabot.tools.util/handle-agent-error metabot.tools.util/handle-agent-or-api-error]]
+      (is (identical? error (is (thrown? clojure.lang.ExceptionInfo (handle-error error))))))))
