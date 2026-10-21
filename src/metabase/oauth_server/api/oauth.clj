@@ -659,7 +659,8 @@
                 (let [response (if (= jwt-bearer/grant-type (:grant_type body))
                                  (jwt-bearer/exchange-jwt-for-token! provider request
                                                                      {:assertion (:assertion body)
-                                                                      :scopes    (scope-tokens (:scope body))
+                                                                      :scopes    (when (some? (:scope body))
+                                                                                   (or (scope-tokens (:scope body)) []))
                                                                       :resource  (:resource body)})
                                  (oidc/token-request provider body authorization-header))]
                   {:status  200

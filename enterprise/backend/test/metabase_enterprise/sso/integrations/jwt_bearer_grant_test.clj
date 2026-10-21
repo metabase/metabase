@@ -192,6 +192,8 @@
                ["no email claim"         "invalid_grant"   {:assertion (assertion {:first_name "Jay"})}]
                ["mb:full"                "invalid_scope"   {:assertion signed, :scope "mb:full"}]
                ["an unknown scope"       "invalid_scope"   {:assertion signed, :scope "agent:query:run agent:all"}]
+               ["an empty scope"         "invalid_scope"   {:assertion signed, :scope ""}]
+               ["a whitespace scope"     "invalid_scope"   {:assertion signed, :scope "   "}]
                ["another resource"       "invalid_target"  {:assertion signed, :resource "https://example.com/api/mcp"}]
                ["a malformed resource"   "invalid_target"  {:assertion signed, :resource "not a uri"}]]]
         (testing description

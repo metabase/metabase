@@ -43,7 +43,8 @@
     (throw (ex-info "no assertion was sent"
                     {:error "invalid_request", :error-description "The request must include an assertion."}))
 
-    (not-every? (set (mcp/v2-scopes)) scopes)
+    (or (empty? scopes)
+        (not-every? (set (mcp/v2-scopes)) scopes))
     (throw (ex-info "a requested scope is not an MCP scope"
                     {:error             "invalid_scope"
                      :error-description (str "Request only MCP scopes, or omit scope to get all of them: "
