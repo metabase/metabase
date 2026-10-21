@@ -138,6 +138,11 @@
              :type :metric
              {:order-by [[:name :asc]]}))
 
+(mu/defn document-collection-and-exploration
+  "The Document with `document-id` narrowed to `:id`, `:collection_id` and `:exploration_id`, or nil."
+  [document-id :- ms/PositiveInt]
+  (t2/select-one [:model/Document :id :collection_id :exploration_id] :id document-id))
+
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]
