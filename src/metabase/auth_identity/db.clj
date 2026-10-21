@@ -93,15 +93,18 @@
   (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
 
 (mu/defn user-login-columns
-  "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
+  "Return login details for the user with `user-id`, or nil.
+
+  The details include the user's ID, active flag, last login, tenant ID, and type."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id (long user-id)))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :id (long user-id)))
 
 (mu/defn user-login-columns-by-email
-  "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
-  nil."
+  "Return login details for the user whose email matches `email`, or nil.
+
+  The match is case-insensitive. The details include the user's ID, active flag, last login, tenant ID, and type."
   [email :- :string]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :%lower.email (u/lower-case-en email)))
 
 (mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."
