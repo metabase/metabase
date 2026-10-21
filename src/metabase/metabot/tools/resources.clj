@@ -99,6 +99,10 @@
   "Maximum number of URIs that can be fetched in a single call."
   5)
 
+(def ^:private max-uri-length
+  "Maximum number of characters in a resource URI."
+  4096)
+
 (def ^:private page-size
   "Page size for list responses."
   25)
@@ -231,13 +235,6 @@
   [{:keys [id expected actual uri]}]
   {:message (str "Card " id " is a " actual ", not a " expected ".")
    :recovery [{:uses #{} :text (str "Read `" uri "` instead.")}]})
-
-(tools/defrecoverable skipped-uri!
-  "Report a URI beyond the per-call read limit."
-  {:payload [:map {:closed true}]}
-  [_]
-  {:message (str "Skipped: only the first " max-concurrent-uris " URIs are read per call.")
-   :recovery [{:uses #{} :text "Request this URI in another call."}]})
 
 (tools/defrecoverable inactive-table!
   "Report a readable table that is no longer active."
@@ -1252,7 +1249,10 @@
 (def ^:private uri-arg
   "The one thing a read takes. Both declarations below build their `:args` from this, so the single
   and batched forms cannot drift."
-  [:string {:min 1 :description "A metabase:// resource URI"}])
+  [:string {:min 1
+            :max max-uri-length
+            :description "A metabase:// resource URI"
+            :error/message (str "must be a non-empty URI string of at most " max-uri-length " characters")}])
 
 (def ^:private tool-description
   "What the model is told `read_resource` is.
@@ -1278,7 +1278,7 @@
   "What the batched form adds to [[tool-description]]: the limits that exist only because one call
   can carry several URIs."
   (str "\n\n"
-       "Only the first " max-concurrent-uris " URIs are read per call; each later URI is reported as skipped.\n"
+       "Up to " max-concurrent-uris " URIs may be requested in one call.\n"
        "List responses are capped\n"
        "at " page-size " items per page; when a list is truncated its structured output carries a\n"
        "ready-to-fetch `next-page-uri` — request that rather than building a `page=N` query param\n"
@@ -1292,9 +1292,7 @@
      :scope       scope/agent-resource-read
      :args        [:map {:closed true} [:uri uri-arg]]})
 
-  (handle [_ {:keys [uri skip?]} _ctx]
-    (when skip?
-      (skipped-uri! {}))
+  (handle [_ {:keys [uri]} _ctx]
     (let [structured (:structured-output (dispatch uri))]
       (when-not structured
         ;; Table, card, metric, measure and segment helpers return failures as text.
@@ -1312,7 +1310,12 @@
            ;; the container differs.
            :args [:map {:closed true}
                   [:uris [:sequential {:min 1
-                                       :error/message "must be a non-empty array of URI strings"}
+                                       :max max-concurrent-uris
+                                       :description (str "A non-empty array of at most " max-concurrent-uris
+                                                         " URIs, each at most " max-uri-length " characters. "
+                                                         "Request fewer URIs or shorten them to fit these limits.")
+                                       :error/message (str "must be a non-empty array of at most "
+                                                           max-concurrent-uris " URIs. Request fewer URIs per call")}
                           uri-arg]]]))
 
   (batched-args [_ {:keys [uris]}]
@@ -1320,10 +1323,7 @@
     ;; so there is no shared query to issue up front — what they do share is the permission cache,
     ;; which `tools/call` holds across the whole call. `pmap` over the fetches is worth measuring,
     ;; but it needs the request bindings carried onto the threads.
-    (mapv (fn [index uri]
-            (cond-> {:uri (str/replace uri "&amp;" "&")}
-              (>= index max-concurrent-uris) (assoc :skip? true)))
-          (range) uris))
+    (mapv (fn [uri] {:uri (str/replace uri "&amp;" "&")}) uris))
 
   (compose [_ entries _ctx]
     ;; Every entry is wrapped here rather than in `handle`, which is what puts a failed URI inside

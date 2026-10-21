@@ -681,10 +681,7 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource: the tool's own published arguments.
-
-  Taken from the tool rather than written out again, so this endpoint and the agent loop offer the
-  same arguments. Only the first five URIs are read; later entries report that they were skipped."
+  "Arguments for /v1/read-resource, shared with the tool declaration."
   (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)))
 
 (mr/def ::read-resource-item
@@ -727,7 +724,7 @@
   Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent
   loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
   A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
-  that did read. Only the first five URIs are read; later entries report that they were skipped."
+  that did read. Each request accepts up to five URIs; oversized batches return 400 before any reads."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
            :description (:description (tools.core/validate-tool! metabot-resources/read-resource-tool))}}

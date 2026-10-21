@@ -2006,13 +2006,11 @@
                                      {:uris [(str "metabase://table/" (mt/id :orders))]})]
       (is (= 1 (count (:resources resp))))
       (is (some? (-> resp :resources first :content)))))
-  (testing "Reads five URIs and names each skipped URI"
+  (testing "Rejects batches above the five-URI limit"
     (let [uris (conj (vec (repeat 5 "metabase://databases")) "metabase://collections")
-          resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource" {:uris uris})]
-      (is (= uris (mapv :uri (:resources resp))))
-      (is (every? :content (take 5 (:resources resp))))
-      (is (str/starts-with? (-> resp :resources (nth 5) :error) "Skipped:"))
-      (is (str/includes? (:output resp) "<resource uri=\"metabase://collections\">"))))
+          resp (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource" {:uris uris})]
+      (is (str/includes? (pr-str (:errors resp)) "at most 5 URIs"))
+      (is (str/includes? (pr-str (:errors resp)) "Request fewer URIs"))))
   (testing "This endpoint publishes the tool's argument schema"
     ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
     ;; so the outer form differs by a `:description` the endpoint never publishes.

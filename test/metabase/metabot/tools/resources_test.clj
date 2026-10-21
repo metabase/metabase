@@ -65,8 +65,8 @@
 
 (deftest ^:parallel scalar-uris-arg-test
   (testing "a scalar `uris` is rejected with guidance on how to repair the call"
-    (is (= (str "Invalid tool arguments: `uris` must be a non-empty array of URI strings; "
-                "received a string.")
+    (is (= (str "Invalid tool arguments: `uris` must be a non-empty array of at most 5 URIs. "
+                "Request fewer URIs per call; received a string.")
            (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
                                           {:uris "metabase://table/1"})))))
 
@@ -121,10 +121,9 @@
         (is (= "metabase://database/1/schemas/weird%2Fname/tables" uri))
         (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed)))))))
 
-(deftest oversized-batch-test
+(deftest mixed-outcome-batch-test
   (let [uris   ["metabase://databases" "metabase://nonsense/1" "metabase://collections"
-                "metabase://nonsense/2" "metabase://databases" "metabase://collections?tree=true"
-                "metabase://nonsense/3"]
+                "metabase://databases" "metabase://nonsense/2"]
         called (atom [])]
     (mt/with-dynamic-fn-redefs [read-resource/dispatch
                                 (fn [uri]
@@ -138,18 +137,49 @@
                                                  {:uris uris}))))
       (reset! called [])
       (let [{:keys [output resources]} (read-uris {:uris uris})]
-        (is (= (subvec uris 0 5) @called))
+        (is (= uris @called))
         (is (= uris (mapv :uri resources)))
-        (is (= [false true false true false true true] (mapv #(contains? % :error) resources)))
-        (doseq [resource (drop 5 resources)]
-          (is (str/starts-with? (or (:error resource) "") "Skipped: only the first 5 URIs are read per call.")))
-        (is (= 7 (count (re-seq #"<resource uri=" output))))))))
+        (is (= [false true false false true] (mapv #(contains? % :error) resources)))
+        (is (= 5 (count (re-seq #"<resource uri=" output))))))))
+
+(deftest very-long-failing-batches-test
+  (doseq [n [6 30 1000 10000]]
+    (testing (str n " URIs are rejected before dispatch")
+      (let [uris (mapv #(str "metabase://nonsense/" %) (range n))
+            dispatched (atom [])
+            dispatch (mt/original-fn #'read-resource/dispatch)]
+        (mt/with-dynamic-fn-redefs [read-resource/dispatch
+                                    (fn [uri]
+                                      (swap! dispatched conj uri)
+                                      (dispatch uri))]
+          (let [result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                       {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                        :tool-names #{"read_resource"}}
+                                       "read_resource" {:uris uris})]
+            (is (= :validation (get-in result [:error :class])))
+            (is (<= (count (:output result)) 4000))
+            (is (true? (str/includes? (:output result) "at most 5 URIs")))
+            (is (true? (str/includes? (:output result) "Request fewer URIs")))
+            (is (= [] @dispatched))))))))
+
+(deftest very-long-failing-uri-test
+  (let [uris [(str "metabase://nonsense/" (apply str (repeat 100000 "x")))
+              "metabase://nonsense/last"]
+        result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                               {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                :tool-names #{"read_resource"}}
+                               "read_resource" {:uris uris})]
+    (is (= :validation (get-in result [:error :class])))
+    (is (<= (count (:output result)) 4000))
+    (is (true? (str/includes? (:output result) "4096")))))
 
 (deftest all-failed-batch-retains-each-uri-test
   (doseq [tool-names [#{"read_resource"} #{"read_resource" "search"}]
-          uris [(mapv #(str "metabase://nonsense/" %) (range 30))
-                [(str "metabase://nonsense/" (apply str (repeat 5000 "x")))
-                 "metabase://nonsense/last"]]]
+          uris [(mapv #(str "metabase://nonsense/" %) (range 5))
+                (mapv (fn [n]
+                        (let [prefix (str "metabase://nonsense/" n "/")]
+                          (str prefix (apply str (repeat (- 4096 (count prefix)) "x")))))
+                      (range 5))]]
     (let [result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
                                  {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
                                   :tool-names tool-names}
@@ -171,7 +201,11 @@
              the wire shape the model has always been offered"
       (is (= [:map {:closed true}
               [:uris [:sequential {:min 1
-                                   :error/message "must be a non-empty array of URI strings"}
+                                   :max 5
+                                   :description (str "A non-empty array of at most 5 URIs, each at most 4096 characters. "
+                                                     "Request fewer URIs or shorten them to fit these limits.")
+                                   :error/message (str "must be a non-empty array of at most 5 URIs. "
+                                                       "Request fewer URIs per call")}
                       uri-arg]]]
              (:args batched))))
     (testing "both forms share the item schema, so they cannot drift"
@@ -180,7 +214,7 @@
     (testing "only the description and the args differ"
       (is (= (dissoc single :description :args) (dissoc batched :description :args)))
       (is (str/starts-with? (:description batched) (:description single)))
-      (is (str/includes? (:description batched) "Only the first 5 URIs")))))
+      (is (str/includes? (:description batched) "Up to 5 URIs")))))
 
 (deftest ^:parallel an-undeclared-failure-is-not-a-partial-result-test
   (testing "a bug inside one read fails the whole call rather than being reported as that item's
@@ -2053,5 +2087,5 @@
   (let [description (:description (tools/validate-tool! read-resource/read-resource-tool))]
     (doseq [uri (mapcat val @#'read-resource/uri-templates)]
       (is (str/includes? description uri) uri))
-    (doseq [wording ["collection/root" "columns" "cards" "case-sensitive" "skipped"]]
+    (doseq [wording ["collection/root" "columns" "cards" "case-sensitive" "Up to 5 URIs"]]
       (is (str/includes? description wording) wording))))
