@@ -384,10 +384,9 @@
 (defn abort-on-close
   "Return the body of a streamed clj-http `response`, changed so that a close drops the connection.
 
-  Before: `(.close body)` reads the rest of a chunked body, so it returns only when the provider finishes, and the
-  provider keeps generating. After: `(.close body)` closes the request's own `:http-client` first, so the
-  provider sees a disconnect, and then closes the body. It does not read the rest of the body. Over TLS 1.3 the
-  client close can still wait for the next byte from the provider, up to the socket timeout.
+  A close of the returned body closes the request's own `:http-client` first, so the provider sees a disconnect.
+  Then it closes the body, and it does not read the rest of the body. Over TLS 1.3 the client close can wait for
+  the next byte from the provider, up to the socket timeout.
 
   Returns `:body` unchanged when it is not an `InputStream`, when the response has no `Closeable` `:http-client`,
   or when `request-options` (the clj-http options of the request) share a client or a connection manager with
@@ -397,6 +396,8 @@
   (if (and (instance? InputStream body)
            (instance? Closeable http-client)
            (own-client? request-options))
+    ;; Without this wrapper, a close of a chunked body reads the rest of the body. It returns only when the provider
+    ;; finishes, and the provider continues to generate until then.
     (proxy [FilterInputStream] [body]
       (close []
         (try
