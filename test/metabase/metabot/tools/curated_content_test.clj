@@ -1091,6 +1091,36 @@
             (is (not (curation/measure-or-segment-curated? :measure trashed)))
             (is (denied? (first (read-uris metabot :internal (str "metabase://measure/" trashed)))))))))))
 
+(deftest trashed-measure-fails-closed-on-the-query-path-test
+  (testing "a query using a measure in the trash is refused, as a read of that measure is"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders-count (lib/aggregate (orders-query) (lib/count))]
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+                                                  :definition orders-count}
+                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                                                     :archived true :definition orders-count}
+                       :model/Metabot metabot {:name "curated metabot" :use_verified_content true}
+                       :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (let [using (fn [measure-id]
+                          (assoc-in (orders-query) [:stages 0 :aggregation]
+                                    [[:measure {:lib/uuid (str (random-uuid))} measure-id]]))
+                  run   (fn [query]
+                          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                            (as-metabot metabot :internal
+                                        #(binding [tools.shared/*memory-atom*
+                                                   (atom {:conversation-id conversation-id
+                                                          :state           {:queries {"q" query}}
+                                                          :context         {}})]
+                                           (run-query/run-query-tool {:query_id "q"})))))]
+              (is (= [] (curation/uncurated-query-sources (using live))))
+              (is (= [[:measure trashed]] (curation/uncurated-query-sources (using trashed))))
+              (is (nil? (curation/check-curated-query! "q" (using live))))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                    (curation/check-curated-query! "q" (using trashed))))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content" (run (using trashed)))
+                  "run_query refuses it, which the query processor would not"))))))))
+
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (testing "a missing id gets the handler's own answer, not a curation verdict"
     (mt/with-current-user (mt/user->id :crowberto)
