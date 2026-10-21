@@ -12,6 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -22,7 +23,10 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -581,6 +585,36 @@
                   (tools.query/execute-query {} {:session-id sid})
                   (catch Exception e e))]
           (is (= 400 (:status-code (ex-data e)))))))))
+
+(deftest ^:parallel metadata-lookup-failure-is-internal-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query (orders-query {:fields [(field-name-ref :orders :id)]})]
+      (doseq [failure [(ex-info "SELECT private_metadata failed" {:toucan2/context-trace []})
+                       (ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable"))]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
+                 (registry/call-tool execute-scope (str (random-uuid)) "execute_query" {:query query}))))))))
+
+(deftest ^:parallel declared-errors-in-toucan-scopes-are-recoverable-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query (orders-query {:fields [(field-name-ref :orders :id)]})]
+      (doseq [status-code [nil 400]
+              agent-error? [false true]
+              [error message expected] [[:invalid-representations-query
+                                         "Representations query has an invalid structure."
+                                         "\"Representations query has an invalid structure.\""]
+                                        [:unknown-field
+                                         "Unknown field"
+                                         (str "\"Unknown field\"\nCall \"browse_data\" with action \"get_fields\" for "
+                                              "the table to list its columns with their numeric ids.")]]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                    (fn [& _]
+                                      (t2/with-connection [_conn]
+                                        (throw (ex-info message (cond-> {:error error}
+                                                                  status-code (assoc :status-code status-code)
+                                                                  agent-error? (assoc :agent-error? true))))))]
+          (is (= {:result {:isError true :content [{:type "text" :text expected}]}}
+                 (registry/call-tool execute-scope (str (random-uuid)) "execute_query" {:query query}))))))))
 
 (deftest ^:parallel native-query-rejection-test
   (mt/with-current-user (mt/user->id :rasta)
