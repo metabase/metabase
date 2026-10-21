@@ -951,15 +951,11 @@
 ;;;   ["between", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "day"], ["now", {}]]
 ;;;   => ["between", {}, ["field", {}, <col>], "2025-01-01", ["now", {}]]
 ;;;
-;;; Why: a Metabot question can still reach the frontend as *legacy* MBQL, through the fallback in
-;;; `metabase.metabot.agent.links/->frontend-query` for a query that does not normalize to valid
-;;; MBQL 5. (Every other structured query now goes as MBQL 5, and a native-only query as legacy;
-;;; until BOT-1972, every query went as legacy.) JSON turns the unit into a string, and the legacy
-;;; schema cannot decode it back for `absolute-datetime` / `during`, so on that path the clause
-;;; never survives the hop -- the last paragraph below says what that costs, which depends on where
-;;; the clause sits. A `temporal-unit` on a ref decodes fine
-;;; (`legacy-json-round-trip-temporal-filters-test`). The hoisted form is also the one the query
-;;; builder writes.
+;;; Metabot falls back to legacy MBQL when a structured query does not normalize to valid MBQL 5
+;;; (`metabase.metabot.agent.links/->frontend-query`). JSON turns the unit into a string, and the
+;;; legacy schema cannot decode it for `absolute-datetime` / `during`, so the frontend drops the
+;;; clause (BOT-1972). A `temporal-unit` on a ref decodes correctly
+;;; (`legacy-json-round-trip-temporal-filters-test`). The query builder also writes the hoisted form.
 ;;;
 ;;; Only inside a stage's `filters` and `expressions`, at every nesting level of the two -- a
 ;;; comparison inside a `case` included -- and in every stage of the query, a join's inner stages

@@ -214,7 +214,7 @@
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
 
 (deftest edit-and-replace-sql-query-viz-part-test
-  (testing "edit_sql_query and replace_sql_query emit a generated_entity card unless an open code-editor buffer wins"
+  (testing "edit_sql_query and replace_sql_query emit a generated_entity card unless a code-editor buffer is open"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {:as db} {:engine :h2}]
@@ -235,14 +235,14 @@
                                                    :checklist "- [x] checked"
                                                    :title     "Results")))))]]
                 (testing tool-name
-                  (testing "no code-editor buffer -> a single generated_entity part with a legacy native query"
+                  (testing "a single generated_entity part carries a legacy native query when no code-editor buffer is open"
                     (let [parts  (:data-parts (run {}))
                           entity (:data (first parts))]
                       (is (= 1 (count parts)))
                       (is (= "generated_entity" (:data-type (first parts))))
                       (is (= "card" (:type entity)))
                       (is (= :native (get-in entity [:query :query :type])))))
-                  (testing "an open code-editor buffer wins"
+                  (testing "an open code-editor buffer receives a code_edit part"
                     (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
                                                                       :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
                       (is (= 1 (count parts)))

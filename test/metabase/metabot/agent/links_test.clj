@@ -85,9 +85,7 @@
       (is (= stripped (links/->legacy-mbql stripped))))))
 
 (deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
-  (testing "temporal filters legacy MBQL cannot carry through JSON survive the /question# hash (BOT-1972)"
-    ;; Every shape here used to arrive as legacy MBQL with its units stringified, fail legacy
-    ;; normalization, and be silently deleted by `lib.convert/clean` on the frontend.
+  (testing "temporal filters survive JSON serialization in the /question# hash (BOT-1972)"
     (let [date  (meta/field-metadata :checkins :date)
           query (lib/query meta/metadata-provider (meta/table-metadata :checkins))
           year  (fn [y] (lib/between date
@@ -99,9 +97,9 @@
                                                  (lib/absolute-datetime "2026-12-31" :day))
                                     "during"
                                     [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]
-                                    "or of per-year betweens"
+                                    "or combines between filters for each year"
                                     (lib/or (year 2025) (year 2026))
-                                    "and of an equality and a during"
+                                    "and combines an equality with a during filter"
                                     (lib/and (lib/= (meta/field-metadata :checkins :user-id) 5)
                                              [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month])}
               [query-desc ->sent strip] [["MBQL 5 query" identity identity]
@@ -110,14 +108,13 @@
           (let [query         (lib/filter query filter-clause)
                 dataset-query (:dataset_query (decode-question-url (links/pseudo-card->link {:dataset_query (->sent query)})))]
             (is (= "mbql/query" (:lib/type dataset-query)))
-            (testing "normalizing the hash the way the frontend does keeps the filter intact"
+            (testing "the frontend keeps the filter when it normalizes the hash"
               (is (= (strip (lib/filters query))
                      (strip (-> dataset-query lib/normalize :stages first :filters)))))))))))
 
 (deftest ^:parallel ->frontend-query-stripped-query-with-aggregation-ref-falls-back-test
-  (testing "a stripped query whose aggregation ref can't be resolved after normalize goes to ->legacy-mbql"
-    ;; See `->legacy-mbql-stripped-query-with-aggregation-ref-falls-back-test`: normalizing mints a fresh
-    ;; uuid for the aggregation, so the normalized query is invalid and must not be sent as MBQL 5.
+  (testing "a query without :lib/* keys falls back to ->legacy-mbql when normalization invalidates its aggregation ref"
+    ;; Normalization assigns a new UUID to the aggregation, so the aggregation ref no longer resolves.
     (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
           stripped (strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))]
       (is (= (links/->legacy-mbql stripped)
@@ -129,7 +126,7 @@
                        (lib/filter (lib/between (meta/field-metadata :checkins :date)
                                                 (lib/absolute-datetime "2025-01-01" :day)
                                                 (lib/absolute-datetime "2025-12-31" :day))))]
-    (testing "a native query goes as the legacy MBQL create_sql_query sends, which the SDK opens in its SQL editor"
+    (testing "the SDK receives a native query as legacy MBQL and opens it in its SQL editor"
       (doseq [[desc sent] {"MBQL 5"                             native
                            "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
                            "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
@@ -142,7 +139,7 @@
         (is (= (lib/filters structured) (-> sent :stages first :filters)))))))
 
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
-  (testing "chart link whose query lost :lib/type resolves to a renderable MBQL 5 /question# URL"
+  (testing "a chart link resolves to an MBQL 5 /question# URL even when the query has no :lib/type"
     (let [chart-id     "chart-fe-1"
           fe-query     (strip-lib-keys (lib.tu/venues-query))
           charts-state {chart-id {:chart_id               chart-id
@@ -151,7 +148,7 @@
           result       (links/resolve-metabase-uri (str "metabase://chart/" chart-id) {} charts-state)
           decoded      (decode-question-url result)]
       (is (str/starts-with? result "/question#"))
-      (testing "decoded dataset_query is normalized MBQL 5 — raw stripped pMBQL would crash the FE"
+      (testing "the decoded dataset_query is normalized MBQL 5"
         (is (= "mbql/query" (get-in decoded [:dataset_query :lib/type])))
         (is (some? (get-in decoded [:dataset_query :database])))
         (is (= (:stages (strip-lib-keys fe-query))

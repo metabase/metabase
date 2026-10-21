@@ -29,10 +29,10 @@
 ;;; Query/Chart URL Generation
 
 (defn ->legacy-mbql
-  "Normalize a MBQL 5 query to legacy MBQL; non-MBQL 5 values pass through unchanged. A MBQL 5
-  query that fails conversion is also returned unchanged rather than raising.
+  "Convert an MBQL 5 query to legacy MBQL.
 
-  Not for anything bound for the frontend: use [[->frontend-query]]."
+  Non-MBQL 5 values and queries that fail conversion are returned unchanged.
+  Use [[->frontend-query]] for frontend links and chart data."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query)
@@ -55,19 +55,14 @@
     query))
 
 (defn ->frontend-query
-  "Prepare a query for the frontend: a `/question#` hash, or a viz data part the frontend builds one from.
+  "Prepare a query for frontend links and chart data.
 
-  A MBQL 5 query stays MBQL 5. The frontend opens one as-is, while a legacy query goes through
-  `lib.convert/->mbql5` after a JSON hop that stringifies every keyword. Legacy normalization cannot
-  decode the unit on `absolute-datetime` / `during` back from a string, so `clean` silently deleted
-  such a filter and the question answered something else (BOT-1972).
+  Structured MBQL 5 queries stay in MBQL 5 so temporal filters survive JSON serialization (BOT-1972).
+  Native-only queries use legacy MBQL because the embedding SDK opens its SQL editor only when
+  `dataset_query.type` is `\"native\"`.
 
-  A native-only query goes as legacy MBQL through [[->legacy-mbql]], as `create_sql_query` sends it. It has no
-  temporal units to lose, and the embedding SDK opens the SQL editor only for a `dataset_query.type` of `\"native\"`.
-
-  A query with `:stages` but no `:lib/type` (its `:lib/*` keys stripped, `:lib/uuid`s with them) stays MBQL 5 too
-  when it normalizes to a valid query. One that doesn't, because normalizing minted fresh uuids its aggregation refs
-  no longer match, goes to [[->legacy-mbql]], as does anything that isn't MBQL 5 at all."
+  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query.
+  All other values go through [[->legacy-mbql]]."
   [query]
   (or (when (and (map? query) (or (:lib/type query) (:stages query)))
         (try
@@ -91,7 +86,9 @@
       codecs/bytes->b64-str))
 
 (defn pseudo-card->link
-  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
+  "Convert a map of card properties into a link.
+
+  Relevant keys include `dataset_query`, `display` and `displayIsLocked`.
   `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from.
   `:dataset_query` goes through [[->frontend-query]]."
   [pc]
