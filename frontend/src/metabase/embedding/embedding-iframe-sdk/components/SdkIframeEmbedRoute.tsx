@@ -3,8 +3,6 @@ import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
-import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -179,14 +177,7 @@ const SdkIframeEmbedView = ({
         {
           componentName: "metabase-browser",
         },
-        (settings) => (
-          <SdkInternalNavigationProvider keepChildrenMounted>
-            {/*  re-mount breadcrumbs when initial collection changes */}
-            <SdkBreadcrumbsProvider key={settings.initialCollection}>
-              <MetabaseBrowser settings={settings} />
-            </SdkBreadcrumbsProvider>
-          </SdkInternalNavigationProvider>
-        ),
+        (settings) => <MetabaseBrowser settings={settings} />,
       )
       .with(
         // Embedding based on a dashboardId (Metabase Account auth type) with disabled drills
