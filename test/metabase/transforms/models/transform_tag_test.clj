@@ -2,6 +2,7 @@
   "Tests for the transform tag model."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.util.i18n :as i18n]
@@ -24,4 +25,12 @@
       (t2/update! :model/TransformTag :id (:id tag)
                   {:name "default2"})
       (is (= "default2"
-             (:name (t2/select-one :model/TransformTag (:id tag))))))))
+             (:name (t2/select-one :model/TransformTag (:id tag)))))
+      (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag (:id tag)))))))
+
+(deftest initial-tags-kept-on-noop-update-test
+  (testing "An update that only touches the timestamp leaves a tag built in"
+    (doseq [type ["hourly" "daily" "weekly" "monthly"]]
+      (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
+        (t2/update! :model/TransformTag :id (:id tag) {:updated_at (mi/now)})
+        (is (= type (t2/select-one-fn :built_in_type :model/TransformTag (:id tag))))))))

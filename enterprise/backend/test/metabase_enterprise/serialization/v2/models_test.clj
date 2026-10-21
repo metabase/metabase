@@ -8,12 +8,20 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [toucan2.core :as t2]))
 
 (comment
   metabase-enterprise.impersonation.models/keep-me)
+
+(use-fixtures :once
+  (fixtures/initialize :db)
+  (fn [thunk]
+    (doseq [model (keys models.resolution/model->namespace)]
+      (t2/resolve-model model))
+    (thunk)))
 
 (defn- parse-default-value
   "Parse a default value string into a Clojure value.
@@ -38,6 +46,17 @@
         (is (= (set known-models)
                (set (map name (keys models.resolution/model->namespace)))))))))
 
+(deftest ^:parallel timestamps-are-skipped-test
+  (testing "No serialized model exports or loads created_at or updated_at, so an entity serializes the same way on every
+           instance"
+    (doseq [m      (-> (methods serdes/make-spec) (dissoc :default) keys)
+            :let   [{:keys [copy skip transform]} (serdes/make-spec m nil)]
+            column [:created_at :updated_at]]
+      (testing (format "%s.%s" m (name column))
+        (is (not (some #{column} copy)))
+        (is (not (some #{column} skip)) "always skipped, so leave it out of :skip")
+        (is (not (contains? transform column)))))))
+
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!
     ;; When serialization spec is defined, it describes every column
@@ -50,7 +69,7 @@
               fields (u.conn/app-db-column-types (mdb/app-db) t)
               spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
                                 (zipmap (:skip spec) (repeat :skip))
-                                (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
+                                (zipmap [:id :created_at :updated_at] (repeat :skip)) ; always skipped
                                 (:transform spec))
                          ;; `nil`s are mostly fields which differ on `opts`
                          (dissoc nil))]

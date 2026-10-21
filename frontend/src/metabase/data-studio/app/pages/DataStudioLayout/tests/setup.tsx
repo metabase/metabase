@@ -166,6 +166,7 @@ interface SetupOpts {
   canAccessTransforms?: boolean;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
+  dirty?: RemoteSyncEntity[];
   remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
@@ -181,6 +182,7 @@ export const setup = ({
   canAccessTransforms = false,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
+  dirty: extraDirty = [],
   remoteSyncTransforms = false,
   isNavbarOpened = true,
   enterprisePlugins,
@@ -198,7 +200,7 @@ export const setup = ({
   }
 
   // Build dirty entities list
-  const dirty: RemoteSyncEntity[] = [];
+  const dirty: RemoteSyncEntity[] = [...extraDirty];
   if (hasDirtyChanges) {
     dirty.push(createMockDirtyCardEntity());
   }

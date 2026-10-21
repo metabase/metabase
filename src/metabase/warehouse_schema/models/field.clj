@@ -392,16 +392,6 @@
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
-(defn hydrate-target-with-write-perms
-  "Hydrates :target on field, but if the `:fk_target_field_id` field is not writable, `:target` will be nil."
-  [field]
-  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
-                          (:fk_target_field_id field))
-        target-field    (when-let [target-field (and target-field-id (warehouse-schema.db/field target-field-id))]
-                          (when (mi/can-write? (t2/hydrate target-field :table))
-                            target-field))]
-    (assoc field :target target-field)))
-
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
@@ -476,8 +466,7 @@
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
    :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
-   :transform {:created_at         (serdes/date)
-               :table_id           (serdes/fk :model/Table)
+   :transform {:table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
                :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}

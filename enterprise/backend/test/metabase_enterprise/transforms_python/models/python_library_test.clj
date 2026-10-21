@@ -74,3 +74,12 @@
       (is (=? {:source "def test(): pass"
                :path "common.py"}
               (python-library/get-python-library-by-path "common"))))))
+
+(deftest recreated-library-is-the-built-in-one-test
+  (testing "A recreated common.py takes the built-in entity_id"
+    (doseq [source ["" "def f(): pass"]]
+      (testing (pr-str source)
+        (t2/delete! :model/PythonLibrary)
+        (python-library/update-python-library-source! "common" source)
+        (is (=? {:entity_id python-library/builtin-entity-id :source source}
+                (t2/select-one :model/PythonLibrary :path "common.py")))))))

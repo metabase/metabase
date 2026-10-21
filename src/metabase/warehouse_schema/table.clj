@@ -2,8 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -36,6 +34,19 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
+(defenterprise filter-tables-by-data-model-perms
+  "Given a list of tables, removes the ones for which the current user does not have data model editing permissions.
+  Admin-only without the advanced-permissions feature. Data model reads, sensitive fields and FK targets rely on this
+  filter alone, so it must keep nothing the user cannot edit."
+  metabase-enterprise.advanced-permissions.common
+  [tables]
+  (if (mi/superuser?) tables (empty tables)))
+
+(defn check-data-model-perms
+  "Return `table`, or throw a 403 unless the current user has data model editing permissions for it."
+  [table]
+  (api/check-403 (first (filter-tables-by-data-model-perms [table]))))
+
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
   Uses can-read? which checks data permissions, metadata management permissions,
@@ -43,10 +54,13 @@
   [table]
   (mi/can-read? table))
 
-(defn- include-sensitive-fields-for?
-  "Sensitive fields are hidden from querying, so only list them for users who can edit the table's metadata."
-  [include-sensitive-fields? table]
-  (boolean (and include-sensitive-fields? (mi/can-write? table))))
+(defn sensitive-fields-table-ids
+  "IDs of the `tables` whose sensitive fields to list: none unless `include-sensitive-fields?`, and then only those the
+  current user can edit the data model of."
+  [include-sensitive-fields? tables]
+  (if include-sensitive-fields?
+    (into #{} (map :id) (filter-tables-by-data-model-perms tables))
+    #{}))
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
@@ -54,11 +68,12 @@
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
   (api/check-404 table)
   (if include-editable-data-model?
-    (api/write-check table)
+    (check-data-model-perms table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
-  (let [include-sensitive-fields? (include-sensitive-fields-for? include-sensitive-fields? table)
+  (let [include-sensitive-fields? (contains? (sensitive-fields-table-ids include-sensitive-fields? [table]) (:id table))
         hydration-keys            (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                           [:segments :definition_description] [:measures :definition_description] :metrics :collection]
+                                           [:segments :definition_description] [:measures :definition_description] :metrics :collection
+                                           :can_write]
                                     (premium-features/any-transforms-enabled?) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
@@ -76,7 +91,7 @@
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
-      user can write (default false)"
+      user can edit the data model of (default false)"
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
@@ -85,10 +100,11 @@
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
+           sensitive-table-ids (sensitive-fields-table-ids include-sensitive-fields? tables)
            tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]
        (for [table tables
              :let [excluded-visibility-types (cond-> #{:hidden}
-                                               (not (include-sensitive-fields-for? include-sensitive-fields? table))
+                                               (not (contains? sensitive-table-ids (:id table)))
                                                (conj :sensitive))]]
          (-> table
              (m/dissoc-in [:db :details])
@@ -106,7 +122,8 @@
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
+      user can edit the data model of (default false)"
   metabase-enterprise.sandbox.api.table
   [ids opts]
   (batch-fetch-query-metadatas* ids opts))
@@ -131,6 +148,20 @@
   metabase-enterprise.advanced-permissions.common
   [_db-id _schema-name]
   (mi/superuser?))
+
+(defenterprise filter-schema-by-data-model-perms
+  "Given a list of `{:db_id ... :schema ...}` maps, removes the ones for which the current user does not have data
+  model editing permissions. Admin-only on OSS."
+  metabase-enterprise.advanced-permissions.common
+  [schemas]
+  (if (mi/superuser?) schemas (empty schemas)))
+
+(defenterprise filter-databases-by-data-model-perms
+  "Given a list of databases, removes the ones for which the current user has no data model editing permissions. If
+  the databases are hydrated with their tables, also removes the tables the user cannot edit. Admin-only on OSS."
+  metabase-enterprise.advanced-permissions.common
+  [dbs]
+  (if (mi/superuser?) dbs (empty dbs)))
 
 (defn can-read-schema?
   "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
@@ -167,23 +198,19 @@
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
+  [id {:keys [include-editable-data-model? include-hidden? can-query?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
-                           (if-let [f (u/ignore-exceptions
-                                        (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                        (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
-                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                             schemas)
+                           (->> schemas
+                                (map (fn [s] {:db_id id :schema s}))
+                                filter-schema-by-data-model-perms
+                                (map :schema))
                            (filter (partial can-read-schema? id) schemas)))
-        ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
-                                   (if (or can-query? can-write-metadata?)
+                                   (if can-query?
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
-                                           filtered-tables (cond->> tables
-                                                             can-query?          (filter mi/can-query?)
-                                                             can-write-metadata? (filter mi/can-write?))
+                                           filtered-tables (filter mi/can-query? tables)
                                            allowed-schemas (set (map :schema filtered-tables))]
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
@@ -202,7 +229,7 @@
   `include-editable-data-model?` routes the filtering through data-model permissions instead."
   ([db-id schema]
    (schema-tables-list db-id schema {}))
-  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata? include-measures?]}]
+  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? include-measures?]}]
    (when-not include-editable-data-model?
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
@@ -211,14 +238,9 @@
                             (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
-                                     (if-let [f (when config/ee-available?
-                                                  (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                                  (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
-                                       (f candidate-tables)
-                                       candidate-tables)
+                                     (filter-tables-by-data-model-perms candidate-tables)
                                      (filter mi/can-read? candidate-tables))
-                            can-query?          (filter mi/can-query?)
-                            can-write-metadata? (filter mi/can-write?))
+                            can-query? (filter mi/can-query?))
          hydration-keys   (cond-> []
                             (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
