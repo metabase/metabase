@@ -9,7 +9,7 @@ type StablePopoverPositionProps = Required<
 
 /**
  * Keeps a popover on the side it opened on until it closes, even when its content shrinks (e.g.
- * while searching) or grows. If it grows past the space on that side, it scrolls instead of moving.
+ * while searching) or grows. If it grows past the space on that side, it becomes scrollable instead of moving.
  * Scrolling the page or resizing the window repositions it as usual.
  */
 export function useStablePopoverPosition(
