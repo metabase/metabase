@@ -337,7 +337,13 @@ describe("getChartLayout", () => {
     );
   });
 
-  it("keeps room for the min and max y-axis labels below rotated x-axis labels on the smallest card", () => {
+  const getSmallestCardLayout = ({
+    showValues = false,
+    xAxisTitle,
+  }: {
+    showValues?: boolean;
+    xAxisTitle?: string;
+  }) => {
     const chartContext: RenderingContext = {
       ...getChartContext(),
       theme: getVisualizationTheme({
@@ -346,12 +352,15 @@ describe("getChartLayout", () => {
       }),
       measureText: (text) => text.length * 7,
     };
-    const { fontSize } = chartContext.theme.cartesian.ticks;
     const categories = ["Doohickey", "Gadget", "Gizmo", "Widget"];
     const chartLayout = getChartLayout(
       {
         ...input,
-        xAxisModel: { ...xAxisModel, valuesCount: categories.length },
+        xAxisModel: {
+          ...xAxisModel,
+          valuesCount: categories.length,
+          label: xAxisTitle,
+        },
         transformedDataset: categories.map((category) => ({
           [X_AXIS_DATA_KEY]: category,
           price: 1500,
@@ -361,19 +370,47 @@ describe("getChartLayout", () => {
         ...settings,
         "graph.x_axis.axis_enabled": true,
         "graph.x_axis.scale": "ordinal",
+        "graph.show_values": showValues,
       }),
       false,
       136,
       85,
       chartContext,
     );
-
-    expect(chartLayout.axisEnabledSetting).toBe("rotate-90");
-    expect(
+    const plotHeight =
       chartLayout.outerHeight -
-        chartLayout.padding.top -
-        chartLayout.padding.bottom,
-    ).toBeGreaterThanOrEqual(fontSize * 2);
+      chartLayout.padding.top -
+      chartLayout.padding.bottom;
+    return { chartLayout, plotHeight, chartContext };
+  };
+
+  it.each([
+    { name: "nothing else", options: {} },
+    { name: "data labels", options: { showValues: true } },
+    { name: "an x-axis title", options: { xAxisTitle: "Category" } },
+  ])(
+    "keeps room for the min and max y-axis labels below rotated x-axis labels on the smallest card with $name",
+    ({ options }) => {
+      const { chartLayout, plotHeight, chartContext } =
+        getSmallestCardLayout(options);
+      const { fontSize } = chartContext.theme.cartesian.ticks;
+
+      expect(chartLayout.axisEnabledSetting).toBe("rotate-90");
+      expect(plotHeight).toBeGreaterThanOrEqual(fontSize * 2);
+    },
+  );
+
+  it("gives rotated x-axis labels no room once data labels and the x-axis title fill the smallest card", () => {
+    const { chartLayout, plotHeight, chartContext } = getSmallestCardLayout({
+      showValues: true,
+      xAxisTitle: "Category",
+    });
+
+    expect(chartLayout.ticksDimensions.xTickWidthCap).toBe(0);
+    expect(chartLayout.ticksDimensions.xTicksHeight).toBe(
+      chartContext.theme.cartesian.ticks.marginX,
+    );
+    expect(plotHeight).toBeGreaterThan(0);
   });
 
   it("reserves no room for x-axis labels the auto setting hides", () => {

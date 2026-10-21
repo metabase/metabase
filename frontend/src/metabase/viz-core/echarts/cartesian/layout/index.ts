@@ -331,11 +331,38 @@ const getAutoAxisEnabledSetting = (
   return false;
 };
 
+// Prevent data labels from being rendered outside the chart
+const getTopLabelsHeight = (
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) => {
+  const hasGoalLabel =
+    renderingContext.isStatic &&
+    settings["graph.show_goal"] &&
+    !!settings["graph.goal_label"];
+  if (!settings["graph.show_values"] && !hasGoalLabel) {
+    return 0;
+  }
+  return (
+    renderingContext.theme.cartesian.label.fontSize +
+    CHART_STYLE.seriesLabels.offset
+  );
+};
+
+const getXAxisTitleHeight = (
+  { xAxisModel }: ChartLayoutInput,
+  { theme }: RenderingContext,
+) => {
+  const { fontSize, marginX } = theme.cartesian.axisTitle;
+  return xAxisModel.label ? fontSize / 2 + marginX : 0;
+};
+
 const getXTickWidthCap = (
+  input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   autoAxisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   outerHeight: number,
-  { theme }: RenderingContext,
+  renderingContext: RenderingContext,
 ) => {
   if (
     settings["graph.x_axis.scale"] !== "ordinal" &&
@@ -349,14 +376,16 @@ const getXTickWidthCap = (
   ) {
     return Infinity;
   }
-  const { fontSize, marginX } = theme.cartesian.ticks;
+  const { fontSize, marginX } = renderingContext.theme.cartesian.ticks;
+  const fixedHeight =
+    CHART_STYLE.padding.y * 2 +
+    marginX +
+    getTopLabelsHeight(settings, renderingContext) +
+    getXAxisTitleHeight(input, renderingContext);
   const maxLabelsHeight = Math.max(
     Math.min(
       X_LABEL_HEIGHT_RATIO_THRESHOLD * outerHeight,
-      outerHeight -
-        CHART_STYLE.padding.y * 2 -
-        marginX -
-        MIN_PLOT_HEIGHT_FONT_FACTOR * fontSize,
+      outerHeight - fixedHeight - MIN_PLOT_HEIGHT_FONT_FACTOR * fontSize,
     ),
     0,
   );
@@ -484,6 +513,7 @@ const getTicksDimensions = (
     );
 
     const xTickWidthCap = getXTickWidthCap(
+      input,
       settings,
       axisEnabledSetting,
       outerHeight,
@@ -715,14 +745,9 @@ export const getCartesianChartPadding = (
   chartWidth: number,
   renderingContext: RenderingContext,
 ): Padding => {
-  const { xAxisModel, leftAxisModel, rightAxisModel } = input;
-  const { fontSize: seriesLabelFontSize } =
-    renderingContext.theme.cartesian.label;
-  const {
-    fontSize: axisTitleFontSize,
-    marginX,
-    marginY,
-  } = renderingContext.theme.cartesian.axisTitle;
+  const { leftAxisModel, rightAxisModel } = input;
+  const { fontSize: axisTitleFontSize, marginY } =
+    renderingContext.theme.cartesian.axisTitle;
 
   const padding: Padding = {
     top: CHART_STYLE.padding.y,
@@ -733,23 +758,12 @@ export const getCartesianChartPadding = (
 
   // 1. Top Padding
 
-  const hasGoalLabel =
-    renderingContext.isStatic &&
-    settings["graph.show_goal"] &&
-    !!settings["graph.goal_label"];
-
-  // Prevent data labels from being rendered outside the chart
-  if (settings["graph.show_values"] || hasGoalLabel) {
-    padding.top += seriesLabelFontSize + CHART_STYLE.seriesLabels.offset;
-  }
+  padding.top += getTopLabelsHeight(settings, renderingContext);
 
   // 2. Bottom Padding
 
-  padding.bottom += ticksDimensions.xTicksHeight;
-
-  if (xAxisModel.label) {
-    padding.bottom += axisTitleFontSize / 2 + marginX;
-  }
+  padding.bottom +=
+    ticksDimensions.xTicksHeight + getXAxisTitleHeight(input, renderingContext);
 
   // 3. Side (Left and Right) Padding
 
