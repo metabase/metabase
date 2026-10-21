@@ -1,16 +1,18 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen, within } from "__support__/ui";
+import { rem } from "metabase/ui";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
 import { LegendLayout } from "./LegendLayout";
+import { LEGEND_COLUMN_MARGIN_TOP } from "./constants";
 import { MIN_LEGEND_CARD_WIDTH } from "./layout";
 
 const CHAR_WIDTH = 6;
 
-const measureText = (text: string) => text.length * CHAR_WIDTH;
+const measureTextByLength = (text: string) => text.length * CHAR_WIDTH;
 
 const createItems = (names: string[]): LegendItemData[] =>
   names.map((name) => ({ key: name, name, color: "red" }));
@@ -22,7 +24,7 @@ interface SetupOpts {
   height?: number;
   isQueryBuilder?: boolean;
   actionButtons?: React.ReactNode;
-  measureLabel?: TextWidthMeasurer;
+  measureText?: TextWidthMeasurer;
 }
 
 const setup = ({
@@ -32,7 +34,7 @@ const setup = ({
   height = 300,
   isQueryBuilder,
   actionButtons,
-  measureLabel = measureText,
+  measureText = measureTextByLength,
 }: SetupOpts) => {
   render(
     <LegendLayout
@@ -44,7 +46,7 @@ const setup = ({
       isQueryBuilder={isQueryBuilder}
       actionButtons={actionButtons}
       fontFamily="Lato"
-      measureText={measureLabel}
+      measureText={measureText}
     >
       <div data-testid="chart" />
     </LegendLayout>,
@@ -150,10 +152,10 @@ describe("LegendLayout with an explicit position", () => {
   });
 
   it("should not measure the legend labels when the position is off", () => {
-    const measureLabel = jest.fn(measureText);
-    setup({ names: ["first", "second"], legendPosition: "off", measureLabel });
+    const measureText = jest.fn(measureTextByLength);
+    setup({ names: ["first", "second"], legendPosition: "off", measureText });
 
-    expect(measureLabel).not.toHaveBeenCalled();
+    expect(measureText).not.toHaveBeenCalled();
   });
 
   it("should render a bottom legend on a short card", () => {
@@ -212,6 +214,17 @@ describe("LegendLayout with an explicit position", () => {
       const legend = screen.getByTestId(testId);
       expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
       expect(isBefore(legend, screen.getByTestId("chart"))).toBe(isLegendFirst);
+    },
+  );
+
+  it.each<LegendPosition>(["left", "right"])(
+    "should start a %s legend level with the top of the plot",
+    (legendPosition) => {
+      setup({ names: ["first", "second"], legendPosition });
+
+      expect(screen.getByTestId("legend-vertical")).toHaveStyle({
+        marginTop: rem(LEGEND_COLUMN_MARGIN_TOP),
+      });
     },
   );
 
