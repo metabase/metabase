@@ -43,13 +43,15 @@
    display value for ORDERS.PRODUCT_ID), `:lib/original-fk-field-id` captures the FK
    column. We include it as `:source-field` so the compiled query gets the implicit join."
   [query column]
-  (let [ref (lib/ref column)
-        ref (if (and (pos-int? (:id column))
-                     (not (pos-int? (nth ref 2 nil))))
-              (cond-> (assoc ref 2 (:id column))
-                (:lib/original-fk-field-id column)
-                (assoc-in [1 :source-field] (:lib/original-fk-field-id column)))
-              ref)
+  (let [ref         (lib/ref column)
+        fk-field-id (if (:source-field-name (second ref))
+                      (:fk-field-id column)
+                      (:lib/original-fk-field-id column))
+        ref         (if (and (pos-int? (:id column))
+                             (not (pos-int? (nth ref 2 nil))))
+                      (cond-> (assoc ref 2 (:id column))
+                        fk-field-id (assoc-in [1 :source-field] fk-field-id))
+                      ref)
         {:keys [source-field source-field-name]} (second ref)]
     (cond-> ref
       (and source-field
