@@ -190,8 +190,7 @@
                                    ;; not an archive: pass the bytes off as the JavaScript, so the import packs them
                                    (catch Exception _ {"dist/index.js" bundle})))
           :identifier       identifier
-          :enabled          true
-          :created_at       "2026-01-01T00:00:00Z"}
+          :enabled          true}
          extra))
 
 (defn- repacked-hash

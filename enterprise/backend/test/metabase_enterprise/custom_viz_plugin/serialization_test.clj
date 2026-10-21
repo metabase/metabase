@@ -92,7 +92,7 @@
             (is (= {:serdes/meta [{:model "CustomVizPlugin"}]
                     :identifier  "Thumbs"
                     :enabled     false}
-                   (dissoc (yaml/from-file yaml-file) :created_at))
+                   (yaml/from-file yaml-file))
                 "`enabled` is written only when false"))
           (testing "the bundle's files are beside it, byte for byte, and nothing else is written"
             (is (= (assoc (update-vals files seq) "custom_viz_plugin.yaml" (seq (file-bytes yaml-file)))
