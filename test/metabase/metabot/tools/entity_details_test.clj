@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
@@ -17,7 +16,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-name-based-refs (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest get-document-details-invalid-document-id-test
   (testing "returns error for invalid document-id"

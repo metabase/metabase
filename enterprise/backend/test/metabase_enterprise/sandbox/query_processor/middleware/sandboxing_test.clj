@@ -50,7 +50,6 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
-  lib.tu/with-name-based-refs
   (fixtures/initialize :db))
 
 (def sandboxing-disabled-error #"Sandboxing is a paid feature")

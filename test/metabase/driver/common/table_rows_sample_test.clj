@@ -13,8 +13,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 ;;; whether to run `field-count` and `field-distinct-count` tests.
 (defmethod driver/database-supports? [::driver/driver ::field-count-tests]
   [_driver _feature _database]

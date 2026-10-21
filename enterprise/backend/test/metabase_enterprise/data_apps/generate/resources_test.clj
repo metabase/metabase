@@ -17,8 +17,6 @@
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (set! *warn-on-reflection* true)
 
 (def ^:private app-collection "appCollectionEntity01")

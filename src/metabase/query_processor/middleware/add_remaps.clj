@@ -129,12 +129,10 @@
                               [:map {:closed true}
                                [::new-field-dimension-id ::lib.schema.id/dimension]
                                [:lib/uuid          {:optional true} ::lib.schema.common/uuid]
-                               [:base-type         {:optional true} ::lib.schema.common/base-type]
-                               [:source-field      {:optional true} ::lib.schema.id/field]
-                               [:source-field-name {:optional true} ::lib.schema.common/non-blank-string]
+                               [:base-type         ::lib.schema.common/base-type]
+                               [:source-field-name ::lib.schema.common/non-blank-string]
                                [:join-alias        {:optional true} [:ref ::lib.schema.join/alias]]]
-                              [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]]]]
-    [:new-field-name-clause :mbql.clause/field]
+                              ::lib.schema.common/non-blank-string]]]
     [:dimension             ::external-remapping]]
    [:fn
     {:error/message "the new field clause should have the same join alias as the original field clause"}
@@ -167,26 +165,15 @@
                     (when-let [dimension (when (pos-int? id)
                                            (field-id->remapping-dimension query id))]
                       (let [original-ref (lib/ref col)
-                            remap-field  (lib.metadata/field query (:human-readable-field-id dimension))
-                            name-clause  [:field
-                                          (m/assoc-some {:lib/uuid          (str (random-uuid))
-                                                         :base-type         (:base-type remap-field)
-                                                         :source-field-name ((some-fn :lib/source-column-alias :name) col)}
-                                                        :join-alias (:lib/join-alias col))
-                                          (:name remap-field)]]
+                            remap-field  (lib.metadata/field query (:human-readable-field-id dimension))]
                         {:original-field-clause original-ref
-                         :new-field-clause      (if (lib/name-based-refs?)
-                                                  (lib/update-options name-clause assoc
-                                                                      ::new-field-dimension-id (u/the-id dimension))
-                                                  [:field
-                                                   (merge
-                                                    {:lib/uuid                (str (random-uuid))
-                                                     :source-field            id
-                                                     ::new-field-dimension-id (u/the-id dimension)}
-                                                    (when-let [join-alias (:lib/join-alias col)]
-                                                      {:join-alias join-alias}))
-                                                   (u/the-id (:human-readable-field-id dimension))])
-                         :new-field-name-clause name-clause
+                         :new-field-clause      [:field
+                                                 (m/assoc-some {:lib/uuid                (str (random-uuid))
+                                                                :base-type               (:base-type remap-field)
+                                                                :source-field-name       ((some-fn :lib/source-column-alias :name) col)
+                                                                ::new-field-dimension-id (u/the-id dimension)}
+                                                               :join-alias (:lib/join-alias col))
+                                                 (:name remap-field)]
                          :dimension             (assoc dimension
                                                        :field-name                (-> dimension :field-id unique-name)
                                                        :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))
@@ -202,12 +189,11 @@
         remap-infos))
 
 (mu/defn- new-field-keys :- [:set ::simplified-ref]
-  "The [[simplify-ref-options]] keys of the remapped column of `info`: the ref add-remaps adds, and the ID ref with
-  `:source-field` and the name ref with `:source-field-name` that the same column can be referenced by."
-  [{:keys [new-field-clause new-field-name-clause dimension]} :- ::remap-info]
-  (let [[tag opts _name] new-field-name-clause]
+  "The [[simplify-ref-options]] keys of the remapped column of `info`: the name ref add-remaps adds, and the legacy ID
+  ref with `:source-field` that the same column can be referenced by."
+  [{:keys [new-field-clause dimension]} :- ::remap-info]
+  (let [[tag opts _name] new-field-clause]
     (hash-set (simplify-ref-options new-field-clause)
-              (simplify-ref-options new-field-name-clause)
               (simplify-ref-options [tag
                                      (-> opts
                                          (dissoc :source-field-name :base-type)
@@ -381,8 +367,7 @@
         (let [infos      (for [info last-stage-infos]
                            (-> info
                                (update :original-field-clause lib/with-join-alias (:alias join))
-                               (update :new-field-clause      lib/with-join-alias (:alias join))
-                               (update :new-field-name-clause lib/with-join-alias (:alias join))))
+                               (update :new-field-clause      lib/with-join-alias (:alias join))))
               new-fields (into
                           []
                           (m/distinct-by simplify-ref-options)

@@ -1,12 +1,9 @@
 (ns metabase.lib.filter.update-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
+   [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

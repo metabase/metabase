@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider]
    [metabase.lib.query :as lib.query]
@@ -404,12 +403,6 @@
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))
-
-(defn with-name-based-refs
-  "Test fixture that makes Lib generate `:field` refs that name their column rather than refer to its Field by ID."
-  [thunk]
-  (binding [lib.field.util/*name-based-refs* true]
-    (thunk)))
 
 (defn with-omitted-template-tag-dimensions
   "Test fixture that makes Lib stop adding the legacy `:dimension` ref next to the `:field-id` of a template tag."

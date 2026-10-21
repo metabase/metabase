@@ -1,7 +1,7 @@
 (ns metabase.lib.fe-util-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
@@ -17,8 +17,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (def ^:private all-filter-operators
   [:= :!= :> :< :>= :<= :between :inside

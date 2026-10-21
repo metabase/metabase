@@ -12,8 +12,6 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel quick-filter-on-bucketed-date-test
   (testing "a quick-filter drill on a bucketed DATE should produce valid results (#18769)"
     (mt/dataset test-data

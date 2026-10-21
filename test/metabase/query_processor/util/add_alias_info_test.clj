@@ -25,8 +25,7 @@
 
 (comment h2/keep-me)
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
-  lib.tu/with-name-based-refs (fixtures/initialize :db))
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions (fixtures/initialize :db))
 
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."

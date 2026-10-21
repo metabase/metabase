@@ -1,7 +1,7 @@
 (ns metabase.lib.schema-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols]
@@ -10,10 +10,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli.registry :as mr]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (comment
   metabase.lib.metadata.protocols/keep-me ; so `:metabase.lib.metadata.protocols/metadata-provider` gets loaded

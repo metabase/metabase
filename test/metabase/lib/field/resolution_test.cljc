@@ -1,7 +1,7 @@
 (ns metabase.lib.field.resolution-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
@@ -27,8 +27,6 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

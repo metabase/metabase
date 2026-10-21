@@ -8,8 +8,6 @@
    [metabase.util.match :as match]
    [metabase.warehouse-schema.metadata-queries :as metadata-queries]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (defn- sort-by-field-name [clauses]
   (sort-by #(match/match-one %
               [:field _opts (field-name :guard string?)]

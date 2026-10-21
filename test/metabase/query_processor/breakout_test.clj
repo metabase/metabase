@@ -20,8 +20,6 @@
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.util :as u]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel single-column-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"

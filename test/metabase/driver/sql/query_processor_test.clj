@@ -35,8 +35,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
 (set! *warn-on-reflection* true)

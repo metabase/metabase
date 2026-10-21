@@ -3,6 +3,7 @@ import type { QuestionDashboardCard } from "metabase-types/api";
 import { createMockParameterMapping } from "metabase-types/api/mocks";
 
 import {
+  AUTO_WIRED_TARGET,
   MATCHING_TARGET,
   PARAMETER,
   PARAMETER_ID,
@@ -86,7 +87,7 @@ describe("getAutoWiredMappingsForDashcards", () => {
           parameter_mappings: [1, 2, 3].map((cardId) => ({
             parameter_id: PARAMETER_ID,
             card_id: cardId,
-            target: MATCHING_TARGET,
+            target: AUTO_WIRED_TARGET,
           })),
         },
       },
@@ -120,12 +121,12 @@ describe("getAutoWiredMappingsForDashcards", () => {
             {
               parameter_id: PARAMETER_ID,
               card_id: 2,
-              target: MATCHING_TARGET,
+              target: AUTO_WIRED_TARGET,
             },
             {
               parameter_id: PARAMETER_ID,
               card_id: 3,
-              target: MATCHING_TARGET,
+              target: AUTO_WIRED_TARGET,
             },
           ],
         },

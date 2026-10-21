@@ -11,8 +11,6 @@
    [metabase.source-swap.mbql :as source-swap.mbql]
    [metabase.util.malli :as mu]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (set! *warn-on-reflection* true)
 
 (mu/defn- find-column :- [:maybe ::lib.schema.metadata/column]

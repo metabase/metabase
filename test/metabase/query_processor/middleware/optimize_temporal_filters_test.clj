@@ -19,7 +19,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]))
 
-(use-fixtures :once lib.tu/with-name-based-refs (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (driver/register! ::timezone-driver, :abstract? true)
 

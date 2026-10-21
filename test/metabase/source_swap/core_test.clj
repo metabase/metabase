@@ -7,8 +7,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.source-swap.core :as source-swap]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel check-column-mappings-test

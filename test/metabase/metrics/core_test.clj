@@ -6,14 +6,11 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.metrics.core :as metrics]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 

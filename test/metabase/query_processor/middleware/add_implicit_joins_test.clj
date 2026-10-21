@@ -23,7 +23,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(use-fixtures :once lib.tu/with-name-based-refs (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel fk-field-infos->joins-test
   (is (=? [{:lib/type    :mbql/join

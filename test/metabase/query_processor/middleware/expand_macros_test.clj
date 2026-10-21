@@ -13,8 +13,6 @@
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (defn- expand-macros
   "If input is a legacy query, convert to MBQL 5, call [[expand-macros/expand-macros]], then convert back to legacy. This
   way we don't need to update all the tests below right away."

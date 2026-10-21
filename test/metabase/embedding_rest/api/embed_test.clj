@@ -719,7 +719,7 @@
                                                                     :name         "category"
                                                                     :display-name "Category"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :field-id     (mt/id :venues :category_id)
                                                                     :widget-type  :id}}))}]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -772,25 +772,25 @@
                                                                     :name         "category"
                                                                     :display-name "Category"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :field-id     (mt/id :venues :category_id)
                                                                     :widget-type  :id}
                                                         "id"       {:id           "_ID_"
                                                                     :name         "id"
                                                                     :display-name "ID"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                    :field-id     (mt/id :venues :id)
                                                                     :widget-type  :id}
                                                         "name"     {:id           "_NAME_"
                                                                     :name         "name"
                                                                     :display-name "Name"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))
+                                                                    :field-id     (mt/id :venues :name)
                                                                     :widget-type  :id}
                                                         "price"    {:id           "_PRICE_"
                                                                     :name         "price"
                                                                     :display-name "Price"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                                                    :field-id     (mt/id :venues :price)
                                                                     :widget-type  :id}}))}]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -849,7 +849,7 @@
                                                          :name         "category"
                                                          :display-name "Category"
                                                          :type         :dimension
-                                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                         :field-id     (mt/id :venues :category_id)
                                                          :widget-type  :id}}))}
             dash-with (fn [status]
                         {:enable_embedding true
@@ -1348,19 +1348,19 @@
                                                :display-name "Price"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                               :field-id     (mt/id :venues :price)}
                                       "cat"   {:id           "c1"
                                                :name         "cat"
                                                :display-name "Cat"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}
+                                               :field-id     (mt/id :venues :category_id)}
                                       "name"  {:id           "n1"
                                                :name         "name"
                                                :display-name "Name"
                                                :type         :dimension
                                                :widget-type  :string/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))}}))
+                                               :field-id     (mt/id :venues :name)}}))
                                :parameters [{:id "p1" :type :number/= :slug "price" :name "Price"
                                              :target [:dimension [:template-tag "price"]]}
                                             {:id "c1" :type :number/= :slug "cat" :name "Cat"
@@ -1399,13 +1399,13 @@
                                                :display-name "Price"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                               :field-id     (mt/id :venues :price)}
                                       "cat"   {:id           "c1"
                                                :name         "cat"
                                                :display-name "Cat"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}}))
+                                               :field-id     (mt/id :venues :category_id)}}))
                                :parameters [{:id "p1" :type :number/= :slug "price_v2" :name "Price"
                                              :target [:dimension [:template-tag "price"]]}
                                             {:id "c1" :type :number/= :slug "cat" :name "Cat"

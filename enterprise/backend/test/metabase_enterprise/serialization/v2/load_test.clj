@@ -26,8 +26,7 @@
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
-  lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off

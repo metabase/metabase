@@ -1,14 +1,12 @@
 (ns metabase.lib.extraction-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (deftest ^:parallel column-extraction-test-1-datetime-column
   (testing "extract on a regular datetime column without aggregations adds the column in this stage"

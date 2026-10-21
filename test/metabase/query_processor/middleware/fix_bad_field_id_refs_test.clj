@@ -13,8 +13,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (defn- wrap-joined-fields
   ([query]
    (wrap-joined-fields meta/metadata-provider query))

@@ -19,8 +19,6 @@
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.underlying :as lib.underlying]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (use-fixtures :each lib.drill-thru.tu/with-native-card-id)

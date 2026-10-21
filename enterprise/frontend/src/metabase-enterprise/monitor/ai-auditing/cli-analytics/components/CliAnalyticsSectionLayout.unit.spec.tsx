@@ -43,9 +43,6 @@ const GROUP_MEMBERS_TABLE_ID = 2002;
 
 // Field ids are deterministic — `table_id * 100 + field index` (see `buildTable`). Indices below
 // match the field order of the `v_agent_api_calls` table defined further down.
-const CALL_ID_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 0;
-const CREATED_AT_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 1;
-const OPERATION_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 2;
 
 const BASE_TYPE = {
   text: "type/Text",
@@ -228,7 +225,6 @@ function setup({
   );
 }
 
-// MBQL 5 order-by clause: [direction, opts, ["field", opts, fieldId]]
 type OrderByClause = [string, unknown, [string, unknown, number]];
 
 type EventsMbqlStage = {
@@ -353,13 +349,13 @@ describe("CliAnalyticsSectionLayout", () => {
         (stage) => stage.page != null && stage["order-by"]?.[0]?.[0] === "asc",
       );
       expect(
-        sortedStage?.["order-by"]?.map(([direction, , [, , fieldId]]) => [
+        sortedStage?.["order-by"]?.map(([direction, , [, , fieldName]]) => [
           direction,
-          fieldId,
+          fieldName,
         ]),
       ).toEqual([
-        ["asc", OPERATION_FIELD_ID],
-        ["desc", CALL_ID_FIELD_ID],
+        ["asc", "operation"],
+        ["desc", "call_id"],
       ]);
     });
   });
@@ -414,8 +410,8 @@ describe("CliAnalyticsSectionLayout", () => {
         (stage) => stage.page != null,
       );
       expect(eventsStage?.["order-by"]?.map((clause) => clause[2][2])).toEqual([
-        CREATED_AT_FIELD_ID,
-        CALL_ID_FIELD_ID,
+        "created_at",
+        "call_id",
       ]);
     });
   });

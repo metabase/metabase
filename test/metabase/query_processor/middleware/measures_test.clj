@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.measures-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [mb.hawk.assert-exprs.approximately-equal]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,8 +8,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.middleware.measures :as measures]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Test Helpers                                                      |

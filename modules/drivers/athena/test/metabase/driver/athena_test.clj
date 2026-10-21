@@ -27,8 +27,6 @@
   (:import
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (set! *warn-on-reflection* true)
 
 (def ^:private nested-schema

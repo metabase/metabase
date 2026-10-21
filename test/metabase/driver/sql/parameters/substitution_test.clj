@@ -16,8 +16,6 @@
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel field->field-filter-clause-test

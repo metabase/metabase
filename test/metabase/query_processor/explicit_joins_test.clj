@@ -31,8 +31,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
     (let [query (mt/mbql-query venues

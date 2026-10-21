@@ -18,6 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  AUTO_WIRED_TARGET,
   MATCHING_TARGET,
   PARAMETER,
   createAutoWireState,
@@ -258,7 +259,7 @@ describe("setParameterMapping", () => {
       {
         parameter_id: PARAMETER.id,
         card_id: 2,
-        target: MATCHING_TARGET,
+        target: AUTO_WIRED_TARGET,
       },
     ]);
 

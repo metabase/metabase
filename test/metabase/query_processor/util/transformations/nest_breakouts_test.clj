@@ -12,8 +12,6 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.transformations.nest-breakouts :as nest-breakouts]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
   (binding [add/*escape-alias-fn* (fn [_ s] (driver.impl/truncate-alias s 30))]
     (testing "Query with a filter and a temporally bucketed breakout should work (#41791)"

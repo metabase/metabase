@@ -29,7 +29,6 @@ import {
   createMockGroup,
 } from "metabase-types/api/mocks";
 import {
-  PEOPLE,
   PEOPLE_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -166,7 +165,7 @@ describe("EditSandboxingModal", () => {
             attribute_remappings: {
               foo: [
                 "dimension",
-                ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+                ["field", "ID", { "base-type": "type/BigInteger" }],
                 { "stage-number": 0 },
               ],
             },
@@ -211,7 +210,7 @@ describe("EditSandboxingModal", () => {
             attribute_remappings: {
               foo: [
                 "dimension",
-                ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+                ["field", "ID", { "base-type": "type/BigInteger" }],
                 { "stage-number": 0 },
               ],
             },

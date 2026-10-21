@@ -82,6 +82,12 @@ export const MATCHING_TARGET: StructuredParameterDimensionTarget = [
   { "stage-number": 0 },
 ];
 
+export const AUTO_WIRED_TARGET: StructuredParameterDimensionTarget = [
+  "dimension",
+  ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+  { "stage-number": 0 },
+];
+
 export function createAutoWireState(dashcards: QuestionDashboardCard[]) {
   return createMockState({
     entities: createMockEntitiesState({

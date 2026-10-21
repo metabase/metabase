@@ -11,8 +11,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 ;; Case analysis:
 ;; 1. No pivot drill:
 ;;     Basics: a. native query; b. MBQL with no aggregations; c. column click

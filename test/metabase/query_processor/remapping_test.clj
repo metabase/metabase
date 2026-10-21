@@ -20,8 +20,6 @@
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.util.date-2 :as u.date]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (qp.store/with-metadata-provider (-> (mt/metadata-provider)

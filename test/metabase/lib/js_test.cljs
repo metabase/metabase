@@ -1,7 +1,7 @@
 (ns metabase.lib.js-test
   (:require
    ["dayjs" :as dayjs]
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
@@ -17,8 +17,6 @@
    [metabase.test.util.js :as test.js]
    [metabase.util.malli.registry :as mr]
    [metabase.util.time.impl :as u.time.impl]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
 

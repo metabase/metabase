@@ -20,8 +20,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel do-not-remove-fields-from-aggregations-test
   (testing "Do not remove fields introduced by aggregations in a previous stage"
     (let [query (lib/query

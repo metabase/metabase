@@ -22,7 +22,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -39,8 +38,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [next.jdbc]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 

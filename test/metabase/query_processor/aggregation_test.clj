@@ -19,8 +19,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Test that no aggregation just returns rows as-is."

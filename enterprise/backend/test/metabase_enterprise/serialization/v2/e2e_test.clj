@@ -17,7 +17,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization :as serdes]
    [metabase.queries.card-schema :as card-schema]
    [metabase.query-processor :as qp]
@@ -34,8 +33,6 @@
   (:import
    (java.io File)
    (java.nio.file Path)))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 

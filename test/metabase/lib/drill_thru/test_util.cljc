@@ -2,7 +2,7 @@
   "Adapted from frontend/src/metabase-lib/drills.unit.spec.ts"
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [is testing use-fixtures]]
+   [clojure.test :refer [is testing]]
    [clojure.walk :as walk]
    [malli.util :as mut]
    [medley.core :as m]
@@ -21,8 +21,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

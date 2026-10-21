@@ -2,7 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -18,8 +18,6 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (comment lib/keep-me)
 

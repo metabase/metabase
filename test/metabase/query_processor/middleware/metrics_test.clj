@@ -29,7 +29,7 @@
 
 ;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
 
-(use-fixtures :once lib.tu/with-name-based-refs (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private counter (atom 2000))
 

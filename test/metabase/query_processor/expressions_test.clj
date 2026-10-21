@@ -11,14 +11,11 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

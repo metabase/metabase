@@ -14,8 +14,6 @@
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.util.malli :as mu]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (use-fixtures :each lib.drill-thru.tu/with-native-card-id)
@@ -210,7 +208,7 @@
                    ;; the "underlying" dimension is reconstructed from the row.
                    :dimension {:column     {:name          "CREATED_AT"
                                             :lib/breakout? true}
-                               :column-ref [:field {} (meta/id :orders :created-at)]
+                               :column-ref [:field {} "CREATED_AT"]
                                :value      "2022-12-01T00:00:00+02:00"}}}))
 
 (deftest ^:parallel returns-zoom-in-timeseries-e2e-test-2

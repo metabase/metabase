@@ -17,7 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once lib.tu/with-name-based-refs (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- add-implicit-clauses
   ([query]

@@ -94,31 +94,8 @@ const TABLE_NAME_BY_ID = new Map(
   ),
 );
 
-const FIELD_NAME_BY_ID = new Map(
-  (auditDatabase.tables ?? []).flatMap((table) =>
-    (table.fields ?? []).map(
-      (field) => [Number(field.id), field.name] as const,
-    ),
-  ),
-);
-
-function fieldIdByName(tableName: string, fieldName: string): number {
-  const table = auditDatabase.tables?.find(({ name }) => name === tableName);
-  const field = table?.fields?.find(({ name }) => name === fieldName);
-  if (field == null) {
-    throw new Error(`No field ${tableName}.${fieldName} in the audit fixture`);
-  }
-  return Number(field.id);
-}
-
-const CONVERSATIONS_USER_ID_FIELD_ID = fieldIdByName(
-  "v_metabot_conversations",
-  "user_id",
-);
-const CONVERSATIONS_TENANT_ID_FIELD_ID = fieldIdByName(
-  "v_metabot_conversations",
-  "tenant_id",
-);
+const CONVERSATIONS_USER_ID_FIELD_NAME = "user_id";
+const CONVERSATIONS_TENANT_ID_FIELD_NAME = "tenant_id";
 
 const DAY_BUCKETS = ["2026-04-15T00:00:00", "2026-04-16T00:00:00"];
 const HOUR_BUCKETS = ["2026-04-17T09:00:00", "2026-04-17T10:00:00"];
@@ -133,7 +110,7 @@ const BREAKOUT_VALUES: Record<string, RowValue[]> = {
   group_name: ["Administrators", "data"],
 };
 
-type FieldRef = [string, { "temporal-unit"?: string }, number];
+type FieldRef = [string, { "temporal-unit"?: string }, string];
 type FilterClause = [string, object, FieldRef, ...unknown[]];
 type RequestStage = {
   "source-table": number;
@@ -155,13 +132,13 @@ function getBreakoutValues(stage: RequestStage): RowValue[] {
   if (!breakout) {
     return [];
   }
-  const columnName = FIELD_NAME_BY_ID.get(breakout[2]);
+  const columnName = breakout[2];
   if (columnName === "created_at") {
     return breakout[1]?.["temporal-unit"] === "hour"
       ? HOUR_BUCKETS
       : DAY_BUCKETS;
   }
-  const values = BREAKOUT_VALUES[columnName ?? ""];
+  const values = BREAKOUT_VALUES[columnName];
   if (!values) {
     throw new Error(
       `Unexpected breakout column in dataset request: ${String(columnName)}`,
@@ -219,7 +196,7 @@ function getDatasetStages(): RequestStage[] {
     .filter((stage): stage is RequestStage => stage != null);
 }
 
-function getFilteredFieldIds(): number[] {
+function getFilteredFieldNames(): string[] {
   return getDatasetStages().flatMap((stage) =>
     (stage.filters ?? []).map((filter) => filter[2]?.[2]),
   );
@@ -534,8 +511,8 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        expect(getFilteredFieldIds()).toContain(
-          CONVERSATIONS_TENANT_ID_FIELD_ID,
+        expect(getFilteredFieldNames()).toContain(
+          CONVERSATIONS_TENANT_ID_FIELD_NAME,
         );
       });
     });
@@ -557,7 +534,9 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        expect(getFilteredFieldIds()).toContain(CONVERSATIONS_USER_ID_FIELD_ID);
+        expect(getFilteredFieldNames()).toContain(
+          CONVERSATIONS_USER_ID_FIELD_NAME,
+        );
       });
     });
 

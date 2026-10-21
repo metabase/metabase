@@ -20,8 +20,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":and, :<, :>, :!="

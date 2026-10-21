@@ -15,8 +15,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (use-fixtures :each lib.drill-thru.tu/with-native-card-id)

@@ -92,25 +92,16 @@
               alias-for-join                       (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
           (-> (lib/join-clause source-table)
               (lib/with-join-alias alias-for-join)
-              (lib/with-join-conditions [(if (lib/name-based-refs?)
-                                           (lib/= [:field
-                                                   (m/assoc-some {:lib/uuid  (str (random-uuid))
-                                                                  :base-type (:base-type fk-field)}
-                                                                 :join-alias fk-join-alias)
-                                                   (or fk-field-name (:name fk-field))]
-                                                  [:field
-                                                   {:lib/uuid   (str (random-uuid))
-                                                    :base-type  (:base-type pk-field)
-                                                    :join-alias alias-for-join}
-                                                   (:name pk-field)])
-                                           (lib/= [:field
-                                                   (m/assoc-some {:lib/uuid (str (random-uuid))}
-                                                                 :base-type (when fk-field-name (:base-type fk-field))
-                                                                 :join-alias fk-join-alias)
-                                                   (or fk-field-name fk-field-id)]
-                                                  [:field
-                                                   {:lib/uuid (str (random-uuid)), :join-alias alias-for-join}
-                                                   pk-id]))])
+              (lib/with-join-conditions [(lib/= [:field
+                                                 (m/assoc-some {:lib/uuid  (str (random-uuid))
+                                                                :base-type (:base-type fk-field)}
+                                                               :join-alias fk-join-alias)
+                                                 (or fk-field-name (:name fk-field))]
+                                                [:field
+                                                 {:lib/uuid   (str (random-uuid))
+                                                  :base-type  (:base-type pk-field)
+                                                  :join-alias alias-for-join}
+                                                 (:name pk-field)])])
               (lib/with-join-strategy :left-join)
               (lib/with-join-fields :none)
               (assoc :qp/is-implicit-join true

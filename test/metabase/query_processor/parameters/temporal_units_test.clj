@@ -11,8 +11,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
-(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
-  lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (defn- ->local-date-time [t]
   (as-> t $

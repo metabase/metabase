@@ -1,6 +1,6 @@
 (ns metabase.lib.serialize-test
   (:require
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core]
    [metabase.lib.schema :as-alias lib.schema]
    [metabase.lib.schema.binning :as-alias lib.schema.binning]
@@ -13,10 +13,7 @@
    [metabase.lib.schema.parameter :as-alias lib.schema.parameter]
    [metabase.lib.schema.template-tag :as-alias lib.schema.template-tag]
    [metabase.lib.serialize :as lib.serialize]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli.registry :as mr]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
 
 (comment metabase.lib.core/keep-me)
 

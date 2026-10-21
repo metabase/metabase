@@ -2152,7 +2152,7 @@
                                      (lib/native-query mp (format "SELECT * FROM %s WHERE {{ cat }}" qualified-source-table))
                                      {"cat" {:id "cat" :name "cat" :display-name "Cat"
                                              :type :dimension :widget-type :string/=
-                                             :dimension (lib/ref category-col)
+                                             :field-id (:id category-col)
                                              :required true :default ["Gadget"]}})
                       {id :id}     (mt/user-http-request user :post 200 "transform"
                                                          {:name   "Field Filter Transform"

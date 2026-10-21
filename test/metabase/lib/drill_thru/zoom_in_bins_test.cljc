@@ -8,10 +8,7 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.drill-thru.zoom-in-bins :as zoom-in]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
-
-(use-fixtures :once lib.tu/with-name-based-refs)
+   [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

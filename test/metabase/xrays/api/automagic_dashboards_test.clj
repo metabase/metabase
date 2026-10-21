@@ -516,14 +516,14 @@
               (cards-have-filters? (:dashcards dash) pk-filters))))))))
 
 (defn- linked-pk-filter-values
-  "For every query card in `dashcards` (pMBQL over the wire), the value its `=` filter on one of `fk-field-ids`
+  "For every query card in `dashcards` (pMBQL over the wire), the value its `=` filter on one of `fk-field-names`
   compares against, or nil when it has no such filter."
-  [dashcards fk-field-ids]
+  [dashcards fk-field-names]
   (for [{:keys [card]} dashcards
         :let [query (:dataset_query card)]
         :when query]
-    (some (fn [[op _opts [_ _ field-id] value]]
-            (when (and (= "=" op) (contains? fk-field-ids field-id))
+    (some (fn [[op _opts [_ _ field-name] value]]
+            (when (and (= "=" op) (contains? fk-field-names field-name))
               value))
           (-> query :stages first :filters))))
 
@@ -540,13 +540,13 @@
                 ;; a value no warehouse row carries, so its presence anywhere in a response is unambiguous
                 sentinel     "SENTINEL-INDEXED-VALUE-7f3a"
                 url          (format "automagic-dashboards/model_index/%d/primary_key/1" (:id model-index))
-                fk-field-ids (mt/$ids #{%orders.product_id %reviews.product_id})]
+                fk-field-names #{"PRODUCT_ID"}]
             (model-index/add-values! model-index)
             (t2/update! :model/ModelIndexValue {:model_index_id (:id model-index) :model_pk 1} {:name sentinel})
             (testing "an admin gets a dashboard filtered on the pk from the URL, titled with the record's value as
                       read through the QP -- never the cached one"
               (let [dash       (mt/user-http-request :crowberto :get 200 url)
-                    pk-filters (linked-pk-filter-values (:dashcards dash) fk-field-ids)
+                    pk-filters (linked-pk-filter-values (:dashcards dash) fk-field-names)
                     title      (-> (mt/run-mbql-query products {:filter [:= $id 1] :fields [$title]}) mt/rows ffirst)]
                 (is (not (str/includes? (json/encode dash) sentinel)))
                 (is (= (format "Here's a look at \"%s\" from \"%s\"" title (:name model)) (:name dash)))

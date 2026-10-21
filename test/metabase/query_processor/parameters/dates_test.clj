@@ -14,8 +14,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
-
 (deftest ^:parallel date-string->filter-test
   (testing "year and month"
     (is (=? [:between
