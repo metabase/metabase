@@ -51,6 +51,15 @@
                (message/msg ["metric %s needs `\"source-table\": %s`"] metric-id source-table)
                (message/msg ["metric %s needs `\"source-card\": %s`"] metric-id source-card))))))
 
+(defn- card-fields-hint
+  "The sentence sending the agent to the columns the stage's `source-card:` returns, or nil when the error names no
+   card."
+  [source-card source-card-type]
+  (when (and source-card source-card-type)
+    (message/msg [(str "Call \"get_content\" with items [{\"type\": %s, \"id\": %s}] and include [\"fields\"] to "
+                       "list the columns it returns.")]
+                 source-card-type source-card)))
+
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
   [{:keys [error entity-type entity-id usable-sources source-card source-card-type]}]
@@ -77,14 +86,17 @@
                        "the table to list its columns with their numeric ids.")])
 
     :ambiguous-fk
-    (if (and source-card source-card-type)
+    (if-let [card-fields (card-fields-hint source-card source-card-type)]
       ;; A card returns a joined foreign key under its join alias (`O2__USER_ID`), which the table's fields don't show.
-      (message/msg [(str "Call \"get_content\" with items [{\"type\": %s, \"id\": %s}] and include [\"fields\"] to "
-                         "list the columns it returns. Put the foreign-key column's `lib/desired-column-alias` (its "
-                         "`name` when it has none) in `source-field-name`.")]
-                   source-card-type source-card)
+      (message/msg [(str "%s Put the foreign-key column's `lib/desired-column-alias` (its `name` when it has none) in "
+                         "`source-field-name`.")]
+                   card-fields)
       (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
                          "source table to list the available foreign-key columns.")]))
+
+    ;; Raised only on a `source-card:` stage, where the way out is a column the card returns.
+    (:column-not-returned :unexportable-fk)
+    (card-fields-hint source-card source-card-type)
 
     :no-fk-path
     (message/msg [(str "If a metric relates to that table, call \"browse_data\" with action \"get_fields\" for the "

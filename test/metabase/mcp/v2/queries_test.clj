@@ -224,4 +224,11 @@
                             {:error :ambiguous-fk :source-card 12 :source-card-type "model"}))))
     (testing "and on a table source at the table's fields"
       (is (str/includes? (message/render (v2.recovery-hints/recovery-hint {:error :ambiguous-fk}))
-                         "\"browse_data\" with action \"get_fields\"")))))
+                         "\"browse_data\" with action \"get_fields\""))))
+  (testing "a column the card does not return points at the columns it does"
+    (doseq [error [:column-not-returned :unexportable-fk]]
+      (is (= (str "Call \"get_content\" with items [{\"type\": \"question\", \"id\": 12}] and include [\"fields\"] to "
+                  "list the columns it returns.")
+             (message/render (v2.recovery-hints/recovery-hint
+                              {:error error :source-card 12 :source-card-type "question"})))
+          (str error)))))
