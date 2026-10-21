@@ -64,6 +64,10 @@
   (str "The search failed for \"broken\", so these results may be incomplete. "
        "If what you need isn't listed, tell the user the search was incomplete."))
 
+(def ^:private retry-note
+  (str "Retry once with shorter `keyword_queries`: one or two words each, with synonyms as separate entries. "
+       "If that also finds nothing, tell the user instead of searching again."))
+
 (deftest ^:parallel search-requires-query-test
   (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]
     (doseq [[tool-var extra-args] [[#'search/search-tool {}]
@@ -145,6 +149,13 @@
      [:search.engine/appdb]
      {"orders" (for [id [1 2 3]] {:id id :model "card" :name (str "Orders " id)})}
      (fn []
+       (testing "a page cut short says how many matched and how to see the rest"
+         (is (= ["Showing 2 of 3 results. To see more, raise `limit` (max 50) or make the queries more specific."]
+                (result-notes (:output (invoke-search [#'search/search-tool]
+                                                      {:keyword_queries ["orders"] :limit 2}))))))
+       (testing "a page that holds every match gives the total"
+         (is (= ["Total results: 3"]
+                (result-notes (:output (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]}))))))
        (testing "a query that fails is named, and the other query's results are kept"
          (let [result (invoke-search [#'search/search-tool] {:keyword_queries ["orders" "broken"]})]
            (is (nil? (:error result)))
@@ -153,6 +164,39 @@
        (testing "a search whose every query fails still fails"
          (is (= {:class :unrecoverable :code :internal}
                 (:error (invoke-search [#'search/search-tool] {:keyword_queries ["broken"]})))))))))
+
+(deftest empty-search-explains-itself-test
+  (let [notes (fn [tool-var args metabot]
+                (result-notes (:output (invoke-search [tool-var] args metabot nil))))]
+    (mt/with-dynamic-fn-redefs [search/search (constantly [])]
+      (testing "nothing narrowed the search"
+        (is (= ["Total results: 0" "<no-results reason=\"no_match\">" retry-note "</no-results>"]
+               (notes #'search/search-tool {:keyword_queries ["zzz"]} nil)))
+        (is (= ["Total results: 0" "<no-results reason=\"no_match\">" retry-note "</no-results>"]
+               (notes #'search/search-tool {:keyword_queries ["zzz"]
+                                            :entity_types    (vec @#'search/general-entity-types)}
+                      nil))
+            "entity types that match the tool's default narrow nothing"))
+      (testing "the entity types the model picked, curated content only and a confined collection are named"
+        (is (= ["Total results: 0"
+                "<no-results reason=\"restricted\">"
+                "Only these entity types were searched: dashboard, metric. If other types could match, retry without `entity_types`."
+                "This Metabot searches only curated content, such as verified items and items in official collections."
+                "This Metabot searches only inside its own collection."
+                retry-note
+                "</no-results>"]
+               (notes #'search/nlq-search-tool
+                      {:keyword_queries ["zzz"] :entity_types ["metric" "dashboard"]}
+                      {:collection_id 7 :use_verified_content true})))))
+    (mt/with-dynamic-fn-redefs [search/search (constantly (with-meta [] {:total 0 :failed-queries ["broken"]}))]
+      (testing "a failed query comes first among the reasons"
+        (is (= ["Total results: 0"
+                failed-note
+                "<no-results reason=\"incomplete\">"
+                "This Metabot searches only curated content, such as verified items and items in official collections."
+                retry-note
+                "</no-results>"]
+               (notes #'search/search-tool {:keyword_queries ["zzz" "broken"]} {:use_verified_content true})))))))
 
 (deftest ^:parallel unsupported-search-entity-types-test
   (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]

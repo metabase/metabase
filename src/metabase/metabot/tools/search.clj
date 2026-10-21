@@ -335,6 +335,14 @@
       ;; Create futures for parallel execution
       (mapv deref (mapv #(future (attempt %)) all-queries)))))
 
+(defn- confined-collection-id
+  "The collection `metabot` is confined to, or nil. An embedded Metabot and the nlq profile may only search inside
+  the Metabot's own collection."
+  [metabot profile-id]
+  (when (or (= (:entity_id metabot) metabot.config/embedded-metabot-id)
+            (= profile-id "nlq"))
+    (:collection_id metabot)))
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
   Abstracted from the API endpoint logic.
@@ -373,13 +381,11 @@
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         use-verified?   (:use_verified_content metabot)
-        embedded-metabot? (= (:entity_id metabot) metabot.config/embedded-metabot-id)
         ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
         ;; collection. That is a containment boundary, not a default, so a caller-supplied
         ;; collection-id — which the v2 search tool fills from a request filter — can never
         ;; replace it. Unconfined, the caller's collection-id applies.
-        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
-                          (:collection_id metabot))
+        confined-id     (confined-collection-id metabot profile-id)
         ;; Measures and segments belong to a table, not a collection, so a search scoped to a collection
         ;; never returns them, even though the search tools list them as entity types.
         collection-id   (or confined-id collection-id)
@@ -598,26 +604,55 @@
          enrich-with-measure-segment-base-tables
          remove-unreadable-transforms)))
 
+(def ^:private default-search-limit 10)
+(def ^:private max-search-limit 50)
+
+(defn- search-restrictions
+  "What narrowed a search beyond its queries, as sentences for the model."
+  [default-types {:keys [metabot profile-id]} {:keys [entity_types]}]
+  (cond-> []
+    (and (seq entity_types) (not= (set entity_types) (set default-types)))
+    (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
+               ". If other types could match, retry without `entity_types`."))
+
+    (:use_verified_content metabot)
+    (conj "This Metabot searches only curated content, such as verified items and items in official collections.")
+
+    (confined-collection-id metabot profile-id)
+    (conj "This Metabot searches only inside its own collection.")))
+
 (defn- format-search-output
-  "Format search results as an LLM-ready string."
-  [results]
-  (let [results-xml              (llm-shape/search-results->xml results)
-        {:keys [failed-queries]} (meta results)]
+  "Format search results as an LLM-ready string. `limit` is the page size the search asked for, and `restrictions`
+  are the [[search-restrictions]] that explain an empty result."
+  [results limit restrictions]
+  (let [results-xml                    (llm-shape/search-results->xml results)
+        {:keys [total failed-queries]} (meta results)]
     (te/lines
      "<result>"
      results-xml
      ""
-     (str "Total results: " (count results))
+     (if (and total (< limit total))
+       (str "Showing " (count results) " of " total " results. "
+            "To see more, raise `limit` (max " max-search-limit ") or make the queries more specific.")
+       (str "Total results: " (count results)))
      (when (seq failed-queries)
        (str "The search failed for " (str/join ", " (map #(str "\"" (llm-shape/escape-xml %) "\"") failed-queries))
             ", so these results may be incomplete. "
             "If what you need isn't listed, tell the user the search was incomplete."))
+     (when (empty? results)
+       [(str "<no-results reason=\""
+             (cond
+               (seq failed-queries) "incomplete"
+               (seq restrictions)   "restricted"
+               :else                "no_match")
+             "\">")
+        restrictions
+        (str "Retry once with shorter `keyword_queries`: one or two words each, with synonyms as separate entries. "
+             "If that also finds nothing, tell the user instead of searching again.")
+        "</no-results>"])
      "</result>"
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
-
-(def ^:private default-search-limit 10)
-(def ^:private max-search-limit 50)
 
 ;; Field-level descriptions surface to the model as JSON-Schema `description`s on the
 ;; tool's input parameters (via `malli.json-schema` in `metabase.metabot.self.claude`).
@@ -653,15 +688,15 @@
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
 (defn- do-search
-  [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
-  (let [results (search (merge {:semantic-queries semantic_queries
+  [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as args}]
+  (let [limit   (min max-search-limit (or limit default-search-limit))
+        results (search (merge {:semantic-queries semantic_queries
                                 :term-queries     keyword_queries
                                 :entity-types     (or (seq entity_types) (vec default-types))
-                                :limit            (min max-search-limit
-                                                       (or limit default-search-limit))
+                                :limit            limit
                                 :partial-results? true}
                                search-opts))]
-    {:output (format-search-output results)
+    {:output (format-search-output results limit (search-restrictions default-types search-opts args))
      :structured-output {:result-type :search
                          :data results
                          :total_count (count results)}
