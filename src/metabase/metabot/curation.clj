@@ -289,49 +289,63 @@
     (merge (found :measure :metadata/measure measure-ids)
            (found :segment :metadata/segment segment-ids))))
 
+(defn- uncurated-sources*
+  "[[uncurated-sources]] within the judgement `ctx`, a [[metric-context]]."
+  [mp {:keys [source-table source-card table card metric measure segment]} {:keys [seen definitions] :as ctx}]
+  (let [;; `:card` also lists the metrics the query references, and a metric Card may be a source Card; judge
+        ;; both as metrics, not as source Cards
+        card            (set/difference (set card) (set metric))
+        source-metrics  (into #{}
+                              (comp (filter #(= :metric (:type %))) (map :id))
+                              (lib.metadata/bulk-metadata mp :metadata/card card))
+        metric          (into (set metric) source-metrics)
+        card            (set/difference card source-metrics)
+        _               (load-metric-definitions! mp definitions metric (- max-metric-nesting (count seen)))
+        id->definition  (metric-closure @definitions metric)
+        dependents      (measure-and-segment-tables mp measure segment)
+        ;; `metric` as well as the loaded closure: a curated metric passes on its curation alone, including one
+        ;; the walk stopped short of loading
+        curated         (curated-ids (concat (for [id (into (set table) (mapcat val) dependents)] ["table" id])
+                                             (for [id (concat card metric (keys id->definition))] ["card" id])))
+        curated?        (fn [model id] (contains? curated [model id]))
+        curated-metric-queries (keep (fn [[id q]] (when (curated? "card" id) q)) id->definition)
+        {:keys [covered metric-sources]} (query-coverage mp curated? table card curated-metric-queries)
+        allowed?        (fn [model id] (or (curated? model id) (contains? (get covered (keyword model)) id)))
+        source-allowed? (fn [model id] (or (curated? model id) (contains? (get metric-sources (keyword model)) id)))]
+    (into []
+          cat
+          [(for [id table
+                 :when (not (if (= id source-table) (source-allowed? "table" id) (allowed? "table" id)))]
+             ["table" id])
+           (for [id card
+                 :when (not (if (= id source-card) (source-allowed? "card" id) (allowed? "card" id)))]
+             ["card" id])
+           (for [id metric :when (not (metric-ok? curated? id (id->definition id) ctx))]
+             ["card" id])
+           (for [[subject tables] dependents
+                 :when (or (nil? tables) (not (every? #(allowed? "table" %) tables)))]
+             subject)])))
+
+(defn uncurated-sources
+  "The `[kind id]` pairs (`\"table\"`, `\"card\"`, `:measure`, `:segment`) among `refs` that a curated-only Metabot
+  may not read, or empty when a query over them may run. `refs` names what a query reads, resolved against `mp`:
+  `:source-table` or `:source-card`, the query's own source, and the sets `:table`, `:card`, `:metric`,
+  `:measure`, and `:segment` of everything it references. [[uncurated-query-sources]] applies the same rule to a
+  resolved query; this entry point is for a caller that has only ids, so that the two can't disagree."
+  [mp refs]
+  (uncurated-sources* mp refs (metric-context)))
+
 (defn uncurated-query-sources
-  "The `[kind id]` pairs (`\"table\"`, `\"card\"`, `:measure`, `:segment`) `query` reads that a curated-only Metabot
-  may not, or empty when the query may run. Covers the source, joined, and implicitly joined Tables, source Cards,
-  metrics, measures, and segments. `ctx` is the [[metric-context]] of the judgement this call is part of."
+  "[[uncurated-sources]] for `query`: its source, joined, and implicitly joined Tables, source Cards, metrics,
+  measures, and segments. `ctx` is the [[metric-context]] of the judgement this call is part of."
   ([query]
    (uncurated-query-sources query (metric-context)))
-  ([query {:keys [seen definitions] :as ctx}]
-   (let [{:keys [table card metric measure segment]} (lib/all-referenced-entity-ids [query])
-         ;; `:card` also lists the metrics the query references, and a metric Card may be a source Card; judge
-         ;; both as metrics, not as source Cards
-         card            (set/difference card metric)
-         source-metrics  (into #{}
-                               (comp (filter #(= :metric (:type %))) (map :id))
-                               (lib.metadata/bulk-metadata query :metadata/card card))
-         metric          (into (set metric) source-metrics)
-         card            (set/difference card source-metrics)
-         _               (load-metric-definitions! query definitions metric (- max-metric-nesting (count seen)))
-         id->definition  (metric-closure @definitions metric)
-         dependents      (measure-and-segment-tables query measure segment)
-         ;; `metric` as well as the loaded closure: a curated metric passes on its curation alone, including one
-         ;; the walk stopped short of loading
-         curated         (curated-ids (concat (for [id (into (set table) (mapcat val) dependents)] ["table" id])
-                                              (for [id (concat card metric (keys id->definition))] ["card" id])))
-         curated?        (fn [model id] (contains? curated [model id]))
-         curated-metric-queries (keep (fn [[id q]] (when (curated? "card" id) q)) id->definition)
-         {:keys [covered metric-sources]} (query-coverage query curated? table card curated-metric-queries)
-         allowed?        (fn [model id] (or (curated? model id) (contains? (get covered (keyword model)) id)))
-         source-allowed? (fn [model id] (or (curated? model id) (contains? (get metric-sources (keyword model)) id)))
-         source-table    (lib/primary-source-table-id query)
-         source-card     (lib/primary-source-card-id query)]
-     (into []
-           cat
-           [(for [id table
-                  :when (not (if (= id source-table) (source-allowed? "table" id) (allowed? "table" id)))]
-              ["table" id])
-            (for [id card
-                  :when (not (if (= id source-card) (source-allowed? "card" id) (allowed? "card" id)))]
-              ["card" id])
-            (for [id metric :when (not (metric-ok? curated? id (id->definition id) ctx))]
-              ["card" id])
-            (for [[subject tables] dependents
-                  :when (or (nil? tables) (not (every? #(allowed? "table" %) tables)))]
-              subject)]))))
+  ([query ctx]
+   (uncurated-sources* query
+                       (assoc (lib/all-referenced-entity-ids [query])
+                              :source-table (lib/primary-source-table-id query)
+                              :source-card  (lib/primary-source-card-id query))
+                       ctx)))
 
 (defn covered-table-ids
   "The Tables one FK hop away from the Tables `table-ids` and the result columns of the Cards `card-ids`, plus the
@@ -432,25 +446,3 @@
     (when (and (not (lib/any-native-stage? query))
                (seq (uncurated-query-sources query)))
       (recoverable.common/not-curated! {:label label}))))
-
-(defn metric-reach
-  "What the metric Cards `metric-ids` let a query reach, for the coarse gate `construct_notebook_query` runs before
-  repair can read a query (the full rule, [[uncurated-query-sources]], runs once the query resolves): `:sources`,
-  the Tables and Cards the usable metrics' definitions read from directly, which such a query may use as its
-  source; `:tables`, every Table those definitions read or that is one FK hop from them, which it may join;
-  `:usable`, the metrics this Metabot may use (see [[usable-metric-ids]]), the only ones that count: the rest
-  contribute nothing, so a query on their tables is judged on its other content."
-  [mp metric-ids]
-  (let [usable  (usable-metric-ids metric-ids)
-        queries (into []
-                      (keep (fn [id]
-                              (when-let [{:keys [dataset_query]} (metabot.db/card-of-type id :metric)]
-                                (definition-query mp dataset_query))))
-                      usable)
-        refs    (if (seq queries)
-                  (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})
-                  {})]
-    {:usable  usable
-     :sources {:table (into #{} (keep lib/primary-source-table-id) queries)
-               :card  (into #{} (keep lib/primary-source-card-id) queries)}
-     :tables  (covered-table-ids mp (:table refs) (:card refs))}))
