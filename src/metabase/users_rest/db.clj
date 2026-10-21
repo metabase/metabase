@@ -122,7 +122,7 @@
   (t2/select-one [:model/User :id :email :last_login], :id user-id, :type :personal, :is_active true))
 
 (mu/defn user-active-type-and-sso-source
-  "The id, active flag, and type of the User with `user-id` and their `sso_source`, or nil."
+  "The id, active flag, type, and sso_source of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :type :sso_source] :id user-id))
 
