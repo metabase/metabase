@@ -123,6 +123,12 @@ function applyStringFilter(
   );
 }
 
+export function scopeToDataApps(query: Lib.Query): Lib.Query {
+  return applyStringFilter(query, "embedding_client", [
+    DATA_APP_EMBEDDING_CLIENT,
+  ]);
+}
+
 function applyEntityTypeFilter(
   query: Lib.Query,
   entityType: DataAppEntityType | undefined,
@@ -159,9 +165,7 @@ function buildBaseQuery({
   entityType,
 }: DataAppLogSource & DataAppLogFilters): Lib.Query {
   let query = Lib.queryFromTableOrCardMetadata(provider, table);
-  query = applyStringFilter(query, "embedding_client", [
-    DATA_APP_EMBEDDING_CLIENT,
-  ]);
+  query = scopeToDataApps(query);
   query = applyDateFilter(query, dateFilter, TIMESTAMP_COLUMN);
   query = applyIdFilter(query, "user_id", userId);
   query =

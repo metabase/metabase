@@ -16,6 +16,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -382,7 +383,24 @@ describe("DataAppsAnalyticsPage", () => {
     expect(
       screen.queryByTestId("conversation-filters-group-select"),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it("offers to query the query log's data app records in the notebook", async () => {
+    setup();
+
+    const link = await screen.findByRole("link", { name: /Query this data/ });
+    const href = link.getAttribute("href") ?? "";
+    const [, serializedCard = ""] = href.split("#");
+    const stage = getFirstStage(
+      JSON.stringify(deserializeCardFromUrl(serializedCard).dataset_query),
+    );
+    expect(href).toContain("/question/notebook#");
+    expect(stage?.["source-table"]).toBe(QUERY_LOG_TABLE_ID);
+    expect(getClauses(stage ?? {}, "filters")).toHaveLength(1);
+    expect(
+      getEqualsFilterValues(stage ?? {}, FIELD_IDS.embedding_client),
+    ).toEqual(["data-app"]);
   });
 
   it("doesn't load the group and tenant options it has no filter for", async () => {
@@ -512,6 +530,9 @@ describe("DataAppsAnalyticsPage", () => {
       ),
     ).toBeInTheDocument();
     expect(fetchMock.callHistory.called("dataset")).toBe(false);
+    expect(
+      screen.queryByRole("link", { name: /Query this data/ }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([
