@@ -2177,6 +2177,6 @@
           query  (lib/join query (lib/join-clause card [(lib/= (lib/+ (col lhs "ID") (col lhs "USER_ID"))
                                                                (lib/+ (col rhs "ID") (col rhs "PRODUCT_ID")))]))
           [_op _opts lhs-expr rhs-expr] (first (lib/join-conditions (first (lib/joins query))))
-          alias  (lib/current-join-alias (first (lib/joins query)))]
+          join-alias (lib/current-join-alias (first (lib/joins query)))]
       (is (= [nil nil] (mapv lib/current-join-alias (drop 2 lhs-expr))))
-      (is (= [alias alias] (mapv lib/current-join-alias (drop 2 rhs-expr)))))))
+      (is (= [join-alias join-alias] (mapv lib/current-join-alias (drop 2 rhs-expr)))))))
