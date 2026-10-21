@@ -365,7 +365,11 @@
                                       ;; compiling the filter clause directly below bypasses `add-alias-info`, and
                                       ;; the UNIX-timestamp coercion cast is only applied to fields whose options
                                       ;; carry the source table it would normally add
-                                      (lib/update-options assoc ::add/source-table (mt/id :reviews)))
+                                      (lib/update-options assoc
+                                                          ::add/source-table      (mt/id :reviews)
+                                                          ::add/coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                          ::add/database-type     (:database-type
+                                                                                   (lib.metadata/field mp (mt/id :reviews :rating)))))
                     query         (-> (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                       (lib/filter (lib/= rating-ref (lib/relative-datetime -30 :day)))
                                       (lib/order-by (lib.metadata/field mp (mt/id :reviews :id)) :asc)
