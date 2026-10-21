@@ -64,7 +64,7 @@ Reference a field on a related table directly — when the source has exactly on
 "breakout": [["field", {}, ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
-- **Multiple FKs** to the target → `:ambiguous-fk` lists them. Retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field.
+- If the error says the field is reachable through several foreign keys, list the source table's fields and retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field to select the intended FK.
 - **No FK path** → `:no-fk-path`. Switch to an explicit `joins` entry, or pick a field on the source table.
 - Inside an explicit `joins` block, joined-side field refs still need `{"join-alias": ...}` — implicit-join repair does not rewrite those.
 - If the FK column lives on a previous stage's output, write `{"source-field-name": "<col>"}` (not auto-filled).

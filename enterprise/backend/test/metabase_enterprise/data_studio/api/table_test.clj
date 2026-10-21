@@ -220,6 +220,22 @@
             (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
                                             {:table_ids [table-id]})))))))))
 
+(deftest unpublish-tables-requires-collection-write-test
+  (mt/with-premium-features #{:library :advanced-permissions}
+    (testing "users without write access to the collection of a table cannot unpublish it"
+      (let [data-analyst-group (perms-group/data-analyst)]
+        (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
+                       :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id (:id data-analyst-group)}
+                       :model/Table {table-id :id} {:db_id (mt/id)}
+                       :model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                {:table_ids [table-id] :collection_id collection-id})
+          (mt/with-non-admin-groups-no-collection-perms collection-id
+            (perms/grant-collection-read-permissions! data-analyst-group collection-id)
+            (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
+                                  {:table_ids [table-id]})
+            (is (true? (user-table-fn :is_published table-id)))))))))
+
 (deftest regular-user-cannot-access-data-studio-test
   (mt/with-premium-features #{:library}
     (testing "Regular users (not in Data Analysts group) cannot access library endpoints"

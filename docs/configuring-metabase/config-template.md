@@ -293,6 +293,7 @@ config:
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
+    pivot-max-result-rows: 200000
     premium-embedding-token: null
     query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
@@ -305,6 +306,7 @@ config:
     remote-sync-auto-import-rate: 5
     remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
+    remote-sync-custom-collections-enabled: false
     remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     remote-sync-token: null
