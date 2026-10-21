@@ -14,10 +14,7 @@ export type LogRow = { id: string } & Partial<
   Record<DataAppLogColumn, RowValue>
 >;
 
-/**
- * `sorting` while its column is one of `sortableColumns`, otherwise newest first: a sort can
- * outlive its column, e.g. a PII column after retention was turned off.
- */
+// A sort can outlive its column, e.g. a PII column after retention was turned off.
 export function getEffectiveSorting(
   sorting: SortingOptions<DataAppLogColumn>,
   sortableColumns: readonly DataAppLogColumn[],
@@ -46,10 +43,6 @@ function getColumnIndexByName(
   );
 }
 
-/**
- * The result's rows by log column, each identified by its record's key, or by its position on
- * `page` when the result has no key.
- */
 export function getLogRows(
   { cols, rows }: Pick<DatasetData, "cols" | "rows">,
   columns: readonly DataAppLogColumn[],

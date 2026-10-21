@@ -116,7 +116,7 @@ const USER_AGENT =
 const SANITIZED_USER_AGENT = "Browser (Chrome/OS X)";
 const QUERY = '{"lib/type":"mbql/query","stages":[{"source-card":306}]}';
 
-// The table picks its columns by name. The first row reads a question, the second runs an action.
+// The first row reads a question, the second runs an action.
 const logDataset: Dataset = createMockDataset({
   data: createMockDatasetData({
     cols: [
@@ -207,7 +207,6 @@ function getFirstStage(body: unknown): DatasetStage | undefined {
   return isObject(stage) ? stage : undefined;
 }
 
-/** The dropdown's query breaks the log out by app, with nothing to aggregate. */
 const isLoggedDataAppsStage = (stage: DatasetStage | undefined) =>
   stage?.breakout !== undefined && stage.aggregation === undefined;
 

@@ -42,7 +42,6 @@ function getDataAppOptions(
 }
 
 type DataAppFilterSelectProps = {
-  /** The selected data app's slug. */
   value: string | null;
   onChange: (value: string | null) => void;
   provider: Lib.MetadataProvider | null;

@@ -107,7 +107,6 @@ const COLUMN_META: Record<
   ip_address: () => ({ title: t`IP address` }),
 };
 
-// The log only records the identifier; the name comes from the installed app it belongs to.
 const getDataAppNameColumn = (): LogColumn => ({
   id: "data_app_name",
   key: "embedding_client_identifier",
