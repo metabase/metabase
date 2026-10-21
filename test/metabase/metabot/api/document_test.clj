@@ -166,6 +166,31 @@
                                       :dataset_query {:stages [{:source-card (:id model)}]}}}
                         response))))))))))
 
+(deftest generate-content-database-mention-test
+  (testing "a SQL chart without exactly one @-mentioned database stops after one call, with a message for the user"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (doseq [[references message] [[nil "Mention a database with @ to create this chart with SQL."]
+                                    [{"database:1" "Sample" "database:2" "Other"}
+                                     "Mention only one database with @ to create this chart with SQL."]]]
+        (testing (pr-str references)
+          (let [calls (atom 0)]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (fn [_]
+                                          (mut/mock-llm-response
+                                           [{:type      :tool-input
+                                             :id        (str "t" (swap! calls inc))
+                                             :function  "document_schema_collect"
+                                             :arguments {}}]))]
+              (is (= {:draft_card  nil
+                      :description nil
+                      :error       message}
+                     (mt/user-http-request :crowberto
+                                           :post 200 "metabot/document/generate-content"
+                                           (cond-> {:instructions "Chart revenue by month with SQL"}
+                                             references (assoc :references references)))))
+              (is (= 1 @calls)))))))))
+
 (deftest generate-content-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]

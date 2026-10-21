@@ -187,7 +187,7 @@
        (nil? (get-in part [:result :error]))))
 
 (def ^:private legacy-terminal-tool-names
-  #{"document_construct_sql_chart" "document_construct_model_chart"})
+  #{})
 
 (defn- answer-producing?
   "Return whether a tool output contains a successful answer.

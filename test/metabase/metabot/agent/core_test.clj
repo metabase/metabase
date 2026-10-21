@@ -139,15 +139,9 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
-    (testing "legacy terminal tools require structured output on success"
-      (doseq [tool-name ["document_construct_sql_chart" "document_construct_model_chart"]]
-        (let [parts [{:type :tool-input :id "d" :function tool-name}
-                     {:type :tool-output :id "d" :result {:output "Query construction failed"}}]]
-          (is (not (#'agent/terminal-tool-call? #{tool-name} parts)))
-          (is (#'agent/terminal-tool-call? #{tool-name}
-                                           (assoc-in parts [1 :result :structured-output] {:query-id "q1"}))))))
     (testing "converted terminal tools can answer without structured output"
-      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"]]
+      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"
+                         "document_construct_sql_chart" "document_construct_model_chart"]]
         (let [parts [{:type :tool-input :id "e" :function tool-name}
                      {:type :tool-output :id "e" :result {:output "Done"}}]]
           (is (#'agent/terminal-tool-call? #{tool-name} parts))
