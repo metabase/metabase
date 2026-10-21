@@ -10,6 +10,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
@@ -404,8 +405,10 @@
               :verified (verified-review? id "card")}
        ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
        ;; verbatim as `source-table:` in the query that consumes the metric. These fields
-       ;; are added only when the base Table is readable.
-       source-table
+       ;; are added only when the base Table is readable. Under curated-only, only a metric names
+       ;; its base table: a question or model read through this path exposes its results, as through
+       ;; its own URI, not the table its definition reads.
+       (and source-table (or (not (shared/curated-only?)) (= :metric (:type card))))
        (assoc :base_table_id source-table-id
               :base_table_name (:name source-table)
               :base_table_portable_fk base-table-portable-fk)

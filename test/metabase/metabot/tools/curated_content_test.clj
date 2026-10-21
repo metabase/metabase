@@ -1175,7 +1175,9 @@
                                                                               :source_id   %
                                                                               :field_id    (mt/id :orders :total)})
                    curated-card plain-card)
-            (same? "list_available_fields" #(metadata-tools/list-available-fields-tool {:model_ids [%]})
+            (same? "list_available_fields" #(metadata-tools/list-available-fields-tool {:table_ids  []
+                                                                                        :model_ids  [%]
+                                                                                        :metric_ids []})
                    curated-card plain-card)
             (same? "read_resource" (fn [id] (first (read-uris metabot :internal (str "metabase://model/" id))))
                    curated-card plain-card)
@@ -1231,6 +1233,32 @@
                 (is (nil? (:error resource)) (:error resource))
                 (is (not (contains? metric-ids curated-metric)) "an unreadable curated metric is not listed")
                 (is (not (contains? metric-ids plain-metric)))))))))))
+
+(deftest question-read-as-metric-withholds-its-base-table-test
+  (testing "a curated question or model named where a metric is expected exposes its results, as through its own URI,
+            and not the table its definition reads; a curated metric keeps its base table, which the rule covers"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [mp      (mt/metadata-provider)
+            reviews (lib/query mp (lib.metadata/table mp (mt/id :reviews)))]
+        (mt/with-temp [:model/Collection {official :id} {:name "official" :authority_level "official"}
+                       :model/Card {question :id} {:collection_id official :name "reviews count"
+                                                   :dataset_query (lib/aggregate reviews (lib/count))}
+                       :model/Card {metric :id} {:collection_id official :type :metric :name "reviews count metric"
+                                                 :dataset_query (lib/aggregate reviews (lib/count))}
+                       :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+          (let [details (fn [mb id]
+                          (let [[resource] (read-uris mb :internal (str "metabase://metric/" id))]
+                            (is (nil? (:error resource)) (:error resource))
+                            (get-in resource [:content :structured-output])))
+                fields  (fn [id]
+                          (as-metabot metabot :internal
+                                      #(:output (metadata-tools/list-available-fields-tool {:table_ids  []
+                                                                                            :model_ids  []
+                                                                                            :metric_ids [id]}))))]
+            (is (not (contains? (details metabot question) :base_table_id)))
+            (is (not (str/includes? (fields question) "REVIEWS")))
+            (is (= (mt/id :reviews) (:base_table_id (details metabot metric))) "a metric's base table is its source")
+            (is (= (mt/id :reviews) (:base_table_id (details nil question))) "the unrestricted Metabot shows it")))))))
 
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (testing "a missing id gets the handler's own answer, not a curation verdict"
