@@ -413,3 +413,22 @@
                                                 [:field {:join-alias "C"}
                                                  5]]]}]}]}
               (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))
+
+(deftest ^:parallel dedupe-joined-column-refs-test
+  (testing "refs to the same joined column by Field ID and by name are deduplicated"
+    (let [categories (meta/table-metadata :categories)
+          query      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                         (lib/join (-> (lib/join-clause categories
+                                                        [(lib/= (meta/field-metadata :venues :category-id)
+                                                                (lib/with-join-alias (meta/field-metadata :categories :id)
+                                                                                     "Cat"))])
+                                       (lib/with-join-alias "Cat")
+                                       (lib/with-join-fields :none)))
+                         (lib/with-fields [(meta/field-metadata :venues :id)
+                                           [:field {:lib/uuid (str (random-uuid)), :join-alias "Cat"}
+                                            (meta/id :categories :name)]
+                                           [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text, :join-alias "Cat"}
+                                            "NAME"]
+                                           [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :id)]]))]
+      (is (= 1 (count (filter #(#{(meta/id :categories :name) "NAME"} (nth % 2))
+                              (lib/fields (fix-bad-field-id-refs/fix-bad-field-id-refs query)))))))))

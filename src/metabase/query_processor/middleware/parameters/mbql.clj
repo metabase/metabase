@@ -4,11 +4,9 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -112,18 +110,26 @@
        (parse-param-value-for-type query stage-path param-type param-value a-ref)))))
 
 (mu/defn- update-breakout-unit* :- ::lib.schema/stage
-  [stage         :- ::lib.schema/stage
-   target-column :- [:or ::lib.schema.id/field :string]
+  [query         :- ::lib.schema/query
+   stage-path    :- ::lib.walk/path
+   stage         :- ::lib.schema/stage
+   target-col    :- ::lib.schema.metadata/column
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
   ;; only rewrite clauses in :breakout and :order-by, clauses elsewhere
   ;; (like a :join) should keep their original bucketing (#80098)
-  (let [update-clauses (fn [clauses]
+  (let [target?        (fn [clause]
+                         (and (lib/clause-of-type? clause #{:field :expression})
+                              (= (:temporal-unit (lib/options clause)) temporal-unit)
+                              (some? (lib.walk/apply-f-for-stage-at-path
+                                      (fn [query stage-number]
+                                        (lib/find-matching-column query stage-number
+                                                                  (lib/with-temporal-bucket clause nil) [target-col]))
+                                      query stage-path))))
+        update-clauses (fn [clauses]
                          (match/replace clauses
-                           [#{:field :expression}
-                            (opts :guard (= (:temporal-unit opts) temporal-unit))
-                            (id-or-name :guard (= id-or-name target-column))]
-                           (lib/with-temporal-bucket &match new-unit)))]
+                           (clause :guard target?)
+                           (lib/with-temporal-bucket clause new-unit)))]
     (reduce (fn [stage k]
               (cond-> stage
                 (seq (get stage k)) (update k update-clauses)))
@@ -131,14 +137,17 @@
             [:breakout :order-by])))
 
 (mu/defn- update-breakout-unit :- ::lib.schema/stage
-  [metadata-providerable  :- ::lib.schema.metadata/metadata-providerable
-   stage                  :- ::lib.schema/stage
-   {[_dimension [_ref target-column {:keys [base-type temporal-unit]}] _dim-opts] :target
-    :keys [value] :as _param} :- ::lib.schema.parameter/parameter]
-  (let [new-unit (keyword value)
-        base-type (or base-type
-                      (when (integer? target-column)
-                        (:base-type (lib.metadata/field metadata-providerable target-column))))]
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   stage      :- ::lib.schema/stage
+   {:keys [target value] :as _param} :- ::lib.schema.parameter/parameter]
+  (let [new-unit      (keyword value)
+        target-ref    (or (lib/parameter-target-field-ref target)
+                          (lib/parameter-target-expression-ref target))
+        temporal-unit (:temporal-unit (lib/options target-ref))
+        target-col    (lib.walk/apply-f-for-stage-at-path
+                       lib/metadata query stage-path (lib/with-temporal-bucket target-ref nil))
+        base-type     ((some-fn :base-type :effective-type) target-col)]
     (assert (some? base-type) "`base-type` is not set.")
     (when-not (lib.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
@@ -146,7 +155,7 @@
                        :is-curated true
                        :base-type  base-type
                        :unit       new-unit})))
-    (update-breakout-unit* stage target-column temporal-unit new-unit)))
+    (update-breakout-unit* query stage-path stage target-col temporal-unit new-unit)))
 
 (mu/defn expand :- ::lib.schema/stage.mbql
   "Expand parameters for MBQL queries in a query stage (replacing Dashboard or Card-supplied params with the appropriate
@@ -182,7 +191,7 @@
           (recur stage more-params))
 
         (= (:type param) :temporal-unit)
-        (let [stage' (update-breakout-unit query stage (assoc param :value param-value))]
+        (let [stage' (update-breakout-unit query stage-path stage (assoc param :value param-value))]
           (recur stage' more-params))
 
         :else

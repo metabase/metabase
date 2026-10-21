@@ -159,7 +159,7 @@
                                     ;;
                                     ;;    [:or [:= <field> 1] ...].
                                     driver-api/desugar-filter-clause
-                                    driver-api/wrap-value-literals-in-mbql5
+                                    (driver-api/wrap-value-literals-in-mbql5 (:field v))
                                     (->> (mongo.qp/compile-filter query stage-number))
                                     json/encode)]
             [(conj acc compiled-clause) missing])

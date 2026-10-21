@@ -675,3 +675,19 @@
                             :target         [:dimension month-ref]
                             :value          :year
                             :temporal_units [:month :quarter]}]))))))))
+
+(deftest ^:parallel temporal-unit-param-matches-breakout-by-column-test
+  (testing "a temporal-unit param whose target names the column retargets a breakout that refers to it by ID"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/update-query-stage
+                          0 assoc :parameters
+                          [{:type   :temporal-unit
+                            :value  "year"
+                            :target [:dimension
+                                     [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}]
+                                     {}]}]))]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (:id created-at)]]}]}
+              (expand-parameters query))))))

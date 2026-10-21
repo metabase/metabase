@@ -566,3 +566,14 @@
                          (assoc :base-type :type/Date, :effective-type :type/Date)
                          (lib/with-temporal-bucket :month))
                      "2016-01-01"))))))
+
+(deftest ^:parallel wrap-value-literals-in-mbql5-with-column-test
+  (testing "values compared to a name ref get the type info of the column the caller resolved it to"
+    (is (=? [:= {}
+             [:field {} "NAME"]
+             [:value {:base-type :type/Text, :database-type "CHARACTER VARYING"} "abc"]]
+            (qp.wrap-value-literals/wrap-value-literals-in-mbql5
+             [:= {:lib/uuid (str (random-uuid))}
+              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text} "NAME"]
+              "abc"]
+             (meta/field-metadata :venues :name))))))

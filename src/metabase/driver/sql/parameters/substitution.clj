@@ -340,7 +340,7 @@
       (->> (assoc params :target [:dimension (field->field-ref driver field param-type value)])
            params.ops/to-clause
            driver-api/desugar-filter-clause
-           driver-api/wrap-value-literals-in-mbql5
+           (#(driver-api/wrap-value-literals-in-mbql5 % field))
            ->honeysql*
            (honeysql->replacement-snippet-info driver))
 
@@ -348,7 +348,7 @@
       (let [field-ref (field->field-ref driver field param-type value)]
         (->> (params.dates/date-string->filter value field-ref)
              driver-api/desugar-filter-clause
-             driver-api/wrap-value-literals-in-mbql5
+             (#(driver-api/wrap-value-literals-in-mbql5 % field))
              ->honeysql*
              (honeysql->replacement-snippet-info driver)))
 
