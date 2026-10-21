@@ -1454,9 +1454,11 @@
            lib.schema
            mcp
            models
+           premium-features
            request
            server
            settings
+           sso.auth-identity
            system
            task
            tracing
