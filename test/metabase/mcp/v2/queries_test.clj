@@ -218,8 +218,8 @@
     (is (nil? (v2.recovery-hints/recovery-hint {:error :no-such-error}))))
   (testing "an ambiguous foreign key on a card source points at the columns the card returns"
     (is (= (str "Call \"get_content\" with items [{\"type\": \"model\", \"id\": 12}] and include [\"fields\"] to list "
-                "the columns it returns. Put the foreign-key column's `lib/desired-column-alias` (its `name` when it "
-                "has none) in `source-field-name`.")
+                "the columns it returns. Put the foreign-key column's `id` in `source-field` and its "
+                "`lib/desired-column-alias` (its `name` when it has none) in `source-field-name`.")
            (message/render (v2.recovery-hints/recovery-hint
                             {:error :ambiguous-fk :source-card 12 :source-card-type "model"}))))
     (testing "and on a table source at the table's fields"

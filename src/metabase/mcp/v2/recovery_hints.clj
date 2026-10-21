@@ -88,8 +88,8 @@
     :ambiguous-fk
     (if-let [card-fields (card-fields-hint source-card source-card-type)]
       ;; A card returns a joined foreign key under its join alias (`O2__USER_ID`), which the table's fields don't show.
-      (message/msg [(str "%s Put the foreign-key column's `lib/desired-column-alias` (its `name` when it has none) in "
-                         "`source-field-name`.")]
+      (message/msg [(str "%s Put the foreign-key column's `id` in `source-field` and its `lib/desired-column-alias` "
+                         "(its `name` when it has none) in `source-field-name`.")]
                    card-fields)
       (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
                          "source table to list the available foreign-key columns.")]))
