@@ -1,16 +1,3 @@
-/**
- * Builds the Docker Hub README from bin/docker/README.md and, with --publish, pushes it.
- *
- * Run from the release/ directory:
- *   bun install
- *   bun run docker-readme --latest-major 64
- *   bun run docker-readme --latest-major 64 --repository <owner>/<repo> --publish
- *
- * Needs AWS_S3_STATIC_BUCKET and AWS_REGION. Set GITHUB_TOKEN to avoid rate limits.
- * --publish also needs DOCKERHUB_RELEASE_USERNAME and DOCKERHUB_RELEASE_TOKEN.
- * Bun loads these from release/.env.
- */
-
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
