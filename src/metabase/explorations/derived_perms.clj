@@ -131,9 +131,9 @@
   "The gate's verdict for one artifact.
 
   An artifact marked [[::indeterminate]] has no query left to adjudicate, so the gate cannot be asked
-  (it throws without a `:dataset_query`). It denies instead, leaving only the superuser exemption the
-  gate itself would have applied — the same fail-closed choice [[source-ids-resolver]] makes for a
-  query it cannot resolve."
+  (it throws without a `:dataset_query`). It denies instead — the same fail-closed choice
+  [[source-ids-resolver]] makes for a query it cannot resolve. Callers exempt superusers before
+  reaching here; the superuser check keeps the gate's own answer if this is reached directly."
   [artifact]
   (if (::indeterminate artifact)
     (boolean api/*is-superuser?*)
@@ -157,7 +157,7 @@
   text derived from warehouse values must pass the gate
   ([[metabase.queries.cached-result/viewer-can-view-cached-result?]]) for the *current* user — the
   creator included. A thread carrying no such text yet stays visible, because there is nothing on it
-  that was computed under anyone's lens. Returns a set.
+  that was computed under anyone's lens. A superuser sees every thread. Returns a set.
 
   Held inside one metadata-provider cache: [[visibility-key]] preprocesses each artifact's query, and
   a thread's charts are variants over the same card, so they read the same tables and fields over and
@@ -165,8 +165,10 @@
   caller that doesn't."
   [thread-ids]
   (let [thread-ids (set thread-ids)]
-    (if (empty? thread-ids)
-      #{}
+    (cond
+      (empty? thread-ids) #{}
+      api/*is-superuser?* thread-ids
+      :else
       (lib-be/with-metadata-provider-cache
         (set/difference thread-ids
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
@@ -175,7 +177,8 @@
 (defn- exploration-content-visible?
   "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected)."
   [exploration-id]
-  (if (nil? exploration-id)
+  ;; The superuser check only skips the thread-id read; the gate would pass them anyway.
+  (if (or (nil? exploration-id) api/*is-superuser?*)
     true
     (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
       (or (empty? thread-ids)
