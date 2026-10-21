@@ -8,6 +8,7 @@ import {
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -364,6 +365,7 @@ export const setup = async ({
   databases,
   libraryCollection,
   libraryCollectionItems,
+  searchResults,
   ...rest
 }: SetupOpts = {}) => {
   process.env.OVERSCAN = "20"; // for VirtualizedList overscan
@@ -449,7 +451,11 @@ export const setup = async ({
     setupCollectionItemsEndpoint(endpoint);
   }
 
-  fetchMock.get("path:/api/search", mockSearchResults);
+  if (searchResults) {
+    setupSearchEndpoints(searchResults);
+  } else {
+    fetchMock.get("path:/api/search", mockSearchResults);
+  }
   fetchMock.get("path:/api/user/recipients", { data: [] });
   const onChange = jest.fn();
   const onClose = jest.fn();

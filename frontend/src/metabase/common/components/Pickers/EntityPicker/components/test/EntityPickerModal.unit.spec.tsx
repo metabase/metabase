@@ -786,6 +786,20 @@ describe("EntityPickerModal", () => {
       expect(within(searchList).getAllByRole("link")).toHaveLength(11);
     });
 
+    it("should show the no objects illustration when the search finds nothing", async () => {
+      await setup({ searchResults: [] });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "This aren't the objects you're looking for",
+      );
+
+      expect(
+        await screen.findByText("We didn't find anything"),
+      ).toBeInTheDocument();
+      expect(screen.getByAltText("Nothing found")).toBeInTheDocument();
+    });
+
     it("should hide search results based on isHiddenItem", async () => {
       await setup({
         isHiddenItem: (item) => item.name.includes("Dash"),
