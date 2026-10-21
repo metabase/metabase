@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.template-tag
-  (:refer-clojure :exclude [empty? every? mapv])
+  (:refer-clojure :exclude [empty? every? mapv some])
   (:require
    [malli.core :as mc]
    [medley.core :as m]
@@ -7,7 +7,7 @@
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [empty? every? mapv]]))
+   [metabase.util.performance :refer [empty? every? mapv some]]))
 
 (mr/def ::widget-type
   "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
