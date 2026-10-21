@@ -34,6 +34,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli.registry :as mr]))
@@ -82,21 +83,57 @@
   ^String [x]
   (codecs/bytes->hex (buddy-hash/sha256 (.getBytes (pr-str (canonical x)) "UTF-8"))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *token-memo*
+  "Memo atom bound by [[with-data-access-token-memo]], or nil to read every contributor on every call."
+  nil)
+
+(defn do-with-data-access-token-memo
+  "Function form of [[with-data-access-token-memo]]."
+  [thunk]
+  (binding [*token-memo* (or *token-memo* (atom {}))]
+    (thunk)))
+
+(defmacro with-data-access-token-memo
+  "Share [[data-access-token]]'s contributor reads across its calls in `body`. Nesting reuses the enclosing memo.
+
+  Reads are keyed by user, but not by anything else that changes them: never let `body` straddle a rebinding of
+  database routing or the viewer's permissions, or a change to their groups, sandboxes, attributes or policies."
+  {:style/indent 0}
+  [& body]
+  `(do-with-data-access-token-memo (fn [] ~@body)))
+
+(defn- memoized
+  [k f]
+  (if-let [memo *token-memo*]
+    (let [k [api/*current-user-id* k]]
+      (if-let [[_ v] (find @memo k)]
+        v
+        ;; a throw is not memoized: a later call throws again rather than reading as a value
+        (let [v (f)]
+          (swap! memo assoc k v)
+          v)))
+    (f)))
+
 (defn data-access-token
   "Compute the current user's effective-data-access token over `table-ids` in `database-id`.
   See the namespace docstring for the shape. Empty dimensions are omitted; an entirely empty map
   means the user is unrestricted across all three dimensions for this target (the OSS case).
+
+  Contributor reads are shared across calls under [[with-data-access-token-memo]].
 
   Each contributor's raw value is [[digest]]ed here, so a raw sandbox attribute / role never reaches
   a caller and never lands in `stored_result.data_access_token`."
   [{:keys [database-id table-ids]}]
   (let [sandbox (into {}
                       (keep (fn [table-id]
-                              (when-let [t (sandbox-token-for-table table-id)]
+                              (when-let [t (memoized [:sandbox table-id] #(sandbox-token-for-table table-id))]
                                 [table-id (digest t)])))
                       table-ids)
-        imp     (when database-id (impersonation-token-for-db database-id))
-        routing (when database-id (routing-token-for-db database-id))]
+        imp     (when database-id
+                  (memoized [:impersonation database-id] #(impersonation-token-for-db database-id)))
+        routing (when database-id
+                  (memoized [:routing database-id] #(routing-token-for-db database-id)))]
     (cond-> {}
       (seq sandbox) (assoc :sandbox sandbox)
       imp           (assoc :impersonation {database-id (digest imp)})
