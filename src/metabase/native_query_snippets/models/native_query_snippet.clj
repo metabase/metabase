@@ -192,18 +192,12 @@
                            serdes/import-mbql
                            (lib/normalize :metabase.lib.schema.template-tag/template-tag-map))]
     {:tags    tags
-     :renames (into {}
-                    (keep (fn [[tag-name tag]]
-                            (some->> (serdes/card-template-tag-rename tag) (vector tag-name))))
-                    tags)}))
+     :renames (serdes/card-template-tag-renames serdes/card-template-tag-rename (vals tags))}))
 
 (defn- export-renames
   "The renames of the card tags in `template-tags` whose `#<id>-slug` name embeds this instance's card id."
   [template-tags]
-  (into {}
-        (keep (fn [[tag-name tag]]
-                (some->> (serdes/card-template-tag-export-rename tag) (vector tag-name))))
-        template-tags))
+  (serdes/card-template-tag-renames serdes/card-template-tag-export-rename (vals template-tags)))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :description :entity_id :name]

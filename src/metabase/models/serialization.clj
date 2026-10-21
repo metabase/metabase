@@ -1187,9 +1187,9 @@
         (str "#" card-entity-id suffix)))))
 
 (defn card-template-tag-rename
-  "New name for a card template tag whose name embeds the `entity_id` of its (already remapped) `:card-id`, or a
-  different id: the embedded value is swapped for the id, the slug is kept verbatim. Nil when they already agree or
-  the name doesn't embed an id."
+  "New name for a card template tag whose name embeds the `entity_id` of its (already remapped) `:card-id`, a
+  different local id, or another `entity_id`: the embedded value is swapped for the id, the slug is kept verbatim. Nil
+  when they already agree or the name doesn't embed an id."
   [{tag-type :type, :keys [card-id], tag-name :name}]
   (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
     (let [entity-id-prefix (some->> (fk-elide (*export-fk* card-id :model/Card)) (str "#"))
@@ -1197,21 +1197,24 @@
                              (subs tag-name (count entity-id-prefix)))]
       (if (and entity-id-suffix (or (= "" entity-id-suffix) (str/starts-with? entity-id-suffix "-")))
         (str "#" card-id entity-id-suffix)
-        (when-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+        (if-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
           (when (not= (parse-long embedded-id) card-id)
+            (str "#" card-id suffix))
+          (when-let [[_ suffix] (re-matches #"#[A-Za-z0-9_-]{21}(-.*)?" tag-name)]
             (str "#" card-id suffix)))))))
 
-(defn- export-card-template-tag-names
-  "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced card's local id, so
-  swap it for the card's `entity_id`, which [[repair-card-template-tag-names]] swaps back on import."
-  [query]
-  (lib/replace-template-tag-names
-   query
-   (into {}
-         (keep (fn [{tag-name :name, :as tag}]
-                 (when-let [new-name (card-template-tag-export-rename tag)]
-                   [tag-name new-name])))
-         (lib/all-template-tags query))))
+(defn card-template-tag-renames
+  "The `{old-name new-name}` map of the `tags` that `rename`, a fn of one tag, gives a new name."
+  [rename tags]
+  (into {}
+        (keep (fn [{tag-name :name, :as tag}]
+                (some->> (rename tag) (vector tag-name))))
+        tags))
+
+(defn- rename-card-template-tags
+  "Renames the template tags of `query`, and the `{{#id-slug}}` refs in its native text, with `rename`."
+  [query rename]
+  (lib/replace-template-tag-names query (card-template-tag-renames rename (lib/all-template-tags query))))
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
@@ -1219,7 +1222,7 @@
   [x]
   (let [x (cond-> x
             (and (map? x) (= :mbql/query (:lib/type x)))
-            (-> export-card-template-tag-names lib/prepare-for-serialization))]
+            (-> (rename-card-template-tags card-template-tag-export-rename) lib/prepare-for-serialization))]
     ;; if required UUIDs are already calculated don't recalculate when we recurse.
     (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
       (cond
@@ -1351,19 +1354,12 @@
       import-mbql-update-maps))
 
 (defn- repair-card-template-tag-names
-  "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced
-  card's id, which goes stale when [[import-mbql-map]] remaps `:card-id` to the local card's id.
-  Swap the embedded id for the remapped one, leaving the slug as it was exported."
+  "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced card's `entity_id`,
+  or in older exports its source id, which [[import-mbql-map]] doesn't remap. Swap it for the local id of the remapped
+  `:card-id`, leaving the slug as it was exported."
   [x]
-  (if (= (:lib/type x) :mbql/query)
-    (lib/replace-template-tag-names
-     x
-     (into {}
-           (keep (fn [{tag-name :name, :as tag}]
-                   (when-let [new-name (card-template-tag-rename tag)]
-                     [tag-name new-name])))
-           (lib/all-template-tags x)))
-    x))
+  (cond-> x
+    (= (:lib/type x) :mbql/query) (rename-card-template-tags card-template-tag-rename)))
 
 (defn- legacy-mbql-query->mbql5
   "Converts an imported legacy MBQL query to MBQL 5, returning `x` unchanged if it isn't one or conversion fails.
@@ -1973,9 +1969,9 @@
                                        :import #(*import-fk* % model)))))
 
 (defn nested
-  "Nested entities; `opts` may give `:sort-by`, or `:sort-by-parent`, a fn of the parent returning the `:sort-by` fn,
-  `:key-field` and `:delete-children!`, a fn of the parent id. `:sort-by-parent` sorts these children only and is not
-  passed on to their own nested entities."
+  "Nested entities. `opts` may give `:key-field`, `:delete-children!` (a fn of the parent id), and either `:sort-by`
+  or `:sort-by-parent`, a fn of the parent returning the `:sort-by` fn, which wins over `:sort-by` and is not passed
+  on to the children's own nested entities."
   [model backward-fk opts]
   (let [model-name       (name model)
         sorter           (if-let [sort-by-parent (:sort-by-parent opts)]

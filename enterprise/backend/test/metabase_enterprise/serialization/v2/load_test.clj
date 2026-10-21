@@ -1911,7 +1911,33 @@
                                     (string? %)                      (str/replace % (tag-name @target-eid) (tag-name source-id))
                                     :else                            %)
                                  @serialized))))
+              (is (= query (stored-query))))
+            (testing "an export whose tag name names another card's entity_id is repaired from :card-id"
+              (let [tag-name     #(str "#" % "-bh-population-model")
+                    display-name #(u.humanization/name->human-readable-name :simple (tag-name %))
+                    other-eid    "otherCardEntityId0001"]
+                (serdes.load/load-metabase!
+                 (ts/ingestion-in-memory
+                  (walk/postwalk #(cond
+                                    (= % (display-name @target-eid)) (display-name other-eid)
+                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name other-eid))
+                                    :else                            %)
+                                 @serialized))))
               (is (= query (stored-query))))))))))
+
+(deftest load-database-with-user-scheduled-syncs-test
+  (testing "a Database file from an older export whose details let the user schedule syncs keeps its schedules"
+    (mt/with-empty-h2-app-db!
+      (let [db   (ts/create! :model/Database :name "scheduled-db" :engine :postgres)
+            file (assoc (ts/extract-one "Database" (:id db))
+                        :details                     {:let-user-control-scheduling true}
+                        :metadata_sync_schedule      "0 10 * * * ? *"
+                        :cache_field_values_schedule "0 0 16 * * ? *")]
+        (t2/delete! :model/Database (:id db))
+        (serdes.load/load-metabase! (ts/ingestion-in-memory [file]))
+        (is (=? {:metadata_sync_schedule      "0 10 * * * ? *"
+                 :cache_field_values_schedule "0 0 16 * * ? *"}
+                (t2/select-one :model/Database :name "scheduled-db")))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)

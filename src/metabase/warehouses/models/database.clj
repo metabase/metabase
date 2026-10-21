@@ -666,8 +666,10 @@
 (defmethod serdes/make-spec "Database"
   [_model-name _opts]
   ;; Connection details are never exported. Import is unconditional.
-  (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
-                           :import              identity}]
+  (let [details-transform  {:export-with-context (fn [_current _ _details] ::serdes/skip)
+                            :import              identity}
+        schedule-transform {:export-with-context (fn [_current _ _schedule] ::serdes/skip)
+                            :import              identity}]
     {:copy      [:auto_run_queries :caveats
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
                  :default_schema :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
@@ -676,12 +678,13 @@
                  :cache_ttl
                  ;; describes a sync on the source instance, and may name its connection details
                  :initial_sync_error
-                 ;; randomized per instance, unless connection details we never export let the user schedule syncs
-                 :cache_field_values_schedule
-                 :metadata_sync_schedule
                  ;; detected by sync, and set again by the importing instance's sync
                  :dbms_version]
-     :transform {:details             details-transform
+     :transform {;; randomized per instance unless the connection details, which we never export, let the user
+                 ;; schedule syncs; older files with such details carry the schedules those details require
+                 :cache_field_values_schedule schedule-transform
+                 :metadata_sync_schedule      schedule-transform
+                 :details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)

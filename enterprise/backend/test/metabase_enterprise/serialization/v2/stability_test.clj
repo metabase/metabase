@@ -1,8 +1,7 @@
 (ns metabase-enterprise.serialization.v2.stability-test
-  "Exports must be byte-stable: loading an export into an empty app DB and exporting it again gives the same YAML for
-  every entity, so nothing in a file depends on local ids, load order or other instance state."
+  "Exports must be byte-stable: once content has been through one load, loading its export into an empty app DB with
+  other local ids and exporting it again gives the same YAML for every entity, so no file depends on local ids."
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -18,7 +17,8 @@
   (:import
    (java.io File)
    (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)))
+   (java.nio.file.attribute FileAttribute)
+   (org.apache.commons.io FileUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,17 +31,14 @@
   (serdes/with-cache
     (load/load-metabase! (ingest/ingest-yaml dir) :reindex? false)))
 
-(defn- store-export! [^File dir]
-  (serdes/with-cache
-    (storage/store! (extract/extract extract-opts) (storage.files/file-writer dir))))
-
-(defn- exported-yaml
-  "The YAML of every exported entity, by its `:serdes/meta`."
-  []
-  (serdes/with-cache
-    (into {}
-          (map (juxt :serdes/meta storage.util/entity-yaml))
-          (extract/extract extract-opts))))
+(defn- exported-yaml!
+  "The YAML of every exported entity, by its `:serdes/meta`; the export is also stored into `dir` when given."
+  ([] (exported-yaml! nil))
+  ([dir]
+   (serdes/with-cache
+     (let [entities (into [] (extract/extract extract-opts))]
+       (some->> dir storage.files/file-writer (storage/store! entities))
+       (into {} (map (juxt :serdes/meta storage.util/entity-yaml)) entities)))))
 
 (defn- shift-local-ids!
   "Make every identity column of the H2 app DB start at a different number past its seeded rows and `start`, so loaded
@@ -51,19 +48,19 @@
           (map-indexed vector (t2/query ["SELECT table_name, column_name FROM information_schema.columns
                                           WHERE is_identity = 'YES' AND table_schema = 'PUBLIC'
                                           ORDER BY table_name, column_name"]))
-          :let [seeded-max (:max (first (t2/query [(format "SELECT MAX(\"%s\") AS \"max\" FROM \"%s\"" column table)])))]]
+          :let [max-query  (format "SELECT MAX(\"%s\") AS \"max\" FROM \"%s\"" column table)
+                seeded-max (:max (first (t2/query [max-query])))]]
     (t2/query [(format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" RESTART WITH %d"
                        table column (+ (or seeded-max 0) start (* 37 i)))])))
 
 (defn- export-of-load!
   "Load `dir` into an empty app DB with local ids past `start`, store its export into `out-dir` and return
-  [[exported-yaml]]."
+  [[exported-yaml!]]."
   [dir out-dir start]
   (mt/with-empty-h2-app-db!
     (shift-local-ids! start)
     (load-dir! dir)
-    (store-export! out-dir)
-    (exported-yaml)))
+    (exported-yaml! out-dir)))
 
 (defn- changed
   "The entities whose YAML differs between the `before` and `after` exports, with both versions."
@@ -77,7 +74,7 @@
   (search.tu/with-index-disabled
     (let [[dir-a dir-b dir-c :as dirs] (repeatedly 3 temp-dir)]
       (try
-        (testing "the baseline is not written by an export, so its first export only normalizes it"
+        (testing "the first export normalizes the baseline: no export wrote it, and a load re-infers model metadata"
           (export-of-load! round-trip-test/source-dir dir-a 1))
         (let [before (export-of-load! dir-a dir-b 1000)]
           (testing "the baseline covers many entities"
@@ -85,10 +82,8 @@
           (testing "exporting the same app DB twice gives the same YAML"
             (is (= {} (mt/with-empty-h2-app-db!
                         (load-dir! dir-b)
-                        (changed (exported-yaml) (exported-yaml))))))
+                        (changed (exported-yaml!) (exported-yaml!))))))
           (testing "loading an export into an app DB with other local ids and exporting it again gives the same YAML"
             (is (= {} (changed before (export-of-load! dir-b dir-c 9000))))))
         (finally
-          (doseq [^File dir dirs
-                  ^File f   (reverse (file-seq dir))]
-            (io/delete-file f true)))))))
+          (run! #(FileUtils/deleteDirectory ^File %) dirs))))))

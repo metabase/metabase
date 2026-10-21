@@ -95,12 +95,12 @@
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
-(declare env-var-value export?)
+(declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
-  (for [{:keys [key value]} (admin-writable-site-wide-settings
-                             :getter (partial get-value-of-type :string))
-        :when (and (export? key) (nil? (env-var-value key)))]
+  (for [{:keys [key value is_env_setting]} (admin-writable-site-wide-settings
+                                            :getter (partial get-value-of-type :string))
+        :when (and (export? key) (not is_env_setting))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))

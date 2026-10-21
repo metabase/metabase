@@ -1017,6 +1017,7 @@
 (deftest sync-state-serdes-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id :id}    {:name                        "My Database"
+                                                       :engine                      :postgres
                                                        :dbms_version                {:version "14.0"}
                                                        :initial_sync_status         "aborted"
                                                        :initial_sync_error          "Connection refused"
@@ -1024,6 +1025,7 @@
                                                        :cache_field_values_schedule "0 0 16 * * ? *"}
                        :model/Table    {table-id :id} {:name "My Table" :db_id db-id :initial_sync_status "incomplete"}]
       (testing "what sync detects or schedules on the exporting instance is not exported"
+        (is (=? {:name "My Database"} (ts/extract-one "Database" db-id)))
         (is (= #{} (set (keys (select-keys (ts/extract-one "Database" db-id)
                                            [:dbms_version :initial_sync_status :initial_sync_error
                                             :metadata_sync_schedule :cache_field_values_schedule])))))
