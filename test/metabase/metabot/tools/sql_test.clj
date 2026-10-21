@@ -394,7 +394,8 @@
               (is (not (str/includes? output "\u001b")))
               (doseq [text ["Common issues to check:" "DATE_TRUNC vs TRUNC" "Quote style for identifiers"
                             "String concatenation operators" "Date/time literal syntax"
-                            "NULL handling differences" "Case sensitivity of identifiers"]]
+                            "NULL handling differences" "Case sensitivity of identifiers"
+                            "If it keeps rejecting SQL the database supports, rewrite that part in standard SQL."]]
                 (is (str/includes? output text))))))))))
 
 (deftest multiple-sql-statements-test
@@ -581,7 +582,7 @@
               (is (not (str/includes? output "\u001b")))
               (is (str/includes? output "Fix the SQL syntax and retry"))
               (is (str/includes? output "Common issues to check:"))
-              (is (str/ends-with? output "Case sensitivity of identifiers\n")))))))))
+              (is (str/ends-with? output "rewrite that part in standard SQL.")))))))))
 
 (deftest omitted-sql-match-lines-test
   (mt/with-current-user (mt/user->id :crowberto)

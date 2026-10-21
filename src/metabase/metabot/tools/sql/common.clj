@@ -59,7 +59,9 @@
                     (when dialect (str " for dialect " (quoting/quoted dialect)))
                     ". Parser details: ")
         recovery [{:uses #{} :text (str "Fix the SQL syntax and retry. No changes were saved.\n\n"
-                                        instructions/sql-dialect-checklist)}]
+                                        instructions/sql-dialect-checklist)}
+                  {:uses #{} :text (str "The syntax check may not support every construct the database accepts. "
+                                        "If it keeps rejecting SQL the database supports, rewrite that part in standard SQL.")}]
         budget (- tools.runtime/max-output-length (count prefix) (reduce + (map (comp inc count :text) recovery)))]
     {:message (str prefix (bounded-quote error-message budget))
      :recovery recovery}))
