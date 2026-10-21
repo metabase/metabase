@@ -254,8 +254,10 @@
       (doseq [profile [:document-generate-content :slackbot]
               [source-id actual-type expected-type] [[question-id "question" "model"]
                                                      [metric-id "metric" "model"]
-                                                     [model-id "model" "metric"]]
-              :let [message (str "ID " source-id " is a " actual-type ", not a " expected-type "."
+                                                     [model-id "model" "metric"]
+                                                     [question-id "question" "metric"]]
+              :let [message (str (if (= expected-type "metric") "Card " "ID ")
+                                 source-id " is a " actual-type ", not a " expected-type "."
                                  "\nRetry using a " expected-type " ID.")]]
         (let [result (invoke-metadata profile "list_available_fields"
                                       (assoc {:table_ids [(mt/id :products)] :model_ids [] :metric_ids []}
@@ -268,11 +270,12 @@
                 (invoke-metadata profile "list_available_fields"
                                  (assoc {:table_ids [] :model_ids [] :metric_ids []}
                                         (keyword (str expected-type "_ids")) [source-id])))))
-      (doseq [profile [:document-generate-content :slackbot]]
+      (doseq [profile [:document-generate-content :slackbot]
+              [source-id actual-type] [[question-id "question"] [model-id "model"]]]
         (is (= {:error {:class :recoverable :code ::tools.u/wrong-source-type}
-                :output (str "ID " model-id " is a model, not a metric.\nRetry using a metric ID.")}
+                :output (str "Card " source-id " is a " actual-type ", not a metric.\nRetry using a metric ID.")}
                (invoke-metadata profile "get_field_values"
-                                {:data_source "metric" :source_id model-id :field_id (mt/id :orders :id)})))))))
+                                {:data_source "metric" :source_id source-id :field_id (mt/id :orders :id)})))))))
 
 (deftest pivot-question-fields-round-trip-test
   (mt/as-admin
@@ -357,8 +360,13 @@
                     :code (if (= profile :internal)
                             :metabase.metabot.tools.core/all-items-failed
                             ::tools.u/wrong-source-type)} error))
-            (is (str/includes? (or output "") (str "ID " source-id " is a " actual-type ", not a " expected-type "."
-                                                   "\nRetry using a " expected-type " ID.")))))))))
+            (is (str/includes? (or output "")
+                               (str (if (= expected-type "metric") "Card " "ID ")
+                                    source-id " is a " actual-type ", not a " expected-type "."
+                                    (if (and (= profile :internal) (= expected-type "metric"))
+                                      (str "\nRead `metabase://" actual-type "/" source-id "/fields/"
+                                           (mt/id :orders :id) "` instead.")
+                                      (str "\nRetry using a " expected-type " ID."))))))))))
 
 (deftest question-field-details-use-returned-columns-test
   (mt/as-admin

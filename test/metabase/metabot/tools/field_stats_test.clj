@@ -178,7 +178,7 @@
           (doseq [[card-type card-id] [["question" question-id] ["model" model-id]]]
             (is (=? {:class :recoverable
                      :code :metabase.metabot.tools.util/wrong-source-type
-                     :message (str "ID " card-id " is a " card-type ", not a metric.")
+                     :message (str "Card " card-id " is a " card-type ", not a metric.")
                      :recovery [{:text "Retry using a metric ID." :uses #{}}]}
                     (tools.error/classify
                      (is (thrown? clojure.lang.ExceptionInfo (metric-values card-id))))))))

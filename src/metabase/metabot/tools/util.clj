@@ -173,7 +173,8 @@
              [:expected-type [:enum :model :question :metric]]
              [:actual-type [:enum :model :metric :question]]]}
   [{:keys [id expected-type actual-type]}]
-  {:message (str "ID " id " is a " (name actual-type) ", not a " (name expected-type) ".")
+  {:message (str (if (= expected-type :metric) "Card " "ID ")
+                 id " is a " (name actual-type) ", not a " (name expected-type) ".")
    :recovery [{:text (str "Retry using a " (name expected-type) " ID.") :uses #{}}]})
 
 (defn get-card
