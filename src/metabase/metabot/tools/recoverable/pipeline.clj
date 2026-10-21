@@ -20,7 +20,9 @@
   gets no steps at all: a missing step reads as terse, a wrong one sends the agent at the wrong
   tool."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.tools.error :refer [defrecoverable]]
+   [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -29,16 +31,50 @@
   "The payload every pipeline-error declaration takes.
 
   `:message` is the pipeline's own sentence. `:entity-type` and `:entity-id` are present only for
-  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]])."
+  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]]).
+  `:table-id` and `:database-id` are present only for the codes whose recovery steps name that
+  table or database (see [[payload]])."
   [:map {:closed true}
    [:message     :string]
    [:entity-type {:optional true} [:maybe :string]]
-   [:entity-id   {:optional true} [:maybe [:or :string :int]]]])
+   [:entity-id   {:optional true} [:maybe [:or :string :int]]]
+   [:table-id    {:optional true} pos-int?]
+   [:database-id {:optional true} pos-int?]])
+
+(def ^:private id-keys
+  "For each code whose recovery steps name a table or a database, a map from the payload key to the
+  `ex-data` key the pipeline puts that id under."
+  {:unknown-table   {:database-id :database-id}
+   :ambiguous-table {:database-id :database-id}
+   :unknown-field   {:table-id :table-id}
+   :ambiguous-fk    {:table-id :source-table}})
+
+(defn payload
+  "The [[::payload]] for the pipeline exception `e`, whose `:error` code is `error`.
+
+  A database id is kept only when the current user can read the database."
+  [error e]
+  (let [{:keys [entity-type entity-id] :as data} (ex-data e)
+        {:keys [table-id database-id]}            (update-vals (id-keys error) #(get data %))]
+    (cond-> {:message (or (ex-message e) "")}
+      entity-type         (assoc :entity-type entity-type)
+      (some? entity-id)   (assoc :entity-id entity-id)
+      ;; The pipeline checks permissions on the query's tables, but finds its database by name first.
+      (pos-int? table-id) (assoc :table-id table-id)
+      (and (pos-int? database-id)
+           (mi/can-read? :model/Database database-id))
+      (assoc :database-id database-id))))
 
 ;;; ------------------------------------------- Shared recovery steps ----------------------------------------------
 
 ;; Each step names the tools its text mentions in `:uses`, so a profile without `read_resource` gets
 ;; the error with that step dropped rather than advice it cannot follow.
+
+(defn- with-id
+  "`step` with the `<numeric id>` in its text replaced by `id`, or unchanged when `id` is nil."
+  [step id]
+  (cond-> step
+    id (update :text str/replace "<numeric id>" (str id))))
 
 (def ^:private list-tables-step
   {:uses #{"read_resource"}
@@ -106,9 +142,12 @@
 
 ;;; Table resolution
 
-(defpipeline-error unknown-table!
+(defrecoverable unknown-table!
   "A portable FK `[db, schema, table]` in `source-table:` matched no active table."
-  [list-tables-step])
+  {:payload ::payload}
+  [{:keys [message database-id]}]
+  {:message  message
+   :recovery [(with-id list-tables-step database-id)]})
 
 (defpipeline-error unknown-table-id!
   "A numeric table id did not resolve."
@@ -120,11 +159,15 @@
                "`metabase://database/<numeric id>/tables` to find the table, then use its portable FK "
                "`[<db-name>, <schema>, <table-name>]` in `source-table:`.")}])
 
-(defpipeline-error ambiguous-table!
+(defrecoverable ambiguous-table!
   "A portable FK matched more than one table."
-  [{:uses #{"read_resource"}
-    :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the available "
-               "tables and retry with a more specific portable FK.")}])
+  {:payload ::payload}
+  [{:keys [message database-id]}]
+  {:message  message
+   :recovery [(-> {:uses #{"read_resource"}
+                   :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the "
+                              "available tables and retry with a more specific portable FK.")}
+                  (with-id database-id))]})
 
 ;;; Database resolution
 
@@ -142,9 +185,12 @@
 
 ;;; Field resolution
 
-(defpipeline-error unknown-field!
+(defrecoverable unknown-field!
   "A field reference named no column of its source."
-  [list-fields-step])
+  {:payload ::payload}
+  [{:keys [message table-id]}]
+  {:message  message
+   :recovery [(with-id list-fields-step table-id)]})
 
 (defpipeline-error unknown-field-id!
   "A numeric field id did not resolve."
@@ -174,9 +220,12 @@
 
 ;;; Joins
 
-(defpipeline-error ambiguous-fk!
+(defrecoverable ambiguous-fk!
   "More than one foreign key connects the two tables, so the join path is ambiguous."
-  [list-fks-step])
+  {:payload ::payload}
+  [{:keys [message table-id]}]
+  {:message  message
+   :recovery [(with-id list-fks-step table-id)]})
 
 (defpipeline-error ambiguous-fk-via-join!
   "More than one foreign key connects the joined tables, so the join path is ambiguous."
