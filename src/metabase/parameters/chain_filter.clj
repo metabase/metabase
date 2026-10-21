@@ -434,6 +434,12 @@
   (if (empty? (lib/joins query))
     query
     (let [join-alias->refs (first-stage-join-alias->refs query)]
+      (when-let [table-ids (not-empty (into #{}
+                                            (comp (map #(lib/joined-thing query %))
+                                                  (filter #(= :metadata/table (:lib/type %)))
+                                                  (map :id))
+                                            (lib/joins query)))]
+        (lib.metadata/metadatas query {:lib/type :metadata/column, :table-ids table-ids}))
       (lib.walk/walk
        query
        (fn [query path-type path a-join]

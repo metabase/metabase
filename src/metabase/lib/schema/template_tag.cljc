@@ -97,6 +97,9 @@
     [:options {:optional true} [:maybe ::field-filter.options]]]])
 
 (mr/def ::disallow-dimension
+  (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))
+
+(mr/def ::disallow-field-id
   (common/disallowed-keys {:field-id ":field-id is only allowed for :type :dimension and :temporal-unit template tags"}))
 
 (defn dimension->field-id
@@ -130,7 +133,7 @@
      [:snippet-id {:optional true} ::id/snippet]
      ;; database to which this Snippet belongs. Doesn't always seem to be specified.
      [:database {:optional true} ::id/database]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-field-id]])
 
 ;; Example:
 ;;
@@ -146,7 +149,7 @@
     [:map
      [:type    [:= :card]]
      [:card-id ::id/card]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-field-id]])
 
 (def allowed-source-filter-ops
   "Set of allowed source-filter ops"
@@ -176,7 +179,7 @@
      [:table-id              ::id/table]
      [:emit-alias            {:optional true} :boolean]
      [:source-filters        {:optional true} [:sequential [:ref ::source-filter]]]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-field-id]])
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
@@ -203,7 +206,7 @@
     [:map
      [:type [:ref ::raw-value.type]]
      [:widget-type {:optional true} [:maybe [:ref ::widget-type]]]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-field-id]])
 
 (mr/def ::template-tag
   [:and

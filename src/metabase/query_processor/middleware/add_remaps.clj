@@ -294,7 +294,9 @@
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [new-fields         (add-fk-remaps-to-fields infos fields)
             ;; make a map of field-id-clause -> fk-clause from the tuples
-            original->remapped (original-fields->new-fields infos)
+            original->remapped (let [broken-out (into #{} (map simplify-ref-options) breakout)]
+                                 (m/remove-vals #(broken-out (simplify-ref-options %))
+                                                (original-fields->new-fields infos)))
             ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)

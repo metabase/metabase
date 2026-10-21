@@ -363,7 +363,11 @@
   (let [fk-field-infos           (keep #(field-ref->fk-field-info query path %) (implicitly-joined-fields stage))
         new-joins                (implicitly-joined-fields->joins query fk-field-infos)
         required-joins           (remove #(already-has-join? query path stage %) new-joins)
-        reused-join-aliases      (into #{} (map :alias) (set/difference (set new-joins) (set required-joins)))]
+        current-join-aliases     (into #{} (map :alias) (:joins stage))
+        reused-join-aliases      (into #{}
+                                       (comp (map :alias)
+                                             (remove current-join-aliases))
+                                       (set/difference (set new-joins) (set required-joins)))]
     (-> stage
         (cond-> (seq required-joins) (update :joins (fn [existing-joins]
                                                       (m/distinct-by

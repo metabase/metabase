@@ -57,9 +57,9 @@
              :query {:source-table (meta/id :venues)
                      :breakout [[:field (meta/id :venues :category-id) nil]]
                      :filter [:and
-                              [:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
+                              [:= [:field "NAME" {:base-type :type/Text}] "abc"]
                               [:or
-                               [:is-null [:field (meta/id :venues :category-id) {:base-type :type/Integer}]]
+                               [:is-null [:field "CATEGORY_ID" {:base-type :type/Integer}]]
                                [:> [:field (meta/id :venues :price) nil] 1]]]}}
             (expand-macros
              (lib.tu.macros/mbql-query venues
@@ -87,8 +87,8 @@
                  :type :query
                  :query {:source-table (meta/id :venues)
                          :filter [:and
-                                  [:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
-                                  [:> [:field (meta/id :venues :price) {:base-type :type/Integer}] 1]]}}
+                                  [:= [:field "NAME" {:base-type :type/Text}] "abc"]
+                                  [:> [:field "PRICE" {:base-type :type/Integer}] 1]]}}
                 (expand-macros
                  (lib.tu.macros/mbql-query venues
                    {:filter [:segment 2]}))))))
@@ -117,9 +117,9 @@
                :type :query
                :query {:source-table (meta/id :venues)
                        :aggregation [[:share [:and
-                                              [:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
+                                              [:= [:field "NAME" {:base-type :type/Text}] "abc"]
                                               [:or
-                                               [:is-null [:field (meta/id :venues :category-id) {:base-type :type/Integer}]]
+                                               [:is-null [:field "CATEGORY_ID" {:base-type :type/Integer}]]
                                                [:> [:field (meta/id :venues :price) nil] 1]]]]]}}
               (expand-macros
                (lib.tu.macros/mbql-query venues
@@ -134,7 +134,7 @@
     (qp.store/with-metadata-provider mock-metadata-provider
       (is (=? {:query {:expressions
                        {"CC" [:case
-                              [[[:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
+                              [[[:= [:field "NAME" {:base-type :type/Text}] "abc"]
                                 "Segment"]]
                               {:default "Other"}]}}}
               (expand-macros
@@ -150,7 +150,7 @@
                                      {:before {:source-table $$checkins
                                                :filter       [:segment 2]}
                                       :after  {:source-table $$checkins
-                                               :filter [:is-null [:field (meta/id :venues :category-id) {:base-type :type/Integer}]]}})]
+                                               :filter [:is-null [:field "CATEGORY_ID" {:base-type :type/Integer}]]}})]
         (testing "nested 1 level"
           (is (=? (lib.tu.macros/mbql-query nil
                     {:source-query after})

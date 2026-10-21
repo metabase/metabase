@@ -63,13 +63,24 @@
   (for [join-number (range (count (lib/joins query 0)))]
     (:query (lib.walk/query-for-path query [:stages 0 :joins join-number]))))
 
+(defn- clause-field-ids
+  "Set of the IDs of the Fields that the `:field` refs in `clause` resolve to in stage `stage-number` of `query`."
+  [query stage-number clause]
+  (let [acc (volatile! #{})]
+    (lib.walk/walk-clause clause (fn [x]
+                                   (when (lib.util/clause-of-type? x :field)
+                                     (when-some [id (:id (lib/metadata query stage-number x))]
+                                       (vswap! acc conj id)))
+                                   nil))
+    @acc))
+
 (defn- join-summaries
   "For each join of `query`'s first stage: its strategy, and the field IDs its source query breaks out and filters by."
   [query]
   (for [[a-join source-query] (map vector (lib/joins query 0) (join-source-queries query))]
     {:strategy (lib/raw-join-strategy a-join)
-     :breakout (into #{} (mapcat lib/all-field-ids) (lib/breakouts source-query 0))
-     :filters  (into #{} (mapcat lib/all-field-ids) (lib/filters source-query 0))}))
+     :breakout (into #{} (mapcat #(clause-field-ids source-query 0 %)) (lib/breakouts source-query 0))
+     :filters  (into #{} (mapcat #(clause-field-ids source-query 0 %)) (lib/filters source-query 0))}))
 
 (deftest ^:parallel special-form-filter-clause-test
   (testing "Can handle multi-arg string filters when chaining (#57287)"
@@ -696,9 +707,9 @@
   (let [acc     (volatile! {})
         collect (fn [clause]
                   (when (lib.util/clause-of-type? clause :field)
-                    (let [[_ opts id] clause
-                          alias       (:join-alias opts)]
-                      (when (and alias (pos-int? id))
+                    (let [alias (:join-alias (lib/options clause))
+                          id    (:id (lib/metadata query -1 clause))]
+                      (when (and alias id)
                         (vswap! acc update alias (fnil conj #{}) id))))
                   nil)]
     (lib.walk/walk-clauses-in-stage (lib.util/query-stage query -1) collect)
@@ -719,7 +730,7 @@
   read: the projection list is the thing under test."
   [source-query]
   (into #{}
-        (mapcat lib/all-field-ids)
+        (mapcat #(clause-field-ids source-query 0 %))
         (if (semi-join? source-query)
           (lib/breakouts source-query 0)
           (lib/fields source-query 0))))
@@ -867,7 +878,7 @@
                (let [field (nth clause 2 nil)]
                  (and (vector? field)
                       (= :field (first field))
-                      (= partition-fid (last field))
+                      (= partition-fid (:id (lib/metadata query 0 field)))
                       (= join-alias (:join-alias (second field)))
                       clause))))
         (-> query :stages first :filters)))
@@ -1278,7 +1289,8 @@
         ;; - bulk-fetch the constraint Field(s)
         ;; - bulk-fetch the join Fields
         ;; - bulk-fetch the join Table(s)
-        (is (= 6 first))
+        ;; - bulk-fetch the Fields of the join Table(s), to resolve the join refs by name
+        (is (= 7 first))
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
           (is (= 0 second)))))))
 
@@ -1295,6 +1307,7 @@
         ;; - bulk-fetch the constraint Field(s)
         ;; - bulk-fetch the join Fields (across both joins)
         ;; - bulk-fetch the join Tables (both of them)
-        (is (= 6 first))
+        ;; - bulk-fetch the Fields of the join Tables (both of them), to resolve the join refs by name
+        (is (= 7 first))
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
           (is (= 0 second)))))))
