@@ -117,6 +117,25 @@
         (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
                (cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
 
+(deftest ^:parallel cell-title-name-refs-test
+  (testing "Name refs, including ones to joined columns, resolve to their Fields"
+    (let [query (api.automagic-dashboards/adhoc-query-instance
+                 {:query    {:source-table (mt/id :orders)
+                             :joins        [{:source-table (mt/id :products)
+                                             :alias        "Products"
+                                             :fields       :all
+                                             :condition    [:=
+                                                            [:field (mt/id :orders :product_id) nil]
+                                                            [:field (mt/id :products :id) {:join-alias "Products"}]]}]
+                             :aggregation  [:count]}
+                  :type     :query
+                  :database (mt/id)})
+          root  (magic/->root query)]
+      (is (= "number of Orders where Quantity is 2 and Category is Gadget"
+             (cell-title root ["and"
+                               ["=" ["field" "QUANTITY" {"base-type" "type/Integer"}] 2]
+                               ["=" ["field" "CATEGORY" {"base-type" "type/Text" "join-alias" "Products"}] "Gadget"]]))))))
+
 (deftest ^:parallel cell-title-default-test
   (mt/$ids venues
     (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :venues)

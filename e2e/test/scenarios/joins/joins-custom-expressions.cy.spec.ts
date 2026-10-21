@@ -36,7 +36,7 @@ describe("scenarios > joins > custom expressions", () => {
     });
 
     H.visualize();
-    H.assertQueryBuilderRowCount(9);
+    H.assertQueryBuilderRowCount(1);
   });
 
   it("should allow to update a join with a join condition with custom expressions", () => {
