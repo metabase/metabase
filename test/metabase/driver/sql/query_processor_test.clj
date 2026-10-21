@@ -293,10 +293,10 @@
                        [:week (-> [:dateadd
                                    (h2x/literal "day")
                                    [:inline 1]
-                                   (-> [:cast :created_at [:raw "datetime"]]
+                                   (-> [:cast :created_at [::h2x/raw-type-name "datetime"]]
                                        (h2x/with-database-type-info "datetime"))]
                                   (h2x/with-database-type-info "datetime"))]
-                       [:raw "datetime"]]
+                       [::h2x/raw-type-name "datetime"]]
                       (h2x/with-database-type-info "datetime"))]
                  (h2x/with-database-type-info "datetime"))
              (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at))))
