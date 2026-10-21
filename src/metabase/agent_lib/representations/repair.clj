@@ -3236,8 +3236,8 @@
   passed the suppressed-type-check `::lib.schema/query` validation - `diagnose-expression`
   validates its query argument against that same schema, and its raw validation error would
   otherwise preempt the friendly message. The optional `repaired-query` supplies the original stage
-  indexes for diagnostics."
-  ([pmbql-query] (assert-editor-accepts-expressions! pmbql-query nil))
+  indexes for diagnostics; defaults to `pmbql-query`."
+  ([pmbql-query] (assert-editor-accepts-expressions! pmbql-query pmbql-query))
   ([pmbql-query repaired-query]
    (doseq [stage-idx      (range (lib/stage-count pmbql-query))
            [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
