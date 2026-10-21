@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.core :as documents]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -324,6 +325,27 @@
     (mt/with-temp [:model/Document {doc-id :id} {:creator_id (mt/user->id :lucky)}]
       (is (true? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta))))
       (is (true? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))))
+
+(deftest superuser-skips-content-gate-test
+  (testing "a superuser passes the content gate without it loading anything to adjudicate"
+    (let [thread  (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl    (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)
+          loads   (atom 0)
+          counted (fn [f] (fn [& args] (swap! loads inc) (apply f args)))]
+      (mt/with-temp [:model/Document {doc-id :id} {:exploration_id expl :creator_id (mt/user->id :lucky)}]
+        (let [document (t2/select-one :model/Document :id doc-id)]
+          (dynamic-redefs/with-dynamic-fn-redefs
+            [explorations.db/thread-ids-for-exploration
+             (counted (dynamic-redefs/original-fn #'explorations.db/thread-ids-for-exploration))
+             explorations.db/lens-stamped-queries
+             (counted (dynamic-redefs/original-fn #'explorations.db/lens-stamped-queries))]
+            (testing "the gate denies everyone else here"
+              (is (false? (visible? thread :rasta)))
+              (is (false? (boolean (doc-content-visible? document :rasta))))
+              (reset! loads 0))
+            (is (true? (visible? thread :crowberto)))
+            (is (true? (boolean (doc-content-visible? document :crowberto))))
+            (is (zero? @loads))))))))
 
 ;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
 
