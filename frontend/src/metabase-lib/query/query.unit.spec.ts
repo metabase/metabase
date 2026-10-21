@@ -719,7 +719,7 @@ describe("createTestNativeQuery", () => {
         name: "x",
         "display-name": "X",
         "field-id": PRODUCTS.CATEGORY,
-        dimension: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        dimension: ["field", PRODUCTS.CATEGORY, {}],
         "widget-type": "text",
       },
     });
@@ -745,11 +745,7 @@ describe("createTestNativeQuery", () => {
         name: "x",
         "display-name": "X",
         "field-id": PRODUCTS.CREATED_AT,
-        dimension: [
-          "field",
-          PRODUCTS.CREATED_AT,
-          { "base-type": "type/DateTime" },
-        ],
+        dimension: ["field", PRODUCTS.CREATED_AT, {}],
       },
     });
   });

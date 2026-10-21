@@ -414,17 +414,12 @@
         query            (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
-(mu/defn- field-id->field-ref :- :mbql.clause/field
-  [query    :- ::lib.schema/query
-   field-id :- pos-int?]
-  (->> field-id
-       (lib.metadata/field query)
-       lib.ref/ref))
-
 (mu/defn- adjust-template-tag
-  [query :- ::lib.schema/query
-   spec  :- ::lib.schema.test-spec/test-template-tag-spec]
-  (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
+  [_query :- ::lib.schema/query
+   spec   :- ::lib.schema.test-spec/test-template-tag-spec]
+  (cond-> spec
+    (pos-int? (:dimension spec)) (-> (dissoc :dimension)
+                                     (assoc :field-id (:dimension spec)))))
 
 (mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tags
   [query                  :- ::lib.schema/query
