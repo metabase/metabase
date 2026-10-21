@@ -3956,9 +3956,9 @@
         (is (empty? (t2/select :data_app_group_assignment)))))))
 
 (deftest remote-sync-object-user-settings-test
-  (testing "v65.2026-10-16T00:00:00-02: the RemoteSyncObject rows of Tables and Fields with user settings become their
+  (testing "v65.2026-10-20T00:00:02, v65.2026-10-16T00:00:01-02: the RemoteSyncObject rows of Tables and Fields with user settings become their
            user settings' rows, keeping their status, unless those are already tracked, and the rest are deleted"
-    (impl/test-migrations ["v65.2026-10-16T00:00:00" "v65.2026-10-16T00:00:02"] [migrate!]
+    (impl/test-migrations ["v65.2026-10-20T00:00:02" "v65.2026-10-16T00:00:02"] [migrate!]
       (let [db-id       (t2/insert-returning-pk! :metabase_database {:name       "Remote Sync User Settings Test DB"
                                                                      :engine     "h2"
                                                                      :created_at :%now
@@ -4015,3 +4015,19 @@
                  (set (concat (t2/select-pks-vec :remote_sync_object :model_type "TableUserSettings" :model_id tracked)
                               (t2/select-pks-vec :remote_sync_object :model_type "FieldUserSettings" :model_id tracked-fld)))))
           (is (t2/exists? :remote_sync_object :id card-rso)))))))
+
+(deftest python-library-is-default-test
+  (testing "v65.pyld7a-b: python_library.is_default is added, true for a library with an empty source"
+    (impl/test-migrations ["v65.pyld7a" "v65.pyld7b"] [migrate!]
+      (t2/delete! :python_library)
+      (let [library! (fn [path source]
+                       (t2/insert-returning-pk! :python_library {:path       path
+                                                                 :source     source
+                                                                 :entity_id  (u/generate-nano-id)
+                                                                 :created_at :%now
+                                                                 :updated_at :%now}))
+            unedited (library! "common.py" "")
+            edited   (library! "other.py" "def f(): pass")]
+        (migrate!)
+        (is (true? (t2/select-one-fn :is_default :python_library :id unedited)))
+        (is (false? (t2/select-one-fn :is_default :python_library :id edited)))))))

@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
@@ -15,6 +17,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest all-tools-test
@@ -198,6 +201,27 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
+(deftest construct-notebook-query-keeps-mbql5-temporal-filter-test
+  (testing "the generated_entity part carries a between filter of absolute-datetime bounds through JSON intact (BOT-1972)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                             (lib/absolute-datetime "2026-07-01" :day)
+                                             (lib/absolute-datetime "2026-07-31" :day))))]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [_ & _]
+                                    {:structured-output {:query-id       "q-1"
+                                                         :query          query
+                                                         :result-columns []}})]
+        (let [result (binding [shared/*profile-id* :nlq]
+                       (test-util/call-tool agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages []}
+                                             :title       "Check-ins in July"
+                                             :description "Check-ins during July 2026."}))
+              sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+          (is (= "mbql/query" (:lib/type sent)))
+          (is (= (lib/filters query)
+                 (-> sent lib/normalize :stages first :filters))))))))
+
 (deftest construct-notebook-query-tool-show-chart-test
   (let [construct! (fn [tool-names show-chart-arg]
                      (let [chart-created? (atom false)]
@@ -267,11 +291,7 @@
       (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
       (is (str/includes? text "No table found matching portable FK"))
       (is (str/includes? text "metabase://database/<numeric id>/tables"))))
-  (testing (str "an exception nobody authored a model-facing sentence for ends the turn, whether "
-                "or not the pipeline stamped `:agent-error?` onto it. `as-agent-input-error` "
-                "stamps the flag on failures from lib, toucan2 and JDBC as well, so the flag alone "
-                "never meant the message was written for anyone — only a declared `:error` code "
-                "does.")
+  (testing "An exception without a declared `:error` code ends the turn, even if `:agent-error?` is true."
     (doseq [[what e] {"stamped by the pipeline, no :error code"
                       (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})
 
@@ -336,26 +356,45 @@
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params))))))
 
-(deftest slackbot-schedules-keep-their-day-test
+(deftest notification-tools-store-requested-schedules-test
   (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
                               channel.settings/slack-cached-channels-and-usernames
                               (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
-    (mt/with-model-cleanup [:model/Notification :model/Pulse]
-      (mt/with-temp [:model/Card      {card-id :id} {}
-                     :model/Dashboard {dash-id :id} {}]
+    (mt/with-temp [:model/Card          {card-id :id}       {}
+                   :model/Dashboard     {slack-dash-id :id} {}
+                   :model/DashboardCard _                   {:dashboard_id slack-dash-id :card_id card-id}
+                   :model/Dashboard     {inapp-dash-id :id} {}
+                   :model/DashboardCard _                   {:dashboard_id inapp-dash-id :card_id card-id}]
+      (let [alert-schedules        #(->> (models.notification/notifications-for-card card-id)
+                                         (mapcat :subscriptions)
+                                         (mapv :cron_schedule))
+            subscription-schedules (fn [dash-id]
+                                     (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
+                                          (mapcat :channels)
+                                          (mapv (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame))))]
         (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
           (mt/with-current-user (mt/user->id :crowberto)
-            (doseq [schedule [{:frequency "weekly" :day_of_week "monday" :hour 9}
-                              {:frequency "monthly" :day_of_month "first-monday" :hour 9}]]
-              (agent-tools/create-alert-tool {:card_id card-id :send_condition "has_result" :schedule schedule})
-              (agent-tools/slackbot-create-dashboard-subscription-tool {:dashboard_id dash-id :schedule schedule}))))
-        (testing "alerts"
-          (is (= #{"0 0 9 ? * 2 *" "0 0 9 ? * 2#1 *"}
-                 (->> (models.notification/notifications-for-card card-id)
-                      (mapcat :subscriptions)
-                      (into #{} (map :cron_schedule))))))
-        (testing "dashboard subscriptions"
-          (is (= #{[:weekly "mon" nil] [:monthly "mon" :first]}
-                 (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
-                      (mapcat :channels)
-                      (into #{} (map (juxt :schedule_type :schedule_day :schedule_frame)))))))))))
+            (doseq [[schedule expected-cron expected-subscription]
+                    [[{:frequency "hourly"}
+                      "0 0 * * * ? *" [:hourly nil nil nil]]
+                     [{:frequency "daily" :hour 9}
+                      "0 0 9 * * ? *" [:daily 9 nil nil]]
+                     [{:frequency "weekly" :day_of_week "monday" :hour 9}
+                      "0 0 9 ? * 2 *" [:weekly 9 "mon" nil]]
+                     [{:frequency "monthly" :day_of_month "first-monday" :hour 9}
+                      "0 0 9 ? * 2#1 *" [:monthly 9 "mon" :first]]]]
+              (testing (:frequency schedule)
+                (mt/with-model-cleanup [:model/Notification :model/Pulse]
+                  (doseq [[tool args stored-schedules expected]
+                          [[#'agent-tools/create-alert-tool
+                            {:card_id card-id :send_condition "has_result"}
+                            alert-schedules expected-cron]
+                           [#'agent-tools/slackbot-create-dashboard-subscription-tool
+                            {:dashboard_id slack-dash-id}
+                            #(subscription-schedules slack-dash-id) expected-subscription]
+                           [#'agent-tools/create-dashboard-subscription-tool
+                            {:dashboard_id inapp-dash-id :slack_channel "data-team"}
+                            #(subscription-schedules inapp-dash-id) expected-subscription]]]
+                    (testing (str tool)
+                      (is (= {:output "success"} (tool (assoc args :schedule schedule))))
+                      (is (= [expected] (stored-schedules))))))))))))))

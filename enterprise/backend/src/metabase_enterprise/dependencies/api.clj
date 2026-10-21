@@ -611,18 +611,100 @@
   "Valid sort columns for /graph/broken and /graph/unreferenced endpoints."
   #{:name :location :dependents-with-errors :dependents-errors})
 
+(def ^:private types-arg
+  [:or
+   ::deps.dependency-types/dependency-types
+   [:sequential ::deps.dependency-types/dependency-types]])
+
+(def ^:private card-types-arg
+  [:or
+   (ms/enum-decode-keyword lib.schema.metadata/card-types)
+   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]])
+
 (def ^:private dependency-items-args
   [:map {:closed true}
-   [:types {:optional true} [:or
-                             ::deps.dependency-types/dependency-types
-                             [:sequential ::deps.dependency-types/dependency-types]]]
-   [:card-types {:optional true} [:or
-                                  (ms/enum-decode-keyword lib.schema.metadata/card-types)
-                                  [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
+   [:types {:optional true} types-arg]
+   [:card-types {:optional true} card-types-arg]
    [:query {:optional true} :string]
    [:include-personal-collections {:optional true} :boolean]
    [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
    [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
+
+(mu/defn- dependency-item-params :- ::dependencies.db/dependency-item-filter-params
+  [query-type :- [:enum :unreferenced :breaking]
+   {:keys [types card-types query include-personal-collections sort-column]
+    :or {card-types (vec lib.schema.metadata/card-types)
+         include-personal-collections false
+         sort-column :name}} :- [:maybe dependency-items-args]]
+  (let [types (or types (case query-type
+                          :unreferenced (vec deps.dependency-types/dependency-types)
+                          :breaking [:card :table]))
+        selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes have no name or location to search.
+                         query (remove #{:sandbox}))]
+    (merge (current-user-visibility nil)
+           {:query-type query-type
+            :entity-types selected-types
+            :card-types (if (sequential? card-types) card-types [card-types])
+            :search-text query
+            :include-personal-collections? include-personal-collections
+            :sort-column sort-column})))
+
+(mu/defn- dependency-item-page-ids
+  "A page of [[dependencies.db/dependency-item-ids]] for `item-params`, sorted in the request's `sort-direction`
+  (default `:asc`)."
+  [item-params :- ::dependencies.db/dependency-item-filter-params
+   {:keys [sort-direction] :or {sort-direction :asc}} :- [:maybe dependency-items-args]
+   offset :- ms/IntGreaterThanOrEqualToZero
+   limit :- ms/PositiveInt]
+  (dependencies.db/dependency-item-ids
+   (assoc item-params :sort-direction sort-direction :offset offset :limit limit)))
+
+(def ^:private counted-list-args
+  "The list args `/counts` accepts for each list, prefixed with the list's query type."
+  {:types                        types-arg
+   :card-types                   card-types-arg
+   :include-personal-collections :boolean})
+
+(mu/defn- counts-arg-key :- :keyword
+  "The `/counts` param naming `query-type`'s list `arg`, e.g. `:breaking-types`."
+  [query-type :- [:enum :breaking :unreferenced]
+   arg        :- :keyword]
+  (keyword (str (name query-type) "-" (name arg))))
+
+(def ^:private counts-args
+  (into [:map {:closed true}]
+        (for [query-type [:breaking :unreferenced]
+              [arg schema] counted-list-args]
+          [(counts-arg-key query-type arg) {:optional true} schema])))
+
+(mu/defn- counted-list-params :- dependency-items-args
+  "The `query-type` list's args among the prefixed `/counts` `params`."
+  [query-type :- [:enum :breaking :unreferenced]
+   params     :- [:maybe counts-args]]
+  (into {}
+        (keep (fn [arg]
+                (let [value (get params (counts-arg-key query-type arg))]
+                  (when (some? value)
+                    [arg value]))))
+        (keys counted-list-args)))
+
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:breaking nat-int?]
+                                           [:unreferenced nat-int?]]
+  "Returns the `total` of the `/graph/breaking` and `/graph/unreferenced` lists in one request.
+
+   Accepts each list's `types`, `card-types`, and `include-personal-collections` params, prefixed with the list's
+   name (e.g. `breaking-types`, `unreferenced-include-personal-collections`). Omitted params use the list's
+   defaults."
+  [_route-params
+   params :- counts-args
+   _body _request]
+  (into {}
+        (map (fn [query-type]
+               [query-type (dependencies.db/dependency-item-count
+                            (dependency-item-params query-type (counted-list-params query-type params)))]))
+        [:breaking :unreferenced]))
 
 (def ^:private dependency-items-response
   [:map
@@ -651,29 +733,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
-    :or {types (vec deps.dependency-types/dependency-types)
-         card-types (vec lib.schema.metadata/card-types)
-         include-personal-collections false
-         sort-column :name
-         sort-direction :asc}} :- dependency-items-args]
+   params :- dependency-items-args
+   _body _request]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
-                         query (remove #{:sandbox}))
-        card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
-                           {:query-type :unreferenced
-                            :entity-types selected-types
-                            :card-types card-types
-                            :search-text query
-                            :include-personal-collections? include-personal-collections
-                            :sort-column sort-column
-                            :sort-direction sort-direction
-                            :offset offset
-                            :limit limit})
-        all-ids (dependencies.db/dependency-item-ids item-params)
+        item-params (dependency-item-params :unreferenced params)
+        all-ids (dependency-item-page-ids item-params params offset limit)
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         total (dependencies.db/dependency-item-count item-params)]
     {:data   (expanded-nodes downstream-graph all-ids {:include-errors? false})
@@ -702,29 +767,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
-    :or {types [:card :table]
-         card-types (vec lib.schema.metadata/card-types)
-         include-personal-collections false
-         sort-column :name
-         sort-direction :asc}} :- dependency-items-args]
+   params :- dependency-items-args
+   _body _request]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
-                         query (remove #{:sandbox}))
-        card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
-                           {:query-type :breaking
-                            :entity-types selected-types
-                            :card-types card-types
-                            :search-text query
-                            :include-personal-collections? include-personal-collections
-                            :sort-column sort-column
-                            :sort-direction sort-direction
-                            :offset offset
-                            :limit limit})
-        all-ids (dependencies.db/dependency-item-ids item-params)
+        item-params (dependency-item-params :breaking params)
+        all-ids (dependency-item-page-ids item-params params offset limit)
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         nodes-by-type (u/group-by first second all-ids)
         downstream-errors (node-downstream-errors nodes-by-type)

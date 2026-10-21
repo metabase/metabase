@@ -394,3 +394,15 @@ function InvalidTypeFixtures() {
 }
 
 void InvalidTypeFixtures;
+
+breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+  // @ts-expect-error Bin counts must be 10, 50, or 100.
+  binning: { strategy: "num-bins", numBins: 20 },
+});
+
+const customBinCount: number = 20;
+
+breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+  // @ts-expect-error An arbitrary number is not a preset bin count.
+  binning: { strategy: "num-bins", numBins: customBinCount },
+});

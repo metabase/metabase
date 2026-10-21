@@ -289,7 +289,8 @@
       ;; catch below. Reading the EE dynamic vars directly from the catch block does NOT work — Clojure pops the
       ;; EE `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
       (binding [*execution-context-ref* (atom nil)]
-        (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+        (let [query          (assoc-in query [:info :query-hash] (or (get-in query [:info :pivot/query-hash])
+                                                                     (qp.util/query-hash query)))
               execution-info (query-execution-info query)]
           (letfn [(rff* [metadata]
                     (let [result         (rff metadata)

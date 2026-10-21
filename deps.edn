@@ -259,7 +259,7 @@
     clj-kondo/clj-kondo          {:mvn/version "2026.07.24"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
-    {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
+    {:mvn/version "1.9.0"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
@@ -925,7 +925,7 @@
    ;; declared here too so the alias stands on its own instead of failing at exec time when `:dev`
    ;; happens to be absent. Keep the version in step with the one in `:dev`.
    :extra-paths ["dev/src"]
-   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.6.2"}}
+   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.9.0"}}
    :exec-fn  dev.profile-tests/run
    :jvm-opts ["-Dclj-async-profiler.output-dir=target"
               ;; without these, inlined frames are attributed to the wrong method
