@@ -41,6 +41,7 @@ interface ChartSettingInputProps extends Omit<
   id?: string;
   placeholder?: string;
   className?: string;
+  readOnly?: boolean;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -50,6 +51,7 @@ export const ChartSettingInputNumeric = ({
   options,
   id,
   className,
+  readOnly,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const isFocusedRef = useRef(false);
@@ -109,6 +111,7 @@ export const ChartSettingInputNumeric = ({
       id={id}
       placeholder={placeholder}
       type="text"
+      readOnly={readOnly}
       error={inputValue && isNaN(Number(inputValue))}
       value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {

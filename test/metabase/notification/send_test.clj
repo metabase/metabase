@@ -14,6 +14,8 @@
    [metabase.notification.send :as notification.send]
    [metabase.notification.settings :as notification.settings]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.task-history.core :as task-history]
+   [metabase.task-history.models.task-run :as task-run]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -726,6 +728,64 @@
              (for [_ (range 2)]
                (take-notification! queue)))))))
 
+(defn- with-async-run!
+  "Run `thunk` in a new task run with `:auto-complete false` that has one successful task, and return the run id."
+  [thunk]
+  (task-history/with-task-run {:run_type      :subscription
+                               :entity_type   :dashboard
+                               :entity_id     1
+                               :auto-complete false}
+    (task-history/with-task-history {:task "job"}
+      :done)
+    (thunk)
+    (task-history/current-run-id)))
+
+(deftest queue-notification-releases-replaced-work-test
+  (testing "a queued notification that a newer one replaces no longer keeps its run started (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [queue      (#'notification.send/create-dedup-priority-queue)
+            run-id     (with-async-run! (fn []
+                                          (#'notification.send/queue-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+                                          (#'notification.send/queue-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})))
+            run-status #(t2/select-one-fn :status :model/TaskRun :id run-id)]
+        (is (= :started (run-status)) "B is still in the queue")
+        (let [b (take-notification! queue)]
+          (is (= "B" (:test-value b)))
+          (task-history/with-restored-run-id b
+            :sent))
+        (is (= :success (run-status)) "B was the last piece of work")))))
+
+(deftest queue-notification-release-failure-test
+  (testing "when the run of a replaced notification cannot be completed, the new notification stays queued and counted (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [queue      (#'notification.send/create-dedup-priority-queue)
+            run-x      (with-async-run! #(#'notification.send/queue-notification!
+                                          queue {:id 1 :payload_type :notification/testing :test-value "A"}))
+            complete!  (mt/original-fn #'task-run/complete-task-run!)
+            run-y      (mt/with-dynamic-fn-redefs [task-run/complete-task-run! (fn [run-id]
+                                                                                 (if (= run-id run-x)
+                                                                                   (throw (ex-info "app DB is down" {}))
+                                                                                   (complete! run-id)))]
+                         (with-async-run! #(#'notification.send/queue-notification!
+                                            queue {:id 1 :payload_type :notification/testing :test-value "B"})))
+            run-status #(t2/select-one-fn :status :model/TaskRun :id %)]
+        (is (= :started (run-status run-y)) "B, of run Y, is still in the queue")
+        (is (= "B" (:test-value (take-notification! queue))))
+        (is (= :started (run-status run-x)) "run X could not be completed; the reaper marks it abandoned later")))))
+
+(deftest queue-notification-put-failure-test
+  (testing "a notification that cannot be queued does not keep its run started (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [queue  (reify notification.send/NotificationQueueProtocol
+                     (put-notification! [_ _] (throw (ex-info "queue is full" {})))
+                     (take-notification-with-timeout! [_ _] nil)
+                     (queue-size [_] 0))
+            run-id (with-async-run! #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"queue is full"
+                                                           (#'notification.send/queue-notification!
+                                                            queue {:id 1 :payload_type :notification/testing}))))]
+        (is (= :success (t2/select-one-fn :status :model/TaskRun :id run-id))
+            "the body was the only piece of work left")))))
+
 (deftest notification-dedup-priority-test
   (let [queue (#'notification.send/create-dedup-priority-queue)]
     (testing "put and take operations work correctly"
@@ -734,8 +794,10 @@
              (take-notification! queue))))
     (testing "notifications with same ID are replaced in queue"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
-        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
-        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
+        (is (nil? (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})))
+        (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+               (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"}))
+            "put returns the notification that it replaced")
         (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
                (take-notification! queue)))))
     (testing "multiple notifications are processed in order"
