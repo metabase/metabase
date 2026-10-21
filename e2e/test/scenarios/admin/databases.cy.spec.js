@@ -74,14 +74,14 @@ describe("admin > database > add", () => {
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Show advanced options").click();
+          cy.log("Reproduces metabase#14334");
           cy.findByLabelText(/Rerun queries for simple explorations/).should(
             "have.attr",
             "data-checked",
             "true",
           );
-          // Reproduces (metabase#14334)
           cy.findByText("Additional JDBC connection string options");
-          // Reproduces (metabase#17450)
+          cy.log("Reproduces metabase#17450");
           cy.findByLabelText(/Choose when syncs and scans happen/)
             .click({ force: true })
             .should("have.attr", "data-checked", "true");
