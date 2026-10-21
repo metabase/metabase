@@ -3,25 +3,26 @@
   it did not name is an unresolved symbol, and one that names a field it does not use is an unused binding.")
 
 (defmacro defparsed [parsed-name fields & clauses]
-  (let [decl (symbol (str parsed-name "-declaration"))]
-    `(do
-       (deftype ~parsed-name ~fields)
-       (def ~decl
-         [~@(for [[head & args] clauses]
-              (case head
-                (pure external)
-                (let [[_ _ & more]  args
-                      more          (if (map? (first more)) (rest more) more)
-                      [argv & more] more
-                      [binds body]  (if (and (= 'external head) (vector? (first more)) (next more))
-                                      [(first more) (rest more)]
-                                      [[] more])]
-                  `(fn [~@argv ~@(take-nth 2 binds)] ~@body))
+  `(do
+     (deftype ~parsed-name ~fields)
+     ~@(for [[head & args] clauses
+             :when (symbol? head)]
+         ;; by name, so a qualified head such as pt/pure, which the real macro accepts, is read too
+         (case (symbol (name head))
+           (pure external)
+           (let [[_ _ & more]  args
+                 more          (if (map? (first more)) (rest more) more)
+                 [argv & more] more
+                 [binds body]  (if (and (= 'external (symbol (name head))) (vector? (first more)) (next more))
+                                 [(first more) (rest more)]
+                                 [[] more])]
+             ;; the body in a `do`, so a check whose body is one call is not read as a redundant fn wrapper
+             `(fn [~@argv ~@(take-nth 2 binds)] (do ~@body)))
 
-                fetch
-                (let [[_ _ f] args] f)
+           fetch
+           (let [[_ _ f] args] f)
 
-                nil))]))))
+           nil))))
 
 (defmacro match
   "Each clause as a `let` of its binding to the value, so an unused binding is reported and each type must resolve.

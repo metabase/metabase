@@ -33,9 +33,6 @@
 ;; The current user may apply `changes` to the TimelineEvent with `event-id`, and, when `new-timeline-id` is not nil,
 ;; move it to that Timeline. The permission checks read the current user's permissions. Each check needs a status in
 ;; `check->status` in [[metabase.timeline.api.timeline-event]].
-;; The ignore covers what the library's kondo hook generates for each `defparsed`: a `def` without a docstring and a
-;; `fn` per check, which reads as a redundant wrapper when its body is a single call.
-#_{:clj-kondo/ignore [:missing-docstring :redundant-fn-wrapper]}
 (pt/defparsed TimelineEventUpdate [event-id new-timeline-id changes]
   (pure ::changes-match-schema "The changes set only the columns an update may, with values of their types."
         [changes]
