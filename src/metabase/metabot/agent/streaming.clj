@@ -217,14 +217,18 @@
         ([] (rf))
         ([result]
          (let [p @pending]
-           (rf (if p (rf result p) result))))
+           (vreset! pending nil)
+           (rf (cond-> result
+                 p (-> (rf p) unreduced)))))
         ([result part]
          (let [prev @pending]
            (if (and prev (= :text (:type prev) (:type part)))
              (do (vswap! pending update :text str (:text part))
                  result)
-             (do (vreset! pending part)
-                 (if prev (rf result prev) result)))))))))
+             (let [ret (if prev (rf result prev) result)]
+               ;; after a reduced result no part goes downstream, so none waits for the completion
+               (vreset! pending (when-not (reduced? ret) part))
+               ret))))))))
 
 (defn post-process-xf
   "Composed transducer for post-processing agent output.

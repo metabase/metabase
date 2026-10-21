@@ -265,3 +265,15 @@
            (into [] (streaming/combine-text-parts-xf) [{:type :text :text "lone"}]))))
   (testing "empty input"
     (is (= [] (into [] (streaming/combine-text-parts-xf) [])))))
+
+(deftest ^:parallel combine-text-parts-xf-stops-early-test
+  (testing "when the downstream stops, the result is its value, not a reduced wrapper"
+    (testing "at the text that waits for the completion"
+      (is (= [{:type :text :text "lone"}]
+             (transduce (comp (streaming/combine-text-parts-xf) (take 1)) conj []
+                        [{:type :text :text "lone"}]))))
+    (testing "at a part before it, so that the text does not go downstream"
+      (is (= [{:type :tool-input :id "c1" :function "search"}]
+             (transduce (comp (streaming/combine-text-parts-xf) (take 1)) conj []
+                        [{:type :tool-input :id "c1" :function "search"}
+                         {:type :text :text "After tool."}]))))))
