@@ -79,13 +79,13 @@ describe("ColumnSettings", () => {
   });
 });
 
-describe("ColumnSettings read-only", () => {
+describe("ColumnSettings disabled", () => {
   type SetupOpts = {
     value?: ApiColumnSettings;
-    readOnly?: boolean;
+    disabled?: boolean;
   };
 
-  const setup = ({ value = {}, readOnly }: SetupOpts = {}) => {
+  const setup = ({ value = {}, disabled }: SetupOpts = {}) => {
     renderWithProviders(
       <ColumnSettings
         column={createMockField({
@@ -93,21 +93,21 @@ describe("ColumnSettings read-only", () => {
           effective_type: "type/Integer",
         })}
         value={value}
-        readOnly={readOnly}
+        disabled={disabled}
       />,
     );
   };
 
-  it("shows the formatting of a read-only column without letting it change", () => {
-    setup({ readOnly: true });
+  it("shows the formatting of a column without letting it change when disabled", () => {
+    setup({ disabled: true });
 
-    expect(screen.getByTestId("prefix")).toHaveAttribute("readonly");
-    expect(screen.getByTestId("suffix")).toHaveAttribute("readonly");
+    expect(screen.getByTestId("prefix")).toBeDisabled();
+    expect(screen.getByTestId("suffix")).toBeDisabled();
     expect(screen.getByRole("switch")).toBeDisabled();
   });
 
-  it("disables the radio settings of a read-only column", () => {
-    setup({ value: { number_style: "currency" }, readOnly: true });
+  it("disables the radio settings of a disabled column", () => {
+    setup({ value: { number_style: "currency" }, disabled: true });
 
     const radios = screen.getAllByRole("radio");
     expect(radios.length).toBeGreaterThan(0);
@@ -117,7 +117,7 @@ describe("ColumnSettings read-only", () => {
   it("keeps the formatting of a column editable by default", () => {
     setup({ value: { number_style: "currency" } });
 
-    expect(screen.getByTestId("prefix")).not.toHaveAttribute("readonly");
+    expect(screen.getByTestId("prefix")).toBeEnabled();
     expect(screen.getByRole("switch")).toBeEnabled();
     screen
       .getAllByRole("radio")
