@@ -4,8 +4,10 @@ import type {
   Card,
   Dashboard,
   DashboardCard,
+  EmbedDataset,
   FieldValue,
   ParameterId,
+  PublicCard,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import { createMockDataset } from "metabase-types/api/mocks";
@@ -25,6 +27,15 @@ export function setupEmbedDashboardEndpoints(
       );
     });
   }
+}
+
+export function setupEmbedCardEndpoints(
+  token: EntityToken,
+  card: PublicCard,
+  dataset: EmbedDataset,
+) {
+  fetchMock.get(`path:/api/embed/card/${token}`, card);
+  fetchMock.get(`path:/api/embed/card/${token}/query`, dataset);
 }
 
 export function setupEmbedDashboardParameterRemappingEndpoint(

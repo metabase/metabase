@@ -42,49 +42,9 @@ describe("scenarios > content translation > guest embeds > questions", () => {
       });
     });
 
-    // Unjustified type cast. FIXME
-    let visitEmbeddedQuestion = null as unknown as ({
-      locale,
-    }: {
-      locale: string;
-    }) => void;
-
     beforeEach(() => {
       // Unjustified type cast. FIXME
       H.restore("snapshot-for-questions" as any);
-      visitEmbeddedQuestion = ({ locale }) => {
-        H.visitEmbeddedPage(
-          {
-            resource: { question: productsQuestionId },
-            params: {},
-          },
-          {
-            additionalHashOptions: {
-              locale,
-            },
-          },
-        );
-      };
-    });
-
-    it("when locale is English, column names are NOT localized in column headers", () => {
-      visitEmbeddedQuestion({ locale: "en" });
-      cy.findByTestId("table-header").within(() => {
-        germanFieldNames.forEach((row) => {
-          cy.findByText(row.msgid).should("be.visible");
-          cy.findByText(row.msgstr).should("not.exist");
-        });
-      });
-    });
-
-    it("when locale is German, column names ARE localized in column headers", () => {
-      visitEmbeddedQuestion({ locale: "de" });
-      cy.findByTestId("table-header").within(() => {
-        germanFieldNames.forEach((row) => {
-          cy.findByText(row.msgid).should("not.exist");
-          cy.findByText(row.msgstr).should("be.visible");
-        });
-      });
     });
 
     it("translations do not break questions in the normal app", () => {
