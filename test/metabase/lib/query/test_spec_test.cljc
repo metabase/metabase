@@ -8,7 +8,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1079,7 +1080,7 @@
       (is (=? [{:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} (meta/id :venues :category-id)]
+                :field-id     (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 
@@ -1098,7 +1099,7 @@
       (is (=? [{:type         :temporal-unit
                 :name         "date_unit"
                 :display-name "Date Unit"
-                :dimension    [:field {} (meta/id :orders :created-at)]}]
+                :field-id     (meta/id :orders :created-at)}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
@@ -1165,7 +1166,7 @@
                {:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} (meta/id :venues :category-id)]
+                :field-id     (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 

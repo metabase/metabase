@@ -2,9 +2,12 @@
   (:require
    #?@(:clj [[metabase.api.macros :as api.macros]
              [metabase.util.json :as json]])
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.parameters.schema :as parameters.schema]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (deftest ^:parallel default-to-type-text-test
   (is (= {:id "x", :type :text}

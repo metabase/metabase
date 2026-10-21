@@ -1,14 +1,17 @@
 (ns metabase.lib.schema.parameter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

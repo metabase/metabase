@@ -1,9 +1,12 @@
 (ns metabase.lib.schema.template-tag-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.test-util :as lib.tu]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -20,8 +23,8 @@
              :dimension    ["field" {"lib/uuid" "eef18794-7d5f-409c-8017-00d306f9aec3"} 1]})))))
 
 (deftest ^:parallel normalize-legacy-ref-test
-  (are [x] (=? {:dimension [:field {:lib/uuid string?} 100]}
-               (lib/normalize ::lib.schema.template-tag/field-filter {:type :dimension, :dimension x}))
+  (are [x] (=? {:field-id 100}
+               (lib/normalize ::lib.schema.template-tag/template-tag {:type :dimension, :dimension x}))
     [:field 100]
     [:field-id 100]
     [:field 100 nil]))
@@ -31,7 +34,7 @@
     (is (=? {"time-unit" {:name         "time-unit"
                           :display-name "id"
                           :type         :temporal-unit
-                          :dimension    [:field {:lib/uuid string?} 1]}}
+                          :field-id     1}}
             (lib/normalize ::lib.schema.template-tag/template-tag-map
                            {"time-unit" {:name         "id"
                                          :display-name "id"
@@ -46,9 +49,6 @@
           :type         :dimension
           :options      {:case-sensitive false}
           :field-id     1
-          :dimension    [:field
-                         {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
-                         1]
           :widget-type  :string/contains}
          (lib/normalize ::lib.schema.template-tag/template-tag
                         {:default      nil
@@ -67,7 +67,7 @@
     (is (=? [{:name         "time-unit"
               :display-name "id"
               :type         :temporal-unit
-              :dimension    [:field {:lib/uuid string?} 1]}]
+              :field-id     1}]
             (lib/normalize ::lib.schema.template-tag/template-tags
                            {"time-unit" {:name         "id"
                                          :display-name "id"
@@ -75,17 +75,18 @@
                                          :dimension    [:field 1]}})))))
 
 (deftest ^:parallel normalize-syncs-field-id-and-dimension-test
-  (let [normalize #(lib/normalize ::lib.schema.template-tag/template-tag
-                                  (merge {:name "x", :display-name "X", :id "1", :widget-type :category} %))]
-    (testing "a legacy `:dimension` gets the `:field-id` it refers to"
-      (is (=? {:field-id 10, :dimension [:field {} 10]}
-              (normalize {:type :dimension, :dimension [:field 10 nil]}))))
-    (testing "a `:field-id` gets the legacy `:dimension` for older readers"
-      (is (=? {:field-id 11, :dimension [:field {:lib/uuid string?} 11]}
-              (normalize {:type :temporal-unit, :field-id 11}))))
-    (testing "`:field-id` wins when the two disagree"
-      (is (=? {:field-id 12, :dimension [:field {} 12]}
-              (normalize {:type :dimension, :field-id 12, :dimension [:field 10 nil]}))))))
+  (binding [lib.schema.template-tag/*omit-dimension* false]
+    (let [normalize #(lib/normalize ::lib.schema.template-tag/template-tag
+                                    (merge {:name "x", :display-name "X", :id "1", :widget-type :category} %))]
+      (testing "a legacy `:dimension` gets the `:field-id` it refers to"
+        (is (=? {:field-id 10, :dimension [:field {} 10]}
+                (normalize {:type :dimension, :dimension [:field 10 nil]}))))
+      (testing "a `:field-id` gets the legacy `:dimension` for older readers"
+        (is (=? {:field-id 11, :dimension [:field {:lib/uuid string?} 11]}
+                (normalize {:type :temporal-unit, :field-id 11}))))
+      (testing "`:field-id` wins when the two disagree"
+        (is (=? {:field-id 12, :dimension [:field {} 12]}
+                (normalize {:type :dimension, :field-id 12, :dimension [:field 10 nil]})))))))
 
 (deftest ^:parallel normalize-omits-dimension-test
   (binding [lib.schema.template-tag/*omit-dimension* true]

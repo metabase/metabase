@@ -3,10 +3,13 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]))
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.test-util :as lib.tu]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

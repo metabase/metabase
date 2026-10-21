@@ -3,14 +3,17 @@
    #?@(:clj
        ([java-time.api :as t]))
    [clojure.string :as str]
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [malli.error :as me]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (deftest ^:parallel temporal-literal-test
   (testing "Make sure our schema validates temporal literal clauses correctly"
