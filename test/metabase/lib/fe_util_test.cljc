@@ -1,7 +1,7 @@
 (ns metabase.lib.fe-util-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
@@ -17,6 +17,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (def ^:private all-filter-operators
   [:= :!= :> :< :>= :<= :between :inside
@@ -237,9 +239,9 @@
                 (lib/expression-parts query stage-number [:expression {} other-expression-name])))))))
 
 (deftest ^:parallel expression-clause-test
-  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
+  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} "ID"] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
-  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
+  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} "ID"] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {}))))
 
 (deftest ^:parallel invisible-expression-parts-test
@@ -479,7 +481,7 @@
         (lib.filter/and (lib.filter/= column 10) true)))))
 
 (deftest ^:parallel coordinate-filter-parts-test
-  (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
+  (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :people))
         lat-column    (m/filter-vals some? (meta/field-metadata :people :latitude))
         lon-column    (m/filter-vals some? (meta/field-metadata :people :longitude))
         bigint-value  (u.number/bigint "9007199254740993")
@@ -580,8 +582,8 @@
           (fn [values] (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values))))
 
 (deftest ^:parallel specific-date-filter-parts-test
-  (let [query  (lib.tu/venues-query)
-        column (-> (m/filter-vals some? (meta/field-metadata :checkins :date))
+  (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :people))
+        column (-> (m/filter-vals some? (meta/field-metadata :people :birth-date))
                    (assoc :base-type :type/DateTime :effective-type :type/DateTime))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
@@ -646,8 +648,8 @@
         (lib.filter/and (lib.filter/< column "2024-11-28") true)))))
 
 (deftest ^:parallel relative-date-filter-parts-test
-  (let [query  (lib.tu/venues-query)
-        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
+  (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :people))
+        column (m/filter-vals some? (meta/field-metadata :people :birth-date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column 0 :day)
                               {:column column
@@ -713,8 +715,8 @@
               parts)))))
 
 (deftest ^:parallel exclude-date-filter-parts-test
-  (let [query  (lib.tu/venues-query)
-        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
+  (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :people))
+        column (m/filter-vals some? (meta/field-metadata :people :birth-date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
                               {:operator :is-null
@@ -799,8 +801,8 @@
   (update parts :values (fn [values] (mapv #(u.time/format-for-base-type % :type/Time) values))))
 
 (deftest ^:parallel time-filter-parts-test
-  (let [query  (lib.tu/venues-query)
-        column (assoc (m/filter-vals some? (meta/field-metadata :checkins :date))
+  (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :people))
+        column (assoc (m/filter-vals some? (meta/field-metadata :people :birth-date))
                       :base-type      :type/Time
                       :effective-type :type/Time)]
     (testing "clause to parts roundtrip"
@@ -1006,7 +1008,7 @@
                                                :name "foo"
                                                :widget-type :text
                                                :display-name "foo"
-                                               :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                                               :field-id 1}})
                (lib/dependent-metadata nil :question))))))
 
 (deftest ^:parallel dependent-metadata-test-2

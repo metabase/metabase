@@ -1,13 +1,15 @@
 (ns metabase.lib.table-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -26,8 +28,8 @@
                            :fields     :all
                            :conditions [[:=
                                          {}
-                                         [:field {} (meta/id :venues :category-id)]
-                                         [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
+                                         [:field {} "CATEGORY_ID"]
+                                         [:field {:join-alias "Cat"} "ID"]]]}]}]}
               query)))))
 
 (deftest ^:parallel nil-column-test

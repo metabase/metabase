@@ -1,7 +1,7 @@
 (ns metabase.lib.query-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [clojure.walk :as walk]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -18,6 +18,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.types.core :as types]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -79,7 +81,7 @@
                                          :filters [[:= [:expression "math"] 2]]}}))))
   (testing "filling in works for nested join queries"
     (let [clause (as-> (lib/expression (lib.tu/venues-query) "CC" (lib/+ 1 1)) $q
-                   (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
+                   (lib/join-clause $q [(lib/= [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]
                                                (lib/expression-ref $q "CC"))]))
           query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
@@ -552,9 +554,9 @@
              [{:lib/type :mbql.stage/mbql
                :source-table (meta/id :venues)
                :aggregation [[:metric {} table-based-metric-id]]
-               :breakout [[:field {} (meta/id :venues :category-id)]
-                          [:field {} (meta/id :venues :latitude)]
-                          [:field {} (meta/id :venues :longitude)]]}]}
+               :breakout [[:field {} "CATEGORY_ID"]
+                          [:field {} "LATITUDE"]
+                          [:field {} "LONGITUDE"]]}]}
             (lib/query base-mp (lib.metadata/card base-mp table-based-metric-id))))
     (is (=? {:lib/type :mbql/query
              :database (meta/id)
@@ -617,7 +619,7 @@
            :database 1
            :stages   [{:lib/type      :mbql.stage/native
                        :native        "SELECT * FROM table WHERE {{checkin_date}};"
-                       :template-tags [{:dimension    [:field {} 2]
+                       :template-tags [{:field-id    2
                                         :display-name "Checkin Date"
                                         :name         "checkin_date"
                                         :type         :dimension

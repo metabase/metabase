@@ -2,7 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
@@ -19,6 +19,8 @@
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (comment lib/keep-me)
 
@@ -160,7 +162,7 @@
                 :lib/source-column-alias  "count"
                 :lib/desired-column-alias "count"}]
               cols))
-      (is (=? [[:field {:join-alias "Products"} (meta/id :products :category)]
+      (is (=? [[:field {:join-alias "Products"} "CATEGORY"]
                [:aggregation {} string?]]
               (map lib.ref/ref cols))))))
 

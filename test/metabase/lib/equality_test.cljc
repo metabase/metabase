@@ -2,7 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.pprint :as pprint]
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
    [medley.core :as m]
@@ -17,6 +17,8 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -244,7 +246,7 @@
                {:lib/uuid       string?
                 :base-type      :type/DateTimeWithLocalTZ
                 :effective-type :type/DateTimeWithLocalTZ}
-               (meta/id :orders :created-at)]
+               "CREATED_AT"]
               (lib.equality/find-matching-ref column (map lib/ref haystack)))))))
 
 (deftest ^:parallel mark-selected-columns-ignore-temporal-unit-test
@@ -277,14 +279,14 @@
                          :base-type :type/Text
                          :join-alias "Cat"}
                  (meta/id :categories :name)]]
-      (is (=? [[:field {} (meta/id :venues :id)]
-               [:field {} (meta/id :venues :name)]
-               [:field {} (meta/id :venues :category-id)]
-               [:field {} (meta/id :venues :latitude)]
-               [:field {} (meta/id :venues :longitude)]
-               [:field {} (meta/id :venues :price)]
-               [:field {} (meta/id :categories :id)]
-               [:field {} (meta/id :categories :name)]]
+      (is (=? [[:field {} "ID"]
+               [:field {} "NAME"]
+               [:field {} "CATEGORY_ID"]
+               [:field {} "LATITUDE"]
+               [:field {} "LONGITUDE"]
+               [:field {} "PRICE"]
+               [:field {} "ID"]
+               [:field {} "NAME"]]
               refs))
       (is (= (nth cols 7)
              (lib.equality/find-matching-column a-ref cols)

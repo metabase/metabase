@@ -1,7 +1,7 @@
 (ns metabase.lib.metadata.result-metadata-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -17,6 +17,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.util.add-alias-info :as-alias add-alias-info]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -195,7 +197,7 @@
                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
                ;; when the info is inferred. the solution to this might be quite extensive renaming
                :name              "grandparent.parent"
-               ::result-metadata/field-ref         [:field 2 nil]
+               ::result-metadata/field-ref         [:field "grandparent.parent" {:base-type :type/Text}]
                :parent-id         1
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
@@ -209,7 +211,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               ::result-metadata/field-ref         [:field 3 nil]
+               ::result-metadata/field-ref         [:field "grandparent.parent.child" {:base-type :type/Text}]
                :parent-id         2
                :id                3
                :visibility-type   :normal

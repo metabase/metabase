@@ -1,7 +1,7 @@
 (ns metabase.lib.schema-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols]
@@ -10,7 +10,10 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (comment
   metabase.lib.metadata.protocols/keep-me ; so `:metabase.lib.metadata.protocols/metadata-provider` gets loaded
@@ -436,14 +439,14 @@
                                                                  :name         "<WRONG NAME>"
                                                                  :display-name "Parameter 0"
                                                                  :type         :dimension
-                                                                 :dimension    [:field {} 1]
+                                                                 :field-id    1
                                                                  :default      nil}
                                                   "parameter_1" {:widget-type  :category
                                                                  :id           "00000000-0000-0000-0000-000000000001"
                                                                  ;; (`:name` is missing)
                                                                  :display-name "Parameter 1"
                                                                  :type         :dimension
-                                                                 :dimension    [:field {} 1]
+                                                                 :field-id    1
                                                                  :default      nil}}
                                   :native   "<<NATIVE QUERY>>"}]
                       :database 2}

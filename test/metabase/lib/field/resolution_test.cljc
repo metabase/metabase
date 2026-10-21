@@ -1,7 +1,7 @@
 (ns metabase.lib.field.resolution-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
@@ -15,7 +15,6 @@
    [metabase.lib.metadata.result-metadata-test]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -27,8 +26,9 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -182,7 +182,7 @@
                      (lib/query metadata-provider)
                      lib/returned-columns
                      (m/index-by :name))
-          query (-> (lib/query metadata-provider (meta/table-metadata :checkins))
+          query (-> (lib/query metadata-provider (meta/table-metadata :users))
                     (lib/join (lib/with-join-alias
                                (lib/join-clause (lib.metadata/card metadata-provider 1)
                                                 [(lib/= (meta/field-metadata :users :id)
@@ -397,7 +397,7 @@
                 :effective-type :type/Text
                 :base-type      :type/Text
                 :join-alias     "Category"}
-               (meta/id :categories :name)]
+               "NAME"]
               (lib/ref col))))))
 
 (deftest ^:parallel legacy-query-joined-field-display-name-test
@@ -1731,8 +1731,8 @@
           "base table ref should not have :source-field-join-alias")
       (is (= "Orders" (:source-field-join-alias join-ref-opts))
           "join ref should have :source-field-join-alias \"Orders\"")
-      (is (mr/validate ::id/field (:source-field base-ref-opts))
-          ":source-field should be a valid field ID")
+      (is (string? (:source-field-name base-ref-opts))
+          ":source-field-name should name the FK column")
       (is (= (dissoc base-ref-opts :source-field-join-alias :lib/uuid)
              (dissoc join-ref-opts  :source-field-join-alias :lib/uuid))
           "refs differ only in :source-field-join-alias")
@@ -1798,8 +1798,8 @@
       ;; Verify refs differ only in :source-field-name
       (is (not= (:source-field-name base-ref-opts) (:source-field-name renamed-ref-opts))
           "refs should have different :source-field-name values")
-      (is (mr/validate ::id/field (:source-field base-ref-opts))
-          ":source-field should be a valid field ID")
+      (is (string? (:source-field-name base-ref-opts))
+          ":source-field-name should name the FK column")
       (is (= (:source-field base-ref-opts) (:source-field renamed-ref-opts))
           "both refs have the same :source-field")
       (is (= (dissoc base-ref-opts :source-field-name :lib/uuid)

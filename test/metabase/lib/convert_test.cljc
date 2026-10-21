@@ -1,7 +1,7 @@
 (ns metabase.lib.convert-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
@@ -12,6 +12,8 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -126,7 +128,7 @@
                         :default      nil}}}
                      :database 76}
           converted (lib.convert/->mbql5 original)]
-      (is (=? {:stages [{:template-tags [{:dimension [:field {:lib/uuid string?} 866]}]}]}
+      (is (=? {:stages [{:template-tags [{:field-id 866}]}]}
               converted))
       (is (mr/validate :metabase.lib.schema/query converted)))))
 
@@ -989,22 +991,22 @@
                                                     [:field
                                                      {:temporal-unit                              :year
                                                       :lib/original-effective-type :type/DateTimeWithLocalTZ}
-                                                     (meta/id :products :created-at)]
+                                                     "CREATED_AT"]
                                                     [:field
                                                      {:join-alias                                 "O"
                                                       :temporal-unit                              :year
                                                       :lib/original-effective-type :type/DateTimeWithLocalTZ}
-                                                     (meta/id :orders :created-at)]]]}]}]}
+                                                     "CREATED_AT"]]]}]}]}
                   query)))
         (is (=? {:query {:joins [{:alias        "O"
                                   :condition    [:=
                                                  [:field
-                                                  (meta/id :products :created-at)
+                                                  "CREATED_AT"
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :temporal-unit                              :year
                                                    :lib/original-effective-type (symbol "nil #_\"key is not present.\"")}]
                                                  [:field
-                                                  (meta/id :orders :created-at)
+                                                  "CREATED_AT"
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :join-alias                                 "O"
                                                    :temporal-unit                              :year
@@ -1153,7 +1155,7 @@
             venues
             {:source-table $$venues
              :aggregation [[:aggregation-options
-                            [:cum-count [:field %id {:base-type :type/BigInteger}]]
+                            [:cum-count [:field "ID" {:base-type :type/BigInteger}]]
                             {:name "count"}]]})
           (lib.convert/->legacy-MBQL
            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -1167,7 +1169,7 @@
              {:source-table $$venues
               :aggregation [[:aggregation-options
                              [:+
-                              [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
+                              [:aggregation-options [:cum-sum [:field "ID" {:base-type :type/BigInteger}]] {:name "a"}]
                               [:aggregation-options [:cum-count] {:name "b"}]]
                              {:name "xixix"}]]})
            (lib.convert/->legacy-MBQL

@@ -2,7 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
-   [clojure.test :refer [deftest is are testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -19,6 +19,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (comment lib/keep-me)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -30,7 +32,7 @@
                      :source-table (meta/id :venues)
                      :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
                                     1
-                                    [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
+                                    [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]]]}]}
           (-> (lib.tu/venues-query)
               (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
               (dissoc :lib/metadata)))))
@@ -412,7 +414,7 @@
           join   (first (lib/joins query))]
       ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function. (#39368)
       (is (=? [[:< {:lib/expression-name "bad_product"}
-                [:field {:join-alias (:alias join)} (meta/id :products :rating)]
+                [:field {:join-alias (:alias join)} "RATING"]
                 3]]
               (lib/expressions query)))
       (is (= 1 (count (lib/joins query))))
@@ -749,8 +751,7 @@
 (deftest ^:parallel coalese-type-test
   (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
-          price (-> (lib/ref (meta/field-metadata :venues :price))
-                    (lib.options/update-options dissoc :base-type :effective-type))]
+          price [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :price)]]
       (are [expr expected-type] (= expected-type
                                    (lib.metadata.calculation/type-of query expr))
         (lib/coalesce price 1)
@@ -776,8 +777,7 @@
 (deftest ^:parallel case-type-test
   (testing "Should be able to calculate type info for :case with field refs without type info (#30397, QUE-147)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
-          price (-> (lib/ref (meta/field-metadata :venues :price))
-                    (lib.options/update-options dissoc :base-type :effective-type))]
+          price [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :price)]]
       (are [expr expected-type] (= expected-type
                                    (lib.metadata.calculation/type-of query expr))
         (lib/case
@@ -910,7 +910,7 @@
                                                                                               {}
                                                                                               {:display-name "my_expression"})]))
                     lib/append-stage)]
-      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "my_expression"} (meta/id :venues :name)]]
+      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "my_expression"} "NAME"]]
                          :fields      [[:expression {} "my_expression"]]}
                         {:fields [[:field {} "my_expression"]]}
                         {}]}
@@ -942,7 +942,7 @@
                  :lib/source-column-alias                          "my_expression"
                  :lib/type                                         :metadata/column
                  :metabase.lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
-                (lib/metadata query -1 (lib/ref (meta/field-metadata :venues :name)))))))))
+                (lib/metadata query -1 [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :name)])))))))
 
 (deftest ^:parallel unique-expression-name-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :people))]

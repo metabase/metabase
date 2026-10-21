@@ -2,7 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
@@ -18,6 +18,8 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -937,8 +939,8 @@
               "CATEGORY"
               "Orders__sum"]
              (mapv :lib/desired-column-alias cols)))
-      (is (=? [[:field {} (meta/id :products :title)]
-               [:field {} (meta/id :products :category)]
+      (is (=? [[:field {} "TITLE"]
+               [:field {} "CATEGORY"]
                [:field {:join-alias "Orders"} "sum"]]
               (mapv lib/ref cols)))
       (testing "update stage :fields to include the columns from the join already"
@@ -948,8 +950,8 @@
                   "CATEGORY"
                   "Orders__sum"]
                  (mapv :lib/desired-column-alias cols')))
-          (is (=? [[:field {} (meta/id :products :title)]
-                   [:field {} (meta/id :products :category)]
+          (is (=? [[:field {} "TITLE"]
+                   [:field {} "CATEGORY"]
                    [:field {:join-alias "Orders"} "sum"]]
                   (mapv lib/ref cols'))))))))
 

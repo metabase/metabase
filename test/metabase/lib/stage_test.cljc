@@ -1,7 +1,7 @@
 (ns metabase.lib.stage-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
@@ -16,6 +16,8 @@
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -123,8 +125,8 @@
   (let [query (-> (lib.tu/venues-query)
                   (lib/expression "ID + 1" (lib/+ (meta/field-metadata :venues :id) 1))
                   (lib/expression "ID + 2" (lib/+ (meta/field-metadata :venues :id) 2)))]
-    (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
-                                     [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
+    (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} "ID"] 1]
+                                     [:+ {:lib/expression-name "ID + 2"} [:field {} "ID"] 2]]}]}
             query))
     query))
 
@@ -153,11 +155,11 @@
                                         :stages     [{:source-table (meta/id :categories)}]
                                         :conditions [[:=
                                                       {}
-                                                      [:field {} (meta/id :venues :category-id)]
-                                                      [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                                                      [:field {} "CATEGORY_ID"]
+                                                      [:field {:join-alias "Cat"} "ID"]]]
                                         :fields     :all}]
-                         :expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
-                                       [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
+                         :expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} "ID"] 1]
+                                       [:+ {:lib/expression-name "ID + 2"} [:field {} "ID"] 2]]}]}
               query))
       (let [metadata (lib/returned-columns query)]
         (is (=? [{:id (meta/id :venues :id), :name "ID", :lib/source :source/table-defaults}
