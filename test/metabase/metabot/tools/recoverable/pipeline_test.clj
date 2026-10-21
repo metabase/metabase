@@ -138,7 +138,7 @@
         "the dialect-specific, tool-free step reaches the numeric-id surface")))
 
 (deftest ^:parallel shared-recovery-codes-have-hints-on-both-surfaces-test
-  (testing "the shared recovery codes have a hint on each surface and a declaration in the catalog"
+  (testing "Metabot and MCP have hints for the shared recovery codes, which are also declared in the catalog"
     (let [codes [:uri-in-source-table :unknown-table :unknown-table-id :ambiguous-table
                  :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
