@@ -83,7 +83,7 @@
   #{})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *cache*
+(def ^:dynamic *content-gate-cache*
   "Cache atom bound by [[with-content-gate-cache]], or nil to adjudicate on every call."
   nil)
 
@@ -97,7 +97,7 @@
   such a loop; everywhere else reads through."
   {:style/indent 0}
   [& body]
-  `(binding [*cache* (or *cache* (atom {}))]
+  `(binding [*content-gate-cache* (or *content-gate-cache* (atom {}))]
      ~@body))
 
 (defn content-visible?
@@ -114,11 +114,11 @@
                     false
                     (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
                       (boolean (@doc-content-visibility-fn document)))))]
-    (if (and id *cache*)
-      (if-some [cached (get @*cache* k)]
+    (if (and id *content-gate-cache*)
+      (if-some [cached (get @*content-gate-cache* k)]
         cached
         (let [verdict (adjudge)]
-          (swap! *cache* assoc k verdict)
+          (swap! *content-gate-cache* assoc k verdict)
           verdict))
       (adjudge))))
 
