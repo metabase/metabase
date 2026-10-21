@@ -7,9 +7,11 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (defn- ->local-date-time [t]
   (as-> t $
@@ -144,7 +146,7 @@
                        q0 {"unit" (merge existing
                                          {:display-name "Unit"
                                           :type         :temporal-unit
-                                          :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :created_at)))
+                                          :field-id     (mt/id :people :created_at)
                                           :default      default})})))]
         (testing "the clause is included and bucketed when a default value is present"
           (let [rows (mt/rows (qp/process-query (make "year")))]

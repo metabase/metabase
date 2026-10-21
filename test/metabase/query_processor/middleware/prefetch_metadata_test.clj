@@ -8,9 +8,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -62,7 +65,7 @@
                               :name         "ff1"
                               :display-name "ff1"
                               :id           "id1"
-                              :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                              :field-id     (mt/id :venues :price)
                               :widget-type  :id}})
                     (assoc :parameters [{:type   :id
                                          :target [:dimension [:template-tag "ff1"]]
@@ -79,7 +82,7 @@
                    :name         tag-name
                    :display-name tag-name
                    :id           tag-name
-                   :dimension    (lib/ref (lib.metadata/field mp field-id))
+                   :field-id    field-id
                    :widget-type  :id})
           query (-> (lib/native-query mp "SELECT * FROM VENUES WHERE {{ff1}} AND {{ff2}} AND {{ff3}}")
                     (lib/with-template-tags

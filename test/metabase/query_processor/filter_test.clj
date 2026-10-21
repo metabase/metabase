@@ -20,6 +20,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":and, :<, :>, :!="
@@ -1084,7 +1086,7 @@
                               (select-keys checkins-date [:base-type :effective-type :database-type])))
               (testing "\nPreprocessing should give us a [:= field date] filter, not [:between field datetime datetime]"
                 (is (=? {:query {:filter [:=
-                                          [:field (mt/id :checkins :date) {:base-type #(isa? % :type/Date), :temporal-unit :default}]
+                                          [:field (:name checkins-date) {:base-type #(isa? % :type/Date), :temporal-unit :default}]
                                           [:absolute-datetime #t "2014-05-08" :default]]}}
                         (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
@@ -1124,10 +1126,10 @@
               (testing "\nPreprocessing should give us an optimized temporal filter"
                 (is (=? {:query {:filter [:and
                                           [:>=
-                                           [:field (:id orders-created-at) {:temporal-unit :default}]
+                                           [:field (:name orders-created-at) {:temporal-unit :default}]
                                            [:absolute-datetime #t "2019-02-11T00:00-08:00" :default]]
                                           [:<
-                                           [:field (:id orders-created-at) {:temporal-unit :default}]
+                                           [:field (:name orders-created-at) {:temporal-unit :default}]
                                            [:absolute-datetime #t "2019-02-12T00:00-08:00" :default]]]}}
                         (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))

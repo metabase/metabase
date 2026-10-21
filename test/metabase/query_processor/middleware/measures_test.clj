@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.measures-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [mb.hawk.assert-exprs.approximately-equal]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,6 +8,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.middleware.measures :as measures]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Test Helpers                                                      |
@@ -66,7 +68,7 @@
           query (-> (lib/query mp (meta/table-metadata :products))
                     (lib/aggregate (lib.metadata/measure mp 1)))]
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :aggregation  [[:sum {} [:field {} (meta/id :products :price)]]]}]}
+                         :aggregation  [[:sum {} [:field {} "PRICE"]]]}]}
               (adjust query))))))
 
 (deftest ^:parallel measure-with-display-name-override-test
@@ -99,7 +101,7 @@
                     (lib/aggregate (lib.metadata/measure mp 1))
                     (lib/aggregate (lib.metadata/measure mp 2)))]
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :aggregation  [[:sum {} [:field {} (meta/id :products :price)]]
+                         :aggregation  [[:sum {} [:field {} "PRICE"]]
                                         [:count {}]]}]}
               (adjust query))))))
 
@@ -147,7 +149,7 @@
                     (lib/aggregate (lib.metadata/measure mp 3)))]
       (is (=? {:stages [{:source-table (meta/id :products)
                          :aggregation  [[:/ {}
-                                         [:sum {} [:field {} (meta/id :products :price)]]
+                                         [:sum {} [:field {} "PRICE"]]
                                          [:count {}]]]}]}
               (adjust query))))))
 
@@ -168,7 +170,7 @@
       ;; Should expand to: (sum(price) * 2) + 10
       (is (=? {:stages [{:source-table (meta/id :products)
                          :aggregation  [[:+ {}
-                                         [:* {} [:sum {} [:field {} (meta/id :products :price)]] 2]
+                                         [:* {} [:sum {} [:field {} "PRICE"]] 2]
                                          10]]}]}
               (adjust query))))))
 

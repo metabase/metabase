@@ -11,6 +11,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -24,6 +25,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +59,7 @@
                                        :name         "date"
                                        :display-name "Check-In Date"
                                        :type         :dimension
-                                       :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :checkins :date)))
+                                       :field-id     (mt/id :checkins :date)
                                        :widget-type  :date/all-options}})))
 
 (defn field-filter-query-between
@@ -67,7 +70,7 @@
                                              :name         "quantities"
                                              :display-name "Quantity Range"
                                              :type         :dimension
-                                             :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity)))
+                                             :field-id     (mt/id :orders :quantity)
                                              :widget-type  :number/between}})))
 
 (defn non-field-filter-query

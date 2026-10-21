@@ -12,6 +12,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (deftest ^:parallel quick-filter-on-bucketed-date-test
   (testing "a quick-filter drill on a bucketed DATE should produce valid results (#18769)"
     (mt/dataset test-data
@@ -31,7 +33,7 @@
           (let [query' (lib/drill-thru query -1 nil quick-filter-drill "<")]
             (is (=? {:stages [{:filters [[:<
                                           {}
-                                          [:field {} (mt/id :products :created_at)]
+                                          [:field {} "CREATED_AT"]
                                           #t "2016-05-30T00:00Z[UTC]"]]}]}
                     query'))
             (mt/with-native-query-testing-context query'
@@ -133,8 +135,8 @@
           ;; Overspecification?
           (is (=? {:stages [{:source-table (mt/id :orders)
                              :aggregation  [[:count {}]]
-                             :breakout     [[:field {} (mt/id :people :source)]]
-                             :filters      [[:= {} [:field {} (mt/id :products :category)] "Doohickey"]]}
+                             :breakout     [[:field {} "SOURCE"]]
+                             :filters      [[:= {} [:field {} "CATEGORY"] "Doohickey"]]}
                             {:filters [[:> {} [:field {} "count"] 1]]}]}
                   query'))
           (mt/with-native-query-testing-context query'
