@@ -68,6 +68,28 @@
                  (invoke-search [#'search/sql-search-tool #'metabot.tools/read-resource-tool]
                                 {:database_id database-id :keyword_queries ["orders"]}))))))))
 
+(deftest sql-search-non-admin-database-access-test
+  (search.tu/with-legacy-search
+    (let [args {:database_id (mt/id) :keyword_queries ["orders"] :entity_types ["table"]}
+          search-as-rasta (fn []
+                            (mt/with-test-user :rasta
+                              (is (false? api/*is-superuser?*))
+                              (is (= (mt/user->id :rasta) api/*current-user-id*))
+                              (invoke-search [#'search/sql-search-tool] args)))]
+      (testing "a non-admin with database access can search"
+        (let [result (search-as-rasta)]
+          (is (nil? (:error result)))
+          (is (= :search (get-in result [:structured-output :result-type])))
+          (is (some #(= (mt/id :orders) (:id %)) (get-in result [:structured-output :data])))))
+      (testing "the same non-admin is refused without database access"
+        (mt/with-no-data-perms-for-all-users!
+          (let [result (search-as-rasta)]
+            (is (= {:class :recoverable :code ::search/unavailable-database} (:error result)))
+            (is (= (str "Database " (mt/id)
+                        " was not found. It may not exist, or you may not have access to it.\n"
+                        "Use the database currently selected in the SQL editor.")
+                   (:output result)))))))))
+
 (deftest ^:parallel sql-search-database-recovery-follows-profile-test
   (mt/with-dynamic-fn-redefs [search/search (constantly [])]
     (is (= {:error {:class :recoverable :code ::search/unavailable-database}
