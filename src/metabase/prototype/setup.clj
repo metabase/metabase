@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.prototype.dataset :as dataset]
    [metabase.prototype.db :as prototype.db]
+   [metabase.prototype.filter-usage-seed :as filter-usage-seed]
    [metabase.prototype.seed :as seed]
    [metabase.prototype.semantic-layer :as semantic-layer]
    [metabase.sync.core :as sync]
@@ -99,4 +100,5 @@
         (when (or seeded? (not existing) (not= "complete" (:initial_sync_status database)))
           (sync-and-apply-metadata! database))
         (apply-table-display-names! (:id database))
-        (semantic-layer/ensure-semantic-layer!)))))
+        (semantic-layer/ensure-semantic-layer!)
+        (filter-usage-seed/ensure-questions!)))))

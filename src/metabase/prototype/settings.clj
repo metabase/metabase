@@ -54,3 +54,12 @@
   :encryption :no
   :export?    false
   :doc        false)
+
+(defsetting prototype-filter-usage-seed-version
+  "Prototype: the version of the seeded filter usage questions on this instance. See
+  [[metabase.prototype.filter-usage-seed]]."
+  :type       :integer
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)
