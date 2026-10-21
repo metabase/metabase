@@ -362,6 +362,28 @@
       (is (not (contains? spec :private_key_file)))
       (is (nil? (:connection-uri spec))))))
 
+(deftest ^:parallel connection-details->spec-explicit-auth-mode-test
+  (testing "an explicit :auth-mode wins over stale credentials of the previous method"
+    (let [details {:account             "acct.us-east-2.aws"
+                   :warehouse           "COMPUTE_WH"
+                   :db                  "TESTDB"
+                   :user                "SERVICE_USER"
+                   :password            "passwd"
+                   :private-key-options "uploaded"
+                   :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes "pk"))}]
+      (testing "key-pair"
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc details :auth-mode "key-pair" :use-password true))]
+          (is (not (contains? spec :password)))
+          (is (some? (:private_key_file spec)))))
+      (testing "password"
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc details :auth-mode "password" :use-password false))]
+          (is (= "passwd" (:password spec)))
+          (is (not (contains? spec :private_key_file))))))))
+
 (deftest ^:parallel connection-details->spec-wif-role-as-property-test
   (testing "under WIF, :role is in the JDBC properties map"
     (let [spec (sql-jdbc.conn/connection-details->spec
@@ -389,6 +411,21 @@
       {:auth-mode "wif"      :wif-token "jwt"}
       {:auth-mode "password" :password  "abc"}
       {:auth-mode "key-pair" :private-key-value "xxx"})))
+
+(deftest ^:parallel normalize-details-use-password-follows-auth-mode-test
+  (testing ":use-password follows an explicit :auth-mode"
+    (are [in expected] (= expected (:use-password (#'driver.snowflake/normalize-details in)))
+      {:auth-mode "key-pair" :use-password true  :password "abc" :private-key-id 1} false
+      {:auth-mode "key-pair" :password "abc"}                                       false
+      {:auth-mode "password" :use-password false :password "abc" :private-key-id 1} true
+      {:auth-mode "password" :password "abc" :private-key-id 1}                     true))
+  (testing "the selected method is tried first when the details are migrated"
+    (are [in expected] (= expected (-> (driver/db-details-to-test-and-migrate
+                                        :snowflake
+                                        (#'driver.snowflake/normalize-details in))
+                                       first meta :auth))
+      {:auth-mode "key-pair" :use-password true  :password "abc" :private-key-id 1} :private-key-id
+      {:auth-mode "password" :use-password false :password "abc" :private-key-id 1} :password)))
 
 (deftest ^:parallel db-details-to-test-and-migrate-wif-test
   (testing "WIF-only details are unambiguous — no candidates returned"
@@ -1093,7 +1130,7 @@
   (mt/test-driver
     :snowflake
     ;; the test DB authenticates with a private key, so give it a password to switch away from
-    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true)
+    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true :auth-mode "password")
           pk-key "testing"]
       (is (=?
            {:user some?
@@ -1110,12 +1147,12 @@
            {:user some?
             :password :hawk/key-not-present
             :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :auth-mode "key-pair" :private-key-value pk-key))))
       (is (=?
            {:user some?
             :password :hawk/key-not-present
             :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :auth-mode "key-pair" :private-key-value pk-key)))))))
 
 (deftest can-connect-test
   (let [pk-key (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))

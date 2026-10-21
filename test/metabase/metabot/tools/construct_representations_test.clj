@@ -770,6 +770,22 @@
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
 
+(deftest editor-rejection-between-message-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [e (editor-rejection
+               {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "filters"      [["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                              1 true]]}]})]
+        (is (= :expression-editor-rejection (:error (ex-data e))))
+        (is (= (str "The query builder's expression editor rejects a `filters:` clause in stage 0: "
+                    "Types are incompatible. The query would build but could not be visualized or saved "
+                    "- rewrite the offending clause.")
+               (ex-message e)))))))
+
 (deftest editor-gate-offset-nested-in-aggregation-function-surfaces-error-end-to-end-test
   (testing (str "A window function embedded *inside* an aggregation function\n"
                 "(`sum(offset(...))`) surfaces an :expression-editor-rejection agent-error -\n"
@@ -1301,7 +1317,7 @@
     (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})
           hinted   (#'construct/with-recovery-hint original (constantly "do the thing"))]
       (testing "message carries the hint"
-        (is (= "boom do the thing" (ex-message hinted))))
+        (is (= "boom\ndo the thing" (ex-message hinted))))
       (testing "the original exception is the direct cause (not its cause, which is nil here)"
         (is (identical? original (ex-cause hinted)))))))
 

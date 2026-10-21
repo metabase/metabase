@@ -41,6 +41,7 @@ export function DashboardTabs({ dashboardId, tabsInfo }: DashboardTabsProps) {
           },
         ]
       : []),
+    { label: t`History`, to: Urls.dataStudioDashboardHistory(dashboardId) },
     {
       label: t`Subscriptions`,
       to: subscriptionsUrl,
