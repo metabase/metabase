@@ -21,28 +21,28 @@ export function FieldMappingSelect({
   field: Field | undefined;
   setFieldFn: (fieldId: FieldId) => void;
 }) {
-  const dimension = tag.dimension;
+  const fieldId = tag["field-id"];
 
   return (
     <InputContainer>
       <ContainerLabel>
         {t`Field to map to`}
-        {tag.dimension == null && (
+        {fieldId == null && (
           <Text c="feedback-negative" component="span" ml="xxs">
             {t`(required)`}
           </Text>
         )}
       </ContainerLabel>
 
-      {(!dimension || (dimension && field != null)) && (
+      {(fieldId == null || field != null) && (
         <SchemaTableAndFieldDataSelector
           databases={databases}
           selectedDatabaseId={database?.id || null}
           selectedTableId={field?.table_id ?? null}
-          selectedFieldId={dimension ? dimension?.[1] : null}
+          selectedFieldId={fieldId ?? null}
           setFieldFn={setFieldFn}
           fieldFilter={getFieldFilter(tag)}
-          isInitiallyOpen={!tag.dimension}
+          isInitiallyOpen={fieldId == null}
         />
       )}
     </InputContainer>

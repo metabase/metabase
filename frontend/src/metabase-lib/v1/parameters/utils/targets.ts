@@ -79,16 +79,15 @@ export function getParameterTargetField(
     }
 
     const tagName = targetRef[1];
-    const tag = Lib.templateTags(query)[tagName];
-    if (tag == null || tag.dimension == null) {
+    const fieldId = Lib.templateTags(query)[tagName]?.["field-id"];
+    if (fieldId == null) {
       return null;
     }
 
-    return getParameterTargetFieldFromFieldRef(
-      question,
-      parameter,
-      tag.dimension,
-    );
+    return question
+      .metadata()
+      .fieldsList()
+      .find((field) => field.id === fieldId);
   }
 
   // mbql queries

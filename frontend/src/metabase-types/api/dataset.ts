@@ -243,6 +243,8 @@ export interface TemplateTag {
   "snippet-name"?: string;
 
   // Field filter and time grouping specific
+  "field-id"?: FieldId;
+  // legacy, kept in sync with "field-id" by the backend
   dimension?: LocalFieldReference;
   alias?: string;
 

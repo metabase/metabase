@@ -1,6 +1,5 @@
 import { Component } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { fieldApi, skipToken, useGetFieldQuery } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -19,7 +18,6 @@ import {
   getParameterOptionsForField,
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
-  DimensionReference,
   EmbeddingParameterVisibility,
   Field,
   FieldId,
@@ -126,8 +124,8 @@ class TagEditorParamInner extends Component<
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
-    if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-      const fieldId = tag.dimension[1];
+    const fieldId = tag["field-id"];
+    if (tag.type === "dimension" && fieldId != null) {
       // Field values might already have been loaded so force the load of other field information too
       fetchField(fieldId, true);
     }
@@ -182,6 +180,7 @@ class TagEditorParamInner extends Component<
         ...tag,
         type: type,
         default: undefined,
+        "field-id": undefined,
         dimension: undefined,
         alias: undefined,
         "emit-alias": type === "table" ? true : undefined,
@@ -268,10 +267,7 @@ class TagEditorParamInner extends Component<
   setDimension = async (fieldId: FieldId) => {
     const { tag, setTemplateTag, fetchField } = this.props;
 
-    // TODO Fix raw MBQL usage
-    const dimension: DimensionReference = ["field", fieldId, null];
-
-    if (!_.isEqual(tag.dimension, dimension)) {
+    if (tag["field-id"] !== fieldId) {
       const field = await fetchField(fieldId);
       if (!field) {
         return;
@@ -279,7 +275,7 @@ class TagEditorParamInner extends Component<
 
       const newTag: TemplateTag = {
         ...tag,
-        dimension,
+        "field-id": fieldId,
         alias: undefined,
         ...(tag.type === "dimension"
           ? { "widget-type": getDefaultParameterWidgetType(tag, field) }
@@ -479,9 +475,7 @@ const ConnectedTagEditorParam = connect(
 )(TagEditorParamInner);
 
 export const TagEditorParam = (props: OwnProps) => {
-  const fieldId = Array.isArray(props.tag.dimension)
-    ? props.tag.dimension[1]
-    : undefined;
+  const fieldId = props.tag["field-id"];
   const { data: field } = useGetFieldQuery(
     fieldId != null ? { id: fieldId } : skipToken,
   );

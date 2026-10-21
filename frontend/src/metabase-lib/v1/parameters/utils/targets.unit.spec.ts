@@ -284,7 +284,7 @@ describe("parameters/utils/targets", () => {
         "template-tags": {
           foo: createMockTemplateTag({
             type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "field-id": PRODUCTS.CATEGORY,
           }),
         },
       });
