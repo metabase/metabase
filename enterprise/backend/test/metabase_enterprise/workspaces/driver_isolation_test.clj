@@ -17,9 +17,7 @@
    the same way everywhere.
 
    Cross-driver counterpart to the postgres-only
-   `workspace-user-cannot-write-to-input-schema-test`. The BigQuery sibling test
-   lives at `metabase.driver.bigquery-cloud-sdk.workspace-isolation-test` because
-   it needs the BigQuery driver module on the classpath."
+   `workspace-user-cannot-write-to-input-schema-test`."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -29,6 +27,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -330,9 +329,7 @@
   (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details workspace))))
 
 (deftest ^:synchronized workspace-isolation-perms-test
-  ;; BigQuery isn't a JDBC driver (its workspace isolation goes through GCP IAM
-  ;; rather than SQL ACLs), so it's covered by `workspace-isolation-perms-bigquery-test`
-  ;; below. Everything else fans out through this single JDBC-shaped test.
+  ;; Every workspace-capable driver is JDBC-shaped, so this single test fans out over them.
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
                            (mt/normal-drivers-with-feature :workspace))
     (testing "workspace user gets read-only access to input schema, full access to output schema"
@@ -472,9 +469,6 @@
   ;; provision A and B together, give each a grant on a different source table, then
   ;; assert that A cannot reach B's data, B's grants, or B's namespace via either
   ;; direct SQL or catalog enumeration.
-  ;;
-  ;; BigQuery isolation works through GCP IAM rather than SQL grants — see
-  ;; `cross-workspace-isolation-perms-bigquery-test` for its sibling.
   ;;
   ;; MySQL/MariaDB excluded: the test premise requires two distinct workspace input
   ;; namespaces on the same Database row, but MySQL has no schema layer -- the only
@@ -1001,7 +995,7 @@
                         :name (str "wsd-pwleak-b-" run-id)}
             b-ns       (driver.u/workspace-isolation-namespace-name ws-b)
             generated  (atom [])
-            gen-orig   driver.u/random-workspace-password
+            gen-orig   (dynamic-redefs/original-fn #'driver.u/random-workspace-password)
             ;; Details are pure computation, so build the full ws map before the
             ;; `try` — the `finally` destroy always has real identifiers to work
             ;; with even if init never ran or only partially succeeded.

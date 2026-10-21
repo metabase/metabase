@@ -306,8 +306,8 @@
   []
   (let [parsed (config-from-disk)
         result (initialize! parsed {:expand-templates? true})]
-    ;; Only the boot path locks. Runtime config uploads (POST /api/ee/advanced-config)
-    ;; call `initialize!` directly, bypassing this wrapper, so they never lock.
+    ;; Only a workspace loaded from config.yml at boot locks; one set at runtime through
+    ;; `POST /api/ee/workspace-instance/current` stays editable.
     (when (get-in parsed [:config :workspace])
       (ws/mark-locked-by-config!))
     result))

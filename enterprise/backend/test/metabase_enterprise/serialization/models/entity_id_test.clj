@@ -168,8 +168,7 @@
     ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
     ;; provisioning state, not portable content. Same rationale as TableRemapping above.
     :model/Workspace
-    :model/WorkspaceDatabase
-    :model/WorkspaceInstance})
+    :model/WorkspaceDatabase})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)

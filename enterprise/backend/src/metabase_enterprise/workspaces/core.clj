@@ -143,7 +143,7 @@
 (defenterprise workspace-mode?
   "EE impl: true iff this instance is running in workspace mode (the
    `instance-workspace` setting is populated — either from a `:workspace` section
-   of `config.yml` at boot or by a `POST /api/ee/advanced-config`). Single
+   of `config.yml` at boot or by `POST /api/ee/workspace-instance/current`). Single
    source of truth for gating features that conflict with workspace remapping
    (DB routing, impersonation, writeback, CSV upload, model persistence). Use
    [[db-workspace-namespace]] when you need per-database scoping.
