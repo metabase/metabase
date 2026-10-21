@@ -285,7 +285,7 @@ describe("admin > database > add", () => {
 
           cy.findByLabelText("Paste your connection string")
             .clear()
-            .type(badPasswordString);
+            .type(badPasswordString, { delay: 0 });
 
           cy.button("Save", { timeout: 7000 })
             .should("not.be.disabled")
@@ -295,7 +295,7 @@ describe("admin > database > add", () => {
 
           cy.findByLabelText("Paste your connection string")
             .clear()
-            .type(validConnectionString);
+            .type(validConnectionString, { delay: 0 });
 
           cy.button("Save", { timeout: 7000 })
             .should("not.be.disabled")
