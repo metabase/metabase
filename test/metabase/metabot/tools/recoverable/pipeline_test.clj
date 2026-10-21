@@ -160,13 +160,13 @@
                (catch clojure.lang.ExceptionInfo e e))]
     (tools.error/recoverable-text (tools.error/classify e) #{})))
 
-(deftest ambiguous-field-recovery-test
+(deftest ^:parallel ambiguous-field-recovery-test
   (is (= (str "Query failed.\n"
               "The field name matches more than one column in this table, so it cannot be referenced by name. "
               "Tell the user about the ambiguous column name.")
          (pipeline-error-text! :ambiguous-field))))
 
-(deftest cross-database-recovery-test
+(deftest ^:parallel cross-database-recovery-test
   (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
     (testing error
       (is (= (str "Query failed.\n"
