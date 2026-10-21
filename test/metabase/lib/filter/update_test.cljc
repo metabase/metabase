@@ -1,16 +1,19 @@
 (ns metabase.lib.filter.update-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel update-numeric-filter-test
   (testing "Add a new filter"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:stages [{:filters [[:between {} [:field {} (meta/id :orders :id)] -100 200]]}]}
+      (is (=? {:stages [{:filters [[:between {} [:field {} "ID"] -100 200]]}]}
               (lib/update-numeric-filter query (meta/field-metadata :orders :id) -100 200))))))
 
 (deftest ^:parallel update-numeric-filter-remove-existing-test
@@ -24,14 +27,14 @@
                     (lib/filter (lib/= (meta/field-metadata :orders :id) 1))
                     (lib/filter (lib/= (meta/field-metadata :orders :id) 2))
                     (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :orders :id) "O2") 4)))]
-      (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "O2"} (meta/id :orders :id)] 4]
-                                   [:between {} [:field {} (meta/id :orders :id)] -100 200]]}]}
+      (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "O2"} "ID"] 4]
+                                   [:between {} [:field {} "ID"] -100 200]]}]}
               (lib/update-numeric-filter query (meta/field-metadata :orders :id) -100 200))))))
 
 (deftest ^:parallel update-numeric-filter-fix-order-test
   (testing "If min and max are in the wrong order, flip them around"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:stages [{:filters [[:between {} [:field {} (meta/id :orders :id)] -100 200]]}]}
+      (is (=? {:stages [{:filters [[:between {} [:field {} "ID"] -100 200]]}]}
               (lib/update-numeric-filter query (meta/field-metadata :orders :id) 200 -100))))))
 
 (deftest ^:parallel update-lat-lon-filter-test
@@ -39,8 +42,8 @@
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
       (is (=? {:stages [{:filters [[:inside
                                     {}
-                                    [:field {} (meta/id :venues :latitude)]
-                                    [:field {} (meta/id :venues :longitude)]
+                                    [:field {} "LATITUDE"]
+                                    [:field {} "LONGITUDE"]
                                     10
                                     -20
                                     -10
@@ -57,16 +60,16 @@
                                     {}
                                     [:inside
                                      {}
-                                     [:field {} (meta/id :venues :latitude)]
-                                     [:field {} (meta/id :venues :longitude)]
+                                     [:field {} "LATITUDE"]
+                                     [:field {} "LONGITUDE"]
                                      10
                                      179
                                      -10
                                      180]
                                     [:inside
                                      {}
-                                     [:field {} (meta/id :venues :latitude)]
-                                     [:field {} (meta/id :venues :longitude)]
+                                     [:field {} "LATITUDE"]
+                                     [:field {} "LONGITUDE"]
                                      10
                                      -180
                                      -10
@@ -92,22 +95,22 @@
                                                     (meta/field-metadata :venues :longitude)
                                                     {:north 10, :south -10, :east 20, :west -20})]
       (testing "First application of update-lat-lon-filter"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:inside
                                       {}
-                                      [:field {} (meta/id :venues :latitude)]
-                                      [:field {} (meta/id :venues :longitude)]
+                                      [:field {} "LATITUDE"]
+                                      [:field {} "LONGITUDE"]
                                       10
                                       -20
                                       -10
                                       20]]}]}
                 query-lat-lon)))
       (testing "Second application of update-lat-lon-filter"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:inside
                                       {}
-                                      [:field {} (meta/id :venues :latitude)]
-                                      [:field {} (meta/id :venues :longitude)]
+                                      [:field {} "LATITUDE"]
+                                      [:field {} "LONGITUDE"]
                                       11
                                       -21
                                       -11
@@ -133,42 +136,42 @@
                                                     (meta/field-metadata :venues :longitude)
                                                     {:north 10, :south -10, :east -170, :west 170})]
       (testing "First application of update-lat-lon-filter (metabase#41056)"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:or
                                       {}
                                       [:inside
                                        {}
-                                       [:field {} (meta/id :venues :latitude)]
-                                       [:field {} (meta/id :venues :longitude)]
+                                       [:field {} "LATITUDE"]
+                                       [:field {} "LONGITUDE"]
                                        10
                                        170
                                        -10
                                        180]
                                       [:inside
                                        {}
-                                       [:field {} (meta/id :venues :latitude)]
-                                       [:field {} (meta/id :venues :longitude)]
+                                       [:field {} "LATITUDE"]
+                                       [:field {} "LONGITUDE"]
                                        10
                                        -180
                                        -10
                                        -170]]]}]}
                 query-lat-lon)))
       (testing "Second application of update-lat-lon-filter (metabase#41056)"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:or
                                       {}
                                       [:inside
                                        {}
-                                       [:field {} (meta/id :venues :latitude)]
-                                       [:field {} (meta/id :venues :longitude)]
+                                       [:field {} "LATITUDE"]
+                                       [:field {} "LONGITUDE"]
                                        11
                                        171
                                        -11
                                        180]
                                       [:inside
                                        {}
-                                       [:field {} (meta/id :venues :latitude)]
-                                       [:field {} (meta/id :venues :longitude)]
+                                       [:field {} "LATITUDE"]
+                                       [:field {} "LONGITUDE"]
                                        11
                                        -180
                                        -11
@@ -183,7 +186,7 @@
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
       (is (=? {:stages [{:filters [[:between
                                     {}
-                                    [:field {} (meta/id :checkins :date)]
+                                    [:field {} "DATE"]
                                     "2024-01-02"
                                     "2025-02-01"]]}]}
               (lib/update-temporal-filter query (meta/field-metadata :checkins :date) "2024-01-02" "2025-02-01"))))))
@@ -193,7 +196,7 @@
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
       (is (=? {:stages [{:filters [[:between
                                     {}
-                                    [:field {} (meta/id :checkins :date)]
+                                    [:field {} "DATE"]
                                     ;; since 2024-01-02T15:22 starts after 2024-01-02T00:00 we should round up to the
                                     ;; next whole day.
                                     "2024-01-03T00:00"
@@ -212,10 +215,10 @@
                     (lib/filter (lib/= (-> (meta/field-metadata :checkins :date)
                                            (lib/with-temporal-bucket :day))
                                        "2024-01-02T15:00")))]
-      (is (=? {:stages [{:breakout [[:field {:temporal-unit :day} (meta/id :checkins :date)]]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :day} "DATE"]]
                          :filters  [[:between
                                      {}
-                                     [:field {} (meta/id :checkins :date)]
+                                     [:field {} "DATE"]
                                      ;; since 2024-01-02T15:22 starts after 2024-01-02T00:00 we should round up to the
                                      ;; next whole day.
                                      "2024-01-03T00:00"
@@ -231,7 +234,7 @@
     (doseq [[table field field-type] [[:users    :last-login :type/DateTime]
                                       [:products :created-at :type/DateTimeWithLocalTZ]]]
       (testing (str field-type " column, specifically " table " " field)
-        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata table))
                         (lib/breakout (-> (meta/field-metadata table field)
                                           (lib/with-temporal-bucket :day)))
                         (lib/filter (lib/= (-> (meta/field-metadata table field)
@@ -241,10 +244,10 @@
                                          ;; `:day` should have been changed to `:hour`, because there aren't enough days
                                          ;; between `2024-01-02` and `2024-01-03`
                                          {:temporal-unit :hour}
-                                         (meta/id table field)]]
+                                         (:name (meta/field-metadata table field))]]
                              :filters  [[:between
                                          {}
-                                         [:field {} (meta/id table field)]
+                                         [:field {} (:name (meta/field-metadata table field))]
                                          "2024-01-02"
                                          "2024-01-03"]]}]}
                   (lib/update-temporal-filter query
@@ -265,10 +268,10 @@
                                      ;; `:day` should not change to `:hour` for `:type/Date`
                                      ;; between `2024-01-02` and `2024-01-03`
                                      {:temporal-unit :day}
-                                     (meta/id :checkins :date)]]
+                                     "DATE"]]
                          :filters  [[:between
                                      {}
-                                     [:field {} (meta/id :checkins :date)]
+                                     [:field {} "DATE"]
                                      "2024-01-02"
                                      "2024-01-03"]]}]}
               (lib/update-temporal-filter query
@@ -282,7 +285,7 @@
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
       (is (=? {:stages [{:filters [[:=
                                     {}
-                                    [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                                    [:field {:temporal-unit :day} "DATE"]
                                     "2024-01-02"]]}]}
               (lib/update-temporal-filter query
                                           (-> (meta/field-metadata :checkins :date)
@@ -296,7 +299,7 @@
        (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
          (is (=? {:stages [{:filters [[:between
                                        {}
-                                       [:field {} (meta/id :checkins :date)]
+                                       [:field {} "DATE"]
                                        "2024-01-02"
                                        "2025-02-01"]]}]}
                  (lib/update-temporal-filter query
@@ -310,7 +313,7 @@
        (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
          (is (=? {:stages [{:filters [[:between
                                        {}
-                                       [:field {} (meta/id :checkins :date)]
+                                       [:field {} "DATE"]
                                        ;; since 2024-01-02T15:22 starts after 2024-01-02T00:00 we should round up to the
                                        ;; next whole day.
                                        "2024-01-03T00:00"
