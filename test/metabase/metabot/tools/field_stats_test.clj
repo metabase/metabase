@@ -43,13 +43,15 @@
                  (is (thrown? clojure.lang.ExceptionInfo
                               (metabot.tools.field-stats/field-values
                                {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5}))))))))
-    (testing "A field-id that no longer resolves to a table (e.g. dropped column, stale result_metadata)
-              is a graceful agent-facing 404, not an uncaught exception."
+    (testing "A stale field is reported as unavailable on its source."
       (mt/as-admin
         (mt/with-dynamic-fn-redefs [metabot.perms/field-id->table-id (constantly {})]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No field found with ID \d+"
+          (is (=? {:class :recoverable :code ::metabot.tools.field-stats/unknown-field
+                   :data {:field-id category-id :available-ids []}}
+                  (tools.error/classify
+                   (is (thrown? clojure.lang.ExceptionInfo
                                 (metabot.tools.field-stats/field-values
-                                 {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5}))))))
+                                 {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
         (are [table-id field-id value-metadata]

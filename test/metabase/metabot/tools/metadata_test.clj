@@ -84,17 +84,19 @@
                (invoke-metadata profile "get_field_values"
                                 {:data_source "table" :source_id table-id :field_id 1})))))))
 
-(deftest sandboxed-field-refusals-name-the-field-test
+(deftest inaccessible-field-ids-use-accessible-suggestions-test
   (mt/as-admin
     (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields
                                 (fn [_] {(mt/id :products) #{(mt/id :products :id)}})]
-      (doseq [profile [:document-generate-content :slackbot]]
-        (let [field-id (mt/id :products :category)
-              result (invoke-metadata profile "get_field_values"
+      (doseq [profile [:document-generate-content :slackbot]
+              field-id [(mt/id :products :category) Integer/MAX_VALUE]]
+        (let [result (invoke-metadata profile "get_field_values"
                                       {:data_source "table" :source_id (mt/id :products) :field_id field-id})]
-          (is (=? {:error {:class :recoverable :code :metabase.metabot.tools.recoverable.common/not-found}
-                   :output #(str/starts-with? % (str "Field " field-id " was not found."))}
-                  result)))))))
+          (is (= {:error {:class :recoverable :code ::field-stats/unknown-field}
+                  :output (str "Field " field-id " was not found in table " (mt/id :products)
+                               ". Valid field IDs: [" (mt/id :products :id) "]."
+                               "\nRetry with one of these field IDs.")}
+                 result)))))))
 
 (deftest field-values-accept-emitted-column-aliases-test
   (mt/as-admin

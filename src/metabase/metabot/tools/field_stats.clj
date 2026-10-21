@@ -1,7 +1,6 @@
 (ns metabase.metabot.tools.field-stats
   (:require
    [clojure.set :as set]
-   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -59,26 +58,6 @@
                              (select-keys (metabot.tools.u/->result-column query col)
                                           [:portable_fk :table_reference]))})
 
-(defn- check-column-table-perms!
-  [col]
-  (let [field-id (:id col)
-        ;; A saved Card's result metadata can override :table-id while retaining a real Field ID.
-        ;; Always authorize physical Fields against their persisted owner; only virtual columns may
-        ;; fall back to the table carried by Lib metadata.
-        table-id (if (pos-int? field-id)
-                   (or (get (metabot.perms/field-id->table-id #{field-id}) field-id)
-                       (throw (ex-info (str "No field found with ID " field-id)
-                                       {:agent-error? true :status-code 404})))
-                   (:table-id col))]
-    (when (int? table-id)
-      (api/check-403
-       (contains? (if (= :source/implicitly-joinable (:lib/source col))
-                    (metabot.perms/queryable-table-ids #{table-id})
-                    (metabot.perms/data-accessible-table-ids #{table-id}))
-                  table-id))
-      (when-let [allowed (get (metabot.perms/sandbox-restricted-fields #{table-id}) table-id)]
-        (api/check-403 (contains? allowed field-id))))))
-
 (def ^:private max-suggested-field-ids 100)
 
 (tools/defrecoverable unknown-field!
@@ -97,13 +76,12 @@
 
 (defn- field-column
   [entity-type entity-id field-id columns]
-  (if-let [col (metabot.tools.u/find-column-by-field-id field-id columns)]
-    (do (check-column-table-perms! col) col)
-    (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct))
-                              (entity-details/permission-filter-columns columns))]
-      (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
-                       :available-ids (vec (take max-suggested-field-ids available-ids))
-                       :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))}))))
+  (let [columns (entity-details/permission-filter-columns columns)]
+    (or (metabot.tools.u/find-column-by-field-id field-id columns)
+        (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct)) columns)]
+          (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
+                           :available-ids (vec (take max-suggested-field-ids available-ids))
+                           :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))})))))
 
 (defn- table-field-stats
   [table-id field-id limit]
