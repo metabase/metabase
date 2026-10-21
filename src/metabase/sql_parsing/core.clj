@@ -71,7 +71,8 @@
       ;; sqlglot >=29 represents end-of-input as a SENTINEL token rather than `None`; the `but got
       ;; None` case below is kept for whichever internal form the caller's sqlglot happens to use.
       (str/replace #"<Token token_type: TokenType\.SENTINEL,[^>]*>" "the end of the query")
-      (str/replace #"<Token [^>]*?text: ([^,>]*),[^>]*>" "'$1'")
+      (str/replace #"<Token token_type: \S+, text: (.*?), line: \d+, col: \d+, start: \d+, end: \d+, comments: \[.*?\]>"
+                   "'$1'")
       (str/replace #"but got None\b" "but got the end of the query")))
 
 (defn- diagnostic

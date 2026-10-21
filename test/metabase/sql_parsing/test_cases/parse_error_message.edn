@@ -21,4 +21,22 @@
    :dialect    "postgres"
    :sql        "complete nonsense query"
    :internals  "["
-   :diagnostic "ParseError: Invalid expression / Unexpected token. Line 1, Col: 23.\n  complete nonsense query\n                    ^^^^^"}]}
+   :diagnostic "ParseError: Invalid expression / Unexpected token. Line 1, Col: 23.\n  complete nonsense query\n                    ^^^^^"}
+
+  {:name       "a greater-than sign where a table name belonged"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM >"
+   :internals  "<Token token_type: TokenType.GT, text: >,"
+   :diagnostic "ParseError: Expected table name but got '>'. Line 1, Col: 15.\n  SELECT * FROM >\n                ^"}
+
+  {:name       "a greater-than-or-equal sign where a table name belonged"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM >="
+   :internals  "<Token token_type: TokenType.GTE, text: >=,"
+   :diagnostic "ParseError: Expected table name but got '>='. Line 1, Col: 16.\n  SELECT * FROM >=\n                ^^"}
+
+  {:name       "a comma where a table name belonged"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM ,"
+   :internals  "<Token token_type: TokenType.COMMA, text: ,,"
+   :diagnostic "ParseError: Expected table name but got ','. Line 1, Col: 15.\n  SELECT * FROM ,\n                ^"}]}
