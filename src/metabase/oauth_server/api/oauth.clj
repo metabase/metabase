@@ -259,7 +259,7 @@
 
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
-;; Each client/IP pair has a tighter limit on guesses from one source.
+;; Each client has a tighter limit for guesses from the same IP.
 (def ^:private token-client-throttler
   (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms))
 
@@ -294,7 +294,7 @@
          (throw e#)))))
 
 (defn- retry-after-seconds
-  "Return the seconds until `throttle-key` has room for another attempt."
+  "Return how many seconds `throttle-key` must wait before another attempt."
   [{:keys [attempts attempts-threshold attempt-ttl-ms]} throttle-key]
   (if-let [[_ blocking-attempt-ms] (nth (filter (fn [[attempt-key]] (= throttle-key attempt-key)) @attempts)
                                         (dec attempts-threshold) nil)]
@@ -303,7 +303,7 @@
 
 (defn- do-with-token-throttling
   "Apply the token throttles to `f`.
-   Requests with a missing or empty client ID, or one longer than 255 characters, use only the IP bucket."
+   Requests use only the IP limit if the client ID is missing, empty or longer than 255 characters."
   [ip-address client-id f]
   (let [client-id  (when (and (seq client-id) (<= (count client-id) max-client-id-length)) client-id)
         client-key (when client-id [client-id ip-address])
