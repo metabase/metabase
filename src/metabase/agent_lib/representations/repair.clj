@@ -1041,15 +1041,10 @@
 ;;; Runs after Pass 2.9, which creates new `filters`. Idempotent: the output matches neither
 ;;; predicate.
 ;;;
-;;; None of the survivors above is merely unrewritten -- each is broken. The legacy unit enums have no
-;;; `:decode/normalize`, so after the JSON hop the clause never normalizes back. What that costs
-;;; depends on where it sits. In `filters`, `expressions` and join `conditions:` the dev and CI
-;;; question page 400s, while a production JAR -- where `normalize-or-throw`'s `mu/defn` output check
-;;; is compiled out -- lets `lib/query`'s `clean-stage-schema-errors` delete the clause, and the
-;;; question silently answers something else. In `aggregation:` the legacy schema is permissive
-;;; enough that even dev never throws: the `count-where` above is deleted in both, silently. Pass 6's
-;;; [[unencodable-temporal-clause-error!]] catches every one and raises a retryable `:agent-error?`,
-;;; except the unparseable literal, which resolve names more precisely.
+;;; The survivors above reach the question intact, since the `/question#` link carries MBQL 5, but the
+;;; query engine runs some of them wrong. Pass 6's [[unencodable-temporal-clause-error!]], whose
+;;; docstring has two examples, catches every one and raises a retryable `:agent-error?`, except the
+;;; unparseable literal, which resolve names more precisely.
 ;;; ============================================================
 
 (def ^:private date-truncation-units
@@ -2981,7 +2976,7 @@
                :error        :numeric-field-id
                :clause       &match})))))
 
-;;; ----- E7: a temporal clause the `/question#` hash cannot carry ---------------------
+;;; ----- E7: a temporal clause Pass 2.95 could not rewrite ----------------------------
 
 (defn- deferred-to-invalid-temporal-literal?
   "True for an `absolute-datetime` whose literal cannot parse.
@@ -2996,9 +2991,8 @@
   Deferring the whole query instead would be a worse trade -- `validate-temporal-literals` does not
   inspect every position, since a bare literal on a comparison head is checked only when an operand
   is *known* temporal, so an unparseable literal in a position it does not inspect would silence E7
-  with nothing to replace it, reopening the silent-deletion hole
-  Pass 2.95 and this detector exist to close. The model fixes what E7 named and sees the literal
-  complaint on the next turn."
+  with nothing to replace it, and the clause would reach the query engine. The model fixes what E7
+  named and sees the literal complaint on the next turn."
   [node]
   (let [literal (nth node 2)]
     (and (string? literal)
@@ -3012,23 +3006,22 @@
 
   All three hold a temporal unit in a slot the legacy schema types with `::DateUnit` /
   `::DateTimeUnit` (`metabase.legacy-mbql.schema`, via `::ValueTypeInfo` for `value`), and neither
-  enum carries a `:decode/normalize`. Once the `/question#` hash has JSON-encoded the query the unit
-  is a string and the clause never normalizes back. In `filters`, `expressions` and join
-  `conditions:` that is a 400 on the dev and CI question page, and in a production JAR -- where
-  `normalize-or-throw`'s `mu/defn` output check is compiled out -- `lib/query`'s
-  `clean-stage-schema-errors` deletes the clause outright and the question silently answers something
-  else. In `aggregation:` the legacy schema is permissive enough that nothing throws even in dev: the
-  clause is deleted silently in both. Pass 2.95 rewrites every shape it can rewrite without changing
-  the answer, so anything still standing here is broken either way.
+  enum carries a `:decode/normalize`: after a JSON hop as legacy MBQL the unit is a string and the
+  clause never normalizes back. The `/question#` link carries a structured query as MBQL 5, where the
+  clause survives the hop, but the query engine runs some of these clauses wrong by comparing the
+  column with the start of the literal's period. On the Sample Database, `count-where` with
+  `[\">\" CREATED_AT [\"absolute-datetime\" \"2026-01-01\" \"month\"]]` counts 18016 orders, though
+  17811 are after January 2026, and
+  `[\"=\" [\"absolute-datetime\" \"2026-03-01\" \"month\"] CREATED_AT]` counts none of the 256 orders
+  from March 2026. Pass 2.95 rewrites every shape it can rewrite without changing the answer, and
+  this detector has the model rewrite the rest.
 
   `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
   and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
   1.867 has already rewritten every one to a `get-*` clause by the time this runs -- narrow that pass
   and this detector needs the head. `time` is excluded on purpose: it 400s in dev, but `->mbql5`
   salvages the raw clause in prod (unit correctly keywordized, filter intact), so flagging it would
-  reject a query that works for customers. This detector exists only because `::DateUnit`,
-  `::TimeUnit`, `::DateTimeUnit` and `::TemporalExtractUnit` lack decoders -- if they ever gain them,
-  delete it rather than inherit a false-positive machine.
+  reject a query that works for customers.
 
   Throws `:agent-error?` ex-info on the first offender."
   [form]
