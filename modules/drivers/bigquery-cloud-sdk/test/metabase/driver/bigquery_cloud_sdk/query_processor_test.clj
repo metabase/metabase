@@ -545,14 +545,18 @@
                               (t/local-date "2019-11-12")]))))
       (mt/test-driver :bigquery-cloud-sdk
         (qp.store/with-metadata-provider (mt/id)
-          (let [expected [(with-test-db-name "WHERE `v4_test_data.checkins`.`date` BETWEEN ? AND ?")
-                          (t/local-date "2019-11-11")
-                          (t/local-date "2019-11-12")]]
+          (let [date-database-type (:database-type (lib.metadata/field (mt/metadata-provider) (mt/id :checkins :date)))
+                expected           [(with-test-db-name "WHERE `v4_test_data.checkins`.`date` BETWEEN ? AND ?")
+                                    (t/local-date "2019-11-11")
+                                    (t/local-date "2019-11-12")]]
             (testing "Should be able to get temporal type from a `:field` with integer ID"
               (is (= expected
                      (between->sql [:between
                                     {}
-                                    [:field {:lib/uuid (str (random-uuid)), ::add/source-table (mt/id :checkins)} (mt/id :checkins :date)]
+                                    [:field {:lib/uuid           (str (random-uuid))
+                                             ::add/source-table  (mt/id :checkins)
+                                             ::add/database-type date-database-type}
+                                     (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should be able to get temporal type from a `:field` with `:temporal-unit`"
@@ -560,9 +564,10 @@
                            (rest expected))
                      (between->sql [:between
                                     {}
-                                    [:field {:lib/uuid          (str (random-uuid))
-                                             ::add/source-table (mt/id :checkins)
-                                             :temporal-unit     :day} (mt/id :checkins :date)]
+                                    [:field {:lib/uuid           (str (random-uuid))
+                                             ::add/source-table  (mt/id :checkins)
+                                             ::add/database-type date-database-type
+                                             :temporal-unit      :day} (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should work with a field literal"
