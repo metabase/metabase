@@ -472,7 +472,7 @@ jobs:
 
             await pushDockerReadme({
               readme,
-              repository: '${{ github.repository_owner }}/metabase',
+              repository: '${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}',
               username: process.env.DOCKERHUB_USERNAME,
               token: process.env.DOCKERHUB_TOKEN,
             });
