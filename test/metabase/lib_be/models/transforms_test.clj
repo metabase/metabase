@@ -68,7 +68,7 @@
                          :name         "device_category"
                          :display-name "Device category"
                          :type         :dimension
-                         :dimension    [:field {} 298221]
+                         :field-id    298221
                          :default      nil}]
                        :native   "<<NATIVE QUERY>>"}]
            :database 26}

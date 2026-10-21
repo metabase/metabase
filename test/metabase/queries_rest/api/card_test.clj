@@ -981,9 +981,7 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :dimension    [:field
-                                                   {:base-type :type/DateTime}
-                                                   (mt/id :orders :created_at)]}}}})
+                                    :field-id    (mt/id :orders :created_at)}}}})
 
 (deftest ^:parallel post-card-with-malformed-dataset-query-returns-400-test
   (testing "POST /api/card with structurally malformed :dataset_query returns 400 with the specific error, not 500 (#74615)"

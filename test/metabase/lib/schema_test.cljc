@@ -436,14 +436,14 @@
                                                                  :name         "<WRONG NAME>"
                                                                  :display-name "Parameter 0"
                                                                  :type         :dimension
-                                                                 :dimension    [:field {} 1]
+                                                                 :field-id    1
                                                                  :default      nil}
                                                   "parameter_1" {:widget-type  :category
                                                                  :id           "00000000-0000-0000-0000-000000000001"
                                                                  ;; (`:name` is missing)
                                                                  :display-name "Parameter 1"
                                                                  :type         :dimension
-                                                                 :dimension    [:field {} 1]
+                                                                 :field-id    1
                                                                  :default      nil}}
                                   :native   "<<NATIVE QUERY>>"}]
                       :database 2}

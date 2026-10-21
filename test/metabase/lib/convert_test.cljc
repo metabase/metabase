@@ -126,7 +126,7 @@
                         :default      nil}}}
                      :database 76}
           converted (lib.convert/->mbql5 original)]
-      (is (=? {:stages [{:template-tags [{:dimension [:field {:lib/uuid string?} 866]}]}]}
+      (is (=? {:stages [{:template-tags [{:field-id 866}]}]}
               converted))
       (is (mr/validate :metabase.lib.schema/query converted)))))
 
@@ -145,7 +145,7 @@
            :stages   [{:native   "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                        :template-tags
                        [{:default      nil
-                         :dimension    [:field {:lib/uuid "7ba4c681-b39e-418b-8b77-b98ad974eeb1"} 866]
+                         :field-id    866
                          :display-name "Name"
                          :name         "NAME"
                          :type         :dimension

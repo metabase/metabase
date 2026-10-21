@@ -954,14 +954,14 @@
 (deftest ^:parallel populate-fields-for-stage-test
   (testing "simple table query"
     (is (=? (sorted-fields [[:field {} "ID"]
-             [:field {} "SUBTOTAL"]
-             [:field {} "TOTAL"]
-             [:field {} "TAX"]
-             [:field {} "DISCOUNT"]
-             [:field {} "QUANTITY"]
-             [:field {} "CREATED_AT"]
-             [:field {} "PRODUCT_ID"]
-             [:field {} "USER_ID"]])
+                            [:field {} "SUBTOTAL"]
+                            [:field {} "TOTAL"]
+                            [:field {} "TAX"]
+                            [:field {} "DISCOUNT"]
+                            [:field {} "QUANTITY"]
+                            [:field {} "CREATED_AT"]
+                            [:field {} "PRODUCT_ID"]
+                            [:field {} "USER_ID"]])
             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                 (#'lib.field/populate-fields-for-stage -1)
                 fields-of)))))
@@ -1024,7 +1024,7 @@
         (is (nil? (-> query (lib.util/query-stage -1) :fields))))
       (testing "populates correctly"
         (is (=? (sorted-fields [[:field {} "USER_ID"]
-                 [:field {} "count"]])
+                                [:field {} "count"]])
                 (-> query
                     (#'lib.field/populate-fields-for-stage -1)
                     fields-of)))))))
@@ -1584,7 +1584,7 @@
       (testing "populating :fields"
         (is (nil? (:fields stage1)))
         (is (=? (sorted-fields [[:field {} "CREATED_AT"]
-                 [:field {} "sum"]])
+                                [:field {} "sum"]])
                 (-> query
                     (#'lib.field/populate-fields-for-stage 1)
                     fields-of))))

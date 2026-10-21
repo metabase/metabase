@@ -20,8 +20,8 @@
              :dimension    ["field" {"lib/uuid" "eef18794-7d5f-409c-8017-00d306f9aec3"} 1]})))))
 
 (deftest ^:parallel normalize-legacy-ref-test
-  (are [x] (=? {:dimension [:field {:lib/uuid string?} 100]}
-               (lib/normalize ::lib.schema.template-tag/field-filter {:type :dimension, :dimension x}))
+  (are [x] (=? {:field-id 100}
+               (lib/normalize ::lib.schema.template-tag/template-tag {:type :dimension, :dimension x}))
     [:field 100]
     [:field-id 100]
     [:field 100 nil]))
@@ -31,7 +31,7 @@
     (is (=? {"time-unit" {:name         "time-unit"
                           :display-name "id"
                           :type         :temporal-unit
-                          :dimension    [:field {:lib/uuid string?} 1]}}
+                          :field-id    1}}
             (lib/normalize ::lib.schema.template-tag/template-tag-map
                            {"time-unit" {:name         "id"
                                          :display-name "id"
@@ -45,9 +45,7 @@
           :display-name "State"
           :type         :dimension
           :options      {:case-sensitive false}
-          :dimension    [:field
-                         {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
-                         1]
+          :field-id    1
           :widget-type  :string/contains}
          (lib/normalize ::lib.schema.template-tag/template-tag
                         {:default      nil
@@ -56,9 +54,7 @@
                          :display-name "State"
                          :type         :dimension
                          :options      {"case-sensitive" false}
-                         :dimension    [:field
-                                        {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
-                                        1]
+                         :field-id    1
                          :widget-type  :string/contains}))))
 
 (deftest ^:parallel normalize-template-tags-map-to-list-test
@@ -66,7 +62,7 @@
     (is (=? [{:name         "time-unit"
               :display-name "id"
               :type         :temporal-unit
-              :dimension    [:field {:lib/uuid string?} 1]}]
+              :field-id    1}]
             (lib/normalize ::lib.schema.template-tag/template-tags
                            {"time-unit" {:name         "id"
                                          :display-name "id"

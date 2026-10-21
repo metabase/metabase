@@ -465,7 +465,7 @@
                    :widget-type  :number/=
                    :dimension    (field-id-ref meta/metadata-provider (meta/id :products :id))}]
           result (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
-      (is (=? [{:name "filter", :dimension [:field {} (meta/id :orders :id)]}]
+      (is (=? [{:name "filter", :field-id (meta/id :orders :id)}]
               result)))))
 
 (deftest ^:parallel update-dimension-tags-no-match-test

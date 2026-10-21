@@ -1077,7 +1077,7 @@
       (is (=? [{:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} "CATEGORY_ID"]
+                :field-id    "CATEGORY_ID"
                 :widget-type  :text}]
               (lib/template-tags query))))))
 
@@ -1096,7 +1096,7 @@
       (is (=? [{:type         :temporal-unit
                 :name         "date_unit"
                 :display-name "Date Unit"
-                :dimension    [:field {} "CREATED_AT"]}]
+                :field-id    "CREATED_AT"}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
@@ -1163,7 +1163,7 @@
                {:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} "CATEGORY_ID"]
+                :field-id    "CATEGORY_ID"
                 :widget-type  :text}]
               (lib/template-tags query))))))
 

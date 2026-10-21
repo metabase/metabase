@@ -448,8 +448,7 @@
                         :name         "cat"
                         :display-name "Category"
                         :type         :dimension
-                        :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-                                       (meta/id :products :category)]
+                        :field-id    (meta/id :products :category)
                         :widget-type  :category}})]
       (is (= [{:id       "_CAT_"
                :type     :category
@@ -1631,9 +1630,7 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :dimension    [:field
-                                                   {:base-type :type/DateTime}
-                                                   (mt/id :orders :created_at)]}}}})
+                                    :field-id    (mt/id :orders :created_at)}}}})
 
 (deftest create-card!-with-malformed-dataset-query-throws-test
   (testing "queries/create-card! with structurally malformed :dataset_query throws a normalization error, not a SQL constraint error (#74615)"
