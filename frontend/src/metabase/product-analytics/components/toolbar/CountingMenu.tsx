@@ -15,7 +15,7 @@ import S from "./CountingMenu.module.css";
 const getButtonLabel = (grain: Grain): string => {
   switch (grain) {
     case "person":
-      return t`counting people`;
+      return t`Count people`;
     case "session":
       return t`counting sessions`;
     case "event":

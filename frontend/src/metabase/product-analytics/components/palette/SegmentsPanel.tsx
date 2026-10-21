@@ -11,7 +11,6 @@ import {
   Stack,
   Tabs,
   Text,
-  Title,
   Tooltip,
 } from "metabase/ui";
 import type { Table } from "metabase-types/api";
@@ -40,7 +39,7 @@ import S from "./SegmentsPanel.module.css";
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 480;
-const DEFAULT_WIDTH = 272;
+const DEFAULT_WIDTH = 360;
 
 type SegmentsPanelProps = {
   table: Table | undefined;
@@ -69,14 +68,11 @@ export const SegmentsPanel = ({
         max={MAX_WIDTH}
         onResize={setWidth}
       />
-      {/* The same header as the setup panel's, so both tab bars line up. */}
-      <Title order={5} px="lg" pt="lg" pb="md">
-        {t`Segments`}
-      </Title>
+      {/* The same tab bar inset as the setup panel's, so both line up. */}
       <Tabs defaultValue="event" className={S.tabs}>
-        <Tabs.List px="lg">
-          <Tabs.Tab value="event">{t`Events`}</Tabs.Tab>
-          <Tabs.Tab value="people">{t`People`}</Tabs.Tab>
+        <Tabs.List px="lg" pt="sm">
+          <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
+          <Tabs.Tab value="people">{t`Cohorts`}</Tabs.Tab>
         </Tabs.List>
         <Box className={S.scroll}>
           <Tabs.Panel value="event" py="md">

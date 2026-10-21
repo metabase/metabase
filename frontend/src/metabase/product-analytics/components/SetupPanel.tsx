@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Divider, Paper, Tabs, Title } from "metabase/ui";
+import { Box, Divider, Paper, Tabs } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { SettingWidget } from "../settings/types";
@@ -16,7 +16,7 @@ const WIDGET_STYLE = { marginInline: 0 };
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 640;
-const DEFAULT_WIDTH = 400;
+const DEFAULT_WIDTH = 360;
 
 type SetupPanelProps = {
   /** The tab that's showing. */
@@ -29,8 +29,8 @@ type SetupPanelProps = {
 };
 
 /**
- * The analysis's settings, in a setup tab and an advanced one. Its header
- * matches the segments panel's, so the two tab bars line up side by side.
+ * The analysis's settings, in a setup tab and an advanced one. Its tab bar
+ * sits at the top like the segments panel's, so the two line up side by side.
  */
 export const SetupPanel = ({
   tab,
@@ -59,9 +59,6 @@ export const SetupPanel = ({
         max={MAX_WIDTH}
         onResize={setWidth}
       />
-      <Title order={5} px="xl" pt="lg" pb="md">
-        {setupLabel}
-      </Title>
       <Tabs
         value={activeTab}
         onChange={(value) =>
@@ -69,14 +66,12 @@ export const SetupPanel = ({
         }
         className={S.tabs}
       >
-        {/* A lone tab isn't a choice; a rule just closes off the header. */}
-        {hasAdvanced ? (
-          <Tabs.List px="xl">
+        {/* A lone tab isn't a choice, so there's no tab bar then. */}
+        {hasAdvanced && (
+          <Tabs.List px="xl" pt="sm">
             <Tabs.Tab value="setup">{setupLabel}</Tabs.Tab>
             <Tabs.Tab value="advanced">{t`Advanced`}</Tabs.Tab>
           </Tabs.List>
-        ) : (
-          <Divider />
         )}
         <Box className={S.scroll} px="xl" pt="xl">
           <SectionWidgets widgets={widgets} section={activeTab} />
