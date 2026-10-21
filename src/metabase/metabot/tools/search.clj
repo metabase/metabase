@@ -600,9 +600,9 @@
   "What narrowed a search beyond its queries, as sentences for the model."
   [default-types {:keys [metabot profile-id]} {:keys [entity_types]}]
   (cond-> []
-    (and (seq entity_types) (not= (set entity_types) (set default-types)))
+    (and (seq entity_types) (not-every? (set entity_types) default-types))
     (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
-               ". If other types could match, retry without `entity_types`."))
+               ". If other types could match, add them to `entity_types`."))
 
     (:use_verified_content metabot)
     (conj "This Metabot searches only curated content, such as verified items and items in official collections.")

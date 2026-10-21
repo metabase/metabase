@@ -178,15 +178,15 @@
                (explain #'search/search-tool {:keyword_queries ["zzz"]} nil)))
         (is (= {:empty_reason "no_match"
                 :notes        ["Total results: 0" "<no-results>" retry-note "</no-results>"]}
-               (explain #'search/search-tool {:keyword_queries ["zzz"]
-                                              :entity_types    (vec @#'search/general-entity-types)}
+               (explain #'search/nlq-search-tool {:keyword_queries ["zzz"]
+                                                  :entity_types    (vec @#'search/general-entity-types)}
                         nil))
-            "entity types that match the tool's default narrow nothing"))
+            "every type the tool accepts narrows nothing, even beyond the tool's defaults"))
       (testing "the entity types the model picked, curated content only and a confined collection are named"
         (is (= {:empty_reason "restricted"
                 :notes        ["Total results: 0"
                                "<no-results>"
-                               "Only these entity types were searched: dashboard, metric. If other types could match, retry without `entity_types`."
+                               "Only these entity types were searched: dashboard, metric. If other types could match, add them to `entity_types`."
                                "This Metabot searches only curated content, such as verified items and items in official collections."
                                "This Metabot searches only inside its own collection."
                                retry-note
