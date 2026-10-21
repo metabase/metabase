@@ -30,16 +30,16 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private chart-id-schema
-  "A `chart_id` that `save_entity` takes. It is stamped onto `report_card.metabot_chart_id`, a varchar(36)."
+  "A chart ID must fit `report_card.metabot_chart_id`, a `varchar(36)`."
   [:string {:min 1 :max 36}])
 
 (def ^:private save-entity-schema
   [:map {:closed true}
    [:chart_id chart-id-schema]
-   ;; report_card.name is a varchar(254), which PostgreSQL and MySQL count in code points, not UTF-16 units
+   ;; PostgreSQL and MySQL measure `report_card.name` (`varchar(254)`) in Unicode code points.
    [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
            :string
-           [:fn {:error/message "must be 1 to 254 Unicode code points"}
+           [:fn {:error/message "must contain 1 to 254 Unicode code points"}
             (fn [^String s] (<= 1 (.codePointCount s 0 (.length s)) 254))]]]
    [:description :string]
    [:destination
@@ -60,23 +60,23 @@
        [:position {:optional true} [:maybe :int]]]]]]])
 
 (tools/defrecoverable no-personal-collection!
-  "A collection destination without a `collection_id` means the personal collection, and this user has none."
+  "The user has no personal collection to use when `collection_id` is omitted."
   {:payload [:map {:closed true}]}
   [_]
   {:message  "The user has no personal collection, so `collection_id` can't be omitted."
    :recovery [{:uses #{"read_resource"}
-               :text (str "Read `metabase://collections?tree=true` with `read_resource` and pass the id of a"
+               :text (str "Read `metabase://collections?tree=true` with `read_resource` and pass the ID of a"
                           " collection with `can_write=true`.")}
               {:uses #{}
                :text "Or ask the user which collection to save it to."}]})
 
 (tools/defrecoverable destination-not-writable!
-  "The user may not save to a destination they can see."
+  "The user can see the destination but cannot save to it."
   {:payload     [:or
                  [:map {:closed true}
                   [:kind [:enum :collection :dashboard :document]]
                   [:id   :int]]
-                 ;; The root collection, which has no id.
+                 ;; The root collection has no ID.
                  [:map {:closed true}
                   [:kind [:= :collection]]]]
    :status-code 403}
@@ -84,15 +84,15 @@
   {:message  (str "The user doesn't have permission to save to "
                   (if id (str (name kind) " " id) "the root collection") ".")
    :recovery [{:uses #{}
-               :text (str "Tell the user, and offer to save it to their personal collection instead: a collection"
-                          " destination without `collection_id`.")}
+               :text (str "Tell the user and offer to save the chart to their personal collection."
+                          " Omit `collection_id` from a collection destination to use it.")}
               {:uses #{"read_resource"}
                :text (str "To offer another collection, read `metabase://collections?tree=true` with"
                           " `read_resource` and pick one with `can_write=true`.")}]})
 
 (defn- check-writable!
-  "Call `check`, a write or create check for `destination`, and report the 403 it throws as
-  [[destination-not-writable!]]."
+  "Convert a 403 from `check` into [[destination-not-writable!]].
+  `check` must be a write or create permission check for `destination`."
   [destination check]
   (try
     (check)
@@ -102,14 +102,15 @@
         (throw e)))))
 
 (defn- check-query-permissions!
-  "Throw unless the current user may run `dataset-query`. A refusal ends the turn with a message for the user."
+  "Require permission to run `dataset-query`.
+  A refusal ends the turn with a message for the user."
   [dataset-query]
   (try
     (query-perms/check-run-permissions-for-query dataset-query)
     (catch clojure.lang.ExceptionInfo e
       (let [status-code (:status-code (ex-data e))]
         (if (and (int? status-code) (<= 400 status-code 499))
-          ;; The query is the chart's, so the agent has no other one to offer.
+          ;; The agent cannot offer a different query for this chart.
           (tools/unrecoverable!
            ::no-query-permission
            {:user-message (tru "You can''t save this chart because you don''t have permission to run its query.")
@@ -117,7 +118,7 @@
           (throw e))))))
 
 (defn- chart-query
-  "The query behind `chart`, a chart from agent memory, or nil when it has none."
+  "Return the query for `chart`, or nil if none is available."
   [chart]
   (or (first (:queries chart))
       (get (shared/current-queries-state) (:query_id chart))))
@@ -225,23 +226,23 @@
        :link             (str "metabase://document/" document-id)})))
 
 (defn- publish-card-create!
-  "Publish the `:card-create` event for `card`, which is already committed. A failure is logged, not thrown."
+  "Publish the `:event/card-create` event for a card that has already been committed.
+  Log failures without throwing."
   [card]
   (try
     (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
     (catch Exception e
-      ;; Failing the call now would tell the agent nothing was saved, and its retry would save the card twice.
-      (log/error e "Failed to publish the card-create event for a card Metabot saved" {:card-id (:id card)}))))
+      ;; The agent may retry a failed call and save a second copy of the card.
+      (log/error e "Failed to publish the card-create event for a card saved by Metabot" {:card-id (:id card)}))))
 
 (def ^:private tool-description
-  "What the model is told `save_entity` is."
+  "Describe how to call `save_entity`."
   (str
-   "Save a chart you previously created into a collection, a dashboard, or a document.\n"
+   "Save a chart to a collection, dashboard or document. Use a chart that you previously created.\n"
    "\n"
-   "ONLY call this when the user explicitly asks to save, keep, or add the chart\n"
-   "somewhere. Reference the chart by the `chart_id` you were given when it was\n"
-   "created. Provide a `name` and a concise `description` for the saved question\n"
-   "(reuse the chart's description).\n"
+   "ONLY call this when the user explicitly asks to save, keep or add the chart somewhere.\n"
+   "Use the `chart_id` that you received when the chart was created. Provide a `name` and a concise\n"
+   "`description` for the saved question, reusing the chart's description.\n"
    "\n"
    "Choose a `destination`:\n"
    "- To save into a collection, set `target_type` to `collection` and pass a\n"
@@ -249,28 +250,24 @@
    "  `read_resource` on `metabase://collections?tree=true`. Omit `collection_id`\n"
    "  to use the user's personal collection; pass `null` for the root collection.\n"
    "- To add it to a dashboard, set `target_type` to `dashboard` and pass a\n"
-   "  `dashboard_id`. Find dashboards with your search/discovery tool — if that tool is\n"
-   "  `search`, restrict `entity_types` to the `dashboard` type. Only offer or use results\n"
-   "  with `can_write=true`; results\n"
-   "  with `can_write=false` are visible but read-only and cannot be save destinations.\n"
+   "  `dashboard_id`. Find dashboards with your search or discovery tool. If you use `search`,\n"
+   "  restrict `entity_types` to the `dashboard` type. Only offer or use results with `can_write=true`;\n"
+   "  results with `can_write=false` are visible but read-only and cannot be save destinations.\n"
    "- To embed it in a document, set `target_type` to `document` and pass a\n"
-   "  `document_id`. Find documents the same way — with `search`, restrict `entity_types` to\n"
-   "  the `document` type, just as you would use the `dashboard` type to find dashboards. Search\n"
-   "  using any name or topic the user provided. Before calling `save_entity`, you MUST call\n"
-   "  `read_resource` on `metabase://document/{id}` for the selected result and inspect its\n"
-   "  contents. Only save after that read succeeds and reports `can_write=true`. If it returns\n"
-   "  `can_write=false`, an error, or Not found,\n"
-   "  discard that search result and do not call `save_entity` with its id. If there are\n"
-   "  multiple plausible targets, ask the user which one they mean. Optionally pass `position` — the 0-based index"
-   " among the\n"
-   "  document's top-level blocks where the chart is inserted (`0` puts it at the\n"
-   "  very top). Omit `position` to append the chart at the end. To pick a\n"
-   "  meaningful position, first inspect the document's blocks with\n"
-   "  `read_resource` on `metabase://document/{id}`.\n"
+   "  `document_id`. Find documents with your search or discovery tool. If you use `search`,\n"
+   "  restrict `entity_types` to the `document` type and search using any name or topic that the\n"
+   "  user provided. Before calling `save_entity`, you MUST call `read_resource` on\n"
+   "  `metabase://document/{id}` for the selected result and inspect its contents. Only save after\n"
+   "  that read succeeds and reports `can_write=true`. If it returns `can_write=false`, an error\n"
+   "  or Not found, discard the result and do not call `save_entity` with its ID. Ask the user\n"
+   "  which document they mean if several results are plausible. You can pass `position`, the\n"
+   "  0-based index among the document's top-level blocks where the chart is inserted (`0` puts\n"
+   "  it at the top). Omit `position` to append the chart at the end. Read the document's blocks\n"
+   "  with `read_resource` on `metabase://document/{id}` before choosing a position.\n"
    "\n"
-   "If your only discovery tool returns library data entities (tables, models, metrics) rather\n"
-   "than saved content, dashboards and documents aren't discoverable that way — save to a\n"
-   "collection instead, or ask the user for the dashboard or document they mean.\n"
+   "If your only discovery tool returns library data entities (tables, models or metrics), it\n"
+   "cannot find dashboards or documents. Save to a collection instead, or ask the user for the\n"
+   "dashboard or document they mean.\n"
    "\n"
    "After saving, tell the user where it went and share the returned link."))
 
@@ -327,5 +324,5 @@
                              :title       (te/link question-name link)})]})))
 
 (def save-entity-tool
-  "`save_entity`: save a chart from this conversation as a question in a collection, dashboard or document."
+  "Save a chart from this conversation as a question in a collection, dashboard or document."
   (->SaveEntityTool))
