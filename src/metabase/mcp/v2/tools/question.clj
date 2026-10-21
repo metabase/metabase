@@ -32,11 +32,12 @@
    "dimension" :dimension "temporal-unit" :temporal-unit})
 
 (defn- tag-field-id
-  "The field the tag binds: `field_id` (the write dialect), or the id embedded in a read-shape
-   `dimension` ref — `[\"field\", <id>, opts]` legacy or `[\"field\", opts, <id>]` MBQL 5 — so the
-   tags `get_content` returns round-trip through this tool unchanged."
-  [{:keys [field_id dimension]}]
+  "The field the tag binds: `field_id` (the write dialect), the read-shape `field-id`, or the id embedded in a legacy
+   `dimension` ref — `[\"field\", <id>, opts]` legacy or `[\"field\", opts, <id>]` MBQL 5 — so the tags
+   `get_content` returns round-trip through this tool unchanged."
+  [{:keys [field_id field-id dimension]}]
   (or field_id
+      field-id
       (when (sequential? dimension)
         (some #(when (or (int? %) (v2.resolve/entity-id? %)) %) (rest dimension)))))
 
@@ -44,11 +45,11 @@
   "Map the tool's tag shape onto `existing-tag` (the lib-extracted template-tag map, which
    already carries `:id`/`:name`/`:display-name`). `dimension` and `temporal-unit` tags
    additionally carry a field (`field_id` — a numeric field id, resolved here and built into a
-   pMBQL field ref, since a JSON caller cannot construct one directly: it requires a `:lib/uuid`.
+   template tag `:field-id`.
    Numeric only: `metabase_field.entity_id` was dropped by migration and `:model/Field` is not in
    the eid-translation map, so an entity_id here could only ever fail); `dimension` tags also carry a widget type (`widget_type`). Alongside the
    underscore write dialect, the kebab-case read shape `get_content` emits (`display-name`,
-   `widget-type`, a `dimension` ref) is accepted, so a read-modify-write round-trip needs no
+   `widget-type`, `field-id`) is accepted, so a read-modify-write round-trip needs no
    translation."
   [existing-tag {tag-type :type :keys [display_name widget_type required default] :as tag}]
   (let [t            (or (tag-type->kw tag-type)
@@ -76,8 +77,7 @@
       display-name (assoc :display-name display-name)
       (some? required) (assoc :required (boolean required))
       (some? default) (assoc :default default)
-      field-ref? (assoc :dimension [:field {:lib/uuid (str (random-uuid))}
-                                    (v2.resolve/resolve-id-or-404 :model/Field field-id)])
+      field-ref? (assoc :field-id (v2.resolve/resolve-id-or-404 :model/Field field-id))
       (and (= t :dimension) widget-type) (assoc :widget-type (keyword widget-type)))))
 
 (def ^:private reference-tag-types

@@ -220,11 +220,6 @@
                                  (vswap! table-ids conj! table-id)))))
     (not-empty (persistent! @table-ids))))
 
-(defn- dimension-field-ids
-  "The Field IDs of the `:dimension` ref of a template tag, which refers to a Field by ID."
-  [dimension]
-  (into #{} (filter pos-int?) (match/match-many dimension [:field _opts id] id)))
-
 (mu/defn all-template-tags-id->field-ids :- [:maybe
                                              [:map-of
                                               ::lib.schema.template-tag/id
@@ -237,10 +232,10 @@
   [query :- ::lib.schema/query]
   (not-empty
    (into {}
-         (comp (filter :dimension)
+         (comp (filter :field-id)
                (filter :id)
                (map (fn [template-tag]
-                      [(:id template-tag) (dimension-field-ids (:dimension template-tag))])))
+                      [(:id template-tag) #{(:field-id template-tag)}])))
          (all-template-tags query))))
 
 (mu/defn all-template-tag-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
@@ -248,8 +243,7 @@
   [query :- ::lib.schema/query]
   (not-empty
    (into #{}
-         (comp (keep :dimension)
-               (mapcat dimension-field-ids))
+         (keep :field-id)
          (all-template-tags query))))
 
 (mu/defn all-template-tag-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
@@ -424,7 +418,7 @@
   "Return `query` with every Field ID reference remapped by `id->new-id` (a function; a map works). Covers `:field`
   refs everywhere they appear (filters, aggregations, breakouts, expressions, order-by, join conditions and fields,
   nested stages), the `:source-field`/`:fk-field-id` options inside `:field` refs, and native `:template-tags`
-  `:dimension` refs. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
+  `:field-id`s and legacy `:dimension` refs. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
   [query      :- ::lib.schema/query
    id->new-id :- ifn?]
   (let [remap #(remap-field-clause-ids id->new-id %)]
@@ -437,6 +431,7 @@
                                   (update :template-tags update-vals
                                           (fn [tag]
                                             (cond-> tag
+                                              (:field-id tag)  (update :field-id #(or (id->new-id %) %))
                                               (:dimension tag) (update :dimension remap))))))))))
 
 (mu/defn replace-table-ids :- ::lib.schema/query

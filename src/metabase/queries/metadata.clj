@@ -84,15 +84,17 @@
          tag     (vals (:template_tags snippet))
          :when   (#{:dimension :temporal-unit} (:type tag))
          :let    [dimension (:dimension tag)
-                  ;; Handle both keyword and string field references
-                  [dim-type field-id] (cond
-                                        (vector? dimension) dimension
-                                        (string? dimension) (try
-                                                              (edn/read-string dimension)
-                                                              (catch Exception _ nil))
-                                        :else               nil)]
-         :when   (and (#{:field "field"} dim-type)
-                      (integer? field-id))]
+                  ;; Handle both keyword and string legacy field references
+                  [dim-type dim-field-id] (cond
+                                            (vector? dimension) dimension
+                                            (string? dimension) (try
+                                                                  (edn/read-string dimension)
+                                                                  (catch Exception _ nil))
+                                            :else               nil)
+                  field-id  (or (:field-id tag)
+                                (when (#{:field "field"} dim-type)
+                                  dim-field-id))]
+         :when   (integer? field-id)]
      field-id)))
 
 (mu/defn- batch-fetch-query-metadata*

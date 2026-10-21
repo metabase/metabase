@@ -78,9 +78,7 @@
   false)
 
 (mu/defn- template-tag-name->field-id :- [:maybe ::lib.schema.id/field]
-  "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
-
-    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+  "The `:field-id` of the template tag of `card` named `template-tag-name`."
   [template-tag-name :- :string
    card              :- :metabase.queries.schema/card]
   (or (some-> card
@@ -89,8 +87,7 @@
               lib-be/normalize-query
               lib/all-template-tags-map
               (get template-tag-name)
-              :dimension
-              lib/field-ref-id)
+              :field-id)
       (do
         (log/trace "Could not find matching Field ID for target template tag")
         nil)))

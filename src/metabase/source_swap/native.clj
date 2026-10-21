@@ -157,8 +157,8 @@
 ;;; ====================== Dimension Tag Helpers ======================
 ;;;
 ;;; Dimension tags are `:type :dimension` (field filters) containing
-;;; `:dimension [:field <opts> <id>]`. When swapping tables, we need
-;;; to remap field IDs to the equivalent fields on the new table.
+;;; `:field-id`. When swapping tables, we need to remap field IDs to
+;;; the equivalent fields on the new table.
 
 (mu/defn- update-dimension-tags :- ::lib.schema.template-tag/template-tags
   "Update :type :dimension and :type :temporal-unit template tags, remapping field IDs from old table to new table.
@@ -171,9 +171,9 @@
         new-fields (lib.metadata/fields query new-table-id)]
     (mapv (fn [tag]
             (or (when (#{:dimension :temporal-unit} (:type tag))
-                  (when-some [field (lib/find-matching-column (:dimension tag) old-fields)]
+                  (when-some [field (perf/some #(when (= (:id %) (:field-id tag)) %) old-fields)]
                     (when-some [new-field (perf/some #(when (= (:name %) (:name field)) %) new-fields)]
-                      (assoc tag :dimension (lib/ref new-field)))))
+                      (assoc tag :field-id (:id new-field) :dimension (lib/ref new-field)))))
                 tag))
           template-tags)))
 
