@@ -1,0 +1,9 @@
+/* Placeholder rows aren't interactive, so they drop the hover styles the real rows get */
+tr.row:hover td {
+  background-color: var(--mb-color-background_page-primary);
+}
+
+tr.row:hover td,
+tr.row:hover td * {
+  cursor: default;
+}

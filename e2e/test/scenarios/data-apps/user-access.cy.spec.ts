@@ -14,6 +14,7 @@ describe("scenarios > data apps > authentication", () => {
     beforeEach(() => {
       H.setupGitSync();
       H.copySyncedCollectionFixture();
+      H.updateSetting("remote-sync-custom-collections-enabled", true);
       H.copySyncedDataAppsFixture();
       cy.task("writeDataAppFiles", {
         files: {

@@ -148,10 +148,10 @@
   (atom {}))
 
 (defn recoverables
-  "The declared recoverable errors, as a map of code to catalog entry.
+  "Return the declared recoverable errors as a map from codes to catalog entries.
 
-  An entry has `:code`, `:var`, `:doc`, `:payload-schema`, `:status-code` and `:build-fn`. Tests
-  walk this to cover every declared error at once, and converters look an error up by code."
+  An entry has `:code`, `:var`, `:doc`, `:payload-schema`, `:status-code`, `:quoted` and `:build-fn`.
+  Tests use this map to cover every declared error, and converters use it to look up errors by code."
   []
   @recoverables*)
 
@@ -260,6 +260,10 @@
     call, in every environment.
   - `:status-code` - *optional*, default 400 - the `:status-code` on the thrown `ex-info`, for the
     non-agent callers of shared tool helpers.
+  - `:quoted` - *optional* - a map from payload keys to functions that quote their values, for text
+    from outside Metabase such as database error messages. Bound each value at the call site and
+    quote it with the declared function. The dev and test check for unauthored text excludes those
+    quoted strings; see [[authored-text]].
 
   The body receives the validated payload and returns `{:message ... :recovery [...]}`. Write both
   in English: they are model-facing, not user-facing. Only recovery steps name tools, and each step
@@ -288,6 +292,7 @@
                               :doc            ~docstring
                               :payload-schema ~(:payload opts)
                               :status-code    ~(:status-code opts 400)
+                              :quoted         ~(:quoted opts {})
                               :build-fn       (fn ~argv ~@body)}))))
 
 ;;; ------------------------------------------ Reading a recoverable error -----------------------------------------
@@ -340,6 +345,21 @@
        (map :text)
        (cons message)
        (str/join "\n")))
+
+(defn authored-text
+  "Return `text` with the quoted payload values from `error`'s declaration removed.
+
+  The declaration's `:quoted` map supplies the payload keys and their quoting functions. Remove every
+  occurrence of each quoted value and leave the rest for the runtime's dev and test check for unauthored
+  text. Values written without their declared quoting function stay in the result. The error body is
+  not run again."
+  [{:keys [code data]} text]
+  (reduce-kv (fn [text k quote-fn]
+               (if-some [value (get data k)]
+                 (str/replace text (quote-fn value) "")
+                 text))
+             text
+             (:quoted (get (recoverables) code))))
 
 ;;; ------------------------------------------ Classification ------------------------------------------------------
 

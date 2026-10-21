@@ -1,5 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { ColumnSettings as ApiColumnSettings } from "metabase-types/api";
 import {
   createMockDatetimeColumn,
   createMockField,
@@ -75,5 +76,51 @@ describe("ColumnSettings", () => {
     );
 
     expect(screen.getByText("Display as")).toBeInTheDocument();
+  });
+});
+
+describe("ColumnSettings read-only", () => {
+  type SetupOpts = {
+    value?: ApiColumnSettings;
+    readOnly?: boolean;
+  };
+
+  const setup = ({ value = {}, readOnly }: SetupOpts = {}) => {
+    renderWithProviders(
+      <ColumnSettings
+        column={createMockField({
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        })}
+        value={value}
+        readOnly={readOnly}
+      />,
+    );
+  };
+
+  it("shows the formatting of a read-only column without letting it change", () => {
+    setup({ readOnly: true });
+
+    expect(screen.getByTestId("prefix")).toHaveAttribute("readonly");
+    expect(screen.getByTestId("suffix")).toHaveAttribute("readonly");
+    expect(screen.getByRole("switch")).toBeDisabled();
+  });
+
+  it("disables the radio settings of a read-only column", () => {
+    setup({ value: { number_style: "currency" }, readOnly: true });
+
+    const radios = screen.getAllByRole("radio");
+    expect(radios.length).toBeGreaterThan(0);
+    radios.forEach((radio) => expect(radio).toBeDisabled());
+  });
+
+  it("keeps the formatting of a column editable by default", () => {
+    setup({ value: { number_style: "currency" } });
+
+    expect(screen.getByTestId("prefix")).not.toHaveAttribute("readonly");
+    expect(screen.getByRole("switch")).toBeEnabled();
+    screen
+      .getAllByRole("radio")
+      .forEach((radio) => expect(radio).toBeEnabled());
   });
 });

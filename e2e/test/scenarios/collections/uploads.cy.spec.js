@@ -261,13 +261,15 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
 
+    waitForActiveUploadTables(5);
+
     cy.visit("/admin/settings/uploads");
     cy.wait("@getUploadTables");
 
     // Re-query the container fresh on each assertion instead of caching it via
     // `within`: the table re-renders when `getUploadTables` resolves, detaching
     // the captured node, and a retrying query against a detached subtree gets
-    // stuck on the intermediate render (metabase flake: found 2, expected 3).
+    // stuck on the intermediate render.
     cy.findByTestId("upload-tables-table")
       .findAllByText(/dog_breeds/i)
       .should("have.length", 3);
@@ -318,6 +320,31 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
       .should("have.length", 1);
   });
 });
+
+/**
+ * The sync `H.restore` kicks off can still be running when the first upload creates its table: the
+ * sync listed the warehouse's tables before that table existed, so it retires the table it does not
+ * recognise (`active=false`), and `/tables` — which only returns active tables — never lists it
+ * (flake: found 2 dog_breeds rows, expected 3). A later sync does see the table in the warehouse and
+ * reactivates it, so sync again until every uploaded table is back.
+ */
+function waitForActiveUploadTables(expectedCount, iteration = 0) {
+  if (iteration === 10) {
+    throw new Error(
+      `Fewer than ${expectedCount} upload tables are active. Something is wrong.`,
+    );
+  }
+
+  cy.request("GET", "/api/ee/upload-management/tables").then(({ body }) => {
+    if (body.length >= expectedCount) {
+      return;
+    }
+
+    cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
+    cy.wait(1000);
+    waitForActiveUploadTables(expectedCount, iteration + 1);
+  });
+}
 
 function uploadFileToCollection(testFile, viewModel = true) {
   cy.get("@collectionId").then((collectionId) =>
