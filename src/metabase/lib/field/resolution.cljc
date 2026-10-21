@@ -433,9 +433,10 @@
   (when-some [col (or (field-metadata query nil id-or-name)
                       (resolve-name-in-implicit-join-this-stage query source-field-id id-or-name))]
     ;; if we managed to resolve it then update metadata appropriately.
-    (assoc col
-           :lib/source :source/implicitly-joinable
-           :fk-field-id source-field-id)))
+    (m/assoc-some (assoc col
+                         :lib/source :source/implicitly-joinable
+                         :fk-field-id source-field-id)
+                  :fk-field-name (:name (lib.metadata/field query source-field-id)))))
 
 ;;; See for
 ;;; example [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],

@@ -56,6 +56,12 @@
       :name)
      column)))
 
+(mu/defn fk-field-name :- :string
+  "The name implicit join refs through the FK `column` use in `:source-field-name`. `column` SHOULD BE METADATA RELATIVE
+  TO THE STAGE WHERE THE REF IS ADDED."
+  [column :- ::lib.schema.metadata/column]
+  ((some-fn inherited-column-name :lib/source-column-alias :name) column))
+
 (mu/defn add-deduplicated-names :- [:or
                                     ;; zero-arity: transducer
                                     fn?

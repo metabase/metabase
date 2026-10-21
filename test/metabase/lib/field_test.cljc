@@ -2639,3 +2639,27 @@
         (testing "Reviews.ID is now returned by the query"
           (is (some #(= (:id %) (meta/id :reviews :id))
                     (lib/returned-columns query-with-reviews-id))))))))
+
+(deftest ^:parallel implicitly-joinable-column-names-its-fk-test
+  (testing "an implicitly joinable column and its ref name the FK they join through"
+    (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          category (m/find-first #(= (:id %) (meta/id :products :category))
+                                 (lib/visible-columns query))]
+      (is (=? {:fk-field-id   (meta/id :orders :product-id)
+               :fk-field-name "PRODUCT_ID"}
+              category))
+      (is (=? [:field
+               {:source-field      (meta/id :orders :product-id)
+                :source-field-name "PRODUCT_ID"}
+               (meta/id :products :category)]
+              (lib/ref category))))))
+
+(deftest ^:parallel resolve-implicit-join-ref-without-fk-name-test
+  (testing "a ref with only `:source-field` resolves to a column naming its FK"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (=? {:fk-field-id   (meta/id :orders :product-id)
+               :fk-field-name "PRODUCT_ID"}
+              (lib/metadata query -1 [:field
+                                      {:lib/uuid     (str (random-uuid))
+                                       :source-field (meta/id :orders :product-id)}
+                                      (meta/id :products :category)]))))))

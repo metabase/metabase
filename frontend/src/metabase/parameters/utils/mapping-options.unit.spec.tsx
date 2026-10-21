@@ -177,6 +177,7 @@ describe("parameters/utils/mapping-options", () => {
                 {
                   "base-type": "type/DateTime",
                   "source-field": REVIEWS.PRODUCT_ID,
+                  "source-field-name": "PRODUCT_ID",
                 },
               ],
               { "stage-number": 0 },
@@ -257,6 +258,7 @@ describe("parameters/utils/mapping-options", () => {
                 {
                   "base-type": "type/Date",
                   "source-field": ORDERS.USER_ID,
+                  "source-field-name": "USER_ID",
                 },
               ],
               { "stage-number": 0 },
@@ -275,6 +277,7 @@ describe("parameters/utils/mapping-options", () => {
                 {
                   "base-type": "type/DateTime",
                   "source-field": ORDERS.USER_ID,
+                  "source-field-name": "USER_ID",
                 },
               ],
               { "stage-number": 0 },

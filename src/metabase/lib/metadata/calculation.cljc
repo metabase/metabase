@@ -806,7 +806,7 @@
                                           (when-let [target (id->target-fields fk-target-field-id)]
                                             (assoc target
                                                    ::fk-field-id   source-field-id
-                                                   ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                   ::fk-field-name (lib.field.util/fk-field-name source)
                                                    ::fk-join-alias (:lib/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)

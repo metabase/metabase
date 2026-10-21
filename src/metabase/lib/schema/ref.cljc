@@ -110,11 +110,12 @@
      ;; `:source-field` should be for information purposes only.
      [:source-field {:optional true} [:ref ::id/field]]
      ;;
-     ;; The column alias of the FK field used for an implicit join, when it differs from the field's raw name.
-     ;; This can happen when querying a card or model whose columns have aliases that don't match the underlying
-     ;; field names. Needed so the implicit join condition references the correct column.
+     ;; The column alias of the FK field used for an implicit join. It differs from the field's raw name when
+     ;; querying a card or model whose columns have aliases that don't match the underlying field names, and is needed
+     ;; so the implicit join condition references the correct column.
      ;;
-     ;; Corresponds to `:fk-field-name` in column metadata. Omitted when it matches the raw field name.
+     ;; Corresponds to `:fk-field-name` in column metadata. Lib always includes it; older refs may omit it, in which
+     ;; case it is the raw field name.
      ;;
      ;; Together with `:source-field` and `:source-field-join-alias`, these three form a composite key that
      ;; uniquely identifies an implicit join.
