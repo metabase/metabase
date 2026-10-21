@@ -365,9 +365,10 @@
   passes on its own curation; only a live metric Card is judged by its definition, so an uncurated question or
   model named here is denied like anywhere else, and a missing or archived Card is.
 
-  The definition is judged without a permission check on the Tables it reads, as [[check-curated-query!]] judges a
-  conversation query: a user who can read the metric but not its base Table learns from the verdict whether that
-  Table is curated. Accepted, for the same reason; the metric's details name no Table the user cannot query."
+  The definition is judged without a permission check on what it names, as [[check-curated-query!]] judges a
+  conversation query: a user who can read the metric but not its base Table, a Table it joins, a metric, measure, or
+  segment it uses, learns from the verdict whether those are curated. Accepted, for the same reason; the metric's
+  details name no Table the user cannot query."
   [metric-id]
   (let [curated?   (fn [model id] (contains? (curated-ids [[model id]]) [model id]))
         definition (when-let [{:keys [database_id dataset_query archived]} (metabot.db/card-of-type metric-id :metric)]
