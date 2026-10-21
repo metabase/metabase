@@ -678,6 +678,34 @@
                  (let [result (read-uris {:uris [(str "metabase://transform/" transform-id)]})]
                    (is (some? (get-in result [:resources 0 :content :structured-output :source :query])))))))))))))
 
+(mt/when-ee-evailable
+ (deftest read-transform-resource-source-card-permission-test
+   (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+     (mt/with-non-admin-groups-no-root-collection-perms
+       (mt/with-full-data-perms-for-all-users!
+         (mt/with-data-analyst-role! (mt/user->id :rasta)
+           (let [mp (mt/metadata-provider)]
+             (mt/with-temp [:model/Collection {collection-id :id} {}
+                            :model/Card {card-id :id}
+                            {:collection_id collection-id
+                             :database_id   (mt/id)
+                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                            :model/Transform {transform-id :id}
+                            {:name   "Private source card"
+                             :source {:type  "query"
+                                      :query (lib/query (mt/metadata-provider)
+                                                        (lib.metadata/card (mt/metadata-provider) card-id))}}]
+               (let [uri (str "metabase://transform/" transform-id)]
+                 (testing "a source card in an unreadable collection prevents reading the transform"
+                   (mt/with-current-user (mt/user->id :rasta)
+                     (is (=? {:resources [{:error #"(?s)^Transform \d+ was not found\..*"}]}
+                             (read-uris {:uris [uri]})))))
+                 (testing "the source query renders after granting read on the collection"
+                   (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+                   (mt/with-current-user (mt/user->id :rasta)
+                     (is (string? (get-in (read-uris {:uris [uri]})
+                                          [:resources 0 :content :structured-output :source :query]))))))))))))))
+
 (defn- read-title
   "The chain-of-thought title `read-resource` derives from what it read."
   [& uris]
