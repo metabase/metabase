@@ -246,10 +246,10 @@
                                         [{:aggregation [[:count {}]]
                                           :breakout    [[:field
                                                          {:temporal-unit :quarter}
-                                                         (meta/id :orders :created-at)]],
+                                                         "CREATED_AT"]],
                                           :filters     [[:=
                                                          {}
-                                                         [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                                         [:field {:temporal-unit :year} "CREATED_AT"]
                                                          "2022-12-01T00:00:00+02:00"]]}]}
                                  (= query multi-stage-query)
                                  (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]
@@ -280,11 +280,11 @@
                                           :aggregation  [[:count {}]]
                                           :breakout     [[:field
                                                           {:temporal-unit unit2}
-                                                          (meta/id :orders :created-at)]]
+                                                          "CREATED_AT"]]
                                           :filters      [[:= {}
                                                           [:field
                                                            {:temporal-unit unit1}
-                                                           (meta/id :orders :created-at)]
+                                                           "CREATED_AT"]
                                                           "2022-12-09T11:22:33+02:00"]]}]}
                                  (= query multi-stage-query)
                                  (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]

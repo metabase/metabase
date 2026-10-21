@@ -21,7 +21,7 @@
 
 (deftest ^:parallel aggregation-test
   (let [venues-category-id-metadata (meta/field-metadata :venues :category-id)
-        venue-field-check [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]
+        venue-field-check [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]]
     (testing "count"
       (is (=? [:count {:lib/uuid string?}]
               (lib/count)))
