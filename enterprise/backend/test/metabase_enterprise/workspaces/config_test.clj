@@ -267,3 +267,34 @@
                  (first samples))))
         (testing "sample entry is NOT also marked as a stub"
           (is (not (:is_stub (first samples)))))))))
+
+(deftest build-workspace-config-drops-parent-auth-provider-test
+  (testing "The parent's auth-provider properties stay out of the config: the workspace user authenticates by
+            password, and the provider settings (which can carry a client secret) belong to the parent's identity."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Auth Provider DW"
+                    :engine  :postgres
+                    :details {:host                "h"
+                              :port                5432
+                              :use-auth-provider   true
+                              :auth-provider       "oauth"
+                              :oauth-token-url     "https://idp.example/token"
+                              :oauth-token-headers "{\"client_secret\":\"s3cret\"}"}}
+                   :model/Workspace {ws-id :id} {:name       "authp"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_namespace "ws_alice"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [details (->> (config/build-workspace-config ws-id)
+                         :config
+                         :databases
+                         (remove (some-fn :is_stub :is_sample))
+                         first
+                         :details)]
+        (is (= {:host "h" :port 5432 :user "u" :password "p"}
+               (select-keys details [:host :port :user :password :use-auth-provider :auth-provider
+                                     :oauth-token-url :oauth-token-headers :azure-managed-identity-client-id])))))))

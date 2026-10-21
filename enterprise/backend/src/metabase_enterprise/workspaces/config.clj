@@ -48,6 +48,13 @@
       :else
       {})))
 
+(def ^:private parent-auth-provider-keys
+  "The auth-provider connection properties (`metabase.driver.common/auth-provider-options`). They authenticate the
+  parent's own warehouse identity, and `:oauth-token-headers` can carry a client secret. The workspace user
+  authenticates with the password in `:database_details`; with `:use-auth-provider` still set, the child would
+  replace that password with a token fetched for the parent's identity."
+  [:use-auth-provider :auth-provider :azure-managed-identity-client-id :oauth-token-url :oauth-token-headers])
+
 (defn- database-entry [wsd db]
   {:name    (:name db)
    :engine  (:engine db)
@@ -55,7 +62,7 @@
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (merge (:details db)
+   :details (merge (apply dissoc (:details db) parent-auth-provider-keys)
                    (:database_details wsd)
                    (schema-filter-entries db wsd)
                    {:let-user-control-scheduling false})})
