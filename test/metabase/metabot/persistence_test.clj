@@ -1563,7 +1563,20 @@
                                 {:type   :tool-output :id "c1"
                                  :result {:output (str "This call failed with an unexpected error. Don't retry the "
                                                        "same call. Try another approach, or tell the user it failed.")
-                                          :error  {:class :unrecoverable :code :internal}}}]))))))))
+                                          :error  {:class :unrecoverable :code :internal}}}]))))
+        (testing "each result replays as the text that the adapters send for it, so the next turn's prefix holds"
+          (doseq [result ["just a string"
+                          42
+                          nil
+                          {:output "rows"}
+                          {:rows [1 2]}
+                          {:output "Table 7 was not found." :error {:class :recoverable :code :x}}
+                          {:error {:class :recoverable :code :x}}
+                          {:output "" :error {:class :unrecoverable :code :x}}]]
+            (testing (pr-str result)
+              (is (= (self.core/tool-result-text result)
+                     (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                    {:type :tool-output :id "c1" :result result}]))))))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"
