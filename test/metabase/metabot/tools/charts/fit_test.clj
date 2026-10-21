@@ -40,7 +40,7 @@
       "table scalar gauge progress object"
 
       (lib/aggregate (count-by :orders) (lib/sum (meta/field-metadata :orders :total)))
-      "table pivot scatter progress object"
+      "table pivot scatter scalar gauge progress object"
 
       (lib/aggregate (query :orders) (lib/max (meta/field-metadata :orders :created-at)))
       "table scalar object"
@@ -82,18 +82,18 @@
       "table pivot object"
 
       (lib/append-stage (count-by :products (meta/field-metadata :products :category)))
-      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall progress funnel object"
+      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar progress funnel object"
 
       (query :orders)
-      "table treemap sankey progress object"
+      "table treemap sankey scalar gauge progress object"
 
       (lib/with-fields (query :orders) [(meta/field-metadata :orders :subtotal)
                                         (meta/field-metadata :orders :tax)])
-      "table scatter progress object"
+      "table scatter scalar gauge progress object"
 
       (lib/with-fields (query :orders) [(meta/field-metadata :orders :created-at)
                                         (meta/field-metadata :orders :total)])
-      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall smartscalar progress funnel object"
+      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar smartscalar progress funnel object"
 
       (count-by :people (meta/field-metadata :people :state))
       "table bar line pie sunburst treemap boxplot area combo row pivot scatter waterfall progress funnel object map"
@@ -106,7 +106,7 @@
       (lib/with-fields (query :people) [(meta/field-metadata :people :latitude)
                                         (meta/field-metadata :people :longitude)
                                         (meta/field-metadata :people :name)])
-      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall progress object map")))
+      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar gauge progress object map")))
 
 (deftest any-chart-type-fits-a-sql-query-test
   (testing "the columns of a SQL query aren't known until it runs, so any chart type passes"

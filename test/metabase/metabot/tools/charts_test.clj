@@ -253,8 +253,9 @@
                                                   :query    {:source-table (mt/id :orders)
                                                              :aggregation  [["count"]]}}]}}}))))
     (testing "edit_chart checks the new chart type against the query of the chart that it edits"
-      (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs exactly 1 column. The query "
-                      "returns 2 columns: 1 to group by and 1 number to measure. Chart types that fit these columns: "
+      (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs a first column that isn't a "
+                      "breakout, since it shows that column's first value. The query returns 2 columns: 1 to group by "
+                      "and 1 number to measure. Chart types that fit these columns: "
                       "table, bar, line, pie, sunburst, treemap, boxplot, area, combo, row, pivot, scatter, waterfall, "
                       "progress, funnel, object.")
              (invoke "edit_chart"
@@ -272,6 +273,22 @@
                               :query         {:lib/type "mbql/query" :stages []}
                               :visualization {:chart_type "pie"})
                        {})))))))
+
+(deftest single-value-charts-of-several-aggregations-test
+  (testing "scalar and gauge charts show the first column of a one-row result, so several aggregations fit"
+    (let [count-and-sum (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))]
+      (doseq [chart-type ["scalar" "gauge"]]
+        (testing chart-type
+          (is (=? {:data-parts [{:data {:display chart-type}}]}
+                  (invoke "create_chart"
+                          (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type chart-type})
+                          {:queries {"q-1" count-and-sum}})))
+          (is (=? {:data-parts [{:data {:display chart-type}}]}
+                  (invoke "edit_chart"
+                          (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type chart-type})
+                          {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [count-and-sum]}}}))))))))
 
 (deftest chart-tools-undeclared-failure-test
   (testing "a failure that no error declares ends the turn instead of reaching the model"

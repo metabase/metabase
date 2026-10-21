@@ -57,9 +57,9 @@
 
 (def ^:private requirements
   "What each chart type, other than `table` and `object`, needs from a query's columns.
-  `:needs` says it to the model, and `:fits?` checks the columns. `scalar`, `gauge` and `smartscalar` show a single
-  value, so they also need the columns that their `isSensible` asks for: from other columns the frontend still draws
-  them, with the wrong value."
+  `:needs` says it to the model, and `:fits?` checks the columns. `scalar` and `gauge` show the first value of the
+  first column, so they also need that column not to be a breakout, whose first value is one group's label rather than
+  a result. `smartscalar` compares values along a date, so it also needs the columns that its `isSensible` asks for."
   (let [axes  (groupings-and-metrics 2 "1 or 2 columns to group by and at least 1 number to measure")
         rings (groupings-and-metrics 3 "1 to 3 columns to group by and at least 1 number to measure")]
     {"bar"         axes
@@ -90,16 +90,16 @@
                                   (some metric? cols)))}
      "pivot"       {:needs "at least 2 columns, each one a breakout or an aggregation"
                     :fits? #(and (<= 2 (count %)) (every? (some-fn aggregation? :lib/breakout?) %))}
-     "scalar"      {:needs "exactly 1 column"
-                    :fits? #(= 1 (count %))}
+     "scalar"      {:needs "a first column that isn't a breakout, since it shows that column's first value"
+                    :fits? #(not (:lib/breakout? (first %)))}
      "smartscalar" {:needs "a date as the only column to group by, and a number to measure"
                     :fits? #(and (= 1 (n-of grouping? %) (n-of lib.types.isa/temporal? %))
                                  (some metric? %))}
-     "gauge"       {:needs "exactly 1 column, a number"
-                    :fits? (fn [[col :as cols]]
-                             (and (= 1 (count cols))
-                                  (lib.types.isa/numeric? col)
-                                  (not (lib.types.isa/temporal? col))))}
+     "gauge"       {:needs "a numeric first column that isn't a breakout, since it shows that column's first value"
+                    :fits? (fn [[col]]
+                             (and (lib.types.isa/numeric? col)
+                                  (not (lib.types.isa/temporal? col))
+                                  (not (:lib/breakout? col))))}
      "progress"    {:needs "a numeric column"
                     :fits? #(some lib.types.isa/numeric? %)}
      "map"         {:needs "latitude and longitude columns, or a state or country column and a number to measure"
