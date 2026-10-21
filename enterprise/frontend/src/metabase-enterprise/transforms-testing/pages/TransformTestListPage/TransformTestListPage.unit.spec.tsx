@@ -74,10 +74,11 @@ function setup({
   const initialRoute = Urls.transformTestList(transform.id);
   const path = initialRoute.replace(`/${transform.id}/`, "/:transformId/");
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path={path} element={<TransformTestListPage />} />,
     { withRouter: true, initialRoute, storeInitialState },
   );
+  return { router };
 }
 
 describe("TransformTestListPage", () => {
@@ -183,6 +184,18 @@ describe("TransformTestListPage", () => {
         }),
       ).toHaveLength(2);
     });
+  });
+
+  it("opens a test when its row is clicked", async () => {
+    const { router } = setup({
+      tests: [
+        createMockTransformTest({ id: 5, transform_id: 1, name: "Refunds" }),
+      ],
+    });
+
+    await userEvent.click(await screen.findByText("Refunds"));
+
+    expect(router?.location.pathname).toBe(Urls.transformTest(1, 5));
   });
 
   it("hides the row menu from users who can't edit the transform", async () => {

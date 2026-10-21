@@ -1,10 +1,12 @@
-import { type MouseEvent, useMemo, useState } from "react";
+import type { Row } from "@tanstack/react-table";
+import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { useNavigate } from "metabase/router";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Card,
@@ -17,6 +19,7 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useRunTransformTestMutation } from "metabase-enterprise/api";
 import type { TransformTest, TransformTestRun } from "metabase-types/api";
 
@@ -28,8 +31,16 @@ type TransformTestListProps = {
 };
 
 export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const columns = useMemo(() => getColumns(readOnly), [readOnly]);
+
+  const handleRowActivate = useCallback(
+    (row: Row<TransformTest>) => {
+      navigate(Urls.transformTest(row.original.transform_id, row.original.id));
+    },
+    [navigate],
+  );
 
   const treeTableInstance = useTreeTableInstance({
     data: tests,
@@ -37,6 +48,7 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
     getNodeId: (test) => String(test.id),
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
+    onRowActivate: handleRowActivate,
   });
 
   return (
@@ -64,6 +76,7 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
             )
           }
           ariaLabel={t`Transform tests`}
+          onRowClick={handleRowActivate}
         />
       </Card>
     </Stack>

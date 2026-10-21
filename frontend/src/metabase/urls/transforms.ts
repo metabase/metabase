@@ -16,6 +16,7 @@ import type {
   TransformRunSortColumn,
   TransformRunStatus,
   TransformTagId,
+  TransformTestId,
 } from "metabase-types/api";
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
@@ -82,6 +83,13 @@ export function transformIndexes(transformId: TransformId) {
 
 export function transformTestList(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/tests`;
+}
+
+export function transformTest(
+  transformId: TransformId,
+  testId: TransformTestId,
+) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/tests/${testId}`;
 }
 
 export function transformDependencies(transformId: TransformId) {
