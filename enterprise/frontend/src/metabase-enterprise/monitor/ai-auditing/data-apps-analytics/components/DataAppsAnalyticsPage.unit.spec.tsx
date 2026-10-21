@@ -16,10 +16,10 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
-import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
   createMockColumn,

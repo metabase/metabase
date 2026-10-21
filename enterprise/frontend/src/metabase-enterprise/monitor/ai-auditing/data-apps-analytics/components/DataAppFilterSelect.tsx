@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { FILTER_WIDTH } from "metabase/monitor/constants";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { Select } from "metabase/ui";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 import { buildLoggedDataAppsQuery } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
-import { FILTER_WIDTH } from "metabase-enterprise/monitor/constants";
 import * as Lib from "metabase-lib";
 import type { DataApp, RowValue } from "metabase-types/api";
 

@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import { FILTER_WIDTH } from "metabase/monitor/constants";
 import { Select } from "metabase/ui";
 import {
   DATA_APP_ENTITY_TYPES,
   type DataAppEntityType,
   parseDataAppEntityType,
 } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
-import { FILTER_WIDTH } from "metabase-enterprise/monitor/constants";
 
 const ALL_ENTITY_TYPES = "";
 

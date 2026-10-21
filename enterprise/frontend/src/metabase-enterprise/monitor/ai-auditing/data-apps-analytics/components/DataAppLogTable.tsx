@@ -8,6 +8,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import {
   Box,
   Ellipsified,
@@ -31,7 +32,6 @@ import {
   buildDataAppLogRowsQuery,
   dataAppLogColumnKeys,
 } from "metabase-enterprise/monitor/ai-auditing/data-apps-analytics/query-utils";
-import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import * as Lib from "metabase-lib";
 import type { RowValue, SortingOptions } from "metabase-types/api";
 
