@@ -53,8 +53,8 @@ describe("admin > database > add", () => {
     cy.intercept("GET", "/api/database/:id").as("getDatabase");
 
     cy.visit("/admin/databases/create");
-    // should display a setup help link
-    cy.findByRole("link", { name: "Need help connecting?" }).should("be.exist");
+    cy.log("should display a setup help link");
+    cy.findByRole("link", { name: "Need help connecting?" }).should("exist");
 
     cy.findByLabelText("Database type").click();
   });
