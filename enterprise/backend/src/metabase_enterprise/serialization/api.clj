@@ -170,7 +170,9 @@
                        (reset! err e)
                        (if full-stacktrace
                          (log/error e "Error during serialization import")
-                         (log/error (u/strip-error e "Error during serialization import"))))))]
+                         (log/error (u/strip-error e "Error during serialization import")))
+                       (when (serdes/query-schema-refusal? e)
+                         (log/error "Pass continue_on_error=true to skip the entities that fail to load.")))))]
     {:log-file      log-file
      :status        (:status (ex-data @err))
      :error-message (when @err

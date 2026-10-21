@@ -89,7 +89,10 @@
       (if (:full-stacktrace opts)
         (log/error @err "Error during deserialization")
         (log/error (u/strip-error @err "Error during deserialization")))
-      (throw (ex-info (ex-message @err) {:cmd/exit true})))
+      (throw (ex-info (cond-> (ex-message @err)
+                        (serdes/query-schema-refusal? @err)
+                        (str " Pass --continue-on-error to skip the entities that fail to load."))
+                      {:cmd/exit true})))
     imported))
 
 (defn v2-dump!
