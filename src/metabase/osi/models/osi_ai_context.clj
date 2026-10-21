@@ -147,9 +147,7 @@
 ;; parent path on import, and `entity_type` is read back from the parent segment's model.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
   {:copy      [:ai_context]
-   :transform {:created_at      (serdes/date)
-               :updated_at      (serdes/date)
-               :entity_type     {:export (constantly ::serdes/skip)
+   :transform {:entity_type     {:export (constantly ::serdes/skip)
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
                :entity_local_id {::serdes/fk true

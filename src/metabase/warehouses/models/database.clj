@@ -702,8 +702,7 @@
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
                  :cache_ttl]
-     :transform {:created_at          (serdes/date)
-                 :details             details-transform
+     :transform {:details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
