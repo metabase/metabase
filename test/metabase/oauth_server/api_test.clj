@@ -999,7 +999,7 @@
                 ip-throttler     @#'api.oauth/token-ip-throttler
                 now              (System/currentTimeMillis)]
             (reset! (:attempts client-throttler)
-                    (repeat client-attempt-count [[client-id ip-address] (- now (* 10 60 1000))]))
+                    (repeat client-attempt-count [client-id (- now (* 10 60 1000))]))
             (reset! (:attempts ip-throttler) (repeat 50 [ip-address (- now (* 59 60 1000))]))
             (let [responses (repeatedly 10 #(token-request! params :authorization authorization :ip-address ip-address
                                                             :expected-status 429 :full-response? true))]
@@ -1067,24 +1067,25 @@
                                       :ip-address ip-address
                                       :authorization (basic-auth-header client-id client-secret)))))))))
 
-(deftest token-client-throttle-is-scoped-to-ip-test
+(deftest token-client-throttle-is-shared-across-ips-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
       (mt/user-http-request :crowberto :get 200 "api/user/current")
       (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
-        (dotimes [_ 10]
+        (dotimes [i 10]
           (is (= "invalid_request"
                  (:error (token-request! {:grant_type    "refresh_token"
                                           :client_id     client-id
                                           :refresh_token "bogus-token"}
-                                         :ip-address "198.51.100.2" :expected-status 400)))))
-        (is (string? (:access_token
-                      (token-request! {:grant_type   "authorization_code"
-                                       :client_id    client-id
-                                       :code         (authorize-and-get-code! client-id)
-                                       :redirect_uri "https://example.com/callback"}
-                                      :ip-address "198.51.100.3"
-                                      :authorization (basic-auth-header client-id client-secret)))))))))
+                                         :ip-address (str "198.51.100." (+ 10 i)) :expected-status 400)))))
+        (is (= "too_many_requests"
+               (:error (token-request! {:grant_type   "authorization_code"
+                                        :client_id    client-id
+                                        :code         (authorize-and-get-code! client-id)
+                                        :redirect_uri "https://example.com/callback"}
+                                       :ip-address "198.51.100.3"
+                                       :authorization (basic-auth-header client-id client-secret)
+                                       :expected-status 429))))))))
 
 (deftest token-basic-auth-determines-client-throttle-key-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -1122,7 +1123,7 @@
                                                      [throttle-key (- now (* 10 60 1000))])
                                              (repeat 4 [throttle-key (- now (* age-minutes 60 1000))]))))]
             (reset! (:attempts client-throttler)
-                    (attempts client-throttler [client-id ip-address] client-age-minutes))
+                    (attempts client-throttler client-id client-age-minutes))
             (reset! (:attempts ip-throttler) (attempts ip-throttler ip-address ip-age-minutes))
             (let [response (token-request! params :authorization authorization :ip-address ip-address
                                            :expected-status 429 :full-response? true)

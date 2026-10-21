@@ -259,7 +259,7 @@
 
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
-;; Each client has a tighter limit for guesses from the same IP.
+;; Per-client_id is tight (one agent per client)
 (def ^:private token-client-throttler
   (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms))
 
@@ -305,16 +305,15 @@
   "Apply the token throttles to `f`.
    Requests use only the IP limit if the client ID is missing, empty or longer than 255 characters."
   [ip-address client-id f]
-  (let [client-id  (when (and (seq client-id) (<= (count client-id) max-client-id-length)) client-id)
-        client-key (when client-id [client-id ip-address])
-        response (with-throttling-429 [token-ip-throttler ip-address]
-                   (if client-id
-                     (with-throttling-429 [token-client-throttler client-key]
-                       (f))
-                     (f)))]
+  (let [client-id (when (and (seq client-id) (<= (count client-id) max-client-id-length)) client-id)
+        response  (with-throttling-429 [token-ip-throttler ip-address]
+                    (if client-id
+                      (with-throttling-429 [token-client-throttler client-id]
+                        (f))
+                      (f)))]
     (if (= 429 (:status response))
       (let [retry-after (max (retry-after-seconds token-ip-throttler ip-address)
-                             (if client-id (retry-after-seconds token-client-throttler client-key) 0))]
+                             (if client-id (retry-after-seconds token-client-throttler client-id) 0))]
         (-> response
             (assoc-in [:headers "Retry-After"] (str retry-after))
             (assoc-in [:body :error_description]
