@@ -2,6 +2,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
   setupPropertiesEndpoints,
+  setupSdkReact18HostsEndpoint,
   setupSettingsEndpoints,
   setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
@@ -66,6 +67,7 @@ export async function setup({
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
   setupUpsellEndpoints();
+  setupSdkReact18HostsEndpoint([]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-dev_instances",
