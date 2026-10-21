@@ -5,6 +5,7 @@ import { Button, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionFieldDetails } from "./ActionFieldDetails";
+import { ActionFieldEmptyState } from "./ActionFieldEmptyState";
 import { ActionFieldList } from "./ActionFieldList";
 import S from "./ActionFieldsContent.module.css";
 import { useActionFields } from "./hooks";
@@ -83,6 +84,11 @@ export function ActionFieldsContent({
             onChange={(patch) => updateField(field.parameter.id, patch)}
           />
         </Stack>
+      )}
+      {field == null && fields.length > 0 && (
+        <Flex align="center" flex="1" justify="center" miw={240}>
+          <ActionFieldEmptyState readOnly={readOnly} />
+        </Flex>
       )}
     </Flex>
   );

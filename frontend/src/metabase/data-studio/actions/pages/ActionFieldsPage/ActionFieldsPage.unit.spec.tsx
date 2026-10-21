@@ -23,9 +23,10 @@ import { ActionFieldsPage } from "./ActionFieldsPage";
 type SetupOpts = {
   action: WritebackQueryAction;
   database: Database;
+  fieldId?: string;
 };
 
-function setup({ action, database }: SetupOpts) {
+function setup({ action, database, fieldId = "status" }: SetupOpts) {
   setupActionEndpoints(action);
   setupDatabaseListEndpoint([database]);
   setupCollectionByIdEndpoint({
@@ -33,16 +34,22 @@ function setup({ action, database }: SetupOpts) {
   });
 
   renderWithProviders(
-    <Route
-      path="/data-studio/data-actions/:actionId/fields/:fieldId"
-      element={<ActionFieldsPage />}
-    />,
+    <>
+      <Route
+        path="/data-studio/data-actions/:actionId/fields"
+        element={<ActionFieldsPage />}
+      />
+      <Route
+        path="/data-studio/data-actions/:actionId/fields/:fieldId"
+        element={<ActionFieldsPage />}
+      />
+    </>,
     {
       storeInitialState: createMockState({
         entities: createMockEntitiesState({ databases: [database] }),
       }),
       withRouter: true,
-      initialRoute: `/data-studio/data-actions/${action.id}/fields/status`,
+      initialRoute: `/data-studio/data-actions/${action.id}/fields${fieldId ? `/${fieldId}` : ""}`,
     },
   );
 }
@@ -193,6 +200,47 @@ describe("ActionFieldsPage", () => {
 
     expect(
       await screen.findByText("One field per {{variable}} in the SQL."),
+    ).toBeInTheDocument();
+  });
+
+  it("asks a user who can edit the action to select a field", async () => {
+    setup({
+      action: createMockQueryAction({
+        database_id: 1,
+        dataset_query: DATASET_QUERY,
+        can_write: true,
+      }),
+      database: createMockDatabase({
+        id: 1,
+        native_permissions: "write",
+        settings: { "database-enable-actions": true },
+      }),
+      fieldId: "",
+    });
+
+    expect(
+      await screen.findByText("Edit the action's fields"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Display name")).not.toBeInTheDocument();
+  });
+
+  it("asks a user who can't edit the action to select a field to see it", async () => {
+    setup({
+      action: createMockQueryAction({
+        database_id: 1,
+        dataset_query: DATASET_QUERY,
+        can_write: false,
+      }),
+      database: createMockDatabase({
+        id: 1,
+        native_permissions: "write",
+        settings: { "database-enable-actions": true },
+      }),
+      fieldId: "",
+    });
+
+    expect(
+      await screen.findByText("See the action's fields"),
     ).toBeInTheDocument();
   });
 });
