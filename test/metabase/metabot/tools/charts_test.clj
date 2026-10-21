@@ -48,21 +48,33 @@
       (testing "keeps the query in structured-output so chart memory stores it for later edits"
         (is (= stub-query (get-in result [:structured-output :query])))))))
 
-(deftest create-chart-keeps-mbql5-temporal-filter-test
+(deftest chart-tools-keep-mbql5-temporal-filter-test
   (testing "the generated_entity part carries a during filter through JSON intact (BOT-1972)"
-    (let [date   (meta/field-metadata :checkins :date)
-          query  (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
-                     (lib/filter [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]))
-          memory (atom {:state {:queries {"q-1" query}}})
-          result (binding [shared/*memory-atom* memory]
-                   (charts/create-chart-tool {:data_source  {:query_id "q-1"}
-                                              :viz_settings {:chart_type "bar"}
-                                              :title        "Check-ins in July"
-                                              :description  "Check-ins during July 2026."}))
-          sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
-      (is (= "mbql/query" (:lib/type sent)))
-      (is (= (lib/filters query)
-             (-> sent lib/normalize :stages first :filters))))))
+    (let [date  (meta/field-metadata :checkins :date)
+          query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/filter [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]))
+          state {:queries {"q-1" query}
+                 :charts  {"c-1" {:chart_id               "c-1"
+                                  :query_id               "q-1"
+                                  :queries                [query]
+                                  :visualization_settings {:chart_type :bar}}}}]
+      (doseq [[tool-name run-tool] [["create_chart"
+                                     #(charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                                                 :viz_settings {:chart_type "bar"}
+                                                                 :title        "Check-ins in July"
+                                                                 :description  "Check-ins during July 2026."})]
+                                    ["edit_chart"
+                                     #(charts/edit-chart-tool {:chart_id         "c-1"
+                                                               :new_viz_settings {:chart_type "line"}
+                                                               :title            "Check-ins in July"
+                                                               :description      "Check-ins during July 2026."})]]]
+        (testing tool-name
+          (let [result (binding [shared/*memory-atom* (atom {:state state})]
+                         (run-tool))
+                sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+            (is (= "mbql/query" (:lib/type sent)))
+            (is (= (lib/filters query)
+                   (-> sent lib/normalize :stages first :filters)))))))))
 
 (deftest create-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"
