@@ -70,47 +70,6 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     });
   });
 
-  it("should display advisory cards sorted by affected status and severity, and support filtering", () => {
-    seedAllAdvisories();
-    cy.visit("/admin/security-center");
-    securityCenterContent().within(() => {
-      cy.findByText("Security Center").should("be.visible");
-      cy.findByTestId("current-version").should("be.visible");
-    });
-
-    // All three advisory cards are visible
-    cy.findAllByTestId("advisory-card").should("have.length", 3);
-    securityCenterContent().within(() => {
-      cy.findByText("Critical RCE vulnerability").should("be.visible");
-      cy.findByText("SQL injection in query builder")
-        .scrollIntoView()
-        .should("be.visible");
-      cy.findByText("SSRF in GeoJSON endpoint")
-        .scrollIntoView()
-        .should("be.visible");
-    });
-
-    // Affected/critical advisory is sorted first
-    cy.findAllByTestId("advisory-card")
-      .first()
-      .within(() => {
-        cy.findByText("Critical RCE vulnerability").should("exist");
-      });
-
-    // Filter by severity
-    cy.findByTestId("severity-filter").click();
-    cy.findByRole("option", { name: "Critical" }).click();
-    cy.findAllByTestId("advisory-card").should("have.length", 1);
-    securityCenterContent().within(() => {
-      cy.findByText("Critical RCE vulnerability").should("be.visible");
-    });
-
-    // Clear severity filter (re-select to deselect)
-    cy.findByTestId("severity-filter").click();
-    cy.findByRole("option", { name: "All severities" }).click();
-    cy.findAllByTestId("advisory-card").should("have.length", 3);
-  });
-
   it("should dismiss individual advisories, dismiss all, and toggle dismissed visibility", () => {
     seedAllAdvisories();
     cy.visit("/admin/security-center");

@@ -367,6 +367,46 @@ describe("SecurityCenterPage", () => {
     expect(screen.getByTestId("advisory-filter-bar")).toBeInTheDocument();
   });
 
+  it("filters advisory cards by severity and shows all of them again for 'All severities'", async () => {
+    setup([
+      createAdvisory({
+        advisory_id: "1",
+        title: "Critical advisory",
+        severity: "critical",
+        match_status: "active",
+      }),
+      createAdvisory({
+        advisory_id: "2",
+        title: "High advisory",
+        severity: "high",
+        match_status: "resolved",
+      }),
+      createAdvisory({
+        advisory_id: "3",
+        title: "Medium advisory",
+        severity: "medium",
+        match_status: "not_affected",
+      }),
+    ]);
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Critical" }),
+    );
+
+    const cards = screen.getAllByTestId("advisory-card");
+    expect(cards).toHaveLength(1);
+    expect(within(cards[0]).getByText("Critical advisory")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "All severities" }),
+    );
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+  });
+
   describe("upgrade banner", () => {
     it("shows the upgrade banner when there are active advisories", async () => {
       const advisories = [
