@@ -453,3 +453,13 @@
                            :lib/type      :mbql.stage/native}]
                :lib/type :mbql/query}
               normalized)))))
+
+(deftest ^:parallel normalize-fields-keeps-implicit-join-name-ref-test
+  (testing "an implicit join name ref is not a duplicate of a same-named column of the stage"
+    (let [fields [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/BigInteger} "ID"]
+                  [:field {:lib/uuid          "00000000-0000-0000-0000-000000000002"
+                           :base-type         :type/BigInteger
+                           :source-field-name "USER_ID"}
+                   "ID"]]]
+      (is (= fields
+             (lib/normalize ::lib.schema/fields fields))))))

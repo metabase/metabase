@@ -2006,11 +2006,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expressions: ["Net"],
           filters: [
             "Product → Title is Doohickey",
-            "Reviews - Product → Reviewer is Doohickey",
-            "Product → Vendor is Doohickey",
             "ID is 7021",
-            "User → Longitude is equal to -80",
             "Net is equal to -80",
+            "Product → Vendor is Doohickey",
+            "User → Longitude is equal to -80",
+            "Reviews - Product → Reviewer is Doohickey",
           ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [
