@@ -2104,6 +2104,16 @@
           (is (=? {:message string? :error "aggregation-entry-not-aggregation"} body))
           (is (= #{:message :error} (set (keys body)))))))))
 
+(deftest database-error-while-reading-rows-keeps-its-text-test
+  (testing "A database error raised while rows are read keeps its text, like one raised when the query starts"
+    (let [details {:db (str "mem:" (mt/random-name) ";LAZY_QUERY_EXECUTION=TRUE")}
+          sql     "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details details}]
+        (is (=? {:status     "failed"
+                 :error      #(str/includes? % "Division by zero")
+                 :error_type "invalid-query"}
+                (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql" {:database_id db-id :sql sql})))))))
+
 (deftest query-run-app-db-failure-is-generic-test
   (testing "A query run that fails in an app DB lookup is a generic failure, and the log gets the detail"
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-limit-query 5)}]
