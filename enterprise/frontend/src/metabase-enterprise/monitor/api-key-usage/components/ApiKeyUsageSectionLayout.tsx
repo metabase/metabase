@@ -201,9 +201,6 @@ export function ApiKeyUsageSectionLayout() {
                 page: 0,
               }),
           }}
-          // No tenant filter: tenants aren't a meaningful concept for API-key usage. No user filter
-          // either: the API key filter (below) is the primary way to scope this page, and "Created
-          // by" is just a column.
           extraFilter={
             <ApiKeyFilterSelect
               value={keyOutsideGroup ? null : api_key}
