@@ -58,8 +58,8 @@
   (testing "superusers may see every exploration — a deliberate product exemption, applied before
             any lens comparison, so even a superuser whose own computed lens mismatches the
             snapshot's (e.g. one who routed themselves to a destination db) still streams it"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)
-                                            query-perms/query->resolved-source-table-ids (constantly #{1})
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (constantly true)
+                                            query-perms/query->source-footprint (constantly {:table-ids #{1}})
                                             perms/data-access-token (constantly a-different-sandbox-token)]
       (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
         (binding [api/*is-superuser?* true]
@@ -72,7 +72,7 @@
   (testing "a snapshot with no token can't be compared against any viewer lens — and the write path
             never persists one, so it is a bug, logged at ERROR. Non-admins are denied; a superuser
             still streams it via the bypass"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)]
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (constantly true)]
       (let [sr {:id 1 :database_id 1 :data_access_token nil :dataset_query a-query}]
         (binding [api/*is-superuser?* true]
           (is (true? (cached-result/viewer-can-view-cached-result? sr))))
@@ -86,26 +86,26 @@
             resolves to tables (deleted card). Either throw denies the (non-admin) viewer — never a
             500 out of an authorization gate; superusers never reach the check (bypass)"
     (let [assert-superuser-only!
-          (fn []
+          (fn [reason]
             (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
               (binding [api/*is-superuser?* true]
                 (is (true? (cached-result/viewer-can-view-cached-result? sr))))
               (binding [api/*is-superuser?* false]
                 (is (false? (cached-result/viewer-can-view-cached-result? sr)))
-                (is (= {:status-code 403 :reason :incompatible-context :stored-result-id 1}
+                (is (= {:status-code 403 :reason reason :stored-result-id 1}
                        (denial! sr))))))]
       ;; both throw sites are exercised: each redef below shadows the working one installed outside.
-      (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)
-                                              query-perms/query->resolved-source-table-ids (constantly #{1})
+      (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (constantly true)
+                                              query-perms/query->source-footprint (constantly {:table-ids #{1}})
                                               perms/data-access-token (constantly a-sandbox-token)]
-        (testing "resolving the query's source tables throws (deleted source card)"
-          (dynamic-redefs/with-dynamic-fn-redefs [query-perms/query->resolved-source-table-ids
-                                                  (fn [_] (throw (ex-info "Card 7 does not exist." {})))]
-            (assert-superuser-only!)))
+        (testing "resolving the query's source footprint throws (deleted source card)"
+          (dynamic-redefs/with-dynamic-fn-redefs [query-perms/query->source-footprint
+                                                  (fn [& _] (throw (ex-info "Card 7 does not exist." {})))]
+            (assert-superuser-only! :no-data-perms)))
         (testing "computing the viewer's token throws (missing routing/impersonation attribute)"
           (dynamic-redefs/with-dynamic-fn-redefs [perms/data-access-token
                                                   (fn [_] (throw (ex-info "Required user attribute is missing" {})))]
-            (assert-superuser-only!)))))))
+            (assert-superuser-only! :incompatible-context)))))))
 
 (deftest data-perms-check-throwing-denies-non-admins-test
   (testing "the data-perms dimension must fail the same controlled way the lens dimension does. A
@@ -116,8 +116,8 @@
     (doseq [thrown [(NullPointerException. "boom")
                     (ex-info "malformed query" {})]]
       (testing (str "threw " (class thrown))
-        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (fn [_] (throw thrown))
-                                                query-perms/query->resolved-source-table-ids (constantly #{1})
+        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (fn [& _] (throw thrown))
+                                                query-perms/query->source-footprint (constantly {:table-ids #{1}})
                                                 perms/data-access-token (constantly a-sandbox-token)]
           (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
             (binding [api/*is-superuser?* true]
@@ -131,13 +131,13 @@
             message by a refactor: the caller and the i18n string both key off `:reason`"
     (binding [api/*is-superuser?* false]
       (testing "lacking data perms on the underlying query"
-        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly false)]
+        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (constantly false)]
           (is (= {:status-code 403 :reason :no-data-perms :stored-result-id 7}
                  (denial! {:id 7 :database_id 1 :data_access_token a-sandbox-token
                            :dataset_query a-query})))))
       (testing "holding the perms but under an incompatible lens"
-        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)
-                                                query-perms/query->resolved-source-table-ids (constantly #{1})
+        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (constantly true)
+                                                query-perms/query->source-footprint (constantly {:table-ids #{1}})
                                                 perms/data-access-token (constantly a-different-sandbox-token)]
           (is (= {:status-code 403 :reason :incompatible-context :stored-result-id 7}
                  (denial! {:id 7 :database_id 1 :data_access_token a-sandbox-token
@@ -147,8 +147,8 @@
   (testing "reason priority is part of the contract: a viewer who fails both checks is told they lack
             data perms rather than being handed the lens-mismatch message, which would imply the data
             is theirs to see under a different lens"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly false)
-                                            query-perms/query->resolved-source-table-ids (constantly #{1})
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (constantly false)
+                                            query-perms/query->source-footprint (constantly {:table-ids #{1}})
                                             perms/data-access-token (constantly a-different-sandbox-token)]
       (binding [api/*is-superuser?* false]
         (is (= :no-data-perms
@@ -158,8 +158,8 @@
 (deftest compatible-viewer-is-allowed-test
   (testing "control: perms held and lenses matching means the blob streams — the gate must not be
             trivially satisfiable by denying everything"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)
-                                            query-perms/query->resolved-source-table-ids (constantly #{1})
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-source-footprint? (constantly true)
+                                            query-perms/query->source-footprint (constantly {:table-ids #{1}})
                                             perms/data-access-token (constantly a-sandbox-token)]
       (binding [api/*is-superuser?* false]
         (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]

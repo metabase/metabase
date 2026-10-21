@@ -84,13 +84,13 @@
      (result-fn))))
 
 (defn- compute-data-access-token
-  "The creator's effective-data-access token for `dataset-query` — the sandbox/impersonation/routing
-  fingerprint the query is computed under, stored on the `StoredResult` and on the
-  `ExplorationQuery` itself, and compared against a viewer's token to gate reads. Must be called
-  inside the creator's `with-current-user` (+ routing-on) binding."
-  [dataset-query db-id]
+  "The creator's effective-data-access token for a query over Database `db-id` with `footprint` (its
+  [[query-perms/query->source-footprint]]) — the sandbox/impersonation/routing fingerprint the query is computed
+  under, stored on the `StoredResult` and on the `ExplorationQuery` itself, and compared against a viewer's token
+  to gate reads. Must be called inside the creator's `with-current-user` (+ routing-on) binding."
+  [db-id footprint]
   (perms/data-access-token {:database-id db-id
-                            :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)}))
+                            :table-ids   (:table-ids footprint)}))
 
 (defn- finalize-row!
   "If `row` carries a nil `:dataset_query` (planner deferred the MBQL build),
@@ -113,9 +113,13 @@
         (when (nil? dq)
           (throw (ex-info "Could not build dataset_query for row (discovery returned no values?)"
                           {:row-id (:id row) :variant variant})))
-        (let [token (compute-data-access-token dq (:database_id row))]
-          (explorations.db/update-query! (:id row) {:dataset_query dq :name nm :data_access_token token})
-          (assoc row :dataset_query dq :name nm :data_access_token token))))))
+        (let [footprint (query-perms/query->source-footprint dq)
+              stamp     {:dataset_query     dq
+                         :name              nm
+                         :data_access_token (compute-data-access-token (:database_id row) footprint)
+                         :source_footprint  footprint}]
+          (explorations.db/update-query! (:id row) stamp)
+          (merge row stamp))))))
 
 (defn- safe-chart-config
   "Best-effort `qp-result->chart-config`. Returns nil on failure (>2 cols,
@@ -300,7 +304,8 @@
                        (qp/userland-query-with-default-constraints
                         (:dataset_query row)
                         {:context :exploration})))
-        token        (compute-data-access-token (:dataset_query row) db-id)
+        footprint    (query-perms/query->source-footprint (:dataset_query row) (:source_footprint row))
+        token        (compute-data-access-token db-id footprint)
         chart-config (safe-chart-config row qp-result)
         stats        (safe-deep-stats row chart-config)]
     {:creator-id creator-id

@@ -276,7 +276,7 @@
                      (let [thread (thread-with-snapshots! (specs n))
                            calls  (atom 0)]
                        (dynamic-redefs/with-dynamic-fn-redefs
-                         [queries/viewer-can-view-cached-result? (fn [_] (swap! calls inc) true)]
+                         [queries/viewer-can-view-cached-result? (fn [& _] (swap! calls inc) true)]
                          (request/with-current-user (mt/user->id :rasta)
                            (derived-perms/thread-ids-with-visible-derived-data [thread])))
                        @calls))]

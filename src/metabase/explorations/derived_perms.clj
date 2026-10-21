@@ -38,7 +38,7 @@
   over one metric card, so their queries differ textually while requiring identical permissions.
 
   The verdict's halves project the query *differently*, so the key has to carry each of them or it is
-  not a partition. The lens comparison resolves the query first (`query->resolved-source-ids`
+  not a partition. The lens comparison resolves the query first (`query->source-footprint`
   preprocesses, expanding implicit joins and card chains); `can-run-query?` needs both the raw
   projection and the resolved one — the latter because `:card-ids` only exist after preprocessing and
   each one costs a read-permission check on that card's collection.
@@ -63,25 +63,26 @@
   `resolve-source-ids` is the resolving half, passed in so a batch can share one memo — resolution is
   a pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
   to collapse."
-  [resolve-source-ids {:keys [database_id dataset_query data_access_token]}]
+  [resolve-source-ids {:keys [database_id dataset_query data_access_token source_footprint]}]
   (let [source-ids (try
                      (some-> dataset_query query-perms/query->source-ids)
                      (catch Throwable _ ::unprojectable))]
-    [database_id data_access_token (resolve-source-ids dataset_query)
+    [database_id data_access_token
+     (or source_footprint (resolve-source-ids dataset_query))
      (cond
        (= ::unprojectable source-ids)                                  ::unprojectable
        (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids))) source-ids
        :else                                                           dataset_query)]))
 
 (defn- source-ids-resolver
-  "A memoized [[metabase.query-permissions.core/query->resolved-source-ids]] for one batch.
+  "A memoized [[metabase.query-permissions.core/query->source-footprint]] for one batch.
   Throws are absorbed into a marker rather than propagated: an unpreprocessable query (a deleted card
   in its source chain) is one the lens check denies anyway, and it must not take the batch down with
   it."
   []
   (memoize (fn [query]
              (try
-               (some-> query query-perms/query->resolved-source-ids)
+               (some-> query query-perms/query->source-footprint)
                (catch Throwable _ ::unresolvable)))))
 
 (defn- finalized-queries
@@ -120,7 +121,8 @@
                         :exploration_thread_id thread-id
                         :database_id           (:database_id card)
                         :dataset_query         (:dataset_query card)
-                        :data_access_token     (:data_access_token thread)}
+                        :data_access_token     (:data_access_token thread)
+                        :source_footprint      (:source_footprint thread)}
                  ;; The Card is what the stamp was computed over, and it does not outlive a delete:
                  ;; both `exploration_query.card_id` and `exploration_page.card_id` cascade, so
                  ;; deleting it strips every other adjudicable row while the thread's name survives.

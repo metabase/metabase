@@ -1360,6 +1360,38 @@
     (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
 
+(deftest exploration-explore-further-stamps-union-footprint-test
+  (testing "a block with two metric cards stamps its drill thread with every table either card reads, the same tables
+            its token is computed over"
+    (mt/with-temp [:model/User u {:email "explore-further-union@example.com"}
+                   :model/Card venues-metric (venues-metric-card (:id u))
+                   :model/Card products-metric {:type          :metric
+                                                :creator_id    (:id u)
+                                                :dataset_query (lib/->legacy-MBQL
+                                                                (let [mp (mt/metadata-provider)]
+                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                                      (lib/aggregate (lib/count)))))}]
+      (let [body     {:name       "union drill"
+                      :metrics    [{:card_id (:id venues-metric) :dimension_mappings (venues-dimension-mappings)}
+                                   {:card_id (:id products-metric)
+                                    :dimension_mappings [{:dimension_id (duid "price")
+                                                          :table_id     (mt/id :products)
+                                                          :target       ["field" (mt/id :products :price) nil]}]}]
+                      :dimensions [{:dimension_id (duid "price") :display_name "Price"}]}
+            created  (create-exploration! u body)
+            page-id  (some :id (filter #(str/includes? (:name %) "Price")
+                                       (-> created :threads first :blocks first :pages)))
+            _        (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" (:id created))
+                                           {:page_id         page-id
+                                            :explore_filters [{:operator      "="
+                                                               :field_ref     ["field" (mt/id :venues :price) nil]
+                                                               :value         2
+                                                               :display_value "2"}]})
+            new      (t2/select-one :model/ExplorationThread :exploration_id (:id created) :position 1)]
+        (is (= {:table-ids       #{(mt/id :venues) (mt/id :products)}
+                :table-query-ids #{(mt/id :venues) (mt/id :products)}}
+               (:source_footprint new)))))))
+
 (deftest exploration-explore-further-creates-filtered-thread-test
   (testing "POST /:id/explore-further copies the clicked block into a new filtered thread"
     (mt/with-temp [:model/User u {:email "explore-further@example.com"}
@@ -1393,6 +1425,11 @@
             "explore-further does not create a second Summary document")
         (is (= (:id orig-thread) (:id orig)))
         (is (= 1 (:position new)))
+        (testing "the drill thread's lens stamp carries the source footprint of the metric it drills, which never
+                  reaches the client"
+          (is (= {:table-ids #{(mt/id :venues)} :table-query-ids #{(mt/id :venues)}}
+                 (t2/select-one-fn :source_footprint :model/ExplorationThread :id (:id new))))
+          (is (not-any? #(contains? % :source_footprint) (cons new new-queries))))
         (testing "the drill thread records the page it was drilled from (sidebar nesting)"
           (is (= page-id (:source_page_id new)))
           (is (nil? (:source_page_id orig))))

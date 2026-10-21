@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-21T12:34:00
+      author: johnswanson
+      comment: Add exploration_query.source_footprint
+      changes:
+        - addColumn:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: source_footprint
+                  type: ${text.type}
+                  remarks: JSON-encoded tables and cards the query reads, resolved when its data_access_token was stamped. NULL means resolve it from dataset_query.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: exploration_query
+            columnName: source_footprint
+
+  - changeSet:
+      id: v65.2026-10-21T12:34:01
+      author: johnswanson
+      comment: Add exploration_thread.source_footprint
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: source_footprint
+                  type: ${text.type}
+                  remarks: JSON-encoded tables and cards the thread's metric card reads, resolved when its data_access_token was stamped. NULL means resolve it from the card.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: exploration_thread
+            columnName: source_footprint
