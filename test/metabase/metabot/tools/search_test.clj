@@ -40,16 +40,8 @@
                                    [#'search/nlq-search-tool {}]]
             queries [{}
                      {:keyword_queries [] :semantic_queries []}
-                     {:keyword_queries ["" "  "] :semantic_queries ["\n"]}]]
-      (is (= missing-query-result
-             (invoke-search [tool-var] (merge extra-args queries)))))))
-
-(deftest search-rejects-mixed-blank-queries-test
-  (mt/with-test-user :crowberto
-    (doseq [[tool-var extra-args] [[#'search/search-tool {}]
-                                   [#'search/sql-search-tool {:database_id (mt/id)}]
-                                   [#'search/nlq-search-tool {}]]
-            queries [{:keyword_queries ["" "orders"] :semantic_queries []}
+                     {:keyword_queries ["" "  "] :semantic_queries ["\n"]}
+                     {:keyword_queries ["" "orders"] :semantic_queries []}
                      {:keyword_queries ["orders" "  "]}
                      {:keyword_queries ["orders"] :semantic_queries [""]}]]
       (is (= missing-query-result
