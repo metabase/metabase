@@ -7,11 +7,11 @@ summary: Research automatically creates and ranks charts using your metrics and 
 
 ![A Research showing generated charts in the sidebar and a selected bar chart](./images/research-results.png)
 
-Use Research to ask broad questions about your data without building charts one at a time. Research is available from the [AI exploration](./metabot.md) page. Describe what you want to investigate, and Metabase assembles the relevant chart breakdowns, scores them for interestingness, and presents them in a single grouped view. Metabase saves each Research as its own entity, like a question or dashboard, so you can move it to a collection and share it.
+Use Research to ask broad questions about your data without building charts one at a time. Research is available from the [AI exploration](./metabot.md) page. Describe what you want to investigate, and Metabase creates a bunch of charts, scores them for interestingness, and presents them in a single grouped view. Metabase saves each Research as its own entity, like a question or dashboard, so you can move the Research to a collection and share it.
+
+Research requires an [AI provider](./settings.md). It also requires at least one [metric](../data-modeling/semantic-layer/metrics.md), because Research builds its charts by breaking out your metrics by their dimensions. More metrics give Research more to work with. If an admin turns on [**Disable all AI features**](./settings.md#disable-all-ai-features), Research isn't available.
 
 Research works best for open-ended questions, like "what drove revenue last quarter?" If you already know the chart you want, create a [question](../questions/query-builder/editor.md) instead. To ask one question at a time, use [AI exploration](./metabot.md).
-
-Research requires an [AI provider](./settings.md) and at least one [metric](../data-modeling/semantic-layer/metrics.md). If an admin turns on [**Disable all AI features**](./settings.md#disable-all-ai-features), Research isn't available.
 
 ## Create and run a Research plan
 
@@ -47,11 +47,9 @@ Metabase generates charts for each metric in your plan, broken out by its dimens
 
 To view a chart, click it in the sidebar, or use the left and right arrows to move between charts.
 
-### Find charts
-
 In the sidebar, the **All** tab lists every chart. The star tab lists charts you've starred, and the comment tab lists charts with comments.
 
-To sort the list, click the filter icon and choose **Interestingness** or **Alphabetical**. Interestingness is the AI's ranking, or a deterministic score if you turned off AI ranking. To reveal hidden charts, choose **Show hidden items**.
+To sort the list, click the filter icon and choose **Interestingness** or **Alphabetical**. Interestingness is the AI's ranking, or a deterministic score if you turned off AI ranking.
 
 ### Mark up charts
 
@@ -59,20 +57,18 @@ Use the toolbar under the selected chart, or the keyboard shortcut, to:
 
 - **Star** (`S`) a chart to find it later in the star tab.
 - **Comment** (`C`) on a chart.
-- **Hide** (`H`) a chart you don't need, from the **...** menu.
+- **Hide** (`H`) a chart you don't need, from the **...** menu. To bring it back, choose **Show hidden items** from the sort menu, select the chart, and click **Show** from the **...** menu. You can't delete charts from a Research.
 - **Copy link** to a chart, from the **...** menu.
 
 ### Add charts to the Summary
 
-The **Summary** is a document at the top of the sidebar where you collect the most important charts. It starts empty, and Metabase doesn't write it for you. To add the selected chart, click **Add to Summary** in the toolbar.
-
-The chart keeps the timeline you have selected, and the Research and the Summary share comments.
+You can add notes and charts to the **Summary** at the top of the sidebar. Click a chart and click **Add to Summary** in the toolbar. The chart added to the Summary keeps any selected timelines and comments. Click **Save** to save your changes to the Summary.
 
 ### Explore a data point
 
 Select a data point on a chart to open its menu:
 
-- Click **Explore further** to investigate the value. Metabase creates a chart filtered to that value and adds it to your Research. **Explore further** isn't available on the **Other** bar of a top-values chart, because it groups many values.
+- Click **Explore further** to investigate the value. Metabase creates a chart filtered to that value and adds it to your Research.
 - Click **Add comment** to comment on the data point.
 
 ## Save and share your Research
@@ -85,6 +81,8 @@ Metabase saves each Research to your personal collection. To share a Research, m
 
 You can also pin, bookmark, or move a Research to the trash from the same menu.
 
-Data permissions apply to the cached results. A viewer without access to the underlying data source can't see those results, and a viewer with row-level security sees only the rows they're allowed to.
+### Permissions for Research results
 
-You can't use metrics from a database with [database routing](../permissions/database-routing.md) enabled, because Research caches results and routing can't resolve them at read time.
+Research stores the results of its charts, so a viewer sees stored results rather than running the queries themselves. Metabase still applies data permissions when someone views a Research. A viewer without access to the underlying data source can't see those results, and a viewer with row-level security sees only the rows they're allowed to.
+
+You can't use metrics from a database with [database routing](../permissions/database-routing.md) enabled, because Research stores results and routing can't resolve them at read time.
