@@ -28,6 +28,6 @@ const getProps = (
   timeline: createMockTimeline(),
   onSubmit: jest.fn(),
   onArchive: jest.fn(),
-  onClose: jest.fn(),
+  onCancel: jest.fn(),
   ...opts,
 });

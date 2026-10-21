@@ -2,8 +2,10 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken, useGetTimelineEventQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/ui";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import type {
   CollectionId,
   TimelineEvent,
@@ -20,12 +22,15 @@ export type TimelineEventModalState =
   | { type: "edit"; eventId: TimelineEventId }
   | { type: "move"; eventId: TimelineEventId };
 
-const getModalLabel = (type: TimelineEventModalState["type"]) =>
-  ({
-    new: t`New event`,
-    edit: t`Edit event`,
-    move: t`Move event`,
-  })[type];
+const getTitle = (
+  type: TimelineEventModalState["type"],
+  event: TimelineEvent | undefined,
+) =>
+  match(type)
+    .with("new", () => t`New event`)
+    .with("edit", () => t`Edit event`)
+    .with("move", () => (event ? t`Move ${event.name}` : undefined))
+    .exhaustive();
 
 export function TimelineEventModals({
   modal,
@@ -40,9 +45,11 @@ export function TimelineEventModals({
   onEventCreated?: (event: TimelineEvent) => void;
   onClose: () => void;
 }) {
-  // The edit/move containers render nothing until the event arrives, so this
-  // query's error is shown in their place.
-  const { error } = useGetTimelineEventQuery(
+  const {
+    data: event,
+    isLoading,
+    error,
+  } = useGetTimelineEventQuery(
     modal && modal.type !== "new" ? modal.eventId : skipToken,
   );
 
@@ -50,19 +57,43 @@ export function TimelineEventModals({
     return null;
   }
 
-  if (error) {
-    return (
-      <Modal
-        opened
-        size="lg"
-        title={getModalLabel(modal.type)}
-        onClose={onClose}
-      >
-        <LoadingAndErrorWrapper loading={false} error={error} />
-      </Modal>
-    );
-  }
+  const isLoadingEvent = modal.type !== "new" && (isLoading || !!error);
 
+  return (
+    <TimelineModal
+      title={getTitle(modal.type, event)}
+      density={modal.type === "move" ? undefined : "relaxed"}
+      tall={isLoadingEvent || modal.type === "move"}
+      onClose={onClose}
+    >
+      {isLoadingEvent ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <TimelineEventModalContent
+          modal={modal}
+          collectionId={collectionId}
+          source={source}
+          onEventCreated={onEventCreated}
+          onClose={onClose}
+        />
+      )}
+    </TimelineModal>
+  );
+}
+
+function TimelineEventModalContent({
+  modal,
+  collectionId,
+  source,
+  onEventCreated,
+  onClose,
+}: {
+  modal: TimelineEventModalState;
+  collectionId: CollectionId | null | undefined;
+  source?: TimelineEventSource;
+  onEventCreated?: (event: TimelineEvent) => void;
+  onClose: () => void;
+}) {
   return match(modal)
     .with({ type: "new" }, () => (
       <NewEventModal

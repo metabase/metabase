@@ -12,10 +12,12 @@ import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
-
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function MoveTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
@@ -65,11 +67,9 @@ function MoveTimelineModalContainer({ params, onClose }: ModalComponentProps) {
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
+      <TimelineModal tall onClose={onClose} animated={false}>
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      </TimelineModal>
     );
   }
 

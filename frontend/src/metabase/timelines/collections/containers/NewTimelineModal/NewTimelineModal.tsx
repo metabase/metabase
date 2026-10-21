@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useCreateTimelineMutation,
@@ -5,10 +7,13 @@ import {
 } from "metabase/api";
 import { useNavigate } from "metabase/router";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import type { ModalParams } from "../../types";
 
 interface NewTimelineModalContainerProps {
@@ -39,23 +44,24 @@ function NewTimelineModalContainer({
     navigate(Urls.timelineInCollection({ ...timeline, collection }));
   };
 
-  if (isLoading || error || !collection) {
-    return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
-    );
-  }
-
   return (
-    <NewTimelineModal
-      collection={collection}
-      onSubmit={onSubmit}
+    <TimelineModal
+      title={t`New event timeline`}
       onClose={onClose}
       animated={false}
-    />
+      density="relaxed"
+      tall={isLoading || !!error || !collection}
+    >
+      {isLoading || error || !collection ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <NewTimelineModal
+          collection={collection}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

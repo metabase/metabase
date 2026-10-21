@@ -6,16 +6,11 @@ import {
   getDefaultTimelineName,
   getSortedTimelines,
 } from "metabase/common/utils/timelines";
-import S from "metabase/timelines/common/components/TimelineModal.module.css";
-import { TimelineModalHeader } from "metabase/timelines/common/components/TimelineModalHeader";
 import {
-  ActionIcon,
-  Flex,
-  Icon,
-  Menu,
-  Modal,
-  NO_ANIMATION_MODAL_PROPS,
-} from "metabase/ui";
+  TimelineModal,
+  TimelineModalScrollArea,
+} from "metabase/timelines/common/components/TimelineModal";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
@@ -54,55 +49,40 @@ const TimelineListModal = ({
   }, [collection, onGoBack]);
 
   return (
-    <Modal.Root
-      opened
-      size="lg"
-      classNames={{ content: S.content, body: S.body }}
+    <TimelineModal
+      tall
+      animated={false}
       onClose={onClose}
-      {...NO_ANIMATION_MODAL_PROPS}
+      title={title}
+      collectionName={hasTimelines ? collection.name : undefined}
+      actions={
+        hasMenuItems && (
+          <Menu position="bottom-end" shadow="sm">
+            <Menu.Target>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                aria-label={t`Timelines menu`}
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
+        )
+      }
+      onGoBack={isArchive ? handleGoBack : undefined}
     >
-      <Modal.Overlay />
-      <Modal.Content>
-        <TimelineModalHeader
-          title={title}
-          collectionName={hasTimelines ? collection.name : undefined}
-          actions={
-            hasMenuItems && (
-              <Menu position="bottom-end" shadow="sm">
-                <Menu.Target>
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    aria-label={t`Timelines menu`}
-                  >
-                    <Icon name="ellipsis" />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-              </Menu>
-            )
-          }
-          onGoBack={isArchive ? handleGoBack : undefined}
-        />
-        <Modal.Body>
-          <Flex
-            className={S.scrollArea}
-            justify={hasTimelines ? undefined : "center"}
-          >
-            {hasTimelines ? (
-              <TimelineList
-                timelines={sortedTimelines}
-                onUnarchive={onUnarchive}
-              />
-            ) : isArchive ? (
-              <SearchEmptyState isTimeline={isArchive} />
-            ) : (
-              <TimelineEmptyState collection={collection} />
-            )}
-          </Flex>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+      <TimelineModalScrollArea justify={hasTimelines ? undefined : "center"}>
+        {hasTimelines ? (
+          <TimelineList timelines={sortedTimelines} onUnarchive={onUnarchive} />
+        ) : isArchive ? (
+          <SearchEmptyState isTimeline={isArchive} />
+        ) : (
+          <TimelineEmptyState collection={collection} />
+        )}
+      </TimelineModalScrollArea>
+    </TimelineModal>
   );
 };
 

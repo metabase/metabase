@@ -13,7 +13,12 @@ import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
 type ContainerProps = Omit<
   MoveEventModalProps,
-  "event" | "timelines" | "collection" | "onSubmit" | "onSubmitSuccess"
+  | "event"
+  | "timelines"
+  | "collection"
+  | "onSubmit"
+  | "onSubmitSuccess"
+  | "onCancel"
 > & {
   eventId: number;
   collectionId?: CollectionId | null;
@@ -23,7 +28,7 @@ type ContainerProps = Omit<
 function MoveEventModalContainer({
   eventId,
   collectionId,
-  ...props
+  onClose,
 }: ContainerProps) {
   const setTimeline = useSetTimeline();
   const { data: event } = useGetTimelineEventQuery(eventId);
@@ -43,12 +48,12 @@ function MoveEventModalContainer({
 
   return (
     <MoveEventModal
-      {...props}
       event={event}
       timelines={timelines}
       collection={collection}
       onSubmit={handleSubmit}
-      onSubmitSuccess={props.onClose}
+      onSubmitSuccess={onClose}
+      onCancel={onClose}
     />
   );
 }

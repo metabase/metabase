@@ -1,7 +1,10 @@
 import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import TimelineIndexModal from "../../components/TimelineIndexModal";
 import type { ModalParams } from "../../types";
 
@@ -25,11 +28,9 @@ function TimelineIndexModalContainer({
 
   if (isLoading || error) {
     return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
+      <TimelineModal tall onClose={onClose} animated={false}>
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      </TimelineModal>
     );
   }
 
