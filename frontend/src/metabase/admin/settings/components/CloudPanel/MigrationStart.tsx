@@ -28,29 +28,22 @@ export const MigrationStart = ({
         onClose={closeModal}
         size="36rem"
         data-testid="new-cloud-migration-confirmation"
-        styles={{
-          body: {
-            padding: 0,
-          },
-        }}
+        layout="centered"
+        illustration={<Icon name="cloud_filled" size="3rem" c="core-brand" />}
+        title={t`Get started with Metabase Cloud`}
       >
-        <Box mt="lg" pb="4rem" px="6rem" ta="center">
-          <Icon name="cloud_filled" size="3rem" c="core-brand" />
-          <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
-
-          <Text mt="1.5rem">
-            {t`Just a heads up: your Metabase will be read-only for up to 30
+        <Text c="text-secondary">
+          {t`Just a heads up: your Metabase will be read-only for up to 30
               minutes while we prep it for migration.`}{" "}
-            <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
-          </Text>
-
+          <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
+        </Text>
+        <Modal.Footer>
           <Button
             variant="filled"
             disabled={isStarting}
             onClick={startNewMigration}
-            mt="2rem"
           >{t`Migrate now`}</Button>
-        </Box>
+        </Modal.Footer>
       </Modal>
     </>
   );

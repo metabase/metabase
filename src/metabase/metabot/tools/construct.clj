@@ -34,7 +34,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.quoting :as quoting]))
+   [metabase.util.quoting :as quoting])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -653,19 +655,30 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
-(defn- as-agent-input-error
-  "Wrap `e` as an agent-input error.
+(defn database-error?
+  "Returns true for database failures that must not be relayed as input errors."
+  [e]
+  (let [{:keys [status-code agent-error? error]} (ex-data e)
+        causes (u/full-exception-chain e)]
+    (boolean
+     (and (not (and status-code (<= 400 status-code 499)))
+          (or (some #(instance? SQLException %) causes)
+              (and (not (and (nil? status-code)
+                             (or agent-error? (tools/pipeline-error-code error))))
+                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
 
-  Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
-  HTTP callers additionally need a status code; default representation/repair failures to
-  400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
-  Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+(defn- as-agent-input-error
+  "Return database failures unchanged; wrap other exceptions as agent-input errors.
+
+  The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
+  callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
-  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-        data   (cond-> base
-                 (nil? (:status-code base)) (assoc :status-code 400))]
-    (ex-info (ex-message e) data e)))
+  (if (database-error? e)
+    e
+    (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+          data   (cond-> base
+                   (nil? (:status-code base)) (assoc :status-code 400))]
+      (ex-info (ex-message e) data e))))
 
 (defn- not-runnable-problem
   "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add
@@ -773,10 +786,7 @@
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
         checked     (check-source-table-query-permissions! mp parsed)]
-    ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
-    ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
-    ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
-    ;; them reach the tool wrapper with the flag set.
+    ;; Relay query-input errors while preserving database and permission failures.
     (try
       (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the
             ;; clause left alone - and `resolve-query` below resolves the query for real. A refusal
@@ -821,7 +831,7 @@
   `recovery-hint` is absent or has nothing to say about this error."
   [e recovery-hint]
   (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
-    (ex-info (str (ex-message e) " " hint) (ex-data e) e)
+    (ex-info (str (ex-message e) "\n" hint) (ex-data e) e)
     e))
 
 (def ^:private preprocessing-message-limit 300)
@@ -855,7 +865,7 @@
                  (not-any? #(or (= 403 (:status-code (ex-data %)))
                                 (instance? java.sql.SQLException %)
                                 (contains? (ex-data %) :toucan2/context-trace)) chain))
-          (throw (ex-info (str "The query builds, but Metabase rejects it when preparing it to run: "
+          (throw (ex-info (str "Metabase could not prepare this query to run: "
                                message)
                           {:agent-error? true
                            :error        :query-preprocessing-failed
@@ -871,7 +881,7 @@
   string (or nil) telling the caller's agent how to recover; the sentence is appended to the
   agent error's message. Omitting it leaves agent errors with the pipeline's bare statement.
 
-  `:preprocess-check?` checks the built query before returning it. Recognized query rejections become
+  `:preprocess-check?` checks the built query before returning it. Known query errors become
   agent errors; other preprocessing failures are logged and ignored."
   ([external-query]
    (execute-representations-query external-query nil))
@@ -976,14 +986,7 @@
                              :chart-type
                              chart-type->keyword)
                          :table)
-          ;; The one place a representations-pipeline error is allowed to become something the
-          ;; model reads. A `:error` code the pipeline declares becomes that recoverable error with
-          ;; its recovery steps; anything else — a lib, toucan2 or JDBC failure that the pipeline's
-          ;; `as-agent-input-error` stamped `:agent-error?` onto without authoring a sentence for
-          ;; it — stays unrecoverable and ends the turn.
-          ;;
-          ;; `execute-representations-query` either throws or returns a structured output carrying
-          ;; both `:query-id` and `:query`, so there is nothing to branch on after it.
+          ;; Declared pipeline errors and refusals are recoverable; anything else ends the turn.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
           ;; A query built only to be read needs run_query, so without it the chart is the one way

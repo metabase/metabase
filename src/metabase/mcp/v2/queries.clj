@@ -34,7 +34,7 @@
   (if-let [humanized (:humanized (ex-data e))]
     (let [detail (message/msg [(str "Invalid at %s. Fix the named paths, or call "
                                     "\"learn\" with \"query-dialect\" for the clause shapes.")]
-                              (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))]
+                              (common/ellipsize (common/mu-humanize-detail humanized) max-schema-detail-length))]
       (common/message-ex-info (if-let [text (common/exception-message e)]
                                 (message/msg ["%s %s"] text detail)
                                 detail)

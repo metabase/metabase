@@ -93,7 +93,7 @@
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM orders WHERE total > 100" result))
         (is (re-find #"postgres" result))))
-    (testing "formats adhoc native SQL query with error, quoting the database's error on one line"
+    (testing "quotes a database error on one line when formatting an ad hoc SQL query"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
                                         :query (lib/native-query mp "SELECT * FROM invalid")

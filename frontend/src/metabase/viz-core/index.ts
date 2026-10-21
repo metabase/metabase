@@ -27,7 +27,10 @@ export {
   TIMELINE_BAND_HEIGHT,
   TIMELINE_EVENTS_BAND,
 } from "./echarts/cartesian/constants/style";
-export { foldRowChartModel } from "./echarts/cartesian/model/row-fold";
+export {
+  ROW_CHART_MIN_BAR_HEIGHT,
+  foldRowChartModel,
+} from "./echarts/cartesian/model/row-fold";
 export { getChartLayout } from "./echarts/cartesian/layout";
 export type {
   ChartBoundsCoords,

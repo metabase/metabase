@@ -1,6 +1,7 @@
 (ns metabase.metabot.self.adapter-test
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -23,9 +24,12 @@
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
+   [metabase.metabot.test-util :as mut]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (java.io ByteArrayInputStream Closeable InputStream IOException)))
 
 (set! *warn-on-reflection* true)
 
@@ -379,3 +383,256 @@
       (is (= ["From name"]
              (names zai/list-models
                     {:data [{:id "glm-5.2" :name "From name" :display_name "From display_name"}]}))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Upstream connection on close
+;;;
+;;; A close of a clj-http `:as :stream` body reads the rest of a chunked body before it returns, so the
+;;; provider continues to generate: https://github.com/dakrone/clj-http/issues/627. These tests check that a
+;;; stream from [[adapter/stream!]] drops the connection when its body closes.
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- timed-reduce
+  "Call `thunk`. Return its `:result`, the exception it threw as `:thrown`, and the `:elapsed-ms`."
+  [thunk]
+  (let [start           (System/nanoTime)
+        [result thrown] (try
+                          [(thunk) nil]
+                          (catch Throwable e
+                            [nil e]))]
+    {:result     result
+     :thrown     thrown
+     :elapsed-ms (quot (- (System/nanoTime) start) 1000000)}))
+
+(defn- with-chunked-server!
+  "Call `(f srv)` with a fresh [[mut/start-chunked-sse-server!]] made from `opts`, with localhost allowed. Stop the
+  server after."
+  [opts f]
+  (let [srv (mut/start-chunked-sse-server! opts)]
+    (try
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (f srv))
+      (finally
+        ((:stop! srv))))))
+
+(defn- server-request-opts
+  [srv]
+  {:model       "fake-model"
+   :input       [{:role :user :content "hi"}]
+   :credentials {:api-key "sk-or-test" :base-url (:url srv)}})
+
+(defn- openrouter-stream
+  [srv]
+  (openrouter/openrouter-raw (server-request-opts srv)))
+
+(defn- take-events
+  "A reducing fn that collects events, and stops after `n`."
+  [n]
+  (fn [acc event]
+    (let [acc (conj acc event)]
+      (if (= n (count acc))
+        (reduced acc)
+        acc))))
+
+(defn- disconnected-count
+  "The events the server sent before it saw the disconnect, or nil if it saw none within 2 s."
+  [srv]
+  (deref (:disconnected srv) 2000 nil))
+
+(defn- dropped-early?
+  "True when the server saw the disconnect after fewer than `n` events."
+  [srv n]
+  (< (or (disconnected-count srv) ##Inf) n))
+
+(defn- cause-chain
+  [e]
+  (take-while some? (iterate ex-cause e)))
+
+(deftest stream-close-drops-upstream-connection-test
+  (testing "a reduction that stops early drops the upstream connection, and does not read the rest of the body"
+    (with-chunked-server! {:total 2000 :interval-ms 10}
+      (fn [srv]
+        (let [{:keys [result thrown elapsed-ms]} (timed-reduce #(reduce (take-events 3) [] (openrouter-stream srv)))]
+          (is (nil? thrown))
+          (is (= 3 (count result)))
+          (is (< elapsed-ms 2000))
+          (is (dropped-early? srv 100)))))))
+
+(deftest stream-done-before-eof-drops-upstream-connection-test
+  (testing "a stream that ends at `[DONE]` drops the connection, also when the server sends more bytes after it"
+    (with-chunked-server! {:total 3 :after :keep-alive}
+      (fn [srv]
+        (let [{:keys [result thrown elapsed-ms]} (timed-reduce #(reduce conj [] (openrouter-stream srv)))]
+          (is (nil? thrown))
+          (is (= 3 (count result)))
+          (is (< elapsed-ms 2000))
+          (is (some? (disconnected-count srv))))))))
+
+(deftest stream-gzip-close-drops-upstream-connection-test
+  (testing "a gzip body, which clj-http decompresses, also drops the connection when it closes"
+    (with-chunked-server! {:total 2000 :interval-ms 10 :gzip? true}
+      (fn [srv]
+        (let [{:keys [result thrown elapsed-ms]} (timed-reduce #(reduce (take-events 3) [] (openrouter-stream srv)))]
+          (is (nil? thrown))
+          (is (= 3 (count result)))
+          (is (< elapsed-ms 2000))
+          (is (dropped-early? srv 100)))))))
+
+(defn- read-one-buffer
+  "A `:read-stream` like Bedrock's `runtime-events`: its reduction opens `body` with `with-open`, reads one buffer
+  and returns `init`."
+  [^InputStream body]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ _rf init]
+      (with-open [in body]
+        (.read in (byte-array 8192))
+        init))))
+
+(deftest stream-custom-read-stream-drops-upstream-connection-test
+  (testing "a `:read-stream` that is not SSE, and closes the body itself, also drops the connection"
+    (with-chunked-server! {:total 2000 :interval-ms 10}
+      (fn [srv]
+        (let [{:keys [thrown elapsed-ms]} (timed-reduce
+                                           #(reduce conj []
+                                                    (adapter/stream! @#'openrouter/provider
+                                                                     (server-request-opts srv)
+                                                                     {:path        "/v1/chat/completions"
+                                                                      :body        {}
+                                                                      :read-stream read-one-buffer})))]
+          (is (nil? thrown))
+          (is (< elapsed-ms 2000))
+          (is (dropped-early? srv 100)))))))
+
+(defn- recording-body
+  "An `InputStream` over `text` that adds `:body` to `log` when it closes, and then throws `close-ex` if given."
+  ^InputStream [log ^String text close-ex]
+  (proxy [ByteArrayInputStream] [(.getBytes text "UTF-8")]
+    (close []
+      (swap! log conj :body)
+      (when close-ex
+        (throw close-ex)))))
+
+(defn- recording-client
+  "A `Closeable` that adds `:client` to `log` when it closes."
+  [log]
+  (reify Closeable
+    (close [_]
+      (swap! log conj :client))))
+
+(def ^:private stub-sse
+  "data: {\"n\":1}\n\ndata: {\"n\":2}\n\ndata: [DONE]\n\n")
+
+(def ^:private stub-request-opts
+  {:model       "fake-model"
+   :input       [{:role :user :content "hi"}]
+   :credentials {:api-key "sk-or-test" :base-url "https://openrouter.ai/api"}})
+
+(defn- stub-stream!
+  "Reduce [[adapter/stream!]] to the end, with `http/request` stubbed to return `response`. `stream-opts` merge
+  into the minimal stream opts."
+  [response stream-opts]
+  (with-redefs [http/request (fn [_] (assoc response :status 200))]
+    (timed-reduce #(reduce conj []
+                           (adapter/stream! @#'openrouter/provider
+                                            stub-request-opts
+                                            (merge {:path "/v1/chat/completions" :body {}} stream-opts))))))
+
+(defn- recorded-close-stream!
+  "[[stub-stream!]] over a recording body that throws `close-ex` on close, with a recording client. Adds the
+  close log to the result as `:closed`."
+  [close-ex stream-opts]
+  (let [log (atom [])]
+    (assoc (stub-stream! {:body        (recording-body log stub-sse close-ex)
+                          :http-client (recording-client log)}
+                         stream-opts)
+           :closed @log)))
+
+(deftest stream-close-order-test
+  (testing "the client closes before the body, so the body close does not read the rest of the stream"
+    (let [{:keys [result thrown closed]} (recorded-close-stream! nil nil)]
+      (is (nil? thrown))
+      (is (= [{:n 1} {:n 2}] result))
+      (is (= [:client :body] closed)))))
+
+(deftest stream-close-ignores-released-connection-error-test
+  (testing "the error that the body close throws after the client closes is ignored"
+    (testing "IllegalStateException"
+      (let [{:keys [result thrown]} (recorded-close-stream!
+                                     (IllegalStateException. "Connection not obtained from this manager")
+                                     nil)]
+        (is (nil? thrown))
+        (is (= [{:n 1} {:n 2}] result))))
+    (testing "IOException"
+      (let [{:keys [result thrown]} (recorded-close-stream! (IOException. "Socket closed") nil)]
+        (is (nil? thrown))
+        (is (= [{:n 1} {:n 2}] result))))))
+
+(deftest stream-close-keeps-other-close-errors-test
+  (testing "any other error from the body close reaches the caller as a provider error"
+    (let [boom             (RuntimeException. "boom")
+          {:keys [thrown]} (recorded-close-stream! boom nil)]
+      (is (= :provider-request-failed (:error-code (ex-data thrown))))
+      (is (identical? boom (ex-cause thrown))))))
+
+(deftest stream-rf-exception-survives-close-test
+  (testing "an exception from `rf` reaches the caller; the close error does not replace it"
+    (with-chunked-server! {:total 300 :interval-ms 10}
+      (fn [srv]
+        (let [rf                          (fn [acc event]
+                                            (when (= 1 (count acc))
+                                              (throw (ex-info "boom" {::boom true})))
+                                            (conj acc event))
+              {:keys [thrown elapsed-ms]} (timed-reduce #(reduce rf [] (openrouter-stream srv)))
+              chain                       (cause-chain thrown)]
+          (is (some (comp ::boom ex-data) chain))
+          (is (not-any? #(instance? IllegalStateException %) chain))
+          (is (< elapsed-ms 2000))
+          (is (dropped-early? srv 100)))))))
+
+(deftest stream-normal-finish-raises-no-error-test
+  (testing "a stream that reads to its end gives every event, no exception and no warning"
+    (doseq [after [:done :eof]]
+      (testing after
+        (with-chunked-server! {:total 5 :after after}
+          (fn [srv]
+            (mt/with-log-messages-for-level [messages [metabase.metabot.self :warn]]
+              (let [{:keys [result thrown]} (timed-reduce #(reduce conj [] (openrouter-stream srv)))]
+                (is (nil? thrown))
+                (is (= 5 (count result)))
+                (is (empty? (messages)))))))))))
+
+(deftest stream-close-error-logged-at-debug-test
+  (testing "a stream that ends at `[DONE]` logs the ignored body-close error at debug level"
+    (with-chunked-server! {:total 5 :after :done}
+      (fn [srv]
+        (mt/with-log-messages-for-level [messages [metabase.metabot.self.core :debug]]
+          (let [{:keys [thrown]} (timed-reduce #(reduce conj [] (openrouter-stream srv)))]
+            (is (nil? thrown))
+            (is (=? [{:level   :debug
+                      :message "Ignored the error from the body close after the client close"}]
+                    (messages)))))))))
+
+(deftest stream-keeps-shared-client-test
+  (testing "a client that can serve other requests stays open; only the body closes"
+    (let [cm (conn/make-reusable-conn-manager {})]
+      (try
+        (testing "a bound connection manager"
+          (binding [conn/*connection-manager* cm]
+            (is (= [:body] (:closed (recorded-close-stream! nil nil))))))
+        (testing "a connection manager in the request options"
+          (is (= [:body] (:closed (recorded-close-stream! nil {:request-options {:connection-manager cm}})))))
+        (testing "an http client in the request options"
+          (is (= [:body] (:closed (recorded-close-stream! nil {:request-options {:http-client (recording-client (atom []))}})))))
+        (finally
+          (conn/shutdown-manager cm))))))
+
+(deftest stream-passes-through-stub-bodies-test
+  (testing "a response the helper cannot abort reaches `read-stream` as the identical body"
+    (doseq [[label response] [["a map body"                    {:body {:a 1}}]
+                              ["a stream with no client"       {:body (ByteArrayInputStream. (byte-array 0))}]
+                              ["a client that is not Closeable" {:body        (ByteArrayInputStream. (byte-array 0))
+                                                                 :http-client (Object.)}]]]
+      (testing label
+        (let [seen (atom nil)]
+          (stub-stream! response {:read-stream (fn [body] (reset! seen body) [])})
+          (is (identical? (:body response) @seen)))))))

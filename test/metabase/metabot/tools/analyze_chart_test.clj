@@ -89,7 +89,7 @@
                          "## Series: Count")))))
 
 (deftest ^:parallel analyze-chart-tool-non-numeric-y-values-test
-  (testing "a series with non-numeric y-values is rejected, naming the series on one quoted line"
+  (testing "a series with non-numeric y-values is rejected with its name on one quoted line"
     (are [series-name quoted]
          (= {:output (str "Series " quoted " has non-numeric y-values. "
                           "Chart analysis requires a numeric y-axis metric.")}

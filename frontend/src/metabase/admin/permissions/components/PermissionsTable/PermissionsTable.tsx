@@ -173,11 +173,7 @@ export function PermissionsTable({
                   <Label display="inline" m={0}>
                     {name}{" "}
                     {hint && (
-                      <Tooltip
-                        label={hint}
-                        closeDelay={100}
-                        classNames={{ tooltip: CS.pointerEventsAuto }}
-                      >
+                      <Tooltip label={hint}>
                         <Icon
                           className={CS.cursorPointer}
                           name="info"

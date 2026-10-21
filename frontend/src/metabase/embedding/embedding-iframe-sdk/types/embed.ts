@@ -6,6 +6,10 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type {
+  NavigatedEntityParameterChangePayload,
+  NavigatedEntityParameters,
+} from "embedding-sdk-bundle/types/navigation";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
 import type { MetabaseError } from "embedding-sdk-shared/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
@@ -99,6 +103,10 @@ export type SdkIframeEmbedComponentTagMessage =
   | {
       type: "metabase.embed.sqlParametersChange";
       data: SqlParameterChangePayload;
+    }
+  | {
+      type: "metabase.embed.navigatedEntityParametersChange";
+      data: NavigatedEntityParameterChangePayload;
     };
 
 // --- Embed Option Interfaces ---
@@ -119,6 +127,7 @@ export type DashboardEmbedOptions = StrictUnion<
   parameters?: ParameterValues;
   hiddenParameters?: string[];
   enableEntityNavigation?: boolean;
+  navigatedEntityParameters?: NavigatedEntityParameters;
 
   customContext?: string | Record<string, unknown>;
 
