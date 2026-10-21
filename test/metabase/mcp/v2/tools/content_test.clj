@@ -179,6 +179,35 @@
                          (via "USER_ID")))
                   (is (not= (via "USER_ID") (via "O2__USER_ID"))))))))))))
 
+(deftest card-column-error-hint-lists-the-card-columns-test
+  (testing "a column the card does not return gets a hint naming the get_content call that lists the ones it does"
+    (let [mp    (mt/metadata-provider)
+          field #(lib.metadata/field mp (mt/id :orders %))]
+      (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                                :dataset_query (lib/with-fields
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                 [(field :id) (field :total)])}]
+        (mt/with-test-user :crowberto
+          (let [e    (try
+                       (v2.queries/execute-representations-query
+                        {:lib/type "mbql/query"
+                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                     :source-card card-id
+                                     :aggregation [["count" {}]]
+                                     :breakout    [["field" {} (mt/id :orders :quantity)]]}]})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e e))
+                items (some->> (ex-message e)
+                               (re-find #"Call \"get_content\" with items (\[.*?\]) and include \[\"fields\"\]")
+                               second
+                               json/decode+kw)]
+            (is (=? {:error :column-not-returned} (ex-data e)))
+            (is (= [{:type "model" :id card-id}] items)
+                (ex-message e))
+            (is (= ["ID" "TOTAL"]
+                   (mapv :name (:result_metadata (content-one {:items items :include ["fields"]}))))
+                "and that call lists the columns the model returns")))))))
+
 (deftest get-content-dashboard-skeleton-test
   (testing "GHY-4140: a dashboard returns the editing skeleton, never the raw REST dashcards array"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category" :slug "category"

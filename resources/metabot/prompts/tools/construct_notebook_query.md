@@ -217,24 +217,22 @@ A stage has either `source-table` **or** `source-card`, never both. The card mus
 
 ## Metrics
 
-A metric is a pre-defined aggregation attached to a source — either a base table or a saved question/model. **A metric only works on the source it was defined on**, so the stage that references it must be built on that exact source. The `<metric>` tag tells you which one, and it carries at most one of these attributes:
+A metric is a predefined aggregation. Its `<metric>` tag identifies the source to use: a base table, saved question or model. Build the stage on that source. The tag carries at most one of these attributes:
 
-| Attribute on `<metric>` | What the metric is defined on | What the stage must use |
-| --- | --- | --- |
-| `base_table_fully_qualified_name` | a base table | `source-table` (combine with `database_name` to form the portable FK) |
-| `source_card_portable_entity_id` | a saved question or model | `source-card` (copy the id verbatim) |
-| `source_unavailable="true"` | a source that is not available to you | nothing — the metric is unusable, see below |
+- `base_table_fully_qualified_name` names a base table. Combine it with `database_name` to form the portable FK for `source-table`.
+- `source_card_portable_entity_id` names a saved question or model. Copy the ID verbatim into `source-card`.
+- `source_unavailable="true"` means that the metric has no source available to you. Do not use it.
 
 To use a metric:
 
-1. Put its source in the stage. Read it from whichever of the two source attributes above is present — never invent schema/table names, and never substitute one for the other. If the tag carries `source_unavailable="true"`, or carries neither source attribute, **do not use the metric and do not guess a source for it** — say the metric is not available to you and express the aggregation directly instead, or ask which source to use.
+1. Copy the source attribute into the stage. Never invent schema or table names, or substitute a base table for the source card. If the tag carries `source_unavailable="true"`, or carries neither source attribute, do not use the metric or guess its source. Say that the metric is not available to you and express the aggregation directly instead, or ask which source to use.
 2. Reference the metric as `["metric", {}, "<portable_entity_id>"]` in `aggregation`.
-3. Filters/breakouts on the same stage reference dimensions from the metric's **Dimensions** table. Read the `Source table` column first — a metric reaches FK-related tables as well as its own source, so names like `id` and `created_at` appear more than once, and where a dimension comes from decides how to reference it:
-   - **On the metric's own source** — copy the `Reference` column verbatim. It is a portable FK, and it is valid on a `source-card` stage as well as a `source-table` one.
-   - **On an FK-related table** — the `Reference` drops straight into `breakout:` when that table is reachable by a single foreign key from the metric's source, on a `source-table` and a `source-card` stage alike. When it is not, the tool says so: add an explicit `joins` entry (see "Joins (explicit)") on the same stage, keep the metric's own source, and break out on the join-aliased field.
-   - **Computed by the card itself** (an expression or aggregation column, which has no portable FK) — listed by its output machine name; use that.
+3. Use dimensions from the metric's **Dimensions** table for filters and breakouts on the same stage. Read the `Source table` column first. Names such as `id` and `created_at` can appear on several tables, and the table determines how to reference a dimension:
+   - Copy `Reference` verbatim for a dimension on the metric's own source. Its portable FK works on card and table stages.
+   - A dimension on an FK-related table can be used in `breakout:` when one foreign key reaches that table. This works on a `source-table` and a `source-card` stage alike. Otherwise, follow the tool's error: add an explicit `joins` entry (see "Joins (explicit)") on the same stage, keep the metric's source, and break out on the field using the join alias.
+   - Use the output machine name for an expression or aggregation column computed by the card. These columns have no portable FK.
 
-Table-based metric — `base_table_fully_qualified_name="brex_enriched.fct_cards"`:
+A table metric with `base_table_fully_qualified_name="brex_enriched.fct_cards"`:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -244,7 +242,7 @@ Table-based metric — `base_table_fully_qualified_name="brex_enriched.fct_cards
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
-Card-based metric — `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
+A card metric with `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -254,9 +252,9 @@ Card-based metric — `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
-When a `<metric>` tag carries `source_card_portable_entity_id`, the card underneath it has a base table too — but that table is **not** a valid source for this metric, and sourcing it instead of the card fails with an `Incompatible metric` error. Use whichever attribute the tag carries, even when you know the underlying table. (Not every metric defined over a card carries that attribute: some are only usable on their base table, and those carry `base_table_fully_qualified_name` instead. The tag is always the authority.)
+A metric with `source_card_portable_entity_id` requires that exact card. Substituting its base table causes an `Incompatible metric` error. Some metrics whose definition starts from a card require a base table instead; their tags carry `base_table_fully_qualified_name`. Use the attribute provided by the tag.
 
-Metrics are aggregations, **not sources** — never put a *metric's* own `portable_entity_id` in `source-table` or `source-card`. (`source_card_portable_entity_id` is a different id: the card the metric sits on, which is exactly what belongs in `source-card`.) The `metabase://metric/<id>` URIs are for reading metadata via `read_resource`, not for embedding in queries.
+Metrics are aggregations. Put the metric's own `portable_entity_id` in its `aggregation` clause, never in `source-table` or `source-card`. The `source_card_portable_entity_id` identifies its source card and belongs in `source-card`. Use `metabase://metric/<id>` URIs to read metadata via `read_resource`; do not embed them in queries.
 
 ## Using measures and segments
 
@@ -335,7 +333,7 @@ Anti-hallucination:
 - `["share", {}, <bool-pred>]` — fraction of rows where pred is true.
 - `["stddev", {}, <num-expr>]`
 - `["var", {}, <num-expr>]`
-- `["metric", {}, "<portable_entity_id>"]` — reference a defined metric. The stage must be built on the metric's own source: its `base_table_fully_qualified_name` as `source-table`, or its `source_card_portable_entity_id` as `source-card`, whichever the `<metric>` tag carries.
+- `["metric", {}, "<portable_entity_id>"]` references a defined metric. Use the source specified by its `<metric>` tag: `base_table_fully_qualified_name` as `source-table`, or `source_card_portable_entity_id` as `source-card`.
 - `["measure", {}, "<portable_entity_id>"]` — reference a defined measure (preferred over inlining its definition). The measure's table must be the stage's `source-table`.
 
 ### Order-by direction

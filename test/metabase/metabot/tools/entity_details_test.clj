@@ -487,9 +487,7 @@
                                :segments]))))))))))
 
 (deftest get-metric-details-card-based-metric-surfaces-source-card-test
-  (testing (str "A metric defined on a saved question is consumed from that card only, so get-metric-details\n"
-                "surfaces the card and suppresses the base-table fields. `report_card.table_id` points at the\n"
-                "card's underlying table; reporting it built `source-table:` queries the QP rejects.")
+  (testing "Metric details name the source card required by a single-stage card metric"
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name          "Orders question"
                     :type          :question
@@ -503,7 +501,7 @@
         (let [output (:structured-output (entity-details/get-metric-details
                                           {:metric-id          metric-id
                                            :with-field-values? false}))]
-          (testing "the source card is surfaced, entity id included so it can go straight into `source-card:`"
+          (testing "the source card includes the entity ID needed for `source-card:`"
             (is (=? {:source_card_id                 question-id
                      :source_card_name               "Orders question"
                      :source_card_portable_entity_id question-eid}
@@ -536,31 +534,24 @@
                                                        :aggregation  [[:count]]})}]
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (mt/with-current-user (mt/user->id :rasta)
-        ;; Dimensions deliberately requested: they are gated on the *base table*, which rasta can query, so this
-        ;; is the input where a metric marked unusable could still describe itself as queryable.
+        ;; Request dimensions too, since access to the base table does not make the source card readable.
         (let [output (:structured-output (entity-details/get-metric-details
                                           {:metric-id          metric-id
                                            :with-field-values? false}))]
           (is (= metric-id (:id output)) "collection access still makes the metric readable")
           (is (not-any? #(contains? output %)
                         [:source_card_id :source_card_name :source_card_portable_entity_id]))
-          (testing "and the base table is still withheld -- it is not a usable source for a card-based metric
-                    whether or not the source card is readable, so falling back to it would hand the LLM exactly
-                    the pairing that crashes"
+          (testing "the base table is not offered as a substitute for the unreadable card"
             (is (not-any? #(contains? output %)
                           [:base_table_id :base_table_name :base_table_portable_fk])))
-          (testing "the metric is instead marked unusable, so the LLM is told to skip it rather than guess a source"
+          (testing "the metric is marked unavailable"
             (is (true? (:source_unavailable output))))
-          (testing "and it describes no dimensions -- offering columns to filter and group by would contradict
-                    `source_unavailable` in the same tag, and they are the only part of this that costs queries"
+          (testing "an unavailable metric has no dimensions"
             (is (not-any? #(contains? output %)
                           [:queryable-dimensions :default_time_dimension_field_id :segments]))))))))
 
 (deftest get-metric-details-multi-stage-card-based-metric-surfaces-base-table-test
-  (testing (str "A metric whose definition starts from a card and then aggregates names that card in\n"
-                "`report_card.source_card_id`, but the QP reads the definition's LAST stage, which carries no\n"
-                "`:source-card`. Its only usable source is the base table -- so that is what we advertise. Keying\n"
-                "off the column instead advertises the source card, which is the pairing that 500s.")
+  (testing "Metric details offer the base table for a multi-stage card metric"
     (mt/with-temp [:model/Card {question-id :id}
                    {:name          "Orders question"
                     :type          :question
@@ -579,19 +570,16 @@
                      :base_table_name "ORDERS"}
                     output))
             (is (vector? (:base_table_portable_fk output))))
-          (testing "and the source card it names is NOT, because a query on it is rejected by the QP"
+          (testing "the card named by the definition is not offered as a source"
             (is (not-any? #(contains? output %)
                           [:source_card_id :source_card_name :source_card_portable_entity_id])))
-          (testing "nor is it marked unusable -- it has a perfectly good source"
+          (testing "the metric is available on its base table"
             (is (not (contains? output :source_unavailable))))
           (testing "and it still describes its dimensions, so the LLM can filter and group on that source"
             (is (seq (:queryable-dimensions output)))))))))
 
 (deftest get-metric-details-marks-unreadable-base-table-unavailable-test
-  (testing (str "The `source_unavailable` marker is symmetric across both source kinds. A table-based metric\n"
-                "whose base table the user cannot query is exactly as sourceless as an unreadable source card,\n"
-                "and absence alone reads to the LLM as 'look it up elsewhere' -- the guess-a-source behaviour\n"
-                "this enrichment exists to prevent.")
+  (testing "A table metric with no queryable source is marked unavailable"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Card {metric-id :id}
                      {:name          "Table-based metric"
@@ -604,14 +592,11 @@
             (is (= metric-id (:id output)) "collection access still makes the metric readable")
             (is (not-any? #(contains? output %)
                           [:base_table_id :base_table_name :base_table_portable_fk]))
-            (testing "and it says so positively rather than just omitting the source"
+            (testing "the source is explicitly marked unavailable"
               (is (true? (:source_unavailable output))))))))))
 
 (deftest tool-arguments-cannot-carry-a-card-read-verdict-test
-  (testing (str "The `can-read?` skip on a metric's source card is a separate argument passed only by trusted\n"
-                "callers, and is not part of the options map at all -- which is what makes it unreachable, since\n"
-                "the tool entry points forward their `arguments` into those options verbatim. Asserted at the\n"
-                "entry point rather than against a key name, so it pins the mechanism and not the spelling.")
+  (testing "Tool arguments cannot supply trusted source-card read permissions"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
                    :model/Card {question-id :id}
                    {:name          "Orders question"
@@ -637,10 +622,7 @@
           (is (true? (:source_unavailable output))))))))
 
 (deftest get-metric-details-survives-a-deleted-source-card-test
-  (testing (str "A metric whose source question was permanently deleted still names it in `dataset_query`. The pk\n"
-                "arity of `can-read?` resolves the row itself and throws on a missing one -- an\n"
-                "IllegalArgumentException with no `:agent-error?`, so `handle-agent-error` rethrows and the whole\n"
-                "turn 500s on a metric that rendered fine before. It must read as unreadable instead.")
+  (testing "A metric whose source card was deleted is marked unavailable"
     (mt/with-temp [:model/Card {question-id :id}
                    {:name          "Doomed question"
                     :type          :question
@@ -657,15 +639,13 @@
                                            :with-field-values? false}))]
           (is (= metric-id (:id output)) "the metric itself still renders")
           (is (true? (:source_unavailable output))
-              "and is marked unusable rather than blowing up the turn")
+              "the missing source is marked unavailable")
           (is (not-any? #(contains? output %)
                         [:source_card_id :source_card_name :source_card_portable_entity_id
                          :base_table_id :base_table_name :base_table_portable_fk])))))))
 
 (deftest get-metric-details-marks-unreadable-definition-unavailable-test
-  (testing (str "A metric whose stored definition is blank -- what MBQL 4->5 conversion failures ship -- has no\n"
-                "aggregation the QP can splice on any source. Offering its `report_card.table_id` would only move\n"
-                "the failure to execution, so it is marked unusable instead.")
+  (testing "A metric with a blank definition is marked unavailable"
     (mt/with-temp [:model/Card {metric-id :id}
                    {:name          "Blank metric"
                     :type          :metric
@@ -684,9 +664,7 @@
                          :base_table_id :base_table_name :base_table_portable_fk])))))))
 
 (deftest cards-details-metric-branch-reports-each-source-kind-test
-  (testing (str "`cards-details` is the `answer-sources` / suggested-prompts path: it batches the source-card\n"
-                "read-checks itself and hands the result to `metric-details` as a trusted argument. It fans\n"
-                "out over every metric in a Metabot's scope, and had no test at all.")
+  (testing "Bulk card details report the source required by each metric"
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name          "Orders question"
                     :type          :question
@@ -722,10 +700,7 @@
             (is (not (contains? (get by-id multi-metric-id) :source_card_id)))))))))
 
 (deftest metric-details-carries-default-time-dimension-name-without-dimensions-test
-  (testing (str "The default temporal breakout is surfaced as BOTH an id and a name. `convert-metric` -- the\n"
-                "`<metric>` tag's own producer -- asks for the breakout but not the dimensions, so deriving the\n"
-                "name downstream by scanning `:queryable-dimensions` left the rendered line blank on exactly the\n"
-                "path that renders it, while still paying to compute the id.")
+  (testing "The default temporal breakout includes its ID and name without requesting dimensions"
     (mt/with-temp [:model/Card {metric-id :id}
                    {:name          "Orders over time"
                     :type          :metric
@@ -739,13 +714,11 @@
           (is (=? {:default_time_dimension_field_id   (mt/id :orders :created_at)
                    :default_time_dimension_field_name "CREATED_AT"}
                   output)
-              "the name is carried, not derived from dimensions the caller did not ask for")
+              "the name is available without requesting dimensions")
           (is (not (contains? output :queryable-dimensions))))))))
 
 (deftest card-details-lists-card-based-metrics-test
-  (testing (str "`card-details` reaches `metric-details` through `convert-metric`, which forwards a lib metadata\n"
-                "map, not a t2 row. The shape check read snake_case `:source_card_id` off a SnakeHatingMap and\n"
-                "threw, so read_resource on any question/model with a card-based metric returned only an error.")
+  (testing "Card details accept lib metadata cards when listing available metrics"
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name "Orders question" :type :question :dataset_query (mt/mbql-query orders)}
                    :model/Card {metric-id :id}
@@ -762,7 +735,7 @@
                                :field-values-fn            identity}))
               metric  (first (:metrics details))]
           (is (= [metric-id] (mapv :id (:metrics details)))
-              "the card-based metric is listed rather than blowing the whole resource up")
+              "the card metric is listed")
           (testing "and it points back at the card being described, not its underlying table"
             (is (= question-id (:source_card_id metric)))
             (is (= question-eid (:source_card_portable_entity_id metric)))
@@ -770,15 +743,11 @@
                           [:base_table_id :base_table_name :base_table_portable_fk]))))))))
 
 (deftest metric-details-on-native-source-question-test
-  (testing (str "A metric over a native question has `table_id` nil -- the one input where the base-table and\n"
-                "source-card shape reads interact. Probing both keys with `or` reaches the snake_case arm and\n"
-                "throws on the lib metadata map `convert-metric` forwards.")
+  (testing "A metric on a native question reports the source card and its columns"
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name "Native question" :type :question
                     :dataset_query (mt/native-query {:query "SELECT 1 AS n, 'x' AS s"})
-                    ;; A native card saved through the API carries its output columns; `with-temp` does not run the
-                    ;; query, so they are supplied here. Without them lib has nothing to offer as a dimension and
-                    ;; the dimension assertions below would pass for the wrong reason.
+                    ;; `with-temp` does not run the native query, so its output columns must be supplied explicitly.
                     :result_metadata [{:name "N" :display_name "N" :base_type :type/Integer}
                                       {:name "S" :display_name "S" :base_type :type/Text}]}
                    :model/Card {metric-id :id}
@@ -795,9 +764,7 @@
                                        {:metric-id                  metric-id
                                         :with-queryable-dimensions? false
                                         :with-field-values?         false})))))
-        (testing (str "and it describes the source card's columns. Dimensions are gated on having a usable source, "
-                      "not a readable base table -- a metric with no base table still has one. A `source-card:` with "
-                      "no dimensions is worse than nothing: the LLM invents column names.")
+        (testing "a metric on a native question describes the columns returned by its source card"
           (let [dims (:queryable-dimensions
                       (:structured-output (entity-details/get-metric-details
                                            {:metric-id          metric-id

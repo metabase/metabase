@@ -21,8 +21,8 @@
   [entity-type entity-id]
   (case entity-type
     "metric"
-    (str "Metrics are aggregations, not sources. To use metric " entity-id ", build the stage on the source its "
-         "`<metric>` tag names (in its search result or `read_resource metabase://metric/" entity-id "`): "
+    (str "Metrics are aggregations, not sources. To use metric " entity-id ", build the stage on the source specified by its "
+         "`<metric>` tag (in its search result or `read_resource metabase://metric/" entity-id "`): "
          "`base_table_fully_qualified_name` with `database_name` as `source-table:`, or "
          "`source_card_portable_entity_id` as `source-card:`. Then reference the metric as "
          "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
@@ -37,7 +37,7 @@
     (tru "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`.")))
 
 (defn- card-fields-hint
-  "The sentence listing the `what` that the stage's `source-card:` returns, or nil when `data` names no card."
+  "Return guidance for listing `what` from the source card, or nil when `data` names no card."
   [{:keys [source-card source-card-type]} what]
   (when (and source-card source-card-type)
     (str "Call `read_resource` with `metabase://" source-card-type "/" source-card "/fields` to list the " what
