@@ -78,9 +78,7 @@
   false)
 
 (mu/defn- template-tag-name->field-id :- [:maybe ::lib.schema.id/field]
-  "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
-
-    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+  "The `:field-id` of the template tag of `card` named `template-tag-name`."
   [template-tag-name :- :string
    card              :- :metabase.queries.schema/card]
   (or (some-> card
@@ -89,8 +87,7 @@
               lib-be/normalize-query
               lib/all-template-tags-map
               (get template-tag-name)
-              :dimension
-              lib/field-ref-id)
+              :field-id)
       (do
         (log/trace "Could not find matching Field ID for target template tag")
         nil)))
@@ -108,6 +105,23 @@
        (when-let [template-tag-name (lib/parameter-target-template-tag-name target)]
          (template-tag-name->field-id template-tag-name card)))
      (lib/parameter-target-field-id target))))
+
+(mu/defn param-target->resolved-field-id :- [:maybe ::lib.schema.id/field]
+  "Like [[param-target->field-id]], but also resolve a target that names its column, against the query of `card`."
+  [target :- ::lib.schema.common/possibly-unnormalized-clause
+   card   :- [:maybe :metabase.queries.schema/card]]
+  (or (param-target->field-id target card)
+      (let [target (lib/normalize ::lib.schema.parameter/target target)]
+        (when-let [field-ref (when (lib/parameter-target-field-name target)
+                               (lib/parameter-target-field-ref target))]
+          (when-let [query (some-> card :dataset_query not-empty lib-be/normalize-query)]
+            (when (pos-int? (:database query))
+              (let [query        (lib/query (lib-be/application-database-metadata-provider (:database query)) query)
+                    stage-number (lib/parameter-target-stage-number target)
+                    query        (cond-> query (>= stage-number 0) lib/ensure-filter-stage)]
+                (when (< stage-number (lib/stage-count query))
+                  (when-let [cols (not-empty (lib/filterable-columns query stage-number))]
+                    (:id (lib/find-matching-column field-ref cols)))))))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."

@@ -93,7 +93,7 @@
   "Whether `label-column` is the column the QP remaps `value-column` to, so that it adds it to the results itself."
   [value-column label-column]
   (boolean
-   (and label-column
+   (and (:id label-column)
         (= (:id label-column) (get-in value-column [:lib/external-remap :field-id])))))
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]

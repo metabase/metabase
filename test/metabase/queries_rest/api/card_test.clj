@@ -311,7 +311,7 @@
                         :dimension_mappings [{:type         :table
                                               :table-id     (mt/id :orders)
                                               :dimension-id dimension-id
-                                              :target       (lib/ref product-id)}]}
+                                              :target       (lib/ensure-uuid [:field {} (:id product-id)])}]}
                        :model/Dashboard {dashboard-id :id} {}]
           (let [path            (format "card/%d/query" metric-id)
                 canonical      (mt/user-http-request :crowberto :post 202 path)

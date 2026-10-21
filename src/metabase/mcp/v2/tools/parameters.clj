@@ -208,7 +208,7 @@
    field under its target. A free-text template tag is the common case."
   [card param]
   (and (nil? (:values_source_type param))
-       (nil? (params/param-target->field-id (:target param) card))))
+       (nil? (params/param-target->resolved-field-id (:target param) card))))
 
 (defn- check-no-query-for-range!
   "A range has nothing to search: `query` narrows a list of values by text, and the answer here is two
@@ -287,7 +287,7 @@
         ;; an isError, matching the dashboard path. Static-list and card sources already report
         ;; `has_more_values` truthfully, so they keep the normal path.
         (nil? (:values_source_type param))
-        (let [field-id (params/param-target->field-id (:target param) card)]
+        (let [field-id (params/param-target->resolved-field-id (:target param) card)]
           (if (range-shaped-date-param? param)
             (do
               (check-no-query-for-range! query)

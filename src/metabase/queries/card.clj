@@ -29,7 +29,7 @@
 (mu/defn- param->field-id :- [:maybe ::lib.schema.id/field]
   [card  :- ::queries.schema/card
    param :- ::parameters.schema/parameter]
-  (params/param-target->field-id (:target param) card))
+  (params/param-target->resolved-field-id (:target param) card))
 
 (mu/defn card-param-constraints :- [:maybe ::chain-filter/constraints]
   "Chain-filter constraints for the parameters of `card` named in `slug->value`. Callers pass the parameters whose

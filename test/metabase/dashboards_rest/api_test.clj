@@ -5759,7 +5759,8 @@
                      (lib/aggregate (lib/count))
                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :subtotal))))
                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity))))
-                     (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                     (as-> $q (lib/breakout $q (m/find-first #(= (mt/id :products :category) (:id %))
+                                                             (lib/breakoutable-columns $q))))
                      (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
                                      :month))
                      lib/append-stage)
@@ -6028,8 +6029,8 @@
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/view-data :unrestricted)
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/create-queries :query-builder)
             (is (=? [{:parameter_mappings [{:parameter_id "_ID_"
-                                            :target ["dimension" ["field" (mt/id :products :id)
-                                                                  {:source-field (mt/id :orders :product_id)}]]}]}]
+                                            :target ["dimension" ["field" "ID"
+                                                                  {:source-field-name "PRODUCT_ID"}]]}]}]
                     (:dashcards (put! 200))))))))))
 
 (deftest required-parameter-without-default-test

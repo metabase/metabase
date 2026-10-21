@@ -120,7 +120,7 @@
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
   [target :- ::lib.schema.common/possibly-unnormalized-clause
    query  :- [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-  (params/param-target->field-id target {:dataset_query query}))
+  (params/param-target->resolved-field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn- check-parameter-mapping-permissions
