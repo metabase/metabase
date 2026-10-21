@@ -1,9 +1,10 @@
-import type { ChangeEvent } from "react";
-import { useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   Checkbox,
+  Flex,
   Icon,
   SimpleGrid,
   Stack,
@@ -14,6 +15,12 @@ import {
 import type { FieldValue } from "metabase-types/api";
 
 import S from "./ListValuePicker.module.css";
+import {
+  type ContinentPreset,
+  getContinentPresets,
+  getCountryName,
+  getFlagUrl,
+} from "./countries";
 import { getEffectiveOptions, searchOptions } from "./utils";
 
 const MAX_TILE_OPTIONS = 8;
@@ -23,11 +30,20 @@ interface ListValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
   autoFocus?: boolean;
+  /** Prototype: the column has the Country semantic type. */
+  isCountry?: boolean;
   onChange: (newValues: string[]) => void;
 }
 
-export function ListValuePicker(props: ListValuePickerProps) {
+export function ListValuePicker({ isCountry, ...props }: ListValuePickerProps) {
+  const countryValues = useMemo(
+    () => (isCountry ? getCountryFieldValues(props.fieldValues) : null),
+    [isCountry, props.fieldValues],
+  );
   const [elevatedValues] = useState(props.selectedValues);
+  if (countryValues != null) {
+    return <CountryListPicker {...props} fieldValues={countryValues} />;
+  }
   const options = getEffectiveOptions(
     props.fieldValues,
     props.selectedValues,
@@ -85,13 +101,21 @@ function TileListPicker({
   );
 }
 
+interface CheckboxListPickerProps extends ListValuePickerProps {
+  /** Content between the search box and the list. */
+  header?: ReactNode;
+  renderLabel?: (option: { value: string; label: string }) => ReactNode;
+}
+
 function CheckboxListPicker({
   fieldValues,
   selectedValues,
   placeholder,
   autoFocus,
+  header,
+  renderLabel,
   onChange,
-}: ListValuePickerProps) {
+}: CheckboxListPickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [elevatedValues] = useState(selectedValues);
   const availableOptions = getEffectiveOptions(
@@ -132,6 +156,7 @@ function CheckboxListPicker({
         leftSection={<Icon name="search" c="text-disabled" />}
         onChange={handleInputChange}
       />
+      {header}
       {filteredOptions.length > 0 ? (
         <Stack mah="30vh" style={{ overflowY: "auto" }}>
           <Checkbox
@@ -151,7 +176,14 @@ function CheckboxListPicker({
                 <Checkbox
                   key={option.value}
                   value={option.value}
-                  label={option.label}
+                  label={
+                    renderLabel
+                      ? renderLabel({
+                          value: option.value,
+                          label: option.label,
+                        })
+                      : option.label
+                  }
                 />
               ))}
             </Stack>
@@ -164,5 +196,96 @@ function CheckboxListPicker({
         </Stack>
       )}
     </Stack>
+  );
+}
+
+/**
+ * Prototype: field values with country names as labels, sorted by name, when
+ * all the values are two-letter country codes. Otherwise null.
+ */
+function getCountryFieldValues(fieldValues: FieldValue[]): FieldValue[] | null {
+  const countryValues: FieldValue[] = [];
+  for (const [value] of fieldValues) {
+    const name = typeof value === "string" ? getCountryName(value) : null;
+    if (name == null) {
+      return null;
+    }
+    countryValues.push([value, name]);
+  }
+  return countryValues.sort(([, a], [, b]) =>
+    String(a).localeCompare(String(b)),
+  );
+}
+
+function CountryListPicker(props: ListValuePickerProps) {
+  const { fieldValues, selectedValues, onChange } = props;
+  const presets = useMemo(
+    () => getContinentPresets(fieldValues.map(([value]) => String(value))),
+    [fieldValues],
+  );
+
+  return (
+    <CheckboxListPicker
+      {...props}
+      header={
+        presets.length > 0 && (
+          <ContinentPresets
+            presets={presets}
+            selectedValues={selectedValues}
+            onChange={onChange}
+          />
+        )
+      }
+      renderLabel={({ value, label }) => (
+        <Flex align="center" gap="sm">
+          <img className={S.flag} src={getFlagUrl(value)} alt="" />
+          {label}
+        </Flex>
+      )}
+    />
+  );
+}
+
+interface ContinentPresetsProps {
+  presets: ContinentPreset[];
+  selectedValues: string[];
+  onChange: (newValues: string[]) => void;
+}
+
+function ContinentPresets({
+  presets,
+  selectedValues,
+  onChange,
+}: ContinentPresetsProps) {
+  const selectedValuesSet = new Set(selectedValues);
+
+  // A preset adds its countries. When all of them are selected, it removes
+  // them.
+  const handleClick = (preset: ContinentPreset) => {
+    const isSelected = preset.values.every((value) =>
+      selectedValuesSet.has(value),
+    );
+    const newValuesSet = new Set(selectedValues);
+    preset.values.forEach((value) =>
+      isSelected ? newValuesSet.delete(value) : newValuesSet.add(value),
+    );
+    onChange(Array.from(newValuesSet));
+  };
+
+  return (
+    <SimpleGrid cols={2} spacing="sm">
+      {presets.map((preset) => (
+        <UnstyledButton
+          key={preset.name}
+          className={S.tile}
+          aria-pressed={preset.values.every((value) =>
+            selectedValuesSet.has(value),
+          )}
+          onClick={() => handleClick(preset)}
+        >
+          <span className={S.label}>{preset.name}</span>
+        </UnstyledButton>
+      ))}
+    </SimpleGrid>
   );
 }
