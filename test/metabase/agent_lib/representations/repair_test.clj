@@ -1110,6 +1110,25 @@
                                          "aggregation" [["count-where" {} predicate]]}]}]})]
         (is (= [["count-where" {} expected]] (get-in stage ["joins" 0 "stages" 0 "aggregation"])))))))
 
+(deftest ^:parallel inline-order-by-with-equivalent-temporal-aggregations-test
+  (let [range-clause ["and" {} [">=" {} created-at "2017-01-01"] ["<" {} created-at "2017-02-01"]]]
+    (doseq [[aggregation-predicate order-predicate]
+            [[["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "day")]
+              ["between" {} created-at (abs-dt "2017-01-01" "default") (abs-dt "2017-01-31" "default")]]
+             [["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "day")]
+              range-clause]
+             [range-clause
+              ["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "day")]]
+             [[">=" {} created-at (abs-dt "2017-01-01T12:00:00" "default")]
+              [">=" {} created-at "2017-01-01T12:00:00"]]]]
+      (testing (pr-str [aggregation-predicate order-predicate])
+        (let [stage (repair-in-stage {"aggregation" [["count-where" {} aggregation-predicate]]
+                                      "order-by" [["desc" {} ["count-where" {} order-predicate]]]})
+              uuid (get-in stage ["aggregation" 0 1 "lib/uuid"])]
+          (is (some? uuid))
+          (is (= ["aggregation" {} uuid] (get-in stage ["order-by" 0 2])))
+          (is (= stage (repair-in-stage stage))))))))
+
 (deftest ^:parallel join-conditions-with-temporal-literals-stay-refused-test
   (doseq [operator ["in" "=" "between"]
           [start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]]

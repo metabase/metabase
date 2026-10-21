@@ -3262,11 +3262,11 @@
    (-> parsed
        normalize-shape*
        (stamp-top-level-database* mp)
+       repair-day-and-default-comparisons*
        rewrite-order-by-inline-aggs*
        resolve-aggregation-ref-indexes*
        split-post-agg-filters*
        hoist-temporal-buckets*
-       repair-day-and-default-comparisons*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
        (infer-source-card-field-types* mp content-store)
