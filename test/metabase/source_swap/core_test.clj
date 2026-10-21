@@ -7,6 +7,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.source-swap.core :as source-swap]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel check-column-mappings-test
@@ -71,7 +73,7 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)]))]
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :fields       [[:field {} (meta/id :products :id)]]}]}
+                         :fields       [[:field {} "ID"]]}]}
               (source-swap/swap-source-in-query query
                                                 [:table (meta/id :orders)]
                                                 [:table (meta/id :products)]))))))

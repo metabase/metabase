@@ -1,12 +1,14 @@
 (ns metabase.source-swap.native-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.source-swap.native :as source-swap.native]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (defn- field-id-ref
   [mp field-id]
@@ -466,20 +468,20 @@
                    :field-id     (meta/id :products :id)
                    :dimension    (field-id-ref meta/metadata-provider (meta/id :products :id))}]
           result (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
-      (is (=? [{:name "filter", :field-id (meta/id :orders :id), :dimension [:field {} (meta/id :orders :id)]}]
+      (is (=? [{:name "filter", :field-id (meta/id :orders :id), :dimension [:field {} "ID"]}]
               result)))))
 
 (deftest ^:parallel update-dimension-tags-no-match-test
   (testing "dimension tag left unchanged when no matching field on new table"
     (let [query     (lib/native-query meta/metadata-provider "SELECT 1")
-          dimension (field-id-ref meta/metadata-provider (meta/id :products :ean))
+          field-id  (meta/id :products :ean)
           tags      [{:type         :dimension
                       :name         "filter"
                       :display-name "Filter"
                       :widget-type  :number/=
-                      :dimension    dimension}]
+                      :field-id     field-id}]
           ;; Orders table doesn't have an EAN field
           result    (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
       ;; Should be unchanged since no matching field
-      (is (=? [{:name "filter", :dimension dimension}]
+      (is (=? [{:name "filter", :field-id field-id}]
               result)))))
