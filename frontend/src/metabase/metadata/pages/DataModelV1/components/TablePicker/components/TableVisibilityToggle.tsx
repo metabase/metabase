@@ -78,7 +78,10 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   };
 
   return (
-    <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
+    <Tooltip
+      label={isHidden ? t`Unhide table` : t`Hide table`}
+      position="right"
+    >
       <ActionIcon
         variant="subtle"
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}

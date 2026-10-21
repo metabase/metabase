@@ -1350,8 +1350,7 @@
    form))
 
 ;;; ============================================================
-;;; Pass 1.55 -- normalise `fields:` on a stage / join when the LLM wrote a single clause
-;;; instead of a sequential of clauses.
+;;; Pass 1.55 -- wrap a single `fields:` or `aggregation:` clause in a list
 ;;;
 ;;; The repr schema for both stage and join requires
 ;;; `"fields": [:sequential [:ref ::clause]]` (joins additionally accept the enum strings
@@ -1383,6 +1382,20 @@
     {"fields" (:and single-clause
                     [(_ :guard string?) (_ :guard map?) & _])}
     (assoc &match "fields" [single-clause])))
+
+(defn- normalise-aggregation-clauses*
+  "Wrap a stage's bare aggregation clause in a one-element list."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (update query "stages"
+            (fn [stages]
+              (mapv (fn [stage]
+                      (let [aggregation (get stage "aggregation")]
+                        (cond-> stage
+                          (and (vector? aggregation) (string? (first aggregation)))
+                          (assoc "aggregation" [aggregation]))))
+                    stages)))))
 
 ;;; ============================================================
 ;;; Pass 1.56 -- split top-level `and` filters into separate `filters:` entries.
@@ -1815,6 +1828,10 @@
                       {:agent-error? true
                        :error        :aggregation-ref-no-aggregations}))
 
+      ;; Let query validation report malformed aggregation entries.
+      (not-every? clause-like? aggs)
+      stage
+
       :else
       (let [[stamped-aggs index->uuid] (ensure-aggregation-uuids aggs)
             index->type                (mapv infer-agg-base-type stamped-aggs)
@@ -2182,7 +2199,7 @@
                       tbl-name (if (vector? fk)
                                  (pr-str (nth fk 2))
                                  (str target-table-id))]
-                  (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. If you are aggregating a metric that relates to that table (metrics can join tables that have no foreign key), its dimensions list the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a field from the source table."
+                  (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. Otherwise use a field from the source table."
                                        (display-portable fk)
                                        tbl-name
                                        (pr-str src-name))
@@ -3142,6 +3159,7 @@
       swap-between-bounds*
       normalise-case-clauses*
       normalise-fields-shape*
+      normalise-aggregation-clauses*
       split-top-level-and-filters*
       normalize-expressions-shape*
       ensure-lib-types*))
@@ -3286,7 +3304,7 @@
                     :filter      "`filters:`")]
         (throw (ex-info
                 (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
-                     where stage-idx message)
+                     where stage-idx (str/replace message #"\.$" ""))
                 {:agent-error? true
                  :error        :expression-editor-rejection
                  :status-code  400

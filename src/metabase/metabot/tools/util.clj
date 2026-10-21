@@ -190,9 +190,14 @@
                       (#{:question} (:type card)) (get :dataset-query))))))
 
 (defn metric-query
-  "Return a query based on the metric with ID `metric-id`."
+  "Return a query based on the metric with ID `metric-id`.
+
+  Throws an agent error that names the card's type when the card is a question or model."
   [metric-id]
   (when-let [card (get-card metric-id)]
+    (when-not (= :metric (:type card))
+      (throw (ex-info (str "Card " metric-id " is a " (name (:type card)) ", not a metric.")
+                      {:agent-error? true :status-code 400})))
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (lib.metadata/metric mp metric-id)))))
 
