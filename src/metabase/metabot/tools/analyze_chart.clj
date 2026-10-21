@@ -90,7 +90,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   [_]
   {:message  "This chart has no series data to analyze."
    :recovery [read-values-step
-              {:uses #{} :text "Or tell the user that this chart can't be analyzed."}]})
+              {:uses #{}
+               :text "If you can't read the chart's values, tell the user that this chart can't be analyzed."}]})
 
 (tools/defrecoverable non-numeric-series!
   "A series of the chart config has a y-value that is not a number."
@@ -101,7 +102,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
                   "requires a numeric y-axis metric.")
    :recovery [read-values-step
               {:uses #{}
-               :text "Or tell the user that this chart can't be analyzed because its y-axis values aren't numbers."}]})
+               :text (str "If you can't read the chart's values, tell the user that this chart can't be analyzed"
+                          " because its y-axis values aren't numbers.")}]})
 
 (defn- stringify-series-keys
   "Ensure series map keys are strings, not keywords.
