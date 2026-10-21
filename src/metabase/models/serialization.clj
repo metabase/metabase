@@ -1107,6 +1107,17 @@
 
 (declare export-mbql)
 
+(defn- add-template-tag-dimension
+  "Add the legacy `:dimension` ref next to a template tag's `:field-id`, so readers of serialized content that require
+  `:dimension` keep working."
+  [m]
+  (cond-> m
+    (and (pos-int? (:field-id m))
+         (not (contains? m :dimension))
+         (contains? m :display-name)
+         (#{:dimension :temporal-unit "dimension" "temporal-unit"} (:type m)))
+    (assoc :dimension [:field {} (:field-id m)])))
+
 (defn- export-mbql-map [m]
   (reduce-kv
    (fn [m k v]
@@ -1133,8 +1144,8 @@
                                        (not (contains? *required-lib-uuids-for-export* v))
                                        (dissoc :lib/uuid))
        #_else                        (update m k export-mbql)))
-   m
-   m))
+   (add-template-tag-dimension m)
+   (add-template-tag-dimension m)))
 
 (defn- export-mbql-ref
   [mbql]

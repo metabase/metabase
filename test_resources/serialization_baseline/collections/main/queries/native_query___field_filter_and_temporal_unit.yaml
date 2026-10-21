@@ -16,7 +16,14 @@ dataset_query:
         AND {{date_filter}}
       GROUP BY {{created_at}}, PRODUCTS.CATEGORY
     template-tags:
-      - display-name: Category
+      - dimension:
+        - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+        display-name: Category
         field-id:
         - Sample Database
         - PUBLIC
@@ -27,6 +34,13 @@ dataset_query:
         type: dimension
         widget-type: string/=
       - default: month
+        dimension:
+        - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
         display-name: Group By
         field-id:
         - Sample Database
@@ -37,7 +51,14 @@ dataset_query:
         name: created_at
         sectionid: date
         type: temporal-unit
-      - display-name: Order Date
+      - dimension:
+        - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+        display-name: Order Date
         field-id:
         - Sample Database
         - PUBLIC
