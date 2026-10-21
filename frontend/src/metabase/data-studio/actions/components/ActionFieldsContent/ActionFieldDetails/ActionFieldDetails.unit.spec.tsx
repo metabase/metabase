@@ -28,7 +28,7 @@ function setup({ settings, canChangeFieldType = true }: SetupOpts = {}) {
         }),
         variableName: "status",
       }}
-      readOnly={false}
+      disabled={false}
       canChangeFieldType={canChangeFieldType}
       onChange={onChange}
     />,

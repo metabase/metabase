@@ -62,6 +62,27 @@ const DATASET_QUERY = createMockNativeDatasetQuery({
   }),
 });
 
+const TWO_VARIABLE_DATASET_QUERY = createMockNativeDatasetQuery({
+  database: 1,
+  native: createMockNativeQuery({
+    query: "UPDATE orders SET status = {{status}} WHERE id = {{id}}",
+    "template-tags": {
+      status: createMockTemplateTag({
+        id: "status",
+        name: "status",
+        "display-name": "Status",
+        type: "text",
+      }),
+      id: createMockTemplateTag({
+        id: "id",
+        name: "id",
+        "display-name": "ID",
+        type: "number",
+      }),
+    },
+  }),
+});
+
 describe("ActionFieldsPage", () => {
   it("should let a user who can edit the action change every field setting", async () => {
     setup({
@@ -77,9 +98,7 @@ describe("ActionFieldsPage", () => {
       }),
     });
 
-    expect(await screen.findByLabelText("Display name")).not.toHaveAttribute(
-      "readonly",
-    );
+    expect(await screen.findByLabelText("Display name")).toBeEnabled();
     expect(screen.getByRole("radio", { name: "Number" })).toBeEnabled();
   });
 
@@ -97,9 +116,7 @@ describe("ActionFieldsPage", () => {
       }),
     });
 
-    expect(await screen.findByLabelText("Display name")).toHaveAttribute(
-      "readonly",
-    );
+    expect(await screen.findByLabelText("Display name")).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Number" })).toBeDisabled();
   });
 
@@ -117,9 +134,7 @@ describe("ActionFieldsPage", () => {
       }),
     });
 
-    expect(await screen.findByLabelText("Display name")).not.toHaveAttribute(
-      "readonly",
-    );
+    expect(await screen.findByLabelText("Display name")).toBeEnabled();
     expect(screen.getByRole("radio", { name: "Number" })).toBeDisabled();
   });
 
@@ -137,9 +152,47 @@ describe("ActionFieldsPage", () => {
       }),
     });
 
-    expect(await screen.findByLabelText("Display name")).not.toHaveAttribute(
-      "readonly",
-    );
+    expect(await screen.findByLabelText("Display name")).toBeEnabled();
     expect(screen.getByRole("radio", { name: "Number" })).toBeDisabled();
+  });
+
+  it("should tell a user who can edit the action that fields can be reordered", async () => {
+    setup({
+      action: createMockQueryAction({
+        database_id: 1,
+        dataset_query: TWO_VARIABLE_DATASET_QUERY,
+        can_write: true,
+      }),
+      database: createMockDatabase({
+        id: 1,
+        native_permissions: "write",
+        settings: { "database-enable-actions": true },
+      }),
+    });
+
+    expect(
+      await screen.findByText(
+        "One field per {{variable}} in the SQL. Drag to reorder the form.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should not mention reordering to a user who can't edit the action", async () => {
+    setup({
+      action: createMockQueryAction({
+        database_id: 1,
+        dataset_query: TWO_VARIABLE_DATASET_QUERY,
+        can_write: false,
+      }),
+      database: createMockDatabase({
+        id: 1,
+        native_permissions: "write",
+        settings: { "database-enable-actions": true },
+      }),
+    });
+
+    expect(
+      await screen.findByText("One field per {{variable}} in the SQL."),
+    ).toBeInTheDocument();
   });
 });

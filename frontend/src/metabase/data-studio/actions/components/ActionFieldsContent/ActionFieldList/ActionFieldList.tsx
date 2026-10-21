@@ -42,9 +42,7 @@ export function ActionFieldList({
       <Stack gap="xs">
         <Title order={4}>{t`Fields`}</Title>
         <Text c="text-secondary">
-          {fields.length > 0
-            ? t`One field per {{variable}} in the SQL. Drag to reorder the form.`
-            : t`This action has no variables in its SQL.`}
+          {getFieldsDescription(fields.length, isDraggable)}
         </Text>
       </Stack>
       <Stack gap="md" role="list">
@@ -66,4 +64,13 @@ export function ActionFieldList({
       </Stack>
     </Stack>
   );
+}
+
+function getFieldsDescription(fieldCount: number, isDraggable: boolean) {
+  if (fieldCount === 0) {
+    return t`This action has no variables in its SQL.`;
+  }
+  return isDraggable
+    ? t`One field per {{variable}} in the SQL. Drag to reorder the form.`
+    : t`One field per {{variable}} in the SQL.`;
 }

@@ -25,14 +25,14 @@ import { getDefaultValueInputType, textToOptions } from "./utils";
 
 type ActionFieldDetailsProps = {
   field: ActionField;
-  readOnly: boolean;
+  disabled: boolean;
   canChangeFieldType: boolean;
   onChange: (patch: Partial<FieldSettings>) => void;
 };
 
 export function ActionFieldDetails({
   field,
-  readOnly,
+  disabled,
   canChangeFieldType,
   onChange,
 }: ActionFieldDetailsProps) {
@@ -54,13 +54,13 @@ export function ActionFieldDetails({
         <BlurTextInput
           label={t`Display name`}
           value={settings.title}
-          readOnly={readOnly}
+          disabled={disabled}
           onChange={(title) => onChange({ title })}
         />
         <BlurTextarea
           label={t`Description`}
           value={settings.description ?? ""}
-          readOnly={readOnly}
+          disabled={disabled}
           onChange={(description) => onChange({ description })}
         />
         <Stack gap="xs">
@@ -81,7 +81,7 @@ export function ActionFieldDetails({
               value,
               label: name,
             }))}
-            disabled={readOnly || !canChangeFieldType}
+            disabled={disabled || !canChangeFieldType}
             onChange={(value) => {
               const fieldType = getFieldTypes().find(
                 (option) => option.value === value,
@@ -96,7 +96,7 @@ export function ActionFieldDetails({
           label={t`Input type`}
           value={settings.inputType}
           data={inputTypes.map(({ value, name }) => ({ value, label: name }))}
-          readOnly={readOnly}
+          disabled={disabled}
           allowDeselect={false}
           onChange={(value) => {
             const inputType = inputTypes.find(
@@ -112,7 +112,7 @@ export function ActionFieldDetails({
             label={t`Options`}
             description={t`One option per line`}
             value={(settings.valueOptions ?? []).join("\n")}
-            readOnly={readOnly}
+            disabled={disabled}
             onChange={(value) =>
               onChange({
                 valueOptions: textToOptions(value, settings.fieldType),
@@ -123,7 +123,7 @@ export function ActionFieldDetails({
         <BlurTextInput
           label={t`Placeholder`}
           value={settings.placeholder ?? ""}
-          readOnly={readOnly}
+          disabled={disabled}
           onChange={(placeholder) => onChange({ placeholder })}
         />
         <BlurTextInput
@@ -133,7 +133,7 @@ export function ActionFieldDetails({
           value={
             settings.defaultValue != null ? String(settings.defaultValue) : ""
           }
-          readOnly={readOnly}
+          disabled={disabled}
           onChange={(value) =>
             onChange({
               defaultValue: parseDefaultValue(value, settings.fieldType),
@@ -146,7 +146,7 @@ export function ActionFieldDetails({
           label={t`Required`}
           description={t`People must fill in this field to run the action`}
           checked={settings.required}
-          disabled={readOnly}
+          disabled={disabled}
           onChange={(event) =>
             onChange({ required: event.currentTarget.checked })
           }
@@ -155,7 +155,7 @@ export function ActionFieldDetails({
           label={t`Show field`}
           description={t`Hidden fields use their default value`}
           checked={!settings.hidden}
-          disabled={readOnly}
+          disabled={disabled}
           onChange={(event) =>
             onChange({ hidden: !event.currentTarget.checked })
           }
@@ -190,7 +190,7 @@ type BlurInputProps = {
   placeholder?: string;
   type?: string;
   value: string;
-  readOnly: boolean;
+  disabled: boolean;
   onChange: (value: string) => void;
 };
 

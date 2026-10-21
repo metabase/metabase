@@ -78,7 +78,7 @@ export function ActionFieldsContent({
           <ActionFieldDetails
             key={field.parameter.id}
             field={field}
-            readOnly={readOnly}
+            disabled={readOnly}
             canChangeFieldType={canChangeFieldType}
             onChange={(patch) => updateField(field.parameter.id, patch)}
           />
