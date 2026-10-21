@@ -456,7 +456,7 @@
                                                        :effective-type    column-type}]})
             (is (=? [:=
                      {}
-                     [:field {:base-type :type/Text, :effective-type column-type} (meta/id :checkins :date)]
+                     [:field {:base-type :type/Text, :effective-type column-type} "DATE"]
                      expected]
                     (qp.wrap-value-literals/wrap-value-literals-in-mbql5
                      (lib/= (-> (meta/field-metadata :checkins :date)
@@ -559,7 +559,7 @@
   (driver/with-driver :h2
     (is (=? [:!=
              {}
-             [:field {:base-type :type/Date, :temporal-unit :month} pos-int?]
+             [:field {:base-type :type/Date, :temporal-unit :month} "DATE"]
              [:absolute-datetime {} #t "2016-01-01" :month]]
             (#'qp.wrap-value-literals/wrap-value-literals-in-mbql5
              (lib/!= (-> (meta/field-metadata :checkins :date)

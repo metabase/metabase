@@ -36,7 +36,7 @@
                                           (str expected)])))]
         (is (=? [:=
                  {}
-                 [:field {} (meta/id :venues :price)]
+                 [:field {} "PRICE"]
                  [:value {:base-type base-type, :effective-type base-type} expected]]
                 (-> query
                     auto-parse-filter-values

@@ -93,12 +93,12 @@
   (testing "We should add sorted implicit Fields for a query with no aggregations"
     (is (=? (:query
              (lib.tu.macros/mbql-query venues
-               {:fields [[:field %id {}]
-                         [:field %name {}]
-                         [:field %category-id {}]
-                         [:field %latitude {}]
-                         [:field %longitude {}]
-                         [:field %price {}]]}))
+               {:fields [[:field "ID" {}]
+                         [:field "NAME" {}]
+                         [:field "CATEGORY_ID" {}]
+                         [:field "LATITUDE" {}]
+                         [:field "LONGITUDE" {}]
+                         [:field "PRICE" {}]]}))
             (add-implicit-clauses-to-legacy-inner-query (:query (lib.tu.macros/mbql-query venues)))))))
 
 (deftest ^:parallel sort-by-field-position-test
@@ -118,15 +118,15 @@
       (is (=? (:query
                (lib.tu.macros/mbql-query venues
                  {:fields [;; all fields with lower positions should get sorted first according to rules above
-                           [:field %id {}]
-                           [:field %name {}]
-                           [:field %category-id {}]
-                           [:field %latitude {}]
-                           [:field %longitude {}]
-                           [:field %price {}]
+                           [:field "ID" {}]
+                           [:field "NAME" {}]
+                           [:field "CATEGORY_ID" {}]
+                           [:field "LATITUDE" {}]
+                           [:field "LONGITUDE" {}]
+                           [:field "PRICE" {}]
                            ;; followed by position = 100, then position = 101
-                           [:field 1 {}]
-                           [:field 2 {}]]}))
+                           [:field "bbbbb" {}]
+                           [:field "aaaaa" {}]]}))
               (add-implicit-clauses-to-legacy-inner-query mp (:query (lib.tu.macros/mbql-query venues))))))))
 
 (deftest ^:parallel default-bucketing-test
@@ -141,13 +141,13 @@
       (is (lib.types.isa/temporal? (lib.metadata/field mp 1)))
       (is (=? (:query
                (lib.tu.macros/mbql-query venues
-                 {:fields [[:field %id {}]
-                           [:field %name {}]
-                           [:field 1 {}]
-                           [:field %category-id {}]
-                           [:field %latitude {}]
-                           [:field %longitude {}]
-                           [:field %price {}]]}))
+                 {:fields [[:field "ID" {}]
+                           [:field "NAME" {}]
+                           [:field "aaaaa" {}]
+                           [:field "CATEGORY_ID" {}]
+                           [:field "LATITUDE" {}]
+                           [:field "LONGITUDE" {}]
+                           [:field "PRICE" {}]]}))
               (add-implicit-clauses-to-legacy-inner-query mp (:query (lib.tu.macros/mbql-query venues))))))))
 
 (deftest ^:parallel add-implicit-fields-for-source-queries-test
@@ -239,16 +239,16 @@
   (testing "Should add implicit `:fields` for `:source-query` inside a join"
     (is (=? (lib.tu.macros/mbql-query venues
               {:joins    [{:source-query {:source-table $$categories
-                                          :fields       [[:field %categories.id {}]
-                                                         [:field %categories.name {}]]}
+                                          :fields       [[:field "ID" {}]
+                                                         [:field "NAME" {}]]}
                            :alias        "cat"
                            :condition    [:= $venues.category-id &cat.*ID/BigInteger]}]
-               :fields   [[:field %venues.id {}]
-                          [:field %venues.name {}]
-                          [:field %venues.category-id {}]
-                          [:field %venues.latitude {}]
-                          [:field %venues.longitude {}]
-                          [:field %venues.price {}]]
+               :fields   [[:field "ID" {}]
+                          [:field "NAME" {}]
+                          [:field "CATEGORY_ID" {}]
+                          [:field "LATITUDE" {}]
+                          [:field "LONGITUDE" {}]
+                          [:field "PRICE" {}]]
                :order-by [[:asc $venues.name]]
                :limit    3})
             (add-implicit-clauses
@@ -263,16 +263,16 @@
   (testing "Don't add implicit `:fields` clause to a JOIN even if we have source metadata"
     (is (=? (lib.tu.macros/mbql-query venues
               {:joins    [{:source-query {:source-table $$categories
-                                          :fields       [[:field %categories.id {}]
-                                                         [:field %categories.name {}]]}
+                                          :fields       [[:field "ID" {}]
+                                                         [:field "NAME" {}]]}
                            :alias        "cat"
                            :condition    [:= $venues.category-id &cat.*ID/BigInteger]}]
-               :fields   [[:field %venues.id {}]
-                          [:field %venues.name {}]
-                          [:field %venues.category-id {}]
-                          [:field %venues.latitude {}]
-                          [:field %venues.longitude {}]
-                          [:field %venues.price {}]]
+               :fields   [[:field "ID" {}]
+                          [:field "NAME" {}]
+                          [:field "CATEGORY_ID" {}]
+                          [:field "LATITUDE" {}]
+                          [:field "LONGITUDE" {}]
+                          [:field "PRICE" {}]]
                :order-by [[:asc $venues.name]]
                :limit    3})              (add-implicit-clauses
                                            (lib.tu.macros/mbql-query venues

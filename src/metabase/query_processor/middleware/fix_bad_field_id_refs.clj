@@ -2,15 +2,35 @@
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
   (:refer-clojure :exclude [get-in select-keys])
   (:require
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in select-keys]]))
+
+(defn- dedupe-joined-field-refs
+  "Remove `:fields` and `:breakout` refs of `stage` that name the same joined column, one by Field ID and the other by
+  name."
+  [query stage]
+  (let [ref-key (fn [a-ref]
+                  (lib.schema.util/mbql-clause-distinct-key
+                   (let [[_tag opts id-or-name] a-ref]
+                     (or (when (and (lib/clause-of-type? a-ref :field)
+                                    (:join-alias opts)
+                                    (pos-int? id-or-name))
+                           (when-let [field (lib.metadata/field query id-or-name)]
+                             (assoc a-ref 2 (:name field))))
+                         a-ref))))]
+    (reduce (fn [stage k]
+              (m/update-existing stage k #(into [] (m/distinct-by ref-key) %)))
+            stage
+            [:fields :breakout])))
 
 (mu/defn- fix-bad-field-id-refs-in-stage :- [:maybe ::lib.schema/stage]
   [query :- ::lib.schema/query
@@ -40,7 +60,7 @@
         stage' (update-fields stage)]
     (when-not (= stage' stage)
       ;; normalizing the stage will remove any duplicate `:fields` or `:breakouts`
-      (lib/normalize ::lib.schema/stage stage'))))
+      (lib/normalize ::lib.schema/stage (dedupe-joined-field-refs query stage')))))
 
 (mu/defn fix-bad-field-id-refs :- ::lib.schema/query
   "Fix any `:field` refs using an integer Field ID that in a stage where that Field's Table is not the

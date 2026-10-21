@@ -36,10 +36,8 @@
 
 (deftest ^:parallel remap-column-infos-test
   (testing "make sure we create the remap column tuples correctly"
-    (is (=? [{:original-field-clause [:field {}
-                                      (meta/id :venues :category-id)]
-              :new-field-clause      [:field {:source-field (meta/id :venues :category-id)}
-                                      (meta/id :categories :name)]
+    (is (=? [{:original-field-clause [:field {} "CATEGORY_ID"]
+              :new-field-clause      [:field {:source-field-name "CATEGORY_ID"} "NAME"]
               :dimension             {:name                      "Category ID [external remap]"
                                       :field-id                  (meta/id :venues :category-id)
                                       :human-readable-field-id   (meta/id :categories :name)
@@ -74,8 +72,8 @@
                            %category-id
                            {::qp.add-remaps/original-field-dimension-id pos-int?}]
                           [:field
-                           %categories.name
-                           {:source-field                                         %category-id
+                           "NAME"
+                           {:source-field-name                                    "CATEGORY_ID"
                             ::qp.add-remaps/new-field-dimension-id pos-int?}]]})
               (lib/->legacy-MBQL query))))))
 
@@ -129,12 +127,12 @@
                              %category-id
                              {::qp.add-remaps/original-field-dimension-id pos-int?}]
                             [:field
-                             %categories.name
-                             {:source-field                                %category-id
+                             "NAME"
+                             {:source-field-name                           "CATEGORY_ID"
                               ::qp.add-remaps/new-field-dimension-id pos-int?}]]
                  :order-by [[:asc [:field
-                                   %categories.name
-                                   {:source-field                                %category-id
+                                   "NAME"
+                                   {:source-field-name                           "CATEGORY_ID"
                                     ::qp.add-remaps/new-field-dimension-id pos-int?}]]]})
               (lib/->legacy-MBQL query))))))
 
@@ -150,8 +148,8 @@
               remaps))
       (is (=? (lib.tu.macros/mbql-query venues
                 {:breakout    [[:field
-                                %categories.name
-                                {:source-field                                %category-id
+                                "NAME"
+                                {:source-field-name                           "CATEGORY_ID"
                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]
                                [:field
                                 %category-id
@@ -177,8 +175,8 @@
                                                 %category-id
                                                 {::qp.add-remaps/original-field-dimension-id pos-int?}]
                                                [:field
-                                                %categories.name
-                                                {:source-field %category-id
+                                                "NAME"
+                                                {:source-field-name "CATEGORY_ID"
                                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]]}})
               (lib/->legacy-MBQL query))))))
 
@@ -192,9 +190,9 @@
     ;; and the `remap-column-infos` become name based instead of id based
     (is (=? {:stages [{}
                       {:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
-                                 (meta/id :venues :category-id)]
+                                 "CATEGORY_ID"]
                                 [:field {::qp.add-remaps/new-field-dimension-id dimension-id}
-                                 (meta/id :categories :name)]]}]}
+                                 "NAME"]]}]}
             (qp.add-remaps/add-remapped-columns query)))))
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
@@ -349,8 +347,9 @@
                          $discount
                          !default.created-at
                          $quantity
-                         [:field %products.title {:source-field                                         %product-id
-                                                  ::qp.add-remaps/new-field-dimension-id dimension-id}]]))
+                         [:field "TITLE" {:base-type                                            :type/Text
+                                          :source-field-name                                    "PRODUCT_ID"
+                                          ::qp.add-remaps/new-field-dimension-id dimension-id}]]))
                      (assoc ::qp.add-remaps/external-remaps [{:id                        dimension-id
                                                               :field-id                  (meta/id :orders :product-id)
                                                               :name                      "Product ID [external remap]"
@@ -383,8 +382,8 @@
           (is (=? (lib.tu.macros/mbql-query venues
                     {:fields   [$name
                                 [:field %category-id {::qp.add-remaps/original-field-dimension-id pos-int?}]
-                                [:field %categories.name {:source-field                                         %category-id
-                                                          ::qp.add-remaps/new-field-dimension-id pos-int?}]]
+                                [:field "NAME" {:source-field-name                                    "CATEGORY_ID"
+                                                ::qp.add-remaps/new-field-dimension-id pos-int?}]]
                      :order-by [[:asc $name]]
                      :limit    4})
                   (lib/->legacy-MBQL preprocessed)))))
@@ -466,12 +465,12 @@
                              {::qp.add-remaps/original-field-dimension-id id-dimension-id}]
                             $name
                             [:field
-                             %categories.name
-                             {:source-field                                         %category-id
+                             "NAME"
+                             {:source-field-name                                    "CATEGORY_ID"
                               ::qp.add-remaps/new-field-dimension-id category-id-dimension-id}]
                             [:field
-                             %categories.name
-                             {:source-field                                         %id
+                             "NAME"
+                             {:source-field-name                                    "ID"
                               ::qp.add-remaps/new-field-dimension-id id-dimension-id}]]})
                 (lib/->legacy-MBQL preprocessed))
             "should have 5 fields: CATEGORY_ID, ID, and NAME from the original query; then CATEGORY_ID->NAME and ID->NAME remaps"))
@@ -630,9 +629,9 @@
                            :limit       3}))
           dimension-id (get-in (lib.metadata/field mp (meta/id :orders :product-id))
                                [:lib/external-remap :id])]
-      (is (=? {:stages [{:breakout [[:field {::qp.add-remaps/new-field-dimension-id dimension-id} (meta/id :products :title)]
+      (is (=? {:stages [{:breakout [[:field {::qp.add-remaps/new-field-dimension-id dimension-id} "TITLE"]
                                     [:field {::qp.add-remaps/original-field-dimension-id dimension-id} (meta/id :orders :product-id)]]
-                         :order-by [[:asc {} [:field {::qp.add-remaps/new-field-dimension-id pos-int?} (meta/id :products :title)]]]}]}
+                         :order-by [[:asc {} [:field {::qp.add-remaps/new-field-dimension-id pos-int?} "TITLE"]]]}]}
               (qp.add-remaps/add-remapped-columns query))))))
 
 (deftest ^:parallel add-remaps-to-joins-e2e-test
@@ -662,19 +661,19 @@
                       "first join source query should have 10 fields (9 from orders plus one from the remap)")
                   (is (=? {:source-table (meta/id :orders)
                            :joins        [{:alias "PEOPLE__via__USER_ID"}]
-                           :fields       [[:field (meta/id :orders :id) {}]
-                                          [:field (meta/id :orders :user-id) {::qp.add-remaps/original-field-dimension-id pos-int?}]
-                                          [:field (meta/id :orders :product-id) {}]
-                                          [:field (meta/id :orders :subtotal) {}]
-                                          [:field (meta/id :orders :tax) {}]
-                                          [:field (meta/id :orders :total) {}]
-                                          [:field (meta/id :orders :discount) {}]
-                                          [:field (meta/id :orders :created-at) {}]
-                                          [:field (meta/id :orders :quantity) {}]
+                           :fields       [[:field "ID" {}]
+                                          [:field "USER_ID" {::qp.add-remaps/original-field-dimension-id pos-int?}]
+                                          [:field "PRODUCT_ID" {}]
+                                          [:field "SUBTOTAL" {}]
+                                          [:field "TAX" {}]
+                                          [:field "TOTAL" {}]
+                                          [:field "DISCOUNT" {}]
+                                          [:field "CREATED_AT" {}]
+                                          [:field "QUANTITY" {}]
                                           ;; 1 remap for self-joined orders.user-id => people.email
-                                          [:field (meta/id :people :email) {:source-field                          (meta/id :orders :user-id)
-                                                                            :join-alias                            "PEOPLE__via__USER_ID"
-                                                                            ::qp.add-remaps/new-field-dimension-id pos-int?}]]}
+                                          [:field "EMAIL" {:source-field-name                     "USER_ID"
+                                                           :join-alias                            "PEOPLE__via__USER_ID"
+                                                           ::qp.add-remaps/new-field-dimension-id pos-int?}]]}
                           source-query))))
               (is (= 10
                      (count (:fields first-join)))
@@ -691,7 +690,7 @@
                                       [:field (meta/id :orders :created-at) {:join-alias "j"}]
                                       [:field (meta/id :orders :quantity) {:join-alias "j"}]
                                       ;; 1 remap for self-joined orders.user-id => people.email
-                                      [:field (meta/id :people :email) {:join-alias "j"}]]}
+                                      [:field "EMAIL" {:join-alias "j"}]]}
                       first-join))))
           (is (=? [{:alias "j"}
                    {:alias "PEOPLE__via__USER_ID"}]
@@ -704,15 +703,15 @@
                  (count (:fields preprocessed-query)))
               "Should have 20 fields")
           (is (=? {:fields [;; 9 columns from orders
-                            [:field (meta/id :orders :id) {}]
-                            [:field (meta/id :orders :user-id) {::qp.add-remaps/original-field-dimension-id pos-int?}]
-                            [:field (meta/id :orders :product-id) {}]
-                            [:field (meta/id :orders :subtotal) {}]
-                            [:field (meta/id :orders :tax) {}]
-                            [:field (meta/id :orders :total) {}]
-                            [:field (meta/id :orders :discount) {}]
-                            [:field (meta/id :orders :created-at) {}]
-                            [:field (meta/id :orders :quantity) {}]
+                            [:field "ID" {}]
+                            [:field "USER_ID" {::qp.add-remaps/original-field-dimension-id pos-int?}]
+                            [:field "PRODUCT_ID" {}]
+                            [:field "SUBTOTAL" {}]
+                            [:field "TAX" {}]
+                            [:field "TOTAL" {}]
+                            [:field "DISCOUNT" {}]
+                            [:field "CREATED_AT" {}]
+                            [:field "QUANTITY" {}]
                             ;; 9 columns from self-join against orders
                             [:field (meta/id :orders :id) {:join-alias "j"}]
                             [:field (meta/id :orders :user-id) {:join-alias "j", ::qp.add-remaps/original-field-dimension-id pos-int?}]
@@ -731,9 +730,9 @@
                             ;;
                             ;;
                             ;; 1 remap for source table orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]
+                            [:field "EMAIL" {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]
                             ;; 1 remap for self-joined orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "j"}]]}
+                            [:field "EMAIL" {:join-alias "j"}]]}
                   preprocessed-query)))))))
 
 (deftest ^:parallel add-remaps-to-joins-e2e-test-2
@@ -797,8 +796,8 @@
                                                 [:field (meta/id :venues :longitude)   {:join-alias "J"}]
                                                 [:field (meta/id :venues :price)       {:join-alias "J"}]
                                                 ;; we shouldn't use IDs here because they would be ambiguous.
-                                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
-                                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}
+                                                [:field "NAME" {:join-alias "J", :source-field-name "ID"}]
+                                                [:field "NAME" {:join-alias "J", :source-field-name "CATEGORY_ID"}]]}
                                 ;; these are in the opposite order as the join source query because `CATEGORY_ID`
                                 ;; appears before `ID` here but the other way around above.
                                 {:alias "CATEGORIES__via__CATEGORY_ID"}
@@ -812,10 +811,10 @@
                                 [:field (meta/id :venues :latitude)    {:join-alias "J"}]
                                 [:field (meta/id :venues :longitude)   {:join-alias "J"}]
                                 [:field (meta/id :venues :price)       {:join-alias "J"}]
-                                [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
-                                [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__ID"}]
-                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
-                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}}
+                                [:field "NAME" {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
+                                [:field "NAME" {:join-alias "CATEGORIES__via__ID"}]
+                                [:field "NAME" {:join-alias "J", :source-field-name "ID"}]
+                                [:field "NAME" {:join-alias "J", :source-field-name "CATEGORY_ID"}]]}}
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL
@@ -840,20 +839,20 @@
                     "Orders → ID"]
                    (map :display-name (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
       (testing `qp.preprocess/preprocess
-        (is (=? {:fields [[:field {} (meta/id :people :id)]
-                          [:field {:join-alias "Orders"} (meta/id :orders :id)]]
+        (is (=? {:fields [[:field {} "ID"]
+                          [:field {:join-alias "Orders"} "ID"]]
                  :joins  [{:alias  "Orders"
-                           :fields [[:field {:join-alias "Orders"} (meta/id :orders :id)]]
+                           :fields [[:field {:join-alias "Orders"} "ID"]]
                            :stages [{:joins  (symbol "nil #_\"key is not present.\"")
-                                     :fields [[:field {} (meta/id :orders :id)]
-                                              [:field {} (meta/id :orders :user-id)]
-                                              [:field {} (meta/id :orders :product-id)]
-                                              [:field {} (meta/id :orders :subtotal)]
-                                              [:field {} (meta/id :orders :tax)]
-                                              [:field {} (meta/id :orders :total)]
-                                              [:field {} (meta/id :orders :discount)]
-                                              [:field {} (meta/id :orders :created-at)]
-                                              [:field {} (meta/id :orders :quantity)]]}]}]}
+                                     :fields [[:field {} "ID"]
+                                              [:field {} "USER_ID"]
+                                              [:field {} "PRODUCT_ID"]
+                                              [:field {} "SUBTOTAL"]
+                                              [:field {} "TAX"]
+                                              [:field {} "TOTAL"]
+                                              [:field {} "DISCOUNT"]
+                                              [:field {} "CREATED_AT"]
+                                              [:field {} "QUANTITY"]]}]}]}
                 (-> (qp.preprocess/preprocess query) :stages first))))
       (testing `qp.preprocess/query->expected-cols
         (is (= ["ID"

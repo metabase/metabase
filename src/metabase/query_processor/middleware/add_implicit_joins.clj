@@ -17,6 +17,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
@@ -181,6 +182,21 @@
                    join-alias])))
         (visible-joins query path stage)))
 
+(defn- dedupe-implicitly-joined-refs
+  "Remove `:fields` and `:breakout` refs of `stage` that differ only in the options naming the FK of the implicit join
+  whose alias, one of `implicit-join-aliases`, they already have."
+  [stage implicit-join-aliases]
+  (let [ref-key (fn [a-ref]
+                  (lib.schema.util/mbql-clause-distinct-key
+                   (cond-> a-ref
+                     (and (lib/clause-of-type? a-ref :field)
+                          (contains? implicit-join-aliases (:join-alias (lib/options a-ref))))
+                     (lib/update-options dissoc :source-field :source-field-name :source-field-join-alias))))]
+    (reduce (fn [stage k]
+              (m/update-existing stage k #(into [] (m/distinct-by ref-key) %)))
+            stage
+            [:fields :breakout])))
+
 (mu/defn- add-join-alias-to-implicitly-joined-fields :- ::lib.schema/stage
   "Add `:field` `:join-alias` to implicit join `:field` clauses in `form`. Ignore `:lib/stage-metadata`."
   [query :- ::lib.schema/query
@@ -200,11 +216,14 @@
                                                                  {:resolving  &match
                                                                   :candidates fk-field-info->join-alias
                                                                   :stage      stage})))]
-                           (lib/with-join-alias &match join-alias))
+                           (let [{fk-join-alias :join-alias, :keys [source-field-join-alias]} (lib/options &match)]
+                             (cond-> (lib/with-join-alias &match join-alias)
+                               (and fk-join-alias (not source-field-join-alias))
+                               (lib/update-options assoc :source-field-join-alias fk-join-alias))))
                          &match))]
           (when-not (= stage' stage)
             ;; normalize the stage to remove any duplicate fields or breakouts
-            (lib/normalize ::lib.schema/stage stage'))))
+            (lib/normalize ::lib.schema/stage (dedupe-implicitly-joined-refs stage' (set (vals fk-field-info->join-alias)))))))
       stage))
 
 (mu/defn- already-has-join?
@@ -277,7 +296,7 @@
                                                           (map lib/fresh-uuids referenced-fields)])))]
                 (when-not (= stage' stage)
                   ;; normalize the stage to remove any duplicate fields or breakouts
-                  (lib/normalize ::lib.schema/stage stage')))))))
+                  (lib/normalize ::lib.schema/stage (dedupe-implicitly-joined-refs stage' reused-join-aliases))))))))
       stage))
 
 (mu/defn- add-fields-from-next-stage :- ::lib.schema/stage

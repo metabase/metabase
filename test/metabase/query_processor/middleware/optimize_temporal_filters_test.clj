@@ -197,7 +197,7 @@
                                      (lib/with-temporal-bucket :default))
                                  (lib/relative-datetime -16 :week))))]
       (is (=? {:query {:filter [:<=
-                                [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
+                                [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
                                 [:relative-datetime -16 :week]]}}
               (optimize-query query))))))
 
@@ -211,7 +211,7 @@
                                  (lib/relative-datetime -17 :week)
                                  (lib/relative-datetime -16 :week))))]
       (is (=? {:query {:filter [:between
-                                [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
+                                [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
                                 [:relative-datetime -17 :week]
                                 [:relative-datetime -16 :week]]}}
               (optimize-query query))))))
@@ -226,7 +226,7 @@
                                  (lib/relative-datetime -1 :week)
                                  (lib/relative-datetime 0 :week))))]
       (is (=? {:query {:filter [:between
-                                [:field (meta/id :orders :created-at) {}]
+                                [:field "CREATED_AT" {}]
                                 [:relative-datetime -1 :week]
                                 [:relative-datetime 0 :week]]}}
               (optimize-query query))))))
@@ -516,11 +516,11 @@
                                  (lib/relative-datetime 0 :minute))))]
       (is (=? {:query {:filter [:and
                                 [:>=
-                                 [:+ [:field (meta/id :orders :created-at) {}]
+                                 [:+ [:field "CREATED_AT" {}]
                                   [:interval 10 :minute]]
                                  [:relative-datetime -10 :minute]]
                                 [:<
-                                 [:+ [:field (meta/id :orders :created-at) {}]
+                                 [:+ [:field "CREATED_AT" {}]
                                   [:interval 10 :minute]]
                                  [:relative-datetime 1 :minute]]]}}
               (-> query
@@ -540,7 +540,7 @@
                                  (lib/relative-datetime 0 :week))))]
       (is (=? {:stages [{:filters [[:between {}
                                     [:+ {}
-                                     [:field {} (meta/id :orders :created-at)]
+                                     [:field {} "CREATED_AT"]
                                      [:interval {} 2 :day]]
                                     [:relative-datetime {} -1 :week]
                                     [:relative-datetime {} 0 :week]]]}]}
@@ -796,22 +796,22 @@
         ;; Date strings with no time component should have bucketing of `:day` and get optimized
         "2019-11-04" "2019-11-07"
         [[:between {:lib/expression-name "date_between"}
-          [:field map? int?]
+          [:field map? string?]
           [:absolute-datetime {} #t "2019-11-04" :default]
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:and {:lib/expression-name "datetime_between"}
           [:>= {}
-           [:field map? int?]
+           [:field map? string?]
            [:absolute-datetime {} (local-date= "2019-11-04") :default]]
           [:< {}
-           [:field map? int?]
+           [:field map? string?]
            [:absolute-datetime {} (local-date= "2019-11-08") :default]]]
          [:and {:lib/expression-name "datetime_tz_between"}
           [:>= {}
-           [:field map? int?]
+           [:field map? string?]
            [:absolute-datetime {} (local-date= "2019-11-04") :default]]
           [:< {}
-           [:field map? int?]
+           [:field map? string?]
            [:absolute-datetime {} (local-date= "2019-11-08") :default]]]]
         [[false false false]
          [false false false]
@@ -827,15 +827,15 @@
         ;; Datetime strings should have bucketing of `:default` and not get optimized
         "2019-11-04T12:00:00" "2019-11-07T01:00:00"
         [[:between {:lib/expression-name "date_between"}
-          [:field map? int?]
+          [:field map? string?]
           [:absolute-datetime {} #t "2019-11-04" :default]
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:between {:lib/expression-name "datetime_between"}
-          [:field map? int?]
+          [:field map? string?]
           [:absolute-datetime {} temporal? :default]
           [:absolute-datetime {} temporal? :default]]
          [:between {:lib/expression-name "datetime_tz_between"}
-          [:field map? int?]
+          [:field map? string?]
           [:absolute-datetime {} temporal? :default]
           [:absolute-datetime {} temporal? :default]]]
         [[false false false]
@@ -852,15 +852,15 @@
         ;; Datetime strings without a T should have bucketing of `:default` and not get optimized
         "2019-11-04 12:00:00" "2019-11-07 01:00:00"
         [[:between {:lib/expression-name "date_between"}
-          [:field map? int?]
+          [:field map? string?]
           [:absolute-datetime {} #t "2019-11-04" :default]
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:between {:lib/expression-name "datetime_between"}
-          [:field map? int?]
+          [:field map? string?]
           [:absolute-datetime {} temporal? :default]
           [:absolute-datetime {} temporal? :default]]
          [:between {:lib/expression-name  "datetime_tz_between"}
-          [:field map? int?]
+          [:field map? string?]
           [:absolute-datetime {} temporal? :default]
           [:absolute-datetime {} temporal? :default]]]
         [[false false false]

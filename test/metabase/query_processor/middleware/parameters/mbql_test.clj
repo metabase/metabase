@@ -530,7 +530,7 @@
           title-col (m/find-first #(and (= (:id %) (meta/id :products :title))
                                         (= (:lib/join-alias %) "Products"))
                                   (lib/visible-columns query))]
-      (is (=? {:query {:filter [:= [:field (meta/id :products :title) {:join-alias "Products"}] "Google"]}}
+      (is (=? {:query {:filter [:= [:field "TITLE" {:join-alias "Products"}] "Google"]}}
               (expand-parameters
                (-> (lib.convert/->legacy-MBQL query)
                    (assoc :parameters
@@ -569,7 +569,7 @@
           query      (-> (lib/query mp (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :month)))]
-      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :quarter}]]}}
+      (is (=? {:query {:breakout [[:field "CREATED_AT" {:temporal-unit :quarter}]]}}
               (expand-parameters
                (-> (lib.convert/->legacy-MBQL query)
                    (assoc :parameters
@@ -595,8 +595,8 @@
                               {:type   :temporal-unit
                                :value  "week"
                                :target [:dimension (legacy-bucket :month) {}]}]))]
-      (is (=? {:stages [{:breakout [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
-                                    [:field {:temporal-unit :week}    (meta/id :orders :created-at)]]}]}
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :quarter} "CREATED_AT"]
+                                    [:field {:temporal-unit :week}    "CREATED_AT"]]}]}
               (expand-parameters query))))))
 
 (deftest ^:parallel temporal-unit-param-does-not-rewrite-join-condition-test
@@ -616,10 +616,10 @@
                             :target [:dimension
                                      (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
                                      {}]}]))]
-      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (meta/id :orders :created-at)]]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} "CREATED_AT"]]
                          :joins    [{:conditions [[:= {}
-                                                   [:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                                   [:field {:temporal-unit :month} (meta/id :products :created-at)]]]}]}]}
+                                                   [:field {:temporal-unit :month} "CREATED_AT"]
+                                                   [:field {:temporal-unit :month} "CREATED_AT"]]]}]}]}
               (expand-parameters query))))))
 
 (deftest ^:parallel bigint-number-operators-test
@@ -628,10 +628,10 @@
           big    (biginteger "9223372036854775808")
           id-ref (lib.convert/->legacy-MBQL (lib/ref (meta/field-metadata :orders :id)))]
       (doseq [[ptype value expected]
-              [[:number/!=      [big]   [:!= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
-               [:number/>=      [big]   [:>= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
-               [:number/<=      [big]   [:<= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
-               [:number/between [0 big] [:between [:field (meta/id :orders :id) {:base-type :type/BigInteger}] 0 big]]]]
+              [[:number/!=      [big]   [:!= [:field "ID" {:base-type :type/BigInteger}] big]]
+               [:number/>=      [big]   [:>= [:field "ID" {:base-type :type/BigInteger}] big]]
+               [:number/<=      [big]   [:<= [:field "ID" {:base-type :type/BigInteger}] big]]
+               [:number/between [0 big] [:between [:field "ID" {:base-type :type/BigInteger}] 0 big]]]]
         (testing (pr-str ptype)
           (is (=? {:query {:filter expected}}
                   (expand-parameters
@@ -646,8 +646,8 @@
     (let [mp      meta/metadata-provider
           cat-ref (lib.convert/->legacy-MBQL (lib/ref (meta/field-metadata :products :category)))]
       (is (=? {:query {:filter [:and
-                                [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Doohickey" "Gizmo"]
-                                [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Gadget"]]}}
+                                [:= [:field "CATEGORY" {:base-type :type/Text}] "Doohickey" "Gizmo"]
+                                [:= [:field "CATEGORY" {:base-type :type/Text}] "Gadget"]]}}
               (expand-parameters
                (-> (lib.convert/->legacy-MBQL (-> (lib/query mp (meta/table-metadata :products))
                                                   (lib/aggregate (lib/count))))
@@ -667,7 +667,7 @@
           query      (-> (lib/query mp (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :month)))]
-      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :year}]]}}
+      (is (=? {:query {:breakout [[:field "CREATED_AT" {:temporal-unit :year}]]}}
               (expand-parameters
                (-> (lib.convert/->legacy-MBQL query)
                    (assoc :parameters

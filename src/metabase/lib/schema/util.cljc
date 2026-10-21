@@ -69,14 +69,11 @@
 
 (defn- opts-distinct-key [opts]
   ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
-  ;; A ref with a `:join-alias` is identified by it, so the keys naming the FK of an implicit join don't matter.
   (reduce-kv (fn [acc k v]
                (if (or (qualified-keyword? k)
                        (#{:base-type :effective-type} k)
                        (and (#{:temporal-unit :inherited-temporal-unit} k)
-                            (= v :default))
-                       (and (#{:source-field :source-field-name :source-field-join-alias} k)
-                            (:join-alias opts)))
+                            (= v :default)))
                  (dissoc acc k)
                  acc))
              opts

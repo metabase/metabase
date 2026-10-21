@@ -479,8 +479,8 @@
     ;; and returns `m/distinct-by` over that random order. Changing the map keys on the inner query can perturb this
     ;; order; if you cause this test to fail based on shuffling the order of these joined fields, just edit the
     ;; expectation to match the new order. Tech debt issue: #39396
-    (is (=? {:source-query {:fields [[:field (meta/id :people :created-at) {:temporal-unit (symbol "nil #_\"key is not present.\"")
-                                                                            :join-alias    "p"}]
+    (is (=? {:source-query {:fields [[:field "CREATED_AT" {:temporal-unit (symbol "nil #_\"key is not present.\"")
+                                                           :join-alias    "p"}]
                                      [:expression "double_total" {}]]}}
             (-> (lib/query
                  meta/metadata-provider

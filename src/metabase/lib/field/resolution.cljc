@@ -65,10 +65,13 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table
    field-name            :- :string]
-  (let [fields-named (fn [field-name]
-                       (lib.metadata.protocols/metadatas
-                        (lib.metadata/->metadata-provider metadata-providerable)
-                        {:lib/type :metadata/column, :table-ids #{table-id}, :name #{field-name}}))
+  (let [mp           (lib.metadata/->metadata-provider metadata-providerable)
+        table-fields (lib.metadata.protocols/fields mp table-id)
+        fields-named (fn [field-name]
+                       (or (not-empty (filter #(= (:name %) field-name) table-fields))
+                           (lib.metadata.protocols/metadatas
+                            mp
+                            {:lib/type :metadata/column, :table-ids #{table-id}, :name #{field-name}})))
         fields       (fields-named field-name)]
     (or (m/find-first (comp nil? :parent-id) fields)
         (when-some [leaf-name (second (re-matches #".*\.([^.]+)" field-name))]
@@ -330,11 +333,18 @@
                     (pr-str id-or-name)
                     (pr-str join-alias)
                     (pr-str stage-number))
-        (let [join-cols (cond->> (lib.metadata.calculation/returned-columns query stage-number join)
-                          source-field (remove (fn [col]
-                                                 (when-some [col-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
-                                                   (not= col-source-field source-field)))))]
-          (or (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query join-cols id-or-name)]
+        (let [col-source-field (some-fn :fk-field-id :lib/original-fk-field-id)
+              join-cols        (lib.metadata.calculation/returned-columns query stage-number join)
+              fk-cols          (when source-field
+                                 (not-empty (filter #(= (col-source-field %) source-field) join-cols)))
+              join-cols        (cond
+                                 fk-cols      fk-cols
+                                 source-field (remove #(some-> (col-source-field %) (not= source-field)) join-cols)
+                                 :else        join-cols)]
+          (or (when-some [col (or (resolve-in-previous-stage-returned-columns-and-update-keys query join-cols id-or-name)
+                                  (when (string? id-or-name)
+                                    (some-> (m/find-first #(= ((some-fn :lib/original-name :name) %) id-or-name) fk-cols)
+                                            lib.field.util/update-keys-for-col-from-previous-stage)))]
                 (log/debugf "Got: %s" (pr-str col))
                 (-> col
                     (as-> $col (lib.join/column-from-join query stage-number $col join-alias))
@@ -753,14 +763,17 @@
                                      {:query query, :stage-number stage-number, :field-ref field-ref, :col <>})))))))))))
 
 (defn- implicit-join-fk-field-id
-  "The ID of the FK Field named by the `:source-field-name` (and `:source-field-join-alias`, or `:join-alias` for a ref
-  to a column joined through a column of an explicit join) of an implicit join `:field` ref's `opts`."
+  "The ID of the FK Field named by the `:source-field-name` (and `:source-field-join-alias`, or `:join-alias` unless it
+  is the alias of the implicit join itself) of an implicit join `:field` ref's `opts`."
   [query stage-number {:keys [source-field-name source-field-join-alias join-alias]}]
   (when source-field-name
-    (let [fk-ref [:field
-                  (m/assoc-some {:lib/uuid (str (random-uuid)), :base-type :type/*}
-                                :join-alias (or source-field-join-alias join-alias))
-                  source-field-name]
+    (let [implicit-join? (some #(and (= (:alias %) join-alias) (:fk-field-id %))
+                               (:joins (lib.util/query-stage query stage-number)))
+          fk-ref         [:field
+                          (m/assoc-some {:lib/uuid (str (random-uuid)), :base-type :type/*}
+                                        :join-alias (or source-field-join-alias
+                                                        (when-not implicit-join? join-alias)))
+                          source-field-name]
           fk-col (resolve-field-ref* query stage-number fk-ref)]
       (when-not (::fallback-metadata? fk-col)
         (:id fk-col)))))

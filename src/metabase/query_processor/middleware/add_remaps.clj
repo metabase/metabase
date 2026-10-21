@@ -190,6 +190,26 @@
                      [(simplify-ref-options original-with-id) new-field-clause]])))
         remap-infos))
 
+(mu/defn- new-field-keys :- [:set ::simplified-ref]
+  "The [[simplify-ref-options]] keys of the remapped column of `info`: its name ref, and the legacy ID ref with
+  `:source-field` that the same column can be referenced by."
+  [{:keys [new-field-clause dimension]} :- ::remap-info]
+  (let [[tag opts _name] new-field-clause]
+    #{(simplify-ref-options new-field-clause)
+      (simplify-ref-options [tag
+                             (-> opts
+                                 (dissoc :source-field-name)
+                                 (assoc :source-field (:field-id dimension)))
+                             (:human-readable-field-id dimension)])}))
+
+(mu/defn- existing-field-keys :- [:set ::simplified-ref]
+  "The [[simplify-ref-options]] keys of `a-ref`, also without `:source-field` when it names its FK both ways."
+  [a-ref :- ::lib.schema.ref/ref]
+  (let [opts (lib/options a-ref)]
+    (cond-> #{(simplify-ref-options a-ref)}
+      (and (:source-field opts) (:source-field-name opts))
+      (conj (simplify-ref-options (lib/update-options a-ref dissoc :source-field))))))
+
 (mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- ::lib.schema/fields
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
   remapped-from."
@@ -210,15 +230,14 @@
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- ::lib.schema/fields]
   (let [normalized-clause->new-options (into {}
-                                             (map (juxt (fn [{a-ref :new-field-clause}]
-                                                          (simplify-ref-options a-ref))
-                                                        (fn [{a-ref :new-field-clause}]
-                                                          (lib/options a-ref))))
+                                             (mapcat (fn [{a-ref :new-field-clause, :as info}]
+                                                       (for [k (new-field-keys info)]
+                                                         [k (lib/options a-ref)])))
                                              infos)]
     (mapv (fn [a-ref]
-            (let [options (normalized-clause->new-options (simplify-ref-options a-ref))]
+            (let [options (some normalized-clause->new-options (existing-field-keys a-ref))]
               (cond-> a-ref
-                options (lib/update-options #(merge options %)))))
+                options (lib/update-options #(merge (m/filter-keys qualified-keyword? options) %)))))
           fields)))
 
 (mu/defn- add-fk-remaps-rewrite-existing-fields :- [:maybe ::lib.schema/fields]
@@ -276,12 +295,16 @@
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- [:maybe ::lib.schema/fields]]
   (when (seq fields)
-    (let [existing-fields (add-fk-remaps-rewrite-existing-fields infos fields)]
+    (let [existing-fields (add-fk-remaps-rewrite-existing-fields infos fields)
+          existing-keys   (into #{} (mapcat existing-field-keys) fields)]
       (into []
             (comp cat
                   (m/distinct-by simplify-ref-options))
             [existing-fields
-             (map :new-field-clause infos)]))))
+             (keep (fn [info]
+                     (when-not (some existing-keys (new-field-keys info))
+                       (:new-field-clause info)))
+                   infos)]))))
 
 (mu/defn- add-fk-remaps-to-stage :- ::lib.schema/stage
   [query :- ::lib.schema/query

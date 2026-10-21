@@ -430,15 +430,15 @@
                                                                      :source-field-join-alias "CH"}]
                                    "1234"]}))]
       (is (=? {:query {:source-query {:source-table (meta/id :orders)
-                                      :fields       [[:field (meta/id :orders :id)         {}]
-                                                     [:field (meta/id :orders :user-id)    {}]
-                                                     [:field (meta/id :orders :product-id) {}]
-                                                     [:field (meta/id :orders :subtotal)   {}]
-                                                     [:field (meta/id :orders :tax)        {}]
-                                                     [:field (meta/id :orders :total)      {}]
-                                                     [:field (meta/id :orders :discount)   {}]
-                                                     [:field (meta/id :orders :created-at) {}]
-                                                     [:field (meta/id :orders :quantity)   {}]]}
+                                      :fields       [[:field "ID" {}]
+                                                     [:field "USER_ID" {}]
+                                                     [:field "PRODUCT_ID" {}]
+                                                     [:field "SUBTOTAL" {}]
+                                                     [:field "TAX" {}]
+                                                     [:field "TOTAL" {}]
+                                                     [:field "DISCOUNT" {}]
+                                                     [:field "CREATED_AT" {}]
+                                                     [:field "QUANTITY" {}]]}
                        :joins        [{:source-query {:source-table (meta/id :checkins)}
                                        :alias        "CH"
                                        :strategy     :left-join
@@ -457,8 +457,8 @@
                                        :strategy            :left-join
                                        :fk-field-id         (meta/id :checkins :venue-id)
                                        :condition           [:=
-                                                             [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]
-                                                             [:field (meta/id :venues :id) {:join-alias "VENUES__via__VENUE_ID__via__CH"}]]}]
+                                                             [:field "VENUE_ID" {:join-alias "CH"}]
+                                                             [:field "ID" {:join-alias "VENUES__via__VENUE_ID__via__CH"}]]}]
                        :fields       [[:field "ID"         {:base-type :type/BigInteger}]
                                       [:field "USER_ID"    {:base-type :type/Integer}]
                                       [:field "PRODUCT_ID" {:base-type :type/Integer}]
@@ -570,7 +570,7 @@
                  (mapv (juxt :display-name :lib/desired-column-alias)
                        (lib/returned-columns query))))))
       (testing `qp.preprocess/query->expected-cols
-        (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} pos-int?]]
+        (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} "CATEGORY"]]
                            :aggregation [[:count {}]]
                            :joins       [{:alias  "Products"
                                           :stages [{:fields #(= (count %) 8)}]}
@@ -583,7 +583,7 @@
                                     [:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
                            :joins  [{:alias  "Card 2 - Products → Category"
                                      :fields [[:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
-                                     :stages [{:breakout [[:field {} (meta/id :products :category)]]}
+                                     :stages [{:breakout [[:field {} "CATEGORY"]]}
                                               {:fields [[:field {} "CATEGORY"]]}]}]}]}
                 (qp.preprocess/preprocess query)))
         (is (= [["Products → Category"                     "Products__CATEGORY"]
