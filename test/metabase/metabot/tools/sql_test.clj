@@ -399,7 +399,10 @@
                        columns "\nFROM recent\nWHERE\n  price > 2")]
       (doseq [profile [:internal :sql]
               [sql old-string stored-text line]
-              [[ticket-sql "where price > 2" "WHERE\n  price > 2" 5]
+              [["SELECT 1 -- 🐦" "🐦 " "🐦" 1]
+               ["SELECT '🐦' AS bird" "select '🐦' as bird" "SELECT '🐦' AS bird" 1]
+               ["-- 🐦\nSELECT '𐐀' AS bird" "select '𐐨' as bird" "SELECT '𐐀' AS bird" 2]
+               [ticket-sql "where price > 2" "WHERE\n  price > 2" 5]
                [ticket-sql "where price > 2 and category_id in (1,2)" "WHERE\n  price > 2 AND category_id IN (1, 2)" 5]
                [ticket-sql "select id, name from venues where price > 2 and category_id in (1,2)" ticket-sql 1]
                [cte-sql "status in ('paid','shipped')" "status IN ('paid', 'shipped')" 305]
@@ -436,8 +439,8 @@
 
 (deftest long-closest-sql-match-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range 600)] (str "  column_" i))) "\nFROM venues")
-          old-string (str/replace (subs sql 0 3000) #"\n  " " ")
+    (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range 1200)] (str "  column_" i))) "\nFROM venues")
+          old-string (str/replace (subs sql 0 12000) #"\n  " " ")
           result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
                                   "edit_sql_query" {:edits [{:old_string old-string :new_string "x"}]})
           output (:output result)]
@@ -515,3 +518,9 @@
         (is (not (str/includes? output "further match locations omitted")))
         (is (str/includes? output "replace_sql_query"))
         (is (<= (count output) 4000))))))
+
+(deftest ^:parallel closest-span-long-text-test
+  (let [sql (str "SELECT '" (apply str (repeat 20000 "a")) "' AS bird")
+        old-string (str/replace sql "SELECT" "select")]
+    (is (= [0 (count sql)] (#'sql.edit/closest-span sql old-string)))
+    (is (nil? (#'sql.edit/closest-span sql (str old-string " missing"))))))

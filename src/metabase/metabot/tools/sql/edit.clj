@@ -30,13 +30,32 @@
         (recur (conj spans [(.start matcher) (.end matcher)]))
         spans))))
 
+(defn- normalized-match-text
+  [^String text]
+  (let [builder (StringBuilder.)]
+    (loop [position 0 offsets (transient [])]
+      (if (< position (.length text))
+        (let [code-point (.codePointAt text (int position))
+              next-position (+ position (Character/charCount code-point))]
+          (if (or (Character/isWhitespace code-point) (Character/isSpaceChar code-point) (= code-point 0x85))
+            (recur next-position offsets)
+            (do
+              (.appendCodePoint builder (Character/toLowerCase (Character/toUpperCase code-point)))
+              (recur next-position (conj! offsets position)))))
+        {:text (str builder) :offsets (persistent! offsets)}))))
+
 (defn- closest-span
   "Find stored text differing only in case and whitespace. This is a hint, never an edit."
-  [sql old-string]
-  (when-not (str/blank? old-string)
-    (let [characters (remove #(Character/isWhitespace (char %)) old-string)
-          pattern (re-pattern (str "(?iuU)" (str/join "\\s*" (map #(java.util.regex.Pattern/quote (str %)) characters))))]
-      (first (match-spans pattern sql)))))
+  [^String sql old-string]
+  (let [^String needle (:text (normalized-match-text old-string))]
+    (when (seq needle)
+      (let [{^String text :text offsets :offsets} (normalized-match-text sql)
+            index (.indexOf text needle)]
+        (when-not (neg? index)
+          (let [start (.codePointCount text 0 index)
+                last-index (+ start (.codePointCount needle 0 (.length needle)) -1)
+                last-offset (int (nth offsets last-index))]
+            [(nth offsets start) (+ last-offset (Character/charCount (.codePointAt sql last-offset)))]))))))
 
 (defn- line-starts
   [sql]
