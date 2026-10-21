@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
@@ -16,7 +17,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once lib.tu/with-name-based-refs (fixtures/initialize :db :test-users))
 
 (deftest get-document-details-invalid-document-id-test
   (testing "returns error for invalid document-id"
@@ -221,10 +222,8 @@
                     (is (= "sum" head) "head is a string operator")
                     (is (map? opts) "options map at position 1")
                     (is (= "field" (first arg)) "argument is a field clause")
-                    (is (vector? (nth arg 2))
-                        "field's FK is a portable string array (not numeric id)")
-                    (is (every? (some-fn string? nil?) (nth arg 2))
-                        "every portable FK segment is a string (or null for schemaless)")))))))))))
+                    (is (= "TOTAL" (nth arg 2))
+                        "field is referenced by column name (not numeric id)")))))))))))
 
 (deftest get-table-details-with-segments-test
   (testing "get-table-details returns segments when with_segments is true"
@@ -262,8 +261,8 @@
                     (is (= ">" head) "head is a string operator")
                     (is (map? opts) "options map at position 1")
                     (is (= "field" (first field-clause)) "argument is a field clause")
-                    (is (vector? (nth field-clause 2))
-                        "field's FK is a portable string array")
+                    (is (= "TOTAL" (nth field-clause 2))
+                        "field is referenced by column name")
                     (is (= 100 value) "literal comparison value is preserved")))))))))))
 
 (deftest measure-segment-definition-round-trips-through-construct-test

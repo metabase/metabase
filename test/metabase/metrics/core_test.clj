@@ -6,11 +6,14 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metrics.core :as metrics]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -560,9 +563,10 @@
         category   (m/find-first #(and (= (mt/id :products :category) (:id %))
                                        (= (mt/id :orders :product_id) (:fk-field-id %)))
                                  columns)
-        mappings   [{:type :table, :table-id (mt/id :orders),   :dimension-id uuid-1, :target (lib/ref created-at)}
+        mappings   [{:type :table, :table-id (mt/id :orders),   :dimension-id uuid-1
+                     :target (lib/ensure-uuid [:field {} (:id created-at)])}
                     {:type :table, :table-id (mt/id :products), :dimension-id uuid-2
-                     :target (lib/update-options (lib/ref category) dissoc :source-field-name)}]
+                     :target (lib/ensure-uuid [:field {:source-field (:fk-field-id category)} (:id category)])}]
         dimensions [{:id uuid-1, :name "col1", :effective-type :type/DateTime}
                     {:id uuid-2, :name "col2", :effective-type :type/Text}]
         legacy     (fn [breakout]

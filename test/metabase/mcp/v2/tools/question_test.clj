@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -21,6 +22,8 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (set! *warn-on-reflection* true)
 
@@ -138,7 +141,7 @@
                                               :widget_type "number/="}}}} nil v2.tu/all-scopes)]
         (is (=? {:type :dimension
                  :widget-type :number/=
-                 :dimension [:field {} field-id]}
+                 :field-id field-id}
                 (tag-by-name q "d")))))))
 
 (deftest native-template-tags-teaching-errors-carry-the-contract-test
@@ -192,7 +195,7 @@
                {:native {:database_id (mt/id)
                          :sql "SELECT * FROM orders WHERE {{unit}}"
                          :template_tags {"unit" {:type "temporal-unit" :field_id field-id}}}} nil v2.tu/all-scopes)]
-        (is (=? {:type :temporal-unit :dimension [:field {} field-id]}
+        (is (=? {:type :temporal-unit :field-id field-id}
                 (tag-by-name q "unit")))))))
 
 (deftest native-template-tags-read-shape-round-trip-test
@@ -211,7 +214,7 @@
         (is (=? {:type :dimension
                  :display-name "Total"
                  :widget-type :number/=
-                 :dimension [:field {} field-id]}
+                 :field-id field-id}
                 (tag-by-name q "d")))))
     (testing "reference tags — a snippet as get_content emits it — are accepted and ignored, so a card using one round-trips"
       (let [q (#'v2.question/resolve-query-source
@@ -232,7 +235,7 @@
                          :template_tags {"d" {:type "dimension"
                                               (keyword "widget-type") "number/="
                                               :dimension ["field" {} field-id]}}}} nil v2.tu/all-scopes)]
-        (is (=? {:dimension [:field {} field-id]}
+        (is (=? {:field-id field-id}
                 (tag-by-name q "d")))))))
 
 (deftest create-question-happy-path-test

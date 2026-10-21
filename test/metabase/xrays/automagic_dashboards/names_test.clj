@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.lib.core :as lib]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -12,6 +13,8 @@
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.schema :as ads]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 

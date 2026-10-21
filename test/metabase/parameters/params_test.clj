@@ -6,11 +6,14 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.parameters.params :as params]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-name-based-refs)
 
 (deftest hydrate-name-field-test
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"
