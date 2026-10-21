@@ -20,6 +20,17 @@ describe("SegmentList (OSS)", () => {
       ).toBeInTheDocument();
     });
 
+    it("should show the empty state with a 'Learn how to create segments' button when there are no segments", async () => {
+      await setup({ user: adminUser });
+
+      expect(
+        screen.getByText("Segments are interesting subsets of tables"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Learn how to create segments" }),
+      ).toBeInTheDocument();
+    });
+
     it("should render help link when `show-metabase-links: false`", async () => {
       await setup({ user: adminUser, showMetabaseLinks: false });
 

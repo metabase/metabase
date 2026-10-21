@@ -12,15 +12,6 @@ describe("scenarios > admin > datamodel > segments", () => {
   });
 
   describe("with no segments", () => {
-    it("should show no segments", () => {
-      cy.visit("/reference/segments");
-
-      cy.get("main")
-        .findByText("Segments are interesting subsets of tables")
-        .should("be.visible");
-      cy.button("Learn how to create segments").should("be.visible");
-    });
-
     it("should have 'Custom Expression' in a filter list and track segment_created event when saving a new segment (metabase#13069)", () => {
       cy.intercept("POST", "/api/segment").as("createSegment");
       cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
