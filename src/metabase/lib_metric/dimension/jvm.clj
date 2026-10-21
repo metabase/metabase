@@ -8,6 +8,7 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf])
   (:import (java.util UUID)))
@@ -41,7 +42,7 @@
    For source-card columns that are FK-remapped (e.g. PRODUCTS.TITLE appearing as
    display value for ORDERS.PRODUCT_ID), `:lib/original-fk-field-id` captures the FK
    column. We include it as `:source-field` so the compiled query gets the implicit join."
-  [column]
+  [query column]
   (let [ref         (lib/ref column)
         fk-field-id (if (:source-field-name (second ref))
                       (:fk-field-id column)
@@ -50,7 +51,11 @@
              (not (pos-int? (nth ref 2 nil))))
       (cond-> (assoc ref 2 (:id column))
         fk-field-id
-        (assoc-in [1 :source-field] fk-field-id))
+        (-> (assoc-in [1 :source-field] fk-field-id)
+            (update 1 (fn [opts]
+                        (cond-> opts
+                          (= (:source-field-name opts) (:name (lib.metadata/field query fk-field-id)))
+                          (dissoc :source-field-name))))))
       ref)))
 
 (defn- dimension-id
@@ -93,10 +98,10 @@
    target; reconciliation replaces it with the persisted id when the column is already curated.
    The table-id is extracted from the column's metadata.
    When `group` is provided, it is attached to the dimension."
-  ([owner-key column]
-   (column->computed-pair owner-key column nil))
-  ([owner-key column group]
-   (let [target (field-id-ref column)
+  ([query owner-key column]
+   (column->computed-pair query owner-key column nil))
+  ([query owner-key column group]
+   (let [target (field-id-ref query column)
          has-field-values (lib/infer-has-field-values column)]
      {:dimension (cond-> {:id             (dimension-id owner-key (:name column) target)
                           :name           (:name column)
@@ -193,5 +198,5 @@
                    group-cols  (lib/columns-group-columns col-group)]
                (->> group-cols
                     (remove #(= :source/expressions (:lib/source %)))
-                    (perf/mapv #(column->computed-pair owner-key % group-desc))))))
+                    (perf/mapv #(column->computed-pair vc-query owner-key % group-desc))))))
           col-groups)))

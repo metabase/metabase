@@ -63,7 +63,9 @@
     [:type [:= :temporal-unit]]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
-    [:field-id    {:optional true} ::id/field]]])
+    [:field-id    {:optional true} ::id/field]
+    ;; legacy, serialized next to `:field-id` for older readers
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
 (mr/def ::field-filter.options
   "Options appended to the filter clause a Field Filter template tag generates. These get merged into the parameter
@@ -88,6 +90,8 @@
     [:type        [:= :dimension]]
     ;; field filters can have missing field before it is set
     [:field-id    {:optional true} ::id/field]
+    ;; legacy, serialized next to `:field-id` for older readers
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
@@ -100,7 +104,8 @@
   (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))
 
 (mr/def ::disallow-field-id
-  (common/disallowed-keys {:field-id ":field-id is only allowed for :type :dimension and :temporal-unit template tags"}))
+  (common/disallowed-keys {:field-id  ":field-id is only allowed for :type :dimension and :temporal-unit template tags"
+                           :dimension ":dimension is only allowed for :type :dimension and :temporal-unit template tags"}))
 
 (defn dimension->field-id
   "Replace the legacy `:dimension` `:field` ref of a template tag with the `:field-id` of the Field it refers to. Legacy
