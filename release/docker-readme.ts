@@ -4,25 +4,39 @@ import { parseArgs } from "node:util";
 
 import { Octokit } from "@octokit/rest";
 
-import { generateDockerReadme, pushDockerReadme } from "./src/docker-readme";
+import {
+  type DockerEdition,
+  generateDockerReadme,
+  pushDockerReadme,
+} from "./src/docker-readme";
 
-const TEMPLATE_PATH = path.join(import.meta.dirname, "../bin/docker/README.md");
+const DEFAULT_TEMPLATE_PATHS: Record<DockerEdition, string> = {
+  oss: path.join(import.meta.dirname, "../bin/docker/README.md"),
+  ee: path.join(import.meta.dirname, "../bin/docker/README-enterprise.md"),
+};
 
 const USAGE = `Usage:
-  bun docker-readme [--latest-major 64] [--repository owner/name] [--publish]
+  bun docker-readme [--edition oss|ee] [--latest-major 64] [--template path] [--repository owner/name] [--publish]
 
 Prints the generated Docker Hub README. With --publish, also pushes it to the repository.
 
+--edition       oss (default) or ee. Picks v0 or v1 tags.
 --latest-major  defaults to LATEST_MAJOR_VERSION
---repository    defaults to DOCKERHUB_OWNER/DOCKERHUB_REPO
+--template      defaults to bin/docker/README.md (oss) or bin/docker/README-enterprise.md (ee)
+--repository    defaults to DOCKERHUB_OWNER/DOCKERHUB_REPO (oss) or DOCKERHUB_OWNER/DOCKERHUB_REPO-enterprise (ee)
 
 Env: GITHUB_TOKEN, AWS_S3_STATIC_BUCKET, AWS_REGION,
      DOCKERHUB_RELEASE_USERNAME and DOCKERHUB_RELEASE_TOKEN (for --publish)`;
 
+const isDockerEdition = (value: string): value is DockerEdition =>
+  value === "oss" || value === "ee";
+
 async function main() {
   const { values } = parseArgs({
     options: {
+      edition: { type: "string", default: "oss" },
       "latest-major": { type: "string" },
+      template: { type: "string" },
       repository: { type: "string" },
       publish: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
@@ -45,6 +59,11 @@ async function main() {
     DOCKERHUB_RELEASE_TOKEN,
   } = process.env;
 
+  const { edition } = values;
+  if (!isDockerEdition(edition)) {
+    throw new Error(`Invalid --edition: ${edition}\n\n${USAGE}`);
+  }
+
   const latestMajorVersion = values["latest-major"] ?? LATEST_MAJOR_VERSION;
   if (!latestMajorVersion) {
     throw new Error(`Missing --latest-major\n\n${USAGE}`);
@@ -55,7 +74,11 @@ async function main() {
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
     latestMajorVersion,
-    template: await readFile(TEMPLATE_PATH, "utf8"),
+    edition,
+    template: await readFile(
+      values.template ?? DEFAULT_TEMPLATE_PATHS[edition],
+      "utf8",
+    ),
   });
 
   console.log(readme);
@@ -67,7 +90,7 @@ async function main() {
   const repository =
     values.repository ??
     (DOCKERHUB_OWNER && DOCKERHUB_REPO
-      ? `${DOCKERHUB_OWNER}/${DOCKERHUB_REPO}`
+      ? `${DOCKERHUB_OWNER}/${DOCKERHUB_REPO}${edition === "ee" ? "-enterprise" : ""}`
       : undefined);
   if (!repository) {
     throw new Error(`Missing --repository\n\n${USAGE}`);

@@ -76,43 +76,50 @@ describe("docker-readme", () => {
       eol,
     });
 
-    it("renders a row with the newest tags for each supported major version that has a release", async () => {
-      mockFetch.mockResolvedValue(
-        response(true, {
-          major_version_support: [
-            line(65, false, "2027-01-01"),
-            line(64, true, "2027-12-01"),
-            line(63, false, "2026-11-01"),
-            line(62, false, "2026-09-01"),
-            line(61, false, "2027-06-01"),
-            line(58, true, "2027-02-17"),
-          ],
-        }),
-      );
+    it.each([
+      ["oss", "v0"],
+      ["ee", "v1"],
+    ] as const)(
+      "renders a %s row with the newest %s tags for each supported major version that has a release",
+      async (edition, prefix) => {
+        mockFetch.mockResolvedValue(
+          response(true, {
+            major_version_support: [
+              line(65, false, "2027-01-01"),
+              line(64, true, "2027-12-01"),
+              line(63, false, "2026-11-01"),
+              line(62, false, "2026-09-01"),
+              line(61, false, "2027-06-01"),
+              line(58, true, "2027-02-17"),
+            ],
+          }),
+        );
 
-      const readme = await generateDockerReadme({
-        github: github as any,
-        owner: "metabase",
-        repo: "metabase",
-        latestMajorVersion: "64",
-        today: "2026-10-21",
-        template: `# Supported Tags\n${SUPPORTED_TAGS_PLACEHOLDER}\n\nFooter`,
-      });
+        const readme = await generateDockerReadme({
+          github: github as any,
+          owner: "metabase",
+          repo: "metabase",
+          latestMajorVersion: "64",
+          edition,
+          today: "2026-10-21",
+          template: `# Supported Tags\n${SUPPORTED_TAGS_PLACEHOLDER}\n\nFooter`,
+        });
 
-      expect(readme).toBe(
-        [
-          "# Supported Tags",
-          "| Version | Status | Tags |",
-          "|---|---|---|",
-          "| 65 | Beta | `v0.65.x`, `v0.65.0-beta` |",
-          "| 64 | LTS | `latest`, `v0.64-lts`, `v0.64.x`, `v0.64.3.x`, `v0.64.3.1` |",
-          "| 63 | Supported | `v0.63.x`, `v0.63.21.x`, `v0.63.21` |",
-          "| 58 | LTS | `v0.58-lts`, `v0.58.x`, `v0.58.37.x`, `v0.58.37` |",
-          "",
-          "Footer",
-        ].join("\n"),
-      );
-    });
+        expect(readme).toBe(
+          [
+            "# Supported Tags",
+            "| Version | Status | Tags |",
+            "|---|---|---|",
+            `| 65 | Beta | \`${prefix}.65.x\`, \`${prefix}.65.0-beta\` |`,
+            `| 64 | LTS | \`latest\`, \`${prefix}.64-lts\`, \`${prefix}.64.x\`, \`${prefix}.64.3.x\`, \`${prefix}.64.3.1\` |`,
+            `| 63 | Supported | \`${prefix}.63.x\`, \`${prefix}.63.21.x\`, \`${prefix}.63.21\` |`,
+            `| 58 | LTS | \`${prefix}.58-lts\`, \`${prefix}.58.x\`, \`${prefix}.58.37.x\`, \`${prefix}.58.37\` |`,
+            "",
+            "Footer",
+          ].join("\n"),
+        );
+      },
+    );
   });
 
   describe("pushDockerReadme", () => {

@@ -433,8 +433,17 @@ jobs:
     needs: [add-extra-tags]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
+    strategy:
+      matrix:
+        include:
+          - edition: oss
+            repository: ${{ vars.DOCKERHUB_REPO }}
+            template: bin/docker/README.md
+          - edition: ee
+            repository: ${{ vars.DOCKERHUB_REPO }}-enterprise
+            template: bin/docker/README-enterprise.md
     concurrency:
-      group: update-docker-readme
+      group: update-docker-readme-${{ matrix.edition }}
       cancel-in-progress: false
     env:
       AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
@@ -448,7 +457,7 @@ jobs:
             bin/docker
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
-      - name: Update Docker Hub README
+      - name: Update Docker Hub README (${{ matrix.edition }})
         uses: actions/github-script@v9
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
@@ -458,13 +467,14 @@ jobs:
             const { generateDockerReadme, pushDockerReadme } = require('${{ github.workspace }}/release/dist/index.cjs');
             const fs = require('fs');
 
-            const template = fs.readFileSync('${{ github.workspace }}/bin/docker/README.md', 'utf8');
+            const template = fs.readFileSync('${{ github.workspace }}/${{ matrix.template }}', 'utf8');
 
             const readme = await generateDockerReadme({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
               latestMajorVersion: '${{ vars.LATEST_MAJOR_VERSION }}',
+              edition: '${{ matrix.edition }}',
               template,
             });
 
@@ -472,7 +482,7 @@ jobs:
 
             await pushDockerReadme({
               readme,
-              repository: '${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}',
+              repository: '${{ vars.DOCKERHUB_OWNER }}/${{ matrix.repository }}',
               username: process.env.DOCKERHUB_USERNAME,
               token: process.env.DOCKERHUB_TOKEN,
             });

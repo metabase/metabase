@@ -6,6 +6,7 @@ import type {
   VersionInfoFile,
 } from "./types";
 import {
+  getCanonicalVersion,
   getLastReleaseTag,
   getOSSVersion,
   getRollingTagsForVersion,
@@ -13,6 +14,8 @@ import {
 import { getSupportedMajorVersions, getVersionInfoUrl } from "./version-info";
 
 export const SUPPORTED_TAGS_PLACEHOLDER = "{{SUPPORTED_TAGS_TABLE}}";
+
+export type DockerEdition = "oss" | "ee";
 
 export type DockerTagRow = {
   major: number;
@@ -77,8 +80,13 @@ export async function getDockerTagRows({
   owner,
   repo,
   latestMajorVersion,
+  edition,
   today = new Date().toISOString().slice(0, 10),
-}: GithubProps & { latestMajorVersion: string; today?: string }) {
+}: GithubProps & {
+  latestMajorVersion: string;
+  edition: DockerEdition;
+  today?: string;
+}) {
   const latestMajor = Number(latestMajorVersion);
   if (!Number.isInteger(latestMajor) || latestMajor <= 0) {
     throw new Error(`Invalid latest major version: ${latestMajorVersion}`);
@@ -93,17 +101,19 @@ export async function getDockerTagRows({
   const rows: DockerTagRow[] = [];
 
   for (const major of getSupportedMajorVersions(versionInfo, today)) {
-    const version = await getLastReleaseTag({
+    const ossVersion = await getLastReleaseTag({
       github,
       owner,
       repo,
       version: `v0.${major}.0`,
     });
 
-    if (!version) {
+    if (!ossVersion) {
       console.warn(`No release tag found for major version ${major}, skipping`);
       continue;
     }
+
+    const version = getCanonicalVersion(ossVersion, edition);
 
     const lts = supportLines.some((line) => line.major === major && line.lts);
     const status = getDockerTagRowStatus({ version, lts });
@@ -120,6 +130,7 @@ export async function generateDockerReadme({
 }: GithubProps & {
   template: string;
   latestMajorVersion: string;
+  edition: DockerEdition;
   today?: string;
 }) {
   const rows = await getDockerTagRows(props);
