@@ -82,15 +82,18 @@
     (is (contains? (pipeline-codes) :unknown-table))))
 
 (def ^:private pipeline-payloads
-  "A payload for each branch of the v1 recovery text. `uri-in-source-table!` and the Agent API's hint for the same
-  code pick their sentence by `:entity-type`."
+  "Payloads that reach every branch of the v1 recovery text.
+
+  [[metabase.metabot.tools.recoverable.pipeline/uri-in-source-table!]] and the Agent API's hint for the same code
+  pick their sentence by `:entity-type`."
   (for [entity-type [nil "metric" "question" "model" "card" "table"]]
     (cond-> {:message "Query failed."}
       entity-type (assoc :entity-type entity-type :entity-id 1))))
 
 (defn- v1-recovery-texts
-  "Every recovery sentence that the v1 surfaces send for a pipeline error: the steps Metabot declares and the hints
-  the Agent API appends."
+  "Every recovery sentence that Metabot or the Agent API can send for a pipeline error.
+
+  Metabot's are the steps that its pipeline declarations build, and the Agent API's are the hints that it appends."
   []
   (concat
    (for [[code {:keys [build-fn]}] (tools.error/recoverables)
@@ -105,13 +108,15 @@
      hint)))
 
 (defn- mcp-vocabulary
-  "The part of `text` that only MCP v2's recovery text uses, or nil: its `browse_data` tool, or a sentence that
-  offers a numeric id for `source-table:` or `source-card:`. The `<numeric id>` placeholder in a `metabase://` URI
-  only names the resource to read, so it doesn't count."
+  "The part of `text` that only MCP v2's recovery text uses, or nil.
+
+  That is the `browse_data` tool, or a sentence that mentions a numeric id together with `source-table:` or
+  `source-card:`. A `<numeric id>` placeholder inside a `metabase://` resource URI only names the resource to read,
+  so it doesn't count."
   [text]
   (or (re-find #"browse_data" text)
       (some #(when (and (re-find #"(?i)\bnumeric\b" %) (re-find #"source-(table|card)" %)) %)
-            (str/split (str/replace text "<numeric id>" "") #"(?<=\.)\s+"))))
+            (str/split (str/replace text #"metabase://[^\s`]*<numeric id>" "") #"(?<=\.)\s+"))))
 
 (deftest ^:parallel v1-recovery-text-keeps-to-v1-vocabulary-test
   (testing "Metabot and the Agent API write portable FKs and entity_ids, so a recovery sentence that names
@@ -119,11 +124,20 @@
     (doseq [text (v1-recovery-texts)]
       (is (nil? (mcp-vocabulary text)) text))))
 
-(deftest ^:parallel the-vocabulary-check-finds-something-test
-  (testing "a check that stopped matching would make the test above pass vacuously, so MCP v2's own hints trip it"
+(deftest ^:parallel the-vocabulary-check-finds-only-mcp-advice-test
+  (testing "MCP v2's own hints trip it, so the test above can't pass vacuously"
     (doseq [code [:ambiguous-fk :missing-source-in-first-stage]]
       (is (some? (mcp-vocabulary (message/render (v2-hints/recovery-hint {:error code}))))
-          (str code)))))
+          (str code))))
+  (testing "a numeric id placeholder outside a resource URI trips it"
+    (doseq [text ["Put `<numeric id>` into `source-card:`."
+                  "Use `<numeric id>` as `source-table:`."]]
+      (is (some? (mcp-vocabulary text)) text)))
+  (testing "a placeholder inside a resource URI and a call to `search` don't"
+    (doseq [text ["Read `metabase://table/<numeric id>` and copy its portable FK into `source-table:`."
+                  "Read `metabase://question/<numeric id>` and copy its entity_id into `source-card:`."
+                  "Call `search` to find the portable FK for `source-table:`."]]
+      (is (nil? (mcp-vocabulary text)) text))))
 
 ;;; ===== Can one declaration serve both surfaces? =====
 
