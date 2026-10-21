@@ -2246,21 +2246,7 @@
       "metabase-enterprise.dependencies.api.dependent-error" : {
         "description" : "One entry of `::base-entity`'s `:dependents_errors`: either the slim `{:type :detail}` shape\n  [[normalize-finding-error]] produces for an entity's own errors (`node-errors`), or the raw AnalysisFindingError row\n  `node-downstream-errors` keeps so callers can tell which downstream entity each error belongs to.",
         "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "detail" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.validate.validate-error-type"
-            }
-          },
-          "required" : [ "type" ],
-          "additionalProperties" : false
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.normalized-finding-error"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.models.analysis-finding-error.analysis-finding-error"
         } ]
@@ -2398,6 +2384,24 @@
           }
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
+      },
+      "metabase-enterprise.dependencies.api.normalized-finding-error" : {
+        "description" : "The slim `{:type :detail}` shape [[normalize-finding-error]] produces from an AnalysisFindingError.",
+        "type" : "object",
+        "properties" : {
+          "detail" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.validate-error-type"
+          }
+        },
+        "required" : [ "type" ],
+        "additionalProperties" : false
       },
       "metabase-enterprise.dependencies.api.sandbox-entity" : {
         "type" : "object",
@@ -22679,6 +22683,13 @@
               "type" : "null"
             } ]
           },
+          "in_host_app" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "current_time_with_timezone" : {
             "oneOf" : [ {
               "type" : "string"
@@ -32861,14 +32872,9 @@
                         "name" : {
                           "type" : "string",
                           "minLength" : 1
-                        },
-                        "resource_collection_id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
                         }
                       },
-                      "required" : [ "name", "display_name", "resource_collection_id" ],
+                      "required" : [ "name", "display_name" ],
                       "additionalProperties" : false
                     } ]
                   }
@@ -33457,14 +33463,9 @@
                       "name" : {
                         "type" : "string",
                         "minLength" : 1
-                      },
-                      "resource_collection_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
                       }
                     },
-                    "required" : [ "name", "display_name", "resource_collection_id" ],
+                    "required" : [ "name", "display_name" ],
                     "additionalProperties" : false
                   } ]
                 }
@@ -48030,7 +48031,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-backfill-status",
         "summary" : "GET /api/ee/dependencies/backfill-status",
-        "description" : "Returns whether the dependency backfill has pending work.\n  `complete` is true when there are no stale or outdated entities awaiting processing.",
+        "description" : "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {

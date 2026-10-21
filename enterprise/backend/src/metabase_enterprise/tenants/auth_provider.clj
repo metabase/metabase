@@ -46,7 +46,8 @@
 (defn- reactivate-tenant!
   "Reactivate a disabled tenant and any users that were deactivated along with it."
   [{tenant-id :id}]
-  (api.tenants/update-tenant! tenant-id {:is_active true}))
+  (request/as-admin
+   (api.tenants/update-tenant! tenant-id {:is_active true})))
 
 (defn- maybe-reactivate-tenant!
   "If the tenant is disabled and user provisioning is enabled,
