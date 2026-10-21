@@ -278,7 +278,9 @@
    fetching it (typically `ws.remapping/remappings-for-db`).
 
    Fail-closed: throws `ex-info` with `:type qp.error-type/qp` on parse failure. A workspace
-   child must not silently pass canonical refs through to the warehouse."
+   child must not silently pass canonical refs through to the warehouse. Parsing runs on
+   SQLGlot, which a jar only carries when built with the `:python` step; a jar without it
+   fails every rewrite here."
   [driver sql remappings]
   (try
     (let [replacements {:tables (build-table-replacements remappings)}]
