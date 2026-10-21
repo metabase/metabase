@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
@@ -11,6 +13,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.core :as xrays]))
 
 (set! *warn-on-reflection* true)
@@ -38,7 +41,7 @@
                :text "Call `search` to find another source and use an id from the results."}]})
 
 (tools/defrecoverable incomplete-query!
-  "The conversation query names no database or no query type, as a draft does before the user picks its data."
+  "The conversation query is incomplete, as a draft is before the user picks its data."
   {:payload [:map {:closed true}
              [:query-id :string]]}
   [{:keys [query-id]}]
@@ -82,14 +85,16 @@
       query_id
       ;; For query_id, we need to resolve from memory
       (let [queries-state (get-in memory [:state :queries] {})
-            query (get queries-state query_id)]
+            query (get queries-state query_id)
+            mbql-query (when (and (:database query) (lib/normalized-query-type query))
+                         (lib-be/normalize-query query))]
         (when-not query
           (throw (ex-info (str "Query not found in memory with ID: " query_id
                                ". Available queries: [" (str/join ", " (keys queries-state)) "]")
                           {:agent-error? true
                            :query-id query_id
                            :available-queries (keys queries-state)})))
-        (when-not (and (:database query) (or (:lib/type query) (:type query)))
+        (when-not (mr/validate :metabase.lib.schema/query mbql-query)
           (incomplete-query! {:query-id query_id}))
         ;; For queries, we create a transient card-like structure
         {:entity (tools/with-entity {:kind :query :id query_id}
