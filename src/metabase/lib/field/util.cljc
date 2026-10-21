@@ -34,6 +34,11 @@
   "Whether Lib generates `:field` refs that name their column rather than refer to its Field by ID."
   false)
 
+(defn name-based-refs?
+  "Whether Lib currently generates name-based `:field` refs; see [[*name-based-refs*]]."
+  []
+  *name-based-refs*)
+
 (mu/defn nested-column-name :- [:maybe :string]
   "The `parent.child.leaf` name of a nested column (one with `:parent-id`) from its `:nfc-path`, which holds either the
   full path (as sync stores it) or just the parent path (as [[metabase.lib.field.resolution]] computes it)."

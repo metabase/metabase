@@ -1305,6 +1305,7 @@
   json-field? ; Single-use
   ]
  [metabase.lib.field.util
+  name-based-refs?
   update-keys-for-col-from-previous-stage])
 
 ;;; # Details of columns and metadata
