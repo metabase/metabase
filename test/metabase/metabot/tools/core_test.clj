@@ -354,7 +354,7 @@
               (pipeline-failure "no" {:status-code status}))))))
 
 (deftest ^:parallel with-pipeline-errors-does-not-relay-foreign-messages-test
-  (testing "lib, toucan2 and JDBC errors stay unrecoverable and lose the :agent-error? flag"
+  (testing "Lib exceptions stay unrecoverable without a declared `:error` code and lose the `:agent-error?` flag."
     (is (=? {:class         :unrecoverable
              :code          :internal
              ::ex-message   "No matching clause: :whatever"

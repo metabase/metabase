@@ -81,6 +81,7 @@
       (let [message (str "Session management is a paid feature not currently available to your instance. "
                          "Please upgrade to use it. Learn more at metabase.com/upgrade/")]
         (doseq [[method path body] [[:get "ee/session-management"]
+                                    [:get "ee/session-management/counts"]
                                     [:post "ee/session-management/revoke" {}]]
                 user               [:crowberto :rasta]]
           (testing (str method " " path " as " user)
@@ -95,6 +96,73 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/session-management")))
     (is (map? (mt/user-http-request :crowberto :get 200 "ee/session-management")))))
+
+(deftest counts-permissions-test
+  (testing "session counts are superuser-only"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "ee/session-management/counts")))
+    (is (some? (mt/client :get 401 "ee/session-management/counts"))))
+  (testing "without the feature counts are unavailable even to a superuser"
+    (mt/with-premium-features #{}
+      (is (=? {:message some?}
+              (mt/user-http-request :crowberto :get 402 "ee/session-management/counts"))))))
+
+(deftest counts-test
+  (let [live-before  (:total (mt/user-http-request :crowberto :get 200 "ee/session-management"))
+        ended-before (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :status "ended"))]
+    (mt/with-temp [:model/User         {user-id :id} {}
+                   :model/AuthIdentity {mcp-id :id}  {:user_id user-id :provider "mcp"}]
+      (let [revocable (insert-session! user-id)]
+        (insert-session! user-id)
+        (insert-session! user-id :key_hashed nil :ended_at (ago 1 :hour) :end_reason "logout")
+        (insert-session! user-id :expires_at (ago 1 :hour))
+        (insert-session! user-id :created_at (ago 30 :day))
+        (insert-session! user-id :auth_identity_id mcp-id)
+        (insert-session! user-id :auth_identity_id mcp-id :key_hashed nil :ended_at (ago 1 :hour))
+        (testing "counts include unswept expiry and max age, exclude MCP, and count sessions rather than users"
+          (is (= {:active (+ live-before 2), :ended (+ ended-before 3)}
+                 (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))
+        (testing "table filters and pagination do not narrow the tab populations"
+          (is (= {:active (+ live-before 2), :ended (+ ended-before 3)}
+                 (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"
+                                       :user-id user-id :status "ended" :query "nobody"
+                                       :limit 1 :offset 100))))
+        (testing "revoking a live session moves it to the ended count"
+          (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids [revocable]})
+          (is (= {:active (inc live-before), :ended (+ ended-before 4)}
+                 (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))))))
+
+(deftest counts-idle-and-deactivated-test
+  (mt/with-additional-premium-features #{:session-timeout-config}
+    (mt/with-temporary-setting-values [session-timeout {:amount 1 :unit "hours"}]
+      (let [live-before  (:total (mt/user-http-request :crowberto :get 200 "ee/session-management"))
+            ended-before (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :status "ended"))]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/User {inactive-user :id} {:is_active false}]
+          (insert-session! user-id :created_at (ago 2 :hour) :last_active_at (ago 1 :minute))
+          (insert-session! user-id :created_at (ago 2 :hour) :last_active_at (ago 2 :hour))
+          (insert-session! inactive-user)
+          (testing "idle and inactive-user rows are ended before a sweep records their ending"
+            (is (= {:active (inc live-before), :ended (+ ended-before 2)}
+                   (mt/user-http-request :crowberto :get 200 "ee/session-management/counts")))))))))
+
+(deftest counts-tenancy-test
+  (mt/with-additional-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (let [live-before  (:total (mt/user-http-request :crowberto :get 200 "ee/session-management"))
+            ended-before (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :status "ended"))]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Wren" :slug "wren-counts"}
+                       :model/User   {external :id}  {:tenant_id tenant-id}
+                       :model/User   {internal :id}  {}]
+          (insert-session! external)
+          (insert-session! internal)
+          (testing "the default population includes internal and external sessions"
+            (is (= {:active (+ live-before 2), :ended ended-before}
+                   (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))
+          (t2/update! :model/Tenant tenant-id {:is_active false})
+          (testing "an inactive tenant's sessions move to ended"
+            (is (= {:active (inc live-before), :ended (inc ended-before)}
+                   (mt/user-http-request :crowberto :get 200 "ee/session-management/counts")))))))))
 
 (deftest shape-test
   (testing "each item carries the user, device, and expiry columns — and never the session credential"
