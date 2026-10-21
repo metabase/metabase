@@ -328,3 +328,32 @@
           (is (str/includes? output "and 1200 more"))
           (is (str/includes? output "Retry with one of these field IDs."))
           (is (< (count output) 4000)))))))
+
+(defn- invoke-field-detail
+  [profile data-source source-id field-id]
+  (if (= profile :internal)
+    (invoke-metadata profile "read_resource"
+                     {:uris [(str "metabase://" (if (= data-source "report") "question" data-source)
+                                  "/" source-id (if (= data-source "metric") "/dimensions/" "/fields/") field-id)]})
+    (invoke-metadata profile "get_field_values"
+                     {:data_source data-source :source_id source-id :field_id field-id})))
+
+(deftest field-details-check-every-card-type-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query query}
+                     :model/Card {question-id :id} {:type :question :dataset_query query}
+                     :model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate query (lib/count))}]
+        (doseq [profile [:document-generate-content :slackbot :internal]
+                [actual-type source-id] [["model" model-id] ["question" question-id] ["metric" metric-id]]
+                data-source ["model" "question" "report" "metric"]
+                :let [expected-type (if (= data-source "report") "question" data-source)]
+                :when (not= actual-type expected-type)]
+          (let [{:keys [error output]} (invoke-field-detail profile data-source source-id (mt/id :orders :id))]
+            (is (= {:class :recoverable
+                    :code (if (= profile :internal)
+                            :metabase.metabot.tools.core/all-items-failed
+                            ::tools.u/wrong-source-type)} error))
+            (is (str/includes? (or output "") (str "ID " source-id " is a " actual-type ", not a " expected-type "."
+                                                   "\nRetry using a " expected-type " ID.")))))))))

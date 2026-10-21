@@ -170,14 +170,14 @@
   "The card ID identifies a different kind of data source."
   {:payload [:map {:closed true}
              [:id :int]
-             [:expected-type [:enum :model :metric]]
+             [:expected-type [:enum :model :question :metric]]
              [:actual-type [:enum :model :metric :question]]]}
   [{:keys [id expected-type actual-type]}]
   {:message (str "ID " id " is a " (name actual-type) ", not a " (name expected-type) ".")
    :recovery [{:text (str "Retry using a " (name expected-type) " ID.") :uses #{}}]})
 
 (defn get-card
-  "Retrieve a readable card by ID, optionally requiring a model or metric."
+  "Retrieve a readable card by ID, optionally requiring a particular card type."
   ([id]
    (-> (metabot.db/card id)
        api/read-check))
@@ -208,9 +208,9 @@
     card-metadata))
 
 (defn card-query
-  "Return a query based on the card with ID `card-id`."
-  [card-id]
-  (when-let [card (get-card card-id)]
+  "Return a query for the model or question with ID `card-id` and `expected-type`."
+  [card-id expected-type]
+  (when-let [card (get-card card-id expected-type)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (card-query-metadata card (lib.metadata/card mp card-id))))))
 
