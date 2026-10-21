@@ -15,6 +15,7 @@ import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Flex, Loader, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
 import {
   ConversationFilters as ApiKeyUsageFilterBar,
   parseId,
@@ -182,45 +183,48 @@ export function ApiKeyUsageSectionLayout() {
   const tabsAndFilters = (
     <>
       <PillTabNavigation tabs={tabs} />
-      <ApiKeyUsageFilterBar
-        date={date}
-        onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-        user={user}
-        onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-        userOptions={userOptions}
-        group={group}
-        onGroupChange={(val) =>
-          patchUrlState({
-            group: val,
-            // Like picking a new State: a key that isn't in the new group is cleared.
-            ...(isKeyOutsideGroup(
-              selectedApiKey,
-              val == null ? null : Number(val),
-            )
-              ? { api_key: null }
-              : {}),
-            page: 0,
-          })
-        }
-        groupOptions={groupOptions}
-        groupNoFilterValue={groupNoFilterValue}
-        // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
-        // this shared filter bar's tenant support properly optional instead of hardcoded off here.
-        tenant={null}
-        onTenantChange={() => {}}
-        tenantOptions={[]}
-        hasTenants={false}
-        // The API key filter (below) is the primary way to scope this page; a separate user
-        // filter is redundant now that "Created by" is just a column.
-        hasUsers={false}
-        extraFilter={
-          <ApiKeyFilterSelect
-            value={keyOutsideGroup ? null : api_key}
-            onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
-            groupId={groupId}
-          />
-        }
-      />
+      <Flex justify="space-between" align="center" gap="md">
+        <ApiKeyUsageFilterBar
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+          userOptions={userOptions}
+          group={group}
+          onGroupChange={(val) =>
+            patchUrlState({
+              group: val,
+              // Like picking a new State: a key that isn't in the new group is cleared.
+              ...(isKeyOutsideGroup(
+                selectedApiKey,
+                val == null ? null : Number(val),
+              )
+                ? { api_key: null }
+                : {}),
+              page: 0,
+            })
+          }
+          groupOptions={groupOptions}
+          groupNoFilterValue={groupNoFilterValue}
+          // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
+          // this shared filter bar's tenant support properly optional instead of hardcoded off here.
+          tenant={null}
+          onTenantChange={() => {}}
+          tenantOptions={[]}
+          hasTenants={false}
+          // The API key filter (below) is the primary way to scope this page; a separate user
+          // filter is redundant now that "Created by" is just a column.
+          hasUsers={false}
+          extraFilter={
+            <ApiKeyFilterSelect
+              value={keyOutsideGroup ? null : api_key}
+              onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
+              groupId={groupId}
+            />
+          }
+        />
+        <NewQuestionButton viewName={VIEW_API_KEY_USAGE} />
+      </Flex>
     </>
   );
 
