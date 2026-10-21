@@ -464,7 +464,7 @@
                                                   (willRun [change-set _database-change-log ^Database database run-status]
                                                     (when (instance? ChangeSet change-set)
                                                       (log/infof "Start executing migration with id %s" (.getId ^ChangeSet change-set))
-                                                      (when (= ChangeSet$RunStatus/RUN_AGAIN run-status)
+                                                      (when (not= ChangeSet$RunStatus/NOT_RAN run-status)
                                                         (versions/record-first-run! database change-set))))
 
                                                   (runFailed [^ChangeSet _change-set _database-change-log _database ^Exception e]

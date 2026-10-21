@@ -260,7 +260,8 @@
           (log-unreversible-rows! liquibase changesets-to-drop)
           (delete-deployment-rows! conn changelog-table deployments-to-drop)
           (versions/forget-first-runs! conn changesets-to-drop)
-          (versions/record-schema-marker! lb-db))))))
+          (versions/record-schema-marker! lb-db)))
+      (versions/delete-versions-of-emptied-deployments! conn lb-db))))
 
 ;;; ------------------------------------------------------ guards --------------------------------------------------
 
@@ -281,10 +282,18 @@
   "Throw unless `force?` when the schema was migrated by a NEWER Metabase version than this binary -- a later major, or
   a later patch of the same one: this binary's changelog does not contain those changesets, so Liquibase cannot
   reverse their DDL -- it would only delete their bookkeeping rows (including the legacy-version-tracking marker) and
-  leave the schema silently corrupted, failing the next upgrade to that version."
+  leave the schema silently corrupted, failing the next upgrade to that version.
+
+  The schema is at the highest version that ran any deployment, not the newest one's: an older patch booted against a
+  newer patch's schema runs its re-run changesets (`runAlways`, or a `runOnChange` one the patches differ in) as a
+  newer deployment of its own, while the newer patch's changesets stay in place. Development builds are left to
+  [[refuse-dev-migrated-schema!]]."
   [deployments force?]
   (when-not force?
-    (let [schema-version (:ran-version (first deployments))
+    (let [schema-version (->> deployments
+                              (keep :ran-version)
+                              (remove (comp versions/synthetic-dev-major? versions/version->major))
+                              (reduce #(if (and %1 (not (neg? (versions/compare-versions %1 %2)))) %1 %2) nil))
           binary-version (versions/current-recorded-version)]
       (when (and schema-version (pos? (versions/compare-versions schema-version binary-version)))
         (let [display #(str/replace-first % #"^x\." "")]

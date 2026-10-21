@@ -329,6 +329,36 @@
                     (:id changeSet) (name precondition) (name required))
             {:id (:id changeSet)}))))
 
+(defn require-no-run-always
+  "Refuses `runAlways: true` changesets. Liquibase lists a runAlways changeset as unrun on every update, which breaks
+  how Metabase runs and tracks migrations:
+
+  1. Every boot of every instance finds an unrun changeset, so it takes the migration lock and runs a migration. Each
+     run records a new deployment, adds a `databasechangelog_version` row and moves the legacy-version-tracking
+     marker row.
+  2. With `MB_DB_AUTOMIGRATE=false`, Metabase prints the migration SQL and refuses to start on every boot, even
+     after the SQL has been applied, because the changeset is still unrun.
+  3. Each run moves the changeset's changelog row into its own deployment. The deployment of the run before is then
+     left with no changelog rows, but its `databasechangelog_version` row stays until a rollback removes it: one more
+     row per boot.
+  4. An older patch booted against a newer patch's schema runs it too, so the newest deployment looks like it was
+     run by the older patch (the `migrate down` guard has to look at every deployment because of this).
+
+  Use `runOnChange` for objects that must follow their definition (views). To allow runAlways, first make
+  `metabase.app-db.liquibase/unrun-migrations` and the `migrate print` path ignore runAlways changesets when they
+  decide whether there is work to do (run them only with other migrations, or in a separate step that records no
+  deployment), and remove the version rows of deployments that a re-run leaves empty when it happens, not only at
+  rollback; then run the upgrade, downgrade and `MB_DB_AUTOMIGRATE=false` scenarios again."
+  [change-log]
+  (doseq [{:keys [changeSet]} change-log
+          :when (true? (:runAlways changeSet))]
+    (throw (validation-error
+            (format (str "Migration '%s' uses runAlways, which Metabase does not support: every boot would run it as a "
+                         "new migration, and with MB_DB_AUTOMIGRATE=false Metabase would never start. See "
+                         "require-no-run-always in bin/lint-migrations-file.")
+                    (:id changeSet))
+            {:id (:id changeSet)}))))
+
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
 
@@ -433,6 +463,7 @@
   (require-no-datetime-type change-log file)
   (require-entity-id-type change-log file)
   (require-table-scoped-existence-preconditions change-log)
+  (require-no-run-always change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
     (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet :logicalFilePath})

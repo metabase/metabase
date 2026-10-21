@@ -580,6 +580,16 @@
                                                                                   :type "timestamp with time zone"}}]}}]
                                      :rollback nil))))))
 
+(deftest ^:parallel require-no-run-always-test
+  (testing "runAlways is rejected"
+    (is-thrown-with-error-info?
+     "Migration 'v49.2024-01-01T10:30:00' uses runAlways, which Metabase does not support: every boot would run it as a new migration, and with MB_DB_AUTOMIGRATE=false Metabase would never start. See require-no-run-always in bin/lint-migrations-file."
+     {:id "v49.2024-01-01T10:30:00"}
+     (validate (mock-change-set :runAlways true))))
+  (testing "runAlways: false and runOnChange pass"
+    (is (= :ok (validate (mock-change-set :runAlways false))))
+    (is (= :ok (validate (mock-change-set :runOnChange true))))))
+
 (deftest ^:parallel require-table-scoped-existence-preconditions-test
   (testing "foreignKeyConstraintExists without foreignKeyTableName is rejected"
     (is-thrown-with-error-info?

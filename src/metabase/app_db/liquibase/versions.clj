@@ -87,6 +87,12 @@
 (defn- query [^Connection conn sql-params]
   (jdbc/query {:connection conn} sql-params))
 
+(defn- execute-ddl!
+  "Run `ddl` on `conn` as it is, without the transaction `clojure.java.jdbc` wraps statements in: that transaction's
+  rollback on failure would also discard the caller's savepoint (see [[create-table-if-missing!]])."
+  [^Connection conn ^String ddl]
+  (jdbc/execute! {:connection conn} [ddl] {:transaction? false}))
+
 (defn- execute! [^Connection conn sql-params]
   (jdbc/execute! {:connection conn} sql-params))
 
@@ -292,28 +298,54 @@
 
 ;;; -------------------------------------------------- deployment reads ---------------------------------------------
 
+(defn first-runs
+  "Where each re-run changeset first ran, as `{[filename author id] {:deployment_id :dateexecuted :orderexecuted}}`
+  -- keyed by the changeset's full identity, as Liquibase identifies it -- the values copied from its changelog row
+  before its first re-run. Empty when the table does not exist. A record is only meaningful while the changelog row is
+  RERAN: one left behind by a binary that removed the row without it is replaced the next time the changeset re-runs
+  (see [[first-run-statements]]).
+
+  The filename is the one this binary keeps on the changelog row: older binaries may rewrite the row's, but
+  [[metabase.app-db.liquibase/repair-version-less-filenames!]] restores it before a migration or rollback reads it."
+  [^Connection conn]
+  (if (table-exists? (first-runs-table-name) conn)
+    (into {}
+          (map (juxt (juxt :filename :author :changeset_id) #(select-keys % [:deployment_id :dateexecuted :orderexecuted])))
+          (query conn [(format "SELECT changeset_id, author, filename, deployment_id, dateexecuted, orderexecuted FROM %s"
+                               (first-runs-table-name))]))
+    {}))
+
 (defn recorded-deployments
-  "The application database's deployments, newest first: every `deployment_id` in `databasechangelog`, ordered by the
-  [[exec-pos]] of its newest changelog row, each with what `databasechangelog_version` records for it:
+  "The application database's deployments, newest first: every `deployment_id` in `databasechangelog`, or in the
+  first run of a changeset that re-ran later (see [[first-runs]]), ordered by the newest point it reached -- the
+  [[exec-pos]] of its newest changelog row, or of where such a changeset first ran, if that is later still -- each with
+  what `databasechangelog_version` records for it:
 
     {:deployment-id \"9673292410\"
-     :position      [#inst \"...\" 1234]    ; the exec-pos of its newest changelog row
+     :position      [#inst \"...\" 1234]    ; the newest exec-pos it reached
      :ran-version   \"x.65.2\"              ; the version that ran it (nil for an unrecorded legacy deployment)
      :versions      [\"x.65.2\" \"x.66.0\"]} ; every version recorded for it, ran and booted alike
 
-  The first entry is the deployment the schema is currently at. Rows with no `deployment_id` (written by Liquibase
-  versions from before it existed) are ignored."
+  A deployment whose only changesets re-ran later (say an older binary that re-ran a `runOnChange` view on its own)
+  keeps its place this way. The first entry is the deployment the schema is currently at. Rows with no
+  `deployment_id` (written by Liquibase versions from before it existed) are ignored."
   [^Connection conn ^Database database]
-  (let [positions (reduce (fn [positions {:keys [deployment_id] :as row}]
-                            (let [pos (exec-pos row)]
-                              (cond-> positions
-                                (and deployment_id
-                                     (or (not (contains? positions deployment_id))
-                                         (pos? (compare pos (positions deployment_id)))))
-                                (assoc deployment_id pos))))
-                          {}
-                          (query conn [(format "SELECT deployment_id, dateexecuted, orderexecuted FROM %s"
-                                               (changelog-table database))]))
+  (let [rows       (query conn [(format "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted, exectype FROM %s"
+                                        (changelog-table database))])
+        first-runs (first-runs conn)
+        positions  (reduce (fn [positions {:keys [deployment_id] :as row}]
+                             (let [pos (exec-pos row)]
+                               (cond-> positions
+                                 (and deployment_id
+                                      (or (not (contains? positions deployment_id))
+                                          (pos? (compare pos (positions deployment_id)))))
+                                 (assoc deployment_id pos))))
+                           {}
+                           (concat rows
+                                   (keep (fn [{:keys [filename author id exectype]}]
+                                           (when (= "RERAN" (some-> exectype u/upper-case-en))
+                                             (first-runs [filename author id])))
+                                         rows)))
         ;; `migrate print` reads this before the table exists: nothing is recorded yet
         by-dep    (if (versions-table-exists? conn)
                     (group-by :deployment_id
@@ -471,26 +503,10 @@
                               true))
 
 ;;; ------------------------------------------ first runs of re-run changesets -------------------------------------
-;;; When a changeset runs again (a `runOnChange` changeset whose checksum changed), Liquibase moves its changelog row
-;;; to the new run: new deployment_id, dateexecuted and orderexecuted, exectype RERAN. A rollback must know where it
-;;; first ran to decide whether the rollback target has it, so that is copied to `databasechangelog_first_run` first.
-
-(defn first-runs
-  "Where each re-run changeset first ran, as `{[filename author id] {:deployment_id :dateexecuted :orderexecuted}}`
-  -- keyed by the changeset's full identity, as Liquibase identifies it -- the values copied from its changelog row
-  before its first re-run. Empty when the table does not exist. A record is only meaningful while the changelog row is
-  RERAN: one left behind by a binary that removed the row without it is replaced the next time the changeset re-runs
-  (see [[first-run-statements]]).
-
-  The filename is the one this binary keeps on the changelog row: older binaries may rewrite the row's, but
-  [[metabase.app-db.liquibase/repair-version-less-filenames!]] restores it before a migration or rollback reads it."
-  [^Connection conn]
-  (if (table-exists? (first-runs-table-name) conn)
-    (into {}
-          (map (juxt (juxt :filename :author :changeset_id) #(select-keys % [:deployment_id :dateexecuted :orderexecuted])))
-          (query conn [(format "SELECT changeset_id, author, filename, deployment_id, dateexecuted, orderexecuted FROM %s"
-                               (first-runs-table-name))]))
-    {}))
+;;; When a changeset runs again (a `runOnChange` changeset whose checksum changed, or any `runAlways` changeset),
+;;; Liquibase moves its changelog row to the new run: new deployment_id, dateexecuted and orderexecuted, exectype RERAN.
+;;; A rollback must know where it first ran to decide whether the rollback target has it, so that is copied to
+;;; `databasechangelog_first_run` first.
 
 (defn- first-run-statements
   "`[sql & params]` statements that record where the changeset `[filename author id]` first ran, for a run that is
@@ -537,6 +553,20 @@
       (execute! conn [(format "DELETE FROM %s WHERE changeset_id = ? AND author = ? AND filename = ?" (first-runs-table-name))
                       id author filename]))))
 
+(defn delete-versions-of-emptied-deployments!
+  "Delete the `databasechangelog_version` rows of deployments that have no changelog row left and no first run (see
+  [[first-runs]]): a run that re-runs changesets moves their rows out of the deployment that ran them, so a deployment
+  that only re-ran changesets is emptied by the next one that re-runs them too, which leaves its version row behind."
+  [^Connection conn ^Database database]
+  (execute! conn [(format (str "DELETE FROM %s WHERE deployment_id NOT IN "
+                               "(SELECT deployment_id FROM %s WHERE deployment_id IS NOT NULL)%s")
+                          (versions-table-name)
+                          (changelog-table database)
+                          (if (table-exists? (first-runs-table-name) conn)
+                            (format " AND deployment_id NOT IN (SELECT deployment_id FROM %s WHERE deployment_id IS NOT NULL)"
+                                    (first-runs-table-name))
+                            ""))]))
+
 (defn recording-exec-listener
   "A Liquibase `ChangeExecListener` that records the running Metabase version against the current `deployment_id` as
   soon as the first changeset of a run is applied (see [[record-active-deployment-version!]]), and where each
@@ -545,7 +575,8 @@
   (let [active-deployment-version-recorded? (atom false)]
     (proxy [AbstractChangeExecListener] []
       (willRun [change-set _database-change-log _database run-status]
-        (when (and (instance? ChangeSet change-set) (= ChangeSet$RunStatus/RUN_AGAIN run-status))
+        ;; RUN_AGAIN for a runOnChange changeset whose checksum changed, ALREADY_RAN for a runAlways one
+        (when (and (instance? ChangeSet change-set) (not= ChangeSet$RunStatus/NOT_RAN run-status))
           (record-first-run! database change-set)))
       (ran [change-set _database-change-log _database _exec-type]
         (when (and (instance? ChangeSet change-set) (compare-and-set! active-deployment-version-recorded? false true))
@@ -835,15 +866,17 @@
 
 (defn- create-table-if-missing!
   "Create `table-name` with `ddl` unless it exists. Checked first so an already-upgraded database runs no DDL at boot
-  (a Postgres user without CREATE on the schema fails even `CREATE TABLE IF NOT EXISTS`). A CREATE that fails because
-  a concurrent boot created the table first is ignored; on Postgres a savepoint keeps that failure from aborting the
-  caller's transaction."
+  (a Postgres user without CREATE on the schema fails even `CREATE TABLE IF NOT EXISTS`). The table is committed at
+  once, so other connections see it. A CREATE that fails because a concurrent boot created the table first is ignored;
+  on Postgres a savepoint keeps that failure from aborting the caller's transaction."
   [^Connection conn table-name ddl]
   (when-not (table-exists? table-name conn)
     (let [savepoint (when (and (= :postgres (mdb.connection/db-type)) (not (.getAutoCommit conn)))
                       (.setSavepoint conn))]
       (try
-        (execute! conn [ddl])
+        (execute-ddl! conn ddl)
+        (when-not (.getAutoCommit conn)
+          (.commit conn))
         (catch SQLException e
           (when savepoint
             (.rollback conn savepoint))
@@ -852,14 +885,14 @@
 
 (defn ensure-version-tracking!
   "Bring version tracking up to date for the application database on `conn`: create `databasechangelog_version` and
-  `databasechangelog_first_run` if they are missing, record versions for deployments that have none (see [[backfill-untracked-deployments!]]), correct
-  the ones a binary from before version-less support rolled back (see [[repair-old-binary-rollbacks!]]), and make sure
-  those binaries read the newest changelog row safely (see [[record-legacy-version-tracking!]]).
+  `databasechangelog_first_run` if they are missing, record versions for deployments that have none (see
+  [[backfill-untracked-deployments!]]), correct the ones a binary from before version-less support rolled back (see
+  [[repair-old-binary-rollbacks!]]), and make sure those binaries read the newest changelog row safely (see
+  [[record-legacy-version-tracking!]]).
 
   Called once at each entry point that goes on to read or write version rows: the boot-time downgrade check, the
-  `migrate` commands, and the development rollback. On Postgres, where DDL is transactional, the CREATE simply rolls
-  back with a failed `migrate` transaction and is redone next time; on MySQL, where it commits implicitly, running it
-  first keeps that commit ahead of any migration work."
+  `migrate` commands, and the development rollback. The CREATEs commit at once (see [[create-table-if-missing!]]), so
+  running them first keeps that commit ahead of any migration work."
   [^Connection conn ^Database database]
   (create-table-if-missing! conn (versions-table-name) (table-ddl))
   (create-table-if-missing! conn (first-runs-table-name) (first-runs-table-ddl))

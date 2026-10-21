@@ -326,12 +326,11 @@
 (defn- ddl-statements!
   "Run `f` with [[versions/ensure-version-tracking!]]'s statements spied on; returns the CREATE TABLE statements run."
   [f]
-  (let [orig       (dynamic-redefs/original-fn #'versions/execute!)
+  (let [orig       (dynamic-redefs/original-fn #'versions/execute-ddl!)
         statements (atom [])]
-    (mt/with-dynamic-fn-redefs [versions/execute! (fn [conn [sql :as sql-params]]
-                                                    (when (re-find #"(?i)^\s*CREATE TABLE" sql)
-                                                      (swap! statements conj sql))
-                                                    (orig conn sql-params))]
+    (mt/with-dynamic-fn-redefs [versions/execute-ddl! (fn [conn ddl]
+                                                        (swap! statements conj ddl)
+                                                        (orig conn ddl))]
       (f))
     @statements))
 
@@ -359,19 +358,34 @@
             (orig conn [(#'versions/first-runs-table-ddl)])
             (mt/with-dynamic-fn-redefs [versions/table-exists? (fn [table-name _conn] ; stale on each table's first check only
                                                                  (> (get (swap! checks update table-name (fnil inc 0)) table-name) 1))
-                                        versions/execute!               (fn [conn [sql :as sql-params]]
-                                                                          (if (re-find #"(?i)^\s*CREATE TABLE" sql)
-                                                                            (throw (java.sql.SQLException. "duplicate key value violates unique constraint \"pg_type_typname_nsp_index\""))
-                                                                            (orig conn sql-params)))]
+                                        versions/execute-ddl!  (fn [_conn _ddl]
+                                                                 (throw (java.sql.SQLException. "duplicate key value violates unique constraint \"pg_type_typname_nsp_index\"")))]
               (is (nil? (versions/ensure-version-tracking! conn db))))
             (testing "but a CREATE failure with no table behind it still propagates"
               (mt/with-dynamic-fn-redefs [versions/table-exists? (constantly false)
-                                          versions/execute!               (fn [conn [sql :as sql-params]]
-                                                                            (if (re-find #"(?i)^\s*CREATE TABLE" sql)
-                                                                              (throw (java.sql.SQLException. "permission denied for schema public"))
-                                                                              (orig conn sql-params)))]
+                                          versions/execute-ddl!  (fn [_conn _ddl]
+                                                                   (throw (java.sql.SQLException. "permission denied for schema public")))]
                 (is (thrown-with-msg? java.sql.SQLException #"permission denied"
                                       (versions/ensure-version-tracking! conn db)))))))))))
+
+(deftest ensure-version-tracking-tolerates-losing-create-race-in-a-transaction-test
+  (testing "on Postgres, inside the caller's transaction, a CREATE that loses the race is rolled back to its savepoint
+            and the transaction goes on (two instances upgrading the same install at once)"
+    (mt/test-drivers #{:postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db     (.getDatabase liquibase)
+                checks (atom {})]
+            (.setAutoCommit ^java.sql.Connection conn false)
+            ;; the other instance's CREATE commits between our existence check and our own CREATE, which then fails
+            (mt/with-dynamic-fn-redefs [versions/table-exists? (fn [table-name _conn]
+                                                                 (> (get (swap! checks update table-name (fnil inc 0)) table-name) 1))
+                                        versions/table-ddl     (constantly "CREATE TABLE databasechangelog_version (this is not valid")]
+              (with-open [other (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+                (jdbc/execute! {:connection other} [((dynamic-redefs/original-fn #'versions/table-ddl))]))
+              (is (nil? (versions/ensure-version-tracking! conn db))))
+            (is (= [{:one 1}] (jdbc/query {:connection conn} ["SELECT 1 AS one"]))
+                "the caller's transaction is still usable")))))))
 
 (deftest versions-table-name-matches-changelog-casing-test
   (testing "the version table is cased like Liquibase's DATABASECHANGELOG: upper case on H2 and MySQL, lower on Postgres"
@@ -661,6 +675,26 @@
             (migrate! "versionless-roc-run1.yaml")
             (is (= (:deployment_id original) (:deployment_id (first-of)))
                 "a second re-run keeps the first run")))))))
+
+(deftest run-always-records-where-the-changeset-first-ran-test
+  (testing "a runAlways changeset re-runs on every update run, so it gets a first-run record too"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (let [ct       (liquibase/changelog-table-name conn)
+              spec     {:datasource (mdb/data-source)}
+              row-of   (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, dateexecuted, orderexecuted FROM %s WHERE id = ?" ct) id])))
+              first-of (fn [] (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+                                (get (versions/first-runs c) ["migrations/2026/versionless_always.yaml" "test" "always_view"])))
+              migrate! (fn []
+                         (with-redefs [config/mb-version-info   (tag "v0.66.0")
+                                       liquibase/changelog-file "versionless-always.yaml"]
+                           (mdb/migrate! (mdb/data-source) :up)))]
+          (migrate!)
+          (mdb.test-util/age-changelog-rows! spec ct)
+          (let [original (row-of "always_view")]
+            (migrate!)
+            (is (not= (:deployment_id original) (:deployment_id (row-of "always_view"))) "sanity: the view re-ran")
+            (is (= original (first-of)))))))))
 
 (deftest first-runs-keep-the-changelog-timestamp-type-test
   (testing "a fresh install, which runs UnifyTimeColumnsType over the tables already there, leaves the copied
