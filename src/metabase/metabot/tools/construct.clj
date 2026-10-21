@@ -657,15 +657,16 @@
 
 (defn- source-field-refs
   "The field references in `parsed-query` that reach their column through a `source-field` foreign key. References
-  through an explicit join's `join-alias` are left out, since the query processor ignores their `source-field`."
+  through an explicit join's `join-alias` are left out, since the query processor ignores their `source-field`. A
+  null `join-alias` names no join: normalization drops it, and the reference is joined through its `source-field`."
   [parsed-query]
   (filter (fn [node]
             (and (vector? node)
                  (not (map-entry? node))
                  (= "field" (nth node 0 nil))
                  (map? (nth node 1 nil))
-                 (contains? (nth node 1) "source-field")
-                 (not (contains? (nth node 1) "join-alias"))))
+                 (some? (get (nth node 1) "source-field"))
+                 (nil? (get (nth node 1) "join-alias"))))
           (tree-seq coll? seq parsed-query)))
 
 (defn- wrong-source-field-error
