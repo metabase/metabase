@@ -85,6 +85,8 @@
                                           :datetime (t/local-date-time "2019-12-10T14:47:00")}}
     :unix-timestamp-seconds      {:value [:field {:lib/uuid               (str (random-uuid))
                                                   ::add/source-table      (meta/id :checkins)
+                                                  :base-type              :type/Number
+                                                  :effective-type         :type/DateTime
                                                   ::add/coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                   ::add/database-type     "integer"} 4]
                                   :type  :timestamp
@@ -95,6 +97,8 @@
                                             :timestamp expected})}
     :unix-timestamp-milliseconds {:value [:field {:lib/uuid               (str (random-uuid))
                                                   ::add/source-table      (meta/id :checkins)
+                                                  :base-type              :type/Number
+                                                  :effective-type         :type/DateTime
                                                   ::add/coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
                                                   ::add/database-type     "integer"} 5]
                                   :type  :timestamp
