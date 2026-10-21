@@ -36,6 +36,7 @@ type ChartSettingSelectProps = Pick<
   options?: ChartSettingSelectOption[];
   placeholder?: string;
   placeholderNoOptions?: string;
+  readOnly?: boolean;
   rightSectionWidth?: string;
   searchProp?: string;
   value?: ChartSettingSelectValue;
@@ -58,6 +59,7 @@ export const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   pr,
+  readOnly,
   rightSection,
   rightSectionWidth,
   searchProp,
@@ -130,6 +132,7 @@ export const ChartSettingSelect = ({
       }}
       data={data}
       disabled={disabled}
+      readOnly={readOnly}
       value={selectedValue}
       // Mantine's Select passes two arguments to onChange, but the onChange defined in the settings code takes one.
       onChange={(v) => {
