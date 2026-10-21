@@ -621,6 +621,21 @@
                        (not (and home-cols (lib.equality/find-matching-column query stage-number field home-cols)))))
     (with-join-alias field join-alias)))
 
+(defn- add-home-join-alias
+  "Add the alias of an earlier join to a `field` ref without one that matches no home column itself, when the only home
+  column with its name comes from that join."
+  [query stage-number field home-cols]
+  (or (when (and (lib.util/field-clause? field)
+                 (string? (nth field 2))
+                 (not (lib.join.util/current-join-alias field))
+                 (not (lib.equality/find-matching-column query stage-number field home-cols)))
+        (let [candidates (filter #(and (:lib/join-alias %)
+                                       (= (:name %) (nth field 2)))
+                                 home-cols)]
+          (when (= (count candidates) 1)
+            (with-join-alias field (:lib/join-alias (first candidates))))))
+      field))
+
 (defn- add-alias-to-condition
   [query stage-number condition join-alias home-cols join-cols]
   (let [condition (if (and (vector? condition) (= (count condition) 4))
@@ -629,7 +644,9 @@
                     (let [[op op-opts lhs rhs] condition]
                       [op
                        op-opts
-                       (add-alias-to-join-refs query stage-number lhs join-alias join-cols home-cols)
+                       (add-alias-to-join-refs query stage-number
+                                               (add-home-join-alias query stage-number lhs home-cols)
+                                               join-alias join-cols home-cols)
                        (add-alias-to-join-refs query stage-number rhs join-alias join-cols nil)])
                     (add-alias-to-join-refs query stage-number condition join-alias join-cols nil))]
     ;; Sometimes conditions have field references which cannot be unambiguously

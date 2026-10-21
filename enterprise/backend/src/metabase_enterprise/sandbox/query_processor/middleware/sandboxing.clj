@@ -344,13 +344,16 @@
   whose columns, resolved in that stage at `path` of `query`, come from the sandboxed table but are not returned by the
   sandbox (e.g., a native GTAP that omits a column). See #73339."
   [query path stage sandbox-field-ids]
-  (m/update-existing stage :fields
-                     (fn [fields]
-                       (filterv (fn [field-ref]
-                                  (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)]
-                                    (or (not= (:lib/source col) :source/table-defaults)
-                                        (contains? sandbox-field-ids (:id col)))))
-                                fields))))
+  (let [table-id (:source-table stage)]
+    (m/update-existing stage :fields
+                       (fn [fields]
+                         (filterv (fn [field-ref]
+                                    (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)]
+                                      (or (not= (:table-id col) table-id)
+                                          (:lib/join-alias col)
+                                          (:fk-field-id col)
+                                          (contains? sandbox-field-ids (:id col)))))
+                                  fields)))))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
                                      [:sequential {:min 1} ::lib.schema/stage]
@@ -393,11 +396,12 @@
         ;; `:source-table` for the sandbox subquery. Any field-id refs the sandbox doesn't expose (e.g., a column
         ;; the native GTAP drops) would compile to `SELECT __mb_source.<dropped>` and fail at the DB. Filter them out.
         wrapper-stage      (when-not skip-final-stage?
-                             (filter-stage-fields-to-sandbox
-                              query
-                              path
-                              (dissoc stage :source-table)
-                              (sandbox-exposed-field-ids sandbox-query source-table)))
+                             (dissoc (filter-stage-fields-to-sandbox
+                                      query
+                                      path
+                                      stage
+                                      (sandbox-exposed-field-ids sandbox-query source-table))
+                                     :source-table))
         replacement-stages (cond-> new-source-stages
                              wrapper-stage (conj wrapper-stage))]
     (log/trace "Applied Sandbox: replaced stage with sandboxed stages")

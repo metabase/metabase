@@ -394,6 +394,10 @@
   "::add/parent-names"
   ::add/parent-names)
 
+(def qp.add.column-name
+  "::add/column-name"
+  ::add/column-name)
+
 (def qp.add.desired-alias
   "::add/desired-alias"
   ::add/desired-alias)

@@ -504,11 +504,14 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :left-join)
     (testing "breakouts on implicitly joined fields of the same name come back under their names"
       (let [mp        (mt/metadata-provider)
+            base      (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
             joined-id (fn [table fk]
-                        (assoc (lib.metadata/field mp (mt/id table :id)) :fk-field-id (mt/id :checkins fk)))
+                        (m/find-first #(and (= (mt/id table :id) (:id %))
+                                            (= (mt/id :checkins fk) (:fk-field-id %)))
+                                      (lib/breakoutable-columns base)))
             named     (fn [column column-name]
                         (lib.options/update-options (lib/ref column) assoc :name column-name))
-            query     (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+            query     (-> base
                           (lib/breakout (named (joined-id :users :user_id) "user_id"))
                           (lib/breakout (named (joined-id :venues :venue_id) "venue_id"))
                           (lib/aggregate (lib/count)))]

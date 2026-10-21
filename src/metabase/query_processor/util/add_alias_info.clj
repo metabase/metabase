@@ -45,9 +45,9 @@
 
   The `:coercion-strategy` and `:database-type` of the column a `:field` clause refers to.
 
-  ##### `::parent-names`
+  ##### `::parent-names`, `::column-name`
 
-  For a nested column, the names of its ancestor columns, outermost first."
+  For a nested column, the names of its ancestor columns, outermost first, and its own name."
   (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
    [medley.core :as m]
@@ -210,22 +210,24 @@
       (not-empty (vec names)))))
 
 (mu/defn column-info-options :- :map
-  "The `::coercion-strategy`, `::database-type`, `::parent-names`, and forced native sandbox coercion options for a
-  `:field` ref to `col`."
+  "The `::coercion-strategy`, `::database-type`, `::parent-names` and `::column-name` of a nested column, and forced
+  native sandbox coercion options for a `:field` ref to `col`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    col                   :- ::lib.schema.metadata/column]
   (m/assoc-some {}
                 ::coercion-strategy (:coercion-strategy col)
                 ::database-type     (:database-type col)
                 ::parent-names      (parent-names metadata-providerable col)
+                ::column-name       (when (:parent-id col)
+                                      (some->> (:id col) (lib.metadata/field metadata-providerable) :name))
                 :qp/native-sandbox-column.force-coercion-strategy (:qp/native-sandbox-column.force-coercion-strategy col)))
 
 (defn- add-column-info-to-options
-  "Add the [[column-info-options]] of `col` to `opts`, except for a column the stage reads from a previous stage, Card,
-  or native query, which already applied them; a forced native sandbox coercion is always added."
+  "Add the [[column-info-options]] of `col` to `opts`, except for a column the stage reads from its source query rather
+  than a table, which already applied them; a forced native sandbox coercion is always added."
   [opts query col]
   (merge opts
-         (if (#{:source/previous-stage :source/card :source/native} (:lib/source col))
+         (if (#{::source ::none} (::source-table opts))
            (select-keys (column-info-options query col) [:qp/native-sandbox-column.force-coercion-strategy])
            (column-info-options query col))))
 
@@ -234,6 +236,7 @@
    field-ref #(-> %
                   (assoc ::source-table (source-table query path col)
                          ::source-alias (escaped-source-alias query path (:lib/join-alias col) (:lib/source-column-alias col)))
+                  (u/assoc-default :base-type (:base-type col))
                   (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))
                   (add-column-info-to-options query col))))
 

@@ -1684,19 +1684,24 @@
                 ;; Question: Model A (Test01) joined with Model B (Test02 + Test03)
                 ;; The join projects an explicit list of fields including one JSON nfc child
                 ;; (`data → key1`), which is what triggers the buggy SQL compilation.
-                query (-> (lib/query mp (lib.metadata/card mp 1))
-                          (lib/join (-> (lib/join-clause (lib.metadata/card mp 2))
-                                        (lib/with-join-conditions
-                                         [(lib/= (lib.metadata/field mp (mt/id :test01 :id))
-                                                 (lib.metadata/field mp (mt/id :test02 :test01_id)))])
-                                        (lib/with-join-fields
-                                          [(lib.metadata/field mp (mt/id :test02 :id))
-                                           (lib.metadata/field mp (mt/id :test02 :name))
-                                           (lib.metadata/field mp (mt/id :test03 :id))
-                                           (lib.metadata/field mp (mt/id :test03 :name))
-                                           (lib.metadata/field mp (mt/id :test03 "data → key1"))])))
-                          (lib/order-by (lib.metadata/field mp (mt/id :test01 :id)) :asc)
-                          (lib/order-by (lib.metadata/field mp (mt/id :test03 :id)) :asc))]
+                card-2-cols (lib/returned-columns (lib/query mp (lib.metadata/card mp 2)))
+                card-2-col  (fn [field-id] (m/find-first #(= field-id (:id %)) card-2-cols))
+                joined      (-> (lib/query mp (lib.metadata/card mp 1))
+                                (lib/join (-> (lib/join-clause (lib.metadata/card mp 2))
+                                              (lib/with-join-conditions
+                                               [(lib/= (lib.metadata/field mp (mt/id :test01 :id))
+                                                       (card-2-col (mt/id :test02 :test01_id)))])
+                                              (lib/with-join-fields
+                                                (map card-2-col [(mt/id :test02 :id)
+                                                                 (mt/id :test02 :name)
+                                                                 (mt/id :test03 :id)
+                                                                 (mt/id :test03 :name)
+                                                                 (mt/id :test03 "data → key1")]))))
+                                (lib/order-by (lib.metadata/field mp (mt/id :test01 :id)) :asc))
+                query       (lib/order-by joined
+                                          (m/find-first #(and (= (mt/id :test03 :id) (:id %)) (:lib/join-alias %))
+                                                        (lib/orderable-columns joined))
+                                          :asc)]
             (mt/with-native-query-testing-context query
               (is (= [[1 "t01_A" 1 "t02_A1" 1 "t03_1" "value1"]
                       [1 "t01_A" 1 "t02_A1" 2 "t03_2" nil]

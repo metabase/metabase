@@ -360,6 +360,13 @@
 
 (declare with-rvalue-temporal-bucketing)
 
+(defn- nested-document-path
+  "The document path of the nested column a `:field` clause with alias info refers to: its parent names and its own
+  name, or nil when it is not nested."
+  [{parent-names driver-api/qp.add.parent-names, column-name driver-api/qp.add.column-name}]
+  (when (and (seq parent-names) column-name)
+    (conj (vec parent-names) column-name)))
+
 (mu/defn- scope-with-join-field :- :string
   "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
   [field-name   :- [:maybe :string]
@@ -2042,17 +2049,14 @@ function(bin) {
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
-(mu/defn- field-clauses->name->path :- [:map-of :string [:sequential :string]]
-  "Build a map of `field-name -> path-vector` for all `:field` clauses in `clauses`. The path is derived from the opts
-  `:source-alias` populated by `add-alias-info` (and path-prepended by [[HACK-update-aliases]] for nested fields),
-  falling back to the field name when no source-alias is present. The path-joined string is split on the Mongo path
-  delimiter."
-  [clauses :- [:sequential ::lib.schema.mbql-clause/clause]]
-  (into {}
-        (keep (fn [[tag opts field-name]]
-                (when (= tag :field)
-                  [field-name (raw-path->components (get opts driver-api/qp.add.source-alias field-name))])))
-        clauses))
+(defn- field-clause-path
+  "The document path of a `:field` clause as a vector of strings: the parent names and the name of a nested column, or
+  else the opts `:source-alias` populated by `add-alias-info` (path-prepended by [[HACK-update-aliases]] for nested
+  fields), falling back to the field name."
+  [[tag opts field-name]]
+  (when (= tag :field)
+    (or (nested-document-path opts)
+        (raw-path->components (get opts driver-api/qp.add.source-alias field-name)))))
 
 (mu/defn- remove-parent-fields :- [:sequential ::lib.schema.mbql-clause/clause]
   "Removes any and all entries in `clauses` that are parents of another `:field` in `clauses` This is necessary because
@@ -2061,15 +2065,14 @@ function(bin) {
 
   Removing parents is useful when sorting, because leaf fields sort."
   [clauses :- [:sequential ::lib.schema.mbql-clause/clause]]
-  (let [name->path   (field-clauses->name->path clauses)
-        parent-paths (into #{}
-                           (keep (fn [path]
-                                   (when (> (count path) 1)
-                                     (vec (butlast path)))))
-                           (vals name->path))]
-    (remove (fn [[tag _opts field-name]]
-              (and (= tag :field)
-                   (contains? parent-paths (name->path field-name))))
+  (let [parent-paths (into #{}
+                           (keep (fn [clause]
+                                   (when-let [path (field-clause-path clause)]
+                                     (when (> (count path) 1)
+                                       (vec (butlast path))))))
+                           clauses)]
+    (remove (fn [clause]
+              (some->> (field-clause-path clause) (contains? parent-paths)))
             clauses)))
 
 (mu/defn- remove-child-fields :- [:sequential ::lib.schema.mbql-clause/clause]
@@ -2080,14 +2083,11 @@ function(bin) {
   Removing children is useful when projecting, because the return value of a mongo query is json, and so a parent
   includes all of its children."
   [clauses :- [:sequential ::lib.schema.mbql-clause/clause]]
-  (let [name->path (field-clauses->name->path clauses)
-        all-paths  (set (vals name->path))]
-    (remove (fn [[tag _opts field-name :as _clause]]
-              (when (= tag :field)
-                (let [path (name->path field-name)]
-                  (and path
-                       (> (count path) 1)
-                       (contains? all-paths (vec (butlast path)))))))
+  (let [all-paths (into #{} (keep field-clause-path) clauses)]
+    (remove (fn [clause]
+              (when-let [path (field-clause-path clause)]
+                (and (> (count path) 1)
+                     (contains? all-paths (vec (butlast path))))))
             clauses)))
 
 (mu/defn- handle-order-by :- ::compiled-pipeline
@@ -2276,9 +2276,9 @@ function(bin) {
 ;;; values added by add-alias-info.
 (defn- HACK-update-aliases-in-field-refs
   [query]
-  (letfn [(raw-mongo-path [{source-alias driver-api/qp.add.source-alias, parent-names driver-api/qp.add.parent-names}]
-            (when (and source-alias (seq parent-names))
-              (str/join \. (conj (vec parent-names) source-alias))))
+  (letfn [(raw-mongo-path [opts]
+            (when-let [path (nested-document-path opts)]
+              (str/join \. path)))
           (prepend-nfc-path [raw-path
                              {nfc-path      driver-api/qp.add.nfc-path,
                               source-alias  driver-api/qp.add.source-alias
@@ -2299,8 +2299,7 @@ function(bin) {
                        (= source-table driver-api/qp.add.source))
               (dissoc opts :join-alias)))
           (update-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
-            (when (and join-alias
-                       source-table
+            (when (and (string? source-table)
                        (not= join-alias source-table))
               (assoc opts :join-alias source-table)))
           (update-opts [raw-path opts]

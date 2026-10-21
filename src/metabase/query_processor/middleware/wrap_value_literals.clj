@@ -9,6 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -363,15 +364,16 @@
 
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
-  function."
-  [clause]
+  function. `col` is the column the `:field` clauses resolve to, when the caller knows it."
+  [clause col]
   (let [expr-type (lib.schema.expression/type-of-resolved clause)]
     (merge
-     (when (and (lib/clause-of-type? clause :field)
-                (qp.store/initialized?))
-       (let [[_tag _opts id-or-name] clause]
-         (when (pos-int? id-or-name)
-           (type-info-from-col (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
+     (when (lib/clause-of-type? clause :field)
+       (or (type-info-from-col col)
+           (when (qp.store/initialized?)
+             (let [[_tag _opts id-or-name] clause]
+               (when (pos-int? id-or-name)
+                 (type-info-from-col (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))))
      (when-let [unit (lib/raw-temporal-bucket clause)]
        {:unit unit})
      {:base-type      expr-type
@@ -390,13 +392,16 @@
                             :semantic_type nil,
                             :database_type \"VARCHAR\",
                             :name \"description\"}]]]"
-  [mbql :- ::lib.schema.mbql-clause/clause]
-  (-> mbql
-      lib/->mbql5
-      (as-> $mbql (binding [*type-info* (fn [_query _path clause]
-                                          (type-info-no-query clause))]
-                    (-> (lib.walk/walk-clauses*
-                         [$mbql]
-                         (fn [clause]
-                           (wrap-value-literals-in-clause nil nil clause)))
-                        first)))))
+  ([mbql :- ::lib.schema.mbql-clause/clause]
+   (wrap-value-literals-in-mbql5 mbql nil))
+  ([mbql :- ::lib.schema.mbql-clause/clause
+    col  :- [:maybe ::lib.schema.metadata/column]]
+   (-> mbql
+       lib/->mbql5
+       (as-> $mbql (binding [*type-info* (fn [_query _path clause]
+                                           (type-info-no-query clause col))]
+                     (-> (lib.walk/walk-clauses*
+                          [$mbql]
+                          (fn [clause]
+                            (wrap-value-literals-in-clause nil nil clause)))
+                         first))))))
