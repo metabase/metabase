@@ -2170,24 +2170,25 @@
 (deftest ^:parallel attr-remapping-parameter-type-test
   (testing "attr-remapping->parameter uses explicit parameter types instead of :category (QUE2-326)"
     (let [attr-remapping->parameter #'sandboxing/attr-remapping->parameter
-          mp                        (mt/metadata-provider)]
+          query                     (lib/query (mt/metadata-provider)
+                                               (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))]
       (testing "numeric field → :number/="
         (is (= :number/=
-               (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
+               (:type (attr-remapping->parameter query {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
       (testing "text field → :string/="
         (is (= :string/=
-               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
+               (:type (attr-remapping->parameter query {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
       (testing "uncoerceable attribute against numeric field throws instead of dropping the filter (#81821)"
         (testing "integer column"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
-               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
+               (attr-remapping->parameter query {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
         (testing "float column"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
-               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
+               (attr-remapping->parameter query {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
 
 (deftest unix-timestamp-coercion-with-mbql-sandbox-test
   (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"
