@@ -382,6 +382,28 @@
         (is (= (:id u) @seen)
             "discovery must run as the exploration's creator, not with no user bound")))))
 
+(deftest finalize-row-stores-the-source-footprint-test
+  (testing "finalizing a deferred row stores the source footprint its lens stamp was computed over beside the stamp"
+    (mt/with-temp [:model/User u {:email "footprint@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (deferred-query! (:id thread) (:id card))]
+        (with-redefs [qp.context/build-row-context (constantly {::stub true})
+                      qp.variants/dataset-query    (fn [_variant _ctx]
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                           (lib/aggregate (lib/count)))))
+                      qp.variants/query-name       (constantly "stub name")]
+          (runner/run-query! (:id row)))
+        (is (= {:table-ids       #{(mt/id :checkins)}
+                :table-query-ids #{(mt/id :checkins)}}
+               (t2/select-one-fn :source_footprint :model/ExplorationQuery :id (:id row))))))))
+
 (defn- store-fake-result!
   [query-id qp-result]
   (let [bytes (qp/do-with-serialization

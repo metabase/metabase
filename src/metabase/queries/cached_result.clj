@@ -30,6 +30,16 @@
   validator, and the renderer agree."
   #{"value_asc" "value_desc" "label_asc" "label_desc"})
 
+(defn- resolved-source-footprint
+  "The source footprint of `stored-result`: the one stored with it, else its query's resolved live. nil when
+  resolution throws (a deleted card in the source chain): the viewer is denied."
+  [{:keys [id dataset_query source_footprint]}]
+  (try
+    (query-perms/query->source-footprint dataset_query source_footprint)
+    (catch Exception e
+      (log/debugf e "Cached result %s: resolving the source footprint threw; denying" id)
+      nil)))
+
 (defn- viewer-lens-compatible?
   "True when the current user's effective data-access lens (sandbox / impersonation / routing) is
   compatible with the lens the `stored-result` blob was computed under — i.e. the viewer may be
@@ -43,13 +53,12 @@
       rather than persist a token-less snapshot) or stored but unreadable (the model transform
       decodes an unparseable token to nil; see [[metabase.queries.models.stored-result]]).
     - token computation throwing (the viewer is missing a routing/impersonation attribute the
-      snapshot's database requires, or the query's source-card chain can no longer be resolved to
-      its underlying tables). An expected condition for some viewers — such a viewer could not run
-      the query themselves either.
+      snapshot's database requires). An expected condition for some viewers — such a viewer could
+      not run the query themselves either.
 
   A missing `:dataset_query` is not a degenerate case but a caller bug — the schema forbids NULL —
   and [[cached-result-blocked-reason]] throws on it before we get here."
-  [stored-result]
+  [stored-result footprint]
   (if (nil? (:data_access_token stored-result))
     (do
       (log/errorf "Cached result %s has no readable data_access_token (never captured, or failed to parse). Denying."
@@ -59,8 +68,7 @@
       (perms/data-access-compatible?
        (:data_access_token stored-result)
        (perms/data-access-token {:database-id (:database_id stored-result)
-                                 :table-ids   (query-perms/query->resolved-source-table-ids
-                                               (:dataset_query stored-result))}))
+                                 :table-ids   (:table-ids footprint)}))
       (catch Exception e
         (log/debugf e "Cached result %s: computing the viewer's data-access lens threw; denying"
                     (:id stored-result))
@@ -70,12 +78,12 @@
   "Whether the current user holds the data perms to run the snapshot's own query. Only ever reached
   for non-superusers — [[cached-result-blocked-reason]] passes superusers before any check.
 
-  `can-run-query?` absorbs the ordinary permission-denial `ExceptionInfo`s itself; anything else it
+  The check absorbs the ordinary permission-denial `ExceptionInfo`s itself; anything else it
   throws — a stored query malformed enough to trip its `:- :map` schema, a source table that no
   longer exists — must not escape an authorization gate as a 500: deny instead."
-  [stored-result]
+  [stored-result footprint]
   (try
-    (query-perms/can-run-query? (:dataset_query stored-result))
+    (query-perms/can-run-query-with-source-footprint? (:dataset_query stored-result) footprint)
     (catch Exception e
       (log/debugf e "Cached result %s: the data-perms check threw; denying" (:id stored-result))
       false)))
@@ -98,15 +106,18 @@
   (when (nil? (:dataset_query stored-result))
     (throw (ex-info "stored-result is missing its dataset_query"
                     {:stored-result-id (:id stored-result)})))
-  (cond
-    api/*is-superuser?*
+  (if api/*is-superuser?*
     nil
+    (let [footprint (resolved-source-footprint stored-result)]
+      (cond
+        (nil? footprint)
+        :no-data-perms
 
-    (not (viewer-can-run-underlying-query? stored-result))
-    :no-data-perms
+        (not (viewer-can-run-underlying-query? stored-result footprint))
+        :no-data-perms
 
-    (not (viewer-lens-compatible? stored-result))
-    :incompatible-context))
+        (not (viewer-lens-compatible? stored-result footprint))
+        :incompatible-context))))
 
 (defn viewer-can-view-cached-result?
   "Boolean form of [[assert-can-view-cached-result!]]: true when the current user may be served the
