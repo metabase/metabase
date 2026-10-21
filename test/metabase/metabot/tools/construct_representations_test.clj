@@ -2334,13 +2334,12 @@
           (is (str/includes? msg "do not have access")))))))
 
 (deftest incompatible-metric-message-does-not-disclose-unreadable-metric-name-test
-  (testing (str "The metric's own name is gated the same way its source card's is. The gate runs before\n"
-                "`export-query`, whose permission-aware content store is what read-checks entity-id lookups, and\n"
-                "`check-source-table-query-permissions!` covers stage sources but not aggregation metric refs -- so\n"
-                "a caller holding a metric's entity id would otherwise get its name back off the un-permission-aware\n"
-                "metadata provider regardless of collection access.")
+  (testing (str "The metric's own name is gated the same way its source card's is. The pipeline refuses a metric the\n"
+                "caller cannot read before this gate runs: `resolve-query` looks every metric ref up through the\n"
+                "read-checked content store. The explanation reads from the metadata provider, which is not\n"
+                "permission-aware, so it checks again.")
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
-                   :model/Card {metric-id :id}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
                    {:name          "Secret metric"
                     :type          :metric
                     :collection_id coll-id
@@ -2350,6 +2349,20 @@
                                                :aggregation  [[:count]]}}}]
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (mt/with-current-user (mt/user->id :rasta)
+        (testing "the pipeline refuses the metric before the gate, on its own table and on another alike"
+          (let [refusal   (fn [source-table]
+                            (try
+                              (construct/execute-representations-query
+                               (metric-query-data {"source-table" source-table} metric-eid))
+                              :constructed
+                              (catch clojure.lang.ExceptionInfo e
+                                {:status  (:status-code (ex-data e))
+                                 :error   (:error (ex-data e))
+                                 :message (ex-message e)})))
+                on-orders (refusal (orders-source-table-fk))]
+            (is (=? {:status 403} on-orders))
+            (is (= on-orders (refusal (products-source-table-fk)))
+                "so the refusal says nothing about which source the metric needs")))
         (let [msg (:message (#'construct/incompatible-metric-explanation
                              (lib-be/application-database-metadata-provider (mt/id))
                              {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? false}}))]
