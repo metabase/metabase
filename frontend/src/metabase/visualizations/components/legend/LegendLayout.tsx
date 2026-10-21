@@ -18,7 +18,7 @@ import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
 import S from "./LegendLayout.module.css";
-import { LEGEND_COLUMN_MARGIN_TOP } from "./constants";
+import { LEGEND_COLUMN_GAP, LEGEND_COLUMN_MARGIN_TOP } from "./constants";
 import { HIDDEN_LEGEND_LAYOUT, getLegendLayout } from "./layout";
 import { measureLegend } from "./measure";
 import {
@@ -130,7 +130,7 @@ export const LegendLayout = ({
   );
 
   const isLegendBeforeChart = layout.type !== "hidden" && layout.isBeforeChart;
-  const { horizontalGap, verticalGap } = LEGEND_SIZES[size];
+  const { rowChartGap } = LEGEND_SIZES[size];
 
   const legendProps = {
     items,
@@ -147,8 +147,8 @@ export const LegendLayout = ({
       justify="center"
       flex="0 0 auto"
       miw={0}
-      mt={isLegendBeforeChart ? 0 : horizontalGap}
-      mb={isLegendBeforeChart ? horizontalGap : 0}
+      mt={isLegendBeforeChart ? 0 : rowChartGap}
+      mb={isLegendBeforeChart ? rowChartGap : 0}
       ml={Math.max(layout.indent, 0)}
       mr={Math.max(-layout.indent, 0)}
       data-testid="legend-horizontal"
@@ -163,8 +163,8 @@ export const LegendLayout = ({
       flex="0 0 auto"
       miw={0}
       mt={LEGEND_COLUMN_MARGIN_TOP}
-      ml={isLegendBeforeChart ? 0 : verticalGap}
-      mr={isLegendBeforeChart ? verticalGap : 0}
+      ml={isLegendBeforeChart ? 0 : LEGEND_COLUMN_GAP}
+      mr={isLegendBeforeChart ? LEGEND_COLUMN_GAP : 0}
       style={{ width: layout.width }}
       data-testid="legend-vertical"
     >

@@ -8,8 +8,8 @@ export interface LegendSizeConfig {
   dotGap: number;
   itemGap: number;
   rowGap: number;
-  horizontalGap: number;
-  verticalGap: number;
+  // the vertical space between a top or bottom legend and the chart
+  rowChartGap: number;
   maxVerticalWidth: number;
   horizontalPadding: number;
   verticalPadding: number;
@@ -24,8 +24,7 @@ export const LEGEND_SIZES = {
     dotGap: 6,
     itemGap: 12,
     rowGap: 8,
-    horizontalGap: 12,
-    verticalGap: 24,
+    rowChartGap: 12,
     maxVerticalWidth: 200,
     horizontalPadding: 32,
     verticalPadding: 16,
@@ -38,8 +37,7 @@ export const LEGEND_SIZES = {
     dotGap: 6,
     itemGap: 12,
     rowGap: 12,
-    horizontalGap: 16,
-    verticalGap: 40,
+    rowChartGap: 16,
     maxVerticalWidth: 200,
     horizontalPadding: 80,
     verticalPadding: 76,
@@ -52,8 +50,7 @@ export const LEGEND_SIZES = {
     dotGap: 8,
     itemGap: 16,
     rowGap: 16,
-    horizontalGap: 24,
-    verticalGap: 64,
+    rowChartGap: 24,
     maxVerticalWidth: 256,
     horizontalPadding: 48,
     verticalPadding: 32,

@@ -1,7 +1,11 @@
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
-import { LEGEND_COLUMN_MARGIN_TOP, LEGEND_PADDING } from "./constants";
+import {
+  LEGEND_COLUMN_GAP,
+  LEGEND_COLUMN_MARGIN_TOP,
+  LEGEND_PADDING,
+} from "./constants";
 import { MIN_LEGEND_CARD_WIDTH, getLegendLayout } from "./layout";
 import { measureLegend } from "./measure";
 import { type ChartSize, mapLegendCandidates } from "./plots";
@@ -11,7 +15,7 @@ const CHAR_WIDTH = 6;
 const MIN_PLOT_WIDTH = 150;
 const SM = LEGEND_SIZES.sm;
 const ROW_HEIGHT =
-  SM.fontSize * SM.lineHeight + SM.horizontalGap + LEGEND_PADDING * 2;
+  SM.fontSize * SM.lineHeight + SM.rowChartGap + LEGEND_PADDING * 2;
 
 const measureText = (text: string) => text.length * CHAR_WIDTH;
 
@@ -30,7 +34,7 @@ const getCardWidthForRow = (names: string[]) =>
   SM.horizontalPadding + LEGEND_PADDING * 2 + getRowWidth(names);
 
 const getColumnSpace = (columnItemWidth: number) =>
-  columnItemWidth + LEGEND_PADDING * 2 + SM.verticalGap;
+  columnItemWidth + LEGEND_PADDING * 2 + LEGEND_COLUMN_GAP;
 
 const createSeriesNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `series ${i}`);

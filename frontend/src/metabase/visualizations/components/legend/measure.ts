@@ -4,6 +4,7 @@ import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
 import type { LegendItemData } from "./LegendItem";
 import {
+  LEGEND_COLUMN_GAP,
   LEGEND_COLUMN_MARGIN_TOP,
   LEGEND_PADDING,
   MIN_VISIBLE_COUNT,
@@ -96,7 +97,7 @@ export function measureLegend({
         height: Math.max(chartRoom.height - getRowHeight(config), 0),
       },
       column: {
-        width: Math.max(chartRoom.width - columnWidth - config.verticalGap, 0),
+        width: Math.max(chartRoom.width - columnWidth - LEGEND_COLUMN_GAP, 0),
         height: chartRoom.height,
       },
     },
@@ -117,9 +118,7 @@ export function measureLegend({
 }
 
 const getRowHeight = (config: LegendSizeConfig) =>
-  config.fontSize * config.lineHeight +
-  config.horizontalGap +
-  LEGEND_PADDING * 2;
+  config.fontSize * config.lineHeight + config.rowChartGap + LEGEND_PADDING * 2;
 
 const getDotWidth = (config: LegendSizeConfig) =>
   config.dotSize + config.dotGap;
