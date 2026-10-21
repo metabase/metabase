@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-joins
-  "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
-  in the options and adds `:join-alias` info to those `:field` clauses."
+  "Middleware that creates corresponding `:joins` for Tables referred to by implicit join `:field` clauses (with
+  `:source-field-name` or legacy `:source-field` info in the options) and adds `:join-alias` info to those `:field`
+  clauses."
   (:refer-clojure :exclude [mapv some empty? not-empty get-in])
   (:require
    [better-cond.core :as b]
@@ -16,7 +17,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
@@ -26,17 +27,23 @@
    [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv some empty? not-empty get-in]]))
 
+(defn- implicit-join-opts?
+  "Whether `opts` are the options of a `:field` ref to a column of an implicit join that has not been added yet."
+  [opts]
+  (and (or (:source-field opts) (:source-field-name opts))
+       (not (:join-alias opts))))
+
 (defn- implicitly-joined-fields
   "Find fields that come from implicit join in form `x`, presumably a query.
   Fields from metadata are not considered. It is expected, that field which would cause implicit join is in the query
-  and not just in it's metadata. Example of query having `:source-field` fields in `:lib/stage-metadata` and no use of
-  `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
+  and not just in it's metadata. Example of query having implicit join fields in `:lib/stage-metadata` and no use of
+  them in corresponding `:source-query` would be the one, that uses remappings. See
   [[metabase.parameters.custom-values-test/with-mbql-card-test]]."
   [x]
   (into []
         (distinct)
         (match/match-many (dissoc x :lib/stage-metadata)
-          [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-oname]
+          [:field (_opts :guard implicit-join-opts?) _name]
           &match)))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
@@ -100,20 +107,26 @@
               (m/assoc-some :fk-field-name fk-field-name
                             :fk-join-alias fk-join-alias)))))))
 
-(mu/defn- field-opts->fk-field-info :- ::fk-field-info
-  "Create a [[::fk-field-info]] map that identifies the corresponding implicit join.
+(mu/defn- field-ref->fk-field-info :- [:maybe ::fk-field-info]
+  "Create a [[::fk-field-info]] map that identifies the implicit join of the column an implicit join `field-ref` in the
+  stage at `path` resolves to.
 
   For backward compatibility with refs that don't include `:source-field-name` in cases when they should (cards), omit
   `:fk-field-name` when it matches the raw field name. There should be no difference in the compiled query. The
   problematic case is when refs with and without `:source-field-name` are mixed, but there should be the same implicit
   join for all of them."
-  [metadata-providerable                                            :- ::lib.schema.metadata/metadata-providerable
-   {:keys [source-field source-field-name source-field-join-alias]} :- ::lib.schema.ref/field.options]
-  (let [fk-field (lib.metadata/field metadata-providerable source-field)]
-    (m/assoc-some {:fk-field-id source-field}
-                  :fk-field-name (when (and (some? source-field-name) (not= source-field-name (:name fk-field)))
-                                   source-field-name)
-                  :fk-join-alias source-field-join-alias)))
+  [query     :- ::lib.schema/query
+   path      :- ::lib.walk/path
+   field-ref :- :mbql.clause/field]
+  (let [[_tag {fk-field-name :source-field-name, fk-join-alias :source-field-join-alias} _name] field-ref
+        col         (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)
+        fk-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
+    (when fk-field-id
+      (let [fk-field (lib.metadata/field query fk-field-id)]
+        (m/assoc-some {:fk-field-id fk-field-id}
+                      :fk-field-name (when (and (some? fk-field-name) (not= fk-field-name (:name fk-field)))
+                                       fk-field-name)
+                      :fk-join-alias fk-join-alias)))))
 
 (defn- rename-join [{join-alias :alias, :as join} new-alias]
   (-> join
@@ -124,19 +137,12 @@
                                                      (lib/update-options &match assoc :join-alias new-alias))))))
 
 (mu/defn- implicitly-joined-fields->joins :- [:sequential ::join]
-  "Create implicit join maps for a set of `field-clauses-with-source-field`."
-  [metadata-providerable           :- ::lib.schema.metadata/metadata-providerable
-   field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
-  (let [fk-field-infos (->> field-clauses-with-source-field
-                            (keep (fn [clause]
-                                    (match/match-one clause
-                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (_id :guard integer?)]
-                                      (field-opts->fk-field-info metadata-providerable opts))))
-                            distinct
-                            not-empty)
-        joins          (into []
+  "Create implicit join maps for a set of `fk-field-infos`."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   fk-field-infos        :- [:sequential ::fk-field-info]]
+  (let [joins          (into []
                              (distinct)
-                             (fk-field-infos->joins metadata-providerable fk-field-infos))
+                             (fk-field-infos->joins metadata-providerable (not-empty (distinct fk-field-infos))))
         unique-name-fn (lib/non-truncating-unique-name-generator)]
     (mapv (fn [{join-alias :alias, :as join}]
             (let [deduplicated-alias (unique-name-fn join-alias)]
@@ -174,31 +180,48 @@
                    join-alias])))
         (visible-joins query path stage)))
 
-(mu/defn- add-join-alias-to-fields-with-source-field :- ::lib.schema/stage
-  "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`. Ignore `:lib/stage-metadata`."
+(defn- dedupe-implicitly-joined-refs
+  "Remove `:fields` and `:breakout` refs of `stage` that differ only in the options naming the FK of the implicit join
+  whose alias, one of `implicit-join-aliases`, they already have."
+  [stage implicit-join-aliases]
+  (let [ref-key (fn [a-ref]
+                  (lib.schema.util/mbql-clause-distinct-key
+                   (cond-> a-ref
+                     (and (lib/clause-of-type? a-ref :field)
+                          (contains? implicit-join-aliases (:join-alias (lib/options a-ref))))
+                     (lib/update-options dissoc :source-field :source-field-name :source-field-join-alias))))]
+    (reduce (fn [stage k]
+              (m/update-existing stage k #(into [] (m/distinct-by ref-key) %)))
+            stage
+            [:fields :breakout])))
+
+(mu/defn- add-join-alias-to-implicitly-joined-fields :- ::lib.schema/stage
+  "Add `:field` `:join-alias` to implicit join `:field` clauses in `form`. Ignore `:lib/stage-metadata`."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
         (let [stage' (match/replace stage
-                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name]
+                       [:field (_opts :guard implicit-join-opts?) _name]
                        (if-not (some #{:lib/stage-metadata} &parents)
-                         (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
-                                              (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
-                                                                   (format "%s %s"
-                                                                           (pr-str (:source-field opts))
-                                                                           (let [field (lib.metadata/field
-                                                                                        query
-                                                                                        (:source-field opts))]
-                                                                             (pr-str (:display-name field)))))
-                                                              {:resolving  &match
-                                                               :candidates fk-field-info->join-alias
-                                                               :stage      stage})))]
-                           (lib/with-join-alias &match join-alias))
+                         (let [fk-field-info (field-ref->fk-field-info query path &match)
+                               {fk-join-alias :join-alias, :keys [source-field-join-alias]} (lib/options &match)
+                               join-alias    (or (fk-field-info->join-alias fk-field-info)
+                                                 (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
+                                                                      (let [field (lib.metadata/field
+                                                                                   query
+                                                                                   (:fk-field-id fk-field-info))]
+                                                                        (pr-str (:display-name field))))
+                                                                 {:resolving  &match
+                                                                  :candidates fk-field-info->join-alias
+                                                                  :stage      stage})))]
+                           (cond-> (lib/with-join-alias &match join-alias)
+                             (and fk-join-alias (not source-field-join-alias))
+                             (lib/update-options assoc :source-field-join-alias fk-join-alias)))
                          &match))]
           (when-not (= stage' stage)
             ;; normalize the stage to remove any duplicate fields or breakouts
-            (lib/normalize ::lib.schema/stage stage'))))
+            (lib/normalize ::lib.schema/stage (dedupe-implicitly-joined-refs stage' (set (vals fk-field-info->join-alias)))))))
       stage))
 
 (mu/defn- already-has-join?
@@ -244,8 +267,8 @@
                                                          (into []
                                                                cat
                                                                [existing-fields
-                                                                (for [field-id needed]
-                                                                  [:field {:lib/uuid (str (random-uuid))} field-id])])))]
+                                                                (for [field (lib.metadata/bulk-metadata query :metadata/column needed)]
+                                                                  (lib/ref field))])))]
                       (when-not (= stage' stage)
                         ;; normalize the stage to remove any duplicate fields or breakouts
                         (lib/normalize ::lib.schema/stage stage'))))))))))
@@ -264,14 +287,18 @@
                                                  (when (contains? reused-join-aliases (lib/current-join-alias &match))
                                                    &match))))]
               (log/debugf "Adding referenced fields from next stage: %s" (pr-str referenced-fields))
-              (let [stage' (update stage :fields (fn [existing-fields]
-                                                   (into []
-                                                         cat
-                                                         [existing-fields
-                                                          (map lib/fresh-uuids referenced-fields)])))]
+              (let [{:keys [query stage-number]} (lib.walk/query-for-path (assoc-in query path stage) path)
+                    existing-cols                (mapv #(lib/metadata query stage-number %) (:fields stage))
+                    missing-fields               (remove #(lib/find-matching-column query stage-number % existing-cols)
+                                                         referenced-fields)
+                    stage'                       (update stage :fields (fn [existing-fields]
+                                                                         (into []
+                                                                               cat
+                                                                               [existing-fields
+                                                                                (map lib/fresh-uuids missing-fields)])))]
                 (when-not (= stage' stage)
                   ;; normalize the stage to remove any duplicate fields or breakouts
-                  (lib/normalize ::lib.schema/stage stage')))))))
+                  (lib/normalize ::lib.schema/stage (dedupe-implicitly-joined-refs stage' reused-join-aliases))))))))
       stage))
 
 (mu/defn- add-fields-from-next-stage :- ::lib.schema/stage
@@ -349,21 +376,25 @@
                  (dissoc join ::original-position))))))
 
 (mu/defn- resolve-implicit-joins :- ::lib.schema/stage
-  "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those
+  "Add new `:joins` for tables referenced by implicit join `:field` forms. Add `:join-alias` info to those
   `:fields`. Add additional `:fields` to source query if needed to perform the join."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (let [implicitly-joined-fields (implicitly-joined-fields stage)
-        new-joins                (implicitly-joined-fields->joins query implicitly-joined-fields)
+  (let [fk-field-infos           (keep #(field-ref->fk-field-info query path %) (implicitly-joined-fields stage))
+        new-joins                (implicitly-joined-fields->joins query fk-field-infos)
         required-joins           (remove #(already-has-join? query path stage %) new-joins)
-        reused-join-aliases      (into #{} (map :alias) (set/difference (set new-joins) (set required-joins)))]
+        current-join-aliases     (into #{} (map :alias) (:joins stage))
+        reused-join-aliases      (into #{}
+                                       (comp (map :alias)
+                                             (remove current-join-aliases))
+                                       (set/difference (set new-joins) (set required-joins)))]
     (-> stage
         (cond-> (seq required-joins) (update :joins (fn [existing-joins]
                                                       (m/distinct-by
                                                        :alias
                                                        (concat existing-joins required-joins)))))
-        (->> (add-join-alias-to-fields-with-source-field query path))
+        (->> (add-join-alias-to-implicitly-joined-fields query path))
         (cond-> (seq required-joins) (update :joins topologically-sort-joins))
         (assoc ::reused-join-aliases reused-join-aliases))))
 
@@ -375,7 +406,7 @@
    stage :- ::lib.schema/stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
              (match/match-one stage
-               [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name] true))
+               [:field (_opts :guard implicit-join-opts?) _name] true))
     (when (and driver/*driver*
                (not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database query))))
       (throw (ex-info (tru "{0} driver does not support left join." driver/*driver*)
@@ -393,11 +424,11 @@
     (add-fields-from-next-stage query path stage)))
 
 (mu/defn add-implicit-joins :- ::lib.schema/query
-  "Fetch and store any Tables other than the source Table referred to by `:field` clauses with `:source-field` in an
+  "Fetch and store any Tables other than the source Table referred to by implicit join `:field` clauses in an
   MBQL query, and add a `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or
   equivalent) that need to be performed for these tables.
 
-  This middleware also adds `:join-alias` info to all `:field` forms with `:source-field`s."
+  This middleware also adds `:join-alias` info to all implicit join `:field` forms."
   [query :- ::lib.schema/query]
   (-> query
       (lib.walk/walk-stages first-pass)

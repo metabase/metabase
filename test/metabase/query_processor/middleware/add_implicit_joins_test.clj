@@ -1177,3 +1177,17 @@
                ;; `:source-field-name`
                ]
               (get-in (qp.preprocess/preprocess q) [:stages 0 :fields]))))))
+
+(deftest ^:parallel implicit-join-by-fk-name-test
+  (testing "an implicit join ref naming its FK column only by name gets the join of that FK"
+    (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/count))
+                     (lib/breakout [:field
+                                    {:lib/uuid (str (random-uuid)), :base-type :type/Text, :source-field-name "PRODUCT_ID"}
+                                    "CATEGORY"]))
+          result (add-implicit-joins query)]
+      (is (=? [{:alias       "PRODUCTS__via__PRODUCT_ID"
+                :fk-field-id (meta/id :orders :product-id)}]
+              (lib/joins result)))
+      (is (=? [[:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} "CATEGORY"]]
+              (lib/breakouts result))))))

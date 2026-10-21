@@ -89,6 +89,13 @@
                                                                        {:include-implicitly-joinable? true}))
       value-source-query)))
 
+(defn- remap-label?
+  "Whether `label-column` is the column the QP remaps `value-column` to, so that it adds it to the results itself."
+  [value-column label-column]
+  (boolean
+   (and (:id label-column)
+        (= (:id label-column) (get-in value-column [:lib/external-remap :field-id])))))
+
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
   [query     :- [:maybe ::lib.schema/query]
    field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
@@ -105,6 +112,7 @@
                                   (or (lib/find-matching-column query -1 label-field visible-columns)
                                       (log/warnf "Cannot get labels from Card %d: failed to find matching column for ref"
                                                  card-id)))
+                remap-label?    (remap-label? value-column label-column)
                 search-column   (or label-column value-column)
                 value-textual?  (lib.types.isa/string? value-column)
                 search-textual? (lib.types.isa/string? search-column)
@@ -119,20 +127,27 @@
                 (lib/filter nonempty)
                 (cond-> query-filter (lib/filter query-filter))
                 (lib/breakout value-column)
-                ;; add the label as a second breakout so each row is a [value label] pair
-                (cond-> label-column (lib/breakout label-column)))))))))
+                ;; add the label as a second breakout so each row is a [value label] pair, unless the QP adds it as
+                ;; the remapped column of the value
+                (cond-> (and label-column (not remap-label?)) (lib/breakout label-column))
+                (vary-meta assoc ::remap-label? remap-label?))))))))
 
 (defn- result->rows
   "Extract rows from a QP result, dropping values for any display columns the QP injected for
   remapped breakouts. Those columns are referenced by a `:remapped_to` entry on their source
-  column; when none are present the raw rows are returned as-is."
-  [result]
+  column; when none are present the raw rows are returned as-is. With `keep-remapped-label?`, the remapped column of
+  the value column is kept after it as the label."
+  [result keep-remapped-label?]
   (let [cols       (get-in result [:data :cols])
         rows       (get-in result [:data :rows])
         drop-names (into #{} (keep :remapped_to) cols)]
     (if (empty? drop-names)
       rows
-      (let [keep-idxs (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)]
+      (let [keep-idxs  (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)
+            label-name (when keep-remapped-label?
+                         (:remapped_to (nth cols (first keep-idxs))))
+            keep-idxs  (cond-> keep-idxs
+                         label-name (conj (first (keep-indexed (fn [i c] (when (= label-name (:name c)) i)) cols))))]
         (perf/mapv (fn [row] (perf/mapv #(nth row %) keep-idxs)) rows)))))
 
 (defn- run-values-query
@@ -153,7 +168,7 @@
    opts      :- [:maybe ::values-from-card-query.options]]
   (let [mbql-query (values-from-card-query query field-ref opts)
         result     (some-> mbql-query run-values-query)
-        values     (some-> result result->rows)]
+        values     (some-> result (result->rows (::remap-label? (meta mbql-query))))]
     {:values          (or values [])
      ;; If the row_count returned = the limit we specified, then it's probably has more than that.
      ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
