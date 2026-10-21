@@ -19,15 +19,24 @@ import {
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting";
-import type { TransformTestRunWithUser } from "metabase-types/api";
+import type {
+  TransformTestRunId,
+  TransformTestRunWithUser,
+} from "metabase-types/api";
 
 import { formatTestRunStatus, isFailedTestRunStatus } from "../../../utils";
 
 type TransformTestRunTableProps = {
   runs: TransformTestRunWithUser[];
+  hasFilters: boolean;
+  onSelect: (runId: TransformTestRunId) => void;
 };
 
-export function TransformTestRunTable({ runs }: TransformTestRunTableProps) {
+export function TransformTestRunTable({
+  runs,
+  hasFilters,
+  onSelect,
+}: TransformTestRunTableProps) {
   const systemTimezone = useSetting("system-timezone");
 
   const instance = useTreeTableInstance({
@@ -40,8 +49,13 @@ export function TransformTestRunTable({ runs }: TransformTestRunTableProps) {
     <Card withBorder p={0}>
       <TreeTable
         instance={instance}
-        emptyState={<ListEmptyState label={t`No runs yet`} />}
+        emptyState={
+          <ListEmptyState
+            label={hasFilters ? t`No runs found` : t`No runs yet`}
+          />
+        }
         ariaLabel={t`Test runs`}
+        onRowClick={(row) => onSelect(row.original.id)}
       />
     </Card>
   );

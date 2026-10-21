@@ -152,7 +152,7 @@ describe("TransformTestRunsPage", () => {
       }),
     });
 
-    await screen.findByText("No runs yet");
+    await screen.findByText("No runs found");
     const url = getLastRunsRequestUrl();
     expect(url.searchParams.getAll("statuses")).toEqual(["failed", "error"]);
     expect(url.searchParams.get("start-time")).toBe("past7days");
@@ -168,5 +168,51 @@ describe("TransformTestRunsPage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
 
     expect(router?.location.search).toBe("?statuses=failed");
+  });
+
+  it("says no runs were found when filters are set", async () => {
+    setup({
+      initialRoute: Urls.transformTestRuns(1, 2, { statuses: ["failed"] }),
+    });
+
+    expect(await screen.findByText("No runs found")).toBeInTheDocument();
+  });
+
+  it("shows the details of a run in a sidebar", async () => {
+    setup({
+      response: createMockListTransformTestRunsResponse({
+        data: [
+          createMockTransformTestRunWithUser({
+            id: 1,
+            status: "failed",
+            initiated_by_user: createMockTransformTestRunUser({
+              common_name: "Ada Admin",
+            }),
+          }),
+        ],
+        total: 1,
+      }),
+    });
+
+    await userEvent.click(
+      await screen.findByRole("row", { name: /Ada Admin/ }),
+    );
+
+    const sidebar = await screen.findByTestId("transform-test-run-sidebar");
+    const info = within(sidebar).getByRole("region", { name: "Info" });
+    expect(
+      within(info).getByRole("group", { name: "Status" }),
+    ).toHaveTextContent("Failed");
+    expect(
+      within(info).getByRole("group", { name: "Run by" }),
+    ).toHaveTextContent("Ada Admin");
+    expect(
+      within(info).getByRole("group", { name: "Started at" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(sidebar).getByLabelText("Close"));
+    expect(
+      screen.queryByTestId("transform-test-run-sidebar"),
+    ).not.toBeInTheDocument();
   });
 });
