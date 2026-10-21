@@ -236,38 +236,10 @@
               (map #(nth % 2)))
         (tree-seq coll? seq x)))
 
-(defn- metric-join-required-dimensions
-  "Dimensions a metric reaches through an EXPLICIT join with no database foreign key.
+(defn- metric-join-required-columns
+  "Return accessible dimensions grouped by the explicit joins needed to use them.
 
-  A metric's `queryable-dimensions` are computed from a *consumer-framed* query (`source-table` +
-  `[:metric …]`), so `filterable-columns` only surfaces the base table and FK-reachable tables — the
-  metric's FK-less join dimensions are silently dropped. But the metric's *definition* joins that
-  table, so a consumer query that re-adds the same join can group/filter by them. Left unsurfaced,
-  the LLM guesses at those columns and dead-ends on `:no-fk-path` (BOT-1612).
-
-  We surface them here, grouped per join. Each entry carries the portable join clause to paste into
-  `joins:` AND, per dimension, a `:reference` — the alias-qualified field clause
-  (`[\"field\" {\"join-alias\" …} [db schema table field]]`) the LLM must reference the column by.
-  The bare portable FK does NOT resolve for these columns (there is no FK path — that is the whole
-  premise), so only the alias-qualified clause is pasteable. Detection is cheap — the definition
-  query's joins are already in hand; a `:fk-field-id` of nil marks an explicit, non-FK join. Returns
-  nil when the metric has no such joins (the common case).
-
-  Fail closed: a join is surfaced only when BOTH its portable clause exported and it targets a real
-  table. These dimensions are unreachable without the join by definition, so an entry lacking the
-  clause has zero value — and instructing the LLM to paste a nil/`null` join would be strictly worse
-  than the `:no-fk-path` dead-end this feature replaces. A `:source-card`-based join (nil
-  `source-table`) is likewise dropped rather than mislabeled with a nil table name. Dimensions are
-  permission-filtered on the way out (see `permission-filter-columns`) — the join target is a table
-  the consumer query never reaches, so nothing else has checked the user can read it.
-
-  The join-key columns (fields referenced in the join `:conditions`) are excluded — the target-side
-  key equals a base-table column and is redundant groupable noise. A metric that self-joins one
-  table under two aliases yields two entries with the same columns but DIFFERENT `:join_alias`, and
-  therefore distinct (correct) references — one per alias — which is the intended behavior.
-
-  `base-reachable-ids` is the id set of the consumer-framed `filterable-columns` (already computed by
-  the caller); columns in it are reachable without the join and are not re-surfaced here."
+  Exclude join keys and columns already reachable without the join. Only include joins that can be exported."
   [metadata-provider defq base-reachable-ids]
   (when defq
     (let [explicit-joins (filter #(nil? (:fk-field-id %)) (lib/joins defq -1))]
@@ -294,16 +266,9 @@
                                key-ids    (clause-field-ids (:conditions jn))
                                dims       (when target-tid
                                             (into []
-                                                  (comp (filter #(and (= target-tid (:table-id %))
-                                                                      (not (base-reachable-ids (:id %)))
-                                                                      (not (key-ids (:id %)))))
-                                                        (map #(metabot.tools.u/->result-column defq %))
-                                                        (map (fn [rc]
-                                                               (cond-> rc
-                                                                 (vector? (:portable_fk rc))
-                                                                 (assoc :reference
-                                                                        ["field" {"join-alias" alias}
-                                                                         (:portable_fk rc)])))))
+                                                  (filter #(and (= target-tid (:table-id %))
+                                                                (not (base-reachable-ids (:id %)))
+                                                                (not (key-ids (:id %)))))
                                                   def-cols))]
                            (when (and portable target-tid (seq dims))
                              {:join_alias   alias
@@ -311,6 +276,28 @@
                               :join         portable
                               :dimensions   dims}))))
                  explicit-joins)))))))
+
+(defn- metric-join-required-dimensions
+  [metadata-provider defq base-reachable-ids]
+  (not-empty
+   (mapv (fn [{join-alias :join_alias :as join}]
+           (update join :dimensions
+                   (partial mapv (fn [column]
+                                   (let [rc (metabot.tools.u/->result-column defq column)]
+                                     (cond-> rc
+                                       (vector? (:portable_fk rc))
+                                       (assoc :reference ["field" {"join-alias" join-alias} (:portable_fk rc)])))))))
+         (metric-join-required-columns metadata-provider defq base-reachable-ids))))
+
+(defn metric-dimension-columns
+  "Return the accessible columns listed as a metric's dimensions, including dimensions requiring explicit joins."
+  [query metric-id]
+  (let [base-columns (permission-filter-columns (lib/filterable-columns query))]
+    (concat base-columns
+            (lazy-seq
+             (let [mp (lib.metadata/->metadata-provider query)
+                   definition (some->> (lib.metadata/card mp metric-id) :dataset-query (lib/query mp))]
+               (mapcat :dimensions (metric-join-required-columns mp definition (set (keep :id base-columns)))))))))
 
 (defn- card-read-verdicts-for-metrics
   "Return read permissions for the source cards required by `metric-cards`, or nil when none are required.

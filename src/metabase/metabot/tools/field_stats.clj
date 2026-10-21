@@ -81,17 +81,17 @@
 
 (defn- field-column
   [entity-type entity-id field-id columns]
-  (let [columns (entity-details/permission-filter-columns columns)]
-    (or (metabot.tools.u/find-column-by-field-id field-id columns)
-        (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct)) columns)]
-          (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
-                           :available-ids (vec (take max-suggested-field-ids available-ids))
-                           :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))})))))
+  (or (metabot.tools.u/find-column-by-field-id field-id columns)
+      (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct)) columns)]
+        (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
+                         :available-ids (vec (take max-suggested-field-ids available-ids))
+                         :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))}))))
 
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
-        col (field-column "table" table-id field-id (lib/visible-columns query))]
+        columns (entity-details/permission-filter-columns (lib/visible-columns query))
+        col (field-column "table" table-id field-id columns)]
     (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
@@ -100,13 +100,13 @@
         columns (if (= entity-type "question")
                   (lib/returned-columns query)
                   (distinct (concat (lib/returned-columns query) (lib/visible-columns query))))
-        col (field-column entity-type card-id field-id columns)]
+        col (field-column entity-type card-id field-id (entity-details/permission-filter-columns columns))]
     (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column "metric" metric-id field-id (lib/filterable-columns query))]
+        col (field-column "metric" metric-id field-id (entity-details/metric-dimension-columns query metric-id))]
     (field-metadata-output query col field-id limit)))
 
 (defn field-values

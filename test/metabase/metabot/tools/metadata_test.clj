@@ -421,3 +421,29 @@
                                (str "Field missing was not found in question " card-id "."
                                     " No accessible field IDs are available for this data source."
                                     "\nChoose another data source.")))))))))
+
+(deftest joined-metric-dimensions-round-trip-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/join (lib/join-clause
+                               (lib.metadata/table mp (mt/id :reviews))
+                               [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                       (lib.metadata/field mp (mt/id :reviews :product_id)))]))
+                    (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card {metric-id :id} {:type :metric :dataset_query query}]
+        (let [dimensions (->> (entity-details/get-metric-details
+                               {:metric-id metric-id :with-field-values? false})
+                              :structured-output :join-required-dimensions (mapcat :dimensions))
+              valid-ids (mapv :field_id dimensions)]
+          (is (some #{(mt/id :reviews :rating)} valid-ids))
+          (doseq [profile [:document-generate-content :slackbot :internal]]
+            (doseq [field-id valid-ids]
+              (let [{:keys [error structured-output]} (invoke-field-detail profile "metric" metric-id field-id)]
+                (is (nil? error))
+                (is (=? {:field_id (if (= profile :internal) (str field-id) field-id)}
+                        (if (= profile :internal) (first structured-output) structured-output)))))
+            (let [{:keys [output]} (invoke-field-detail profile "metric" metric-id "missing")]
+              (is (str/includes? output (str "Field missing was not found in metric " metric-id ".")))
+              (doseq [field-id valid-ids]
+                (is (str/includes? output (str field-id)))))))))))
