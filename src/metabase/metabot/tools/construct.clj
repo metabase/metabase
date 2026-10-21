@@ -28,7 +28,7 @@
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -683,11 +683,11 @@
       missing
       (tru "missing `{0}`" (name missing))
 
-      ;; lib can give a message as a function, which Malli returns without calling
+      ;; lib can give a message as a function, which Malli returns without calling; the model reads it in English
       (fn? message)
-      (cond-> (str (message))
+      (cond-> (binding [i18n/*user-locale* "en"] (str (message)))
         (= :aggregation (last (butlast (:in error))))
-        (str " " (tru "Wrap the calculation in one, such as `sum` or `count`, or move a per-row calculation to `expressions:`")))
+        (str " Wrap the calculation in one, such as `sum` or `count`, or move a per-row calculation to `expressions:`"))
 
       ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
       (= "non-aggregation expression" message)

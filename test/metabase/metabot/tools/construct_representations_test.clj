@@ -29,6 +29,7 @@
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
@@ -659,19 +660,28 @@
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
 
 (deftest aggregation-without-aggregation-function-explained-test
-  (testing "an aggregation with no aggregation function in it is explained with lib's own message and how to fix it"
-    (with-mp-and-stubs!
-      (fn []
-        (let [e (editor-rejection
-                 {"lib/type" "mbql/query"
-                  "stages"   [{"lib/type"     "mbql.stage/mbql"
-                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                               "aggregation"  [["+" {} 1 2]]}]})]
-          (is (= :query-not-runnable (:error (ex-data e))))
-          (is (str/ends-with? (ex-message e)
-                              (str ": Aggregations should contain at least one aggregation function. Wrap the "
-                                   "calculation in one, such as `sum` or `count`, or move a per-row calculation "
-                                   "to `expressions:`."))))))))
+  (mt/with-mock-i18n-bundles! {"es" {:messages {"Aggregations should contain at least one aggregation function."
+                                                "Las agregaciones deben contener al menos una función de agregación."}}}
+    (testing "the Spanish translation of lib's message is in effect, or the English check below proves nothing"
+      (mt/with-user-locale "es"
+        (is (= "Las agregaciones deben contener al menos una función de agregación."
+               (str (i18n/tru "Aggregations should contain at least one aggregation function."))))))
+    (testing (str "an aggregation with no aggregation function in it is explained with lib's own message and how to "
+                  "fix it, in English whatever the user's locale")
+      (doseq [locale [nil "es"]]
+        (mt/with-user-locale locale
+          (with-mp-and-stubs!
+            (fn []
+              (let [e (editor-rejection
+                       {"lib/type" "mbql/query"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["+" {} 1 2]]}]})]
+                (is (= :query-not-runnable (:error (ex-data e))))
+                (is (str/ends-with? (ex-message e)
+                                    (str ": Aggregations should contain at least one aggregation function. Wrap "
+                                         "the calculation in one, such as `sum` or `count`, or move a per-row "
+                                         "calculation to `expressions:`.")))))))))))
 
 (deftest editor-rejection-between-message-test
   (with-mp-and-stubs!
