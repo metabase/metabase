@@ -130,7 +130,7 @@
             (is (=? {:stages [{:lib/type :mbql.stage/mbql,
                                :source-table (meta/id :people)
                                :filters [[:= {}
-                                          [:field {} (meta/id :people :id)]
+                                          [:field {} "ID"]
                                           1]]}]}
                     (lib/drill-thru query -1 nil fk-details-drill)))))))))
 

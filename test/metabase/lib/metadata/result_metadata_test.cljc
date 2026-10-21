@@ -76,7 +76,7 @@
                 ;; sort of contrived since this is not a query we could build create IRL... even tho the join is
                 ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
                 ;; act like the join isn't here yet
-                ::result-metadata/field-ref [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
+                ::result-metadata/field-ref [:field (meta/id :categories :name) {:source-field-name "CATEGORY_ID"}]}]
               (column-info
                (lib/query
                 meta/metadata-provider

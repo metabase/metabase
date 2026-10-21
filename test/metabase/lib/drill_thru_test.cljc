@@ -249,7 +249,7 @@
         (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/fk-filter
                   :filter   [:= {:lib/uuid string?}
-                             [:field {:lib/uuid string?} (meta/id :orders :user-id)]
+                             [:field {:lib/uuid string?} "USER_ID"]
                              1]}
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/fk-details
@@ -277,7 +277,7 @@
                                                [:!= "≠"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
-                                         [:field {:lib/uuid string?} (meta/id :orders :subtotal)]
+                                         [:field {:lib/uuid string?} "SUBTOTAL"]
                                          110.93]})}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
@@ -298,7 +298,7 @@
                                                [:!= "≠"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
-                                         [:field {:lib/uuid string?} (meta/id :products :category)]
+                                         [:field {:lib/uuid string?} "CATEGORY"]
                                          "Gadget"]})}]
                 (lib/available-drill-thrus products-query -1 context)))
         (test-drill-applications products-query context)))))
@@ -319,7 +319,7 @@
                                                [:!= "≠"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
-                                         [:field {:lib/uuid string?} (meta/id :products :vendor)]
+                                         [:field {:lib/uuid string?} "VENDOR"]
                                          "Herta Skiles and Sons"]})}]
                 (lib/available-drill-thrus products-query -1 context)))
         (test-drill-applications products-query context)))))
@@ -340,7 +340,7 @@
                                                [:does-not-contain "does-not-contain"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
-                                         [:field {:lib/uuid string?} (meta/id :reviews :body)]
+                                         [:field {:lib/uuid string?} "BODY"]
                                          "lorem ipsum"]})}]
                 (lib/available-drill-thrus reviews-query -1 context)))
         (test-drill-applications reviews-query context)))))
@@ -361,7 +361,7 @@
                                                [:not-null "≠"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
-                                         [:field {:lib/uuid string?} (meta/id :orders :discount)]]})}]
+                                         [:field {:lib/uuid string?} "DISCOUNT"]]})}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -383,7 +383,7 @@
                                                [:!= "≠"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
-                                         [:field {:lib/uuid string?} (meta/id :orders :created-at)]
+                                         [:field {:lib/uuid string?} "CREATED_AT"]
                                          "2018-05-15T08:04:04.58Z"]})}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))

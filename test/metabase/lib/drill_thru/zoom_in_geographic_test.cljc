@@ -407,33 +407,33 @@
       (is (=? {:stages [{:aggregation [[:count {}]]
                          :breakout    [[:field
                                         {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                        (meta/id :people :latitude)]
+                                        "LATITUDE"]
                                        [:field
                                         {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                        (meta/id :people :longitude)]]
+                                        "LONGITUDE"]]
                          :filters     [[:>=
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :latitude)]
+                                         "LATITUDE"]
                                         20.0]
                                        [:<
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :latitude)]
+                                         "LATITUDE"]
                                         30.0]
                                        [:>=
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :longitude)]
+                                         "LONGITUDE"]
                                         50.0]
                                        [:<
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :longitude)]
+                                         "LONGITUDE"]
                                         60.0]]}]}
               (lib/drill-thru query -1 nil drill))))))
 
@@ -575,11 +575,11 @@
              :longitude {:column    (meta/field-metadata :people :longitude)
                          :bin-width 1}}
             zoom-in))
-    (is (=? {:stages [{:filters  [[:= {} [:field {} (meta/id :people :state)] "MN"]]
+    (is (=? {:stages [{:filters  [[:= {} [:field {} "STATE"] "MN"]]
                        ;; should remove the breakout on people.state
-                       :breakout [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :latitude)]
-                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :longitude)]]}]}
+                       :breakout [[:field {:temporal-unit :month} "CREATED_AT"]
+                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} "LATITUDE"]
+                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} "LONGITUDE"]]}]}
             (lib/drill-thru query -1 nil zoom-in)))))
 
 (deftest ^:parallel zoom-in-on-binned-lat-lon-test
@@ -614,18 +614,18 @@
           (is (=? {:stages
                    [{:aggregation [[:count {}]],
                      :breakout    [[:field {:binning {:bin-width 1.0, :strategy :bin-width}}
-                                    (meta/id :people :latitude)]
+                                    "LATITUDE"]
                                    [:field {:binning {:bin-width 1.0, :strategy :bin-width}}
-                                    (meta/id :people :longitude)]]
-                     :filters     [[:>= {} [:field {:binning {:strategy :default}} (meta/id :people :latitude)]
+                                    "LONGITUDE"]]
+                     :filters     [[:>= {} [:field {:binning {:strategy :default}} "LATITUDE"]
                                     50]
                                    [:< {}
-                                    [:field {:binning {:strategy :default}} (meta/id :people :latitude)]
+                                    [:field {:binning {:strategy :default}} "LATITUDE"]
                                     60.0]
                                    [:>= {}
-                                    [:field {:binning {:strategy :default}} (meta/id :people :longitude)]
+                                    [:field {:binning {:strategy :default}} "LONGITUDE"]
                                     -170]
                                    [:< {}
-                                    [:field {:binning {:strategy :default}} (meta/id :people :longitude)]
+                                    [:field {:binning {:strategy :default}} "LONGITUDE"]
                                     -160.0]]}]}
                   (lib/drill-thru query drill))))))))

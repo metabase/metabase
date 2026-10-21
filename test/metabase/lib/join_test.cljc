@@ -50,11 +50,11 @@
                                                       [:field
                                                        {:lib/uuid string?
                                                         :join-alias absent-key-marker}
-                                                       (meta/id :venues :category-id)]
+                                                       "CATEGORY_ID"]
                                                       [:field
                                                        {:lib/uuid string?
                                                         :join-alias "Categories"}
-                                                       (meta/id :categories :id)]]]
+                                                       "ID"]]]
                                        :fields      :all}]}]}
           (let [q (lib.tu/venues-query)
                 j (lib/query meta/metadata-provider (meta/table-metadata :categories))]
@@ -219,12 +219,12 @@
                                                 {}
                                                 [:+
                                                  {}
-                                                 [:field {:join-alias absent-key-marker} (meta/id :orders :id)]
-                                                 [:field {:join-alias absent-key-marker} (meta/id :orders :id)]]
+                                                 [:field {:join-alias absent-key-marker} "ID"]
+                                                 [:field {:join-alias absent-key-marker} "ID"]]
                                                 [:-
                                                  {}
-                                                 [:field {:join-alias "Products"} (meta/id :products :id)]
-                                                 [:field {:join-alias "Products"} (meta/id :products :id)]]]]}]}]}
+                                                 [:field {:join-alias "Products"} "ID"]
+                                                 [:field {:join-alias "Products"} "ID"]]]]}]}]}
               (lib/join query (lib/join-clause products [(lib/= (lib/+ lhs-order-id lhs-order-id)
                                                                 (lib/- rhs-product-id rhs-product-id))])))))))
 
@@ -242,11 +242,11 @@
                                                       [:field
                                                        {:lib/uuid string?
                                                         :join-alias absent-key-marker}
-                                                       (meta/id :categories :id)]
+                                                       "ID"]
                                                       [:field
                                                        {:lib/uuid string?
                                                         :join-alias "Venues"}
-                                                       (meta/id :venues :category-id)]]]}]}]}
+                                                       "CATEGORY_ID"]]]}]}]}
           (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
               (lib/join (lib/join-clause
                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
@@ -270,9 +270,9 @@
                                 {:lib/uuid string?}
                                 [:field {:base-type    :type/BigInteger
                                          :lib/uuid     string?
-                                         :source-field (meta/id :venues :category-id)}
-                                 (meta/id :categories :id)]
-                                [:field {:lib/uuid string?} (meta/id :venues :category-id)]]]}
+                                         :source-field-name "CATEGORY_ID"}
+                                 "ID"]
+                                [:field {:lib/uuid string?} "CATEGORY_ID"]]]}
                 clause)))
       (is (=? {:database (meta/id)
                :stages   [{:source-table (meta/id :categories)
@@ -285,11 +285,11 @@
                                                            {:base-type :type/BigInteger
                                                             :lib/uuid string?
                                                             :join-alias absent-key-marker}
-                                                           (meta/id :categories :id)]
+                                                           "ID"]
                                                           [:field
                                                            {:lib/uuid string?
                                                             :join-alias "Venues"}
-                                                           (meta/id :venues :category-id)]]]}]}]}
+                                                           "CATEGORY_ID"]]]}]}]}
               (-> q1
                   (lib/join (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)]))
                   (dissoc :lib/metadata)))))))
@@ -340,7 +340,7 @@
               (lib.join.util/current-join-alias (first metadata))))
       (is (=? [:field
                {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
-               (meta/id :categories :name)]
+               "NAME"]
               (lib/ref (first metadata)))))))
 
 (deftest ^:parallel join-against-source-card-metadata-test
@@ -514,10 +514,10 @@
                                                         {}
                                                         [:field
                                                          {:join-alias absent-key-marker}
-                                                         (meta/id :venues :category-id)]
+                                                         "CATEGORY_ID"]
                                                         [:field
                                                          {:join-alias "Categories"}
-                                                         (meta/id :categories :id)]]]
+                                                         "ID"]]]
                                           :strategy :right-join
                                           :alias "Categories"}]}]}
                       (-> (lib.tu/venues-query)
@@ -561,11 +561,11 @@
     (let [query  (lib.tu/query-with-join-with-explicit-fields)
           [join] (lib/joins query)]
       (is (=? {:alias  "Cat"
-               :fields [[:field {:join-alias "Cat"} (meta/id :categories :name)]]}
+               :fields [[:field {:join-alias "Cat"} "NAME"]]}
               join))
       (let [join' (lib/with-join-alias join "New Alias")]
         (is (=? {:alias  "New Alias"
-                 :fields [[:field {:join-alias "New Alias"} (meta/id :categories :name)]]}
+                 :fields [[:field {:join-alias "New Alias"} "NAME"]]}
                 join'))))))
 
 (deftest ^:parallel with-join-alias-update-condition-rhs-test
@@ -573,14 +573,14 @@
     (let [query  (lib.tu/query-with-join)
           [join] (lib/joins query)]
       (is (=? {:conditions [[:= {}
-                             [:field {} (meta/id :venues :category-id)]
-                             [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                             [:field {} "CATEGORY_ID"]
+                             [:field {:join-alias "Cat"} "ID"]]]
                :alias      "Cat"}
               join))
       (let [join' (lib/with-join-alias join "New Alias")]
         (is (=? {:conditions [[:= {}
-                               [:field {} (meta/id :venues :category-id)]
-                               [:field {:join-alias "New Alias"} (meta/id :categories :id)]]]
+                               [:field {} "CATEGORY_ID"]
+                               [:field {:join-alias "New Alias"} "ID"]]]
                  :alias      "New Alias"}
                 join'))))))
 
@@ -595,14 +595,14 @@
                                                    [operator opts lhs (lib/with-join-alias rhs nil)])
                                                  conditions))))]
       (is (=? {:conditions [[:= {}
-                             [:field {} (meta/id :venues :category-id)]
-                             [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]]
+                             [:field {} "CATEGORY_ID"]
+                             [:field {:join-alias absent-key-marker} "ID"]]]
                :alias      absent-key-marker}
               join))
       (let [join' (lib/with-join-alias join "New Alias")]
         (is (=? {:conditions [[:= {}
-                               [:field {} (meta/id :venues :category-id)]
-                               [:field {:join-alias "New Alias"} (meta/id :categories :id)]]]
+                               [:field {} "CATEGORY_ID"]
+                               [:field {:join-alias "New Alias"} "ID"]]]
                  :alias      "New Alias"}
                 join'))))))
 
@@ -619,8 +619,8 @@
           [join]     (lib/joins query)
           conditions (lib/join-conditions join)]
       (is (=? [[:= {}
-                [:field {} (meta/id :venues :category-id)]
-                [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                [:field {} "CATEGORY_ID"]
+                [:field {:join-alias "Cat"} "ID"]]]
               conditions))
       (testing "Replace conditions; should add join alias"
         (let [new-conditions [(lib/=
@@ -638,12 +638,12 @@
             (testing (str "\nconditions =\n" (u/pprint-to-str new-conditions))
               (is (=? (concat
                        [[:= {}
-                         [:field {} (meta/id :venues :id)]
-                         [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                         [:field {} "ID"]
+                         [:field {:join-alias "Cat"} "ID"]]]
                        (when (= (count new-conditions) 2)
                          [[:= {}
-                           [:field {} (meta/id :venues :category-id)]
-                           [:field {:join-alias "Cat"} (meta/id :categories :id)]]]))
+                           [:field {} "CATEGORY_ID"]
+                           [:field {:join-alias "Cat"} "ID"]]]))
                       (lib/join-conditions (lib/with-join-conditions join new-conditions)))))))))))
 
 (deftest ^:parallel with-join-conditions-do-not-add-alias-when-already-present-test
@@ -655,8 +655,8 @@
                            (-> (meta/field-metadata :categories :id)
                                (lib/with-join-alias "My Join")))]]
       (is (=? [[:= {}
-                [:field {} (meta/id :venues :id)]
-                [:field {:join-alias "My Join"} (meta/id :categories :id)]]]
+                [:field {} "ID"]
+                [:field {:join-alias "My Join"} "ID"]]]
               (lib/join-conditions (lib/with-join-conditions join new-conditions)))))))
 
 (deftest ^:parallel with-join-conditions-join-has-no-alias-yet-test
@@ -670,14 +670,14 @@
                              (meta/field-metadata :categories :id))]
             join' (lib/with-join-conditions join new-conditions)]
         (is (=? [[:= {}
-                  [:field {} (meta/id :venues :id)]
-                  [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]]
+                  [:field {} "ID"]
+                  [:field {:join-alias absent-key-marker} "ID"]]]
                 (lib/join-conditions join')))
         (testing "Adding an alias later with lib/with-join-alias should update conditions that are missing aliases"
           (let [join'' (lib/with-join-alias join' "New Alias")]
             (is (=? [[:= {}
-                      [:field {} (meta/id :venues :id)]
-                      [:field {:join-alias "New Alias"} (meta/id :categories :id)]]]
+                      [:field {} "ID"]
+                      [:field {:join-alias "New Alias"} "ID"]]]
                     (lib/join-conditions join'')))))))))
 
 (deftest ^:parallel with-join-conditions-do-not-add-alias-to-complex-conditions
@@ -691,9 +691,9 @@
                                1)]
               conditions' (lib/join-conditions (lib/with-join-conditions join new-conditions))]
           (is (=? [[:between {}
-                    [:field {} (meta/id :venues :id)]
+                    [:field {} "ID"]
                     [:field {:join-alias absent-key-marker}
-                     (meta/id :categories :id)]
+                     "ID"]
                     1]]
                   conditions'))))
       (testing :and
@@ -707,11 +707,11 @@
               conditions' (lib/join-conditions (lib/with-join-conditions join new-conditions))]
           (is (=? [[:and {}
                     [:= {}
-                     [:field {} (meta/id :venues :id)]
-                     [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]
+                     [:field {} "ID"]
+                     [:field {:join-alias absent-key-marker} "ID"]]
                     [:= {}
-                     [:field {} (meta/id :venues :category-id)]
-                     [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]]]
+                     [:field {} "CATEGORY_ID"]
+                     [:field {:join-alias absent-key-marker} "ID"]]]]
                   conditions')))))))
 
 (defn- test-with-join-fields [input expected]
@@ -727,8 +727,8 @@
       (is (=? {:stages [{:joins [(merge
                                   {:alias      "Cat"
                                    :conditions [[:= {}
-                                                 [:field {} (meta/id :venues :category-id)]
-                                                 [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}
+                                                 [:field {} "CATEGORY_ID"]
+                                                 [:field {:join-alias "Cat"} "ID"]]]}
                                   expected)]}]}
               query))
       (let [[join] (lib/joins query)]
@@ -861,12 +861,12 @@
 
 (deftest ^:parallel condition-for-query-with-join-test
   (is (=? [:= {}
-           [:field {} (meta/id :venues :category-id)]
-           [:field {} (meta/id :categories :id)]]
+           [:field {} "CATEGORY_ID"]
+           [:field {} "ID"]]
           condition-for-query-with-join))
-  (is (=? [:field {} (meta/id :venues :category-id)]
+  (is (=? [:field {} "CATEGORY_ID"]
           lhs-for-query-with-join))
-  (is (=? [:field {} (meta/id :categories :id)]
+  (is (=? [:field {} "ID"]
           rhs-for-query-with-join)))
 
 (deftest ^:parallel join-condition-lhs-columns-mark-selected-test
@@ -967,7 +967,7 @@
                 :fields :all
                 :conditions [[:= {}
                               ;; The LHS uses the Field ID, since it's a plain table.
-                              [:field {:join-alias (symbol "nil #_\"key is not present.\"")} (meta/id :venues :name)]
+                              [:field {:join-alias (symbol "nil #_\"key is not present.\"")} "NAME"]
                               ;; The RHS uses the Field ID, since it's a plain table.
                               [:field {:join-alias "Mock categories card - Name"} "NAME"]]]}]
               (lib/joins query))))))
@@ -1050,8 +1050,8 @@
   (testing "DO suggest a join condition for an FK -> PK relationship"
     (are [query] (=? [[:=
                        {}
-                       [:field {} (meta/id :venues :category-id)]
-                       [:field {} (meta/id :categories :id)]]]
+                       [:field {} "CATEGORY_ID"]
+                       [:field {} "ID"]]]
                      (lib/suggested-join-conditions
                       query
                       (meta/table-metadata :categories)))
@@ -1069,8 +1069,8 @@
   (testing "DO suggest join conditions for a PK -> FK relationship"
     (is (=? [[:=
               {}
-              [:field {} (meta/id :categories :id)]
-              [:field {} (meta/id :venues :category-id)]]]
+              [:field {} "ID"]
+              [:field {} "CATEGORY_ID"]]]
             (lib/suggested-join-conditions
              (lib/query meta/metadata-provider (meta/table-metadata :categories))
              (meta/table-metadata :venues))))))
@@ -1079,8 +1079,8 @@
   (testing "DO suggest join conditions for a FK -> PK relationship if the FK comes from a join"
     (is (=? [[:=
               {}
-              [:field {:join-alias "Venues"} (meta/id :venues :category-id)]
-              [:field {} (meta/id :categories :id)]]]
+              [:field {:join-alias "Venues"} "CATEGORY_ID"]
+              [:field {} "ID"]]]
             (lib/suggested-join-conditions
              (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                  (lib/join (-> (lib/join-clause
@@ -1333,8 +1333,8 @@
            (count joins)))
     (is (=? [[:=
               {}
-              [:field {} (meta/id :venues :category-id)]
-              [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+              [:field {} "CATEGORY_ID"]
+              [:field {:join-alias "Cat"} "ID"]]]
             (lib/join-conditions (first joins))))))
 
 (deftest ^:parallel joinable-columns-test
@@ -1392,10 +1392,10 @@
                      ;; now since the QP will do the right thing.
                      :fields   [[:field
                                  {:lib/uuid string?, :join-alias "Cat"}
-                                 (meta/id :categories :id)]
+                                 "ID"]
                                 [:field
                                  {:lib/uuid string?, :join-alias "Cat"}
-                                 (meta/id :categories :name)]]}
+                                 "NAME"]]}
                     (lib/with-join-fields join cols)))))))))
 
 (defn- add-double-condition-join [query previous-alias current-alias]
@@ -1463,8 +1463,8 @@
         products-created-at (meta/field-metadata :products :created-at)
         orders-created-at (meta/field-metadata :orders :created-at)]
     (is (=? [:= {}
-             [:field {:temporal-unit :year} (meta/id :orders :created-at)]
-             [:field {:temporal-unit :year} (meta/id :products :created-at)]]
+             [:field {:temporal-unit :year} "CREATED_AT"]
+             [:field {:temporal-unit :year} "CREATED_AT"]]
             (lib/join-condition-update-temporal-bucketing
              query
              -1
@@ -1472,8 +1472,8 @@
                     products-created-at)
              :year)))
     (is (=? [:= {}
-             [:field (complement :temporal-unit) (meta/id :orders :id)]
-             [:field {:temporal-unit :year} (meta/id :products :created-at)]]
+             [:field (complement :temporal-unit) "ID"]
+             [:field {:temporal-unit :year} "CREATED_AT"]]
             (lib/join-condition-update-temporal-bucketing
              query
              -1
@@ -1482,8 +1482,8 @@
              :year)))
     (testing "removing with nil"
       (is (=? [:= {}
-               [:field (complement :temporal-unit) (meta/id :orders :created-at)]
-               [:field (complement :temporal-unit) (meta/id :products :created-at)]]
+               [:field (complement :temporal-unit) "CREATED_AT"]
+               [:field (complement :temporal-unit) "CREATED_AT"]]
               (lib/join-condition-update-temporal-bucketing
                query
                -1
@@ -1503,8 +1503,8 @@
                                :year)))))
     (testing ":default (explicit 'Don't bin') propagates to both sides"
       (is (=? [:= {}
-               [:field {:temporal-unit :default} (meta/id :orders :created-at)]
-               [:field {:temporal-unit :default} (meta/id :products :created-at)]]
+               [:field {:temporal-unit :default} "CREATED_AT"]
+               [:field {:temporal-unit :default} "CREATED_AT"]]
               (lib/join-condition-update-temporal-bucketing
                query
                -1
@@ -1534,8 +1534,8 @@
                 :fields :all
                 :conditions [[:=
                               {}
-                              [:field {:join-alias absent-key-marker} (meta/id :venues :id)]
-                              [:field {:join-alias "Checkins"} (meta/id :checkins :venue-id)]]]
+                              [:field {:join-alias absent-key-marker} "ID"]
+                              [:field {:join-alias "Checkins"} "VENUE_ID"]]]
                 :alias "Checkins"}
                {:lib/type :mbql/join
                 :stages [{:lib/type :mbql.stage/mbql
@@ -1543,8 +1543,8 @@
                 :fields :all,
                 :conditions [[:=
                               {}
-                              [:field {:join-alias "Checkins"} (meta/id :checkins :user-id)]
-                              [:field {:join-alias "Users"} (meta/id :users :id)]]],
+                              [:field {:join-alias "Checkins"} "USER_ID"]
+                              [:field {:join-alias "Users"} "ID"]]],
                 :alias "Users"}]
               (lib/joins query))))))
 
@@ -1609,8 +1609,8 @@
                                        :alias      "Products"
                                        :conditions [[:=
                                                      {}
-                                                     [:field {} (meta/id :orders :product-id)]
-                                                     [:field {:join-alias "Products"} (meta/id :products :id)]]]}]}]}
+                                                     [:field {} "PRODUCT_ID"]
+                                                     [:field {:join-alias "Products"} "ID"]]]}]}]}
             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                 (lib/join (meta/table-metadata :products)))))
     (testing "with reverse PK <- FK relationship"
@@ -1620,8 +1620,8 @@
                                          :alias      "Orders"
                                          :conditions [[:=
                                                        {}
-                                                       [:field {} (meta/id :products :id)]
-                                                       [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]]}]}]}
+                                                       [:field {} "ID"]
+                                                       [:field {:join-alias "Orders"} "PRODUCT_ID"]]]}]}]}
               (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                   (lib/join (meta/table-metadata :orders))))))))
 
@@ -1659,8 +1659,8 @@
                         (lib/join products->orders))]
           (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
             (is (=? [[:= {}
-                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
-                      [:field {}                     (meta/id :people :id)]]]
+                      [:field {:join-alias "Orders"} "USER_ID"]
+                      [:field {}                     "ID"]]]
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
           (testing "but when editing that join, Orders.USER_ID is not visible and no condition is suggested"
             (is (=? nil
@@ -1671,8 +1671,8 @@
                         (lib/join products->orders))]
           (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
             (is (=? [[:= {}
-                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
-                      [:field {}                     (meta/id :people :id)]]]
+                      [:field {:join-alias "Orders"} "USER_ID"]
+                      [:field {}                     "ID"]]]
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
           (testing "but when editing *either* join, Orders.USER_ID is not visible and no condition is suggested"
             (doseq [position [0 1]]
@@ -1684,13 +1684,13 @@
                         (lib/join products->reviews))]
           (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
             (is (=? [[:= {}
-                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
-                      [:field {}                     (meta/id :people :id)]]]
+                      [:field {:join-alias "Orders"} "USER_ID"]
+                      [:field {}                     "ID"]]]
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
           (testing "when editing the second join, the first join's keys are still available"
             (is (=? [[:= {}
-                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
-                      [:field {}                     (meta/id :people :id)]]]
+                      [:field {:join-alias "Orders"} "USER_ID"]
+                      [:field {}                     "ID"]]]
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 1))))
           (testing "but when editing the first join, Orders.USER_ID is not visible and no condition is suggested"
             (is (=? nil

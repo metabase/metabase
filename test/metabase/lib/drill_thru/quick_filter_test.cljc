@@ -302,10 +302,10 @@
                 (lib/display-info query drill))))
       (testing "apply drills"
         (testing :contains
-          (is (=? {:stages [{:filters [[:contains {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+          (is (=? {:stages [{:filters [[:contains {} [:field {} "BODY"] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "contains"))))
         (testing :does-not-contain
-          (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+          (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} "BODY"] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "does-not-contain"))))))))
 
 (deftest ^:parallel preserve-temporal-bucket-test-quick-filter
@@ -339,7 +339,7 @@
                                        (lib/available-drill-thrus base-query context))]
       (is (some? drill))
       (is (=? {:stages [{:filters [[:= {}
-                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    [:field {:temporal-unit :month} "CREATED_AT"]
                                     "2023-03-01T00:00:00Z"]]}]}
               (lib/drill-thru base-query -1 nil drill "="))))))
 

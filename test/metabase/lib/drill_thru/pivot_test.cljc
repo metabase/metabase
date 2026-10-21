@@ -352,10 +352,10 @@
                                        (lib/pivot-columns-for-type pivot :category))]
           (is (some? source-col))
           (is (=? {:stages [{:filters  [[:= {}
-                                         [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                         [:field {:temporal-unit :month} "CREATED_AT"]
                                          "2027-03-01T00:00:00Z"]]
-                             :breakout [[:field {:source-field (meta/id :orders :user-id)}
-                                         (meta/id :people :source)]]}]}
+                             :breakout [[:field {:source-field-name "USER_ID"}
+                                         "SOURCE"]]}]}
                   (lib/drill-thru query -1 nil pivot source-col))))))))
 
 (deftest ^:parallel expression-after-aggregation-test

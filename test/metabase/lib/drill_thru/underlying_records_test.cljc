@@ -337,13 +337,13 @@
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      20]
                                     [:<
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      30.0]]}]}
               query')))))
 
@@ -370,7 +370,7 @@
                :dimensions [{}]}
               drill))
       (is (=? {:lib/type :mbql/query
-               :stages [{:filters     [[:= {} [:field {} (meta/id :products :category)] "Gadget"]]
+               :stages [{:filters     [[:= {} [:field {} "CATEGORY"] "Gadget"]]
                          :aggregation (symbol "nil #_\"key is not present.\"")
                          :breakout    (symbol "nil #_\"key is not present.\"")
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
@@ -392,7 +392,7 @@
           drill    (m/find-first #(= (:type %) :drill-thru/underlying-records)
                                  (lib.drill-thru/available-drill-thrus query context))]
       (is (=? {:lib/type :mbql/query
-               :stages [{:filters     [[:in {} [:field {} (meta/id :products :category)] "Gadget" "Doohickey"]]
+               :stages [{:filters     [[:in {} [:field {} "CATEGORY"] "Gadget" "Doohickey"]]
                          :aggregation (symbol "nil #_\"key is not present.\"")
                          :breakout    (symbol "nil #_\"key is not present.\"")
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
@@ -431,10 +431,10 @@
                                        (lib/available-drill-thrus query context))]
       (is (some? drill))
       (is (=? {:stages [{:filters [[:> {}
-                                    [:field {} (meta/id :orders :total)]
+                                    [:field {} "TOTAL"]
                                     50]
                                    [:between {}
-                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    [:field {:temporal-unit :month} "CREATED_AT"]
                                     "2023-03-01"
                                     "2023-03-31"]]}]}
               (lib/drill-thru query drill))))))
@@ -467,7 +467,7 @@
                :row-count  2
                :table-name "Orders"
                :dimensions [{:column     {:name "CREATED_AT"}
-                             :column-ref [:field {} (meta/id :orders :created-at)]
+                             :column-ref [:field {} "CREATED_AT"]
                              :value      "2020-01-01"}]
                :column-ref [:aggregation {} string?]}
               drill))
@@ -507,7 +507,7 @@
       (is (some? drill))
       (is (=? {:stages [{:filters [[:is-null
                                     {}
-                                    [:field {:binning (symbol "nil #_\"key is not present.\"")} (meta/id :orders :discount)]]]}]}
+                                    [:field {:binning (symbol "nil #_\"key is not present.\"")} "DISCOUNT"]]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel nil-aggregation-value-unbinned-test
@@ -536,7 +536,7 @@
           drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
                               (lib/available-drill-thrus query context))]
       (is (some? drill))
-      (is (=? {:stages [{:filters [[:is-null {} [:field {} (meta/id :products :category)]]]}]}
+      (is (=? {:stages [{:filters [[:is-null {} [:field {} "CATEGORY"]]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel multi-stage-query-test
@@ -656,8 +656,8 @@
           drill        (m/find-first #(= (:type %) :drill-thru/underlying-records)
                                      (lib/available-drill-thrus query context))
           drilled      (lib/drill-thru query drill)]
-      (is (=? [[:field {} (meta/id :products :id)]
-               [:field {} (meta/id :products :category)]]
+      (is (=? [[:field {} "ID"]
+               [:field {} "CATEGORY"]]
               (-> drilled lib.join/joins first lib.join/join-fields)))
       (is (= #{(meta/id :products :id) (meta/id :products :category)}
              (into #{}
@@ -861,11 +861,11 @@
       (let [query' (lib/drill-thru query drill)]
         (is (=? [{:source-table (meta/id :orders)
                   :filters      [[:>= {}
-                                  [:field {} (meta/id :orders :total)]
+                                  [:field {} "TOTAL"]
                                   90]
                                  [:<
                                   {}
-                                  [:field {} (meta/id :orders :total)]
+                                  [:field {} "TOTAL"]
                                   92.0]]}]
                 (:stages query')))
         (is (= ["Total is greater than or equal to 90"
@@ -911,11 +911,11 @@
                                       (lib/available-drill-thrus query context))]
           (is (some? drill))
           (is (=? {:stages [{:filters [[:between {}
-                                        [:field {:temporal-unit unit} (meta/id :orders :created-at)]
+                                        [:field {:temporal-unit unit} "CREATED_AT"]
                                         start
                                         end]
                                        [:= {}
-                                        [:field {} (meta/id :orders :product-id)]
+                                        [:field {} "PRODUCT_ID"]
                                         14]]}]}
                   (lib/drill-thru query drill))))))))
 
@@ -998,11 +998,11 @@
             second-result (lib/drill-thru first-result second-drill)]
         (testing "second drill should filter on 2023-03-15 (not 2023-03-14)"
           (is (=? {:stages [{:filters     [[:between {}
-                                            [:field {:temporal-unit :day} (meta/id :orders :created-at)]
+                                            [:field {:temporal-unit :day} "CREATED_AT"]
                                             "2023-03-15"
                                             "2023-03-15"]
                                            [:= {}
-                                            [:field {} (meta/id :orders :product-id)]
+                                            [:field {} "PRODUCT_ID"]
                                             14]]
                              :aggregation (symbol "nil #_\"key is not present.\"")
                              :breakout    (symbol "nil #_\"key is not present.\"")
@@ -1052,11 +1052,11 @@
           result     (lib/drill-thru query drill)]
       (is (=? {:stages [{:source-table (meta/id :people)
                          :filters      [[:between {}
-                                         [:field {:temporal-unit :month} (meta/id :people :created-at)]
+                                         [:field {:temporal-unit :month} "CREATED_AT"]
                                          string?
                                          string?]
                                         [:= {}
-                                         [:field {} (meta/id :people :state)]
+                                         [:field {} "STATE"]
                                          "AK"]]
                          :aggregation  (symbol "nil #_\"key is not present.\"")
                          :breakout     (symbol "nil #_\"key is not present.\"")

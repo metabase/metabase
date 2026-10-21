@@ -26,8 +26,8 @@
                            :fields     :all
                            :conditions [[:=
                                          {}
-                                         [:field {} (meta/id :venues :category-id)]
-                                         [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
+                                         [:field {} "CATEGORY_ID"]
+                                         [:field {:join-alias "Cat"} "ID"]]]}]}]}
               query)))))
 
 (deftest ^:parallel nil-column-test

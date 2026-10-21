@@ -24,7 +24,7 @@
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
                                        {:lib/uuid string?}
-                                       [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
+                                       [:field {:lib/uuid string?} "ID"]]]}]}
           (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id))))))
 
@@ -34,7 +34,7 @@
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
                                        {:lib/uuid string?}
-                                       [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
+                                       [:field {:lib/uuid string?} "ID"]]]}]}
           (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id))
               (dissoc :lib/metadata)))))
@@ -45,7 +45,7 @@
                        :source-table (meta/id :venues)
                        :order-by     [[:desc
                                        {:lib/uuid string?}
-                                       [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
+                                       [:field {:lib/uuid string?} "ID"]]]}]}
           (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id) :desc)
               (dissoc :lib/metadata)))))
@@ -58,7 +58,7 @@
                       {:lib/type :mbql.stage/mbql
                        :order-by [[:asc
                                    {:lib/uuid string?}
-                                   [:field {:lib/uuid string?} (meta/id :venues :id)]]]}
+                                   [:field {:lib/uuid string?} "ID"]]]}
                       {:lib/type :mbql.stage/mbql}]}
           (-> (lib/query meta/metadata-provider {:database (meta/id)
                                                  :type     :query
@@ -70,11 +70,11 @@
   (testing "Should be able to create an order by using raw Field metadata"
     (is (=? [:asc
              {:lib/uuid string?}
-             [:field {:lib/uuid string?} (meta/id :venues :id)]]
+             [:field {:lib/uuid string?} "ID"]]
             (lib/order-by-clause (meta/field-metadata :venues :id))))
     (is (=? [:desc
              {:lib/uuid string?}
-             [:field {:lib/uuid string?} (meta/id :venues :id)]]
+             [:field {:lib/uuid string?} "ID"]]
             (lib/order-by-clause (meta/field-metadata :venues :id) :desc)))))
 
 (deftest ^:parallel append-order-by-field-metadata-test
@@ -86,13 +86,13 @@
                            :source-table (meta/id :categories)
                            :order-by     [[:asc
                                            {:lib/uuid string?}
-                                           [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
+                                           [:field {:lib/uuid string?} "ID"]]]}]}
               (lib/order-by query venues-id))))))
 
 (deftest ^:parallel order-bys-test
   (is (=? [[:asc
             {:lib/uuid string?}
-            [:field {:lib/uuid string?} (meta/id :venues :id)]]]
+            [:field {:lib/uuid string?} "ID"]]]
           (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id))
               lib/order-bys))))
@@ -101,10 +101,10 @@
   (testing "Should be able to order by two distinct fields"
     (is (=? [[:asc
               {:lib/uuid string?}
-              [:field {:lib/uuid string?} (meta/id :venues :id)]]
+              [:field {:lib/uuid string?} "ID"]]
              [:asc
               {:lib/uuid string?}
-              [:field {:lib/uuid string?} (meta/id :venues :price)]]]
+              [:field {:lib/uuid string?} "PRICE"]]]
             (-> (lib.tu/venues-query)
                 (lib/order-by (meta/field-metadata :venues :id))
                 (lib/order-by (meta/field-metadata :venues :price))
@@ -131,7 +131,7 @@
               (lib/order-bys $q))))))
 
 (deftest ^:parallel duplicate-order-bys-test
-  (is (=? [[:asc {} [:field {} (meta/id :venues :id)]]]
+  (is (=? [[:asc {} [:field {} "ID"]]]
           (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id))
               (lib/order-by (meta/field-metadata :venues :id))
@@ -448,11 +448,11 @@
                                :source-table (meta/id :venues)
                                :order-by     [[:asc
                                                {:lib/uuid string?}
-                                               [:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]]}]}
+                                               [:field {:lib/uuid string? :base-type :type/Text} "NAME"]]]}]}
                   query'))
           (is (=? [[:asc
                     {:lib/uuid string?}
-                    [:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]]
+                    [:field {:lib/uuid string? :base-type :type/Text} "NAME"]]]
                   (lib/order-bys query'))))))))
 
 (deftest ^:parallel orderable-columns-with-source-card-e2e-test
@@ -574,11 +574,11 @@
             query' (-> query
                        (lib/order-by (orderable-columns 5))
                        (lib/order-by (orderable-columns 1)))]
-        (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :price)]]
-                                      [:asc {} [:field {} (meta/id :venues :name)]]]}]}
+        (is (=? {:stages [{:order-by [[:asc {} [:field {} "PRICE"]]
+                                      [:asc {} [:field {} "NAME"]]]}]}
                 query'))
-        (is (=? [[:asc {} [:field {} (meta/id :venues :price)]]
-                 [:asc {} [:field {} (meta/id :venues :name)]]]
+        (is (=? [[:asc {} [:field {} "PRICE"]]
+                 [:asc {} [:field {} "NAME"]]]
                 (lib/order-bys query')))
         (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
                  {:display-name "Name",        :lib/source :source/table-defaults, :order-by-position 1}
@@ -633,8 +633,8 @@
                            :fields     :all
                            :conditions [[:=
                                          {}
-                                         [:field {} (meta/id :venues :category-id)]
-                                         [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
+                                         [:field {} "CATEGORY_ID"]
+                                         [:field {:join-alias "Cat"} "ID"]]]}]}]}
               query))
       (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
                {:display-name "Name",        :lib/source :source/table-defaults}
@@ -666,8 +666,8 @@
                     (lib/order-by (m/find-first #(= (:id %) (meta/id :categories :name))
                                                 (lib/orderable-columns query))))]
       (is (=? {:stages [{:order-by [[:asc {} [:field
-                                              {:source-field (meta/id :venues :category-id)}
-                                              (meta/id :categories :name)]]]}]}
+                                              {:source-field-name "CATEGORY_ID"}
+                                              "NAME"]]]}]}
               query))
       (is (= "Venues, Sorted by Category → Name ascending"
              (lib/describe-query query)))
@@ -743,7 +743,7 @@
       (let [ag-ref (first orderable-columns)
             query' (lib/order-by query ag-ref)]
         (is (=? {:stages
-                 [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
+                 [{:aggregation [[:avg {} [:+ {} [:field {} "PRICE"] 1]]]
                    :order-by    [[:asc {} [:aggregation {:effective-type :type/Float} ag-uuid]]]}]}
                 query'))
         (is (=? [[:asc {} [:aggregation {:effective-type :type/Float} ag-uuid]]]
@@ -756,7 +756,7 @@
         (testing "With another stage added"
           (let [query'' (lib/append-stage query')]
             (is (=? {:stages
-                     [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
+                     [{:aggregation [[:avg {} [:+ {} [:field {} "PRICE"] 1]]]
                        :order-by    [[:asc {} [:aggregation {} ag-uuid]]]}
                       {}]}
                     query''))
@@ -796,8 +796,8 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/order-by (meta/field-metadata :venues :id))
                     (lib/order-by (meta/field-metadata :venues :name)))]
-      (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]
-                                    [:asc {} [:field {} (meta/id :venues :name)]]]}]}
+      (is (=? {:stages [{:order-by [[:asc {} [:field {} "ID"]]
+                                    [:asc {} [:field {} "NAME"]]]}]}
               query))
       (testing "ignore duplicate order by with same direction"
         (let [query' (-> query
@@ -880,7 +880,7 @@
 (deftest ^:parallel remove-all-order-bys-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/order-by (meta/field-metadata :venues :id)))]
-    (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]]}]}
+    (is (=? {:stages [{:order-by [[:asc {} [:field {} "ID"]]]}]}
             query))
     (let [query' (lib.order-by/remove-all-order-bys query)]
       (is (=? {:stages [{:order-by (symbol "nil #_\"key is not present.\"")}]}

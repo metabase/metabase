@@ -414,7 +414,7 @@
 (deftest ^:parallel field-with-temporal-bucket-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))
         field (lib/ref (lib/with-temporal-bucket (meta/field-metadata :checkins :date) :day-of-month))]
-    (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
+    (is (=? [:field {:temporal-unit :day-of-month} "DATE"]
             field))
     (testing "(lib/temporal-bucket <field-ref>)"
       (is (= {:lib/type :option/temporal-bucketing
@@ -553,7 +553,7 @@
                              :lib/type    ::lib.binning/binning
                              :metadata-fn fn?)
         field         (lib/ref (lib/with-binning (meta/field-metadata :orders :subtotal) binning))]
-    (is (=? [:field {:binning binning} (meta/id :orders :subtotal)]
+    (is (=? [:field {:binning binning} "SUBTOTAL"]
             field))
     (testing "(lib/binning <column-metadata>)"
       (is (=? binning-typed
@@ -737,7 +737,7 @@
         (testing "Implicitly joinable columns should NOT be given a join alias"
           (is (=? {:stages [{:order-by [[:asc {} [:field
                                                   (complement :join-alias)
-                                                  (meta/id :categories :name)]]]}]}
+                                                  "NAME"]]]}]}
                   query')))
         (is (= "Venues, Sorted by Category → Name ascending"
                (lib/describe-query query'))))
@@ -953,15 +953,15 @@
 
 (deftest ^:parallel populate-fields-for-stage-test
   (testing "simple table query"
-    (is (=? [[:field {} (meta/id :orders :id)]
-             [:field {} (meta/id :orders :subtotal)]
-             [:field {} (meta/id :orders :total)]
-             [:field {} (meta/id :orders :tax)]
-             [:field {} (meta/id :orders :discount)]
-             [:field {} (meta/id :orders :quantity)]
-             [:field {} (meta/id :orders :created-at)]
-             [:field {} (meta/id :orders :product-id)]
-             [:field {} (meta/id :orders :user-id)]]
+    (is (=? [[:field {} "ID"]
+             [:field {} "SUBTOTAL"]
+             [:field {} "TOTAL"]
+             [:field {} "TAX"]
+             [:field {} "DISCOUNT"]
+             [:field {} "QUANTITY"]
+             [:field {} "CREATED_AT"]
+             [:field {} "PRODUCT_ID"]
+             [:field {} "USER_ID"]]
             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                 (#'lib.field/populate-fields-for-stage -1)
                 fields-of)))))
@@ -982,7 +982,7 @@
           breakoutable (lib/breakoutable-columns query -1)
           created-at   (first (filter #(= (:name %) "CREATED_AT") breakoutable))
           query        (lib/breakout query -1 (lib/with-temporal-bucket created-at :month))]
-      (is (=? (sorted-fields [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
+      (is (=? (sorted-fields [[:field {:temporal-unit :month} "CREATED_AT"]
                               [:aggregation {} (-> query lib/aggregations first lib.options/uuid)]])
               (-> query
                   (#'lib.field/populate-fields-for-stage -1)
@@ -2627,7 +2627,7 @@
       (let [query-with-reviews-id (lib/add-field query-without-reviews-cols -1 reviews-id)
             query-joins (lib/joins query-with-reviews-id)]
         (testing "reviews.ID is added to the Reviews join, not the ID column in the native model join"
-          (is (=? [[:field {:join-alias "Reviews"} (meta/id :reviews :id)]]
+          (is (=? [[:field {:join-alias "Reviews"} "ID"]]
                   (->> query-joins
                        (m/find-first #(= (:alias %) "Reviews"))
                        (lib/join-fields)))))

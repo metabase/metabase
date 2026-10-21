@@ -317,11 +317,11 @@
         aggregation-operators (lib/available-aggregation-operators query)
         count-op (first aggregation-operators)
         sum-op (second aggregation-operators)]
-    (is (=? [:sum {} [:field {} (meta/id :venues :price)]]
+    (is (=? [:sum {} [:field {} "PRICE"]]
             (lib/aggregation-clause sum-op (meta/field-metadata :venues :price))))
     (is (=? [:count {}]
             (lib/aggregation-clause count-op)))
-    (is (=? [:count {} [:field {} (meta/id :venues :price)]]
+    (is (=? [:count {} [:field {} "PRICE"]]
             (lib/aggregation-clause count-op (meta/field-metadata :venues :price))))
     (is (thrown-with-msg?
          #?(:clj Exception :cljs :default)
@@ -693,7 +693,7 @@
 (deftest ^:parallel var-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/var (meta/field-metadata :venues :price))))]
-    (is (=? {:stages [{:aggregation [[:var {} [:field {} (meta/id :venues :price)]]]}]}
+    (is (=? {:stages [{:aggregation [[:var {} [:field {} "PRICE"]]]}]}
             query))
     (is (= "Venues, Variance of Price"
            (lib/describe-query query)))))

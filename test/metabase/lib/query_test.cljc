@@ -67,7 +67,7 @@
 (deftest ^:parallel type-fill-in-converted-test
   (is (=? {:stages [{:fields [[:field {:base-type :type/BigInteger
                                        :effective-type :type/BigInteger}
-                               (meta/id :venues :id)]]
+                               "ID"]]
                      :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
           (lib/query
            meta/metadata-provider
@@ -91,7 +91,7 @@
                                 node))
                             (lib.convert/->legacy-MBQL query)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
-                                                [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
+                                                [:field {:base-type :type/BigInteger} "ID"]
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?
@@ -458,7 +458,7 @@
                               :aggregation  [[:count {:lib/uuid string?}]]
                               :filters      [[:=
                                               {:lib/uuid string?}
-                                              [:field {:lib/uuid string?} (meta/id :orders :quantity)]
+                                              [:field {:lib/uuid string?} "QUANTITY"]
                                               4]]}]}
                  (lib/query meta/metadata-provider x))
       {"lib/type" "mbql/query"
@@ -508,7 +508,7 @@
                                      {:lib/uuid       string?
                                       :base-type      :type/BigInteger
                                       :effective-type effective-type}
-                                     (meta/id :people :id)]
+                                     "ID"]
                                     "1969-10-12"
                                     "1971-10-12"]]}]}
               (lib/query mp query))))))
@@ -552,9 +552,9 @@
              [{:lib/type :mbql.stage/mbql
                :source-table (meta/id :venues)
                :aggregation [[:metric {} table-based-metric-id]]
-               :breakout [[:field {} (meta/id :venues :category-id)]
-                          [:field {} (meta/id :venues :latitude)]
-                          [:field {} (meta/id :venues :longitude)]]}]}
+               :breakout [[:field {} "CATEGORY_ID"]
+                          [:field {} "LATITUDE"]
+                          [:field {} "LONGITUDE"]]}]}
             (lib/query base-mp (lib.metadata/card base-mp table-based-metric-id))))
     (is (=? {:lib/type :mbql/query
              :database (meta/id)

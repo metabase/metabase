@@ -130,7 +130,7 @@
                                       (lib/available-drill-thrus query context))]
     (is (=? {:lib/type    :metabase.lib.drill-thru/drill-thru,
              :type        :drill-thru/fk-filter
-             :filter      [:= {} [:field {:join-alias "Venues"} (meta/id :venues :category-id)] 2]
+             :filter      [:= {} [:field {:join-alias "Venues"} "CATEGORY_ID"] 2]
              :column-name "Venues → Category ID"
              :table-name  "Checkins"}
             fk-filter-drill))

@@ -163,12 +163,12 @@
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      20]
                                     [:<
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      30.0]]}]}
               query')))))
