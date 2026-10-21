@@ -141,7 +141,7 @@ export const MembershipSelect = ({
         </Tooltip>
         {canEditMembershipType && (
           <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-            tooltipPlacement="bottom"
+            tooltipPlacement="right"
             isManager={memberships.get(group.id)?.is_group_manager}
             onChange={(is_group_manager: boolean) =>
               handleChangeMembership(group.id, {

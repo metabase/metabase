@@ -12,6 +12,7 @@ import type {
 } from "metabase/common/collections/types";
 import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
+import { SkeletonItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/SkeletonItemsTableBody";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
@@ -126,6 +127,7 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   onClick?: (item: CollectionItem) => void;
   visibleColumnsMap: CollectionContentTableColumnsMap;
+  withSkeleton?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
@@ -150,6 +152,7 @@ export const BaseItemsTable = ({
   ItemComponent = DefaultItemRenderer,
   visibleColumnsMap,
   onClick,
+  withSkeleton = false,
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = canSelectItems(collection, onToggleSelected);
@@ -172,14 +175,17 @@ export const BaseItemsTable = ({
         data-testid={isPinned ? "pinned-items-table-head" : "items-table-head"}
       >
         <tr>
-          {canSelect && (
-            <Columns.Select.Header
-              selectedItems={selectedItems}
-              hasUnselected={hasUnselected}
-              onSelectAll={onSelectAll}
-              onSelectNone={onSelectNone}
-            />
-          )}
+          {canSelect &&
+            (withSkeleton ? (
+              <ColumnHeader />
+            ) : (
+              <Columns.Select.Header
+                selectedItems={selectedItems}
+                hasUnselected={hasUnselected}
+                onSelectAll={onSelectAll}
+                onSelectNone={onSelectNone}
+              />
+            ))}
           {visibleColumnsMap["type"] && (
             <Columns.Type.Header
               sortingOptions={sortingOptions}
@@ -217,24 +223,31 @@ export const BaseItemsTable = ({
           <Columns.RightEdge.Header />
         </tr>
       </thead>
-      <BaseItemsTableBody
-        items={items}
-        getIsSelected={getIsSelected}
-        isPinned={isPinned}
-        collection={collection}
-        selectedItems={selectedItems}
-        onDrop={onDrop}
-        ItemComponent={ItemComponent}
-        databases={databases}
-        bookmarks={bookmarks}
-        createBookmark={createBookmark}
-        deleteBookmark={deleteBookmark}
-        onCopy={onCopy}
-        onMove={onMove}
-        onToggleSelected={onToggleSelected}
-        onClick={onClick}
-        visibleColumnsMap={visibleColumnsMap}
-      />
+      {withSkeleton ? (
+        <SkeletonItemsTableBody
+          canSelect={canSelect}
+          visibleColumnsMap={visibleColumnsMap}
+        />
+      ) : (
+        <BaseItemsTableBody
+          items={items}
+          getIsSelected={getIsSelected}
+          isPinned={isPinned}
+          collection={collection}
+          selectedItems={selectedItems}
+          onDrop={onDrop}
+          ItemComponent={ItemComponent}
+          databases={databases}
+          bookmarks={bookmarks}
+          createBookmark={createBookmark}
+          deleteBookmark={deleteBookmark}
+          onCopy={onCopy}
+          onMove={onMove}
+          onToggleSelected={onToggleSelected}
+          onClick={onClick}
+          visibleColumnsMap={visibleColumnsMap}
+        />
+      )}
     </Table>
   );
 };

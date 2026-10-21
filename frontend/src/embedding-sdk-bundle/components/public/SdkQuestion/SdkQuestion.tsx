@@ -74,9 +74,16 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
  */
 export type DrillThroughQuestionProps = Omit<
   BaseSdkQuestionProps,
-  "questionId"
+  "questionId" | "initialSqlParameters"
 > &
-  SdkQuestionDefaultViewProps;
+  SdkQuestionDefaultViewProps & {
+    /**
+     * Initial values for SQL parameters, slug-keyed, applied to every SQL question that opens from the dashboard.
+     *
+     * To control a SQL question opened by a click behavior, use the dashboard's `navigatedEntityParameters` and `onNavigatedEntityParametersChange`.
+     */
+    initialSqlParameters?: BaseSdkQuestionProps["initialSqlParameters"];
+  };
 
 /**
  * @interface
@@ -156,6 +163,7 @@ export const _SdkQuestion = ({
   clickActionMode,
   navigateToNewCard,
   onDrillThrough,
+  navigatedEntity,
 
   height,
   width,
@@ -219,6 +227,7 @@ export const _SdkQuestion = ({
         clickActionMode={clickActionMode}
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
+        navigatedEntity={navigatedEntity}
         onVisualizationChange={onVisualizationChange}
       >
         {children ?? (

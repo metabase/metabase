@@ -26,6 +26,7 @@
    "nl"
    "pl"
    "pt-BR"
+   "ro"
    "ru"
    "sk"
    "sl"

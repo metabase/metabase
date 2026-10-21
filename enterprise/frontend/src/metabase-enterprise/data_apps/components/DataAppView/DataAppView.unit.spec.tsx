@@ -66,10 +66,12 @@ describe("DataAppView", () => {
     expect(screen.getByText("Data app not found")).toBeInTheDocument();
   });
 
-  it("shows a generic error screen for an unexpected failure", () => {
+  it("shows a generic error screen for an unexpected failure", async () => {
     setup({ error: { status: 500 } });
 
-    expect(screen.getByText("Couldn’t load this data app")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn’t load this data app"),
+    ).toBeInTheDocument();
   });
 
   it("shows a permission error when the user cannot access the data app", () => {
@@ -246,7 +248,7 @@ describe("DataAppView", () => {
       });
     }
 
-    it("shows an error instead of spinning when framing is blocked by CSP", () => {
+    it("shows an error instead of spinning when framing is blocked by CSP", async () => {
       setupIframe();
       expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
 
@@ -255,9 +257,10 @@ describe("DataAppView", () => {
       expect(
         screen.getByText("Couldn’t load this data app"),
       ).toBeInTheDocument();
+      await screen.findByText("Show error details");
     });
 
-    it("shows an error when the iframe never signals it loaded", () => {
+    it("shows an error when the iframe never signals it loaded", async () => {
       jest.useFakeTimers();
       try {
         setupIframe();
@@ -273,6 +276,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
+      await screen.findByText("Show error details");
     });
 
     it("does not error once the app reports ready before the timeout", () => {
@@ -297,7 +301,7 @@ describe("DataAppView", () => {
       }
     });
 
-    it("keeps the first error's reason — the timeout can't overwrite the CSP one", () => {
+    it("keeps the first error's reason — the timeout can't overwrite the CSP one", async () => {
       jest.useFakeTimers();
       try {
         setupIframe();
@@ -318,6 +322,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
+      await screen.findByText("Show error details");
     });
   });
 });

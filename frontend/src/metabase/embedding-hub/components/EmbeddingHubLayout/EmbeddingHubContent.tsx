@@ -7,6 +7,8 @@ import {
 } from "metabase/nav/components/AreaLayout";
 import { Box } from "metabase/ui";
 
+import { SdkReact18Alert } from "./SdkReact18Alert";
+
 const CONTENT_MAX_WIDTH = "50rem";
 
 type EmbeddingHubContentProps = {
@@ -39,7 +41,10 @@ export function EmbeddingHubContent({
       </Box>
       <AreaContent fullWidth={fullWidth}>
         {fullWidth ? (
-          children
+          <>
+            <SdkReact18Alert />
+            {children}
+          </>
         ) : (
           <Box
             maw={CONTENT_MAX_WIDTH}
@@ -47,6 +52,7 @@ export function EmbeddingHubContent({
             w="100%"
             data-testid="embedding-hub-content-cap"
           >
+            <SdkReact18Alert />
             {children}
           </Box>
         )}
