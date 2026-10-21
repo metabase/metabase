@@ -1,9 +1,29 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { ContentTranslationConfiguration } from "../ContentTranslationConfiguration";
 
 const setup = () => {
+  setupContentTranslationEndpoints();
   renderWithProviders(<ContentTranslationConfiguration />);
+};
+
+const uploadPath = "path:/api/ee/content-translation/upload-dictionary";
+
+const uploadCSV = async (sizeInBytes: number) => {
+  const file = new File(["a".repeat(sizeInBytes)], "file.csv", {
+    type: "text/csv",
+  });
+  await userEvent.upload(
+    screen.getByTestId("content-translation-dictionary-upload-input"),
+    file,
+  );
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Replace existing dictionary" }),
+  );
 };
 
 describe("ContentTranslationConfiguration", () => {
@@ -68,6 +88,32 @@ describe("ContentTranslationConfiguration", () => {
           name: /Upload edited translation dictionary/i,
         }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("upload size limit", () => {
+    it("rejects a CSV larger than 1.5 MB without calling the upload endpoint", async () => {
+      setup();
+
+      await uploadCSV(1.6 * 1024 * 1024);
+
+      expect(
+        await screen.findByText("The file is larger than 1.5 MB"),
+      ).toBeInTheDocument();
+      expect(fetchMock.callHistory.called(uploadPath)).toBe(false);
+    });
+
+    it("sends a CSV within 1.5 MB to the upload endpoint", async () => {
+      setup();
+
+      await uploadCSV(1024);
+
+      await waitFor(() =>
+        expect(fetchMock.callHistory.called(uploadPath)).toBe(true),
+      );
+      expect(
+        screen.queryByText("The file is larger than 1.5 MB"),
+      ).not.toBeInTheDocument();
     });
   });
 });

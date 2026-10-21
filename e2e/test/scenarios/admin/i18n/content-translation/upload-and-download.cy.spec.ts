@@ -14,7 +14,6 @@ import {
 } from "./helpers/constants";
 import {
   assertOnlyTheseTranslationsAreStored,
-  generateLargeCSV,
   uploadTranslationDictionary,
 } from "./helpers/e2e-content-translation-helpers";
 
@@ -172,32 +171,6 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
           "does not erase previously stored translations when an upload fails",
         );
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
-      });
-
-      it("rejects, in the frontend, a CSV upload that is too big", () => {
-        cy.visit("/embedding/localization");
-        cy.get("#content-translation-dictionary-upload-input").selectFile(
-          {
-            contents: Cypress.Buffer.from(
-              generateLargeCSV({ sizeInMebibytes: 1.6 }),
-            ),
-            fileName: "file.csv",
-            mimeType: "text/csv",
-          },
-          { force: true }, // We need this because the input has display: none
-        );
-
-        cy.findByRole("dialog", { name: /upload new dictionary/i })
-          .button("Replace existing dictionary")
-          .click();
-
-        cy.findAllByRole("alert")
-          .contains(/The file is larger than 1.5 MB/)
-          .should("exist");
-        cy.log(
-          "The frontend should prevent the upload attempt; the endpoint should not be called",
-        );
-        cy.get("@uploadDictionarySpy").should("not.have.been.called");
       });
 
       it("rejects invalid CSV", () => {
