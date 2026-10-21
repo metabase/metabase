@@ -167,6 +167,13 @@
                  :confidence         (if weak? "weak" "strong")))
         matches))
 
+(tools/defrecoverable blank-search-prompt!
+  "`user_search_prompt` is empty or only whitespace."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "`user_search_prompt` is blank. Set it to a full sentence that describes the data the user wants."
+   :recovery []})
+
 ;; No capability gate: this tool lives only in the :nlq profile, which [[metabase.metabot.agent.profiles/
 ;; get-profile]] serves (the library variant, with this tool) only when entity-retrieval-available? — otherwise it
 ;; redirects to :nlq-fallback (general search). That single probe is the sole gate, so prompt and tools can't
@@ -190,6 +197,8 @@
      :args        entity-retrieval-schema})
 
   (handle [_ {:keys [user_search_prompt limit]} _ctx]
+    (when (str/blank? user_search_prompt)
+      (blank-search-prompt! {}))
     (let [n       (min max-limit (or limit default-limit))
           matches (build-matches user_search_prompt n)]
       {:output            (format-output matches)
