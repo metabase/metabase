@@ -77,7 +77,7 @@ Field options (all optional):
 
 ## Per-clause examples
 
-Filters — one entry per condition; entries are ANDed together:
+Use one entry per filter condition. Metabase combines the entries with `and`.
 
 ```json
 "filters": [[">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
@@ -127,8 +127,8 @@ Shape rules:
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
 
 Editing an existing query (the user asks to change, add, or remove part of the question they're viewing):
-- **Start from the query shown in context and change only what the user asked for.** Copy every other clause unchanged — same filters, breakouts, aggregations, and order.
-- **Keep each existing filter as its own `filters:` entry.** To change one filter, replace just that entry. Never merge it with another filter into an `and` — the notebook shows a combined filter as one custom expression, so the user sees their untouched filters rewritten.
+- Start from the query shown in context and change only what the user asked for. Copy every other clause unchanged, including filters, breakouts, aggregations, and their order.
+- Keep each existing filter as its own `filters:` entry. To change one filter, replace just that entry. Never merge it with another filter into an `and`. The notebook shows a combined filter as one custom expression, so the user sees their untouched filters rewritten.
 
 Anti-hallucination:
 - **Don't subtract dates** with `-`. Use `["datetime-diff", {}, <left>, <right>, "<unit>"]` for the integer count of units between two temporal values.

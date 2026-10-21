@@ -216,7 +216,7 @@
     (is (= [] (skills/dialect-preload-parts "nonexistent-engine")))))
 
 (defn- section-between
-  "The text of `s` from the first occurrence of `start` up to (not including) `end`."
+  "Return the text of `s` from the first occurrence of `start` up to but excluding `end`."
   [s start end]
   (let [from (str/index-of s start)
         to   (some->> from (str/index-of s end))]
@@ -224,12 +224,12 @@
       (subs s from to))))
 
 (deftest ^:parallel construct-notebook-query-filter-guidance-in-sync-test
-  (testing (str "the filter-authoring guidance in the `construct_notebook_query` tool prompt is\n"
-                "repeated verbatim in the construct-notebook-query skills, so the two can't drift")
+  (testing (str "the `construct_notebook_query` tool prompt and construct-notebook-query skills\n"
+                "give identical filter guidance")
     (let [tool-prompt (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
           core        (:body (skills/get-skill :construct-notebook-query-core))
           operators   (:body (skills/get-skill :construct-notebook-query-operators))]
-      (doseq [[start end] [["Filters — one entry per condition" "Aggregation (on a field, plus `count`):"]
+      (doseq [[start end] [["Use one entry per filter condition." "Aggregation (on a field, plus `count`):"]
                            ["Editing an existing query" "Anti-hallucination:"]]
               :let [section (section-between tool-prompt start end)]]
         (testing start
