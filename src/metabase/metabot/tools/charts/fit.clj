@@ -60,7 +60,7 @@
   "What each chart type, other than `table` and `object`, needs from a query's columns.
   `:needs` says it to the model, and `:fits?` checks the columns. `scalar` and `gauge` show the first value of the
   first column, so they also need that column not to be a breakout, whose first value is one group's label rather than
-  a result. `smartscalar` compares values along a date, so it also needs the columns that its `isSensible` asks for."
+  a result. `smartscalar` compares values over time, so it also needs a date as its only column to group by."
   (let [axes  (groupings-and-metrics 2 "1 or 2 columns to group by and at least 1 number to measure")
         rings (groupings-and-metrics 3 "1 to 3 columns to group by and at least 1 number to measure")]
     {"bar"         axes
@@ -94,8 +94,11 @@
      "scalar"      {:needs "a first column that isn't a breakout, since it shows that column's first value"
                     :fits? #(not (:lib/breakout? (first %)))}
      "smartscalar" {:needs "a date as the only column to group by, and a number to measure"
-                    :fits? #(and (= 1 (n-of grouping? %) (n-of lib.types.isa/temporal? %))
-                                 (some metric? %))}
+                    :fits? (fn [cols]
+                             (let [[grouping :as groupings] (filter grouping? cols)]
+                               (and (= 1 (count groupings))
+                                    (lib.types.isa/temporal? grouping)
+                                    (some metric? cols))))}
      "gauge"       {:needs "a numeric first column that isn't a breakout, since it shows that column's first value"
                     :fits? (fn [[col]]
                              (and (lib.types.isa/numeric? col)

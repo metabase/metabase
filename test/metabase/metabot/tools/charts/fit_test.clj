@@ -62,6 +62,10 @@
       (count-by :orders (month (meta/field-metadata :orders :created-at)))
       "table bar line pie sunburst treemap boxplot area combo row pivot scatter waterfall smartscalar progress funnel object"
 
+      (lib/aggregate (count-by :orders (month (meta/field-metadata :orders :created-at)))
+                     (lib/max (meta/field-metadata :orders :created-at)))
+      "table bar line pie sunburst treemap boxplot area combo row pivot scatter waterfall smartscalar progress funnel object"
+
       (count-by :products
                 (meta/field-metadata :products :category)
                 (month (meta/field-metadata :products :created-at)))

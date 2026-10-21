@@ -321,6 +321,35 @@
                                  :visualization {:chart_type "sankey"})
                           {}))))))))
 
+(deftest smartscalar-with-a-date-aggregation-test
+  (testing "a trend groups by its one date, and a date aggregation beside the number to measure isn't a second grouping"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/aggregate (lib/max created-at))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month)))]
+      (is (=? {:data-parts [{:data {:display "smartscalar"}}]}
+              (invoke "create_chart"
+                      (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "smartscalar"})
+                      {:queries {"q-1" query}})))
+      (is (=? {:data-parts [{:data {:display "smartscalar"}}]}
+              (invoke "edit_chart"
+                      (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "smartscalar"})
+                      {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [query]}}})))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name    (:name (mt/db))
+              created-at [db-name "PUBLIC" "ORDERS" "CREATED_AT"]]
+          (is (=? {:data-parts [{:data {:display "smartscalar"}}]}
+                  (invoke "construct_notebook_query"
+                          (assoc chart-args
+                                 :query         {:lib/type "mbql/query"
+                                                 :stages   [{:lib/type     "mbql.stage/mbql"
+                                                             :source-table [db-name "PUBLIC" "ORDERS"]
+                                                             :aggregation  [["count" {}] ["max" {} ["field" {} created-at]]]
+                                                             :breakout     [["field" {"temporal-unit" "month"} created-at]]}]}
+                                 :visualization {:chart_type "smartscalar"})
+                          {}))))))))
+
 (deftest chart-tools-undeclared-failure-test
   (testing "a failure that no error declares ends the turn instead of reaching the model"
     (mt/with-dynamic-fn-redefs [create-chart-tools/create-chart (fn [_] (throw (ex-info "boom" {})))
