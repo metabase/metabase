@@ -151,7 +151,8 @@
       (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
       (str "Failed to reload from git repository. " message)
 
-      ;; names entities, whose names may hold any word the matches below look for
+      ;; This clause must be high up because the message will contain names of entities. We don't want it to match,
+      ;; e.g., "branch", by accident.
       (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/query-schema-refusal)
       (str "Failed to reload from git repository. " message)
 

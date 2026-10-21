@@ -1346,8 +1346,9 @@
   (boolean (some (comp ::query-schema-refusal? ex-data) (u/full-exception-chain e))))
 
 (def ^:private placeholder-import-resolver
-  ;; The query schema checks that an id is a positive int, not that it exists, so every reference can resolve to 1.
-  ;; That keeps the check free of app DB lookups, and of the users `import-user` would otherwise create.
+  "A fake import resolver that does no DB lookups or user creation."
+  ;; We don't want to hit the DB, just check that the schema validates. The schema looks for positive ints, so make
+  ;; each resolve to `1`.
   (let [placeholder (fn [x] (when (some? x) 1))]
     (reify resolve/SerdesImportResolver
       (resolve/import-fk          [_ eid _model]         (placeholder eid))
@@ -1359,7 +1360,7 @@
 
 (defn query-schema-refusals
   "The query schema refusals that loading `ingested` would throw, without resolving its references against the app
-  DB. Other errors its import would hit are left for the load to report. Empty for a model without a serdes spec."
+  DB. Ignores other errors. Empty for a model without a serdes spec."
   [ingested]
   (if-let [spec (*make-spec* (ingested-model ingested) nil)]
     (binding [resolve/*import-resolver* placeholder-import-resolver]

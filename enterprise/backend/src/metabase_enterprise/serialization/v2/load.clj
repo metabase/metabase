@@ -268,9 +268,9 @@
     (string? (:name ingested)) (str (format " (%s)" (pr-str (:name ingested))))))
 
 (defn check-query-schemas!
-  "Throws, before anything is written, when queries in `ingestion` do not match this instance's query schema. The
-  error names every such entity, and is a [[serdes/query-schema-refusal?]]. Does nothing when
-  `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION` is set."
+  "Runs through all queries in `ingestion` and checks each query against the schema. Does not write anything to the
+  DB. Throws when any query does not match the query schema. The exception message names every entity and is
+  a [[serdes/query-schema-refusal?]]. Does nothing when `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION` is set."
   [ingestion]
   (when-not (serialization.settings/serialization-skip-schema-validation)
     ;; rolled back so that an import transform with side effects (none should run against placeholder ids, but the
