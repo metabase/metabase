@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useMetadataProvider } from "metabase/metadata-store";
@@ -43,6 +43,8 @@ type FilterPillsProps = {
   extraLabels?: string[];
   /** Omit for pills that can't be changed. */
   onChange?: (value: AnalysisFilters) => void;
+  /** Shown after the pills, e.g. the button that adds a filter. */
+  children?: ReactNode;
 };
 
 /** The filter query and its filters, read with the table's metadata. */
@@ -71,6 +73,7 @@ export const FilterPills = ({
   table,
   extraLabels = [],
   onChange,
+  children,
 }: FilterPillsProps) => {
   const { query, items } = useFilterItems(value, table);
 
@@ -78,7 +81,8 @@ export const FilterPills = ({
     value.cohorts.length === 0 &&
     value.people.length === 0 &&
     items.length === 0 &&
-    extraLabels.length === 0
+    extraLabels.length === 0 &&
+    children === undefined
   ) {
     return null;
   }
@@ -159,6 +163,7 @@ export const FilterPills = ({
           {label}
         </FilterPill>
       ))}
+      {children}
     </Flex>
   );
 };

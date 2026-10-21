@@ -5,9 +5,9 @@ import { useToast } from "metabase/common/hooks";
 import {
   Box,
   Button,
-  Group,
   Icon,
   Loader,
+  Paper,
   Stack,
   Tabs,
   Text,
@@ -29,6 +29,7 @@ import {
   usePaletteSegments,
 } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
+import { ResizeHandle } from "../ResizeHandle";
 import { EventDefinitionEditor } from "../events/EventDefinitionEditor";
 import { useTableQuery } from "../events/use-table-query";
 
@@ -36,6 +37,10 @@ import { NewSegmentModal } from "./NewSegmentModal";
 import { PaletteSegmentItem } from "./PaletteSegmentItem";
 import { SegmentDefinition } from "./SegmentDefinition";
 import S from "./SegmentsPanel.module.css";
+
+const MIN_WIDTH = 240;
+const MAX_WIDTH = 480;
+const DEFAULT_WIDTH = 272;
 
 type SegmentsPanelProps = {
   table: Table | undefined;
@@ -45,47 +50,58 @@ type SegmentsPanelProps = {
 };
 
 /**
- * The column attached to the right of the setup panel: the event table's
- * segments and the linked people table's, each draggable onto the setup
- * panel's slots. The button beside the table picker shows and hides it.
+ * The column left of the setup panel: the event table's segments and the
+ * linked people table's, each draggable onto the setup panel's slots. The
+ * button beside the toolbar's table picker shows and hides it.
  */
 export const SegmentsPanel = ({
   table,
   usersTable,
   onSelectPeopleSegment,
-}: SegmentsPanelProps) => (
-  <Stack className={S.root} gap={0}>
-    {/* As tall as the table picker's row (its lg ActionIcon), so both tab
-        bars line up. */}
-    <Group h="2.125rem" px="lg" mt="lg" mb="md">
-      <Title order={5}>{t`Segments`}</Title>
-    </Group>
-    <Tabs defaultValue="event" className={S.tabs}>
-      <Tabs.List px="lg">
-        <Tabs.Tab value="event">{t`Events`}</Tabs.Tab>
-        <Tabs.Tab value="people">{t`People`}</Tabs.Tab>
-      </Tabs.List>
-      <Box className={S.scroll}>
-        <Tabs.Panel value="event" py="md">
-          <PaletteSection
-            source="event"
-            table={table}
-            emptyMessage={t`No segments on this table yet.`}
-          />
-        </Tabs.Panel>
-        <Tabs.Panel value="people" py="md">
-          <PaletteSection
-            source="people"
-            table={usersTable?.table}
-            samples={usersTable === undefined ? getSamplePeopleSegments() : []}
-            emptyMessage={t`No segments on this table yet.`}
-            onSelect={onSelectPeopleSegment}
-          />
-        </Tabs.Panel>
-      </Box>
-    </Tabs>
-  </Stack>
-);
+}: SegmentsPanelProps) => {
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  return (
+    <Paper withBorder radius="md" className={S.root} w={width}>
+      <ResizeHandle
+        className={S.handle}
+        getSize={() => width}
+        min={MIN_WIDTH}
+        max={MAX_WIDTH}
+        onResize={setWidth}
+      />
+      {/* The same header as the setup panel's, so both tab bars line up. */}
+      <Title order={5} px="lg" pt="lg" pb="md">
+        {t`Segments`}
+      </Title>
+      <Tabs defaultValue="event" className={S.tabs}>
+        <Tabs.List px="lg">
+          <Tabs.Tab value="event">{t`Events`}</Tabs.Tab>
+          <Tabs.Tab value="people">{t`People`}</Tabs.Tab>
+        </Tabs.List>
+        <Box className={S.scroll}>
+          <Tabs.Panel value="event" py="md">
+            <PaletteSection
+              source="event"
+              table={table}
+              emptyMessage={t`No segments on this table yet.`}
+            />
+          </Tabs.Panel>
+          <Tabs.Panel value="people" py="md">
+            <PaletteSection
+              source="people"
+              table={usersTable?.table}
+              samples={
+                usersTable === undefined ? getSamplePeopleSegments() : []
+              }
+              emptyMessage={t`No segments on this table yet.`}
+              onSelect={onSelectPeopleSegment}
+            />
+          </Tabs.Panel>
+        </Box>
+      </Tabs>
+    </Paper>
+  );
+};
 
 type PaletteSectionProps = {
   source: SegmentSource;

@@ -1,12 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Badge, Button, Group, Icon } from "metabase/ui";
+import type { ConcreteTableId } from "metabase-types/api";
 
 import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
 
 import { SqlModal } from "./SqlModal";
+import { TableSegmentsButton } from "./toolbar/TableSegmentsButton";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
 const findSetting = (
@@ -16,13 +18,19 @@ const findSetting = (
 
 type AnalysisToolbarProps = {
   widgets: SettingWidget[];
+  tableId: ConcreteTableId | undefined;
+  tableName: string | undefined;
+  /** Absent when the table is fixed, as it is for a saved analysis. */
+  onTableChange?: (tableId: ConcreteTableId) => void;
+  isSegmentsOpen: boolean;
+  onToggleSegments: () => void;
   setupLabel: string;
   sql: string | null;
   canSave: boolean;
   isSaveDisabled: boolean;
   isSetupOpen: boolean;
   onToggleSetup: () => void;
-  /** The number of filter pills, shown as a badge that shows and hides them. */
+  /** The number of filter pills, shown as a badge on the Filters button. */
   filterCount: number;
   areFiltersExpanded: boolean;
   onToggleFilters: () => void;
@@ -37,6 +45,11 @@ type AnalysisToolbarProps = {
  */
 export const AnalysisToolbar = ({
   widgets,
+  tableId,
+  tableName,
+  onTableChange,
+  isSegmentsOpen,
+  onToggleSegments,
   setupLabel,
   sql,
   canSave,
@@ -51,34 +64,38 @@ export const AnalysisToolbar = ({
 }: AnalysisToolbarProps) => {
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
   const filtersSetting = findSetting(widgets, "filters");
-  const filtersLabel = areFiltersExpanded ? t`Hide filters` : t`Show filters`;
+  const hasTable = tableId !== undefined;
 
   return (
     <>
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <Group gap="sm">
+          <TableSegmentsButton
+            tableId={tableId}
+            tableName={tableName}
+            onTableChange={onTableChange}
+            isSegmentsOpen={isSegmentsOpen}
+            onToggleSegments={onToggleSegments}
+          />
           <Button
             variant="default"
+            leftSection={<Icon name="sliders" />}
             aria-pressed={isSetupOpen}
+            disabled={!hasTable}
             onClick={onToggleSetup}
             onMouseEnter={() => onHintSetup(true)}
             onMouseLeave={() => onHintSetup(false)}
           >
             {setupLabel}
           </Button>
-          <ToolbarSetting setting={findSetting(widgets, "counting")} />
           <Button.Group>
-            <ToolbarSetting setting={filtersSetting} />
-            {filtersSetting !== undefined &&
-              !filtersSetting.hidden &&
-              filterCount > 0 && (
-                <Tooltip label={filtersLabel}>
-                  <Button
-                    variant="default"
-                    aria-label={filtersLabel}
-                    aria-expanded={areFiltersExpanded}
-                    onClick={onToggleFilters}
-                  >
+            <ToolbarSetting setting={findSetting(widgets, "counting")} />
+            {filtersSetting !== undefined && !filtersSetting.hidden && (
+              <Button
+                variant="default"
+                leftSection={<Icon name="filter" />}
+                rightSection={
+                  filterCount > 0 && (
                     <Badge
                       size="xs"
                       variant="filled"
@@ -91,9 +108,15 @@ export const AnalysisToolbar = ({
                     >
                       {filterCount}
                     </Badge>
-                  </Button>
-                </Tooltip>
-              )}
+                  )
+                }
+                aria-pressed={areFiltersExpanded}
+                disabled={!hasTable}
+                onClick={onToggleFilters}
+              >
+                {t`Filters`}
+              </Button>
+            )}
           </Button.Group>
         </Group>
 

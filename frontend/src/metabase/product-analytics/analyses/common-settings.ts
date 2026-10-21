@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import type { ColumnRole, ColumnRoles } from "../columns";
+import { AddFilterButton } from "../components/AddFilterButton";
 import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { CountingMenu } from "../components/toolbar/CountingMenu";
 import { DateRangeButton } from "../components/toolbar/DateRangeButton";
-import { FilterButton } from "../components/toolbar/FilterButton";
 import { GranularityButton } from "../components/toolbar/GranularityButton";
 import { DEFAULT_DATE_RANGE, parseDateRange } from "../date-range";
 import { NO_FILTERS, isAnalysisFilters } from "../filters";
@@ -113,7 +113,7 @@ export const commonSettings = ({
   granularity: granularitySetting(granularity),
   filters: withWidgetProps({
     getSection: () => "toolbar",
-    widget: FilterButton,
+    widget: AddFilterButton,
     getDefault: () => NO_FILTERS,
     isValid: (value) => isAnalysisFilters(value),
     getProps: (context) => ({ table: context.table }),

@@ -3,15 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useGetTableQuery, useListTablesQuery } from "metabase/api";
 import { DataPickerModal } from "metabase/common/components/Pickers";
-import {
-  Button,
-  type ButtonProps,
-  Ellipsified,
-  Icon,
-  Loader,
-  Menu,
-  Text,
-} from "metabase/ui";
+import { Button, Ellipsified, Icon, Loader, Menu, Text } from "metabase/ui";
 import { isConcreteTableId } from "metabase-types/api";
 import type { ConcreteTableId, TableId } from "metabase-types/api";
 
@@ -26,8 +18,6 @@ type EventTablePickerProps = {
   /** Opens the picker on mount, for a page that has no table yet. */
   isInitiallyOpened?: boolean;
   onChange: (tableId: ConcreteTableId) => void;
-  size?: ButtonProps["size"];
-  fullWidth?: boolean;
 };
 
 /**
@@ -38,8 +28,6 @@ export const EventTablePicker = ({
   tableId,
   isInitiallyOpened = false,
   onChange,
-  size = "lg",
-  fullWidth = false,
 }: EventTablePickerProps) => {
   const [isOpened, setIsOpened] = useState(isInitiallyOpened);
   const [isBrowsing, setIsBrowsing] = useState(false);
@@ -83,10 +71,7 @@ export const EventTablePicker = ({
         <Menu.Target>
           <Button
             variant="default"
-            size={size}
             fw="bold"
-            fullWidth={fullWidth}
-            justify={fullWidth ? "flex-start" : undefined}
             loading={table.isLoading}
             leftSection={<Icon name="database" />}
           >

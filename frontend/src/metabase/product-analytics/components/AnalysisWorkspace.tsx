@@ -34,22 +34,23 @@ import { SetupPanel } from "./SetupPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
+import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
   tableId: ConcreteTableId | undefined;
   savedCard?: Card;
   savedSettings?: StoredSettings;
-  /** For a new analysis, where the setup panel picks the table. */
+  /** For a new analysis, where the toolbar's picker picks the table. */
   onTableChange?: (tableId: ConcreteTableId) => void;
 };
 
 /**
  * The event analysis page: the title and toolbar across the top, then the
- * setup panel (with the segments attached to its right) and the result side
- * by side. A new analysis shows only the setup panel's table picker until a
- * table is picked. The result fills the rest of the page. A saved analysis
- * opens on its result, with the setup panel collapsed.
+ * segments panel, the setup panel and the result side by side. A new analysis
+ * opens the toolbar's table picker and shows nothing below until a table is
+ * picked. The result fills the rest of the page. A saved analysis opens on
+ * its result, with the setup panel collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -62,11 +63,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const [isSegmentsOpen, setIsSegmentsOpen] = useState(false);
   // The setup button's hover lights up the setup panel's border.
   const [isSetupHinted, setIsSetupHinted] = useState(false);
-  // Like the query builder: a new analysis shows its filters, a saved one
-  // starts with them collapsed behind the Filter button's badge.
-  const [areFiltersExpanded, setAreFiltersExpanded] = useState(
-    savedCard === undefined,
-  );
+  // Collapsed behind the Filters button until it's clicked; showing an empty
+  // row opens its column picker, which a page load shouldn't do on its own.
+  const [areFiltersExpanded, setAreFiltersExpanded] = useState(false);
   const {
     stored,
     hasUnsavedChanges,
@@ -75,8 +74,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     onSaved,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
-  // Without a table, the setup panel is where it gets picked.
-  const isSetupOpen = panel !== null || tableId === undefined;
+  const isSetupOpen = panel !== null && tableId !== undefined;
+  const isSegmentsShowing = isSegmentsOpen && tableId !== undefined;
   const {
     config,
     table,
@@ -158,7 +157,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 
   return (
     <SegmentDragProvider
-      isPaletteOpen={isSetupOpen && isSegmentsOpen}
+      isPaletteOpen={isSegmentsShowing}
       onPeopleSegment={handleAddPeopleFilter}
     >
       {/* Keeps the app-wide react-dnd backend out of the palette's native drags. */}
@@ -186,6 +185,11 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           />
           <AnalysisToolbar
             widgets={widgets}
+            tableId={tableId}
+            tableName={table?.display_name}
+            onTableChange={onTableChange}
+            isSegmentsOpen={isSegmentsOpen}
+            onToggleSegments={() => setIsSegmentsOpen((isOpen) => !isOpen)}
             setupLabel={config.setupLabel}
             sql={query.sql}
             canSave={canSave}
@@ -198,12 +202,16 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             areFiltersExpanded={areFiltersExpanded}
             onToggleFilters={() => setAreFiltersExpanded((isOpen) => !isOpen)}
           />
-          {areFiltersExpanded && (
+          {areFiltersExpanded && tableId !== undefined && (
             <FilterPills
               value={computed.filters}
               table={table}
               onChange={handleFiltersChange}
-            />
+            >
+              <ToolbarSetting
+                setting={widgets.find((widget) => widget.id === "filters")}
+              />
+            </FilterPills>
           )}
         </Stack>
         <Group
@@ -215,35 +223,20 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           align="stretch"
           mih={0}
         >
+          {isSegmentsShowing && (
+            <SegmentsPanel
+              table={table}
+              usersTable={usersTable}
+              onSelectPeopleSegment={handleAddPeopleFilter}
+            />
+          )}
           {isSetupOpen && (
             <SetupPanel
               key={kind}
-              tableId={tableId}
-              table={table}
-              onTableChange={
-                onTableChange &&
-                ((id) => {
-                  // Picking the first table keeps the setup showing, even if
-                  // its toolbar button was toggled off while there was none.
-                  if (tableId === undefined && panel === null) {
-                    setPanel("setup");
-                  }
-                  onTableChange(id);
-                })
-              }
               tab={panel ?? "setup"}
               onTabChange={setPanel}
               setupLabel={config.setupLabel}
               widgets={widgets}
-              isSegmentsOpen={isSegmentsOpen}
-              onToggleSegments={() => setIsSegmentsOpen((isOpen) => !isOpen)}
-              segments={
-                <SegmentsPanel
-                  table={table}
-                  usersTable={usersTable}
-                  onSelectPeopleSegment={handleAddPeopleFilter}
-                />
-              }
               isHinted={isSetupHinted}
             />
           )}
