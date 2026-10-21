@@ -20,10 +20,10 @@
 (defrecoverable not-found!
   "The entity does not exist, or the current user cannot read it."
   {:payload     [:map {:closed true}
-                 ;; Both optional because the two converters know different amounts.
-                 ;; `with-entity` wraps a specific lookup and names the entity; a 403 or 404 that
-                 ;; surfaces from deep inside the representations pipeline often does not say which
-                 ;; reference failed, and inventing a kind would be worse than omitting it.
+                 ;; Both optional because the converters know different amounts. `with-entity`
+                 ;; wraps a specific lookup and names the entity; a 403 or 404 that surfaces from
+                 ;; deep inside the representations pipeline or an unconverted tool often does not
+                 ;; say which reference failed, and inventing a kind would be worse than omitting it.
                  [:kind {:optional true} entity-kinds]
                  [:id   {:optional true} [:or :string :int]]]
    :status-code 404}
