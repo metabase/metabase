@@ -386,3 +386,18 @@
               (let [{:keys [error output]} (invoke-field-detail profile data-source card-id unreturned-id)]
                 (is (= :recoverable (:class error)))
                 (is (str/includes? output message))))))))))
+
+(deftest native-pivot-fields-use-saved-result-metadata-test
+  (mt/as-admin
+    (let [query (lib/native-query (mt/metadata-provider) "SELECT 17 AS \"bird_count\"")
+          columns (-> query qp/process-query :data :results_metadata :columns)]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question :display :pivot :dataset_query query
+                                                :result_metadata columns}]
+        (let [listed (invoke-metadata :internal "read_resource"
+                                      {:uris [(str "metabase://question/" card-id "/fields")]})]
+          (is (= ["bird_count"] (mapv :field_id (get-in listed [:structured-output 0 :fields])))))
+        (doseq [profile [:document-generate-content :slackbot :internal]
+                data-source ["question" "report"]]
+          (let [result (invoke-field-detail profile data-source card-id "bird_count")]
+            (is (nil? (:error result)))
+            (is (str/includes? (:output result) "bird_count"))))))))

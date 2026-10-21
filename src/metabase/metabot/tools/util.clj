@@ -201,9 +201,11 @@
           api/read-check))
 
 (defn card-query-metadata
-  "Return a pivot question's underlying query, or the card metadata for other cards."
+  "Return an MBQL pivot question's underlying query, or the card metadata for other cards."
   [card card-metadata]
-  (if (and (= :question (:type card)) (= :pivot (:display card)))
+  (if (and (= :question (:type card))
+           (= :pivot (:display card))
+           (not (lib/native-only-query? (:dataset-query card-metadata))))
     (:dataset-query card-metadata)
     card-metadata))
 
