@@ -1815,7 +1815,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     Returns:
         JSON string with keys transpiled_sql and status on success.
-        On failure the object contains keys status and error_message.
+        On failure the object contains keys status and error_message, and reason
+        'multiple_statements' when the SQL holds more than one statement.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -1833,6 +1834,7 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
             if len(expressions) > 1:
                 result['status'] = 'error'
+                result['reason'] = 'multiple_statements'
                 result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
             else:
                 ast = _quote_reserved_identifiers(expressions[0], write)

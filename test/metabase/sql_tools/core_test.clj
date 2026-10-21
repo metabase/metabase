@@ -144,9 +144,10 @@
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
     (testing "Multiple SQL statements should be rejected"
-      (let [{:keys [status error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
-                                                                    "postgres" "postgres")]
+      (let [{:keys [status reason error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
+                                                                           "postgres" "postgres")]
         (is (= :error status))
+        (is (= :multiple-statements reason))
         (is (str/includes? error-message "Multiple SQL statements"))))))
 
 (deftest ^:parallel transpile-sql-parse-error-message-test

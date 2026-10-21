@@ -397,6 +397,21 @@
                             "NULL handling differences" "Case sensitivity of identifiers"]]
                 (is (str/includes? output text))))))))))
 
+(deftest multiple-sql-statements-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
+      (mt/with-db db
+        (doseq [profile [:internal :sql]
+                tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+          (testing (str profile " / " tool-name)
+            (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT 1; SELECT 2")
+                  output (:output result)]
+              (is (= {:class :recoverable :code ::sql.common/multiple-sql-statements} (:error result)))
+              (is (str/includes? output "contains more than one statement"))
+              (is (str/includes? output "Rewrite the SQL as one statement"))
+              (is (not (str/includes? output "Common issues to check:")))
+              (is (nil? (:structured-output result))))))))))
+
 (deftest closest-sql-match-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [ticket-sql "SELECT\n  id,\n  name\nFROM venues\nWHERE\n  price > 2 AND category_id IN (1, 2)"

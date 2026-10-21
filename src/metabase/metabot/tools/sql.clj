@@ -68,10 +68,11 @@
 
 (defn- validated-sql-action!
   [{:keys [validation-result action-result]}]
-  (let [{:keys [valid? dialect error-message]} validation-result]
-    (when-not valid?
-      (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))
-    action-result))
+  (let [{:keys [valid? dialect error-message reason]} validation-result]
+    (cond
+      valid?                          action-result
+      (= :multiple-statements reason) (sql.common/multiple-sql-statements! {})
+      :else                           (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Create SQL query
