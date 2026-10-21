@@ -62,7 +62,9 @@
                              "skills\". Call this immediately before doing the related work; you may load several "
                              "skills at once. Load only what is relevant to the current task.")
            ;; The dialect preload's synthetic call sends `ids` too (`skills/dialect-preload-parts`)
-           :args [:map {:closed true} [:ids [:sequential skill-id-schema]]]))
+           :args [:map {:closed true}
+                  [:ids [:sequential {:min 1 :error/message "must be an array of at least one skill id"}
+                         skill-id-schema]]]))
 
   (batched-args [_ {:keys [ids]}]
     (mapv (fn [id] {:id id}) ids))

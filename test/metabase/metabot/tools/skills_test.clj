@@ -65,6 +65,12 @@
       (is (str/ends-with? output (str "</skill>\n\nNo skill with ID \"does-not-exist\" can be loaded here. "
                                       "Skill IDs you can load: read-resource."))))))
 
+(deftest ^:parallel load-skill-needs-an-id-test
+  (testing "an empty `ids` is an argument error that the model can correct"
+    (is (= {:output "Invalid tool arguments: `ids` must be an array of at least one skill id; received an array."
+            :error  {:class :validation :code :invalid-arguments}}
+           (load-skills [:read-resource] [])))))
+
 (deftest ^:parallel load-skill-unexpected-error-test
   (testing "an unexpected error fails the whole call"
     (mt/with-dynamic-fn-redefs [skills/get-skill-by-id-string (fn [_] (throw (ex-info "boom" {})))]
