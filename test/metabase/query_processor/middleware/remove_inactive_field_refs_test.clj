@@ -20,6 +20,8 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (deftest ^:parallel do-not-remove-fields-from-aggregations-test
   (testing "Do not remove fields introduced by aggregations in a previous stage"
     (let [query (lib/query
@@ -186,10 +188,10 @@
 (deftest ^:parallel basic-deleted-columns-test
   (testing "should remove field in query with 1 stage"
     (let [query (basic-query)]
-      (is (=? {:stages [{:fields [[:field {} (mt/id :orders :id)]
-                                  [:field {} (mt/id :orders :tax)]]}]}
+      (is (=? {:stages [{:fields [[:field {} "ID"]
+                                  [:field {} "TAX"]]}]}
               query))
-      (is (=? {:stages [{:fields [[:field {} (mt/id :orders :id)]]}]}
+      (is (=? {:stages [{:fields [[:field {} "ID"]]}]}
               (remove-inactive-field-refs/remove-inactive-field-refs query))))))
 
 (deftest ^:parallel basic-deleted-columns-test-2
@@ -198,12 +200,12 @@
                     lib/append-stage
                     (lib/with-fields [[:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "ID"]
                                       [:field {:lib/uuid (str (random-uuid)), :base-type :type/Float} "TAX"]]))]
-      (is (=? {:stages [{:fields [[:field {} (mt/id :orders :id)]
-                                  [:field {} (mt/id :orders :tax)]]}
+      (is (=? {:stages [{:fields [[:field {} "ID"]
+                                  [:field {} "TAX"]]}
                         {:fields [[:field {} "ID"]
                                   [:field {} "TAX"]]}]}
               query))
-      (is (=? {:stages [{:fields [[:field {} (mt/id :orders :id)]]}
+      (is (=? {:stages [{:fields [[:field {} "ID"]]}
                         {:fields [[:field {} "ID"]]}]}
               (remove-inactive-field-refs/remove-inactive-field-refs query))))))
 
@@ -224,12 +226,12 @@
                  [:field "Product__RATING" {:base-type :type/Float}]]
                 (-> preprocessed :query :joins first :source-query :fields))))
       (testing ":query => :fields"
-        (is (=? [[:field (mt/id :products :id) {}]
-                 [:field (mt/id :products :title) {}]
-                 [:field (mt/id :products :category) {}]
-                 [:field (mt/id :products :price) {}]
-                 [:field (mt/id :products :rating) {}]
-                 [:field (mt/id :products :created_at) {}]
+        (is (=? [[:field "ID" {}]
+                 [:field "TITLE" {}]
+                 [:field "CATEGORY" {}]
+                 [:field "PRICE" {}]
+                 [:field "RATING" {}]
+                 [:field "CREATED_AT" {}]
                  [:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}]
                  [:field "TOTAL" {:join-alias "Card", :base-type :type/Float}]]
                 (-> preprocessed :query :fields)))))))

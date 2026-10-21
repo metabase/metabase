@@ -13,6 +13,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(use-fixtures :once lib.tu/with-name-based-refs)
+
 (defn- wrap-joined-fields
   ([query]
    (wrap-joined-fields meta/metadata-provider query))
@@ -24,7 +26,7 @@
 
 (deftest ^:parallel wrap-fields-in-joined-field-test
   (is (=? (lib.tu.macros/mbql-query checkins
-            {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
+            {:filter [:!= [:field "NAME" {:join-alias "u"}] nil]
              :joins  [{:source-table $$users
                        :alias        "u"
                        :condition    [:= $user-id &u.users.id]}]})
@@ -38,7 +40,7 @@
 (deftest ^:parallel wrap-fields-in-joined-field-test-2
   (testing "Do we correctly recurse into `:source-query`"
     (is (=? (lib.tu.macros/mbql-query checkins
-              {:source-query {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
+              {:source-query {:filter [:!= [:field "NAME" {:join-alias "u"}] nil]
                               :joins  [{:source-table $$users
                                         :alias        "u"
                                         :condition    [:= $user-id &u.users.id]}]}})
@@ -53,8 +55,8 @@
 (deftest ^:parallel deduplicate-fields-test
   (testing "fix-bad-field-id-refs should deduplicate :fields after resolving stuff"
     (is (=? (lib.tu.macros/mbql-query checkins
-              {:fields [[:field %users.name {:join-alias "u"}]]
-               :filter [:!= [:field %users.name {:join-alias "u"}] nil]
+              {:fields [[:field "NAME" {:join-alias "u"}]]
+               :filter [:!= [:field "NAME" {:join-alias "u"}] nil]
                :joins  [{:source-table $$users
                          :alias        "u"
                          :condition    [:= $user-id &u.users.id]}]})
@@ -80,7 +82,7 @@
                                      :alias        "products"
                                      :fields       :all}]})]
         (testing (str "\n" (u/pprint-to-str query))
-          (is (=? {:query {:filter (lib.tu.macros/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"])}}
+          (is (=? {:query {:filter [:= [:field "CATEGORY" {:join-alias "products"}] "Widget"]}}
                   (wrap-joined-fields query))))))))
 
 (deftest ^:parallel fix-bad-field-id-refs-in-source-queries-test-2
@@ -96,8 +98,7 @@
                                                            :alias        "products"
                                                            :fields       :all}]}})]
         (testing (str "\n" (u/pprint-to-str nested-query))
-          (is (=? {:query {:source-query {:filter (lib.tu.macros/$ids
-                                                    [:= [:field %products.category {:join-alias "products"}] "Widget"])}}}
+          (is (=? {:query {:source-query {:filter [:= [:field "CATEGORY" {:join-alias "products"}] "Widget"]}}}
                   (wrap-joined-fields nested-query))))))))
 
 (deftest ^:parallel fix-bad-field-id-refs-in-source-queries-e2e-test
@@ -121,7 +122,7 @@
         (testing (str "\n" (u/pprint-to-str joins-in-joins-query))
           (is (= (assoc-in joins-in-joins-query
                            [:query :joins 0 :source-query :filter]
-                           (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
+                           [:= [:field "CATEGORY" {:base-type :type/Text, :join-alias "products"}] "Widget"])
                  (wrap-joined-fields (mt/metadata-provider) joins-in-joins-query)))
           (testing "Can we actually run the join-in-joins query?"
             (is (=? {:status :completed, :row_count 1}
@@ -158,9 +159,9 @@
         (testing (str "\n" (u/pprint-to-str joins-in-joins-query))
           (is (= (-> joins-in-joins-query
                      (assoc-in [:query :joins 0 :source-query :filter]
-                               (lib.tu.macros/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
+                               [:= [:field "CATEGORY" {:base-type :type/Text, :join-alias "products"}] "Widget"])
                      (assoc-in [:query :joins 1 :source-query :filter]
-                               (lib.tu.macros/$ids [:= [:field %products.category {:join-alias "products-2"}] "Widget"])))
+                               [:= [:field "CATEGORY" {:base-type :type/Text, :join-alias "products-2"}] "Widget"]))
                  (wrap-joined-fields joins-in-joins-query))))))))
 
 (deftest ^:parallel no-op-test
@@ -335,9 +336,9 @@
                                [:lib/external-remap :id])]
       (is (=? {:stages [{:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
                                    "CATEGORY_ID"]
-                                  [:field {:source-field                          (meta/id :venues :category-id)
+                                  [:field {:source-field-name                     "CATEGORY_ID"
                                            ::qp.add-remaps/new-field-dimension-id dimension-id}
-                                   (meta/id :categories :name)]]}]}
+                                   "NAME"]]}]}
               (-> query
                   qp.add-remaps/add-remapped-columns
                   fix-bad-field-id-refs/fix-bad-field-id-refs))))))
@@ -399,17 +400,22 @@
                            (lib/join (-> (lib/join-clause table-b [(lib/= table-a-b-id  table-b-b-id)])
                                          (lib/with-join-alias "B")))
                            (lib/join (-> (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])
-                                         (lib/with-join-alias "C"))))]
+                                         (lib/with-join-alias "C")))
+                           (assoc-in [:stages 0 :joins 1 :conditions]
+                                     [(lib/ensure-uuid [:=
+                                                        {}
+                                                        (lib/ensure-uuid [:field {:base-type :type/Text} 4])
+                                                        (lib/ensure-uuid [:field {:base-type :type/Text, :join-alias "C"} 5])])]))]
       (is (=? {:stages [{:joins [{:alias     "B"
                                   :stages     [{:source-table 2}]
                                   :conditions [[:= {}
-                                                [:field {} 2]
-                                                [:field {:join-alias "B"} 3]]]}
+                                                [:field {} "b_id"]
+                                                [:field {:join-alias "B"} "b_id"]]]}
                                  {:alias      "C"
                                   :stages     [{:source-table 3}]
                                   :conditions [[:=
                                                 {}
-                                                [:field {:join-alias "B"} 4] ; join alias should get added here
+                                                [:field {:join-alias "B"} "c_id"] ; join alias should get added here
                                                 [:field {:join-alias "C"}
                                                  5]]]}]}]}
               (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))

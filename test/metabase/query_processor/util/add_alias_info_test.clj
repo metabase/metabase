@@ -25,7 +25,7 @@
 
 (comment h2/keep-me)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once lib.tu/with-name-based-refs (fixtures/initialize :db))
 
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."
@@ -889,28 +889,28 @@
             (testing ":source-query -> :source-query -> :joins"
               (is (=? [{:alias     "Reviews"
                         :condition [:=
-                                    [:field (meta/id :products :id)
+                                    [:field "ID"
                                      {::add/source-alias "ID"}]
-                                    [:field (meta/id :reviews :product-id)
+                                    [:field "PRODUCT_ID"
                                      {:join-alias "Reviews", ::add/source-alias "PRODUCT_ID"}]]}]
                       (-> expected :query :source-query :source-query :joins))))
             (testing ":source-query -> :source-query"
               ;; we should be using `Reviews__` here for names
-              (is (=? {:fields [[:field (meta/id :products :id)
+              (is (=? {:fields [[:field "ID"
                                  {::add/source-alias "ID", ::add/desired-alias "ID"}]
-                                [:field (meta/id :products :ean)
+                                [:field "EAN"
                                  {::add/source-alias "EAN", ::add/desired-alias "EAN"}]
-                                [:field (meta/id :products :title)
+                                [:field "TITLE"
                                  {::add/source-alias "TITLE", ::add/desired-alias "TITLE"}]
-                                [:field (meta/id :products :category)
+                                [:field "CATEGORY"
                                  {::add/source-alias "CATEGORY", ::add/desired-alias "CATEGORY"}]
-                                [:field (meta/id :products :vendor)
+                                [:field "VENDOR"
                                  {::add/source-alias "VENDOR", ::add/desired-alias "VENDOR"}]
-                                [:field (meta/id :products :price)
+                                [:field "PRICE"
                                  {::add/source-alias "PRICE", ::add/desired-alias "PRICE"}]
-                                [:field (meta/id :products :rating)
+                                [:field "RATING"
                                  {::add/source-alias "RATING", ::add/desired-alias "RATING"}]
-                                [:field (meta/id :products :created-at)
+                                [:field "CREATED_AT"
                                  {::add/source-alias "CREATED_AT", ::add/desired-alias "CREATED_AT"}]
                                 [:field (meta/id :reviews :id)
                                  {:join-alias        "Reviews"
@@ -963,7 +963,7 @@
         (driver/with-driver :h2
           (is (=? {:filter [:=
                             [:field
-                             4
+                             "name"
                              {::add/source-table "d", ::add/source-alias "name"}]
                             [:value "00000000-0000-0000-0000-000000000000" {}]]}
                   (-> query
@@ -1358,7 +1358,7 @@
                           ::add/source-table  "Products Model - Product"
                           ::add/source-alias  "NAME"
                           ::add/desired-alias nil}
-                  (meta/id :people :name)]
+                  "NAME"]
                  [:value {} nil]]]
                ;; denominator
                [:distinct {} vector?]]
