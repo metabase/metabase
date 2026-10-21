@@ -8,7 +8,7 @@
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.agent-lib.representations.repair :as repr.repair]
@@ -17,22 +17,33 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private mp
   (lib.tu/mock-metadata-provider
@@ -202,6 +213,108 @@
           (let [d (ex-data e)]
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
+
+(defn- metadata-lookup-failures []
+  (let [message    "SELECT private_metadata failed: connection unavailable"
+        root-cause (RuntimeException. message)]
+    {"Toucan"         (ex-info message {:toucan2/context-trace []})
+     "nested Toucan"  (ex-info message {} (ex-info message {:toucan2/context-trace nil} root-cause))
+     "JDBC"           (SQLException. message)
+     "nested JDBC"    (ex-info message {} (RuntimeException. message (SQLException. message root-cause)))
+     "declared JDBC"  (ex-info message {:error :unknown-field :toucan2/context-trace []}
+                               (SQLException. message))
+     "unknown code"   (ex-info message {:error :not-a-pipeline-error :toucan2/context-trace []})
+     "Malli data"     (ex-info message {:error {:type :invalid-type} :toucan2/context-trace []})}))
+
+(def ^:private orders-id-query
+  {:lib/type "mbql/query"
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table ["Sample" "PUBLIC" "ORDERS"]
+               :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
+
+(deftest metadata-lookup-failures-propagate-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[label failure] (metadata-lookup-failures)]
+        (testing label
+          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+            (let [caught (try
+                           (construct/execute-representations-query orders-id-query)
+                           (catch Throwable e e))]
+              (is (identical? failure caught))
+              (is (nil? (:agent-error? (ex-data caught))))
+              (is (nil? (:status-code (ex-data caught)))))))))))
+
+(deftest metadata-validation-errors-are-agent-input-errors-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [failure (ex-info "Unknown field" {:error :unknown-field})]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (let [caught (try
+                         (construct/execute-representations-query orders-id-query)
+                         (catch clojure.lang.ExceptionInfo e e))]
+            (is (= {:error :unknown-field :agent-error? true :status-code 400} (ex-data caught)))
+            (is (= "Unknown field" (ex-message caught)))
+            (is (identical? failure (ex-cause caught)))))))))
+
+(deftest ^:parallel authored-errors-in-toucan-scopes-test
+  (doseq [[status database-error?] [[nil false] [500 true]]
+          data [{:error :unknown-field} {:agent-error? true}]]
+    (is (= database-error?
+           (construct/database-error?
+            (ex-info "Failure" (assoc data :status-code status :toucan2/context-trace [])))))))
+
+(deftest declared-errors-in-toucan-scopes-are-recoverable-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [status-code [nil 400]
+              agent-error? [false true]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                    (fn [& _]
+                                      (t2/with-connection [_conn]
+                                        (throw (ex-info "Representations query has an invalid structure."
+                                                        (cond-> {:error :invalid-representations-query}
+                                                          status-code (assoc :status-code status-code)
+                                                          agent-error? (assoc :agent-error? true))))))]
+          (let [caught (try
+                         (construct/execute-representations-query orders-id-query)
+                         (catch clojure.lang.ExceptionInfo e e))
+                entries (tools/entries [construct/construct-notebook-query-tool])
+                outcome (tools.runtime/invoke entries
+                                              {:profile-id :nlq :metabot nil
+                                               :user-scope #{"agent:notebook:create"}
+                                               :tool-names (set (keys entries))}
+                                              "construct_notebook_query"
+                                              {:query orders-id-query
+                                               :title "Order IDs" :description "IDs of orders."})]
+            (is (contains? (ex-data caught) :toucan2/context-trace))
+            (is (=? {:agent-error? true :status-code 400 :error :invalid-representations-query}
+                    (ex-data caught)))
+            (is (= {:output "Representations query has an invalid structure."
+                    :error {:class :recoverable
+                            :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
+                   outcome))
+            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+
+(deftest metadata-lookup-failures-end-metabot-turn-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[label failure] (metadata-lookup-failures)]
+        (testing label
+          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+            (let [entries (tools/entries [construct/construct-notebook-query-tool])
+                  outcome (tools.runtime/invoke entries
+                                                {:profile-id :nlq :metabot nil
+                                                 :user-scope #{"agent:notebook:create"}
+                                                 :tool-names (set (keys entries))}
+                                                "construct_notebook_query"
+                                                {:query orders-id-query
+                                                 :title "Order IDs" :description "IDs of orders."})]
+              (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
+                      :error  {:class :unrecoverable :code :internal}}
+                     outcome))
+              (is (= "Something went wrong."
+                     (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
@@ -658,6 +771,22 @@
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
 
+(deftest editor-rejection-between-message-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [e (editor-rejection
+               {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "filters"      [["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                              1 true]]}]})]
+        (is (= :expression-editor-rejection (:error (ex-data e))))
+        (is (= (str "The query builder's expression editor rejects a `filters:` clause in stage 0: "
+                    "Types are incompatible. The query would build but could not be visualized or saved "
+                    "- rewrite the offending clause.")
+               (ex-message e)))))))
+
 (deftest editor-gate-offset-nested-in-aggregation-function-surfaces-error-end-to-end-test
   (testing (str "A window function embedded *inside* an aggregation function\n"
                 "(`sum(offset(...))`) surfaces an :expression-editor-rejection agent-error -\n"
@@ -832,6 +961,44 @@
 ;;; ============================================================
 ;;; Step-10 contract: aggregation references via 0-based integer index
 ;;; ============================================================
+
+(deftest bare-aggregation-clause-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [ordered? [false true]]
+        (testing (str "single count aggregation, sorting enabled: " ordered?)
+          (let [stage  (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  ["count" {}]}
+                         ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
+                result (construct/execute-representations-query
+                        (query-data {"lib/type" "mbql/query", "stages" [stage]}))
+                query  (get-in result [:structured-output :query])
+                aggs   (get-in query [:stages 0 :aggregation])]
+            (is (mr/validate :metabase.lib.schema/query query))
+            (is (= [:count] (mapv first aggs)))
+            (when ordered?
+              (is (= (get-in aggs [0 1 :lib/uuid])
+                     (get-in query [:stages 0 :order-by 0 2 2]))))))))))
+
+(deftest invalid-aggregation-entry-surfaces-agent-error-test
+  (with-mp-and-stubs!
+    (fn []
+      (try
+        (tools/handle construct/construct-notebook-query-tool
+                      {:query (query-data {"lib/type" "mbql/query"
+                                           "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}] 42]
+                                                      "order-by"     [["desc" {} ["aggregation" {} 0]]]}]})}
+                      {})
+        (is false "Invalid aggregation entries should throw an exception")
+        (catch clojure.lang.ExceptionInfo e
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= 400 (:status-code (ex-data e))))
+          (is (= {:class    :recoverable
+                  :code     :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                  :message  "Representations query has an invalid structure."
+                  :recovery []}
+                 (select-keys (tools.error/classify e) [:class :code :message :recovery]))))))))
 
 (deftest aggregation-ref-integer-index-in-order-by-end-to-end-test
   (testing (str "`[aggregation, {}, <index>]` in order-by is resolved to the canonical\n"
@@ -1189,7 +1356,7 @@
     (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})
           hinted   (#'construct/with-recovery-hint original (constantly "do the thing"))]
       (testing "message carries the hint"
-        (is (= "boom do the thing" (ex-message hinted))))
+        (is (= "boom\ndo the thing" (ex-message hinted))))
       (testing "the original exception is the direct cause (not its cause, which is nil here)"
         (is (identical? original (ex-cause hinted)))))))
 

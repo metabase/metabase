@@ -7,10 +7,13 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (defmacro ^:private with-remote-sync
   [& body]

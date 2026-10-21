@@ -83,6 +83,7 @@ export const TableFieldList = ({
       activeFieldKey={activeFieldId}
       getFieldKey={getRawTableFieldId}
       getFieldHref={handleGetFieldHref}
+      readOnly={!table.can_write}
       onNameChange={handleNameChange}
       onDescriptionChange={handleDescriptionChange}
     />

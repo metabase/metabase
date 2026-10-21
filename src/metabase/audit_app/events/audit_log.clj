@@ -186,6 +186,7 @@
 (events/derive! :event/mfa-required-enrollment-failed ::user-event)
 (events/derive! :event/mfa-enrolled ::user-event)
 (events/derive! :event/mfa-disabled ::user-event)
+(events/derive! :event/mcp-jwt-token-issued ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic event]
