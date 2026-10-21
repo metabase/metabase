@@ -742,3 +742,92 @@ describe("native query preview on small screens", () => {
       });
   });
 });
+
+describe("issue 74500", () => {
+  type Trigger = () => Cypress.Chainable<JQuery<HTMLElement>>;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const VIEWPORT_WIDTH = 1280;
+
+  it("keeps the side it opened on while its content shrinks", () => {
+    const summarizeTrigger = () =>
+      H.getNotebookStep("summarize").findByText("Pick a function or metric");
+
+    H.startNewQuestion();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.log("too little room below for the full list, so it opens above");
+    setSpaceBelow(summarizeTrigger, 250);
+    summarizeTrigger().click();
+    assertPopoverSide(summarizeTrigger, "above");
+
+    cy.log("the filtered list would fit below, but it stays above");
+    H.popover().findByPlaceholderText("Find...").type("Count of rows");
+    H.popover().findByText("Count of rows").should("be.visible");
+    assertPopoverSide(summarizeTrigger, "above");
+
+    cy.log("it picks a side again the next time it opens");
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+    setSpaceBelow(summarizeTrigger, 800);
+    summarizeTrigger().click();
+    assertPopoverSide(summarizeTrigger, "below");
+
+    cy.log("resizing the window lets it pick a side again");
+    setSpaceBelow(summarizeTrigger, 250);
+    assertPopoverSide(summarizeTrigger, "above");
+  });
+
+  it("keeps the side it opened on while its content grows", () => {
+    const filterTrigger = () =>
+      H.getNotebookStep("filter").findByText("Total is greater than 20");
+
+    H.createQuestion({
+      query: {
+        "source-table": ORDERS_ID,
+        filter: [">", ["field", ORDERS.TOTAL, null], 20],
+      },
+    }).then(({ body: question }) => {
+      // Visiting the notebook directly skips the slide-in, which would throw off measurements
+      cy.visit(`/question/${question.id}/notebook`);
+    });
+
+    cy.log("the filter editor fits below, so it opens below");
+    setSpaceBelow(filterTrigger, 300);
+    filterTrigger().click();
+    assertPopoverSide(filterTrigger, "below");
+
+    cy.log("the column list doesn't fit below, but it stays below");
+    H.popover().findByLabelText("Back").click();
+    H.popover().findByText("Discount").should("exist");
+    assertPopoverSide(filterTrigger, "below");
+  });
+
+  function setSpaceBelow(trigger: Trigger, space: number) {
+    trigger().then(($trigger) => {
+      const { bottom } = $trigger[0].getBoundingClientRect();
+      cy.viewport(VIEWPORT_WIDTH, Math.ceil(bottom + space));
+    });
+  }
+
+  function assertPopoverSide(trigger: Trigger, side: "above" | "below") {
+    trigger().then(($trigger) => {
+      H.popover().should(($popover) => {
+        const triggerRect = $trigger[0].getBoundingClientRect();
+        const popoverRect = $popover[0].getBoundingClientRect();
+        if (side === "above") {
+          expect(popoverRect.bottom).to.be.at.most(triggerRect.top);
+        } else {
+          expect(popoverRect.top).to.be.at.least(triggerRect.bottom);
+        }
+      });
+    });
+  }
+});
