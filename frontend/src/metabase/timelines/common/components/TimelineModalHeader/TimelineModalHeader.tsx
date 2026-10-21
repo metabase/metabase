@@ -6,7 +6,7 @@ import { Group, Icon, Modal, Stack, UnstyledButton } from "metabase/ui";
 import S from "./TimelineModalHeader.module.css";
 
 export interface TimelineModalHeaderProps {
-  title: ReactNode;
+  title?: ReactNode;
   collectionName?: string;
   actions?: ReactNode;
   onGoBack?: () => void;

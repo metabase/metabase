@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useDeleteTimelineMutation,
@@ -5,15 +7,16 @@ import {
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
-
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function DeleteTimelineModalContainer({
   params,
   onClose,
-  ...props
 }: ModalComponentProps) {
   const [deleteTimeline] = useDeleteTimelineMutation();
   const id = Urls.extractEntityId(params.timelineId);
@@ -23,29 +26,28 @@ function DeleteTimelineModalContainer({
     error,
   } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
 
-  if (isLoading || error || !timeline) {
-    return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
-    );
-  }
-
   const handleSubmit = async (timeline: Timeline) => {
     await deleteTimeline(timeline.id).unwrap();
     onClose();
   };
 
   return (
-    <DeleteTimelineModal
-      {...props}
+    <TimelineModal
+      title={timeline ? t`Delete ${timeline.name}?` : undefined}
       onClose={onClose}
-      timeline={timeline}
-      onSubmit={handleSubmit}
       animated={false}
-    />
+      tall={isLoading || !!error || !timeline}
+    >
+      {isLoading || error || !timeline ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <DeleteTimelineModal
+          timeline={timeline}
+          onSubmit={handleSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

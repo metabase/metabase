@@ -22,6 +22,6 @@ const getProps = (
 ): DeleteEventModalProps => ({
   event: createMockTimelineEvent(),
   onSubmit: jest.fn(),
-  onClose: jest.fn(),
+  onCancel: jest.fn(),
   ...opts,
 });

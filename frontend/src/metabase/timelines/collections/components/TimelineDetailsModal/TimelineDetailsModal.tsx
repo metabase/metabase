@@ -5,18 +5,11 @@ import _ from "underscore";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
-import S from "metabase/timelines/common/components/TimelineModal.module.css";
-import { TimelineModalHeader } from "metabase/timelines/common/components/TimelineModalHeader";
 import {
-  ActionIcon,
-  Button,
-  Flex,
-  Icon,
-  Menu,
-  Modal,
-  NO_ANIMATION_MODAL_PROPS,
-  TextInput,
-} from "metabase/ui";
+  TimelineModal,
+  TimelineModalScrollArea,
+} from "metabase/timelines/common/components/TimelineModal";
+import { ActionIcon, Button, Flex, Icon, Menu, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -74,76 +67,64 @@ const TimelineDetailsModal = ({
     setInputText(e.target.value);
 
   return (
-    <Modal.Root
-      opened
-      size="lg"
-      classNames={{ content: S.content, body: S.body }}
+    <TimelineModal
+      tall
+      animated={false}
       onClose={onClose}
-      {...NO_ANIMATION_MODAL_PROPS}
+      title={title}
+      actions={
+        menuItems.length > 0 && (
+          <Menu position="bottom-end" shadow="sm">
+            <Menu.Target>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                aria-label={t`Timeline menu`}
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
+        )
+      }
+      onGoBack={canGoBack ? handleGoBack : undefined}
     >
-      <Modal.Overlay />
-      <Modal.Content>
-        <TimelineModalHeader
-          title={title}
-          actions={
-            menuItems.length > 0 && (
-              <Menu position="bottom-end" shadow="sm">
-                <Menu.Target>
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    aria-label={t`Timeline menu`}
-                  >
-                    <Icon name="ellipsis" />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-              </Menu>
-            )
-          }
-          onGoBack={canGoBack ? handleGoBack : undefined}
-        />
-        <Modal.Body>
-          {(isNotEmpty || isSearching) && (
-            <Flex gap="lg" mb="lg">
-              <TextInput
-                flex="1 1 auto"
-                value={inputText}
-                placeholder={t`Search for an event`}
-                leftSection={<Icon name="search" />}
-                onChange={handleSearchChange}
-              />
-              {canWrite && !isArchive && (
-                <Button
-                  size="lg"
-                  component={ForwardRefLink}
-                  to={Urls.newEventInCollection(timeline)}
-                  role="button"
-                  flex="0 0 auto"
-                >{t`Create event`}</Button>
-              )}
-            </Flex>
+      {(isNotEmpty || isSearching) && (
+        <Flex gap="lg" mb="lg">
+          <TextInput
+            flex="1 1 auto"
+            value={inputText}
+            placeholder={t`Search for an event`}
+            leftSection={<Icon name="search" />}
+            onChange={handleSearchChange}
+          />
+          {canWrite && !isArchive && (
+            <Button
+              size="lg"
+              component={ForwardRefLink}
+              to={Urls.newEventInCollection(timeline)}
+              role="button"
+              flex="0 0 auto"
+            >{t`Create event`}</Button>
           )}
-          <Flex
-            className={S.scrollArea}
-            justify={isNotEmpty ? undefined : "center"}
-          >
-            {isNotEmpty ? (
-              <EventList
-                events={events}
-                timeline={timeline}
-                onArchive={onArchive}
-                onUnarchive={onUnarchive}
-              />
-            ) : isArchive || isSearching ? (
-              <SearchEmptyState />
-            ) : (
-              <TimelineEmptyState timeline={timeline} />
-            )}
-          </Flex>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+        </Flex>
+      )}
+      <TimelineModalScrollArea justify={isNotEmpty ? undefined : "center"}>
+        {isNotEmpty ? (
+          <EventList
+            events={events}
+            timeline={timeline}
+            onArchive={onArchive}
+            onUnarchive={onUnarchive}
+          />
+        ) : isArchive || isSearching ? (
+          <SearchEmptyState />
+        ) : (
+          <TimelineEmptyState timeline={timeline} />
+        )}
+      </TimelineModalScrollArea>
+    </TimelineModal>
   );
 };
 

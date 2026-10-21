@@ -43,7 +43,7 @@ function EditEventModalContainer({
       onSubmitSuccess={onClose}
       onArchive={onArchive}
       onArchiveSuccess={onClose}
-      onClose={onClose}
+      onCancel={onClose}
     />
   );
 }

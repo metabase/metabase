@@ -5,10 +5,13 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useNavigate } from "metabase/router";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import type { ModalParams } from "../../types";
 
@@ -44,11 +47,9 @@ function TimelineDetailsModalContainer({
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
+      <TimelineModal tall onClose={onClose} animated={false}>
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      </TimelineModal>
     );
   }
 

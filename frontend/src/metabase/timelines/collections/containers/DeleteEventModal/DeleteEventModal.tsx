@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useDeleteTimelineEventMutation,
@@ -5,10 +7,12 @@ import {
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { TimelineEvent } from "metabase-types/api";
-
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -24,23 +28,23 @@ function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
     onClose();
   };
 
-  if (isLoading || error || !event) {
-    return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
-    );
-  }
-
   return (
-    <DeleteEventModal
-      event={event}
-      onSubmit={onSubmit}
+    <TimelineModal
+      title={event ? t`Delete ${event.name}?` : undefined}
       onClose={onClose}
       animated={false}
-    />
+      tall={isLoading || !!error || !event}
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <DeleteEventModal
+          event={event}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

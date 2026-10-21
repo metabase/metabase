@@ -3,9 +3,12 @@ import {
   useGetCollectionQuery,
   useListCollectionTimelinesQuery,
 } from "metabase/api";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import TimelineListModal from "../../components/TimelineListModal";
 import type { ModalParams } from "../../types";
 
@@ -40,11 +43,9 @@ function TimelineListModalContainer({
 
   if (isLoading || error || !collection) {
     return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
+      <TimelineModal tall onClose={onClose} animated={false}>
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      </TimelineModal>
     );
   }
 

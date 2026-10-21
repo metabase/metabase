@@ -1,13 +1,7 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
 import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
-import {
-  type TimelineModalTransitionProps,
-  getTimelineModalTransitionProps,
-} from "metabase/timelines/common/modal-transitions";
-import { Modal } from "metabase/ui";
 import type {
   Collection,
   Timeline,
@@ -17,7 +11,7 @@ import type {
 
 import EventForm from "../../containers/EventForm";
 
-export interface NewEventModalProps extends TimelineModalTransitionProps {
+export interface NewEventModalProps {
   timelines?: Timeline[];
   collection?: Collection;
   source: TimelineEventSource;
@@ -28,7 +22,7 @@ export interface NewEventModalProps extends TimelineModalTransitionProps {
     timeline?: Timeline,
   ) => void;
   onSubmitSuccess?: () => void;
-  onClose: () => void;
+  onCancel: () => void;
 }
 
 const NewEventModal = ({
@@ -38,8 +32,7 @@ const NewEventModal = ({
   cardId,
   onSubmit,
   onSubmitSuccess,
-  onClose,
-  animated,
+  onCancel,
 }: NewEventModalProps): JSX.Element => {
   const availableTimelines = useMemo(() => {
     return timelines.filter((t) => t.collection?.can_write);
@@ -59,21 +52,12 @@ const NewEventModal = ({
   );
 
   return (
-    <Modal
-      opened
-      size="lg"
-      density="relaxed"
-      title={t`New event`}
-      onClose={onClose}
-      {...getTimelineModalTransitionProps(animated)}
-    >
-      <EventForm
-        initialValues={initialValues}
-        timelines={availableTimelines}
-        onSubmit={handleSubmit}
-        onCancel={onClose}
-      />
-    </Modal>
+    <EventForm
+      initialValues={initialValues}
+      timelines={availableTimelines}
+      onSubmit={handleSubmit}
+      onCancel={onCancel}
+    />
   );
 };
 

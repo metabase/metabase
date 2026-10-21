@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useGetTimelineQuery,
@@ -7,10 +9,12 @@ import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
 import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
-
-import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function EditTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   const navigate = useNavigate();
@@ -23,16 +27,6 @@ function EditTimelineModalContainer({ params, onClose }: ModalComponentProps) {
     error,
   } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
 
-  if (isLoading || error || !timeline) {
-    return (
-      <LoadingAndErrorModal
-        loading={isLoading}
-        error={error}
-        onClose={onClose}
-      />
-    );
-  }
-
   const handleSubmit = async (timeline: Timeline) => {
     await updateTimeline(timeline).unwrap();
     navigate(Urls.timelineInCollection(timeline));
@@ -44,13 +38,24 @@ function EditTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   };
 
   return (
-    <EditTimelineModal
-      timeline={timeline}
-      onSubmit={handleSubmit}
-      onArchive={handleArchive}
+    <TimelineModal
+      title={t`Edit event timeline`}
       onClose={onClose}
       animated={false}
-    />
+      density="relaxed"
+      tall={isLoading || !!error || !timeline}
+    >
+      {isLoading || error || !timeline ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <EditTimelineModal
+          timeline={timeline}
+          onSubmit={handleSubmit}
+          onArchive={handleArchive}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 
