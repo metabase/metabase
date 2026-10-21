@@ -68,6 +68,22 @@
     (is (=? {:embedding_client_identifier "my-data-app"}
             (analytics.core/include-sdk-info {:embedding_client_identifier "my-data-app"})))))
 
+(deftest include-sdk-info-auth-method-test
+  (testing "A special route's auth method wins over the credential's, which wins over the row's existing value"
+    (are [route bound-method row-method expected]
+         (= expected (:auth_method (binding [sdk/*route*       route
+                                             sdk/*auth-method* bound-method]
+                                     (analytics.core/include-sdk-info {:auth_method row-method}))))
+      nil           "api-key" nil   "api-key"
+      nil           "api-key" "jwt" "api-key"
+      "guest-embed" "api-key" nil   "guest"
+      "public"      "session" nil   "public"
+      "agent-api"   "api-key" nil   "agent-api"
+      "guest-embed" nil       nil   "guest"
+      "metabot"     nil       nil   "metabot"
+      nil           nil       "jwt" "jwt"
+      nil           nil       nil   nil)))
+
 (deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
   (mt/with-prometheus-system! [_ system]
     ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
@@ -265,10 +281,10 @@
     (:body (handler request identity identity))))
 
 (defn- route-from-mw
-  "Runs a request through embedding-mw and returns the *route* value bound inside the handler."
+  "Runs a request through embedding-mw and returns the route bound inside the handler."
   [request]
   (let [handler (analytics.core/embedding-mw
-                 (fn [_ respond _] (respond {:status 200 :body (sdk/get-route)})))]
+                 (fn [_ respond _] (respond {:status 200 :body sdk/*route*})))]
     (:body (handler request identity identity))))
 
 (deftest route-based-client-derivation-test

@@ -1758,7 +1758,7 @@
         }
       },
       "metabase-enterprise.data-apps.schema.app-files" : {
-        "description" : "A new data app's files, each at its path from the repository root.",
+        "description" : "A data app's files, each at its path from the repository root.",
         "type" : "object",
         "properties" : {
           "files" : {
@@ -1782,11 +1782,29 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-apps.schema.app-request" : {
-        "description" : "What a new data app's files are generated from.",
+        "description" : "What a data app's files are generated from. An existing app passes the entity IDs of its `data_app.yaml` and of its\n  collection, so its files keep them.",
         "type" : "object",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "description" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            }, {
+              "type" : "null"
+            } ]
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
@@ -2042,6 +2060,48 @@
         },
         "additionalProperties" : false
       },
+      "metabase-enterprise.dependencies.api.action-entity" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : {
+              "collection" : { },
+              "creator" : { },
+              "name" : { },
+              "collection_id" : { },
+              "type" : { },
+              "created_at" : { },
+              "model_id" : { },
+              "parameters" : { },
+              "creator_id" : { },
+              "description" : { }
+            }
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dependents_errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.dependent-error"
+            },
+            "uniqueItems" : true
+          },
+          "id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "type" : {
+            "const" : "action"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ]
+      },
       "metabase-enterprise.dependencies.api.base-entity" : {
         "type" : "object",
         "properties" : {
@@ -2186,21 +2246,7 @@
       "metabase-enterprise.dependencies.api.dependent-error" : {
         "description" : "One entry of `::base-entity`'s `:dependents_errors`: either the slim `{:type :detail}` shape\n  [[normalize-finding-error]] produces for an entity's own errors (`node-errors`), or the raw AnalysisFindingError row\n  `node-downstream-errors` keeps so callers can tell which downstream entity each error belongs to.",
         "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "detail" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.validate.validate-error-type"
-            }
-          },
-          "required" : [ "type" ],
-          "additionalProperties" : false
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.normalized-finding-error"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.models.analysis-finding-error.analysis-finding-error"
         } ]
@@ -2263,6 +2309,8 @@
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.segment-entity"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.measure-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.action-entity"
         } ]
       },
       "metabase-enterprise.dependencies.api.graph-response" : {
@@ -2336,6 +2384,24 @@
           }
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
+      },
+      "metabase-enterprise.dependencies.api.normalized-finding-error" : {
+        "description" : "The slim `{:type :detail}` shape [[normalize-finding-error]] produces from an AnalysisFindingError.",
+        "type" : "object",
+        "properties" : {
+          "detail" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.validate-error-type"
+          }
+        },
+        "required" : [ "type" ],
+        "additionalProperties" : false
       },
       "metabase-enterprise.dependencies.api.sandbox-entity" : {
         "type" : "object",
@@ -2551,7 +2617,7 @@
       },
       "metabase-enterprise.dependencies.dependency-types.dependency-types" : {
         "type" : "string",
-        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ]
+        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment", "action" ]
       },
       "metabase-enterprise.dependencies.dependency-types.entity-id" : {
         "type" : "integer",
@@ -5666,6 +5732,13 @@
                 "type" : "null"
               } ]
             },
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.collections.schema.collection-or-root"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "parameter_mappings" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
@@ -5797,6 +5870,13 @@
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.collections.schema.collection-or-root"
               }, {
                 "type" : "null"
               } ]
@@ -5935,6 +6015,13 @@
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.collections.schema.collection-or-root"
               }, {
                 "type" : "null"
               } ]
@@ -6897,15 +6984,18 @@
         "required" : [ "uri" ]
       },
       "metabase.agent-api.api.read-resource-request" : {
-        "description" : "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs.",
+        "description" : "Request shape for /v1/read-resource: the tool's own published arguments.\n\n  Taken from the tool rather than written out again, so this endpoint and the agent loop offer the\n  same shape and the same limits. Before, this was a hand-written copy that had already lost the\n  5-URI cap the tool enforces.",
         "type" : "object",
         "properties" : {
           "uris" : {
             "type" : "array",
             "items" : {
+              "description" : "A metabase:// resource URI",
               "type" : "string",
               "minLength" : 1
-            }
+            },
+            "minItems" : 1,
+            "maxItems" : 5
           }
         },
         "required" : [ "uris" ],
@@ -8273,6 +8363,131 @@
         },
         "required" : [ "moved" ]
       },
+      "metabase.collections.schema..collection.update" : {
+        "description" : "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional.",
+        "type" : "object",
+        "properties" : {
+          "archive_operation_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_sample" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_remote_synced" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "slug" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "created_at" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "namespace" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "personal_owner_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived_directly" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "additionalProperties" : false
+      },
       "metabase.collections.schema.CardType" : {
         "type" : "string",
         "enum" : [ "model", "question", "metric" ]
@@ -8610,6 +8825,230 @@
           }
         },
         "required" : [ "id", "email", "first_name", "last_name", "timestamp" ]
+      },
+      "metabase.collections.schema.collection" : {
+        "description" : "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional.",
+        "type" : "object",
+        "properties" : {
+          "archive_operation_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_sample" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+          },
+          "effective_location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_remote_synced" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "slug" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "created_at" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "namespace" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_personal" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "personal_owner_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived_directly" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id" ],
+        "additionalProperties" : false
+      },
+      "metabase.collections.schema.collection-or-root" : {
+        "description" : "A Collection row, or the Root Collection placeholder.",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.collections.schema.root-collection"
+        }, {
+          "$ref" : "#/components/schemas/metabase.collections.schema.collection"
+        } ]
+      },
+      "metabase.collections.schema.root-collection" : {
+        "description" : "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it.",
+        "type" : "object",
+        "properties" : {
+          "can_delete" : {
+            "type" : "boolean"
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "const" : "root"
+          },
+          "effective_ancestors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.collection"
+            }
+          },
+          "effective_location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_remote_synced" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "parent_id" : {
+            "type" : "null"
+          },
+          "can_restore" : {
+            "type" : "boolean"
+          },
+          "metabase.collections.models.collection.root/is-root?" : {
+            "const" : true
+          },
+          "namespace" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_personal" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "metabase.collections.models.collection.root/is-root?" ],
+        "additionalProperties" : false
       },
       "metabase.comments.schema..comment.context" : {
         "description" : "The `:context` column of a Comment, decoded.",
@@ -13501,6 +13940,10 @@
           "lib/stage-metadata" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata.stage"
           },
+          "metabase.driver.sql.query-processor/cte-level" : {
+            "type" : "integer",
+            "minimum" : 0
+          },
           "metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes" : {
             "type" : "array",
             "items" : {
@@ -13590,6 +14033,10 @@
             },
             "pivot" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.pivot"
+            },
+            "metabase.driver.sql.query-processor/cte-level" : {
+              "type" : "integer",
+              "minimum" : 0
             },
             "breakout" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.breakouts"
@@ -13720,6 +14167,10 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "metabase.driver.sql.query-processor/cte-level" : {
+              "type" : "integer",
+              "minimum" : 0
             },
             "projections" : {
               "oneOf" : [ {
@@ -22228,6 +22679,13 @@
           "default_database_id" : {
             "oneOf" : [ {
               "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "in_host_app" : {
+            "oneOf" : [ {
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -31680,7 +32138,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-read-resource",
         "summary" : "POST /api/agent/v1/read-resource",
-        "description" : "Read one or more Metabase resources via metabase:// URI patterns.\n\n  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,\n  which validates URIs, fetches entities with per-URI permission checks, and\n  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call.",
+        "description" : "Read one or more Metabase resources via metabase:// URI patterns.\n\n  Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent\n  loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.\n  A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items\n  that did read. Up to 5 URIs per call, rejected as a 400 by `::read-resource-request`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -32347,14 +32805,6 @@
                     "anyOf" : [ {
                       "type" : "object",
                       "properties" : {
-                        "table_ids" : {
-                          "type" : "array",
-                          "items" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }
-                        },
                         "enabled" : {
                           "type" : "boolean"
                         },
@@ -32411,7 +32861,7 @@
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
@@ -32422,14 +32872,9 @@
                         "name" : {
                           "type" : "string",
                           "minLength" : 1
-                        },
-                        "resource_collection_id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
                         }
                       },
-                      "required" : [ "name", "display_name", "resource_collection_id" ],
+                      "required" : [ "name", "display_name" ],
                       "additionalProperties" : false
                     } ]
                   }
@@ -32459,14 +32904,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
                     "enabled" : {
                       "type" : "boolean"
                     },
@@ -32523,7 +32960,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -32576,7 +33013,7 @@
       "post" : {
         "operationId" : "post-api-apps-generate-app",
         "summary" : "POST /api/apps/generate/app",
-        "description" : "A new data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the\n  YAML a remote-sync export writes, with new entity IDs. For superusers: the files are written into the app's\n  repository, which only an admin works with.",
+        "description" : "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the\n  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app\n  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works\n  with.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -32801,14 +33238,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
                     "enabled" : {
                       "type" : "boolean"
                     },
@@ -32865,7 +33294,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -32967,14 +33396,6 @@
                   "anyOf" : [ {
                     "type" : "object",
                     "properties" : {
-                      "table_ids" : {
-                        "type" : "array",
-                        "items" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }
-                      },
                       "enabled" : {
                         "type" : "boolean"
                       },
@@ -33031,7 +33452,7 @@
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
@@ -33042,14 +33463,9 @@
                       "name" : {
                         "type" : "string",
                         "minLength" : 1
-                      },
-                      "resource_collection_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
                       }
                     },
-                    "required" : [ "name", "display_name", "resource_collection_id" ],
+                    "required" : [ "name", "display_name" ],
                     "additionalProperties" : false
                   } ]
                 }
@@ -36814,7 +37230,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -36879,7 +37295,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -37497,7 +37913,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -37577,7 +37993,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -47615,7 +48031,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-backfill-status",
         "summary" : "GET /api/ee/dependencies/backfill-status",
-        "description" : "Returns whether the dependency backfill has pending work.\n  `complete` is true when there are no stale or outdated entities awaiting processing.",
+        "description" : "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {

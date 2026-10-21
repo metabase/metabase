@@ -156,8 +156,7 @@
                :enabled
                ;; set by the import itself
                :bundle_hash]
-   :transform {:created_at   (serdes/date)
-               ;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
+   :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}
                :display_name {:as :name :export identity :import identity}

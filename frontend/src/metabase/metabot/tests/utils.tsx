@@ -189,6 +189,9 @@ export const enterChatMessage = async (message: string, send = true) => {
   if (send) {
     await userEvent.type(await input(), "{Enter}");
   }
+  // The editor picks up these DOM changes through a MutationObserver, which
+  // React cannot see as part of this call, so flush the state it sets.
+  await waitFor(() => {});
 };
 export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");
