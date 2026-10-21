@@ -36,24 +36,6 @@ describe("error reporting modal", () => {
     });
   });
 
-  it("should allow you to open the error reporting modal via the command palette", () => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.visit("/");
-
-    cy.findByTestId("home-page")
-      .findByText(/see what metabase can do/i)
-      .should("exist");
-
-    H.commandPaletteButton().click();
-    H.commandPaletteInput().type("Error");
-    H.commandPaletteAction(/Download diagnostics/).click();
-
-    cy.findByRole("dialog", { name: "Gather diagnostic information" }).should(
-      "be.visible",
-    );
-  });
-
   it("should not show error reporting modal in embedding", () => {
     H.restore();
     cy.signInAsAdmin();

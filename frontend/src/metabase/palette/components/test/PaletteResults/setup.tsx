@@ -16,6 +16,7 @@ import {
   createMockState,
 } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
+import { KeyboardTriggeredErrorModal } from "metabase/common/components/ErrorPages";
 import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import { Route, useLocation, useParams } from "metabase/router";
@@ -134,6 +135,7 @@ export interface CommonSetupProps {
   searchItems?: CollectionItem[];
   isEE?: boolean;
   isAdmin?: boolean;
+  withDiagnosticModal?: boolean;
 }
 
 export const commonSetup = ({
@@ -143,6 +145,7 @@ export const commonSetup = ({
   searchItems = [model_1, model_2, dashboard],
   isEE,
   isAdmin = false,
+  withDiagnosticModal = false,
 }: CommonSetupProps = {}) => {
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints(searchItems);
@@ -186,7 +189,15 @@ export const commonSetup = ({
   }
 
   return renderWithProviders(
-    <Route path="*" element={<TestComponent q={query} isLoggedIn />} />,
+    <Route
+      path="*"
+      element={
+        <>
+          <TestComponent q={query} isLoggedIn />
+          {withDiagnosticModal && <KeyboardTriggeredErrorModal />}
+        </>
+      }
+    />,
     {
       withKBar: true,
       withRouter: true,

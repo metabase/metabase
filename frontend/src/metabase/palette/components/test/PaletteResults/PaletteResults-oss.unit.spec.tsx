@@ -248,6 +248,21 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("Download diagnostics")).toBeInTheDocument();
   });
 
+  it("should open the diagnostic info modal from the Download diagnostics action", async () => {
+    setup({ query: "Error", withDiagnosticModal: true });
+    expect(
+      screen.queryByRole("dialog", { name: "Gather diagnostic information" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByText("Download diagnostics"));
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "Gather diagnostic information",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("should offer the New embed action to admins", async () => {
     setup({ query: "new embed", isAdmin: true });
     expect(await screen.findByText("New embed")).toBeInTheDocument();
