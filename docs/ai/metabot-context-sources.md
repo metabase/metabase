@@ -9,13 +9,16 @@ Metabot answers questions using the metadata and content in your Metabase. This 
 
 ## What Metabot searches depends on where people use it
 
-| Where                                                       | What Metabot searches                                                                                                                                                                           |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Chat sidebar](./metabot.md#the-metabot-chat-sidebar)       | Tables, models, metrics, questions, and dashboards the person has permission to see, plus their recently viewed items.                                                                          |
-| [AI exploration](./metabot.md#ai-exploration)               | The [Library](#publish-tables-and-metrics-to-the-library), if you have one. Otherwise, the [collection for natural language querying](#without-a-library-point-ai-exploration-at-a-collection). |
-| [SQL generation](./metabot.md#metabot-in-the-native-editor) | Tables in the database selected in the SQL editor.                                                                                                                                              |
+| Where                                                       | What Metabot searches                                                                                                                                                                                                              |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Chat sidebar](./metabot.md#the-metabot-chat-sidebar)       | Tables, models, metrics, questions, dashboards, and documents the person has permission to see, plus their recently viewed items.                                                                                                  |
+| [AI exploration](./metabot.md#ai-exploration)               | The [Library](#publish-tables-and-metrics-to-the-library), if you have one. Otherwise, the [collection for natural language querying](#without-a-library-point-ai-exploration-at-a-collection).                                    |
+| [SQL generation](./metabot.md#metabot-in-the-native-editor) | Tables in the database selected in the SQL editor.                                                                                                                                                                                 |
+| [Documents](../documents/introduction.md) (**Ask Metabot**) | Models and metrics in the [collection for natural language querying](#without-a-library-point-ai-exploration-at-a-collection), or all models and metrics if you haven't set one. To write SQL, the database the person @-mentions. |
 
 Metabot also sees the item the person has open, any items they @-mention, and your [glossary](#define-company-terms-in-the-glossary). Metabot can only see what the person asking has [permission](../permissions/data.md) to see.
+
+In documents, **Ask Metabot** works differently from the chat sidebar. It only builds a chart, so it doesn't search tables, questions, or dashboards, and it ignores recently viewed items. It prefers an existing model or metric, and only writes SQL if none fits or when directly asked for SQL. To write SQL, @-mention exactly one database.
 
 ## Add descriptions to tables, columns, models, and metrics
 
@@ -61,7 +64,7 @@ Use **A list of all values** for columns that people filter on by name, like sta
 
 {% include plans-blockquote.html feature="Verified or curated content" %}
 
-In **Admin > AI**, on the **Internal** tab, turn on **Only use verified or curated content**. Metabot's search results, recently viewed items, and suggested prompts then only include content that's:
+In **Admin > AI**, on the **Internal** tab, turn on **Only use verified or curated content**. Metabot's search results, recently viewed items, suggested prompts, and the models and metrics **Ask Metabot** uses in documents then only include content that's:
 
 - [Verified](../exploration-and-organization/content-verification.md).
 - In an [official collection](../exploration-and-organization/collections.md#official-collections).
@@ -85,13 +88,13 @@ AI exploration can still look at tables outside the Library, but it starts with 
 
 ## Without a Library, point AI exploration at a collection
 
-In **Admin > AI**, on the **Internal** tab, set **Collection for natural language querying** to a collection with your best models and metrics. AI exploration then only searches that collection and its subcollections. People can still @-mention items outside it. See [Collection for natural language querying](./settings.md#collection-for-natural-language-querying).
+In **Admin > AI**, on the **Internal** tab, set **Collection for natural language querying** to a collection with your best models and metrics. AI exploration then only searches that collection and its subcollections. **Ask Metabot** in documents also only picks models and metrics from that collection, whether or not you have a Library. People can still @-mention items outside it. See [Collection for natural language querying](./settings.md#collection-for-natural-language-querying).
 
 ## Use system prompts for conventions, not facts
 
 {% include plans-blockquote.html feature="AI system prompts" is_plural=true %}
 
-In **Admin > AI > System prompts**, you can write separate instructions for **AI chat**, **Natural language queries**, and **SQL generation**. Metabot gets the matching prompt with every message.
+In **Admin > AI > System prompts**, you can write separate instructions for **AI chat**, **Natural language queries**, and **SQL generation**. Metabot gets the matching prompt with every message. **Ask Metabot** in documents doesn't use any of these prompts.
 
 - **Good for**: tone, formatting, and conventions that always apply, like "Our fiscal year starts on February 1."
 - **Not for**: facts about specific tables or columns. Put those in descriptions, which Metabot only reads when it uses that item.
@@ -102,7 +105,9 @@ Keep system prompts short. See [AI system prompts](./system-prompts.md).
 
 When a table, model, or question is open, Metabot sees its columns and their descriptions, its measures and segments, and the tables it joins to. Opening the right item first is the most direct way to point Metabot at the right data.
 
-In the chat sidebar, Metabot also sees recently viewed items, so viewing a relevant table or question first helps. AI exploration ignores recently viewed items.
+In the chat sidebar, Metabot also sees recently viewed items, so viewing a relevant table or question first helps. AI exploration and **Ask Metabot** in documents ignore recently viewed items.
+
+Documents are an exception to this: when a document is open, the chat sidebar doesn't see what's in it. Metabot can still find a document by searching for it, so mention the document's name in your question if needed.
 
 ## Some changes don't affect Metabot
 
