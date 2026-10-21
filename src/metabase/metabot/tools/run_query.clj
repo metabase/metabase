@@ -255,16 +255,19 @@
              [:problem   [:maybe :string]]
              [:hint      [:enum :notebook-query :sql-query :no-values]]]}
   [{:keys [query-id sql-card? problem hint]}]
-  (if sql-card?
-    {:message  (str "Only a single read-only SELECT statement can run, and query " query-id
-                    " reads a saved question whose SQL is not one." (some->> problem (str " ")))
-     :recovery [{:uses #{"create_sql_query"}
-                 :text "Write a read-only SELECT with `create_sql_query` and run that instead."}]}
-    {:message  (str "Only a single read-only SELECT statement can run, and query " query-id " is not one."
-                    (some->> problem (str " ")))
-     :recovery (cond-> [{:uses #{}
-                         :text "Rewrite it as one SELECT that changes and locks nothing."}]
-                 (= :notebook-query hint) (conj (:notebook-query hint-steps)))}))
+  (let [notebook? (= :notebook-query hint)]
+    (if sql-card?
+      {:message  (str "Only a single read-only SELECT statement can run, and query " query-id
+                      " reads a saved question whose SQL is not one." (some->> problem (str " ")))
+       :recovery (cond-> [{:uses #{"create_sql_query"}
+                           :text "Write a read-only SELECT with `create_sql_query` and run that instead."}]
+                   notebook? (conj (:sql-card hint-steps)))}
+      {:message  (str "Only a single read-only SELECT statement can run, and query " query-id " is not one."
+                      (some->> problem (str " ")))
+       :recovery (cond-> [{:uses #{"create_sql_query"}
+                           :text (str "Rewrite it as one SELECT that changes and locks nothing, with"
+                                      " `create_sql_query`, and run that instead.")}]
+                   notebook? (conj (:notebook-query hint-steps)))})))
 
 (tools/defrecoverable not-sql!
   "The tool runs SQL only, and the query holds no SQL."

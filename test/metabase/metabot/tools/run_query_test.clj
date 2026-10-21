@@ -98,6 +98,14 @@
   "The recovery step of a refusal that no tool the model has can get around."
   "Tell the user you can't read its results.")
 
+(def ^:private rewrite-step
+  "The recovery step of a refusal of SQL that is not a single read-only SELECT, in a profile that can write SQL."
+  "Rewrite it as one SELECT that changes and locks nothing, with `create_sql_query`, and run that instead.")
+
+(def ^:private write-select-step
+  "The recovery step of a refusal of a saved question whose SQL Metabot wrote, which is not a read-only SELECT."
+  "Write a read-only SELECT with `create_sql_query` and run that instead.")
+
 (def ^:private sql-refused
   (refusal ::run-query/sql-not-allowed "This query is SQL, and SQL can't run here." notebook-query-step))
 
@@ -451,7 +459,7 @@
   [problem]
   (refusal ::run-query/not-read-only-select
            (str "Only a single read-only SELECT statement can run, and query q1 is not one. " problem)
-           "Rewrite it as one SELECT that changes and locks nothing."
+           rewrite-step
            notebook-query-step))
 
 (defn- not-read-only?
@@ -459,8 +467,7 @@
   [{:keys [output error]}]
   (and (= ::run-query/not-read-only-select (:code error))
        (some? (re-matches (re-pattern (str "\\QOnly a single read-only SELECT statement can run, and query q1 is not "
-                                           "one.\\E.*\n\\QRewrite it as one SELECT that changes and locks nothing.\n"
-                                           notebook-query-step "\\E"))
+                                           "one.\\E.*\n\\Q" rewrite-step "\n" notebook-query-step "\\E"))
                           output))))
 
 (defn- venues-sql
@@ -589,9 +596,8 @@
             (let [ran? (atom false)]
               (mt/with-dynamic-fn-redefs [qp/process-query (fn [& _] (reset! ran? true) {:status :failed})]
                 (is (=? {:output (re-pattern (str "\\QOnly a single read-only SELECT statement can run, and query q1 "
-                                                  "reads a saved question whose SQL is not one. \\E.*\n"
-                                                  "\\QWrite a read-only SELECT with `create_sql_query` and run that "
-                                                  "instead.\\E"))
+                                                  "reads a saved question whose SQL is not one. \\E.*\n\\Q"
+                                                  write-select-step "\n" sql-card-step "\\E"))
                          :error  {:class :recoverable, :code ::run-query/not-read-only-select}}
                         (run-sql-tool! {"q1" (card-query metabot-write-card)} {:query_id "q1"}))))
               (is (false? @ran?)))))
@@ -611,12 +617,12 @@
                                   {:query_id "q1"})))))))))
 
 (deftest run-query-steps-name-only-offered-tools-test
-  (testing "a recovery step that names a tool the profile does not offer is dropped"
+  (testing "a recovery step that names a tool the profile does not offer is dropped, so Ask is sent to the builder"
     (mt/with-temp [:model/Card               {card-id :id}         {:dataset_query (mt/native-query
                                                                                     {:query "SELECT 1; DROP TABLE X"})}
                    :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
       (mark-saved-by-metabot! [card-id])
-      (let [refused-in (fn [other-tools]
+      (let [refused-in (fn [other-tools query]
                          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
                                                             metabot-sql-execution-enabled?   true]
                            (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
@@ -626,20 +632,30 @@
                                (invoke! #'tools/run-query-tool
                                         other-tools
                                         {:conversation-id conversation-id
-                                         :state           {:queries {"q1" (card-query card-id)}}}
+                                         :state           {:queries {"q1" query}}}
                                         {:query_id "q1"})))))
-            chat       (refused-in chat-tools)
-            [message]  (str/split-lines (:output chat))]
-        (is (str/starts-with? message (str "Only a single read-only SELECT statement can run, and query q1 reads a "
-                                           "saved question whose SQL is not one.")))
-        (testing "Chat, which can write SQL, is told to write a read-only SELECT"
-          (is (= (refusal ::run-query/not-read-only-select
-                          message
-                          "Write a read-only SELECT with `create_sql_query` and run that instead.")
-                 chat)))
-        (testing "Ask, which has no SQL tools, gets the same refusal without the step"
-          (is (= (refusal ::run-query/not-read-only-select message)
-                 (refused-in [#'tools/construct-notebook-query-tool]))))))))
+            ask-tools  [#'tools/construct-notebook-query-tool]]
+        (testing "for SQL that is not a single read-only SELECT"
+          (let [query   (mt/native-query {:query "DELETE FROM VENUES"})
+                message (str "Only a single read-only SELECT statement can run, and query q1 is not one. "
+                             "It is not a SELECT.")]
+            (testing "Chat, which can write SQL, is told to rewrite it, or to build the question instead"
+              (is (= (refusal ::run-query/not-read-only-select message rewrite-step notebook-query-step)
+                     (refused-in chat-tools query))))
+            (testing "Ask, which has no SQL tools, is only told to build the question"
+              (is (= (refusal ::run-query/not-read-only-select message notebook-query-step)
+                     (refused-in ask-tools query))))))
+        (testing "for a saved question whose SQL Metabot wrote and that is not one"
+          (let [chat      (refused-in chat-tools (card-query card-id))
+                [message] (str/split-lines (:output chat))]
+            (is (str/starts-with? message (str "Only a single read-only SELECT statement can run, and query q1 reads "
+                                               "a saved question whose SQL is not one.")))
+            (testing "Chat is told to write a read-only SELECT, or to build the question from tables"
+              (is (= (refusal ::run-query/not-read-only-select message write-select-step sql-card-step)
+                     chat)))
+            (testing "Ask is only told to build the question from tables"
+              (is (= (refusal ::run-query/not-read-only-select message sql-card-step)
+                     (refused-in ask-tools (card-query card-id)))))))))))
 
 (deftest run-query-nested-sql-refusal-test
   (testing "with SQL execution off, SQL nested in a notebook query gets the SQL refusal whatever its database"
@@ -805,7 +821,7 @@
   (testing "a native query that is not SQL text is refused, with no reason given"
     (is (= [(refusal ::run-query/not-read-only-select
                      "Only a single read-only SELECT statement can run, and query q1 is not one."
-                     "Rewrite it as one SELECT that changes and locks nothing."
+                     rewrite-step
                      notebook-query-step)
             false]
            (run-sql-recording! {:database (mt/id), :type :native, :native {:query {:collection "venues"}}})))))
@@ -951,7 +967,7 @@
       (is (= (refusal ::run-query/not-read-only-select
                       (str "Only a single read-only SELECT statement can run, and query q1 is not one. "
                            "It is not a SELECT.")
-                      "Rewrite it as one SELECT that changes and locks nothing.")
+                      rewrite-step)
              (run-sql-only-tool! {"q1" (mt/native-query {:query "DELETE FROM VENUES"})} {:query_id "q1"}))))
     (testing "a database the user can read but not run SQL against"
       (with-restricted-databases!
