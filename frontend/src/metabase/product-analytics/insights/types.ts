@@ -1,3 +1,4 @@
+import type { BaseQueryInput } from "../base-query";
 import type { ExtraColumn } from "../columns";
 import type { EventDefinition } from "../events/types";
 import type { AnalysisSpec } from "../spec/types";
@@ -101,15 +102,22 @@ export type InsightsAnalysis = {
   /** Whether the spec has insights to look for. */
   appliesTo: (spec: AnalysisSpec) => boolean;
   /**
-   * What actors are compared by: table columns, or how many times they did
-   * each of the event table's segments.
+   * What actors are compared by: table columns, how many times they did each
+   * of the event table's segments, or both.
    */
-  attributeKind: InsightAttributeKind;
+  attributeKinds: readonly InsightAttributeKind[];
   /**
-   * Whether to look for pairs of attributes too. Their interaction test
-   * compares raw rates, so it doesn't fit populations with expected outcomes.
+   * The event table column the user split the analysis by, if any. It's
+   * always a candidate, and ranks first among the columns.
    */
-  searchesPairs: boolean;
+  getFocusColumn?: (base: BaseQueryInput) => string | undefined;
+  /**
+   * What pairs of attributes are counted for. `search` looks for pairs as
+   * insights of their own. Their interaction test compares raw rates, so
+   * populations with expected outcomes use `overlaps`: pairs of the singles
+   * found, only so the search can tell when one accounts for another.
+   */
+  pairs: "search" | "overlaps";
   getPopulation: (
     spec: AnalysisSpec,
     attributes: readonly InsightAttribute[],

@@ -28,6 +28,11 @@ type IndexCountsArgs = {
   singleAttributes: readonly string[];
   /** The values the pairs query kept for each attribute. */
   pairValues?: ReadonlyMap<string, readonly string[]>;
+  /**
+   * Pairs counted only to tell how much groups overlap, looked up but not
+   * searched as groups.
+   */
+  overlapRows?: readonly GroupCounts[];
 };
 
 const NO_PEOPLE: Counts = { reached: 0, converted: 0 };
@@ -48,9 +53,13 @@ export const indexCounts = ({
   rows,
   singleAttributes,
   pairValues = new Map(),
+  overlapRows = [],
 }: IndexCountsArgs): CountIndex => {
   const byKey = new Map(
-    rows.map((row) => [groupKey(row.question, row.conditions), row]),
+    [...rows, ...overlapRows].map((row) => [
+      groupKey(row.question, row.conditions),
+      row,
+    ]),
   );
   const totals = new Map(
     rows

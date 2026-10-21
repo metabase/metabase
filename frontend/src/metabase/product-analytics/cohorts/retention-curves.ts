@@ -1,53 +1,69 @@
 import { c, t } from "ttag";
 
-import { isFuturePeriod } from "metabase/visualizations/visualizations/CohortTable/utils";
 import * as Lib from "metabase-lib";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 
-import { getConversionColumnSettings } from "../analyses/series-settings";
-import type { AnalysisSpec, Period } from "../spec/types";
-import { periodOf } from "../sql/analyses/cohorts";
+import {
+  getAxisTitleSettings,
+  getConversionColumnSettings,
+  getSeriesSettings,
+} from "../analyses/series-settings";
+import type { OutputSpec, Period } from "../spec/types";
+
+/** How the retention curves are drawn, once hidden settings are resolved. */
+export type RetentionCurvesView = {
+  period: Period;
+  isPercent: boolean;
+  lines: NonNullable<OutputSpec["cohortsLines"]>;
+  xAxis: "sinceStart" | "date";
+};
+
+const getDimensions = ({ lines, xAxis }: RetentionCurvesView): string[] => {
+  if (lines === "average") {
+    return ["offset"];
+  }
+  return xAxis === "date" ? ["date", "cohort"] : ["offset", "cohort"];
+};
 
 /**
- * The cohort query's rows without the periods a cohort hasn't reached yet.
- * The query emits every offset up to the horizon, so without this each line
- * would fall to zero at the end instead of stopping.
+ * The cohorts query's result as a line chart: a line per cohort, or one for
+ * all of them, over the periods since each start or the calendar. Counts by
+ * date are stacked, so the chart shows active people per period by cohort.
  */
-export const getRetentionCurvesData = (
-  data: DatasetData,
-  period: Period,
-): DatasetData => {
-  const cohortIndex = data.cols.findIndex(({ name }) => name === "cohort");
-  const offsetIndex = data.cols.findIndex(({ name }) => name === "offset");
-  if (cohortIndex < 0 || offsetIndex < 0) {
-    return data;
-  }
+export const getRetentionCurvesSettings = (
+  view: RetentionCurvesView,
+): VisualizationSettings => {
+  const isByDate = view.xAxis === "date";
+  const y = view.isPercent ? t`Retained` : t`Retained people`;
   return {
-    ...data,
-    rows: data.rows.filter(
-      (row) =>
-        !isFuturePeriod(
-          String(row[cohortIndex] ?? ""),
-          Number(row[offsetIndex]),
-          period,
-        ),
-    ),
+    "graph.dimensions": getDimensions(view),
+    "graph.metrics": ["value"],
+    "graph.x_axis.scale": isByDate ? "timeseries" : "ordinal",
+    ...(isByDate && !view.isPercent
+      ? { "stackable.stack_type": "stacked" }
+      : {}),
+    ...(view.lines === "average"
+      ? getSeriesSettings("value", t`All cohorts`)
+      : {}),
+    ...getAxisTitleSettings({
+      x: isByDate
+        ? Lib.describeTemporalUnit(view.period)
+        : c("{0} is a plural time unit, e.g. Weeks")
+            .t`${Lib.describeTemporalUnit(view.period, 2)} since start`,
+      y,
+    }),
+    ...(view.isPercent ? getConversionColumnSettings("value") : {}),
   };
 };
 
-/** A line per cohort, with a tick per period since the cohort started. */
-export const getRetentionCurvesSettings = (
-  spec: AnalysisSpec,
-): VisualizationSettings => {
-  const units = Lib.describeTemporalUnit(periodOf(spec), 2);
-  const isPercent = spec.output.cohortsDisplay !== "counts";
-  return {
-    "graph.dimensions": ["offset", "cohort"],
-    "graph.metrics": ["value"],
-    "graph.x_axis.scale": "ordinal",
-    "graph.x_axis.title_text": c("{0} is a plural time unit, e.g. Weeks")
-      .t`${units} since start`,
-    "graph.y_axis.title_text": isPercent ? t`Retained` : t`Retained people`,
-    ...(isPercent ? getConversionColumnSettings("value") : {}),
-  };
-};
+/** The cohort table: a row per cohort and a column per period since the start. */
+export const getCohortTableSettings = ({
+  period,
+  isPercent,
+}: Pick<
+  RetentionCurvesView,
+  "period" | "isPercent"
+>): VisualizationSettings => ({
+  "cohort.period": period,
+  "cohort.value_format": isPercent ? "percent" : "counts",
+});

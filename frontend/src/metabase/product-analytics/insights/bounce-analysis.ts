@@ -17,8 +17,8 @@ export const BOUNCE_INSIGHTS: InsightsAnalysis = {
     spec.kind === "paths" &&
     spec.paths !== undefined &&
     canShowBounces(spec.paths),
-  attributeKind: "column",
-  searchesPairs: true,
+  attributeKinds: ["column"],
+  pairs: "search",
   getPopulation: (spec, attributes) => {
     const { ids, asOf } = getColumnAttributeRules(attributes);
     return bounceInsightPopulation(spec, ids, asOf);

@@ -163,6 +163,7 @@ const InsightsList = ({
     attributes,
     questions,
     checkedCount,
+    pairsFor,
     isFindingPairs,
     pairsError,
   } = state;
@@ -207,7 +208,9 @@ const InsightsList = ({
       )}
       {pairsError !== undefined && (
         <Text size="sm" c="text-secondary">
-          {t`Combinations couldn't be checked: ${pairsError}`}
+          {pairsFor === "search"
+            ? t`Combinations couldn't be checked: ${pairsError}`
+            : t`Couldn't check which insights overlap, so some may say the same thing: ${pairsError}`}
         </Text>
       )}
     </Stack>

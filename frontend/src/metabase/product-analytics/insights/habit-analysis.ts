@@ -37,9 +37,9 @@ const getOutcomeLabel = (habit: HabitSpec, threshold: number): string => {
 export const HABIT_INSIGHTS: InsightsAnalysis = {
   getOutcome: () => getRegularOutcome(),
   appliesTo: (spec) => spec.kind === "habit",
-  attributeKind: "event",
+  attributeKinds: ["event"],
   // A pair is better asked as a segment of its own.
-  searchesPairs: false,
+  pairs: "overlaps",
   getPopulation: (spec, attributes) =>
     habitInsightPopulation(
       spec,

@@ -49,6 +49,11 @@ export type CommonSettings = ColumnRoleSettings & {
   /** A serialized date filter, e.g. "past90days". See `date-range.ts`. */
   date_range: string;
   granularity: Granularity;
+  /**
+   * A users table column when there is a users table, else an event table
+   * column. Null: no breakout. Only analyses that opt in read it.
+   */
+  breakout: string | null;
   filters: AnalysisFilters;
 };
 
@@ -87,16 +92,18 @@ export type LifecycleSettings = CommonSettings & {
 };
 
 export type CohortsSettings = CommonSettings & {
-  "cohorts.by": CohortsSpec["by"];
-  /** An event table column; the earliest value per actor starts their clock. */
-  "cohorts.start_column": string | null;
-  /** A users table column when there is a users table, else an event table column. */
-  "cohorts.attribute": string | null;
+  /** The first time an actor does it in the date range starts their clock. Null: any event. */
+  "cohorts.start": EventDefinition | null;
   "cohorts.return": EventDefinition | null;
   "cohorts.return_rule": CohortsSpec["returnRule"];
   /** How many periods after their start to follow each cohort: the columns. */
   "cohorts.horizon": number;
+  /** A table with a row per cohort, or retention curves on a line chart. */
+  "cohorts.view": "table" | "curves";
   "cohorts.display": NonNullable<OutputSpec["cohortsDisplay"]>;
+  "cohorts.lines": NonNullable<OutputSpec["cohortsLines"]>;
+  /** The line chart's x-axis: periods since each cohort started, or the calendar. */
+  "cohorts.x_axis": "sinceStart" | "date";
 };
 
 export type AnalysisSettingsByKind = {

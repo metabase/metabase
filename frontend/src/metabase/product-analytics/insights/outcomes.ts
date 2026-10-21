@@ -209,3 +209,65 @@ export const getRegularOutcome = (): InsightOutcome => ({
     expectedRateTitle: t`Expected for people as active`,
   },
 });
+
+const firstPeriodWords = (period: Period): string => {
+  switch (period) {
+    case "day":
+      return t`people as active on their first day`;
+    case "week":
+      return t`people as active in their first week`;
+    case "month":
+      return t`people as active in their first month`;
+  }
+};
+
+/**
+ * People who started coming back at a checkpoint, compared with what's
+ * expected of people as active as them in the period they started.
+ */
+export const getComeBackOutcome = (period: Period): InsightOutcome => {
+  const asActive = firstPeriodWords(period);
+  return {
+    isHigherBetter: true,
+    searchingLabel: t`Looking for what's different about people who come back…`,
+    describeRate: (rate) => c("{0} is a percentage").t`${rate} came back`,
+    describeComparison: (rate, expectedRate, size) =>
+      c(
+        "{0} and {1} are percentages, {2} is a phrase like 'people as active in their first week', {3} is a number of people",
+      )
+        .t`${rate} came back vs. ${expectedRate} expected for ${asActive} · ${size} people`,
+    describeMultiple: (multiplier) =>
+      c("{0} is a multiplier, like 2.5")
+        .t`${multiplier}× as likely to come back`,
+    describeDifference: (percent, isMore) =>
+      isMore
+        ? c("{0} is a percentage").t`${percent} more likely to come back`
+        : c("{0} is a percentage").t`${percent} less likely to come back`,
+    describeExcess: (count, formatted, isMore) =>
+      isMore
+        ? ngettext(
+            msgid`About ${formatted} more person came back than expected for ${asActive}`,
+            `About ${formatted} more people came back than expected for ${asActive}`,
+            count,
+          )
+        : ngettext(
+            msgid`About ${formatted} fewer person came back than expected for ${asActive}`,
+            `About ${formatted} fewer people came back than expected for ${asActive}`,
+            count,
+          ),
+    describeNothingFound: (attributes, size) =>
+      c(
+        "{0} is a number of columns and event conditions, {1} is a number of people",
+      )
+        .t`Nothing stands out. Checked ${attributes} columns and event conditions across ${size} people.`,
+    noAttributesLabel: t`There are no columns with few enough distinct values, or event segments on this table, to compare people by.`,
+    explore: {
+      countColumn: "people",
+      countTitle: t`People`,
+      rateColumn: "came_back",
+      rateTitle: t`Came back`,
+      expectedRateColumn: "expected_rate",
+      expectedRateTitle: t`Expected for people as active`,
+    },
+  };
+};

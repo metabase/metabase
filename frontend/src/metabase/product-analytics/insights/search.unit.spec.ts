@@ -16,11 +16,22 @@ const sumCounts = (segments: readonly Segment[]) => ({
   converted: segments.reduce((sum, { converted }) => sum + converted, 0),
 });
 
+type CountSegmentsOpts = {
+  /**
+   * `search` counts pairs as groups to search, `overlaps` only to look up
+   * how groups overlap, and `none` leaves them out.
+   */
+  pairs?: "search" | "overlaps" | "none";
+};
+
 /**
  * What the singles and pairs queries would return for these people at one
  * question, with every value kept for pairs.
  */
-const countSegments = (segments: readonly Segment[]) => {
+const countSegments = (
+  segments: readonly Segment[],
+  { pairs: pairsFor = "search" }: CountSegmentsOpts = {},
+) => {
   const attributeIds = _.uniq(
     segments.flatMap(({ values }) => Object.keys(values)),
   );
@@ -51,12 +62,19 @@ const countSegments = (segments: readonly Segment[]) => {
         ),
       ),
   );
+  const hasPeople = ({ reached }: GroupCounts) => reached > 0;
   return indexCounts({
-    rows: [groupOf({}), ...singles, ...pairs].filter(
-      ({ reached }) => reached > 0,
-    ),
+    rows: [
+      groupOf({}),
+      ...singles,
+      ...(pairsFor === "search" ? pairs : []),
+    ].filter(hasPeople),
+    overlapRows: pairsFor === "overlaps" ? pairs.filter(hasPeople) : [],
     singleAttributes: attributeIds,
-    pairValues: new Map(attributeIds.map((id) => [id, valuesOf(id)])),
+    pairValues:
+      pairsFor === "none"
+        ? new Map()
+        : new Map(attributeIds.map((id) => [id, valuesOf(id)])),
   });
 };
 
@@ -318,5 +336,51 @@ describe("findInsights with expected outcomes", () => {
       restRate: 0.84,
     });
     expect(insight.excess).toBeCloseTo(80);
+  });
+});
+
+describe("findInsights with pairs counted only for overlaps", () => {
+  // Two columns that are empty for the same people, like traits before
+  // someone is identified, and an independent effect on another column.
+  const SEGMENTS: Segment[] = [
+    {
+      values: { role: "(not set)", plan: "(not set)", os: "iOS" },
+      reached: 2000,
+      converted: 300,
+    },
+    {
+      values: { role: "(not set)", plan: "(not set)", os: "Android" },
+      reached: 2000,
+      converted: 300,
+    },
+    {
+      values: { role: "admin", plan: "pro", os: "iOS" },
+      reached: 3000,
+      converted: 1200,
+    },
+    {
+      values: { role: "viewer", plan: "free", os: "Android" },
+      reached: 3000,
+      converted: 1200,
+    },
+  ];
+
+  it("reports both of two groups of the same people without overlaps", () => {
+    expect(
+      findInsights(countSegments(SEGMENTS, { pairs: "none" })).map(
+        describeInsight,
+      ),
+    ).toEqual(expect.arrayContaining(["role=(not set)", "plan=(not set)"]));
+  });
+
+  it("keeps one of two groups of the same people, and reports no pairs", () => {
+    const described = findInsights(
+      countSegments(SEGMENTS, { pairs: "overlaps" }),
+    ).map(describeInsight);
+
+    expect(
+      described.filter((label) => label.endsWith("=(not set)")),
+    ).toHaveLength(1);
+    expect(described.some((label) => label.includes(" & "))).toBe(false);
   });
 });

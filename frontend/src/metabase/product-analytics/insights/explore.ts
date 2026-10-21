@@ -57,6 +57,9 @@ export const getExploreCard = (
         ...(expected !== undefined ? [expected.column] : []),
       ],
       "graph.tooltip_columns": [columnKey(explore.countColumn)],
+      // Both are rates on one scale. Expected rates that barely differ across
+      // segments would otherwise get an axis of their own.
+      "graph.y_axis.auto_split": false,
       series_settings: {
         ...getSeriesSettings(explore.rateColumn, explore.rateTitle)
           .series_settings,

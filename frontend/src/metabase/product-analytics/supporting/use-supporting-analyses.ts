@@ -1,19 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
-import type {
-  ConcreteTableId,
-  SingleSeries,
-  UnsavedCard,
-} from "metabase-types/api";
+import type { ConcreteTableId } from "metabase-types/api";
 
 import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
-import {
-  getRetentionCurvesData,
-  getRetentionCurvesSettings,
-} from "../cohorts/retention-curves";
 import type { InsightsFocus } from "../components/supporting/InsightsPanel";
 import {
   getFunnelPathsRange,
@@ -29,6 +21,7 @@ import {
   getClickedStep,
   getClickedTransition,
 } from "../insights/clicked-transition";
+import { COHORTS_INSIGHTS } from "../insights/cohorts-analysis";
 import { FUNNEL_INSIGHTS } from "../insights/funnel-analysis";
 import { HABIT_INSIGHTS } from "../insights/habit-analysis";
 import { LIFECYCLE_INSIGHTS } from "../insights/lifecycle-analysis";
@@ -36,9 +29,7 @@ import type { InsightsAnalysis } from "../insights/types";
 import { type Insights, useInsights } from "../insights/use-insights";
 import { type PathSteps, usePathSteps } from "../path-steps/use-path-steps";
 import type { AnalysisSpec, FunnelSpec } from "../spec/types";
-import { periodOf } from "../sql/analyses/cohorts";
 import type { FunnelPathsRange } from "../sql/analyses/funnel-paths";
-import type { AnalysisQueryResult } from "../use-analysis-query";
 
 import { getShowInsightsAction, getShowPathsAction } from "./click-actions";
 
@@ -48,8 +39,6 @@ type UseSupportingAnalysesArgs = {
   /** Must keep its identity while unchanged. */
   base: BaseQueryInput;
   context: AnalysisContext;
-  /** The primary query, for supporting charts that re-read its result. */
-  query: AnalysisQueryResult;
   /** A chart click asked for insights; the side panel should open. */
   onShowInsights: () => void;
 };
@@ -83,21 +72,11 @@ export type PathsSupport = {
   steps: PathSteps;
 };
 
-/** The retention curves below the cohort table, from the table's own result. */
-export type CohortsSupport = {
-  /** The line chart, once the cohort query's result is in. */
-  series: SingleSeries<UnsavedCard> | undefined;
-  isLoading: boolean;
-  error: string | undefined;
-};
-
 export type SupportingAnalyses = {
   /** Set while the analysis is a funnel. */
   funnel: FunnelSupport | undefined;
   /** Set while the analysis is paths. */
   paths: PathsSupport | undefined;
-  /** Set while the analysis is cohorts. */
-  cohorts: CohortsSupport | undefined;
   /** The insights side panel's content; every kind has one. */
   insights: InsightsSupport;
   /** The chart click actions that lead to a supporting analysis. */
@@ -116,6 +95,8 @@ const getInsightsAnalysis = (
       return LIFECYCLE_INSIGHTS;
     case "habit":
       return HABIT_INSIGHTS;
+    case "cohorts":
+      return COHORTS_INSIGHTS;
     default:
       return undefined;
   }
@@ -126,38 +107,17 @@ const getInsightsAnalysis = (
  * click actions that bring one of them into view. Each kind of analysis
  * contributes its own: a funnel shows the paths between its steps and the
  * insights into who converts, paths show their steps' entrances and exits
- * and the insights into who bounces, and cohorts show their retention curves.
+ * and the insights into who bounces.
  */
 export const useSupportingAnalyses = ({
   spec,
   tableId,
   base,
   context,
-  query,
   onShowInsights,
 }: UseSupportingAnalysesArgs): SupportingAnalyses => {
   const isFunnel = spec?.kind === "funnel";
-  const isCohorts = spec?.kind === "cohorts";
   const isPaths = spec?.kind === "paths";
-
-  const { dataset, datasetQuery } = query;
-  const cohortsSeries = useMemo((): SingleSeries<UnsavedCard> | undefined => {
-    if (
-      spec?.kind !== "cohorts" ||
-      dataset?.data === undefined ||
-      datasetQuery === undefined
-    ) {
-      return undefined;
-    }
-    return {
-      card: {
-        display: "line",
-        dataset_query: datasetQuery,
-        visualization_settings: getRetentionCurvesSettings(spec),
-      },
-      data: getRetentionCurvesData(dataset.data, periodOf(spec)),
-    };
-  }, [spec, dataset, datasetQuery]);
 
   const insights = useInsights({
     spec,
@@ -225,7 +185,7 @@ export const useSupportingAnalyses = ({
       case "habit":
         return t`Finish setting up the habit analysis to see insights.`;
       case "cohorts":
-        return t`Insights aren't available for cohorts yet.`;
+        return t`Follow the cohorts for longer to see insights.`;
       default:
         return t`Finish setting up this analysis to see insights.`;
     }
@@ -247,13 +207,6 @@ export const useSupportingAnalyses = ({
         }
       : undefined,
     paths: isPaths ? { steps: pathSteps } : undefined,
-    cohorts: isCohorts
-      ? {
-          series: cohortsSeries,
-          isLoading: query.isLoading,
-          error: query.error,
-        }
-      : undefined,
     insights: { insights, focus: insightsFocus, idleLabel: insightsIdleLabel },
     getClickActions,
   };

@@ -1,7 +1,7 @@
 import { indexCounts } from "./counts";
 import { DEFAULT_INSIGHT_OPTIONS } from "./options";
-import { getPairRowBound, planPairs } from "./plan-pairs";
-import type { GroupCounts } from "./types";
+import { getPairRowBound, planOverlapPairs, planPairs } from "./plan-pairs";
+import type { GroupCounts, Insight } from "./types";
 
 const group = (
   attributeId: string,
@@ -96,5 +96,37 @@ describe("planPairs", () => {
       singleAttributes: ["os"],
     });
     expect(planPairs(index, ["os"]).size).toBe(0);
+  });
+});
+
+describe("planOverlapPairs", () => {
+  const insight = (attributeId: string, value: string): Insight => ({
+    ...group(attributeId, value, 1000),
+    rate: 0.3,
+    restRate: 0.2,
+    excess: 100,
+    pValue: 0.001,
+  });
+
+  it("keeps each attribute's values from the insights found", () => {
+    expect(
+      planOverlapPairs([
+        insight("os", "iOS"),
+        insight("os", "Android"),
+        insight("browser", "Safari"),
+        insight("os", "iOS"),
+      ]),
+    ).toEqual(
+      new Map([
+        ["os", ["iOS", "Android"]],
+        ["browser", ["Safari"]],
+      ]),
+    );
+  });
+
+  it("has nothing to count with insights on a single attribute", () => {
+    expect(
+      planOverlapPairs([insight("os", "iOS"), insight("os", "Android")]),
+    ).toEqual(new Map());
   });
 });
