@@ -24,7 +24,7 @@
    (javax.sql DataSource)
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
-   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
+   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType ChangeSet$RunStatus)
    (liquibase.changelog.filter ChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.database Database DatabaseFactory ObjectQuotingStrategy)
@@ -361,20 +361,26 @@
 
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom
-  migrations will be ignored. Ends with statements that record the upgrade in `databasechangelog_version` (and the
-  legacy version-tracking marker) -- see [[versions/version-tracking-sql]] -- since the listeners that normally write
-  those only run when Metabase itself executes the migrations."
+  migrations will be ignored. Starts with statements recording where the changesets it re-runs first ran (see
+  [[versions/first-runs-sql]]), and ends with statements that record the upgrade in `databasechangelog_version` (and
+  the legacy version-tracking marker) -- see [[versions/version-tracking-sql]] -- since the listeners that normally
+  write those only run when Metabase itself executes the migrations."
   ^String [^Liquibase liquibase]
   ;; calling update on custom migrations will execute them, so we ignore it and generates
   ;; sql for SQL migrations only
-  (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil nil)]
-    (when (instance? CustomChangeWrapper (first (.getChanges change)))
-      (.setIgnore change true)))
-  (let [writer   (StringWriter.)
-        database (.getDatabase liquibase)]
+  (let [unrun      (.listUnrunChangeSets liquibase nil nil)
+        writer     (StringWriter.)
+        database   (.getDatabase liquibase)
+        conn       (.. database getConnection getUnderlyingConnection)
+        ;; read before the update: it describes the changelog rows the printed SQL is about to move
+        first-runs (versions/first-runs-sql conn database unrun)]
+    (doseq [^ChangeSet change unrun]
+      (when (instance? CustomChangeWrapper (first (.getChanges change)))
+        (.setIgnore change true)))
     (.update liquibase "" writer)
-    (str (.toString writer)
-         (versions/version-tracking-sql (.. database getConnection getUnderlyingConnection)
+    (str first-runs
+         (.toString writer)
+         (versions/version-tracking-sql conn
                                         database
                                         (->> (.getChangeSets (.getDatabaseChangeLog liquibase))
                                              (keep (fn [^ChangeSet cs] (some-> (re-find #"^v(\d+)\." (.getId cs)) second parse-long)))
@@ -455,9 +461,11 @@
             fail-on-errors                      (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
                                                       (.getChangeSets change-log))
             exec-listener                       (proxy [AbstractChangeExecListener] []
-                                                  (willRun [^ChangeSet change-set _database-change-log _database _run-status]
+                                                  (willRun [change-set _database-change-log ^Database database run-status]
                                                     (when (instance? ChangeSet change-set)
-                                                      (log/infof "Start executing migration with id %s" (.getId change-set))))
+                                                      (log/infof "Start executing migration with id %s" (.getId ^ChangeSet change-set))
+                                                      (when (= ChangeSet$RunStatus/RUN_AGAIN run-status)
+                                                        (versions/record-first-run! database change-set))))
 
                                                   (runFailed [^ChangeSet _change-set _database-change-log _database ^Exception e]
                                                     (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))

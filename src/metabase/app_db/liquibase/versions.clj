@@ -38,7 +38,7 @@
   (:import
    (java.sql Connection SQLException)
    (liquibase Scope)
-   (liquibase.changelog ChangeSet)
+   (liquibase.changelog ChangeSet ChangeSet$RunStatus)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener)
    (liquibase.database Database)
    (liquibase.util LiquibaseUtil)))
@@ -70,6 +70,14 @@
   [^Connection conn]
   (table-exists? (versions-table-name) conn))
 
+(defn first-runs-table-name
+  "Name of the table that records where each re-run changeset first ran (see [[record-first-run!]]), cased like
+  [[versions-table-name]]."
+  ^String []
+  (if (= :postgres (mdb.connection/db-type))
+    "databasechangelog_first_run"
+    "DATABASECHANGELOG_FIRST_RUN"))
+
 (defn- underlying-connection ^Connection [^Database database]
   (.. database getConnection getUnderlyingConnection))
 
@@ -88,6 +96,21 @@
   "Parse the Metabase major version out of a recorded version string, e.g. 55 from `x.55.2.1`."
   [version]
   (some-> (re-find #"^x\.(\d+)" (str version)) second parse-long))
+
+(defn- version-numbers
+  "The leading dotted numbers of a recorded version string, e.g. `[65 5 1]` for `x.65.5.1` and `[66 0]` for
+  `x.66.0-RC2`; nil when it has none."
+  [version]
+  (some->> (re-find #"^x\.(\d+(?:\.\d+)*)" (str version)) second (re-seq #"\d+") (mapv parse-long)))
+
+(defn compare-versions
+  "Compare two recorded version strings by their numbers, a missing trailing number counting as 0 (`x.65.0` is
+  `x.65.0.0`). A pre-release suffix is ignored, so `x.66.0-RC2` compares equal to `x.66.0`."
+  [a b]
+  (let [a      (version-numbers a)
+        b      (version-numbers b)
+        padded #(vec (take (max (count a) (count b)) (concat % (repeat 0))))]
+    (compare (padded a) (padded b))))
 
 (def dev-major
   "The major of [[dev-version]]. Far above any real Metabase major, so a schema last written by a development build
@@ -149,20 +172,21 @@
 
 ;;; ------------------------------------------- the legacy `vNN.` id scan -------------------------------------------
 
-(def ^:private special-case-migrations #{"v56.2025-06-05T16:48:48" "v56.2025-05-19T16:48:48"})
+(def ^:private special-case-migrations
+  "Changeset ids of a later major that an earlier release line also ships, mapped to that earlier major, so a database
+  of the earlier major that ran them is not taken for one of the later major:
 
-(defn- handle-special-case-migrations
-  "This handles v56 migrations that were checked into the v55 branch to resolve an issue with
-  inadventently backported migrations in 55. We check if this or the bad backports are the most recent
-  available migration and explicitly return 55 as the available major version if so."
-  [s]
-  (when (contains? special-case-migrations s)
-    55))
+  * the v56 changesets checked into the v55 branch to resolve inadvertently backported migrations in 55;
+  * the v65 view changesets that 1.64.2.1 ran and 64 ships again (#84415)."
+  {"v56.2025-06-05T16:48:48" 55
+   "v56.2025-05-19T16:48:48" 55
+   "v65.2026-10-07T12:00:00" 64
+   "v65.2026-10-07T12:00:01" 64})
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
   [s]
-  (if-let [special-cased (handle-special-case-migrations s)]
+  (if-let [special-cased (special-case-migrations s)]
     [special-cased]
     (map #(Integer/parseInt %) (re-seq #"\d+" s))))
 
@@ -202,7 +226,7 @@
 (defn- legacy-marker-id [major]
   (format "v%d.%s" major legacy-version-tracking-suffix))
 
-(defn- legacy-major
+(defn legacy-major
   "The major of a `vNN.` changeset id (see [[extract-numbers]]), or nil for a version-less id."
   [id]
   (when (re-find #"^v\d+\." id)
@@ -290,9 +314,12 @@
                           {}
                           (query conn [(format "SELECT deployment_id, dateexecuted, orderexecuted FROM %s"
                                                (changelog-table database))]))
-        by-dep    (group-by :deployment_id
-                            (query conn [(format "SELECT deployment_id, metabase_version, ran_migrations FROM %s ORDER BY id"
-                                                 (versions-table-name))]))]
+        ;; `migrate print` reads this before the table exists: nothing is recorded yet
+        by-dep    (if (versions-table-exists? conn)
+                    (group-by :deployment_id
+                              (query conn [(format "SELECT deployment_id, metabase_version, ran_migrations FROM %s ORDER BY id"
+                                                   (versions-table-name))]))
+                    {})]
     (->> positions
          (sort-by val #(compare %2 %1))
          (mapv (fn [[deployment-id position]]
@@ -375,7 +402,7 @@
                                       (str/join ", " (repeat (count later-deps) "?")))]))
         sql        (format "SELECT id FROM %s WHERE %s ORDER BY dateexecuted ASC, orderexecuted ASC"
                            changelog (str/join " OR " clauses))]
-    (mapv :id (query conn (into [sql] later-deps)))))
+    (into [] (comp (map :id) (remove special-case-migrations)) (query conn (into [sql] later-deps)))))
 
 ;;; ------------------------------------------------ writing version rows -------------------------------------------
 
@@ -443,12 +470,83 @@
                               (current-recorded-version)
                               true))
 
+;;; ------------------------------------------ first runs of re-run changesets -------------------------------------
+;;; When a changeset runs again (a `runOnChange` changeset whose checksum changed), Liquibase moves its changelog row
+;;; to the new run: new deployment_id, dateexecuted and orderexecuted, exectype RERAN. A rollback must know where it
+;;; first ran to decide whether the rollback target has it, so that is copied to `databasechangelog_first_run` first.
+
+(defn first-runs
+  "Where each re-run changeset first ran, as `{[filename author id] {:deployment_id :dateexecuted :orderexecuted}}`
+  -- keyed by the changeset's full identity, as Liquibase identifies it -- the values copied from its changelog row
+  before its first re-run. Empty when the table does not exist. A record is only meaningful while the changelog row is
+  RERAN: one left behind by a binary that removed the row without it is replaced the next time the changeset re-runs
+  (see [[first-run-statements]]).
+
+  The filename is the one this binary keeps on the changelog row: older binaries may rewrite the row's, but
+  [[metabase.app-db.liquibase/repair-version-less-filenames!]] restores it before a migration or rollback reads it."
+  [^Connection conn]
+  (if (table-exists? (first-runs-table-name) conn)
+    (into {}
+          (map (juxt (juxt :filename :author :changeset_id) #(select-keys % [:deployment_id :dateexecuted :orderexecuted])))
+          (query conn [(format "SELECT changeset_id, author, filename, deployment_id, dateexecuted, orderexecuted FROM %s"
+                               (first-runs-table-name))]))
+    {}))
+
+(defn- first-run-statements
+  "`[sql & params]` statements that record where the changeset `[filename author id]` first ran, for a run that is
+  about to re-run it. Its changelog row still holds that run unless it is already RERAN, in which case a recorded first run is
+  kept. A record left from an earlier life of the changeset (see [[first-runs]]) is replaced. Nothing to do when the
+  changeset has no changelog row, or when its first run is recorded already."
+  [^Connection conn ^Database database [filename author id]]
+  (when-let [{:keys [exectype]} (first (query conn [(format "SELECT exectype FROM %s WHERE id = ? AND author = ? AND filename = ?"
+                                                            (changelog-table database))
+                                                    id author filename]))]
+    (let [first-runs (first-runs-table-name)
+          recorded?  (and (table-exists? first-runs conn)
+                          (seq (query conn [(format "SELECT 1 FROM %s WHERE changeset_id = ? AND author = ? AND filename = ?"
+                                                    first-runs)
+                                            id author filename])))
+          reran?     (= "RERAN" (some-> exectype u/upper-case-en))]
+      (when-not (and reran? recorded?)
+        (cond->> [[(format (str "INSERT INTO %s (changeset_id, author, filename, deployment_id, dateexecuted, orderexecuted) "
+                                "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted FROM %s "
+                                "WHERE id = ? AND author = ? AND filename = ?")
+                           first-runs (changelog-table database))
+                   id author filename]]
+          recorded? (cons [(format "DELETE FROM %s WHERE changeset_id = ? AND author = ? AND filename = ?" first-runs)
+                           id author filename]))))))
+
+(defn- change-set-key
+  "`[filename author id]` of `change-set`, with the filename Liquibase writes to its changelog row."
+  [^ChangeSet change-set]
+  [(.getStoredFilePath change-set) (.getAuthor change-set) (.getId change-set)])
+
+(defn record-first-run!
+  "Record where `change-set` first ran, before Liquibase re-runs it (see [[first-run-statements]])."
+  [^Database database ^ChangeSet change-set]
+  (let [conn (underlying-connection database)]
+    (doseq [statement (first-run-statements conn database (change-set-key change-set))]
+      (execute! conn statement))))
+
+(defn forget-first-runs!
+  "Delete the first-run records of the changesets `changeset-keys` (`[filename author id]`), for changesets a
+  rollback reversed."
+  [^Connection conn changeset-keys]
+  (when (and (seq changeset-keys) (table-exists? (first-runs-table-name) conn))
+    (doseq [[filename author id] changeset-keys]
+      (execute! conn [(format "DELETE FROM %s WHERE changeset_id = ? AND author = ? AND filename = ?" (first-runs-table-name))
+                      id author filename]))))
+
 (defn recording-exec-listener
   "A Liquibase `ChangeExecListener` that records the running Metabase version against the current `deployment_id` as
-  soon as the first changeset of a run is applied (see [[record-active-deployment-version!]])."
+  soon as the first changeset of a run is applied (see [[record-active-deployment-version!]]), and where each
+  changeset it re-runs first ran (see [[record-first-run!]])."
   ^ChangeExecListener [^Database database]
   (let [active-deployment-version-recorded? (atom false)]
     (proxy [AbstractChangeExecListener] []
+      (willRun [change-set _database-change-log _database run-status]
+        (when (and (instance? ChangeSet change-set) (= ChangeSet$RunStatus/RUN_AGAIN run-status))
+          (record-first-run! database change-set)))
       (ran [change-set _database-change-log _database _exec-type]
         (when (and (instance? ChangeSet change-set) (compare-and-set! active-deployment-version-recorded? false true))
           (record-active-deployment-version! database))))))
@@ -613,6 +711,28 @@
                  "CONSTRAINT uq_databasechangelog_version UNIQUE (deployment_id, metabase_version))%s")
             (versions-table-name) id-column bool-type timestamp-type suffix)))
 
+(defn- first-runs-table-ddl
+  ^String []
+  (let [db-type       (mdb.connection/db-type)
+        ;; Liquibase's own DATEEXECUTED type: the copied values must compare with the changelog's. UnifyTimeColumnsType
+        ;; leaves this table alone, as it does the changelog.
+        datetime-type (case db-type
+                        :postgres "timestamp without time zone"
+                        :mysql    "datetime"
+                        "timestamp")
+        suffix        (case db-type
+                        :mysql " ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                        "")]
+    (format (str "CREATE TABLE IF NOT EXISTS %s ("
+                 "changeset_id varchar(255) NOT NULL, "
+                 "author varchar(255) NOT NULL, "
+                 "filename varchar(255) NOT NULL, "
+                 "deployment_id varchar(10), "
+                 "dateexecuted %s NOT NULL, "
+                 "orderexecuted int NOT NULL, "
+                 "CONSTRAINT pk_databasechangelog_first_run PRIMARY KEY (changeset_id, author, filename))%s")
+            (first-runs-table-name) datetime-type suffix)))
+
 (defn- change-set-id [change-set]
   (if (instance? ChangeSet change-set)
     (.getId ^ChangeSet change-set)
@@ -621,8 +741,7 @@
 (defn- backfill-version
   "The version to record as having run the current deployment of an install that predates version tracking: the
   [[highest-legacy-major]] as `x.<major>.0.0`, or nil when there are no versioned changesets. Older deployments are
-  left without a row: every legacy changeset on the database counts as part of that version, which is as far back as
-  `migrate down` goes."
+  recorded by [[backfill-untracked-deployments!]] at the major their own position puts the schema at."
   [^Connection conn ^Database database]
   (let [major (highest-legacy-major conn database)]
     (when (pos? major)
@@ -640,23 +759,31 @@
     (fn [position]
       (transduce (comp (filter #(not (pos? (compare (first %) position)))) (map second)) max 0 rows))))
 
-(defn- backfill-untracked-deployments!
-  "Record a version for the deployments with none: on an install that predates this table, only the current deployment
-  (see [[backfill-version]]); otherwise every deployment newer than the newest recorded one. Those were run by a binary
-  from before version-less support -- an earlier patch of a major it was backported to -- and are recorded at the
-  major their `vNN.` ids put the schema at, so they stay boundaries the downgrade check and `migrate down` know."
+(defn- backfill-versions
+  "`[deployment-id version]` for each deployment with no recorded version: on an install that predates this table,
+  every deployment; otherwise every deployment newer than the newest recorded one. Those were run by a binary from
+  before version-less support -- an earlier major, or an earlier patch of a major it was backported to -- and are
+  recorded at the major their `vNN.` ids put the schema at, so they stay boundaries the downgrade check and `migrate
+  down` know: an install that went 63 -> 64 before this table existed can still roll back to 63. The current deployment
+  of a pre-tracking install is recorded at its [[backfill-version]]."
   [^Connection conn ^Database database]
-  (let [deployments           (recorded-deployments conn database)
-        [untracked tracked]   (split-with (comp nil? :ran-version) deployments)]
-    (if (empty? tracked)
-      (when-let [deployment-id (:deployment-id (first untracked))]
-        (when-let [version (backfill-version conn database)]
-          (record-deployment-version! conn deployment-id version true)))
-      (let [major-at (legacy-major-at conn database)]
-        (doseq [{:keys [deployment-id position]} untracked
-                :let [major (major-at position)]
-                :when (pos? major)]
-          (record-deployment-version! conn deployment-id (format "x.%d.0.0" major) true))))))
+  (let [[untracked tracked] (split-with (comp nil? :ran-version) (recorded-deployments conn database))
+        major-at            (legacy-major-at conn database)
+        current             (when (empty? tracked)
+                              (when-let [deployment-id (:deployment-id (first untracked))]
+                                (when-let [version (backfill-version conn database)]
+                                  [[deployment-id version]])))]
+    (concat current
+            (for [{:keys [deployment-id position]} (cond-> untracked (empty? tracked) rest)
+                  :let [major (major-at position)]
+                  :when (pos? major)]
+              [deployment-id (format "x.%d.0.0" major)]))))
+
+(defn- backfill-untracked-deployments!
+  "Record the [[backfill-versions]] as ran rows."
+  [^Connection conn ^Database database]
+  (doseq [[deployment-id version] (backfill-versions conn database)]
+    (record-deployment-version! conn deployment-id version true)))
 
 (defn- repair-old-binary-rollbacks!
   "Correct the version rows of deployments a binary from before version-less support rolled back with its own
@@ -706,26 +833,26 @@
               (query conn [(format "SELECT id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)"
                                    changelog changelog)]))))
 
-(defn- create-versions-table-if-missing!
-  "Create the version table unless it exists. Checked first so an already-upgraded database runs no DDL at boot (a
-  Postgres user without CREATE on the schema fails even `CREATE TABLE IF NOT EXISTS`). A CREATE that fails because a
-  concurrent boot created the table first is ignored; on Postgres a savepoint keeps that failure from aborting the
+(defn- create-table-if-missing!
+  "Create `table-name` with `ddl` unless it exists. Checked first so an already-upgraded database runs no DDL at boot
+  (a Postgres user without CREATE on the schema fails even `CREATE TABLE IF NOT EXISTS`). A CREATE that fails because
+  a concurrent boot created the table first is ignored; on Postgres a savepoint keeps that failure from aborting the
   caller's transaction."
-  [^Connection conn]
-  (when-not (versions-table-exists? conn)
+  [^Connection conn table-name ddl]
+  (when-not (table-exists? table-name conn)
     (let [savepoint (when (and (= :postgres (mdb.connection/db-type)) (not (.getAutoCommit conn)))
                       (.setSavepoint conn))]
       (try
-        (execute! conn [(table-ddl)])
+        (execute! conn [ddl])
         (catch SQLException e
           (when savepoint
             (.rollback conn savepoint))
-          (when-not (versions-table-exists? conn)
+          (when-not (table-exists? table-name conn)
             (throw e)))))))
 
 (defn ensure-version-tracking!
-  "Bring version tracking up to date for the application database on `conn`: create `databasechangelog_version` if
-  it is missing, record versions for deployments that have none (see [[backfill-untracked-deployments!]]), correct
+  "Bring version tracking up to date for the application database on `conn`: create `databasechangelog_version` and
+  `databasechangelog_first_run` if they are missing, record versions for deployments that have none (see [[backfill-untracked-deployments!]]), correct
   the ones a binary from before version-less support rolled back (see [[repair-old-binary-rollbacks!]]), and make sure
   those binaries read the newest changelog row safely (see [[record-legacy-version-tracking!]]).
 
@@ -734,7 +861,8 @@
   back with a failed `migrate` transaction and is redone next time; on MySQL, where it commits implicitly, running it
   first keeps that commit ahead of any migration work."
   [^Connection conn ^Database database]
-  (create-versions-table-if-missing! conn)
+  (create-table-if-missing! conn (versions-table-name) (table-ddl))
+  (create-table-if-missing! conn (first-runs-table-name) (first-runs-table-ddl))
   (backfill-untracked-deployments! conn database)
   (repair-old-binary-rollbacks! conn database)
   ;; every run and rollback ends with a marker; this heals a database whatever else left it otherwise
@@ -788,10 +916,21 @@
             (execute! conn [(format "DELETE FROM %s WHERE id = ?" (versions-table-name)) id]))
           (record-deployment-version! conn deployment-id version true))))))
 
+(defn first-runs-sql
+  "SQL statements recording where the changesets in `unrun-change-sets` that `migrate print` re-runs first ran (see
+  [[record-first-run!]]), for the start of its output: they must run before Liquibase's UPDATE moves those changelog
+  rows. Nil when it re-runs nothing. Read-only, so the table's CREATE is part of the returned SQL."
+  ^String [^Connection conn ^Database database unrun-change-sets]
+  (when-let [statements (seq (mapcat #(first-run-statements conn database (change-set-key %)) unrun-change-sets))]
+    (str "-- Record where re-run changesets first ran\n"
+         (first-runs-table-ddl) ";\n"
+         (str/join (for [statement statements] (str (render-sql statement) ";\n")))
+         "\n")))
+
 (defn version-tracking-sql
   "SQL statements recording an upgrade performed by hand from `migrate print` output: the same rows the exec listener,
   [[record-legacy-version-tracking!]] and [[ensure-version-tracking!]] write when Metabase itself runs the
-  migrations -- the version table, the one-time backfill of the pre-upgrade version when this install has none yet,
+  migrations -- the version table, the one-time backfill of the pre-upgrade versions (see [[backfill-versions]]),
   the upgrading version, and the `vNN.legacy-version-tracking` marker for older binaries. Without them a manual
   upgrade would silently disable downgrade detection for both older binaries (which read the marker) and newer ones
   (which read `databasechangelog_version`).
@@ -804,15 +943,11 @@
         deployment-id (.getDeploymentId (Scope/getCurrentScope))
         version       (current-recorded-version)
         major         (current-recorded-major)
-        current-dep   (last-deployment-id conn database)
-        backfill      (when (and current-dep
-                                 (or (not (versions-table-exists? conn))
-                                     (not (ran-version conn current-dep))))
-                        (backfill-version conn database))]
+        backfill      (backfill-versions conn database)]
     (str "\n-- Record the Metabase version performing this upgrade\n"
          (table-ddl) ";\n"
-         (when backfill
-           (str (render-sql (version-row-statement current-dep backfill true)) ";\n"))
+         (str/join (for [[deployment-id version] backfill]
+                     (str (render-sql (version-row-statement deployment-id version true)) ";\n")))
          (render-sql (version-row-statement deployment-id version true)) ";\n"
          (when major
            (let [mmajor (marker-major major (max changelog-major (highest-real-legacy-major conn database)))]

@@ -98,8 +98,11 @@
 (deftest ^:parallel extract-numbers-special-case-test
   (testing "the v56 changesets that shipped in v55 report 55"
     (is (= 55 (first (#'versions/extract-numbers "v56.2025-06-05T16:48:48"))))
-    (is (= 55 (first (#'versions/extract-numbers "v56.2025-05-19T16:48:48"))))
-    (is (= 60 (first (#'versions/extract-numbers "v60.ghdf99efd"))))))
+    (is (= 55 (first (#'versions/extract-numbers "v56.2025-05-19T16:48:48")))))
+  (testing "the v65 view changesets that 1.64.2.1 ran, and 64 ships again, report 64"
+    (is (= 64 (first (#'versions/extract-numbers "v65.2026-10-07T12:00:00"))))
+    (is (= 64 (first (#'versions/extract-numbers "v65.2026-10-07T12:00:01")))))
+  (is (= 60 (first (#'versions/extract-numbers "v60.ghdf99efd")))))
 
 ;;; ------------------------------------------------- recording runs ----------------------------------------------
 
@@ -205,17 +208,17 @@
             (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'newer' WHERE orderexecuted > ?" changelog-table)
                                                boundary]))
           (versions/ensure-version-tracking! conn db)
-          (testing "only the current deployment gets a ran row, with the highest vNN. major"
-            (is (= [["newer" latest true]] (version-rows conn))))
+          (testing "the current deployment gets a ran row with the highest vNN. major, and the older one the major its
+                    own rows put the schema at"
+            (is (= [["newer" latest true] ["older" latest true]] (version-rows conn))))
           (testing "deployed_at is populated for the backfilled row"
             (is (every? :deployed_at (jdbc/query {:connection conn}
                                                  [(format "SELECT deployed_at FROM %s" (versions/versions-table-name))]))))
           (testing "ensure is idempotent"
             (versions/ensure-version-tracking! conn db)
-            (is (= 1 (count (version-rows conn)))))
-          (testing "the older, unrecorded deployment is still a deployment, with no version"
-            (is (= ["newer" "older"] (map :deployment-id (versions/recorded-deployments conn db))))
-            (is (nil? (:ran-version (second (versions/recorded-deployments conn db)))))))))))
+            (is (= 2 (count (version-rows conn)))))
+          (testing "the deployments keep their changelog order"
+            (is (= ["newer" "older"] (map :deployment-id (versions/recorded-deployments conn db))))))))))
 
 (deftest backfill-uses-highest-version-not-latest-executed-test
   (testing "the backfill records the highest major present, even when a lower-version changeset ran last (a back-ported patch)"
@@ -231,9 +234,66 @@
             (mdb.test-util/fabricate-history! conn changelog-table
                                               [{:deployment "patch" :changesets ["v44.patch-backport"]}])
             (versions/ensure-version-tracking! conn db)
-            (is (= [["patch" latest true]] (version-rows conn))
+            (is (= [["patch" latest true] ["main" latest true]] (version-rows conn))
                 "the current deployment is the patch's, but its version is the highest major in the changelog")
             (is (= latest (versions/last-deployment-version conn db)))))))))
+
+(deftest backfill-counts-the-v65-changesets-64-ships-as-64-test
+  (testing "a 64 database that ran the two v65 view changesets 64 ships again is backfilled as 64, not 65 -- otherwise
+            every later 64 patch would refuse to boot against it"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct
+                                              [{:deployment "d64" :changesets ["v64.2026-07-22T00:00:00"
+                                                                               "v65.2026-10-07T12:00:00"
+                                                                               "v65.2026-10-07T12:00:01"]}])
+            (versions/ensure-version-tracking! conn db)
+            (is (= [["d64" "x.64.0.0" true]] (version-rows conn)))
+            (is (= 64 (versions/current-schema-major conn db)))))))))
+
+(deftest first-backfill-records-every-legacy-deployment-test
+  (testing "the first backfill records each legacy deployment at the major its vNN. ids put the schema at, so the
+            major before the current one stays a `migrate down` target"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct
+                                              [{:deployment "d63" :changesets ["v63.2026-01-01T00:00:00"]}
+                                               {:deployment "d64a" :changesets ["v64.2026-05-01T00:00:00"]}
+                                               {:deployment "d64b" :changesets ["v64.2026-06-01T00:00:00"]}])
+            (versions/ensure-version-tracking! conn db)
+            (is (= [["d64b" "x.64.0.0" true]
+                    ["d64a" "x.64.0.0" true]
+                    ["d63" "x.63.0.0" true]]
+                   (version-rows conn)))
+            (testing "ensure stays idempotent"
+              (versions/ensure-version-tracking! conn db)
+              (is (= 3 (count (version-rows conn)))))
+            (is (= 63 (versions/previous-recorded-major (versions/recorded-deployments conn db) false)))))))))
+
+(deftest version-tracking-sql-backfills-every-legacy-deployment-test
+  (testing "the manual-upgrade SQL backfills every legacy deployment, like the first boot does: once it is applied the
+            versions are tracked, and no later backfill records the older deployments"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (mdb.test-util/fabricate-history! conn ct
+                                              [{:deployment "d63" :changesets ["v63.2026-01-01T00:00:00"]}
+                                               {:deployment "d64" :changesets ["v64.2026-05-01T00:00:00"]}])
+            (is (false? (versions/versions-table-exists? conn)) "sanity: a pre-tracking install")
+            (with-redefs [config/mb-version-info (tag "v0.65.0")]
+              (let [sql (versions/version-tracking-sql conn db 65)]
+                (is (re-find #"'d64', 'x\.64\.0\.0'" sql))
+                (is (re-find #"'d63', 'x\.63\.0\.0'" sql))))))))))
 
 (deftest migrate-up-repairs-legacy-rollbacks-under-the-lock-test
   (testing "migrate up repairs a legacy rollback once it holds the migration lock, and not when there is nothing to run"
@@ -276,13 +336,13 @@
     @statements))
 
 (deftest ensure-version-tracking-skips-ddl-when-table-exists-test
-  (testing "once the version table exists, boots run no DDL: a Postgres user without CREATE on the schema can still boot"
+  (testing "once the version tables exist, boots run no DDL: a Postgres user without CREATE on the schema can still boot"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (liquibase/with-liquibase [liquibase conn]
           (let [db (.getDatabase liquibase)]
-            (is (= 1 (count (ddl-statements! #(versions/ensure-version-tracking! conn db))))
-                "the first call creates the table")
+            (is (= 2 (count (ddl-statements! #(versions/ensure-version-tracking! conn db))))
+                "the first call creates the version and first-run tables")
             (is (= [] (ddl-statements! #(versions/ensure-version-tracking! conn db)))
                 "later calls see it and skip the CREATE")))))))
 
@@ -293,17 +353,19 @@
         (liquibase/with-liquibase [liquibase conn]
           (let [db     (.getDatabase liquibase)
                 orig   (dynamic-redefs/original-fn #'versions/execute!)
-                checks (atom 0)]
-            ;; the other instance's CREATE lands between our existence check and our own CREATE
+                checks (atom {})]
+            ;; the other instance's CREATEs land between our existence checks and our own CREATEs
             (orig conn [(#'versions/table-ddl)])
-            (mt/with-dynamic-fn-redefs [versions/versions-table-exists? (fn [_conn] (> (swap! checks inc) 1)) ; stale on the first check only
+            (orig conn [(#'versions/first-runs-table-ddl)])
+            (mt/with-dynamic-fn-redefs [versions/table-exists? (fn [table-name _conn] ; stale on each table's first check only
+                                                                 (> (get (swap! checks update table-name (fnil inc 0)) table-name) 1))
                                         versions/execute!               (fn [conn [sql :as sql-params]]
                                                                           (if (re-find #"(?i)^\s*CREATE TABLE" sql)
                                                                             (throw (java.sql.SQLException. "duplicate key value violates unique constraint \"pg_type_typname_nsp_index\""))
                                                                             (orig conn sql-params)))]
               (is (nil? (versions/ensure-version-tracking! conn db))))
             (testing "but a CREATE failure with no table behind it still propagates"
-              (mt/with-dynamic-fn-redefs [versions/versions-table-exists? (constantly false)
+              (mt/with-dynamic-fn-redefs [versions/table-exists? (constantly false)
                                           versions/execute!               (fn [conn [sql :as sql-params]]
                                                                             (if (re-find #"(?i)^\s*CREATE TABLE" sql)
                                                                               (throw (java.sql.SQLException. "permission denied for schema public"))
@@ -572,6 +634,50 @@
           (liquibase/with-liquibase [liquibase conn]
             (is (= 66 (versions/latest-applied-major-version conn (.getDatabase liquibase)))
                 "a pre-versionless binary's id scan now reads the upgraded major")))))))
+
+;;; ---------------------------------------------- first runs of re-run changesets ----------------------------------
+
+(deftest re-run-records-where-the-changeset-first-ran-test
+  (testing "a re-run keeps where the changeset first ran, which Liquibase overwrites on its changelog row"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (let [ct       (liquibase/changelog-table-name conn)
+              spec     {:datasource (mdb/data-source)}
+              row-of   (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, dateexecuted, orderexecuted FROM %s WHERE id = ?" ct) id])))
+              first-of (fn [] (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+                                (get (versions/first-runs c) ["migrations/2026/versionless_roc.yaml" "test" "roc_view"])))
+              migrate! (fn [changelog]
+                         (with-redefs [config/mb-version-info   (tag "v0.66.0")
+                                       liquibase/changelog-file changelog]
+                           (mdb/migrate! (mdb/data-source) :up)))]
+          (migrate! "versionless-roc-run1.yaml")
+          (is (nil? (first-of)) "a changeset that only ran once needs no record")
+          (mdb.test-util/age-changelog-rows! spec ct)
+          (let [original (row-of "roc_view")]
+            (migrate! "versionless-roc-run3.yaml")
+            (is (not= (:deployment_id original) (:deployment_id (row-of "roc_view"))) "sanity: the row moved")
+            (is (= original (first-of)) "the first run is recorded as the row was before the re-run")
+            (mdb.test-util/age-changelog-rows! spec ct)
+            (migrate! "versionless-roc-run1.yaml")
+            (is (= (:deployment_id original) (:deployment_id (first-of)))
+                "a second re-run keeps the first run")))))))
+
+(deftest first-runs-keep-the-changelog-timestamp-type-test
+  (testing "a fresh install, which runs UnifyTimeColumnsType over the tables already there, leaves the copied
+            dateexecuted with the changelog's type, so the two still compare"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (mdb/migrate! (mdb/data-source) :up)
+        (let [column-type (fn [table]
+                            (-> (jdbc/query {:connection conn}
+                                            [(str "SELECT data_type FROM information_schema.columns "
+                                                  "WHERE LOWER(table_name) = ? AND LOWER(column_name) = 'dateexecuted'"
+                                                  (when (= :mysql driver/*driver*) " AND table_schema = DATABASE()"))
+                                             (u/lower-case-en table)])
+                                first :data_type u/lower-case-en))]
+          (is (some? (column-type (versions/first-runs-table-name))))
+          (is (= (column-type (liquibase/changelog-table-name conn))
+                 (column-type (versions/first-runs-table-name)))))))))
 
 ;;; ------------------------------- binaries from before version-less support (58 - 65) ------------------------------
 ;;; Version-less support is backported to patch releases of every supported major, so customers move between those

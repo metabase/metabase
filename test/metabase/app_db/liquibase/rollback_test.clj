@@ -228,18 +228,65 @@
             (with-redefs [config/mb-version-info (tag "v0.64.0")]
               (testing "default `migrate down` throws instead of silently deleting the newer deployment's history"
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"Cannot downgrade a database at version 65 from Metabase version 64"
+                                      #"Cannot downgrade a database at version 65\.0 from Metabase version 64\.0"
                                       (rollback/rollback-major-version! conn liquibase false))))
               (testing "an explicit target throws too"
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"Cannot downgrade a database at version 65"
+                                      #"Cannot downgrade a database at version 65\.0"
                                       (rollback/rollback-major-version! conn liquibase false "64"))))
               (is (has-changeset? conn ct "future65cs") "nothing was deleted")
               (testing "force still allows it (the operator explicitly accepts the risk)"
                 (rollback/rollback-major-version! conn liquibase true "64")
                 (is (not (has-changeset? conn ct "future65cs")))))))))))
 
+(deftest rollback-from-older-patch-guard-test
+  (testing "an older patch of the schema's major refuses to roll back too: the newer patch's changesets are not in its
+            changelog either, so it could only clear their bookkeeping and leave their DDL behind"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct
+                                              [{:deployment "d64"  :ran "x.64.0.0" :changesets ["c64"]}
+                                               {:deployment "d654" :ran "x.65.4"   :changesets ["c654"]}
+                                               {:deployment "d655" :ran "x.65.5"   :changesets ["future655cs"]}])
+            (with-redefs [config/mb-version-info (tag "v1.65.4")]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"Cannot downgrade a database at version 65\.5 from Metabase version 65\.4"
+                                    (rollback/rollback-major-version! conn liquibase false)))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"from Metabase version >= 65\.5"
+                                    (rollback/rollback-major-version! conn liquibase false "64")))
+              (is (has-changeset? conn ct "future655cs") "nothing was deleted"))
+            (testing "the same patch, however its version was written, may roll back"
+              (with-redefs [config/mb-version-info (tag "v0.65.5.0")]
+                (is (= 64 (rollback/resolve-rollback-target conn db "64")))
+                (rollback/rollback-major-version! conn liquibase false "65")
+                (is (has-changeset? conn ct "future655cs") "rolling back to the current major is a no-op")))
+            (testing "force still allows it"
+              (with-redefs [config/mb-version-info (tag "v1.65.4")]
+                (rollback/rollback-major-version! conn liquibase true "64")
+                (is (not (has-changeset? conn ct "future655cs")))))))))))
+
 ;;; ------------------------------------------ rolling back real deployments ----------------------------------------
+
+(deftest rollback-to-the-major-before-the-first-backfill-test
+  (testing "an install that went 63 -> 64 before version tracking can still `migrate down` to 63 from a 64 patch"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct
+                                              [{:deployment "d63" :changesets ["v63.2026-01-01T00:00:00"]}
+                                               {:deployment "d64" :changesets ["v64.2026-05-01T00:00:00"]}])
+            (versions/ensure-version-tracking! conn db)
+            (with-redefs [config/mb-version-info (tag "v1.64.3")]
+              (rollback/rollback-major-version! conn liquibase false))
+            (is (= ["v63.2026-01-01T00:00:00"] (changelog-ids conn ct)))
+            (is (= #{"d63"} (version-deployments conn)))))))))
 
 (deftest rollback-after-upgrade-backfill-test
   (testing "an install upgraded from 53 to 55 backfills the old major, records the new one, and downgrades back to 53"
@@ -254,9 +301,9 @@
             (mdb.test-util/fabricate-history! conn ct
                                               [{:deployment "d52older"   :changesets ["v51.2023-06-01T00:00:00" "v52.2023-12-01T00:00:00"]}
                                                {:deployment "d53install" :changesets ["v53.2024-06-01T00:00:00"]}])
-            (testing "on 55 startup the backfill records only the current deployment, from its highest changeset id"
+            (testing "on 55 startup the backfill records every deployment, the current one from its highest changeset id"
               (versions/ensure-version-tracking! conn db)
-              (is (= #{"d53install"} (version-deployments conn)))
+              (is (= #{"d52older" "d53install"} (version-deployments conn)))
               (is (= "x.53.0.0" (versions/last-deployment-version conn db))))
             ;; then the 55 upgrade runs as its own deployment and records its version like a normal run
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d55" :ran "x.55.2.0" :changesets ["v55.2024-10-01T00:00:00"]}])
@@ -267,7 +314,7 @@
                 (rollback/rollback-major-version! conn liquibase false "53")
                 (is (= #{"d52older" "d53install"} (changelog-deployments conn ct))
                     "the 53 install's changesets (including older unrecorded history) are retained")
-                (is (= #{"d53install"} (version-deployments conn)) "the 55 version row was deleted")))))))))
+                (is (= #{"d52older" "d53install"} (version-deployments conn)) "the 55 version row was deleted")))))))))
 
 (deftest migrate-up-backfills-pre-tracking-install-test
   (testing "the first `migrate up` on an install that predates version tracking backfills the pre-upgrade version,
@@ -292,12 +339,14 @@
               (with-redefs [config/mb-version-info (tag (format "v0.%d.0" (inc pre-major)))]
                 (testing "migrate up records both the backfilled pre-upgrade version and the upgrade's own version"
                   (mdb/migrate! (mdb/data-source) :up)
-                  (is (= [(format "x.%d.0.0" pre-major) (format "x.%d.0" (inc pre-major))] (versions-recorded))))
+                  (is (= (format "x.%d.0.0" pre-major) (first (versions-recorded))))
+                  (is (= (format "x.%d.0" (inc pre-major)) (last (versions-recorded)))))
                 (testing "migrate down (default) rolls the upgrade back"
                   (mdb/migrate! (mdb/data-source) :down)
                   (is (empty? (jdbc/query {:datasource (mdb/data-source)} [(format "SELECT 1 FROM %s WHERE id = ?" ct) last-id]))
                       "the upgrade's changeset was rolled back")
-                  (is (= [(format "x.%d.0.0" pre-major)] (versions-recorded))
+                  (is (= (format "x.%d.0.0" pre-major) (first (versions-recorded))))
+                  (is (not-any? #{(format "x.%d.0" (inc pre-major))} (versions-recorded))
                       "the upgrade's version row was removed"))))))))))
 
 (deftest release-migrate-down-reverses-version-less-ddl-test
@@ -573,6 +622,146 @@
                           liquibase/changelog-file "versionless-roc-run1.yaml"]
               (mdb/migrate! (mdb/data-source) :up))
             (is (= 1 (view-x)))))))))
+
+(deftest rollback-reverses-reran-changesets-newer-than-the-target-test
+  (testing "a re-run changeset whose vNN. major is above the rollback target did not exist there, so it is reversed:
+            keeping it would leave 65's view over the 65 column the rollback drops"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; reads use fresh autocommit connections -- see rollback-does-not-reverse-reran-changesets-test
+        (let [ct     (liquibase/changelog-table-name conn)
+              spec   {:datasource (mdb/data-source)}
+              row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
+              view?  (fn [] (try (jdbc/query spec ["SELECT x FROM v_vroc"]) true (catch Exception _ false)))]
+          ;; the 64 install that 65.0 upgrades
+          (with-redefs [liquibase/changelog-file "versioned-roc-run1.yaml"]
+            (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+              (liquibase/with-liquibase [liquibase c]
+                (versions/ensure-version-tracking! c (.getDatabase liquibase))
+                (mdb.test-util/fabricate-history! c ct [{:deployment "d64" :ran "x.64.0" :changesets ["base64"]}]))))
+          (with-redefs [config/mb-version-info   (tag "v0.65.0")
+                        liquibase/changelog-file "versioned-roc-run1.yaml"]
+            (mdb/migrate! (mdb/data-source) :up))
+          (mdb.test-util/age-changelog-rows! spec ct)
+          (with-redefs [config/mb-version-info   (tag "v0.65.1")
+                        liquibase/changelog-file "versioned-roc-run2.yaml"]
+            (mdb/migrate! (mdb/data-source) :up)
+            (is (= "RERAN" (:exectype (row-of "v65.roc-view"))) "sanity: the edited view re-ran in 65.1")
+            (mdb/migrate! (mdb/data-source) :down)
+            (is (false? (view?)) "the view is reversed with the rest of 65")
+            (is (nil? (row-of "v65.roc-view")))
+            (is (nil? (row-of "v65.roc-column")))
+            (is (= ["x.64.0"] (versions-recorded)))))))))
+
+(deftest rollback-keeps-reran-changesets-of-the-target-major-test
+  (testing "a re-run changeset whose vNN. major is at or below the target existed there, so it is kept"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct
+                                              [{:deployment "d64" :ran "x.64.0" :changesets ["v64.base"]}
+                                               {:deployment "d65" :ran "x.65.0" :changesets ["v65.new"
+                                                                                             {:id "v64.view" :exectype "RERAN"}
+                                                                                             {:id "v65.view" :exectype "RERAN"}]}])
+            (with-redefs [config/mb-version-info (tag "v0.65.0")]
+              (rollback/rollback-major-version! conn liquibase false "64"))
+            (is (= "d64" (deployment-of {:connection conn} ct "v64.view")) "64's re-run view is kept on 64's deployment")
+            (is (not (has-changeset? conn ct "v65.view")) "65's re-run view goes with the rest of 65")
+            (is (not (has-changeset? conn ct "v65.new")))
+            (is (= #{"d64"} (version-deployments conn)))))))))
+
+(defn- migrate-late-roc-history!
+  "Fabricate a deployment `d0` run by `before`, then upgrade it with `versionless-late-roc-run1.yaml` as version
+  `first-tag` and re-run its view with `versionless-late-roc-run2.yaml` as `second-tag`. Returns fns reading the view's
+  changelog row and whether the view exists."
+  [ct before first-tag second-tag]
+  (let [spec {:datasource (mdb/data-source)}]
+    (with-redefs [liquibase/changelog-file "versionless-late-roc-run1.yaml"]
+      (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+        (liquibase/with-liquibase [liquibase c]
+          (versions/ensure-version-tracking! c (.getDatabase liquibase))
+          (mdb.test-util/fabricate-history! c ct [{:deployment "d0" :ran before :changesets ["base"]}]))))
+    (with-redefs [config/mb-version-info   (tag first-tag)
+                  liquibase/changelog-file "versionless-late-roc-run1.yaml"]
+      (mdb/migrate! (mdb/data-source) :up))
+    (mdb.test-util/age-changelog-rows! spec ct)
+    (with-redefs [config/mb-version-info   (tag second-tag)
+                  liquibase/changelog-file "versionless-late-roc-run2.yaml"]
+      (mdb/migrate! (mdb/data-source) :up))
+    {:row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
+     :view?  (fn [] (try (jdbc/query spec ["SELECT x FROM v_lroc"]) true (catch Exception _ false)))}))
+
+(deftest rollback-reverses-version-less-reran-changesets-newer-than-the-target-test
+  (testing "a version-less re-run changeset that first ran after the rollback target is reversed: where it first ran is
+            recorded when it re-runs"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (let [ct                     (liquibase/changelog-table-name conn)
+              {:keys [row-of view?]} (migrate-late-roc-history! ct "x.64.0" "v0.65.0" "v0.65.1")]
+          (is (= "RERAN" (:exectype (row-of "late_roc_view"))) "sanity: the edited view re-ran in 65.1")
+          (with-redefs [config/mb-version-info   (tag "v0.65.1")
+                        liquibase/changelog-file "versionless-late-roc-run2.yaml"]
+            (mdb/migrate! (mdb/data-source) :down))
+          (is (false? (view?)) "the view is reversed with the rest of 65")
+          (is (nil? (row-of "late_roc_view")))
+          (is (nil? (row-of "late_roc_column")))
+          (is (= ["x.64.0"] (versions-recorded)))
+          (is (empty? (versions/first-runs (.getConnection ^javax.sql.DataSource (mdb/data-source))))
+              "the reversed changeset's first run is forgotten with it"))))))
+
+(deftest rollback-to-deployment-reverses-reran-changesets-after-the-boundary-test
+  (testing "the development rollback, where every deployment records the same version, also reverses a re-run
+            changeset that first ran after the boundary deployment"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (let [ct                     (liquibase/changelog-table-name conn)
+              {:keys [row-of view?]} (migrate-late-roc-history! ct versions/dev-version "vLOCAL_DEV" "vLOCAL_DEV")]
+          (is (= "RERAN" (:exectype (row-of "late_roc_view"))) "sanity: the edited view re-ran")
+          (with-redefs [config/mb-version-info   (tag "vLOCAL_DEV")
+                        liquibase/changelog-file "versionless-late-roc-run2.yaml"]
+            (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+              (.setAutoCommit c false)
+              (liquibase/with-liquibase [liquibase c]
+                (versions/ensure-version-tracking! c (.getDatabase liquibase))
+                (rollback/rollback-to-deployment! c liquibase "d0"))
+              (.commit c)))
+          (is (false? (view?)))
+          (is (nil? (row-of "late_roc_column")))
+          (is (= #{"d0"} (changelog-deployments (.getConnection ^javax.sql.DataSource (mdb/data-source)) ct))))))))
+
+(deftest rollback-tells-re-run-changesets-apart-by-file-test
+  (testing "first runs are kept per [filename author id]: the same id and author in two files are two changesets"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db      (.getDatabase liquibase)
+                ct      (liquibase/changelog-table-name liquibase)
+                view-in (fn [filename] {:id "same_view" :filename filename})
+                row-in  (fn [filename]
+                          (first (jdbc/query {:connection conn}
+                                             [(format "SELECT deployment_id FROM %s WHERE id = 'same_view' AND filename = ?" ct)
+                                              filename])))]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d64" :ran "x.64.0" :changesets ["base64" (view-in "a.yaml")]}
+                                                       {:deployment "d65" :ran "x.65.0" :changesets ["new65" (view-in "b.yaml")]}])
+            ;; 65.1 re-runs both: record where each first ran, then move them as Liquibase does
+            (doseq [filename ["a.yaml" "b.yaml"]
+                    statement (#'versions/first-run-statements conn db [filename "test" "same_view"])]
+              (jdbc/execute! {:connection conn} statement))
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d651" :ran "x.65.1" :changesets ["new651"]}])
+            (jdbc/execute! {:connection conn}
+                           [(format (str "UPDATE %s SET exectype = 'RERAN', deployment_id = 'd651', dateexecuted = "
+                                         "(SELECT MAX(dateexecuted) FROM %s), orderexecuted = orderexecuted + 100 "
+                                         "WHERE id = 'same_view'")
+                                    ct ct)])
+            (with-redefs [config/mb-version-info (tag "v0.65.1")]
+              (rollback/rollback-major-version! conn liquibase false "64"))
+            (is (= "d64" (:deployment_id (row-in "a.yaml"))) "the view that first ran in 64 is kept")
+            (is (nil? (row-in "b.yaml")) "the view that first ran in 65 goes with 65")
+            (is (= #{["a.yaml" "test" "same_view"]} (set (keys (versions/first-runs conn)))))))))))
 
 (deftest rollback-of-reran-only-deployment-test
   (testing "a deployment consisting ONLY of a re-run changeset can still be rolled back: the boundary steps back and

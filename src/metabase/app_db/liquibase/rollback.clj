@@ -87,33 +87,48 @@
   must NOT be reversed>, :boundary-deployment <deployment_id the retained rows are reassigned to>,
   :deployments-to-drop <set of deployment_ids whose entire history is rolled back>}`.
 
-  Every changeset that ran after the latest changelog row of `boundary-deps` is dropped, leaving the schema in the
-  state those deployments last left it. Ordering is Liquibase's own [[versions/exec-pos]].
+  Every changeset that ran after the boundary is dropped, leaving the schema in the state those deployments last left
+  it. The boundary is the latest point the `boundary-deps` reached: their latest changelog row, or where one of their
+  changesets that re-ran later first ran, if that is later still. Ordering is Liquibase's own [[versions/exec-pos]].
 
-  Rows with exectype `RERAN` in that window are *retained*, not dropped: a RERAN row is an older changeset that
-  merely re-executed under the newer deployment (a `runOnChange` changeset whose checksum changed, or a
-  `migrate force` re-run) -- Liquibase moves the row to the run's deployment with a fresh execution position, but the
-  changeset itself predates the boundary, and reversing it would strip schema state the rollback target still needs.
-  Retained rows are reassigned to `:boundary-deployment` (the latest deployment of the target major) so every
-  surviving row stays attached to a deployment with a recorded version. Limitation: a changeset first introduced
-  *after* the target that later re-ran is indistinguishable from this and is also retained -- the rolled-back schema
-  keeps its object as a harmless orphan, and a later re-upgrade adopts it again."
-  [^Connection conn changelog-table boundary-deps]
+  Rows with exectype `RERAN` in that window are *retained*, not dropped, when the changeset already existed at the
+  target: a RERAN row is an older changeset that merely re-executed under the newer deployment (a `runOnChange`
+  changeset whose checksum changed, or a `migrate force` re-run) -- Liquibase moves the row to the run's deployment
+  with a fresh execution position, but reversing a changeset that predates the boundary would strip schema state the
+  rollback target still needs. Retained rows are reassigned to `:boundary-deployment` (the latest deployment of the
+  target major) so every surviving row stays attached to a deployment with a recorded version.
+
+  Where the changeset first ran (see [[versions/first-runs]]) says whether it existed at the target: it did when that
+  is at or before the boundary. A re-run without that record (one run by a binary from before it was kept) falls back
+  to its id: a `vNN.` id existed at the target when its major is at most `target-major` (nil: any major), and a
+  version-less id is retained, which keeps a version-less changeset first introduced *after* the target as an orphan
+  that a later re-upgrade adopts again."
+  [^Connection conn changelog-table boundary-deps target-major]
   (let [all-rows     (jdbc/query {:connection conn}
                                  [(format "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted, exectype FROM %s" changelog-table)])
-        boundary-row (->> all-rows
-                          (filter #(boundary-deps (:deployment_id %)))
-                          (sort-by versions/exec-pos)
-                          last)
-        boundary-pos (some-> boundary-row versions/exec-pos)
+        first-runs   (versions/first-runs conn)
+        first-run    (fn [{:keys [exectype] :as row}]
+                       (when (= "RERAN" (some-> exectype u/upper-case-en))
+                         (get first-runs (changeset-row-key row))))
+        ;; a boundary deployment whose changeset re-ran later reached where it first ran
+        [boundary-pos boundary-dep] (->> (concat all-rows (keep first-run all-rows))
+                                         (filter #(boundary-deps (:deployment_id %)))
+                                         (map (juxt versions/exec-pos :deployment_id))
+                                         (sort-by first)
+                                         last)
         window-rows  (if boundary-pos
                        (filter #(pos? (compare (versions/exec-pos %) boundary-pos)) all-rows)
                        [])
-        reran?       (fn [{:keys [exectype]}] (= "RERAN" (some-> exectype u/upper-case-en)))
+        retain?      (fn [{:keys [exectype id] :as row}]
+                       (and (= "RERAN" (some-> exectype u/upper-case-en))
+                            (if-let [first-ran (first-run row)]
+                              (not (pos? (compare (versions/exec-pos first-ran) boundary-pos)))
+                              (let [major (versions/legacy-major id)]
+                                (or (nil? major) (nil? target-major) (<= major target-major))))))
         rows-by-dep  (group-by :deployment_id all-rows)]
-    {:changesets-to-drop   (set (map changeset-row-key (remove reran? window-rows)))
-     :changesets-to-retain (set (map changeset-row-key (filter reran? window-rows)))
-     :boundary-deployment  (:deployment_id boundary-row)
+    {:changesets-to-drop   (set (map changeset-row-key (remove retain? window-rows)))
+     :changesets-to-retain (set (map changeset-row-key (filter retain? window-rows)))
+     :boundary-deployment  boundary-dep
      ;; only clear a deployment's history/version rows when its entire history leaves it (dropped or reassigned)
      :deployments-to-drop  (set (for [[dep in-window] (group-by :deployment_id window-rows)
                                       :when (and dep (= (count in-window) (count (get rows-by-dep dep))))]
@@ -211,18 +226,19 @@
 
 (defn- rollback-to-deployments!
   "Roll back every changeset that ran after the latest changelog row of the `boundary-deps` deployments (see
-  [[rollback-plan]]). `target` is only used for logging and error messages.
+  [[rollback-plan]]). `target` is only used for logging and error messages; `target-major` is the major rolled back
+  to (nil when unknown), which decides which re-run changesets are kept (see [[rollback-plan]]).
 
   Repairs version-less changelog filenames first (see [[liquibase/repair-version-less-filenames!]]): the rows must
   match their changesets to be reversed, and not every caller has been through
   [[liquibase/consolidate-liquibase-changesets!]] -- the development rollback ([[rollback-to-deployment!]]) has not."
-  [conn ^Liquibase liquibase boundary-deps target]
+  [conn ^Liquibase liquibase boundary-deps target target-major]
   (liquibase/with-scope-locked liquibase
     (let [lb-db           (.getDatabase liquibase)
           changelog-table (liquibase/changelog-table-name liquibase)
           _               (liquibase/repair-version-less-filenames! conn liquibase changelog-table)
           {:keys [changesets-to-drop changesets-to-retain boundary-deployment deployments-to-drop]}
-          (rollback-plan conn changelog-table boundary-deps)]
+          (rollback-plan conn changelog-table boundary-deps target-major)]
       (log/infof "Rolling back app database schema to %s" target)
       (if (and (empty? changesets-to-drop) (empty? changesets-to-retain))
         (log/info "No changesets to roll back")
@@ -243,6 +259,7 @@
             (reassign-changeset-rows! conn changelog-table changesets-to-retain boundary-deployment))
           (log-unreversible-rows! liquibase changesets-to-drop)
           (delete-deployment-rows! conn changelog-table deployments-to-drop)
+          (versions/forget-first-runs! conn changesets-to-drop)
           (versions/record-schema-marker! lb-db))))))
 
 ;;; ------------------------------------------------------ guards --------------------------------------------------
@@ -261,17 +278,19 @@
                     {:schema-major versions/dev-major}))))
 
 (defn- refuse-to-roll-back-newer-schema!
-  "Throw unless `force?` when the schema was migrated by a NEWER Metabase version than this binary: this binary's
-  changelog does not contain those changesets, so Liquibase cannot reverse their DDL -- it would only delete their
-  bookkeeping rows (including the legacy-version-tracking marker) and leave the schema silently corrupted."
+  "Throw unless `force?` when the schema was migrated by a NEWER Metabase version than this binary -- a later major, or
+  a later patch of the same one: this binary's changelog does not contain those changesets, so Liquibase cannot
+  reverse their DDL -- it would only delete their bookkeeping rows (including the legacy-version-tracking marker) and
+  leave the schema silently corrupted, failing the next upgrade to that version."
   [deployments force?]
   (when-not force?
-    (let [schema-major (versions/schema-major deployments)
-          binary-major (versions/current-recorded-major)]
-      (when (and schema-major binary-major (> schema-major binary-major))
-        (throw (ex-info (format "Cannot downgrade a database at version %d from Metabase version %d. You must run 'migrate down' from Metabase version >= %d."
-                                schema-major binary-major schema-major)
-                        {:schema-major schema-major, :binary-major binary-major}))))))
+    (let [schema-version (:ran-version (first deployments))
+          binary-version (versions/current-recorded-version)]
+      (when (and schema-version (pos? (versions/compare-versions schema-version binary-version)))
+        (let [display #(str/replace-first % #"^x\." "")]
+          (throw (ex-info (format "Cannot downgrade a database at version %s from Metabase version %s. You must run 'migrate down' from Metabase version >= %s."
+                                  (display schema-version) (display binary-version) (display schema-version))
+                          {:schema-version schema-version, :binary-version binary-version})))))))
 
 ;;; --------------------------------------------------- entry points -----------------------------------------------
 
@@ -286,7 +305,10 @@
       (throw (IllegalArgumentException.
               (format "%s is not a deployment of this database (see the deployment_id column of %s)."
                       (pr-str boundary-deployment-id) (liquibase/changelog-table-name liquibase)))))
-    (rollback-to-deployments! conn liquibase #{boundary-deployment-id} (str "deployment " boundary-deployment-id))))
+    (rollback-to-deployments! conn liquibase #{boundary-deployment-id} (str "deployment " boundary-deployment-id)
+                              (some #(when (= boundary-deployment-id (:deployment-id %))
+                                       (some-> (:ran-version %) versions/version->major))
+                                    deployments))))
 
 (defn rollback-major-version!
   "Roll back all migrations that ran after the most recent deployment of `target` -- an integer major version (or a
@@ -305,7 +327,7 @@
      (refuse-dev-migrated-schema! deployments)
      (refuse-to-roll-back-newer-schema! deployments force?)
      (if-let [major (versions/previous-recorded-major deployments force?)]
-       (rollback-to-deployments! conn liquibase (deployments-with-major deployments major) major)
+       (rollback-to-deployments! conn liquibase (deployments-with-major deployments major) major major)
        (log/info "No earlier recorded Metabase version to roll back to; nothing to do."))))
 
   ([conn ^Liquibase liquibase force? target]
@@ -317,4 +339,4 @@
          (throw (IllegalArgumentException.
                  (format "%s is not a valid rollback target. Target must be the major version of a recorded deployment (see the %s table)."
                          (pr-str target) (versions/versions-table-name)))))
-       (rollback-to-deployments! conn liquibase (deployments-with-major deployments major) target)))))
+       (rollback-to-deployments! conn liquibase (deployments-with-major deployments major) target major)))))

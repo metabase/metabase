@@ -1,6 +1,7 @@
 (ns ^:mb/app-db-migrations-test metabase.app-db.setup-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
@@ -16,6 +17,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
@@ -277,6 +279,22 @@
                 (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_version" sql))
                 (is (false? (versions/versions-table-exists? conn))
                     "`migrate print` must not mutate the database"))))))))
+  (testing "a changeset that the printed SQL re-runs has its first run recorded before Liquibase's UPDATE moves it"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [config/mb-version-info   (assoc config/mb-version-info :tag "v0.66.0")
+                      liquibase/changelog-file "versionless-roc-run1.yaml"]
+          (mdb/migrate! (mdb/data-source) :up))
+        (with-redefs [config/mb-version-info   (assoc config/mb-version-info :tag "v0.66.1")
+                      liquibase/changelog-file "versionless-roc-run3.yaml"]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [sql     (liquibase/migrations-sql liquibase)
+                  capture (some-> (re-find #"(?i)INSERT INTO databasechangelog_first_run[^;]+'roc_view'" sql) u/lower-case-en)
+                  update  (re-find #"(?i)UPDATE [^;]*databasechangelog[^;]+roc_view" sql)]
+              (is (some? capture))
+              (is (some? update) "sanity: Liquibase re-runs the view")
+              (is (< (str/index-of (u/lower-case-en sql) capture) (str/index-of sql update)))
+              (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_first_run" sql))))))))
   (testing "a dev build's SQL records the dev version and a v9999 marker, like any other version"
     (mt/with-temp-empty-app-db [conn :h2]
       (update-to-changelog-id "v45.00-001" conn)

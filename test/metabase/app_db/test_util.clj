@@ -131,12 +131,20 @@
   The rewind is computed ON THE SERVER (`CURRENT_TIMESTAMP - INTERVAL '<n>' MINUTE`, valid on H2/Postgres/MySQL): a
   client-side `java.sql.Timestamp` parameter is rendered in the JVM's zone while Liquibase's rows and
   `CURRENT_TIMESTAMP` land in the server's frame, so on a non-UTC dev machine against a UTC MySQL the aged rows would
-  jump hours into the future instead."
+  jump hours into the future instead.
+
+  The first runs copied from changelog rows (see [[versions/first-runs]]) are aged with them, so they keep comparing
+  with the changelog the same way."
   ([spec changelog-table]
    (age-changelog-rows! spec changelog-table 1))
   ([spec changelog-table minutes]
-   (jdbc/execute! spec [(format "UPDATE %s SET dateexecuted = CURRENT_TIMESTAMP - INTERVAL '%d' MINUTE"
-                                changelog-table (long minutes))])))
+   (let [first-runs? (if-let [conn (:connection spec)]
+                       (versions/table-exists? (versions/first-runs-table-name) conn)
+                       (with-open [conn (.getConnection ^javax.sql.DataSource (:datasource spec))]
+                         (versions/table-exists? (versions/first-runs-table-name) conn)))]
+     (doseq [table (cond-> [changelog-table] first-runs? (conj (versions/first-runs-table-name)))]
+       (jdbc/execute! spec [(format "UPDATE %s SET dateexecuted = CURRENT_TIMESTAMP - INTERVAL '%d' MINUTE"
+                                    table (long minutes))])))))
 
 (defn- insert-changelog-row!
   [conn changelog-table {:keys [id author filename exectype] :or {author "test", filename "synthetic.yaml", exectype "EXECUTED"}}
