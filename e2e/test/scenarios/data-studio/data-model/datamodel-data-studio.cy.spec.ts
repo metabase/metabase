@@ -825,6 +825,7 @@ describe("scenarios > data studio > datamodel", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
+      TableSection.getNameInput().should("have.attr", "readonly");
       verifyReadOnlyTablePage({ hasTabs: true });
     });
 
