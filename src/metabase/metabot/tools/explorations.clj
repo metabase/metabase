@@ -177,10 +177,11 @@
 
 (defn- left-over-line
   "The line that counts the bad ids in `left-over` and names their metrics."
-  [left-over]
+  [left-over listed?]
   (let [n       (count (mapcat :dimension-ids left-over))
         metrics (map (comp str :metric-id) left-over)]
-    (str "- …and " n " more invalid dimension " (if (= 1 n) "id" "ids") " on "
+    (str "- " (when listed? "…and ") n (when listed? " more") " invalid dimension "
+         (if (= 1 n) "id" "ids") " on "
          (if (next metrics) "metrics " "metric ") (summarize-names metrics) ".")))
 
 (defn- invalid-dimensions-lines
@@ -198,7 +199,7 @@
                                    [[] [] k]
                                    invalid-dimensions)]
     (cond-> listed
-      (seq left-over) (conj (left-over-line left-over)))))
+      (seq left-over) (conj (left-over-line left-over (seq listed))))))
 
 (defn- lookup-step
   "The step that tells the model to look up the candidates of the metrics in `invalid-dimensions`.

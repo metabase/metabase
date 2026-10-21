@@ -262,6 +262,20 @@
       (is (str/includes? output " are not candidates of metric 2 (Metric 2).\n- …and "))
       (is (str/includes? output "\nCall `get_research_candidates` with `metric_ids` [1, 2] to see every candidate.")))))
 
+(deftest add-research-groups-counts-oversized-dimension-ids-test
+  (let [output (:output (add-groups-rejected-with
+                         {:invalid-dimensions [{:metric-id     1
+                                                :metric-name   "Revenue"
+                                                :dimension-ids [(apply str (repeat 3500 "x"))]
+                                                :candidates    []}
+                                               {:metric-id     2
+                                                :metric-name   "Orders"
+                                                :dimension-ids ["wrong"]
+                                                :candidates    []}]}))]
+    (is (str/includes? output "- 2 invalid dimension ids on metrics 1, 2.\n"))
+    (is (>= 3000 (count output)))
+    (is (str/includes? output "Call `get_research_candidates` with `metric_ids` [1, 2]"))))
+
 (deftest add-research-groups-suggests-lookups-within-the-limit-test
   (testing "the lookup that it suggests asks for no more metric_ids per call than the tool takes"
     (let [output  (:output (add-groups-rejected-with
