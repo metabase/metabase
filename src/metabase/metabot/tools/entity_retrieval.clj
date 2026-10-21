@@ -17,11 +17,11 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -171,25 +171,33 @@
 ;; get-profile]] serves (the library variant, with this tool) only when entity-retrieval-available? — otherwise it
 ;; redirects to :nlq-fallback (general search). That single probe is the sole gate, so prompt and tools can't
 ;; disagree about index availability.
-(mu/defn ^{:tool-name "retrieve_library_entities"
-           :scope     scope/agent-search}
-  retrieve-library-entities-tool
-  "Find the best data to answer the user's request from the library — the set of entities published to it
-  (published tables, library metrics/models, and their measures/segments). Phrase
-  `user_search_prompt` as a full natural-language description of the data wanted (it is matched on
-  meaning, not keywords).
+(defrecord RetrieveLibraryEntitiesTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "retrieve_library_entities"
+     :description (str "Find the best data to answer the user's request from the library – the set of entities "
+                       "published to it (published tables, library metrics/models, and their measures/segments). "
+                       "Phrase `user_search_prompt` as a full natural-language description of the data wanted (it "
+                       "is matched on meaning, not keywords).\n\n"
+                       "Returns a handful of distinct library entities, best-first. Each match has the `matched_on` "
+                       "text that triggered it, any curator `usage_instructions`, a raw `similarity`, and the "
+                       "`entity` – a full search record (name, type, database, `portable_entity_id`, "
+                       "fully-qualified name). Use it to pick the right entity, then `read_resource` that entity to "
+                       "confirm its fields and sample values before building. If the top match is flagged "
+                       "low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library clearly "
+                       "matches – prefer asking the user to clarify or narrow the request.")
+     :scope       scope/agent-search
+     :args        entity-retrieval-schema})
 
-  Returns a handful of distinct library entities, best-first. Each match has the `matched_on` text that
-  triggered it, any curator `usage_instructions`, a raw `similarity`, and the `entity` — a full search
-  record (name, type, database, `portable_entity_id`, fully-qualified name). Use it to pick the right
-  entity, then `read_resource` that entity to confirm its fields and sample values before building. If the
-  top match is flagged low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library
-  clearly matches — prefer asking the user to clarify or narrow the request."
-  [{:keys [user_search_prompt limit]} :- entity-retrieval-schema]
-  (let [n       (min max-limit (or limit default-limit))
-        matches (build-matches user_search_prompt n)]
-    {:output            (format-output matches)
-     :structured-output {:result-type :search
-                         :data        (flatten-data matches)
-                         :total_count (count matches)
-                         :weak_match  (boolean (:weak? (first matches)))}}))
+  (handle [_ {:keys [user_search_prompt limit]} _ctx]
+    (let [n       (min max-limit (or limit default-limit))
+          matches (build-matches user_search_prompt n)]
+      {:output            (format-output matches)
+       :structured-output {:result-type :search
+                           :data        (flatten-data matches)
+                           :total_count (count matches)
+                           :weak_match  (boolean (:weak? (first matches)))}})))
+
+(def retrieve-library-entities-tool
+  "The `retrieve_library_entities` tool."
+  (->RetrieveLibraryEntitiesTool))

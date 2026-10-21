@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.entity-retrieval :as entity-retrieval]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.search.entity-retrieval.core :as cs.core]
@@ -18,6 +19,11 @@
   `(mt/with-dynamic-fn-redefs [cs.core/search-unfiltered ~search-fn]
      ~@body))
 
+(defn- retrieve
+  "Call `retrieve_library_entities` with `args`."
+  [args]
+  (tools.core/handle entity-retrieval/retrieve-library-entities-tool args {}))
+
 (deftest tool-shape-oss-fallback-test
   (testing "without the library-retrieval feature the tool returns the standard empty result shape"
     ;; Pin the feature off so the defenterprise call takes its OSS fallback regardless of any ambient
@@ -28,8 +34,7 @@
                                    :data        []
                                    :total_count 0
                                    :weak_match  false}}
-              (entity-retrieval/retrieve-library-entities-tool
-               {:user_search_prompt "revenue per region"}))))))
+              (retrieve {:user_search_prompt "revenue per region"}))))))
 
 (deftest similarity-helper-test
   (let [similarity (var-get #'entity-retrieval/similarity)]
@@ -75,8 +80,7 @@
                          :doc_text sentinel
                          :score    {:total_score 0.9
                                     :scores [{:name :similarity :score 0.9}]}}]
-              search!  #(entity-retrieval/retrieve-library-entities-tool
-                         {:user_search_prompt "secret"})]
+              search!  #(retrieve {:user_search_prompt "secret"})]
           (with-unfiltered-search (fn [_ _] raw)
             (mt/with-dynamic-fn-redefs
               [cs.core/library-entity-keys (constantly #{["model" secret-id]})]
@@ -199,5 +203,4 @@
   (testing "a failing library search propagates to the agent loop, which reports the call as failed"
     (with-unfiltered-search (fn [_ _] (throw (ex-info "Embedding service unavailable" {})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedding service unavailable"
-                            (entity-retrieval/retrieve-library-entities-tool
-                             {:user_search_prompt "revenue per region"}))))))
+                            (retrieve {:user_search_prompt "revenue per region"}))))))
