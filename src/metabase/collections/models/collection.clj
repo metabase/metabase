@@ -1728,33 +1728,21 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (collections.db/collection-ids-with-location-like (str (children-location collection) "%")))
 
-(mu/defn- archived-elsewhere-descendant-ids :- [:set ms/PositiveInt]
-  "The IDs of the descendants of `collection` among `candidates`, archived Collections without an archive operation,
-  that were archived along with it: not archived directly and not inside a descendant that was."
-  [collection :- CollectionWithLocationAndIDOrRoot
-   candidates :- [:sequential [:map {:closed true}
-                               [:id ms/PositiveInt]
-                               [:location :string]
-                               [:archived_directly [:maybe :boolean]]]]]
-  (let [prefix         (children-location collection)
-        descendants    (filter #(str/starts-with? (:location %) prefix) candidates)
-        archived-apart (into #{} (comp (filter :archived_directly) (map :id)) descendants)]
-    (into #{}
-          (comp (remove :archived_directly)
-                (remove #(some archived-apart (location-path->ids (:location %))))
-                (map :id))
-          descendants)))
-
 (mu/defn- archived-along-descendant-ids :- [:set ms/PositiveInt]
   "The IDs of the descendants of the archived `collection` that were archived along with it: those of its archive
-  operation, or, for a collection archived elsewhere (without one), the [[archived-elsewhere-descendant-ids]]."
+  operation, or, for a collection archived elsewhere (without one), the archived descendants without one that were
+  not archived directly and are not inside a descendant that was."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [pattern (str (children-location collection) "%")]
     (if-let [archive-operation-id (:archive_operation_id collection)]
       (collections.db/archived-collection-ids-in-operation-with-location-like pattern archive-operation-id)
-      (archived-elsewhere-descendant-ids
-       collection
-       (collections.db/archived-collections-without-operation-with-locations-like [pattern])))))
+      (let [candidates       (collections.db/archived-collections-without-operation-with-location-like pattern)
+            archived-apart   (into #{} (comp (filter :archived_directly) (map :id)) candidates)]
+        (into #{}
+              (comp (remove :archived_directly)
+                    (remove #(some archived-apart (location-path->ids (:location %))))
+                    (map :id))
+              candidates)))))
 
 (mu/defn perms-for-unarchiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to unarchive a `collection`. Since unarchiving is
@@ -2519,39 +2507,27 @@
           parent-ids (keep val coll-id->parent-id)
           parent-id->archived? (when (seq parent-ids)
                                  (collections.db/collection-archived-flags parent-ids))
-          restorable? (fn [coll]
-                        (and (:archived coll)
-                             (:archived_directly coll)
-                             (not (get parent-id->archived? (coll-id->parent-id (:id coll)) false))))
-          restorable-colls (filter restorable? colls)
-          unselected-op-ids (keep #(when-not (contains? % :archive_operation_id) (:id %)) restorable-colls)
-          coll-id->op-id (merge (when (seq unselected-op-ids)
-                                  (collections.db/archive-operation-ids unselected-op-ids))
-                                (into {}
-                                      (keep #(when (contains? % :archive_operation_id)
-                                               [(:id %) (:archive_operation_id %)]))
-                                      restorable-colls))
           ;; Batch: get all descendants for all archive_operation_ids
-          op-ids (distinct (keep (comp coll-id->op-id :id) restorable-colls))
-          op-id->descendant-ids (when (seq op-ids)
-                                  (update-vals (group-by :archive_operation_id
-                                                         (collections.db/archived-collections-in-operations op-ids))
-                                               #(map :id %)))
-          archived-elsewhere (remove (comp coll-id->op-id :id) restorable-colls)
-          elsewhere-candidates (when (seq archived-elsewhere)
-                                 (collections.db/archived-collections-without-operation-with-locations-like
-                                  (map #(str (children-location %) "%") archived-elsewhere)))
-          descendant-ids (fn [coll]
-                           (if-let [op-id (coll-id->op-id (:id coll))]
-                             (get op-id->descendant-ids op-id [])
-                             (archived-elsewhere-descendant-ids coll elsewhere-candidates)))]
-      (for [coll colls]
-        (assoc coll :can_restore (boolean (and (restorable? coll)
+          op-ids (keep :archive_operation_id archived-colls)
+          all-descendants (when (seq op-ids)
+                            (collections.db/archived-collections-in-operations op-ids))
+          op-id->descendant-ids (update-vals (group-by :archive_operation_id all-descendants)
+                                             #(map :id %))]
+      (for [coll colls
+            :let [parent-id (coll-id->parent-id (:id coll))
+                  archived-directly? (:archived_directly coll)
+                  parent-archived? (get parent-id->archived? parent-id false)
+                  descendant-ids (if (:archive_operation_id coll)
+                                   (get op-id->descendant-ids (:archive_operation_id coll) [])
+                                   (archived-along-descendant-ids coll))
+                  perm-paths (set (cons (perms/collection-readwrite-path (u/the-id coll))
+                                        (map perms/collection-readwrite-path descendant-ids)))]]
+        (assoc coll :can_restore (boolean (and (:archived coll)
+                                               archived-directly?
+                                               (not parent-archived?)
                                                (perms/set-has-full-permissions-for-set?
                                                 @api/*current-user-permissions-set*
-                                                (set (cons (perms/collection-readwrite-path (u/the-id coll))
-                                                           (map perms/collection-readwrite-path
-                                                                (descendant-ids coll))))))))))))
+                                                perm-paths))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
   (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
