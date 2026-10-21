@@ -424,7 +424,7 @@
 (deftest aggregate-datetime-add-on-timestamp-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics :set-timezone)
     (mt/dataset attempted-murders-no-time
-      (mt/with-report-timezone-id! "America/Toronto"
+      (mt/with-report-timezone-id! "Pacific/Honolulu"
         (let [mp          (mt/metadata-provider)
               attempts    (lib.metadata/table mp (mt/id :attempts))
               datetime-tz (lib.metadata/field mp (mt/id :attempts :datetime_tz))
@@ -432,5 +432,6 @@
                             (lib/expression $ "shifted" (lib/datetime-add datetime-tz 12 :month))
                             (lib/aggregate $ (lib/count))
                             (lib/breakout $ (lib/with-temporal-bucket (lib/expression-ref $ "shifted") :month)))]
-          (is (= [["2020-11-01T00:00:00-04:00" 20]]
+          (is (= [["2020-10-01T00:00:00-10:00" 1]
+                  ["2020-11-01T00:00:00-10:00" 19]]
                  (mt/rows (qp/process-query query)))))))))
