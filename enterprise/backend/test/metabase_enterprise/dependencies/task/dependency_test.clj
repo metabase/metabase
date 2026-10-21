@@ -1197,3 +1197,104 @@
           (deps.test/record-analysis-finding-processed! :card card-id)
           (deps.test/synchronously-run-dependency-job!)
           (is (deps.test/analysis-finding-pending? :card card-id)))))))
+
+(defn- data-app-deps
+  "The entities the data app with `app-id` depends on, as `[entity-type entity-id]` pairs."
+  [app-id]
+  (t2/select-fn-set (juxt :to_entity_type :to_entity_id)
+                    :model/Dependency :from_entity_type :data-app :from_entity_id app-id))
+
+(deftest ^:synchronized data-app-depends-on-its-resource-collection-test
+  (deps.test/run-with-dependencies-setup!
+   (fn [mp]
+     (let [venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                      {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                      :model/Collection {other-collection-id :id} {}
+                      :model/Card {card-id :id} {:dataset_query venues-query :collection_id collection-id}
+                      :model/Action {action-id :id} {:type :query :name "Delete venue" :collection_id collection-id}
+                      :model/QueryAction _ {:action_id     action-id
+                                            :database_id   (mt/id)
+                                            :dataset_query (lib/native-query mp "DELETE FROM venues WHERE id = 1")}]
+         (testing "an app depends on the cards and actions in its resource collection"
+           (assert-pending :data-app app-id)
+           (deps.test/synchronously-run-dependency-job!)
+           (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id))))
+         (mt/with-temp [:model/Card {added-id :id} {:dataset_query venues-query :collection_id collection-id}]
+           (testing "a card added to the collection becomes a dependency"
+             (assert-pending :data-app app-id)
+             (deps.test/synchronously-run-dependency-job!)
+             (is (= #{[:card card-id] [:card added-id] [:action action-id]} (data-app-deps app-id))))
+           (testing "a card moved out of the collection stops being one"
+             (t2/update! :model/Card added-id {:collection_id other-collection-id})
+             (assert-pending :data-app app-id)
+             (deps.test/synchronously-run-dependency-job!)
+             (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id)))))
+         (testing "a deleted action stops being one"
+           (t2/delete! :model/Action action-id)
+           (assert-pending :data-app app-id)
+           (deps.test/synchronously-run-dependency-job!)
+           (is (= #{[:card card-id]} (data-app-deps app-id))))
+         (testing "the app is an MBQL dependent of its card"
+           (is (= {:data-app #{app-id}}
+                  (dependencies.model/transitive-mbql-dependents {:card [{:id card-id}]}))))
+         (testing "deleting the app removes its dependencies and status"
+           (t2/delete! :model/DataApp app-id)
+           (deps.test/synchronously-run-dependency-job!)
+           (is (empty? (data-app-deps app-id)))
+           (is (not (t2/exists? :model/DependencyStatus :entity_type :data-app :entity_id app-id)))))))))
+
+(deftest ^:synchronized data-app-given-a-collection-depends-on-its-cards-test
+  (testing "an app that lost its collection, given one that already holds a card, depends on that card"
+    (deps.test/run-with-dependencies-setup!
+     (fn [mp]
+       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                      {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                      :model/Collection {given-collection-id :id} {}
+                      :model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                 :collection_id given-collection-id}]
+         (t2/delete! :model/Collection collection-id)
+         (deps.test/synchronously-run-dependency-job!)
+         (is (empty? (data-app-deps app-id)))
+         (t2/update! :model/DataApp app-id {:resource_collection_id given-collection-id})
+         (assert-pending :data-app app-id)
+         (deps.test/synchronously-run-dependency-job!)
+         (is (= #{[:card card-id]} (data-app-deps app-id))))))))
+
+(deftest ^:synchronized data-app-dependency-job-skips-the-bundle-test
+  (testing "the dependency job computes an app's dependencies without reading its bundle"
+    (deps.test/run-with-dependencies-setup!
+     (fn [_mp]
+       (mt/with-temp [:model/DataApp {app-id :id} {:name         "birds"
+                                                   :display_name "Birds"
+                                                   :bundle_path  "birds.js"
+                                                   :bundle       (byte-array [1 2 3])}]
+         (testing "a full row read counts"
+           (is (seq (deps.test/data-app-bundle-reads #(t2/select-one :model/DataApp app-id)))))
+         (is (= [] (deps.test/data-app-bundle-reads deps.test/synchronously-run-dependency-job!)))
+         (assert-processed :data-app app-id))))))
+
+(deftest ^:synchronized data-app-resource-hooks-skip-the-bundle-test
+  (testing "a card write in a resource collection does not read the app's bundle"
+    (deps.test/run-with-dependencies-setup!
+     (fn [mp]
+       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id} {:name         "birds"
+                                                                                         :display_name "Birds"
+                                                                                         :bundle_path  "birds.js"
+                                                                                         :bundle       (byte-array [1 2 3])}
+                      :model/Collection {other-collection-id :id} {}]
+         (mt/with-model-cleanup [:model/Card]
+           (testing "a full row read counts"
+             (is (seq (deps.test/data-app-bundle-reads #(t2/select-one :model/DataApp app-id)))))
+           (testing "adding a card"
+             (is (= [] (deps.test/data-app-bundle-reads
+                        #(t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
+                                                        :collection_id collection-id
+                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))))))))
+           (let [card-id (t2/select-one-pk :model/Card :collection_id collection-id)]
+             (testing "moving a card out"
+               (is (= [] (deps.test/data-app-bundle-reads #(t2/update! :model/Card card-id {:collection_id other-collection-id})))))
+             (testing "moving a card in"
+               (is (= [] (deps.test/data-app-bundle-reads #(t2/update! :model/Card card-id {:collection_id collection-id})))))
+             (testing "deleting a card"
+               (is (= [] (deps.test/data-app-bundle-reads #(t2/delete! :model/Card card-id))))))))))))

@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.data-apps.core :as data-apps]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -51,7 +52,8 @@
     sandboxed users.
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
     of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
-  - Transform: analysts can view any transform they have source view permission to."
+  - Transform: analysts can view any transform they have source view permission to.
+  - Data app: the apps the user can read, none without the data apps feature."
   [entity-type-field :- Column
    entity-id-field   :- Column
    {:keys [user-id is-superuser? is-data-analyst? include-archived-items]
@@ -157,7 +159,14 @@
                                   (case include-archived-items
                                     :exclude [:= archived-column false]
                                     :only    [:= archived-column true]
-                                    :all     nil)]}]])))))
+                                    :all     nil)]}]])
+
+                    :model/DataApp
+                    (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id       user-id
+                                                                                      :is-superuser? is-superuser?})]
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field visible-ids]])))))
         deps.dependency-types/dependency-type->model))
 
 (mu/defn- broken-entities-expr :- ::h2x/honeysql-expr
@@ -341,9 +350,10 @@
                    :sandbox :sandboxes
                    :segment :segment
                    :measure :measure
-                   :action :action)
+                   :action :action
+                   :data-app :data_app)
      :name-column (case entity-type
-                    :table :entity.display_name
+                    (:table :data-app) :entity.display_name
                     :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                     :entity.name)
      :location-column (case entity-type
@@ -361,7 +371,8 @@
                                   :else
                                   (:name (collection.root/root-collection-with-ui-details (action-root-namespace false)))]]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                        (:segment :measure) :table.display_name)}))
+                        (:segment :measure) :table.display_name
+                        :data-app nil)}))
 
 (mu/defn- item-query-join :- [:map {:closed true}
                               [:join        [:sequential HoneySQLForm]]
@@ -609,11 +620,24 @@
 
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
 
+(def ^:private narrow-columns
+  "The columns read for the entity types whose rows hold much more than dependency code needs: a data app's bundle
+  can be megabytes."
+  {:data-app [:id :resource_collection_id]})
+
 (mu/defn entities
-  "The entities of the entity type `entity-type` with `ids`."
+  "The entities of the entity type `entity-type` with `ids`: whole rows, except for the types in [[narrow-columns]],
+  whose rows hold only those columns."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
-  (t2/select (deps.dependency-types/dependency-type->model entity-type) :id [:in ids]))
+  (let [model (deps.dependency-types/dependency-type->model entity-type)]
+    (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
+
+(mu/defn entity
+  "The entity of the entity type `entity-type` with `id`, or nil, with the columns of [[entities]]."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   id          :- ::deps.dependency-types/entity-id]
+  (first (entities entity-type #{id})))
 
 (mu/defn- entity-source :- [:map {:closed true}
                             [:from {:optional true} [:sequential HoneySQLForm]]]
@@ -643,6 +667,17 @@
   "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
+
+(mu/defn ids-in-collections
+  "The `:id` and `:collection_id` of the `model` rows in the Collections with `collection-ids`."
+  [model          :- [:enum :model/Card :model/Action]
+   collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
+
+(mu/defn resource-collection-data-app-ids
+  "The IDs of the DataApps whose resource collection is one of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-pks-set [:model/DataApp :id] :resource_collection_id [:in collection-ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

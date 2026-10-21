@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema]
    [metabase.native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
@@ -25,7 +26,8 @@
 (def ^:private Entity
   "Any dependency-tracked entity `calculate-deps` accepts. A `:dashboard` entity arrives hydrated with `:dashcards`,
   each of those in turn hydrated with `:series`; a query `:action` arrives with the `:dataset_query` of its
-  QueryAction; every other entity is a plain row of its model."
+  QueryAction; a `:data-app` arrives with the `:card_ids` and `:action_ids` of its resource collection; every other
+  entity is a plain row of its model."
   [:or
    ::queries.schema/card
    :metabase.warehouse-schema.schema/table
@@ -36,7 +38,12 @@
    :metabase-enterprise.sandbox.schema/sandbox
    :metabase.segments.schema/segment
    :metabase.measures.schema/measure
-   ::actions.schema/action])
+   ::actions.schema/action
+   [:merge
+    :metabase-enterprise.data-apps.schema/data-app
+    [:map
+     [:card_ids   [:set ::lib.schema.id/card]]
+     [:action_ids [:set ::lib.schema.id/action]]]]])
 
 (defmulti calculate-deps*
   "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
@@ -208,3 +215,8 @@
   (case action-type
     :implicit {:card #{model-id}}
     :query    (upstream-deps:query (lib-be/normalize-query query))))
+
+(defmethod calculate-deps* :data-app
+  [_ {card-ids :card_ids, action-ids :action_ids}]
+  {:card   card-ids
+   :action action-ids})

@@ -76,6 +76,7 @@
   {:model/Action             #{:model_id :type}
    :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
    :model/Dashboard          #{:parameters}
+   :model/DataApp            #{:resource_collection_id}
    :model/Document           #{:content_type :document}
    :model/Measure            #{:definition :table_id}
    :model/NativeQuerySnippet #{:content :template_tags}
@@ -218,6 +219,18 @@
              (changed? row (disj columns :result_metadata))
              (not (deps.result-metadata/same-output? (:result_metadata (t2/original row)) (:result_metadata row)))))))
 
+(mu/defn- mark-owning-data-apps! :- :boolean
+  "Mark the dependencies of the data apps whose resource collection is among `collection-ids` stale, when `model` is
+  one that data apps depend on (Card or Action), returning whether it marked any."
+  [model          :- :keyword
+   collection-ids :- [:sequential [:maybe ms/PositiveInt]]]
+  (boolean
+   (when (#{:model/Action :model/Card} model)
+     (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+       (when-let [app-ids (not-empty (dependencies.db/resource-collection-data-app-ids collection-ids))]
+         (dependencies.db/mark-dependency-statuses-stale! {:data-app app-ids})
+         true)))))
+
 (mu/defn- mark-update! :- :boolean
   "Mark the statuses an update of `row` of `model` makes stale: the entity's own, by the columns each job
   reads, and what reads its output when that changes, returning whether a column some job reads changed."
@@ -228,7 +241,9 @@
         dependency? (changed? row (dependency-columns model))
         analysis?   (changed? row (analysis-columns model))
         output?     (output-changed? model row)
-        part?       (changed? row (part-columns model))]
+        part?       (changed? row (part-columns model))
+        data-apps?  (and (changed? row #{:collection_id})
+                         (mark-owning-data-apps! model [(:collection_id (t2/original row)) (:collection_id row)]))]
     (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
     (when analysis?
@@ -242,7 +257,7 @@
         :model/Field             (mark-remap-targets! #{(:id row)})
         :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
         nil))
-    (or dependency? analysis? output? part?
+    (or dependency? analysis? output? part? data-apps?
         (case model
           :model/Dimension   (do (run! mark-dimension! (distinct [(t2/original row) row])) true)
           :model/FieldValues (mark-field-values! (t2/original row) row)
@@ -276,6 +291,7 @@
   [model row]
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
+  (mark-owning-data-apps! model [(:collection_id row)])
   (case model
     :model/Dimension         (mark-dimension! row)
     :model/FieldValues       (mark-field-values! nil row)
@@ -297,6 +313,7 @@
   [model row]
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
+  (mark-owning-data-apps! model [(:collection_id row)])
   (case model
     :model/Dimension         (mark-dimension! row)
     :model/FieldValues       (mark-field-values! row nil)

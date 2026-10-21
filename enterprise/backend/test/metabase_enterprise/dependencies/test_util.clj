@@ -13,7 +13,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.jdbc.query :as t2.jdbc.query]))
 
 (defn run-with-dependencies-setup!
   "Run `thunk` with the metadata provider of the test database, as Rasta and with the dependencies feature, each write
@@ -116,6 +117,20 @@
   [thunk]
   (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [f] (f))]
     (thunk)))
+
+(defn data-app-bundle-reads
+  "The SQL statements that `thunk` sends to the app DB and that read the `bundle` column of `data_app`: a `SELECT *`,
+  or a select that names the column."
+  [thunk]
+  (let [sqls      (atom [])
+        run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
+    (mt/with-dynamic-fn-redefs [t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
+                                                                  (swap! sqls conj sql)
+                                                                  (run-query rf init conn model sql-args opts))]
+      (thunk))
+    ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
+    (filterv #(re-find #"(?i)^SELECT\s+(?:(?:[\"`]?data_app[\"`]?\.)?\*|.*\bbundle\b.*)\s+FROM\s+[\"`]?data_app[\"`]?(?:\s|$)" %)
+             @sqls)))
 
 (defn mock-card [metadata-provider {:keys [id query details]}]
   (merge {:lib/type        :metadata/card
