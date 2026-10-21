@@ -23,19 +23,15 @@ describe("admin > database > add", () => {
     selectFieldOption("Database type", database);
   }
 
-  function mockUploadServiceAccountJSON(fileContents) {
-    // create blob to act as selected file
+  function uploadServiceAccountJSON(fileContents) {
     cy.get("input[type=file]")
-      .then(async (input) => {
-        const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
-        const file = new File([blob], "service-account.json");
-        const dataTransfer = new DataTransfer();
-
-        dataTransfer.items.add(file);
-        input[0].files = dataTransfer.files;
-        return input;
-      })
-      .trigger("change", { force: true })
+      .selectFile(
+        {
+          contents: Cypress.Buffer.from(fileContents),
+          fileName: "service-account.json",
+        },
+        { force: true },
+      )
       .trigger("blur", { force: true });
   }
 
@@ -377,9 +373,9 @@ describe("admin > database > add", () => {
       chooseDatabase("BigQuery");
       H.typeAndBlurUsingLabel("Display name", "BQ");
       selectFieldOption("Datasets", "Only these...");
-      cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
+      cy.findByPlaceholderText("E.x. public,auth*").type("foo");
 
-      mockUploadServiceAccountJSON(serviceAccountJSON);
+      uploadServiceAccountJSON(serviceAccountJSON);
       mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
         expect(body.details["service-account-json"]).to.equal(
           serviceAccountJSON,
