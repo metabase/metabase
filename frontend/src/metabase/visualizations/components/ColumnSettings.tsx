@@ -26,7 +26,7 @@ type CommonProps = {
   allowlist?: ReadonlySet<string>;
   denylist?: ReadonlySet<string>;
   extraData?: Omit<SettingsExtra, "series">;
-  readOnly?: boolean;
+  disabled?: boolean;
 };
 
 type GetWidgetsProps = CommonProps & {
@@ -51,7 +51,7 @@ function getWidgets({
   allowlist,
   denylist,
   extraData,
-  readOnly,
+  disabled,
 }: GetWidgetsProps) {
   // fake series
   const series: Series = [];
@@ -92,7 +92,7 @@ function getWidgets({
         (!denylist || !denylist.has(widget.id)),
     )
     .map((widget) =>
-      readOnly ? { ...widget, props: { ...widget.props, readOnly } } : widget,
+      disabled ? { ...widget, props: { ...widget.props, disabled } } : widget,
     );
 }
 

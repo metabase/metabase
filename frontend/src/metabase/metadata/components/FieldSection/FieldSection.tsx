@@ -145,25 +145,25 @@ const FieldSectionBase = ({
       <Stack gap="xxl">
         <DataSection
           field={field}
-          readOnly={readOnly}
+          disabled={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <MetadataSection
           field={field}
           table={table}
           getFieldHref={getFieldHref}
-          readOnly={readOnly}
+          disabled={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <BehaviorSection
           field={field}
           databaseId={table.db_id}
-          readOnly={readOnly}
+          disabled={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
         <FormattingSection
           field={field}
-          readOnly={readOnly}
+          disabled={readOnly}
           onTrackMetadataChange={onTrackMetadataChange}
         />
       </Stack>
