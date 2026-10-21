@@ -1,5 +1,5 @@
 import type { FloatingPosition, PopoverProps } from "@mantine/core";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DEFAULT_POPOVER_MIDDLEWARES } from "./Popover.config";
 
@@ -10,49 +10,86 @@ type StablePopoverPositionProps = Required<
 /**
  * Keeps a popover on the side it opened on until it closes, even when its content shrinks (e.g.
  * while searching) or grows. If it grows past the space on that side, it scrolls instead of moving.
- * Pass `position`, `middlewares` and `onClose` to the `Popover`; a caller with its own `onClose`
- * needs to call this one too.
+ * Scrolling the page or resizing the window repositions it as usual.
  */
 export function useStablePopoverPosition(
   defaultPosition: FloatingPosition = "bottom",
 ): StablePopoverPositionProps {
-  const [lockedPosition, setLockedPosition] = useState<FloatingPosition>();
+  const [currentPosition, setCurrentPosition] = useState<FloatingPosition>();
+  // Mirrors `currentPosition`, but changes straight away rather than on the next render
+  const currentPositionRef = useRef<FloatingPosition>();
+  const floatingRef = useRef<HTMLElement | null>(null);
+
+  const rememberPosition = useCallback((position?: FloatingPosition) => {
+    currentPositionRef.current = position;
+    setCurrentPosition(position);
+  }, []);
 
   const middlewares = useMemo<StablePopoverPositionProps["middlewares"]>(
     () => ({
       ...DEFAULT_POPOVER_MIDDLEWARES,
-      flip: lockedPosition === undefined,
-      // Mantine's `preventPositionChangeWhenVisible` can lock before the first flip resolves, and
-      // `onPositionChange` doesn't fire when it reopens on the same side, so lock from `size` instead.
+      // Mantine's `onPositionChange` doesn't fire when it reopens on the same side, so read the
+      // placement from `size`, which runs after flip on every update
       size: {
         ...DEFAULT_POPOVER_MIDDLEWARES.size,
         apply: ({
           placement,
+          initialPlacement,
           rects,
           availableWidth,
           availableHeight,
           elements,
         }) => {
-          // A custom `apply` replaces Mantine's default sizing, so cap the size ourselves
+          floatingRef.current = elements.floating;
+          // A custom `apply` replaces Mantine's default sizing, so cap the size ourselves.
           Object.assign(elements.floating.style, {
             maxWidth: `${availableWidth}px`,
             maxHeight: `${availableHeight}px`,
           });
           // A `keepMounted` dropdown is still positioned while hidden, with no size
           const hasBeenMeasured = rects.floating.height > 0;
-          if (hasBeenMeasured) {
-            setLockedPosition((position) => position ?? placement);
+          const isStale =
+            initialPlacement !==
+            (currentPositionRef.current ?? defaultPosition);
+          if (hasBeenMeasured && !isStale) {
+            rememberPosition(placement);
           }
         },
       },
     }),
-    [lockedPosition],
+    [defaultPosition, rememberPosition],
   );
 
-  const onClose = useCallback(() => setLockedPosition(undefined), []);
+  useEffect(() => {
+    const resetPreferredSide = (event: Event) => {
+      const isInsidePopover =
+        event.target instanceof Node &&
+        floatingRef.current?.contains(event.target);
+      if (!isInsidePopover) {
+        rememberPosition(undefined);
+      }
+    };
+
+    window.addEventListener("resize", resetPreferredSide);
+    document.addEventListener("scroll", resetPreferredSide, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("resize", resetPreferredSide);
+      document.removeEventListener("scroll", resetPreferredSide, {
+        capture: true,
+      });
+    };
+  }, [rememberPosition]);
+
+  const onClose = useCallback(
+    () => rememberPosition(undefined),
+    [rememberPosition],
+  );
 
   return {
-    position: lockedPosition ?? defaultPosition,
+    position: currentPosition ?? defaultPosition,
     middlewares,
     onClose,
   };

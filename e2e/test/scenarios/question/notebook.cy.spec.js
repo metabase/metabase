@@ -360,6 +360,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       setSpaceBelow(summarizeTrigger, 800);
       summarizeTrigger().click();
       assertPopoverSide(summarizeTrigger, "below");
+
+      cy.log("resizing the window lets it pick a side again");
+      setSpaceBelow(summarizeTrigger, 250);
+      assertPopoverSide(summarizeTrigger, "above");
     });
 
     it("keeps the side it opened on while its content grows", () => {
