@@ -76,7 +76,7 @@
                 ;; sort of contrived since this is not a query we could build create IRL... even tho the join is
                 ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
                 ;; act like the join isn't here yet
-                ::result-metadata/field-ref [:field (meta/id :categories :name) {:source-field-name "CATEGORY_ID"}]}]
+                ::result-metadata/field-ref [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -195,7 +195,7 @@
                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
                ;; when the info is inferred. the solution to this might be quite extensive renaming
                :name              "grandparent.parent"
-               ::result-metadata/field-ref         [:field 2 nil]
+               ::result-metadata/field-ref         [:field "grandparent.parent" {:base-type :type/Text}]
                :parent-id         1
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
@@ -209,7 +209,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               ::result-metadata/field-ref         [:field 3 nil]
+               ::result-metadata/field-ref         [:field "grandparent.parent.child" {:base-type :type/Text}]
                :parent-id         2
                :id                3
                :visibility-type   :normal

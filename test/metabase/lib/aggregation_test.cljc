@@ -194,7 +194,7 @@
                    :aggregation [[:sum {:lib/uuid string?}
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
-                                   (meta/id :venues :category-id)]]]}]}]
+                                   "CATEGORY_ID"]]]}]}]
     (testing "with helper function"
       (is (=? result-query
               (-> q
@@ -426,12 +426,12 @@
                  [{:lib/type :mbql.stage/mbql
                    :source-table int?
                    :expressions
-                   [[:* {:lib/expression-name "double-price"} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]
-                    [:< {:lib/expression-name "budget?"} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]]
+                   [[:* {:lib/expression-name "double-price"} [:field {:base-type :type/Integer, :effective-type :type/Integer} string?] 2]
+                    [:< {:lib/expression-name "budget?"} [:field {:base-type :type/Integer, :effective-type :type/Integer} string?] 2]]
                    :aggregation
                    [[:sum {} [:expression {} "double-price"]]
                     [:count {}]
-                    [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?]]]}]}
+                    [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} string?]]]}]}
                 agg-query))
         (is (=? [{:lib/type       :metadata/column
                   :effective-type :type/Integer
@@ -815,7 +815,7 @@
                                              (f (meta/field-metadata :venues :id))
                                              (f))))]
               (is (=? {:stages [{:aggregation [(if field?
-                                                 [k {} [:field {} integer?]]
+                                                 [k {} [:field {} string?]]
                                                  [k {}])]}]}
                       query)
                   "query")
