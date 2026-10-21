@@ -366,6 +366,7 @@
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
+           funnysql
            task.secure-delegate
            util
            util.classloader
@@ -1139,6 +1140,11 @@
            request
            util}}
 
+  funnysql
+  {:team "Querying Platform"
+   :api  #{metabase.funnysql.core}
+   :uses #{util}}
+
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
@@ -1523,6 +1529,7 @@
               collections
               documents
               driver
+              embedding
               events
               explorations
               interestingness
@@ -2287,6 +2294,7 @@
               metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
+              metabase.query-processor.pivot.common
               metabase.query-processor.preprocess
               metabase.query-processor.reducible
               metabase.query-processor.result-serialization

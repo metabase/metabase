@@ -131,6 +131,7 @@ type VisualizationOwnProps = {
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
+  getCardHref?: (nextCard: SeriesCard) => string | undefined;
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
@@ -642,6 +643,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      getCardHref,
       hasColumnReordering,
       hasDevWatermark,
       headerIcon,
@@ -929,6 +931,7 @@ class Visualization extends PureComponent<
                       fontFamily={fontFamily}
                       getExtraDataForClick={getExtraDataForClick}
                       getHref={getHref}
+                      getCardHref={getCardHref}
                       gridSize={gridSize}
                       hasColumnReordering={hasColumnReordering}
                       headerIcon={hasHeader ? null : headerIcon}
