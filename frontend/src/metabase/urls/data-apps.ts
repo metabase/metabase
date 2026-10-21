@@ -33,10 +33,6 @@ export function dataAppsSettings() {
   return `/admin/settings/${DATA_APP_URL_SEGMENT}`;
 }
 
-export function dataAppGroupsSettings(name: string) {
-  return `${dataAppsSettings()}/${encodeURIComponent(name)}/groups`;
-}
-
 export function dataStudioDataApps() {
   return `/data-studio/${DATA_APP_URL_SEGMENT}`;
 }
@@ -58,4 +54,8 @@ export function dataStudioDataAppQuestionDependencies(
   cardId: CardId,
 ) {
   return `${dataStudioDataAppQuestion(name, cardId)}/dependencies`;
+}
+
+export function dataStudioDataAppPermissions(name: string) {
+  return `${dataStudioDataApp(name)}/permissions`;
 }

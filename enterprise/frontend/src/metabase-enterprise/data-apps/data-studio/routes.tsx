@@ -36,6 +36,13 @@ const questionDependenciesPage = () =>
     Component: DataAppQuestionDependenciesPage,
   }));
 
+const permissionsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppPermissionsPage"
+  ).then(({ DataAppPermissionsPage }) => ({
+    Component: DataAppPermissionsPage,
+  }));
+
 export function getDataStudioDataAppRoutes(IsAdmin: ComponentType) {
   return (
     <Route path={Urls.DATA_APP_URL_SEGMENT} element={<IsAdmin />}>
@@ -43,6 +50,7 @@ export function getDataStudioDataAppRoutes(IsAdmin: ComponentType) {
         <Route index lazy={listPage} />
         <Route path=":name" lazy={overviewPage} />
         <Route path=":name/questions" lazy={questionsPage} />
+        <Route path=":name/permissions" lazy={permissionsPage} />
         <Route path=":name/questions/:cardId" lazy={questionPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
