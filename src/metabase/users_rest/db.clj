@@ -117,9 +117,9 @@
                  :id user-id))
 
 (mu/defn active-personal-user-login-columns
-  "The id, email, and last login of the active personal User with `user-id`, or nil."
+  "The id, email, last login, and `sso_source` of the active personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :last_login], :id user-id, :type :personal, :is_active true))
+  (t2/select-one [:model/User :id :email :last_login :sso_source], :id user-id, :type :personal, :is_active true))
 
 (mu/defn user-active-type-and-sso-source
   "The id, active flag, type, and sso_source of the User with `user-id`, or nil."

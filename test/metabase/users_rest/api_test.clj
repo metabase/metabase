@@ -1837,6 +1837,28 @@
                                    {:password "whateverUP12!!"
                                     :old_password "whatever"}))))))
 
+(deftest reset-password-sso-user-not-found-test
+  (testing "PUT /api/user/:id/password as an admin for a user whose SSO provider is enabled gets a 404"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name  "User"
+                                              :email      "ssouser@test.com"
+                                              :sso_source "google"}]
+      (let [set-password! (fn [expected-status]
+                            (mt/user-http-request :crowberto :put expected-status (format "user/%d/password" user-id)
+                                                  {:password "whateverUP12!!"}))
+            password-hash (fn []
+                            (:password_hash (t2/select-one-fn :credentials :model/AuthIdentity
+                                                              :user_id user-id, :provider "password")))
+            original-hash (password-hash)]
+        (mt/with-premium-features #{}
+          (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                             google-auth-enabled   true]
+            (set-password! 404)
+            (is (= original-hash (password-hash))))
+          (testing "once the provider is disabled the admin can set a password again"
+            (set-password! 204)
+            (is (not= original-hash (password-hash)))))))))
+
 (deftest reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"

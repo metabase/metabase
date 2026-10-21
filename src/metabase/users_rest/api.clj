@@ -641,6 +641,11 @@
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
+    ;; admins can't give a password to a user who signs in through an enabled SSO provider; that would let them log
+    ;; in as that user while bypassing the provider.
+    (when api/*is-superuser?*
+      (api/check-404 (or (nil? (:sso_source user))
+                         (not (sso/sso-source-enabled? (:sso_source user))))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
