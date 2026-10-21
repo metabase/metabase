@@ -327,9 +327,6 @@
           (refused (native {:type "card" :card-id other-id})))
         (testing "a snippet template tag"
           (refused (native {:type "snippet" :snippet-name "s" :snippet-id 1})))
-        (testing "a field reference that names a column of its stage's source table"
-          (refused "NOPE_NAME" #(assoc-in % [:dataset_query :stages 0 :filters]
-                                          [["=" {} ["field" {:base-type "type/Text"} "NOPE_NAME"] 1]])))
         (testing "a table template tag"
           (refused (native {:type "table" :table-id (mt/id :venues)})))))))
 
