@@ -418,6 +418,45 @@ describe("StrategyEditorForDatabases (table behaviors)", () => {
     expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
   });
 
+  it("shows the saved schedule, not the discarded draft, after reopening the form (metabase#45890)", async () => {
+    setup();
+    const openDatabase1Policy = async () =>
+      userEvent.click(
+        await screen.findByLabelText(/Edit policy for database 'Database 1'/),
+      );
+    await openDatabase1Policy();
+    await selectCacheStrategy(/^Schedule/i);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(
+      await screen.findByLabelText(
+        "Edit policy for database 'Database 1' (currently: Scheduled: hourly)",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Frequency" }));
+    await userEvent.click(
+      within(await screen.findByRole("listbox")).getByRole("option", {
+        name: "weekly",
+      }),
+    );
+    expect(screen.getByRole("textbox", { name: "Frequency" })).toHaveValue(
+      "weekly",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Discard your changes?",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Discard" }),
+    );
+
+    await openDatabase1Policy();
+    expect(
+      await screen.findByRole("textbox", { name: "Frequency" }),
+    ).toHaveValue("hourly");
+  });
+
   it("navigates between rows with the sidesheet chevrons", async () => {
     setup();
     await userEvent.click(await screen.findByLabelText(/Edit default policy/));
