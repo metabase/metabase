@@ -41,6 +41,30 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
+export function setupDatabaseWithNullDetailsEndpoint(db: Database) {
+  fetchMock.get(
+    `path:/api/database/${db.id}`,
+    { ...db, details: null },
+    { name: `database-${db.id}-null-details` },
+  );
+}
+
+export function setupCreateDatabaseEndpointError(body: unknown) {
+  fetchMock.post(
+    "path:/api/database",
+    { status: 400, body },
+    { name: "database-post-error" },
+  );
+}
+
+export function setupDatabaseListEndpointError(body: unknown) {
+  fetchMock.get(
+    "path:/api/database",
+    { status: 500, body },
+    { name: "database-list-error" },
+  );
+}
+
 export function setupUpdateDatabaseEndpoint(db: Database) {
   fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
     const body = await call?.request?.json();
