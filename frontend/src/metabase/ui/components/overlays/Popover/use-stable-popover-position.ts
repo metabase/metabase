@@ -10,7 +10,8 @@ type StablePopoverPositionProps = Required<
 /**
  * Keeps a popover on the side it opened on until it closes, even when its content shrinks (e.g.
  * while searching) or grows. If it grows past the space on that side, it scrolls instead of moving.
- * Spread the result onto the `Popover`; a caller with its own `onClose` needs to call this one too.
+ * Pass `position`, `middlewares` and `onClose` to the `Popover`; a caller with its own `onClose`
+ * needs to call this one too.
  */
 export function useStablePopoverPosition(
   defaultPosition: FloatingPosition = "bottom",

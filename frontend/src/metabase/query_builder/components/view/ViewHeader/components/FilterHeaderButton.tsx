@@ -59,7 +59,13 @@ export function FilterHeaderButton({
 
   return (
     <Button.Group>
-      <Popover {...stablePositionProps} opened={isOpened} onDismiss={close}>
+      <Popover
+        position={stablePositionProps.position}
+        middlewares={stablePositionProps.middlewares}
+        onClose={stablePositionProps.onClose}
+        opened={isOpened}
+        onDismiss={close}
+      >
         <Popover.Target>
           <Button
             classNames={{

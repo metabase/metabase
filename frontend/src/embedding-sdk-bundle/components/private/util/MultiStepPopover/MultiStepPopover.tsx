@@ -63,7 +63,9 @@ const MultiStepPopoverContent = ({
 
   return (
     <Popover
-      {...stablePositionProps}
+      position={stablePositionProps.position}
+      middlewares={stablePositionProps.middlewares}
+      onClose={stablePositionProps.onClose}
       opened={currentStep !== null}
       onDismiss={onClose}
       {...popoverProps}

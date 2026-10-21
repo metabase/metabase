@@ -33,7 +33,13 @@ export function AggregationItem({
 
   return (
     <PreventPopoverExitProvider>
-      <Popover {...stablePositionProps} opened={isOpened} onChange={toggle}>
+      <Popover
+        position={stablePositionProps.position}
+        middlewares={stablePositionProps.middlewares}
+        onClose={stablePositionProps.onClose}
+        opened={isOpened}
+        onChange={toggle}
+      >
         <Popover.Target>
           <button
             className={AggregationItemS.Root}

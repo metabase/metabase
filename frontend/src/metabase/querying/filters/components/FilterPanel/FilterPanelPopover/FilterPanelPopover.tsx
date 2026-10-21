@@ -46,7 +46,9 @@ export function FilterPanelPopover({
 
   return (
     <Popover
-      {...stablePositionProps}
+      position={stablePositionProps.position}
+      middlewares={stablePositionProps.middlewares}
+      onClose={stablePositionProps.onClose}
       opened={isOpened}
       transitionProps={{ duration: 0 }}
       onChange={setIsOpened}

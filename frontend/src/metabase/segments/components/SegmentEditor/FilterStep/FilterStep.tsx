@@ -104,7 +104,13 @@ function FilterPopover({
   };
 
   return (
-    <Popover {...stablePositionProps} opened={isOpened} onChange={setIsOpened}>
+    <Popover
+      position={stablePositionProps.position}
+      middlewares={stablePositionProps.middlewares}
+      onClose={stablePositionProps.onClose}
+      opened={isOpened}
+      onChange={setIsOpened}
+    >
       <Popover.Target>
         {filterInfo ? (
           <FilterPill

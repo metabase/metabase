@@ -49,7 +49,9 @@ export function ClausePopover({
   return (
     <PreventPopoverExitProvider>
       <Popover
-        {...stablePositionProps}
+        position={stablePositionProps.position}
+        middlewares={stablePositionProps.middlewares}
+        onClose={stablePositionProps.onClose}
         opened={isOpen}
         offset={{ mainAxis: 4 }}
         trapFocus
