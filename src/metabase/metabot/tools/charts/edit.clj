@@ -2,12 +2,7 @@
   "Tool for editing chart visualization settings."
   (:require
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]))
-
-(def ^:private valid-chart-types
-  "Valid chart types supported by Metabase."
-  (into #{} (map keyword) shared/chart-types))
 
 (defn- format-chart-link
   "Format a metabase:// link to the chart."
@@ -53,13 +48,6 @@
   Throws [[recoverable.common/unknown-chart-id!]] for a chart ID that `charts-state` doesn't hold."
   [{:keys [chart-id new-chart-type charts-state query]}]
   (log/info "Editing chart" {:chart-id chart-id :new-chart-type new-chart-type})
-
-  ;; Validate chart type
-  (when-not (contains? valid-chart-types new-chart-type)
-    (throw (ex-info (str "Invalid chart type: " (name new-chart-type)
-                         ". Valid types are: " (pr-str valid-chart-types))
-                    {:agent-error? true
-                     :chart-type new-chart-type})))
 
   (let [chart-data (get charts-state (str chart-id))]
     (when-not chart-data

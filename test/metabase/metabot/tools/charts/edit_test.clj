@@ -48,15 +48,6 @@
                                  :charts-state charts-state})]
           (is (= new-type (:chart-type result))
               (str "New chart type " new-type " should be set correctly"))))))
-  (testing "throws error for invalid chart type"
-    (let [charts-state {"chart-789" {:chart-id "chart-789"}}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid chart type"
-           (edit-chart/edit-chart
-            {:chart-id "chart-789"
-             :new-chart-type :invalid-type
-             :charts-state charts-state})))))
   (testing "throws error when chart not found"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
