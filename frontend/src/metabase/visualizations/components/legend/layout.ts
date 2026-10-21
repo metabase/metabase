@@ -3,17 +3,11 @@ import _ from "underscore";
 import type { LegendPosition } from "metabase-types/api";
 
 import { LEGEND_PADDING, MIN_VISIBLE_COUNT } from "./constants";
-import {
-  type LegendMetrics,
-  getColumnItemWidth,
-  getDotWidth,
-  getRowWidth,
-} from "./measure";
+import { type LegendMetrics, getRowWidth } from "./measure";
 import { LEGEND_PLACEMENTS } from "./placement";
 import type { ChartSize, LegendCandidates, Plot } from "./plots";
 
 export const MIN_LEGEND_CARD_WIDTH = 420;
-const MAX_TRUNCATED_ITEMS_RATIO = 0.5;
 const AUTO_MIN_VISIBLE_COUNT = 2;
 // the plot is the chart without its axes, as in PLOT_HEIGHT_BREAKPOINTS
 const MIN_PLOT_WIDTH = 150;
@@ -193,16 +187,6 @@ function getRowVisibleCount(
   );
 }
 
-function isColumnMostlyTruncated(metrics: LegendMetrics): boolean {
-  const labelWidth = getColumnItemWidth(metrics) - getDotWidth(metrics.config);
-  const truncatedCount = metrics.labelWidths.filter(
-    (width) => width > labelWidth,
-  ).length;
-  return (
-    truncatedCount > metrics.labelWidths.length * MAX_TRUNCATED_ITEMS_RATIO
-  );
-}
-
 function getColumnLayout(
   metrics: LegendMetrics,
   plot: Plot,
@@ -227,7 +211,7 @@ function getColumnLayout(
   if (!alwaysVisible && !hasRoom) {
     return HIDDEN_LEGEND_LAYOUT;
   }
-  if (!allowMostlyTruncated && isColumnMostlyTruncated(metrics)) {
+  if (!allowMostlyTruncated && metrics.isColumnMostlyTruncated) {
     return HIDDEN_LEGEND_LAYOUT;
   }
 

@@ -13,6 +13,7 @@ import { LEGEND_SIZES, type LegendSize, type LegendSizeConfig } from "./sizes";
 
 const LEGEND_FONT_WEIGHT = 400;
 const MAX_VERTICAL_WIDTH_RATIO = 0.25;
+const MAX_TRUNCATED_ITEMS_RATIO = 0.5;
 
 export interface MeasureLegendOptions {
   items: LegendItemData[];
@@ -38,6 +39,7 @@ export interface LegendMetrics {
   columnFitCount: number;
   columnVisibleCount: number;
   columnWidth: number;
+  isColumnMostlyTruncated: boolean;
   measureOverflowLabel: (overflowCount: number) => number;
 }
 
@@ -104,6 +106,12 @@ export function measureLegend({
     columnFitCount,
     columnVisibleCount,
     columnWidth,
+    isColumnMostlyTruncated: isColumnMostlyTruncated({
+      labelWidths,
+      itemWidths,
+      config,
+      availableWidth,
+    }),
     measureOverflowLabel,
   };
 }
@@ -113,14 +121,14 @@ const getRowHeight = (config: LegendSizeConfig) =>
   config.horizontalGap +
   LEGEND_PADDING * 2;
 
-export const getDotWidth = (config: LegendSizeConfig) =>
+const getDotWidth = (config: LegendSizeConfig) =>
   config.dotSize + config.dotGap;
 
 export const getRowWidth = (itemWidths: number[], config: LegendSizeConfig) =>
   itemWidths.reduce((total, width) => total + width, 0) +
   config.itemGap * (itemWidths.length - 1);
 
-export const getColumnItemWidth = ({
+const getColumnItemWidth = ({
   itemWidths,
   config,
   availableWidth,
@@ -163,4 +171,19 @@ function getColumnWidth(
     Math.min(overflowLabelWidth, metrics.config.maxVerticalWidth),
   );
   return Math.ceil(contentWidth) + LEGEND_PADDING * 2;
+}
+
+function isColumnMostlyTruncated(
+  metrics: Pick<
+    LegendMetrics,
+    "labelWidths" | "itemWidths" | "config" | "availableWidth"
+  >,
+): boolean {
+  const labelWidth = getColumnItemWidth(metrics) - getDotWidth(metrics.config);
+  const truncatedCount = metrics.labelWidths.filter(
+    (width) => width > labelWidth,
+  ).length;
+  return (
+    truncatedCount > metrics.labelWidths.length * MAX_TRUNCATED_ITEMS_RATIO
+  );
 }
