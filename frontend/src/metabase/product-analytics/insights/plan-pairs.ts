@@ -7,6 +7,7 @@ import {
   getMinGroupSize,
 } from "./options";
 import { evaluateGroup } from "./search";
+import type { Insight } from "./types";
 
 type PairColumn = {
   attributeId: string;
@@ -98,4 +99,25 @@ export const planPairs = (
   return chosen.length >= 2
     ? new Map(chosen.map(({ attributeId, values }) => [attributeId, values]))
     : new Map();
+};
+
+/**
+ * The attributes and values for counting pairs of the single-attribute
+ * insights found, so the search can tell when one accounts for another: each
+ * attribute in an insight, with the values it has in them. Empty when fewer
+ * than two attributes have one.
+ */
+export const planOverlapPairs = (
+  singles: readonly Insight[],
+): Map<string, string[]> => {
+  const byAttribute = new Map<string, string[]>();
+  singles.forEach(({ conditions }) =>
+    conditions.forEach(({ attributeId, value }) => {
+      const values = byAttribute.get(attributeId) ?? [];
+      if (!values.includes(value)) {
+        byAttribute.set(attributeId, [...values, value]);
+      }
+    }),
+  );
+  return byAttribute.size >= 2 ? byAttribute : new Map();
 };

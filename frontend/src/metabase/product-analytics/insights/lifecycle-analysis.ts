@@ -30,9 +30,10 @@ const getOutcomeLabel = (period: Period): string => {
 export const LIFECYCLE_INSIGHTS: InsightsAnalysis = {
   getOutcome: (spec) => getReturnOutcome(spec.lifecycle?.period ?? "week"),
   appliesTo: (spec) => spec.kind === "lifecycle",
-  attributeKind: "event",
-  // A pair is better asked as a segment of its own.
-  searchesPairs: false,
+  attributeKinds: ["event"],
+  // A pair is better asked as a segment of its own, and with expected
+  // outcomes, pairs are only counted to tell when one insight explains another.
+  pairs: "overlaps",
   getPopulation: (spec, attributes) =>
     lifecycleInsightPopulation(
       spec,

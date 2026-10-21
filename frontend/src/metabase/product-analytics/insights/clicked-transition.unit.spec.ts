@@ -50,6 +50,7 @@ const doneState = (insights: Insight[]): InsightsState => ({
   attributes: [],
   questions: [],
   checkedCount: 0,
+  pairsFor: "search",
   isFindingPairs: false,
   pairsError: undefined,
 });

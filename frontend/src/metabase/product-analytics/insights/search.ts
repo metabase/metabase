@@ -241,6 +241,23 @@ const isExplainedBy = (
 };
 
 /**
+ * The single-attribute groups that differ significantly, before any is left
+ * out for being explained by another.
+ */
+export const findSingleDiscoveries = (
+  index: CountIndex,
+  options: InsightOptions = DEFAULT_INSIGHT_OPTIONS,
+): Insight[] =>
+  discoveries(
+    evaluateGroups(
+      index.groups.filter(({ conditions }) => conditions.length === 1),
+      index,
+      options,
+    ),
+    options,
+  );
+
+/**
  * Groups whose conversion differs significantly from everyone else's at the
  * same question, strongest first by |excess|.
  *
@@ -254,14 +271,7 @@ export const findInsights = (
   index: CountIndex,
   options: InsightOptions = DEFAULT_INSIGHT_OPTIONS,
 ): Insight[] => {
-  const singles = discoveries(
-    evaluateGroups(
-      index.groups.filter(({ conditions }) => conditions.length === 1),
-      index,
-      options,
-    ),
-    options,
-  );
+  const singles = findSingleDiscoveries(index, options);
   const pairs = discoveries(
     withInteraction(
       evaluateGroups(

@@ -16,12 +16,18 @@ import { buildSql } from "../../frontend/src/metabase/product-analytics/build-sq
 import { IDENTIFIED_COLUMN } from "../../frontend/src/metabase/product-analytics/columns";
 import { indexCounts } from "../../frontend/src/metabase/product-analytics/insights/counts";
 import { DEFAULT_INSIGHT_OPTIONS } from "../../frontend/src/metabase/product-analytics/insights/options";
-import { planPairs } from "../../frontend/src/metabase/product-analytics/insights/plan-pairs";
+import {
+  planOverlapPairs,
+  planPairs,
+} from "../../frontend/src/metabase/product-analytics/insights/plan-pairs";
 import {
   parseCountRows,
   parseQuestionLabels,
 } from "../../frontend/src/metabase/product-analytics/insights/rows";
-import { findInsights } from "../../frontend/src/metabase/product-analytics/insights/search";
+import {
+  findInsights,
+  findSingleDiscoveries,
+} from "../../frontend/src/metabase/product-analytics/insights/search";
 import {
   getExpectedRate,
   getInsightSegments,
@@ -36,6 +42,7 @@ import type {
   AnalysisSpec,
   HabitSpec,
 } from "../../frontend/src/metabase/product-analytics/spec/types";
+import { cohortsInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/cohorts-insights";
 import type { EventCountAttribute } from "../../frontend/src/metabase/product-analytics/sql/analyses/event-activity";
 import { funnelInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-insights";
 import { habitInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit-insights";
@@ -322,6 +329,14 @@ FROM ${TABLE}`;
   }
 
   failures.push(...(await checkLifecycle()));
+  for (const hasExpected of [true, false]) {
+    failures.push(
+      ...(await checkCohorts(columns, { hasExpected, fromSignup: true })),
+    );
+  }
+  failures.push(
+    ...(await checkCohorts(columns, { hasExpected: true, fromSignup: false })),
+  );
   failures.push(
     ...(await checkHabit({ subPeriod: "day", measure: "histogram" })),
   );
@@ -332,6 +347,51 @@ FROM ${TABLE}`;
     process.exit(1);
   }
   console.log("\nAll checks passed");
+};
+
+/**
+ * The counts for a population with expected outcomes, as the app gets them:
+ * the singles, then pairs of the singles found, only to tell how much they
+ * overlap, so the search can leave out insights another one explains.
+ */
+const countWithOverlaps = async (
+  toSql: (query: InsightsQuery) => string,
+  ids: readonly string[],
+) => {
+  const time = async (label: string, sql: string) => {
+    const started = performance.now();
+    const result = await chRows(sql);
+    console.log(
+      `  ${label}: ${result.rows.length} rows in ${Math.round(performance.now() - started)}ms`,
+    );
+    return result;
+  };
+  const singles = await time(
+    "singles",
+    toSql({ kind: "singles", attributes: ids }),
+  );
+  const singleRows = parseCountRows(singles.names, singles.rows, ids);
+  const kept = planOverlapPairs(
+    findSingleDiscoveries(
+      indexCounts({ rows: singleRows, singleAttributes: ids }),
+    ),
+  );
+  const overlaps =
+    kept.size > 0
+      ? await time("overlaps", toSql({ kind: "pairs", kept }))
+      : undefined;
+  return {
+    labels: parseQuestionLabels(singles.names, singles.rows),
+    counts: indexCounts({
+      rows: singleRows,
+      overlapRows:
+        overlaps !== undefined
+          ? parseCountRows(overlaps.names, overlaps.rows, ids)
+          : [],
+      singleAttributes: ids,
+      pairValues: kept,
+    }),
+  };
 };
 
 /** The event segments lifecycle and habit compare people by, as in the README. */
@@ -429,23 +489,12 @@ FROM ${TABLE}`;
     ).sql;
 
   console.log(`\n${title}:`);
-  const started = performance.now();
-  const { names, rows } = await chRows(
-    toSql({ kind: "singles", attributes: ids }),
-  );
-  console.log(
-    `  singles: ${rows.length} rows in ${Math.round(performance.now() - started)}ms`,
-  );
-  const labels = parseQuestionLabels(names, rows);
+  const { labels, counts } = await countWithOverlaps(toSql, ids);
   if (labels.size > 0) {
     console.log(
       `  labels: ${[...labels].map(([question, label]) => `${questionName(question)} ${label}`).join(", ")}`,
     );
   }
-  const counts = indexCounts({
-    rows: parseCountRows(names, rows, ids),
-    singleAttributes: ids,
-  });
   [...counts.totals].forEach(([question, total]) =>
     console.log(
       `  ${questionName(question)}: ${total.reached} ${unit}, ${((total.converted / total.reached) * 100).toFixed(1)}% converted`,
@@ -608,6 +657,145 @@ const checkHabit = async (
     expectNotFound(
       failures,
       "habit by day | Hit an error",
+      insights.some((insight) => segmentFlagOf(insight) === FLAG.error),
+    );
+  }
+  return failures;
+};
+
+/**
+ * Cohort insights compare people who signed up by what they did in their
+ * signup week and by their properties at signup, at each checkpoint after it.
+ * Inviting someone in the first week is planted to make people more active
+ * from then on, so it should show up. Errors come with heavy use but change
+ * nothing, so they mustn't, once people are compared with others as active.
+ * Without that comparison, the run is for contrast and checks nothing.
+ *
+ * Without `fromSignup`, it's the app's defaults instead: any event starts the
+ * clock, over the last 90 days, so the first cohort holds everyone who was
+ * already active. That run is for reading and checks nothing either.
+ */
+const checkCohorts = async (
+  columns: readonly string[],
+  { hasExpected, fromSignup }: { hasExpected: boolean; fromSignup: boolean },
+): Promise<string[]> => {
+  const cohortsSpec = defaultSpec("cohorts");
+  const spec: AnalysisSpec = {
+    ...cohortsSpec,
+    cohorts: cohortsSpec.cohorts && {
+      ...cohortsSpec.cohorts,
+      start: fromSignup ? { flag: FLAG.signup } : undefined,
+      horizon: fromSignup ? 17 : 13,
+    },
+  };
+  const columnIds = columns.map((_column, index) => `col_${index + 1}`);
+  const population = cohortsInsightPopulation(
+    spec,
+    {
+      columns: columnIds,
+      asOf: new Map(
+        columnIds.map((id, index) => [
+          id,
+          columns[index] === IDENTIFIED_COLUMN ? "true-by-step" : "first-seen",
+        ]),
+      ),
+      events: SEGMENT_ATTRIBUTES,
+    },
+    { hasExpected },
+  );
+  if (population === undefined) {
+    throw new Error("The cohorts spec has no checkpoints.");
+  }
+  const ids = [...columnIds, ...SEGMENT_ATTRIBUTES.map(({ id }) => id)];
+  const baseSql = `SELECT person_id, session_id, event_id, created_at, event_name, url_path, ${columns.join(", ")},
+  if(event_name = 'signup', 1, 0) AS ${FLAG.signup},
+  if(event_name = 'trial_started', 1, 0) AS ${FLAG.trial},
+  if(startsWith(url_path, '/app') OR event_name IN ('report_created', 'invite_sent', 'checkout_completed'), 1, 0) AS ${FLAG.active},
+  if(event_name = 'invite_sent', 1, 0) AS ${FLAG.invite},
+  if(event_name = 'error', 1, 0) AS ${FLAG.error},
+  if(event_name = 'report_created', 1, 0) AS ${FLAG.report},
+  if(event_name = 'integration_connected', 1, 0) AS ${FLAG.integration}
+FROM ${TABLE}${fromSignup ? "" : "\nWHERE created_at >= today() - 90 AND created_at < today()"}`;
+  const toSql = (query: InsightsQuery) =>
+    buildSql(
+      spec,
+      baseSql,
+      {
+        columns: {
+          timestamp: "created_at",
+          person: "person_id",
+          session: "session_id",
+          event_id: "event_id",
+          event_name: "event_name",
+          url_path: "url_path",
+        },
+        flags: [
+          FLAG.signup,
+          FLAG.trial,
+          FLAG.active,
+          FLAG.invite,
+          FLAG.error,
+          FLAG.report,
+          FLAG.integration,
+        ],
+        extraColumns: columnIds.map((id, index) => ({
+          as: id,
+          alias: columns[index],
+        })),
+      },
+      planInsights(population, query),
+    ).sql;
+
+  const title = `Cohorts ${fromSignup ? "from signup" : "from any event, last 90 days"}, by week, ${hasExpected ? "against people as active" : "against everyone else"}`;
+  console.log(`\n${title}:`);
+  const { counts } = hasExpected
+    ? await countWithOverlaps(toSql, ids)
+    : {
+        counts: indexCounts({
+          rows: parseCountRows(
+            ...(Object.values(
+              await chRows(toSql({ kind: "singles", attributes: ids })),
+            ) as [string[], unknown[][]]),
+            ids,
+          ),
+          singleAttributes: ids,
+        }),
+      };
+  const checkpoints = [1, 4, 13];
+  const questionName = (question: number) =>
+    `week ${checkpoints[question - 1] ?? question}`;
+  [...counts.totals].forEach(([question, total]) =>
+    console.log(
+      `  ${questionName(question)}: ${total.reached} people, ${((total.converted / total.reached) * 100).toFixed(1)}% came back`,
+    ),
+  );
+  const insights = findInsights(counts);
+  const describe = (insight: Insight) => {
+    const columnIndex = columnIds.indexOf(
+      insight.conditions[0]?.attributeId ?? "",
+    );
+    return columnIndex >= 0
+      ? `${columns[columnIndex]} = ${insight.conditions[0]?.value}`
+      : describeSegment(insight);
+  };
+  insights.forEach((insight) =>
+    console.log(
+      `  ${questionName(insight.question)} | ${describe(insight)} | ` +
+        `${(insight.rate * 100).toFixed(1)}% vs ${(insight.restRate * 100).toFixed(1)}% | ` +
+        `${insight.reached} people | excess ${insight.excess.toFixed(0)} | p ${insight.pValue.toExponential(1)}`,
+    ),
+  );
+
+  const failures: string[] = [];
+  if (hasExpected && fromSignup) {
+    expectFound(
+      failures,
+      "cohorts | Sent an invite in the signup week, higher",
+      insights.some((insight) => isHigherForSegment(insight, FLAG.invite)),
+    );
+    expectNotFound(
+      failures,
+      "cohorts | Hit an error",
       insights.some((insight) => segmentFlagOf(insight) === FLAG.error),
     );
   }

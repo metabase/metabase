@@ -414,7 +414,7 @@ The search reads rows of (question, attribute values, reached, converted). For f
 |---|---|---|
 | Funnel | reached step k | reached step k+1 |
 | Paths (bounces) | visits that landed on page k | had no other step |
-| Cohorts | started in the cohort | returned in period N |
+| Cohorts | started, and reached checkpoint N | came back in period N (or later, by the return rule) |
 | Habit | active in a week | active on N+ days (or weeks) of the next 4 weeks |
 | Lifecycle | active in a period, as new, returning or resurrected | active in the next period |
 
@@ -426,15 +426,16 @@ Built with bounces, the second analysis:
 
 - **SQL** (`sql/analyses/insights.ts`): an analysis supplies an `InsightPopulation`, a CTE with one row per actor per question: `k`, `converted` and each attribute by its id, as of the question's moment. Optionally a `label` per question. The singles, pairs and explore queries run over it unchanged.
 - **Search:** what was a transition is a question. `search.ts`, `counts.ts` and `segments.ts` don't know what kind.
-- **Hook** (`insights/use-insights.ts`): takes an `InsightsAnalysis` adapter, saying when it applies, what kind of attributes it compares by, whether to look for pairs, how to build its population, and how to head each question. `funnel-analysis.ts`, `bounce-analysis.ts`, `lifecycle-analysis.ts` and `habit-analysis.ts` are the four.
+- **Hook** (`insights/use-insights.ts`): takes an `InsightsAnalysis` adapter, saying when it applies, what kinds of attributes it compares by, whether to look for pairs, how to build its population, and how to head each question. `funnel-analysis.ts`, `bounce-analysis.ts`, `lifecycle-analysis.ts`, `habit-analysis.ts` and `cohorts-analysis.ts` are the five.
 - **Wording** (`insights/outcomes.ts`): an `InsightOutcome` per analysis, built from the spec, for the panel and the explore chart ("2× as likely to bounce", "visits"), and whether a higher rate is better. A higher bounce rate is red.
-- **Two kinds of attribute** (`InsightAttribute` in `insights/types.ts`):
-  - `column`: a table column, as of the question's moment (`candidates.ts`). Funnels and bounces.
-  - `event`: whether the actor did one of the event table's saved segments at least 1, 3 or 10 times (`event-candidates.ts`). Each segment gets a flag column on `events_base`, and the population counts it. Lifecycle and habit.
+- **Two kinds of attribute** (`InsightAttribute` in `insights/types.ts`). An adapter lists the kinds it takes (`attributeKinds`); the hook builds each list and numbers them together.
+  - `column`: a table column, as of the question's moment (`candidates.ts`). Funnels, bounces and cohorts.
+  - `event`: whether the actor did one of the event table's saved segments at least 1, 3 or 10 times (`event-candidates.ts`). Each segment gets a flag column on `events_base`, and the population counts it. Lifecycle, habit and cohorts.
+- **A focus column** (optional, `getFocusColumn`): an event table column the user split the analysis by, like cohorts' "Property to group users by". They've said it matters, so it's a candidate whatever its number of values, and comes first, so it wins ties. Not a users table column, which would leak (see [Person properties](#person-properties)). For breakouts later, it could also be guaranteed a place in pass 2, and preferred when two insights explain each other.
 - **Expected outcomes** (optional): a population with `hasExpected` has an `expected` column, each actor's chance of the outcome given what else is known about them. The counts sum it and its variance. The search then compares a group with what's expected of it, not with everyone else (see [Compared with people as active](#compared-with-people-as-active)).
-- **Pairs are optional** (`searchesPairs`). The pair interaction test compares raw rates, so it doesn't fit populations with expected outcomes.
+- **What pairs are for** (`pairs`): `search` looks for pairs as insights of their own, for funnels and bounces. The pair interaction test compares raw rates, so populations with expected outcomes (lifecycle, habit, cohorts) use `overlaps`: once the singles are in, pairs are counted only over the attributes and values of the singles found (`planOverlapPairs`), so "explained by" can tell how they overlap. Those pairs aren't searched or reported. It's one more query, about as fast as the singles, since it only covers what was found. The panel waits for it rather than showing insights that then disappear.
 
-The as-of rule is the population's: a funnel takes the first value seen by the person by reaching step k; bounces take the value on the landing event; lifecycle and habit count the events in the period (a week, for habit).
+The as-of rule is the population's: a funnel takes the first value seen by the person by reaching step k; bounces take the value on the landing event; lifecycle and habit count the events in the period (a week, for habit); cohorts take the first value seen by the start, and count the events in the start period.
 
 ### Bounces
 
@@ -528,6 +529,29 @@ Known issues, beyond lifecycle's:
 - **Tenure.** New people are more active in the weeks ahead than older people as active that week, so whatever marks being new, like "Signed up" or "Started trial", looks like a reason to become a regular. The split into new and everyone else was a rough control for it, and not a clean one: first seen is often a marketing visit a week before signing up, so the signup week counted under everyone else anyway. See tenure under [Later](#later).
 - **Persona proxies.** By day, "Created a report 3+" comes out slightly positive (95.5% vs 93.5%): power users create reports from more of their report page views, so it marks persona beyond activity. Nothing about reports was planted. By week, "Hit an error" comes out slightly negative (78.3% vs 79.7%), like "Created a report" in lifecycle: errors are activity, so people with errors are compared with people busier than them.
 
+### Cohorts
+
+"What's different about the people who come back?" Cohorts compare people by both kinds of attribute: who they were when they started, and what they did in their first period.
+
+- **Questions:** the usual retention checkpoints within the periods followed: days 1, 7 and 28; weeks 1, 4, 13 and 52; months 1, 3, 6 and 12. Each heads as "Came back in week 4", or "... or later" with that return rule. A fixed set reads like the metrics people already quote, where something derived from the data (say, the furthest week half the people reached) would move with the date range.
+- **Who:** one row per person per checkpoint they've reached by the end of the data, so later cohorts don't count as churn. Each person counts once per question, so the repeated rows of lifecycle and habit don't come up.
+- **Success:** came back in that period, or in it or later, by the return rule, as in the chart.
+- **Columns** are as of the start: the first value seen by then, the funnel's rule. "Property to group users by" reads the latest non-empty value instead; they only differ for traits that change (see [Known gap](#known-gap-traits-that-change)).
+- **Events** are counted from the start to the end of its period ("in their first week"). That period ends before any checkpoint, so they can't count the return itself. A fixed 7 days would overlap week 1 for anyone who starts mid-week. The start and return events are left out, as lifecycle leaves out its activity.
+- **Compared with people as active in their first period:** the same strata as lifecycle, days (hours, for a day) and returning events to a power of 2, counted in the start period. So pairs are only counted for overlaps.
+- **The grouped-by property** is the focus column (see [The shared framework](#the-shared-framework)).
+- **SQL** (`sql/analyses/cohorts-insights.ts`): the starts and first values in one `GROUP BY`, then a join back to the events for the start period's counts and the returns, then `ARRAY JOIN` over the checkpoints.
+
+#### Why compared with people as active
+
+`check-insights.ts` runs cohorts from signup, by week, over all the data, both ways. Against everyone else, every segment done in the signup week looks like a reason to come back, because active people do everything more. "Created a report" tops the list (week 4: 77.8% vs 52.3%), and "Hit an error", which changes nothing in the generator, looks good (79.3% vs 55.9%). Against people as active, the planted invite is found at every checkpoint (week 4: 83.3% vs 68.5% expected, 2,045 people) and errors aren't.
+
+#### Results
+
+With the app's defaults (any event starts the clock, the last 90 days, by week), 6 insights at weeks 1 and 4 (12 before pairs were counted for overlaps: "Person Company", "Role" and "Plan" were each listed as not set, for the same people). The top one is the artifact of [cohorts starting in the range](#later): "Person is identified" comes back less than expected in week 1 (76.2% vs 83.4%, 4,136 people). Raw rates agree (77% vs 88%). Someone identified at their first event in the range was already a user, and the generator's habits fade with time since signup: 79% came back in week 1 a month or so after they were first seen, and 58% after 5 weeks or more. In a real product, long-standing users who are still active may well come back more, so the direction is partly the generator's, but either way it's an insight about who started before the range. "Sent an invite" is found at both checkpoints.
+
+Counting pairs for overlaps also changed habit: by day, "Started trial" is gone, and by week, so is "Hit an error", which "Created a report" explains. The lifecycle and habit results above were measured before it.
+
 ## Implementation
 
 Built as planned, except where noted here. `bun run dev/product-analytics/check-insights.ts` runs both passes and the search against ClickHouse without Metabase, and checks the planted effects in `ground-truth.json`.
@@ -581,12 +605,11 @@ A fix needs both: some way to test a pair against an explanation with a third co
 
 - Derive the step chart from pass 1 (see [above](#future-optimization-one-scan-for-the-chart-and-pass-1)).
 - GUI exploration through a saved per-person question.
-- Cohorts.
 - **Cluster-robust variance** for populations with several rows per person, lifecycle and habit (see [Habit](#habit), known issues).
 - **Event attributes for funnels:** what people did between steps, like "what does someone do on their trial that makes them likely to buy?". Counting events between reaching step k and converting leaks: fast converters have less time to do anything, and the events of converting predict it perfectly. Count them in a fixed window after reaching step k, among people who hadn't converted by its end.
 - **Pairs with expected outcomes:** an interaction test against expected outcomes, so lifecycle and habit can look for pairs too.
 - **First active, not first seen,** for lifecycle's new when being active is a narrower event than any event (see [Who's new](#whos-new)). It needs each person's first time doing that event, so it reads history, unless it's stamped on events like first seen.
-- **Cohorts start the first time ever, not the first time in the range.** A person's clock starts at their first starting event in the date range, so the range's first cohort holds everyone who was already active: by week over the last 90 days, it's 4,310 people against about 1,400 for later weeks, and 79% of them were first seen before that week. PostHog and Mixpanel offer both. The fix is the same as for lifecycle's new: `person__first_seen_at` for "any event", the history for a specific event, and only people whose start falls inside the range get a cohort.
+- **Cohorts start the first time ever, not the first time in the range.** A person's clock starts at their first starting event in the date range, so the range's first cohort holds everyone who was already active: by week over the last 90 days, it's 4,310 people against about 1,400 for later weeks, and 79% of them were first seen before that week. PostHog and Mixpanel offer both. The fix is the same as for lifecycle's new: `person__first_seen_at` for "any event", the history for a specific event, and only people whose start falls inside the range get a cohort. It's also the top insight with the app's defaults (see [Cohorts](#results-2)).
 - **Tenure in the expected chance,** for habit and maybe lifecycle: weeks since first seen (0, 1, 2, 3, 4+) alongside activity, since habits fade with time since signup in the generator and in real products. For habit, read from `person__first_seen_at` when the table has it, with no setting: it only sharpens "expected for people as active". Tried on habit, while it was split into new and everyone else, with the app's defaults: "Signed up" goes from 18.8% vs 11.4% expected to 18.8% vs 16.3%, "Started trial" drops out, and 14 insights become 11 (9 become 8 with "Was active" as the activity). It doesn't touch persona proxies or "Was active". One more column in the strata, but it thins each stratum.
 - **Choosing N from the histogram:** selecting bars could set what makes a regular. The bars count days over the whole range, not the 4 weeks ahead, so it would need its own wording.
 - **Popular events** in place of the first 20 segments (see post-prototype.md).

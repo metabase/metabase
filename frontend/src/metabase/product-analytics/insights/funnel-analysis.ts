@@ -10,8 +10,8 @@ import type { InsightsAnalysis } from "./types";
 export const FUNNEL_INSIGHTS: InsightsAnalysis = {
   getOutcome: getConversionOutcome,
   appliesTo: (spec) => spec.kind === "funnel",
-  attributeKind: "column",
-  searchesPairs: true,
+  attributeKinds: ["column"],
+  pairs: "search",
   getPopulation: (spec, attributes) => {
     const { ids, asOf } = getColumnAttributeRules(attributes);
     return funnelInsightPopulation(spec, ids, asOf);

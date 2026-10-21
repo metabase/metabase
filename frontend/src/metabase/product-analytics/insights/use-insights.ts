@@ -35,9 +35,9 @@ import {
   getExploreSegmentLabel,
 } from "./explore";
 import { DEFAULT_INSIGHT_OPTIONS } from "./options";
-import { planPairs } from "./plan-pairs";
+import { planOverlapPairs, planPairs } from "./plan-pairs";
 import { parseCountRows, parseQuestionLabels } from "./rows";
-import { findInsights } from "./search";
+import { findInsights, findSingleDiscoveries } from "./search";
 import {
   getInsightSegments,
   getMinSegmentSize,
@@ -47,11 +47,13 @@ import type {
   GroupCounts,
   Insight,
   InsightAttribute,
+  InsightAttributeKind,
   InsightQuestion,
   InsightsAnalysis,
 } from "./types";
 
 const NO_DRAFTS: SegmentDraft[] = [];
+const NO_ATTRIBUTE_KINDS: readonly InsightAttributeKind[] = [];
 
 export type InsightsState =
   | { status: "idle" }
@@ -64,7 +66,9 @@ export type InsightsState =
       questions: InsightQuestion[];
       /** How many actors the search looked at. */
       checkedCount: number;
-      /** Pairs of attributes are still being counted. */
+      /** What pairs of attributes are counted for; see `InsightsAnalysis`. */
+      pairsFor: InsightsAnalysis["pairs"];
+      /** Pairs of attributes are still being searched. */
       isFindingPairs: boolean;
       /** Single-attribute insights are still shown when pairs fail. */
       pairsError: string | undefined;
@@ -126,23 +130,26 @@ export const useInsights = ({
   const outcome =
     activeSpec !== undefined ? analysis?.getOutcome(activeSpec) : undefined;
   const metadataProvider = useMetadataProvider(context.table?.db_id ?? null);
-  const attributeKind = analysis?.attributeKind;
+  const attributeKinds = analysis?.attributeKinds ?? NO_ATTRIBUTE_KINDS;
+  const comparesByEvents = attributeKinds.includes("event");
+  const comparesByColumns = attributeKinds.includes("column");
   const eventSegments = usePaletteSegments(
-    attributeKind === "event" ? tableId : undefined,
+    comparesByEvents ? tableId : undefined,
     "event",
     NO_DRAFTS,
   );
+  const focusColumn = analysis?.getFocusColumn?.(base);
 
   const attributes = useMemo((): InsightAttribute[] => {
     if (!isActive) {
       return [];
     }
-    if (attributeKind === "event") {
-      const tableMetadata =
-        tableId !== undefined
-          ? Lib.tableOrCardMetadata(metadataProvider, tableId)
-          : null;
-      return tableMetadata !== null
+    const tableMetadata =
+      comparesByEvents && tableId !== undefined
+        ? Lib.tableOrCardMetadata(metadataProvider, tableId)
+        : null;
+    const events =
+      tableMetadata !== null
         ? getEventAttributes({
             segments: eventSegments.saved,
             tableQuery: Lib.queryFromTableOrCardMetadata(
@@ -153,21 +160,33 @@ export const useInsights = ({
             excluded: base.events.map(({ event }) => event),
           })
         : [];
-    }
-    const stepColumns = new Set(
-      base.events.flatMap(({ event }) =>
-        getEventFilterColumns(metadataProvider, event),
-      ),
-    );
-    return getInsightAttributes({ context, roles: base.columns, stepColumns });
+    const columns = comparesByColumns
+      ? getInsightAttributes({
+          context,
+          roles: base.columns,
+          stepColumns: new Set(
+            base.events.flatMap(({ event }) =>
+              getEventFilterColumns(metadataProvider, event),
+            ),
+          ),
+          focusColumn,
+        })
+      : [];
+    // Each kind numbers its own from 1, so they're renumbered together.
+    return [...columns, ...events].map((attribute, index) => ({
+      ...attribute,
+      id: `attr_${index + 1}`,
+    }));
   }, [
     isActive,
-    attributeKind,
+    comparesByEvents,
+    comparesByColumns,
     tableId,
     eventSegments.saved,
     metadataProvider,
     base,
     context,
+    focusColumn,
   ]);
   const attributeIds = useMemo(
     () => attributes.map(({ id }) => id),
@@ -250,17 +269,19 @@ export const useInsights = ({
     [singles.currentData],
   );
 
-  const searchesPairs = analysis?.searchesPairs ?? false;
-  const pairValues = useMemo(
-    () =>
-      singleRows !== undefined && searchesPairs
-        ? planPairs(
-            indexCounts({ rows: singleRows, singleAttributes: attributeIds }),
-            attributeIds,
-          )
-        : undefined,
-    [singleRows, attributeIds, searchesPairs],
-  );
+  const pairsFor = analysis?.pairs ?? "search";
+  const pairValues = useMemo(() => {
+    if (singleRows === undefined) {
+      return undefined;
+    }
+    const singlesIndex = indexCounts({
+      rows: singleRows,
+      singleAttributes: attributeIds,
+    });
+    return pairsFor === "search"
+      ? planPairs(singlesIndex, attributeIds)
+      : planOverlapPairs(findSingleDiscoveries(singlesIndex));
+  }, [singleRows, attributeIds, pairsFor]);
   const pairsQuery =
     pairValues !== undefined && pairValues.size > 0
       ? toQuery(
@@ -278,12 +299,16 @@ export const useInsights = ({
     () =>
       singleRows !== undefined
         ? indexCounts({
-            rows: [...singleRows, ...(pairRows ?? [])],
+            rows:
+              pairsFor === "search"
+                ? [...singleRows, ...(pairRows ?? [])]
+                : singleRows,
+            overlapRows: pairsFor === "overlaps" ? pairRows : undefined,
             singleAttributes: attributeIds,
             pairValues,
           })
         : undefined,
-    [singleRows, pairRows, attributeIds, pairValues],
+    [singleRows, pairRows, attributeIds, pairValues, pairsFor],
   );
   const insights = useMemo(
     () => (counts !== undefined ? findInsights(counts) : undefined),
@@ -337,8 +362,7 @@ export const useInsights = ({
     if (activeSpec === undefined || analysis === undefined) {
       return { status: "idle" };
     }
-    const isLoadingSegments =
-      attributeKind === "event" && eventSegments.isLoading;
+    const isLoadingSegments = comparesByEvents && eventSegments.isLoading;
     if (context.table === undefined || isLoadingSegments) {
       return { status: "loading" };
     }
@@ -349,6 +373,7 @@ export const useInsights = ({
         attributes,
         questions: [],
         checkedCount: 0,
+        pairsFor,
         isFindingPairs: false,
         pairsError: undefined,
       };
@@ -357,7 +382,15 @@ export const useInsights = ({
     if (error !== undefined) {
       return { status: "error", error };
     }
-    if (singleRows === undefined || insights === undefined) {
+    const isFindingPairs = pairsQuery !== undefined && pairs.isFetching;
+    // Overlaps only leave insights out, so they're waited for rather than
+    // making insights disappear once they arrive.
+    const isFindingOverlaps = pairsFor === "overlaps" && isFindingPairs;
+    if (
+      singleRows === undefined ||
+      insights === undefined ||
+      isFindingOverlaps
+    ) {
       return { status: "loading" };
     }
     const totals = singleRows.filter(
@@ -370,7 +403,8 @@ export const useInsights = ({
       attributes,
       questions,
       checkedCount: analysis.getCheckedCount(questions),
-      isFindingPairs: pairsQuery !== undefined && pairs.isFetching,
+      pairsFor,
+      isFindingPairs,
       pairsError: pairsQuery !== undefined ? getDatasetError(pairs) : undefined,
     };
   })();

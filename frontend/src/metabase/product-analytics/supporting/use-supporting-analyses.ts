@@ -26,6 +26,7 @@ import {
   getClickedStep,
   getClickedTransition,
 } from "../insights/clicked-transition";
+import { COHORTS_INSIGHTS } from "../insights/cohorts-analysis";
 import { FUNNEL_INSIGHTS } from "../insights/funnel-analysis";
 import { HABIT_INSIGHTS } from "../insights/habit-analysis";
 import { LIFECYCLE_INSIGHTS } from "../insights/lifecycle-analysis";
@@ -110,6 +111,8 @@ const getInsightsAnalysis = (
       return LIFECYCLE_INSIGHTS;
     case "habit":
       return HABIT_INSIGHTS;
+    case "cohorts":
+      return COHORTS_INSIGHTS;
     default:
       return undefined;
   }
@@ -232,7 +235,7 @@ export const useSupportingAnalyses = ({
       case "habit":
         return t`Finish setting up the habit analysis to see insights.`;
       case "cohorts":
-        return t`Insights aren't available for cohorts yet.`;
+        return t`Follow the cohorts for longer to see insights.`;
       default:
         return t`Finish setting up this analysis to see insights.`;
     }
