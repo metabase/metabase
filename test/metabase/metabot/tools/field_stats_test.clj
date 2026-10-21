@@ -160,14 +160,20 @@
                    {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))))))
 
 (deftest field-values-of-a-card-that-is-not-a-metric-test
-  (testing "reading a question as a metric reports that no metric was found"
-    (let [mp    (mt/metadata-provider)
-          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}]
-        (mt/as-admin
-          (is (= {:output (str "No metric found with ID " question-id) :status-code 404}
-                 (metabot.tools.field-stats/field-values
-                  {:entity-type "metric", :entity-id question-id, :field-id (mt/id :orders :quantity), :limit 5}))))))))
+  (let [mp            (mt/metadata-provider)
+        query         (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        metric-values #(metabot.tools.field-stats/field-values
+                        {:entity-type "metric", :entity-id %, :field-id (mt/id :orders :quantity), :limit 5})]
+    (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
+                   :model/Card {model-id :id}    {:type :model :dataset_query query}]
+      (mt/as-admin
+        (testing "reading a question or model as a metric names the card's type"
+          (doseq [[card-type card-id] [["question" question-id] ["model" model-id]]]
+            (is (= {:output (str "Card " card-id " is a " card-type ", not a metric.") :status-code 400}
+                   (metric-values card-id)))))
+        (testing "a metric that doesn't exist is refused as not found"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
+                                (metric-values Integer/MAX_VALUE))))))))
 
 (deftest field-values-unknown-entity-type-test
   (testing "an unrecognized entity-type -- e.g. because the schema that constrains it isn't enforced in
