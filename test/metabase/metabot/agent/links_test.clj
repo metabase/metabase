@@ -7,6 +7,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.charts :as charts]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -137,6 +139,32 @@
       (let [sent (links/->frontend-query structured)]
         (is (= :mbql/query (:lib/type sent)))
         (is (= (lib/filters structured) (-> sent :stages first :filters)))))))
+
+(deftest ^:parallel ->frontend-query-keeps-parameters-test
+  (testing "a structured query keeps its :parameters in the /question# link and in the chart data part"
+    (let [parameters [{:id     "checkins-month"
+                       :type   :date/month-year
+                       :target [:dimension [:field (meta/id :checkins :date) nil]]
+                       :value  "2014-07"}]
+          query      (assoc (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                            :parameters parameters)
+          expected   (json/decode+kw (json/encode parameters))]
+      (testing "in the link"
+        (is (= expected
+               (-> (links/pseudo-card->link {:dataset_query query})
+                   decode-question-url
+                   :dataset_query
+                   :parameters))))
+      (testing "in the chart data part"
+        (is (= expected
+               (-> (binding [shared/*memory-atom* (atom {:state {:queries {"q-1" query}}})]
+                     (charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                                :viz_settings {:chart_type "bar"}
+                                                :title        "Check-ins in July"
+                                                :description  "Check-ins during July 2014."}))
+                   (get-in [:data-parts 0 :data :query :query :parameters])
+                   json/encode
+                   json/decode+kw)))))))
 
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
   (testing "a chart link resolves to an MBQL 5 /question# URL even when the query has no :lib/type"

@@ -57,7 +57,8 @@
 (defn ->frontend-query
   "Prepare a query for frontend links and chart data.
 
-  Structured MBQL 5 queries stay in MBQL 5 so temporal filters survive JSON serialization (BOT-1972).
+  Structured MBQL 5 queries stay in MBQL 5 so temporal filters survive JSON serialization (BOT-1972),
+  and they keep their `:parameters`.
   Native-only queries use legacy MBQL because the embedding SDK opens its SQL editor only when
   `dataset_query.type` is `\"native\"`.
 
@@ -69,7 +70,8 @@
           (let [normalized (lib/normalize :metabase.lib.schema/query query)]
             (when (and (not (lib/native-only-query? normalized))
                        (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized)))
-              (lib/prepare-for-serialization normalized)))
+              (cond-> (lib/prepare-for-serialization normalized)
+                (:parameters normalized) (assoc :parameters (:parameters normalized)))))
           (catch Exception e
             (log/warn e "Failed to normalize MBQL 5 query for the frontend")
             nil)))
