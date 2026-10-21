@@ -70,10 +70,26 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/TimelineEvent id))
 
+(def ^:private check->status
+  "The HTTP status for each check of `TimelineEventUpdate`. The 404/403 split keeps this endpoint's API from before it
+  parsed: 404 for a row that does not exist, 403 for one the user may not write."
+  {::timeline.parse/changes-match-schema   400
+   ::timeline.parse/event-exists           404
+   ::timeline.parse/new-timeline-exists    404
+   ::timeline.parse/may-write-event        403
+   ::timeline.parse/may-write-new-timeline 403})
+
+(defn- throw-write-permission-failure!
+  "Publish a write permission failure on `object` for the current user, as `api/write-check` does, then throw a 403
+  caused by `e`."
+  [object e]
+  (events/publish-event! :event/write-permission-failure {:user-id api/*current-user-id*
+                                                          :object  object})
+  (api/throw-403 e))
+
 (defn- parse-event-update
   "Parse the update of the TimelineEvent `event-id`, moving it to `new-timeline-id` when that is not nil. A check that
-  fails throws the 400, 403 or 404 this endpoint returns, and a 403 publishes the permission failure, as
-  `api/write-check` does."
+  fails throws the status [[check->status]] gives it; a check that throws rethrows its own exception."
   [event-id new-timeline-id changes]
   (try
     (pt/parse TimelineEventUpdate {:event-id        event-id
@@ -81,28 +97,18 @@
                                    :changes         changes})
     (catch clojure.lang.ExceptionInfo e
       (let [{:keys [type check threw]} (ex-data e)]
-        (when-not (and (= ::pt/invalid type) (not threw))
-          (throw e))
-        (case check
-          ::timeline.parse/changes-match-schema
-          (throw (ex-info (tru "Invalid Request.") {:status-code 400} e))
-
-          (::timeline.parse/event-exists ::timeline.parse/new-timeline-exists)
-          (throw (ex-info (tru "Not found.") {:status-code 404} e))
-
-          ::timeline.parse/may-write-event
-          (do (events/publish-event! :event/write-permission-failure
-                                     {:user-id api/*current-user-id*
-                                      :object  (timeline.db/timeline-event event-id)})
-              (api/throw-403 e))
-
-          ::timeline.parse/may-write-new-timeline
-          (do (events/publish-event! :event/write-permission-failure
-                                     {:user-id api/*current-user-id*
-                                      :object  (timeline.db/timeline new-timeline-id)})
-              (api/throw-403 e))
-
-          (throw e))))))
+        (cond
+          (not= ::pt/invalid type) (throw e)
+          threw                    (throw threw)
+          :else
+          (case (check->status check)
+            400 (throw (ex-info (tru "Invalid Request.") {:status-code 400} e))
+            404 (throw (ex-info (tru "Not found.") {:status-code 404} e))
+            403 (throw-write-permission-failure! (if (= ::timeline.parse/may-write-event check)
+                                                   (timeline.db/timeline-event event-id)
+                                                   (timeline.db/timeline new-timeline-id))
+                                                 e)
+            (throw e)))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -130,7 +136,8 @@
      (parse-event-update id
                          (:timeline_id timeline-event-updates)
                          (u/select-keys-when timeline-event-updates
-                                             :present #{:description :timestamp :time_matters :timezone :icon :archived}
+                                             :present #{:description :timestamp :time_matters :timezone :icon
+                                                        :archived}
                                              :non-nil #{:name})))
     (u/prog1 (timeline.db/timeline-event id)
       (events/publish-event! :event/timeline-update {:object (timeline.db/timeline (:timeline_id <>)) :user-id api/*current-user-id*}))))

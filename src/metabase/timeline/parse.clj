@@ -1,7 +1,6 @@
 (ns metabase.timeline.parse
-  "Parsed types for the timeline module. Each type names the checks a write needs, and the write in
-  [[metabase.timeline.db]] accepts only a value that `pt/parse` issued. `pt/parse` throws `::pt/invalid` naming the
-  first check that failed."
+  "Parsed types for the timeline module, and the checks each one runs. `defparsed` defines a class, not a var: callers
+  require this namespace and `(:import (metabase.timeline.parse TimelineEventUpdate))`."
   (:require
    [malli.util :as mut]
    [metabase.models.interface :as mi]
@@ -32,7 +31,8 @@
   (rows-by-tuple timeline.db.fetch/timelines-by-id tuples))
 
 ;; The current user may apply `changes` to the TimelineEvent with `event-id`, and, when `new-timeline-id` is not nil,
-;; move it to that Timeline. The permission checks read the current user's permissions.
+;; move it to that Timeline. The permission checks read the current user's permissions. Each check needs a status in
+;; `check->status` in [[metabase.timeline.api.timeline-event]].
 ;; The ignore covers what the library's kondo hook generates for each `defparsed`: a `def` without a docstring and a
 ;; `fn` per check, which reads as a redundant wrapper when its body is a single call.
 #_{:clj-kondo/ignore [:missing-docstring :redundant-fn-wrapper]}
@@ -54,5 +54,6 @@
             (or (nil? new-timeline-id)
                 (= new-timeline-id (:timeline_id event))
                 (boolean (mi/can-write? timeline))))
-  (fetch ::event [event-id] events-by-tuple)
-  (fetch ::new-timeline [new-timeline-id] timelines-by-tuple))
+  ;; through the vars, so a test can stub them with `with-redefs`
+  (fetch ::event [event-id] #'events-by-tuple)
+  (fetch ::new-timeline [new-timeline-id] #'timelines-by-tuple))

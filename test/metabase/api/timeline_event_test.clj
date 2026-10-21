@@ -5,12 +5,18 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.response :as api.response]
+   [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.timeline.api.timeline-event :as api.timeline-event]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [parsed-types.core :as pt]
+   [toucan2.core :as t2])
+  (:import
+   (metabase.timeline.parse TimelineEventUpdate)))
 
 (set! *warn-on-reflection* true)
 
@@ -91,8 +97,15 @@
                    :model/TimelineEvent {ev-id :id}      {:name "Event" :timeline_id tl-a}]
       (perms/revoke-collection-permissions! (perms-group/all-users) read-only)
       (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id) {:timeline_id tl-b :name "moved"})))
+      (let [published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id)
+                                       {:timeline_id tl-b :name "moved"}))))
+        (is (=? [[:event/write-permission-failure {:user-id (mt/user->id :rasta)
+                                                   :object  {:id tl-b}}]]
+                (filter (comp #{:event/write-permission-failure} first) @published))
+            "the 403 publishes the permission failure on the destination timeline"))
       (is (= {:timeline_id tl-a :name "Event"}
              (select-keys (t2/select-one :model/TimelineEvent :id ev-id) [:timeline_id :name]))
           "nothing was written")
@@ -103,7 +116,8 @@
     (mt/with-temp [:model/Timeline      {tl-id :id} {}
                    :model/TimelineEvent {ev-id :id} {:name "Event" :timeline_id tl-id}]
       (is (= "Not found."
-             (mt/user-http-request :crowberto :put 404 (str "timeline-event/" ev-id) {:timeline_id Integer/MAX_VALUE :name "moved"})))
+             (mt/user-http-request :crowberto :put 404 (str "timeline-event/" ev-id)
+                                   {:timeline_id Integer/MAX_VALUE :name "moved"})))
       (is (= {:timeline_id tl-id :name "Event"}
              (select-keys (t2/select-one :model/TimelineEvent :id ev-id) [:timeline_id :name]))))))
 
@@ -122,12 +136,32 @@
                    :model/TimelineEvent {ev-id :id}   {:name "Event" :timeline_id tl-id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id) {:name "nope"})))
+      (let [published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id) {:name "nope"}))))
+        (is (=? [[:event/write-permission-failure {:user-id (mt/user->id :rasta)
+                                                   :object  {:id ev-id}}]]
+                (filter (comp #{:event/write-permission-failure} first) @published))
+            "the 403 publishes the permission failure on the event"))
       (is (= "Event" (t2/select-one-fn :name :model/TimelineEvent :id ev-id)))))
   (testing "PUT /api/timeline-event/:id is a 404 for an event that does not exist"
     (is (= "Not found."
            (mt/user-http-request :rasta :put 404 (str "timeline-event/" Integer/MAX_VALUE) {:name "nope"})))))
+
+(deftest a-check-that-throws-keeps-its-own-status-test
+  (testing "PUT /api/timeline-event/:id rethrows what a check threw, with its status, not the parse failure"
+    (mt/with-temp [:model/Timeline      {tl-id :id} {}
+                   :model/TimelineEvent {ev-id :id} {:name "Event" :timeline_id tl-id}]
+      (with-redefs [mi/can-write? (fn [& _] (throw (ex-info "teapot" {:status-code 418})))]
+        (is (= "teapot"
+               (mt/user-http-request :crowberto :put 418 (str "timeline-event/" ev-id) {:name "x"}))))
+      (is (= "Event" (t2/select-one-fn :name :model/TimelineEvent :id ev-id))))))
+
+(deftest every-check-has-a-status-test
+  (testing "each check of TimelineEventUpdate maps to a status, so a new check can't fall through to a 500"
+    (is (= (set (map :name (:checks (pt/declaration TimelineEventUpdate))))
+           (set (keys @#'api.timeline-event/check->status))))))
 
 (deftest timeline-event-permissions-test
   (testing "read-only users cannot create or edit timeline events"

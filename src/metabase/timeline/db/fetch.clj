@@ -1,7 +1,5 @@
 (ns metabase.timeline.db.fetch
-  "Application database reads by id for the timeline module. [[metabase.timeline.parse]] fetches through these, and
-  [[metabase.timeline.db]] requires [[metabase.timeline.parse]] for the types its writes accept, so the reads live
-  apart from the writes."
+  "Application database reads by id for the timeline module. Reads only: writes go in [[metabase.timeline.db]]."
   (:require
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

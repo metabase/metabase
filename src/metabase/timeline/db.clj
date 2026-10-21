@@ -1,10 +1,13 @@
 (ns metabase.timeline.db
-  "Application database queries for the timeline module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for the timeline module. Reads by id for parsing live in
+  [[metabase.timeline.db.fetch]]; no other namespace in the module runs a query (model definitions still use
+  `toucan2.core`). [[update-timeline-event!]] takes only a parsed `TimelineEventUpdate`, whose checks include
+  permissions. The other writes check nothing, so their callers must."
   (:require
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   ;; loads the class imported below
    [metabase.timeline.parse]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -53,7 +56,9 @@
   (t2/update! :model/Timeline id changes))
 
 (mu/defn set-timeline-events-archived!
-  "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
+  "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated. It
+  cascades an archive of the Timeline, whose write permission the caller checked; an update of an event a user
+  requests goes through a parsed `TimelineEventUpdate` and [[update-timeline-event!]]."
   [timeline-id :- ms/PositiveInt
    archived    :- :boolean]
   (t2/update! :model/TimelineEvent {:timeline_id timeline-id} {:archived archived}))

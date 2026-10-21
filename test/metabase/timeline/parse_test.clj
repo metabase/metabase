@@ -17,11 +17,15 @@
   (mt/with-temp [:model/Timeline      {tl-id :id} {}
                  :model/TimelineEvent {ev-id :id} {:name "Event" :timeline_id tl-id}]
     (testing "a plain map is refused and writes nothing"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"TimelineEventUpdate"
-                            (timeline.db/update-timeline-event! {:event-id ev-id, :new-timeline-id nil, :changes {:name "plain"}})))
+      (is (=? {:type ::pt/not-parsed}
+              (try (timeline.db/update-timeline-event! {:event-id        ev-id
+                                                        :new-timeline-id nil
+                                                        :changes         {:name "plain"}})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e)))))
       (is (= "Event" (t2/select-one-fn :name :model/TimelineEvent :id ev-id))))
     (testing "a hand-built value without the proof is refused and writes nothing"
       (is (=? {:type ::pt/not-parsed}
+              ;; the last constructor argument is the library's hidden proof field, which only pt/parse fills
               (try (timeline.db/update-timeline-event! (TimelineEventUpdate. ev-id nil {:name "forged"} nil))
                    (catch clojure.lang.ExceptionInfo e (ex-data e)))))
       (is (= "Event" (t2/select-one-fn :name :model/TimelineEvent :id ev-id))))))
@@ -34,11 +38,15 @@
                  :model/TimelineEvent {ev-id :id}     {:name "Event" :timeline_id tl-a}]
     (perms/revoke-collection-permissions! (perms-group/all-users) read-only)
     (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
-    (letfn [(parse-as [user new-timeline-id changes]
-              (mt/with-current-user (mt/user->id user)
-                (pt/parse TimelineEventUpdate {:event-id ev-id, :new-timeline-id new-timeline-id, :changes changes})))
-            (failed-check [user new-timeline-id changes]
-              (try (parse-as user new-timeline-id changes)
+    (letfn [(parse-as
+              ([user new-timeline-id changes] (parse-as user ev-id new-timeline-id changes))
+              ([user event-id new-timeline-id changes]
+               (mt/with-current-user (mt/user->id user)
+                 (pt/parse TimelineEventUpdate {:event-id        event-id
+                                                :new-timeline-id new-timeline-id
+                                                :changes         changes}))))
+            (failed-check [& args]
+              (try (apply parse-as args)
                    nil
                    (catch clojure.lang.ExceptionInfo e (:check (ex-data e)))))]
       (testing "a permitted user gets a value, and the write accepts it"
@@ -55,6 +63,7 @@
         (is (= ::timeline.parse/may-write-new-timeline (failed-check :rasta tl-b {})))
         (is (= ::timeline.parse/new-timeline-exists (failed-check :rasta Integer/MAX_VALUE {})))
         (is (= ::timeline.parse/changes-match-schema (failed-check :rasta nil {:bogus 1})))
+        (is (= ::timeline.parse/event-exists (failed-check :rasta Integer/MAX_VALUE nil {:name "x"})))
         (perms/revoke-collection-permissions! (perms-group/all-users) writable)
         (perms/grant-collection-read-permissions! (perms-group/all-users) writable)
         (is (= ::timeline.parse/may-write-event (failed-check :rasta nil {:name "x"})))
