@@ -220,8 +220,14 @@
                 ::parent-names      (parent-names metadata-providerable col)
                 :qp/native-sandbox-column.force-coercion-strategy (:qp/native-sandbox-column.force-coercion-strategy col)))
 
-(defn- add-column-info-to-options [opts query col]
-  (merge opts (column-info-options query col)))
+(defn- add-column-info-to-options
+  "Add the [[column-info-options]] of `col` to `opts`, except for a column the stage reads from a previous stage, Card,
+  or native query, which already applied them; a forced native sandbox coercion is always added."
+  [opts query col]
+  (merge opts
+         (if (#{:source/previous-stage :source/card :source/native} (:lib/source col))
+           (select-keys (column-info-options query col) [:qp/native-sandbox-column.force-coercion-strategy])
+           (column-info-options query col))))
 
 (defn- add-source-to-field-ref [query path field-ref col]
   (lib/update-options
