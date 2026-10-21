@@ -62,6 +62,26 @@ describe("Admin Settings Routing - Enterprise without features", () => {
     );
   });
 
+  it("should show the whitelabel upsell with a docs link and a trial button on the appearance route", async () => {
+    await setup({ isAdmin: true, initialRoute: "/appearance" });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Make Metabase look like you",
+      }),
+    ).toBeInTheDocument();
+    const learnMoreHref = screen
+      .getByRole("link", { name: "Learn more" })
+      .getAttribute("href");
+    expect(learnMoreHref).toContain(
+      "https://www.metabase.com/docs/latest/configuring-metabase/appearance",
+    );
+    expect(learnMoreHref).toContain("utm_");
+    expect(
+      screen.getByRole("button", { name: "Try for free" }),
+    ).toBeInTheDocument();
+  });
+
   describe("does not render the premium routes", () => {
     it.each(notFoundRoutes)(
       "should not find the $name enterprise route",

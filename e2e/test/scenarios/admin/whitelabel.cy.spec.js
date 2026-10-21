@@ -50,38 +50,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("smoke UI test", () => {
-    cy.log("Should show all whitelabel options with the feature enabled");
-    cy.visit("/admin/settings/whitelabel");
-
-    cy.log("Upsell icon should not be present in the sidebar link");
-    cy.findAllByTestId("settings-sidebar-link")
-      .filter(":contains(Appearance)")
-      .should("have.text", "Appearance")
-      .and("not.have.descendants", ".Icon-gem");
-
-    cy.log("Should show the upsell if the feature is missing");
-    H.deleteToken();
-    cy.visit("/admin/settings/appearance");
-    cy.findByRole("heading", { name: "Make Metabase look like you" }).should(
-      "be.visible",
-    );
-    cy.findByRole("link", { name: "Learn more" })
-      .should("have.attr", "href")
-      .and(
-        "include",
-        "https://www.metabase.com/docs/latest/configuring-metabase/appearance",
-      )
-      .and("include", "utm_");
-    cy.findByRole("button", { name: "Try for free" });
-
-    cy.log("Upsell icon should now be visible in the sidebar link");
-    cy.findAllByTestId("settings-sidebar-link")
-      .filter(":contains(Appearance)")
-      .should("have.text", "Appearance")
-      .and("have.descendants", ".Icon-gem");
-  });
-
   describe("company name", () => {
     const NEW_COMPANY_NAME = "New Test Co";
 

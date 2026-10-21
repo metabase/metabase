@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -53,6 +53,17 @@ const setup = async ({
       settings: createMockSettingsState(settings),
     },
   });
+};
+
+const findAppearanceLink = async () => {
+  const links = await screen.findAllByTestId("settings-sidebar-link");
+  const appearanceLink = links.find(
+    (link) => link.textContent === "Appearance",
+  );
+  if (!appearanceLink) {
+    throw new Error("Appearance link not found");
+  }
+  return appearanceLink;
 };
 
 describe("SettingsNav", () => {
@@ -189,6 +200,30 @@ describe("SettingsNav", () => {
     expect(await screen.findByText("Appearance")).toBeInTheDocument();
     expect(screen.getByText("Branding")).toBeInTheDocument();
     expect(screen.getByText("Conceal Metabase")).toBeInTheDocument();
+  });
+
+  it("should show the whitelabel upsell gem on the Appearance link without the whitelabel feature", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      tokenFeatures: { whitelabel: false },
+    });
+
+    const appearanceLink = await findAppearanceLink();
+    expect(
+      within(appearanceLink).getByTestId("upsell-gem"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show the whitelabel upsell gem on the Appearance link with the whitelabel feature", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      tokenFeatures: { whitelabel: true },
+    });
+
+    const appearanceLink = await findAppearanceLink();
+    expect(
+      within(appearanceLink).queryByTestId("upsell-gem"),
+    ).not.toBeInTheDocument();
   });
 
   it("should hide Authentication and Python Runner from settings managers even with related tokens", async () => {
