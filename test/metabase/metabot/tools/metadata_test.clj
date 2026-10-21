@@ -1,6 +1,9 @@
 (ns metabase.metabot.tools.metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -59,6 +62,16 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
                                     (metadata-tools/get-field-values-tool
                                      {:data_source data-source :source_id question-id :field_id 1}))))))))))
+
+(deftest get-field-values-tool-reports-a-refused-table-as-not-found-test
+  (testing "a table the user can't read and one that doesn't exist get the same error, which the model can recover from"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (binding [scope/*current-user-scope* #{"*"}]
+          (doseq [table-id [(mt/id :venues) Integer/MAX_VALUE]]
+            (is (= "The entity referenced here was not found. It may not exist, or you may not have access to it."
+                   (test-util/tool-boundary-error "get_field_values" #'metabot.tools/get-field-values-tool
+                                                  {:data_source "table" :source_id table-id :field_id 1})))))))))
 
 (deftest get-field-values-tool-unknown-data-source-test
   (testing "an unexpected data_source -- e.g. because the schema that constrains it isn't enforced in

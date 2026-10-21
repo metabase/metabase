@@ -254,6 +254,33 @@ export async function findSlackMessage({
   };
 }
 
+export async function getRecentSlackMessages({
+  channelName,
+  sinceHours,
+  limit = 100,
+}: {
+  channelName: string;
+  sinceHours?: number;
+  limit?: number;
+}): Promise<string[]> {
+  const channelId = await getSlackChannelId(channelName);
+  if (!channelId) {
+    throw new Error(`Could not find channel ${channelName}`);
+  }
+
+  const oldest =
+    sinceHours === undefined
+      ? undefined
+      : String(Math.floor(Date.now() / 1000) - sinceHours * 3600);
+  const response = await slack.conversations.history({
+    channel: channelId,
+    oldest,
+    limit,
+  });
+
+  return response.messages?.map((message) => message.text ?? "") ?? [];
+}
+
 function getExistingSlackMessage(version: string, channelName: string) {
   return findSlackMessage({ channelName, text: getReleaseTitle(version) });
 }
