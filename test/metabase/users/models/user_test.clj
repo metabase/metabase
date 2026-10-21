@@ -65,7 +65,7 @@
 
 (defn- invite-user-accept-and-check-inboxes!
   "Create user by passing `invite-user-args` to `create-and-invite-user!`, or via a dummy sso provider,
-  and return a map of email addresses to the emails that were sent to the email subjects."
+  and return a map of each email address to the subjects of the emails sent to it."
   [& {:keys [sso-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
   (mt/with-temporary-setting-values [site-name "Metabase"]

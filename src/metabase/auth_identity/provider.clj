@@ -295,6 +295,7 @@
    [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
    [:claims {:optional true} [:maybe ms/JWTClaims]]
    [:code {:optional true} [:maybe :string]]
+   [:created-new-user? {:optional true} [:maybe :boolean]]
    [:device-info {:optional true} [:maybe DeviceInfo]]
    [:email {:optional true} [:maybe :string]]
    [:error {:optional true} [:maybe :keyword]]
@@ -323,7 +324,6 @@
    [:user-data {:optional true} [:maybe UserData]]
    [:user-id {:optional true} [:maybe :int]]
    [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
-   [:created-new-user {:optional true} [:maybe :boolean]]
    [:user/personal-only? {:optional true} [:maybe :boolean]]
    [:username {:optional true} [:maybe :string]]])
 
@@ -421,7 +421,7 @@
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
    :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor :session/provider
    :jwt-data :claims
-   :tenant-slug :tenant-attributes :user-provisioning-enabled? :created-new-user])
+   :tenant-slug :tenant-attributes :user-provisioning-enabled? :created-new-user?])
 
 (defn- notify-admins-of-new-sso-user!
   "Email admins that an SSO login provisioned a new user, if `send-new-sso-user-admin-email?` is enabled. A failure
@@ -429,7 +429,7 @@
   [{user-id :id}]
   (when (setting/get :send-new-sso-user-admin-email?)
     (try
-      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user user-id) :google-auth? true)
+      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user user-id) :sso-auth? true)
       (catch Exception e
         (log/errorf e "Error sending new SSO user notification to admins for user %d" user-id)))))
 
@@ -458,7 +458,7 @@
       (next-method provider $))
     ;; only once the transaction commits, so admins are never told about a user whose provisioning rolled back
     (cond-> $
-      (:created-new-user $) (u/prog1 (notify-admins-of-new-sso-user! (:user <>))))
+      (:created-new-user? $) (u/prog1 (notify-admins-of-new-sso-user! (:user <>))))
     (apply-inactive-check $)
     (apply-mfa-gate provider $)
     (cond-> $
@@ -520,28 +520,26 @@
         user-data     (:user-data request)]
     (cond
       existing-user
-      {:user             (cond-> existing-user
-                           user-data (update-user! user-data provider))
-       :created-new-user false}
+      {:user              (cond-> existing-user
+                            user-data (update-user! user-data provider))
+       :created-new-user? false}
 
       user-data
-      {:user             (create-user! user-data provider)
-       :created-new-user true}
+      {:user              (create-user! user-data provider)
+       :created-new-user? true}
 
       :else
-      {:user             nil
-       :created-new-user false})))
+      {:user              nil
+       :created-new-user? false})))
 
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]
-  (let [{:keys [user
-                created-new-user]} (create-or-update-user! provider request)
-        redirect-url               (or (:redirect-url request) "/")]
-    (cond-> (assoc request
-                   :success? true
-                   :user user
-                   :redirect-url redirect-url)
-      created-new-user (assoc :created-new-user created-new-user))))
+  (let [{:keys [user created-new-user?]} (create-or-update-user! provider request)]
+    (assoc request
+           :success?          true
+           :user              user
+           :redirect-url      (or (:redirect-url request) "/")
+           :created-new-user? created-new-user?)))
 
 (methodical/prefer-method! #'login! ::provider ::create-user-if-not-exists)
 
