@@ -174,6 +174,49 @@ describe("useSchemaCompletion", () => {
     expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
+  it("should complete prefix followed by whitespace and unrelated SQL text", async () => {
+    const { complete, url } = setup({ matchStyle: "prefix" });
+    const results = await complete("SELECT S| FROM table");
+
+    expect(results).toEqual({
+      from: 7,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "SEATS",
+          detail: "ACCOUNTS :type/Integer",
+        },
+        {
+          label: "SOURCE",
+          detail: "PEOPLE :type/Text :type/State",
+        },
+      ],
+    });
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
+  });
+
+  it("should complete inside a word followed by additional SQL text", async () => {
+    const { complete, url } = setup({ matchStyle: "prefix" });
+    const results = await complete("SELECT S|EA FROM table");
+
+    expect(results).toEqual({
+      from: 7,
+      to: 10,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "SEATS",
+          detail: "ACCOUNTS :type/Integer",
+        },
+        {
+          label: "SOURCE",
+          detail: "PEOPLE :type/Text :type/State",
+        },
+      ],
+    });
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
+  });
+
   it("should deduplicate results", async () => {
     const { complete, url } = setup({
       matchStyle: "prefix",
@@ -626,6 +669,37 @@ describe("useReferencedCardCompletion", () => {
     });
     expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
+
+  it("should return columns from referenced cards followed by whitespace and unrelated SQL text", async () => {
+    const { complete } = setup();
+    const results = await complete("SELECT Ba| FROM {{#1}}");
+    expect(results).toEqual({
+      from: 7,
+      validFor: expect.any(Function),
+      options: [
+        { label: "Foobar", detail: "Referenced Question varchar" },
+        { label: "Bar", detail: "Referenced Question varchar" },
+      ],
+    });
+
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
+  });
+
+  it("should return columns from referenced cards inside word followed by additional SQL text", async () => {
+    const { complete } = setup();
+    const results = await complete("SELECT Ba|r FROM {{#1}}");
+    expect(results).toEqual({
+      from: 7,
+      to: 10,
+      validFor: expect.any(Function),
+      options: [
+        { label: "Foobar", detail: "Referenced Question varchar" },
+        { label: "Bar", detail: "Referenced Question varchar" },
+      ],
+    });
+
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
+  });
 });
 
 describe("useLocalsCompletion", () => {
@@ -656,6 +730,48 @@ describe("useLocalsCompletion", () => {
   it("should complete locals from a sql query, inside a word", async () => {
     const { complete } = setup({ engine: "postgres" });
     const results = await complete("SELECT Foo as Bar FROM Baz SORT BY b|a");
+    expect(results).toEqual({
+      from: 35,
+      to: 37,
+      options: [
+        {
+          label: "Bar",
+          detail: "local",
+        },
+        {
+          label: "Baz",
+          detail: "local",
+        },
+      ],
+    });
+  });
+
+  it("should complete locals when followed by whitespace and unrelated SQL text", async () => {
+    const { complete } = setup({ engine: "postgres" });
+    const results = await complete(
+      "SELECT Foo as Bar FROM Baz SORT BY ba| ASC",
+    );
+    expect(results).toEqual({
+      from: 35,
+      to: undefined,
+      options: [
+        {
+          label: "Bar",
+          detail: "local",
+        },
+        {
+          label: "Baz",
+          detail: "local",
+        },
+      ],
+    });
+  });
+
+  it("should complete locals inside a word followed by additional SQL text", async () => {
+    const { complete } = setup({ engine: "postgres" });
+    const results = await complete(
+      "SELECT Foo as Bar FROM Baz SORT BY b|a ASC",
+    );
     expect(results).toEqual({
       from: 35,
       to: 37,
@@ -733,6 +849,36 @@ describe("useKeywordsCompletion", () => {
     it("should complete sql keywords, inside a word", async () => {
       const { complete } = setup({ engine: "sql" });
       const results = await complete("SEL|E");
+      expect(results).toEqual({
+        from: 0,
+        to: 4,
+        options: [
+          {
+            detail: "keyword",
+            label: "SELECT",
+          },
+        ],
+      });
+    });
+
+    it("should complete sql keywords followed by whitespace and unrelated SQL text", async () => {
+      const { complete } = setup({ engine: "sql" });
+      const results = await complete("SELE| * FROM table");
+      expect(results).toEqual({
+        from: 0,
+        to: undefined,
+        options: [
+          {
+            detail: "keyword",
+            label: "SELECT",
+          },
+        ],
+      });
+    });
+
+    it("should complete sql keywords inside word followed by additional SQL text", async () => {
+      const { complete } = setup({ engine: "sql" });
+      const results = await complete("SEL|E * FROM table");
       expect(results).toEqual({
         from: 0,
         to: 4,
