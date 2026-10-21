@@ -35,5 +35,8 @@
                     (str (str/capitalize (name kind)) " " id)
                     "The entity referenced here")
                   " was not found. It may not exist, or you may not have access to it.")
-   :recovery [{:uses #{"search"}
-               :text "Call `search` to find the entity you want and use an id from the results."}]})
+   :recovery [(if (= kind :snippet)
+                {:uses #{"list_snippets"}
+                 :text "Call `list_snippets` to find an available snippet and use an id from the results."}
+                {:uses #{"search"}
+                 :text "Call `search` to find the entity you want and use an id from the results."})]})
