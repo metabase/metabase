@@ -2062,12 +2062,15 @@
            metabase.prototype.init}
    :uses #{api
            app-db
+           collections
            events
            lib
            lib.be
            lib.metadata
            lib.schema
            metabot
+           queries
+           request
            settings
            startup
            sync

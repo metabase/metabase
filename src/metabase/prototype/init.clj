@@ -1,6 +1,7 @@
 (ns metabase.prototype.init
   (:require
    [metabase.prototype.events]
+   [metabase.prototype.filter-usage-seed]
    [metabase.prototype.semantic-layer]
    [metabase.prototype.settings]
    [metabase.prototype.setup :as prototype.setup]

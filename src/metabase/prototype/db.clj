@@ -154,3 +154,14 @@
              :visibility_type [:not-in ["sensitive" "retired"]]
              {:from     [(warehouse-schema-overlay/field-query)]
               :order-by [[:position :asc] [:id :asc]]}))
+
+(defn root-collection-id-by-name
+  "The id of the top-level, not archived Collection named `collection-name`, or nil. Prototype: reads the table
+  directly, so the prototype module does not need the Collection model."
+  [collection-name]
+  (t2/select-one-fn :id [:collection :id] :name collection-name :location "/" :archived false))
+
+(defn card-names-in-collection
+  "The names of the not archived Cards in the Collection with `collection-id`. Prototype: reads the table directly."
+  [collection-id]
+  (t2/select-fn-vec :name [:report_card :name] :collection_id collection-id :archived false))
