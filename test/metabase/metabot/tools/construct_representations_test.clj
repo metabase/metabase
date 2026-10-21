@@ -221,7 +221,7 @@
      "JDBC"           (SQLException. message)
      "nested JDBC"    (ex-info message {} (RuntimeException. message (SQLException. message root-cause)))
      "declared JDBC"  (ex-info message {:error :unknown-field :toucan2/context-trace []}
-                                        (SQLException. message))
+                               (SQLException. message))
      "unknown code"   (ex-info message {:error :not-a-pipeline-error :toucan2/context-trace []})
      "Malli data"     (ex-info message {:error {:type :invalid-type} :toucan2/context-trace []})}))
 

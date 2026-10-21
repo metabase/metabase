@@ -351,6 +351,26 @@
         (is (=? {:error (name error) :message expected}
                 (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
 
+(deftest database-error-callback-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (doseq [database-error? [false true]
+            delivery [:throw :raise]]
+      (let [failure          (if database-error? (SQLException. "Database failure") (Exception. "Handler failure"))
+            callback-failure (if database-error? (SQLException. "Callback failure") (Exception. "Callback failure"))
+            calls            (atom 0)
+            callback         (fn [_] (swap! calls inc) (throw callback-failure))
+            handler          (#'agent-api.api/wrap-database-errors
+                              (fn [_request _respond raise]
+                                (case delivery
+                                  :throw (throw failure)
+                                  :raise (raise failure))))
+            initial          (mt/metric-value system :metabase-api/unhandled-errors)
+            caught           (try (handler {} callback callback) (catch Throwable e e))]
+        (is (identical? callback-failure caught))
+        (is (= 1 @calls))
+        (is (= (+ initial (if database-error? 1 0))
+               (mt/metric-value system :metabase-api/unhandled-errors)))))))
+
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
     (mt/with-no-data-perms-for-all-users!
