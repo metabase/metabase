@@ -22,7 +22,8 @@
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -120,6 +121,7 @@
                  (catch InterruptedException e
                    (throw e))
                  (catch Exception e
+                   (log/error e "Library search failed")
                    (tools.error/throw-recoverable! ::library-search-unavailable {} {:cause e})))]
     (case result
       :busy        (library-search-busy! {})
