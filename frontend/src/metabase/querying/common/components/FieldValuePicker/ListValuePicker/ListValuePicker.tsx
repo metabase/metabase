@@ -15,12 +15,14 @@ import {
 import type { FieldValue } from "metabase-types/api";
 
 import S from "./ListValuePicker.module.css";
+import { UsStatesMap } from "./UsStatesMap";
 import {
   type ContinentPreset,
   getContinentPresets,
   getCountryName,
   getFlagUrl,
 } from "./countries";
+import { getStateName } from "./states";
 import { getEffectiveOptions, searchOptions } from "./utils";
 
 const MAX_TILE_OPTIONS = 8;
@@ -32,17 +34,32 @@ interface ListValuePickerProps {
   autoFocus?: boolean;
   /** Prototype: the column has the Country semantic type. */
   isCountry?: boolean;
+  /** Prototype: the column has the State semantic type. */
+  isState?: boolean;
   onChange: (newValues: string[]) => void;
 }
 
-export function ListValuePicker({ isCountry, ...props }: ListValuePickerProps) {
+export function ListValuePicker({
+  isCountry,
+  isState,
+  ...props
+}: ListValuePickerProps) {
   const countryValues = useMemo(
-    () => (isCountry ? getCountryFieldValues(props.fieldValues) : null),
+    () =>
+      isCountry ? getNamedFieldValues(props.fieldValues, getCountryName) : null,
     [isCountry, props.fieldValues],
+  );
+  const stateValues = useMemo(
+    () =>
+      isState ? getNamedFieldValues(props.fieldValues, getStateName) : null,
+    [isState, props.fieldValues],
   );
   const [elevatedValues] = useState(props.selectedValues);
   if (countryValues != null) {
     return <CountryListPicker {...props} fieldValues={countryValues} />;
+  }
+  if (stateValues != null) {
+    return <StateListPicker {...props} fieldValues={stateValues} />;
   }
   const options = getEffectiveOptions(
     props.fieldValues,
@@ -94,7 +111,9 @@ function TileListPicker({
           title={option.label}
           onClick={() => handleToggle(option.value)}
         >
-          <span className={S.label}>{option.label}</span>
+          <span className={S.label} title={option.label}>
+            {option.label}
+          </span>
         </UnstyledButton>
       ))}
     </SimpleGrid>
@@ -104,6 +123,7 @@ function TileListPicker({
 interface CheckboxListPickerProps extends ListValuePickerProps {
   /** Content between the search box and the list. */
   header?: ReactNode;
+  columns?: number;
   renderLabel?: (option: { value: string; label: string }) => ReactNode;
 }
 
@@ -113,6 +133,7 @@ function CheckboxListPicker({
   placeholder,
   autoFocus,
   header,
+  columns = 1,
   renderLabel,
   onChange,
 }: CheckboxListPickerProps) {
@@ -171,22 +192,29 @@ function CheckboxListPicker({
             onChange={handleToggleAll}
           />
           <Checkbox.Group value={selectedValues} onChange={onChange}>
-            <Stack>
+            <SimpleGrid cols={columns} spacing="sm" verticalSpacing="md">
               {filteredOptions.map((option) => (
                 <Checkbox
                   key={option.value}
                   value={option.value}
+                  classNames={{
+                    root: S.checkboxRoot,
+                    body: S.checkboxBody,
+                    labelWrapper: S.checkboxLabelWrapper,
+                    label: S.checkboxLabel,
+                  }}
                   label={
-                    renderLabel
-                      ? renderLabel({
-                          value: option.value,
-                          label: option.label,
-                        })
-                      : option.label
+                    renderLabel ? (
+                      renderLabel({ value: option.value, label: option.label })
+                    ) : (
+                      <span className={S.label} title={option.label}>
+                        {option.label}
+                      </span>
+                    )
                   }
                 />
               ))}
-            </Stack>
+            </SimpleGrid>
           </Checkbox.Group>
         </Stack>
       ) : (
@@ -200,20 +228,71 @@ function CheckboxListPicker({
 }
 
 /**
- * Prototype: field values with country names as labels, sorted by name, when
- * all the values are two-letter country codes. Otherwise null.
+ * Prototype: field values with names as labels, sorted by name, when all the
+ * values have a name. Otherwise null.
  */
-function getCountryFieldValues(fieldValues: FieldValue[]): FieldValue[] | null {
-  const countryValues: FieldValue[] = [];
+function getNamedFieldValues(
+  fieldValues: FieldValue[],
+  getName: (value: string) => string | null,
+): FieldValue[] | null {
+  const namedValues: FieldValue[] = [];
   for (const [value] of fieldValues) {
-    const name = typeof value === "string" ? getCountryName(value) : null;
+    // The list does not show empty values.
+    if (value == null) {
+      continue;
+    }
+    const name = typeof value === "string" ? getName(value) : null;
     if (name == null) {
       return null;
     }
-    countryValues.push([value, name]);
+    namedValues.push([value, name]);
   }
-  return countryValues.sort(([, a], [, b]) =>
-    String(a).localeCompare(String(b)),
+  return namedValues.sort(([, a], [, b]) => String(a).localeCompare(String(b)));
+}
+
+function StateListPicker(props: ListValuePickerProps) {
+  const { fieldValues, selectedValues, onChange } = props;
+  const valuesByCode = useMemo(
+    () =>
+      new Map(
+        fieldValues.map(([value]) => [
+          String(value).toUpperCase(),
+          String(value),
+        ]),
+      ),
+    [fieldValues],
+  );
+
+  const handleToggle = (value: string) => {
+    onChange(
+      selectedValues.includes(value)
+        ? selectedValues.filter((selectedValue) => selectedValue !== value)
+        : [...selectedValues, value],
+    );
+  };
+
+  return (
+    <CheckboxListPicker
+      {...props}
+      columns={2}
+      header={
+        <UsStatesMap
+          valuesByCode={valuesByCode}
+          selectedValues={selectedValues}
+          onToggle={handleToggle}
+        />
+      }
+      renderLabel={({ value, label }) => (
+        <Flex gap="xs" miw={0}>
+          <span className={S.label} title={label}>
+            {label}
+          </span>
+          <Text component="span" c="text-secondary" lh="inherit" flex="none">
+            {value.toUpperCase()}
+          </Text>
+        </Flex>
+      )}
+    />
   );
 }
 
@@ -237,9 +316,11 @@ function CountryListPicker(props: ListValuePickerProps) {
         )
       }
       renderLabel={({ value, label }) => (
-        <Flex align="center" gap="sm">
+        <Flex align="center" gap="sm" miw={0}>
           <img className={S.flag} src={getFlagUrl(value)} alt="" />
-          {label}
+          <span className={S.label} title={label}>
+            {label}
+          </span>
         </Flex>
       )}
     />
