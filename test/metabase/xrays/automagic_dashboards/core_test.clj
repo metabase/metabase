@@ -557,7 +557,7 @@
     magic-card-database-id :database_id
     magic-card-query       :dataset_query
     :as                    _magic-card}]
-  (let [valid-source-ids        (set (map (fn [{:keys [name id]}] (or id name)) source-meta))
+  (let [valid-source-ids        (set (map :name source-meta))
         magic-card-query        (lib-be/normalize-query magic-card-query)
         {query-db-id :database} magic-card-query]
     (is (= source-database-id magic-card-database-id))
@@ -565,9 +565,9 @@
     (is (= source-table-id magic-card-table-id))
     (is (= source-card-id
            (lib/primary-source-card-id magic-card-query)))
-    (doseq [breakout (lib/breakouts magic-card-query)
-            field-id (lib/all-field-ids breakout)]
-      (is (contains? valid-source-ids field-id)))))
+    (doseq [[_tag _opts field-name :as breakout] (lib/breakouts magic-card-query)]
+      (is (= :field (first breakout)))
+      (is (contains? valid-source-ids field-name)))))
 
 (defn- ensure-dashboard-sourcing [source-card dashboard]
   (doseq [magic-card (->> dashboard
@@ -610,7 +610,7 @@
                                                                         source-query))
                                                     :type            :model}]
             (let [dashboard       (mt/with-test-user :rasta (magic/automagic-analysis card nil))
-                  binned-field-id (mt/id :products :price)]
+                  binned-field-name "PRICE"]
               (ensure-single-table-sourced (mt/id :products) dashboard)
               ;; Count of records
               ;; Distributions:
@@ -619,15 +619,15 @@
               (is (= 3 (->> dashboard :dashcards (filter :card) count)))
               (ensure-dashboard-sourcing card dashboard)
               ;; This ensures we get a card that does binning on price
-              (is (= binned-field-id
+              (is (= binned-field-name
                      (first
                       (for [dashcard (:dashcards dashboard)
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
                             id       (match/match-many breakouts
-                                       [:field {:binning &truthy} (id :guard pos-int?)]
-                                       id)]
+                                       [:field {:binning &truthy} (field-name :guard string?)]
+                                       field-name)]
                         id)))))))))))
 
 (deftest basic-root-model-test-2
@@ -655,20 +655,20 @@
                                                                         source-query))
                                                     :type            :model}]
             (let [dashboard          (mt/with-test-user :rasta (magic/automagic-analysis card nil))
-                  temporal-field-ids (for [dashcard (:dashcards dashboard)
-                                           :let     [query (get-in dashcard [:card :dataset_query])]
-                                           :when    query
-                                           :let     [breakouts (lib/breakouts query)]
-                                           id       (match/match-many breakouts
-                                                      [:field {:temporal-unit &truthy} (id :guard pos-int?)]
-                                                      id)]
-                                       id)]
+                  temporal-field-names (for [dashcard (:dashcards dashboard)
+                                             :let     [query (get-in dashcard [:card :dataset_query])]
+                                             :when    query
+                                             :let     [breakouts (lib/breakouts query)]
+                                             field-name (match/match-many breakouts
+                                                          [:field {:temporal-unit &truthy} (field-name :guard string?)]
+                                                          field-name)]
+                                         field-name)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
               (ensure-dashboard-sourcing card dashboard)
               ;; We want to produce at least one temporal axis card
-              (is (pos? (count temporal-field-ids)))
+              (is (pos? (count temporal-field-names)))
               ;; We only have one temporal field, so ensure that's what's used for the temporal cards
-              (is (every? #{temporal-field-id} temporal-field-ids)))))))))
+              (is (every? #{"CREATED_AT"} temporal-field-names)))))))))
 
 (deftest basic-root-model-test-3
   (testing "A simple model with longitude and latitude dimensions should generate a card with a map."
@@ -1746,6 +1746,6 @@
           (is (=? [[:distinct {}
                     [:field
                      ;; This should be present vs. nil (value before issue)
-                     {:source-field (mt/id :reviews :product_id)}
-                     (mt/id :products :id)]]]
+                     {:source-field-name "PRODUCT_ID"}
+                     "ID"]]]
                   aggregate)))))))

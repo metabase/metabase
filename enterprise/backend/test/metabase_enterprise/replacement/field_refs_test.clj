@@ -14,6 +14,10 @@
   [mp field-id]
   (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL))
 
+(defn- legacy-field-id-ref
+  [mp field-id]
+  [:field field-id {:base-type (:base-type (lib.metadata/field mp field-id))}])
+
 (defn- dimension-field-id-ref
   ([mp field-id]
    [:dimension (field-id-ref mp field-id)])
@@ -35,7 +39,7 @@
         (is (=? {:dataset_query
                  {:stages [{:source-table (mt/id :orders)
                             :aggregation [[:count {}]]
-                            :breakout [[:field {} (mt/id :orders :id)]]}
+                            :breakout [[:field {} "ID"]]}
                            {:filters [[:= {} [:field {} "ID"] 1]]}]}}
                 (t2/select-one :model/Card card-id)))))))
 
@@ -47,8 +51,8 @@
                            (lib/aggregate (lib/count))
                            (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
                            (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))
-          id-ref       (field-id-ref mp (mt/id :orders :id))
-          created-ref  (field-id-ref mp (mt/id :orders :created_at))
+          id-ref       (legacy-field-id-ref mp (mt/id :orders :id))
+          created-ref  (legacy-field-id-ref mp (mt/id :orders :created_at))
           viz-settings {:column_settings
                         {(json/encode ["ref" id-ref])
                          {:column_title "Order ID"}
@@ -296,7 +300,7 @@
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
         (is (=? {:source {:type  :query
                           :query {:stages [{:source-table (mt/id :orders)
-                                            :breakout [[:field {} (mt/id :orders :id)]]}
+                                            :breakout [[:field {} "ID"]]}
                                            {:filters [[:= {} [:field {} "ID"] 1]]}]}}}
                 (t2/select-one :model/Transform transform-id)))))))
 
@@ -370,7 +374,7 @@
         ;; Measure schema requires :source-table (no :source-card), so no real field ref upgrade can happen.
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
         (is (=? {:definition {:stages [{:source-table (mt/id :orders)
-                                        :aggregation  [[:sum {} [:field {} (mt/id :orders :total)]]]}]}}
+                                        :aggregation  [[:sum {} [:field {} "TOTAL"]]]}]}}
                 (t2/select-one :model/Measure measure-id)))))))
 
 (deftest measure-upgrade-field-refs!-broken-query-test

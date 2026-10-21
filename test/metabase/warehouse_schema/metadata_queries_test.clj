@@ -8,10 +8,10 @@
    [metabase.util.match :as match]
    [metabase.warehouse-schema.metadata-queries :as metadata-queries]))
 
-(defn- sort-by-field-id [clauses]
+(defn- sort-by-field-name [clauses]
   (sort-by #(match/match-one %
-              [:field _opts (id :guard pos-int?)]
-              id)
+              [:field _opts (field-name :guard string?)]
+              field-name)
            clauses))
 
 (defn- id
@@ -75,7 +75,7 @@
     (testing "if the source table requires a filter, add the partitioned filter"
       (let [query (lib/query mp (lib.metadata/table mp (id :order)))]
         (is (=? [[:> {}
-                  [:field {} (id :order :product-id)]
+                  [:field {} "PRODUCT_ID"]
                   -9223372036854775808]]
                 (-> (metadata-queries/add-required-filters-if-needed query)
                     :stages
@@ -88,7 +88,7 @@
       (let [query (-> (lib/query mp (lib.metadata/table mp (id :product)))
                       (lib/join (lib.metadata/table mp (id :order))))]
         (is (=? [[:> {}
-                  [:field {:join-alias string?} (id :order :product-id)]
+                  [:field {:join-alias string?} "PRODUCT_ID"]
                   -9223372036854775808]]
                 (-> (metadata-queries/add-required-filters-if-needed query)
                     :stages
@@ -101,17 +101,17 @@
       (let [query (-> (lib/query mp (lib.metadata/table mp (id :order)))
                       (lib/join (lib.metadata/table mp (id :buyer))))]
         (is (=? [[:> {}
-                  [:field  {:join-alias string?} (id :buyer :id)]
+                  [:field {:join-alias string?} "ID"]
                   -9223372036854775808]
                  [:> {}
-                  [:field {} (id :order :product-id)]
+                  [:field {} "PRODUCT_ID"]
                   -9223372036854775808]]
                 (-> query
                     metadata-queries/add-required-filters-if-needed
                     :stages
                     first
                     :filters
-                    sort-by-field-id)))))))
+                    sort-by-field-name)))))))
 
 (deftest ^:parallel add-required-filter-if-needed-test-5
   (let [mp (mp)]
@@ -119,14 +119,14 @@
       (let [query (-> (lib/query mp (lib.metadata/table mp (id :order)))
                       (lib/filter (lib/> (lib.metadata/field mp (id :order :id)) 1)))]
         (is (=? [[:> {}
-                  [:field {} (id :order :id)]
+                  [:field {} "ID"]
                   1]
                  [:> {}
-                  [:field {} (id :order :product-id)]
+                  [:field {} "PRODUCT_ID"]
                   -9223372036854775808]]
                 (-> query
                     metadata-queries/add-required-filters-if-needed
                     :stages
                     first
                     :filters
-                    sort-by-field-id)))))))
+                    sort-by-field-name)))))))

@@ -71,7 +71,7 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)]))]
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :fields       [[:field {} (meta/id :products :id)]]}]}
+                         :fields       [[:field {} "ID"]]}]}
               (source-swap/swap-source-in-query query
                                                 [:table (meta/id :orders)]
                                                 [:table (meta/id :products)]))))))

@@ -330,7 +330,7 @@
             (let [dashcard (t2/select-one :model/DashboardCard dashcard-id)]
               (is (=? {:parameter_mappings [{:parameter_id "my-param"
                                              :card_id      old-card-id
-                                             :target       [:dimension [:field (mt/id :orders :id) {}]]}]}
+                                             :target       [:dimension [:field "ID" {}]]}]}
                       dashcard)))))))))
 
 (deftest dashboard-swap-source!-parameter-mappings-implicit-join-test
@@ -355,8 +355,8 @@
                                                   [:table (mt/id :reviews)])
             (let [updated-target (get-in (t2/select-one :model/DashboardCard dashcard-id)
                                          [:parameter_mappings 0 :target])]
-              (is (=? [:dimension [:field (mt/id :products :category)
-                                   {:source-field (mt/id :reviews :product_id)}]]
+              (is (=? [:dimension [:field "CATEGORY"
+                                   {:source-field-name "PRODUCT_ID"}]]
                       updated-target)))))))))
 
 (defn- make-click-behavior
@@ -402,8 +402,8 @@
                         :parameterMapping
                         {viz-key
                          {:target {:dimension ["dimension"
-                                               [:field (mt/id :products :category)
-                                                {:source-field (mt/id :reviews :product_id)}]]}}}}}
+                                               [:field "CATEGORY"
+                                                {:source-field-name "PRODUCT_ID"}]]}}}}}
                       viz)))))))))
 
 (deftest card-swap-source!-dependencies-updated-test
@@ -601,7 +601,7 @@
                           :parameter_mappings [{:parameter_id "my-param"
                                                 :card_id      old-card-id
                                                 :target       [:dimension
-                                                               [:field "ID" {:base-type :type/Integer}]]}]}]
+                                                               [:field (mt/id :orders :id) {:base-type :type/Integer}]]}]}]
             (let [original-pm (:parameter_mappings (t2/select-one :model/DashboardCard dashcard-id))]
               (replacement.source-swap/swap-source! [:dashboard dashboard-id]
                                                     [:card old-card-id]

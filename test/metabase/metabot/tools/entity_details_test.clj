@@ -221,10 +221,8 @@
                     (is (= "sum" head) "head is a string operator")
                     (is (map? opts) "options map at position 1")
                     (is (= "field" (first arg)) "argument is a field clause")
-                    (is (vector? (nth arg 2))
-                        "field's FK is a portable string array (not numeric id)")
-                    (is (every? (some-fn string? nil?) (nth arg 2))
-                        "every portable FK segment is a string (or null for schemaless)")))))))))))
+                    (is (= "TOTAL" (nth arg 2))
+                        "field is referenced by column name (not numeric id)")))))))))))
 
 (deftest get-table-details-with-segments-test
   (testing "get-table-details returns segments when with_segments is true"
@@ -262,8 +260,8 @@
                     (is (= ">" head) "head is a string operator")
                     (is (map? opts) "options map at position 1")
                     (is (= "field" (first field-clause)) "argument is a field clause")
-                    (is (vector? (nth field-clause 2))
-                        "field's FK is a portable string array")
+                    (is (= "TOTAL" (nth field-clause 2))
+                        "field is referenced by column name")
                     (is (= 100 value) "literal comparison value is preserved")))))))))))
 
 (deftest measure-segment-definition-round-trips-through-construct-test

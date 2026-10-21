@@ -358,8 +358,7 @@
 
 (deftest add-dimension-through-one-of-multiple-foreign-key-paths-test
   (testing "adding a dimension reached through duplicate foreign key paths preserves the selected path"
-    (let [product-id-field-id (mt/id :orders :product_id)
-          user-id-field-id    (mt/id :orders :user_id)
+    (let [user-id-field-id    (mt/id :orders :user_id)
           product-title-id    (mt/id :products :title)]
       (mt/with-temp-vals-in-db :model/Field user-id-field-id
                                {:fk_target_field_id (mt/id :products :id)}
@@ -375,11 +374,11 @@
                 title-dimensions (->> (:addable response)
                                       (mapcat :dimensions)
                                       (filter #(= product-title-id (-> % :sources first :field-id))))
-                source-field     #(get (second (:mapping_target %)) :source-field)
+                source-field     #(get (second (:mapping_target %)) :source-field-name)
                 by-source-field  (m/index-by source-field
                                              title-dimensions)
-                selected         (get by-source-field product-id-field-id)]
-            (is (= #{product-id-field-id user-id-field-id}
+                selected         (get by-source-field "PRODUCT_ID")]
+            (is (= #{"PRODUCT_ID" "USER_ID"}
                    (set (keys by-source-field))))
             (is (some? selected))
             (when selected
@@ -395,8 +394,8 @@
                                        :addable
                                        (mapcat :dimensions)
                                        (filter #(= product-title-id (-> % :sources first :field-id))))]
-                (is (= product-id-field-id (get-in stored-mapping [:target 1 :source-field])))
-                (is (= [user-id-field-id]
+                (is (= "PRODUCT_ID" (get-in stored-mapping [:target 1 :source-field-name])))
+                (is (= ["USER_ID"]
                        (mapv source-field remaining)))))))))))
 
 (deftest update-dimension-display-name-test

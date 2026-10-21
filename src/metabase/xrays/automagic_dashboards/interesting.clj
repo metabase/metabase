@@ -105,11 +105,11 @@
   [{fk-target-field-id :fk_target_field_id, base-type :base_type, :keys [id link aggregation], :as field} :- (ms/InstanceOf :model/Field)]
   (let [col (if fk-target-field-id
               (-> (xrays.db/metadata-column fk-target-field-id)
-                  (assoc :fk-field-id id, :lib/source :source/implicitly-joinable))
+                  (assoc :fk-field-id id, :fk-field-name (:name field), :lib/source :source/implicitly-joinable))
               (lib-be/instance->metadata (apply dissoc field xray-field-keys) :metadata/column))]
     (cond-> col
       link
-      (assoc :fk-field-id link, :lib/source :source/implicitly-joinable)
+      (assoc :fk-field-id link, :fk-field-name (:name (xrays.db/field link)), :lib/source :source/implicitly-joinable)
 
       (isa? base-type :type/Temporal)
       (lib/with-temporal-bucket (keyword (or aggregation
