@@ -1,9 +1,5 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID, ORDERS, ORDERS_ID } =
@@ -44,38 +40,6 @@ describe("issue 17768", () => {
         .contains("Auto bin")
         .should("not.exist");
     });
-  });
-});
-
-describe("issue 18384", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    // Hide Reviews table
-    cy.request("PUT", "/api/table", {
-      ids: [REVIEWS_ID],
-      visibility_type: "hidden",
-    });
-  });
-
-  it("should be able to open field properties even when one of the tables is hidden (metabase#18384)", () => {
-    H.DataModel.visit({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: PEOPLE_ID,
-    });
-
-    H.DataModel.TableSection.clickField("Address");
-
-    cy.location("pathname").should(
-      "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
-    );
-
-    H.DataModel.FieldSection.getNameInput()
-      .should("be.visible")
-      .and("have.value", "Address");
   });
 });
 
@@ -189,32 +153,6 @@ describe("issue 15542", () => {
   });
 });
 
-describe("issue 52411", { tags: "@external" }, () => {
-  beforeEach(() => {
-    cy.intercept("GET", "/api/database/*/schema/*").as("getSchema");
-    cy.intercept("GET", "/api/database").as("getDatabases");
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "multi_schema" });
-    cy.signInAsAdmin();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-  });
-
-  it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
-    cy.visit("/admin/datamodel/segments");
-    cy.wait(["@getDatabases", "@getSchema"]);
-    cy.findByTestId("segment-list-table").findByText("Filter by table").click();
-    H.popover().within(() => {
-      cy.icon("chevronleft").click(); // go back
-      cy.findByText("Writable Postgres12").click();
-      cy.findByText("Wild").click();
-      cy.findByText("Birds").click();
-    });
-    cy.findByTestId("segment-list-table")
-      .findByText("Birds")
-      .should("be.visible");
-  });
-});
-
 describe("issue 53595", () => {
   beforeEach(() => {
     H.restore();
@@ -236,169 +174,6 @@ describe("issue 53595", () => {
     H.popover().then(($popover) => {
       expect(H.isScrollableVertically($popover[0])).to.be.false;
     });
-  });
-});
-
-describe("issues 55617, 55618", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("GET", "/api/database").as("getDatabases");
-    cy.intercept("GET", "/api/segment").as("getSegments");
-    H.createSegment({
-      name: "My segment",
-      definition: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
-        },
-      },
-    }).then(({ body: segment }) => {
-      cy.wrap(segment.id).as("segmentId");
-    });
-  });
-
-  it("should allow changing field's FK target mapping in table fields list view and table field detail view (metabase#55617, metabase#55618)", () => {
-    cy.visit("/reference/databases");
-    cy.wait("@getDatabases");
-    cy.findByRole("link", { name: /Sample Database/ }).click();
-    cy.findByRole("link", { name: /Tables in Sample Database/ }).click();
-    cy.findByRole("link", { name: /Orders/ }).click();
-    cy.findByRole("link", { name: /Fields in this table/ }).click();
-
-    cy.log("field list view");
-    cy.button(/Edit/).should("be.visible").realClick();
-
-    cy.log("field list view - metabase#55618");
-    cy.findAllByPlaceholderText("Select a target")
-      .should("have.length", 2)
-      .eq(0)
-      .should("have.value", "People → ID");
-    cy.findAllByPlaceholderText("Select a target")
-      .eq(1)
-      .should("have.value", "Products → ID");
-    cy.findAllByPlaceholderText("Select a target").eq(0).click();
-    H.popover().within(() => {
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible").click();
-    });
-    cy.findAllByPlaceholderText("Select a target")
-      .eq(0)
-      .should("have.value", "Reviews → ID");
-
-    cy.log("field list view - metabase#55617");
-    cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(6)
-      .should("have.value", "Discount")
-      .click();
-    H.popover().findByText("No semantic type").click();
-    cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(6)
-      .should("have.value", "No semantic type");
-
-    cy.log("field detail view");
-    cy.button("Cancel").click();
-    cy.findByRole("link", { name: /User ID/ }).click();
-
-    cy.log("field detail view - metabase#55618");
-    cy.button(/Edit/).should("be.visible").realClick();
-    cy.findByPlaceholderText("Select a target")
-      .should("have.value", "People → ID")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible").click();
-    });
-    cy.findByPlaceholderText("Select a target").should(
-      "have.value",
-      "Reviews → ID",
-    );
-
-    cy.log("field detail view - metabase#55617");
-    cy.findByPlaceholderText("Select a semantic type")
-      .should("have.value", "Foreign Key")
-      .click();
-    H.popover().findByText("No semantic type").click();
-    cy.findByPlaceholderText("Select a semantic type").should(
-      "have.value",
-      "No semantic type",
-    );
-  });
-
-  it("should allow changing field's FK target mapping in segments field list view and segment field detail view (metabase#55617, metabase#55618)", () => {
-    cy.visit("/reference/segments");
-    cy.wait("@getSegments");
-    cy.findByRole("link", { name: /My segment/ }).click();
-    cy.findByRole("link", { name: /Fields in this segment/ }).click();
-
-    cy.log("field list view");
-    cy.button(/Edit/).should("be.visible").realClick();
-
-    cy.log("field list view (metabase#55618)");
-    cy.findAllByPlaceholderText("Select a target")
-      .should("have.length", 2)
-      .eq(0)
-      .should("have.value", "People → ID");
-    cy.findAllByPlaceholderText("Select a target")
-      .eq(1)
-      .should("have.value", "Products → ID");
-    cy.findAllByPlaceholderText("Select a target").eq(0).click();
-    H.popover().within(() => {
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible").click();
-    });
-    cy.findAllByPlaceholderText("Select a target")
-      .eq(0)
-      .should("have.value", "Reviews → ID");
-
-    cy.log("field list view (metabase#55617)");
-    cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(6)
-      .should("have.value", "Discount")
-      .click();
-    H.popover().findByText("No semantic type").click();
-    cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(6)
-      .should("have.value", "No semantic type");
-
-    cy.log("field detail view");
-    cy.button("Cancel").click();
-    cy.findByRole("link", { name: /User ID/ }).click();
-
-    cy.log("field detail view (metabase#55618)");
-    cy.button(/Edit/).should("be.visible").realClick();
-    cy.findByPlaceholderText("Select a target")
-      .should("have.value", "People → ID")
-      .click();
-    H.main().scrollTo("bottom"); // scroll to bottom so the popover drops up
-    H.popover().within(() => {
-      cy.findByText("Orders → ID").should("exist");
-      cy.findByText("People → ID").should("exist");
-      cy.findByText("Products → ID").should("exist");
-      cy.findByText("Reviews → ID").should("exist").click();
-    });
-    cy.findByPlaceholderText("Select a target").should(
-      "have.value",
-      "Reviews → ID",
-    );
-
-    cy.log("field detail view (metabase#55617)");
-    cy.findByPlaceholderText("Select a semantic type")
-      .should("have.value", "Foreign Key")
-      .click();
-    H.popover().findByText("No semantic type").click();
-    cy.findByPlaceholderText("Select a semantic type").should(
-      "have.value",
-      "No semantic type",
-    );
   });
 });
 

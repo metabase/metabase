@@ -52,6 +52,7 @@ import {
   createOrdersQuantityField,
   createOrdersTable,
   createOrdersUserIdField,
+  createPeopleAddressField,
   createPeopleTable,
   createProductsIdField,
   createProductsTable,
@@ -958,6 +959,37 @@ describe("DataModelV1", () => {
   });
 
   describe("field section", () => {
+    it("should open field properties when one of the tables is hidden (metabase#18384)", async () => {
+      const peopleTable = createPeopleTable();
+      const addressField = createPeopleAddressField();
+      const database = createSampleDatabase({
+        tables: [
+          peopleTable,
+          createReviewsTable({ visibility_type: "hidden" }),
+        ],
+      });
+      const { router } = await setup({
+        databases: [database],
+        params: {
+          databaseId: database.id,
+          schemaName: peopleTable.schema,
+          tableId: peopleTable.id,
+          fieldId: undefined,
+        },
+        shouldSkipTableMocks: true,
+      });
+
+      await clickTableSectionField(addressField.display_name);
+
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(
+          `/admin/datamodel/database/${database.id}/schema/${database.id}:${peopleTable.schema}/table/${peopleTable.id}/field/${addressField.id}`,
+        ),
+      );
+      expect(await screen.findByTestId("field-section")).toBeInTheDocument();
+      expect(getFieldNameInput()).toHaveValue(addressField.display_name);
+    });
+
     it("should display json unfolding settings for json fields", async () => {
       await setup({
         databases: [JSON_DB],
