@@ -381,10 +381,14 @@ export function getFieldIdTarget(
     return target;
   }
   const temporalUnit = fieldRef[2]?.["temporal-unit"];
-  return [
-    "dimension",
-    ["field", fieldId, temporalUnit ? { "temporal-unit": temporalUnit } : null],
+  const fieldIdRef: DimensionReference = [
+    "field",
+    fieldId,
+    temporalUnit ? { "temporal-unit": temporalUnit } : null,
   ];
+  return target[2] != null
+    ? ["dimension", fieldIdRef, target[2]]
+    : ["dimension", fieldIdRef];
 }
 
 function getStageIndexFromTarget(target: ParameterTarget): number | undefined {

@@ -289,11 +289,15 @@
                                                  (when (contains? reused-join-aliases (lib/current-join-alias &match))
                                                    &match))))]
               (log/debugf "Adding referenced fields from next stage: %s" (pr-str referenced-fields))
-              (let [stage' (update stage :fields (fn [existing-fields]
-                                                   (into []
-                                                         cat
-                                                         [existing-fields
-                                                          (map lib/fresh-uuids referenced-fields)])))]
+              (let [{:keys [query stage-number]} (lib.walk/query-for-path (assoc-in query path stage) path)
+                    existing-cols                (mapv #(lib/metadata query stage-number %) (:fields stage))
+                    missing-fields               (remove #(lib/find-matching-column query stage-number % existing-cols)
+                                                         referenced-fields)
+                    stage'                       (update stage :fields (fn [existing-fields]
+                                                                         (into []
+                                                                               cat
+                                                                               [existing-fields
+                                                                                (map lib/fresh-uuids missing-fields)])))]
                 (when-not (= stage' stage)
                   ;; normalize the stage to remove any duplicate fields or breakouts
                   (lib/normalize ::lib.schema/stage (dedupe-implicitly-joined-refs stage' reused-join-aliases))))))))

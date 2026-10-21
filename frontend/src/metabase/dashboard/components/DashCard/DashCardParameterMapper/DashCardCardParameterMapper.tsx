@@ -14,6 +14,7 @@ import {
 import { isNativeDashCard } from "metabase/dashboard/utils";
 import {
   type ParameterMappingOption,
+  getFieldIdTarget,
   getMappingOptionByTarget,
 } from "metabase/parameters/utils/mapping-options";
 import { connect } from "metabase/redux";
@@ -94,9 +95,17 @@ export function DashCardCardParameterMapper({
       ? getMetricMappingOptions(
           mappingOptions,
           metricDimensionsData?.added ?? [],
+          question,
+          editingParameter,
         )
       : mappingOptions;
-  }, [isMetric, mappingOptions, metricDimensionsData?.added]);
+  }, [
+    isMetric,
+    mappingOptions,
+    metricDimensionsData?.added,
+    question,
+    editingParameter,
+  ]);
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
   const isAction = isActionDashCard(dashcard);
@@ -203,13 +212,20 @@ export function DashCardCardParameterMapper({
 function getMetricMappingOptions(
   mappingOptions: ParameterMappingOption[],
   dimensions: MetricDimension[],
+  question: Question | undefined,
+  parameter: Parameter | null | undefined,
 ): ParameterMappingOption[] {
   const optionByFieldId = new Map<number, ParameterMappingOption>();
   for (const option of mappingOptions) {
-    if (!isStructuredDimensionTarget(option.target)) {
+    const fieldIdTarget = getFieldIdTarget(
+      option.target,
+      question,
+      parameter ?? undefined,
+    );
+    if (!isStructuredDimensionTarget(fieldIdTarget)) {
       continue;
     }
-    const fieldReference = option.target[1];
+    const fieldReference = fieldIdTarget[1];
     if (
       fieldReference[0] === "field" &&
       typeof fieldReference[1] === "number" &&
