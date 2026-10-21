@@ -8,6 +8,7 @@
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- rendered-source
@@ -49,6 +50,17 @@
         (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields
                                     (fn [_table-ids] {(mt/id :venues) #{}})]
           (is (nil? (rendered-source query))))))))
+
+(deftest transform-source-renders-portable-mbql-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+      (is (:mp (shared.content-store/query-for-export query false)))
+      (let [exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" (rendered-source query))))]
+        (is (= [(:name (lib.metadata/database mp)) "PUBLIC" "PRODUCTS"]
+               (get-in exported ["stages" 0 "source-table"])))
+        (is (not-any? #(and (map? %) (contains? % "lib/metadata"))
+                      (tree-seq coll? seq exported)))))))
 
 (deftest transform-source-renders-an-unchecked-source-unresolved-test
   (testing "a source query keeps its IDs unresolved if its permissions cannot be checked"
