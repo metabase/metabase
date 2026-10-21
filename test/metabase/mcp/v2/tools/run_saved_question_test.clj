@@ -8,6 +8,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -20,7 +21,8 @@
    [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -413,3 +415,13 @@
       (doseq [bad ["0" "-1" "016211" "1.0" "not-an-id"]]
         (is (str/includes? (tool-error (call-run-saved-question {:id bad})) "entity_id")
             (str "expected " (pr-str bad) " to be rejected"))))))
+
+(deftest ^:parallel app-db-failure-in-query-run-is-internal-test
+  (testing "A run that fails in an app DB lookup is an internal error, without the app DB's SQL"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
+                                                          (t2/query ["SELECT no_such_column FROM metabase_field"]))]
+            (is (= "Internal error" (tool-error (call-run-saved-question {:id card-id}))))))))))

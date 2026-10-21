@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -22,7 +23,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -1105,3 +1107,15 @@
             params [{:type "number/=" :target ["variable" ["template-tag" "n"]] :value 1}]
             handle (stored-handle! sid (pk-ordered-orders-query {:parameters params}))]
         (is (= params (:parameters (capture-qp-query! {:query_handle handle}))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest app-db-failure-in-query-run-is-internal-test
+  (testing "A handle run that fails in an app DB lookup is an internal error, without the app DB's SQL"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            handle (stored-handle! sid (pk-ordered-orders-query nil))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
+                                                          (t2/query ["SELECT no_such_column FROM metabase_field"]))]
+            (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
+                   (call! sid {:query_handle handle})))))))))
