@@ -241,7 +241,6 @@ export const GroupsMultiSelect = ({
     <Combobox
       store={combobox}
       floatingStrategy="fixed"
-      classNames={{ groupLabel: S.groupLabel }}
       onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.DropdownTarget>
@@ -315,38 +314,43 @@ const GroupOption = ({
   showManagerToggle,
   isManager,
   onToggleManager,
-}: GroupOptionProps) => (
-  <Tooltip
-    label={addDisabledReason}
-    disabled={addDisabledReason == null}
-    position="right"
-  >
-    <Combobox.Option
-      value={String(group.id)}
-      aria-label={getGroupNameLocalized(group)}
-      active={isSelected}
-      disabled={isLocked || addDisabledReason != null}
+}: GroupOptionProps) => {
+  const isDisabled = isLocked || addDisabledReason != null;
+
+  return (
+    <Tooltip
+      label={addDisabledReason}
+      disabled={addDisabledReason == null}
+      position="right"
     >
-      <Flex align="center" justify="space-between" gap="sm">
-        <Flex align="center" gap="sm">
-          <Checkbox
-            className={S.checkbox}
-            checked={isSelected}
-            readOnly
-            aria-hidden
-            tabIndex={-1}
-          />
-          <span>{getGroupNameLocalized(group)}</span>
-        </Flex>
-        {showManagerToggle && (
-          <Box onMouseDown={(event) => event.preventDefault()}>
-            <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-              isManager={isManager}
-              onChange={onToggleManager}
+      <Combobox.Option
+        value={String(group.id)}
+        aria-label={getGroupNameLocalized(group)}
+        active={isSelected}
+        disabled={isDisabled}
+      >
+        <Flex align="center" justify="space-between" gap="sm">
+          <Flex align="center" gap="sm">
+            <Checkbox
+              className={S.checkbox}
+              checked={isSelected}
+              disabled={isDisabled}
+              readOnly
+              aria-hidden
+              tabIndex={-1}
             />
-          </Box>
-        )}
-      </Flex>
-    </Combobox.Option>
-  </Tooltip>
-);
+            <span>{getGroupNameLocalized(group)}</span>
+          </Flex>
+          {showManagerToggle && (
+            <Box onMouseDown={(event) => event.preventDefault()}>
+              <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+                isManager={isManager}
+                onChange={onToggleManager}
+              />
+            </Box>
+          )}
+        </Flex>
+      </Combobox.Option>
+    </Tooltip>
+  );
+};

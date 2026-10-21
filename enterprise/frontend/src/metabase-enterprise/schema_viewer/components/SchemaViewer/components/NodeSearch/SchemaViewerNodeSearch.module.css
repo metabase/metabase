@@ -10,17 +10,6 @@
   }
 }
 
-.options {
-  padding: 0.5rem;
-}
-
-.listItem {
-  height: 2.25rem;
-  min-height: 2.25rem;
-  padding: 0.5rem;
-  border-radius: var(--default-border-radius);
-}
-
 .label {
   flex: 1 1 0;
   min-width: 0;
@@ -32,4 +21,10 @@
 
 .fieldCount {
   flex-shrink: 0;
+  color: var(--mb-color-text-disabled);
+
+  [data-combobox-option]:hover &,
+  [data-combobox-selected] & {
+    color: var(--mb-color-text-secondary-inverse);
+  }
 }

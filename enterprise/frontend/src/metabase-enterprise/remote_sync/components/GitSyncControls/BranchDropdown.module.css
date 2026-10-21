@@ -1,0 +1,9 @@
+/* Same colors as the SelectItemWithDescription description */
+.branchSource {
+  color: var(--mb-color-text-secondary);
+
+  [data-combobox-option]:hover &,
+  [data-combobox-selected] & {
+    color: var(--mb-color-text-secondary-inverse);
+  }
+}
