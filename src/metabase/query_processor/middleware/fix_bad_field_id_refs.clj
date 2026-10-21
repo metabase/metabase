@@ -15,18 +15,17 @@
    [metabase.util.performance :refer [get-in select-keys]]))
 
 (defn- dedupe-joined-field-refs
-  "Remove `:fields` and `:breakout` refs of `stage` that name the same joined column, one by Field ID and the other by
-  name."
-  [query stage]
+  "Remove `:fields` and `:breakout` refs of `stage` that resolve to the same joined column."
+  [query path stage]
   (let [ref-key (fn [a-ref]
                   (lib.schema.util/mbql-clause-distinct-key
-                   (let [[_tag opts id-or-name] a-ref]
-                     (or (when (and (lib/clause-of-type? a-ref :field)
-                                    (:join-alias opts)
-                                    (pos-int? id-or-name))
-                           (when-let [field (lib.metadata/field query id-or-name)]
-                             (assoc a-ref 2 (:name field))))
-                         a-ref))))]
+                   (or (when (and (lib/clause-of-type? a-ref :field)
+                                  (:join-alias (lib/options a-ref)))
+                         (when-let [col (lib.walk/apply-f-for-stage-at-path
+                                         lib.field.resolution/resolve-field-ref
+                                         query path a-ref)]
+                           (some->> (:lib/source-column-alias col) (assoc a-ref 2))))
+                       a-ref)))]
     (reduce (fn [stage k]
               (m/update-existing stage k #(into [] (m/distinct-by ref-key) %)))
             stage
@@ -60,7 +59,7 @@
         stage' (update-fields stage)]
     (when-not (= stage' stage)
       ;; normalizing the stage will remove any duplicate `:fields` or `:breakouts`
-      (lib/normalize ::lib.schema/stage (dedupe-joined-field-refs query stage')))))
+      (lib/normalize ::lib.schema/stage (dedupe-joined-field-refs query path stage')))))
 
 (mu/defn fix-bad-field-id-refs :- ::lib.schema/query
   "Fix any `:field` refs using an integer Field ID that in a stage where that Field's Table is not the
