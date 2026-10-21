@@ -22,6 +22,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
+
 (defn- run-count-query [query]
   (or (ffirst
        (mt/formatted-rows

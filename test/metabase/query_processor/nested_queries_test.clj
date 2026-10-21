@@ -37,6 +37,8 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
+
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with MBQL source-query"

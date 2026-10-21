@@ -11,6 +11,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metrics.core :as metrics]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -18,6 +19,8 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions)
 
 (defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check

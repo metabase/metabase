@@ -22,7 +22,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
-(use-fixtures :once lib.tu/with-name-based-refs)
+(use-fixtures :once lib.tu/with-omitted-template-tag-dimensions
+  lib.tu/with-name-based-refs)
 
 (defn- optional [& args] (lib/parsed-optional-param args))
 
