@@ -3,23 +3,18 @@ import type { BarSeriesOption } from "echarts/charts";
 import type { EChartsCoreOption } from "echarts/core";
 import { t } from "ttag";
 
-import { formatNumber } from "metabase/utils/formatting";
-import { formatValue } from "metabase/value-formatting";
-
-import { getNumberOr } from "../../../lib/settings/row-values";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "../../../types";
-import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
-import { isCategoryAxis } from "../model/guards";
 import type { BaseCartesianChartModel } from "../model/types";
 import { getSharedEChartsOptions } from "../option";
 import { getTicksDefaultOption } from "../option/axis";
 
 import { FUNNEL_STEPS_GHOST_SERIES_ID } from "./model";
+import { getFunnelSteps } from "./steps";
 
 const BAR_WIDTH_RATIO = 0.67;
 const Y_AXIS_SPLIT_NUMBER = 4;
@@ -62,39 +57,19 @@ export const getFunnelStepsOption = (
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
-  const { seriesModels, transformedDataset, xAxisModel } = chartModel;
-  const [seriesModel] = seriesModels;
-  if (!seriesModel || !isCategoryAxis(xAxisModel)) {
+  const steps = getFunnelSteps(chartModel, settings);
+  if (!steps) {
     return {};
   }
+  const { seriesModel, stepNames, counts, formatCount, formatShare } = steps;
 
   const { getColor, fontFamily } = renderingContext;
   const textPrimary = getColor("text-primary");
   const textSecondary = getColor("text-secondary");
 
-  const stepNames = transformedDataset.map((datum) =>
-    xAxisModel.formatter(datum[X_AXIS_DATA_KEY]),
-  );
-  const counts = transformedDataset.map((datum) =>
-    getNumberOr(datum[seriesModel.dataKey], 0),
-  );
   const firstCount = counts[0] ?? 0;
   const maxCount = Math.max(0, ...counts);
 
-  const columnOptions = {
-    column: seriesModel.column,
-    ...(settings.column?.(seriesModel.column) ?? {}),
-  };
-  const formatCount = (value: number, compact = false) =>
-    String(formatValue(value, { ...columnOptions, compact }));
-  const formatShareOfFirst = (value: number) =>
-    firstCount === 0
-      ? ""
-      : formatNumber(value / firstCount, {
-          number_separators: columnOptions.number_separators,
-          number_style: "percent",
-          decimals: value === firstCount ? 0 : 2,
-        });
   const getDropOffText = (index: number) =>
     index === 0
       ? t`Everyone started here`
@@ -131,7 +106,7 @@ export const getFunnelStepsOption = (
       fontFamily,
       formatter: ({ dataIndex }) =>
         toRichText("count", formatCount(counts[dataIndex])) +
-        toRichText("share", formatShareOfFirst(counts[dataIndex])),
+        toRichText("share", formatShare(counts[dataIndex], firstCount)),
       rich: {
         count: {
           fontSize: FONT_SIZE.count,

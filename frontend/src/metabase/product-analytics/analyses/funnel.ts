@@ -8,6 +8,7 @@ import { EventDefinitionListWidget } from "../components/settings/EventDefinitio
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import { parseStepLabel, pointString } from "../sql/analyses/base";
+import { TIME_TO_CONVERT_COLUMN } from "../sql/analyses/funnel";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
@@ -67,7 +68,7 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
       ...getEventDefinitionProps(context),
       addLabel: t`Add a step`,
       dropLabel: t`Drop a segment here to add a step`,
-      minSlots: MIN_STEPS + 1,
+      minSlots: MIN_STEPS,
     }),
   }),
   "funnel.view": withWidgetProps({
@@ -195,9 +196,8 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         };
       case "overTime":
         return {
-          "graph.dimensions": ["period"],
+          "graph.dimensions": ["period", "label"],
           "graph.metrics": ["conversion"],
-          ...getSeriesSettings("conversion", t`Conversion`),
           ...getConversionColumnSettings("conversion"),
           ...getAxisTitleSettings({
             x: Lib.describeTemporalUnit(settings.granularity),
@@ -206,10 +206,10 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         };
       case "timeToConvert":
         return {
-          "graph.dimensions": ["hours"],
+          "graph.dimensions": [TIME_TO_CONVERT_COLUMN],
           "graph.metrics": [people],
           ...getSeriesSettings(people, peopleTitle),
-          ...getAxisTitleSettings({ x: t`Hours to convert`, y: peopleTitle }),
+          ...getAxisTitleSettings({ x: t`Time to finish`, y: peopleTitle }),
         };
     }
   },
@@ -227,15 +227,16 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
       }
       case "overTime": {
         const period = formatPeriod(point.period, settings.granularity);
-        return t`Started the funnel in ${period}`;
+        const parsed = parseStepLabel(point.label);
+        return parsed === null
+          ? t`Started the funnel in ${period}`
+          : t`Started the funnel in ${period} and reached step ${parsed.step}: ${parsed.name}`;
       }
       case "timeToConvert": {
-        const hours = pointString(point.hours);
-        if (hours === null) {
-          return null;
-        }
-        const next = Number(hours) + 1;
-        return t`Finished the funnel in ${hours}–${next} hours`;
+        const duration = pointString(point[TIME_TO_CONVERT_COLUMN]);
+        return duration === null
+          ? null
+          : t`Took ${duration} to finish the funnel`;
       }
     }
   },

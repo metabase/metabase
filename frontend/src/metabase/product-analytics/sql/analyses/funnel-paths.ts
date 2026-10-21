@@ -5,7 +5,7 @@ import { seconds } from "../compile/actorPredicate";
 import { lit } from "../compile/dialect";
 import type { Cte, QueryPlan } from "../compose";
 
-import { funnelLevels } from "./funnel";
+import { funnelChainsCte, funnelLevels } from "./funnel";
 import {
   PATHS_COLUMNS,
   kindSql,
@@ -48,32 +48,6 @@ export const isValidFunnelPathsRange = (
 const MORE_NODE = `('', ${kindSql("more")})`;
 const DROPPED_NODE = `('', ${kindSql("dropped")})`;
 
-const stepTuple = (end: number): string =>
-  `[${Array.from({ length: end }, (_, index) => `toUInt8(step_${index + 1})`).join(", ")}]`;
-
-/**
- * When each actor did each step up to `end`, chained: step k is the first
- * step-k event after step k - 1. `t_k` is the first step-k event at all, which
- * can come before the previous step when the funnel isn't strictly ordered.
- */
-const chainCte = (end: number): Cte => ({
-  name: "funnel_chain",
-  note: "when each actor did each step, each one the first after the step before",
-  deps: ["scoped_events"],
-  body: [
-    "SELECT",
-    "  actor,",
-    `  arraySort(groupArrayIf((ts, ${stepTuple(end)}), ${Array.from({ length: end }, (_, index) => `step_${index + 1}`).join(" OR ")})) AS step_events,`,
-    Array.from({ length: end }, (_, index) =>
-      index === 0
-        ? "  arrayFirst(e -> e.2[1] = 1, step_events).1 AS c_1"
-        : `  arrayFirst(e -> e.2[${index + 1}] = 1 AND e.1 > c_${index}, step_events).1 AS c_${index + 1}`,
-    ).join(",\n"),
-    "FROM scoped_events",
-    "GROUP BY actor",
-  ].join("\n"),
-});
-
 /**
  * The paths of the people who reached funnel step `start`, until they reached
  * step `end` or, for the rest, until the funnel's window closed. Each link is
@@ -104,7 +78,8 @@ export const planFunnelPaths = (
   const window = seconds(funnel.window);
   const outcomes = getOutcomeLabels();
   const moreLabel = t`(> ${steps} steps)`;
-  const windowStart = funnel.anchor === "each" ? `c.c_${start}` : "c.c_1";
+  const windowStart =
+    funnel.anchor === "each" ? `c.chain_times[${start}]` : "c.chain_times[1]";
 
   // Splitting would give an actor a row per split value.
   const levels = funnelLevels({ ...spec, split: false }, funnel, [
@@ -113,20 +88,20 @@ export const planFunnelPaths = (
 
   const ctes: Cte[] = [
     ...levels.ctes,
-    chainCte(end),
+    funnelChainsCte(funnel),
     {
       name: "path_bounds",
       note: `each actor who reached step ${start}: whether they converted, and when their path starts and ends`,
-      deps: [levels.source, "funnel_chain"],
+      deps: [levels.source, "funnel_chains"],
       body: [
         "SELECT",
         "  l.actor AS actor,",
-        `  l.level >= ${end} AND c.c_${end} > c.c_${start} AS converted,`,
-        `  c.c_${start} AS path_start,`,
-        `  if(converted, c.c_${end}, addSeconds(${windowStart}, ${window})) AS path_end`,
+        `  l.level >= ${end} AND length(c.chain_times) >= ${end} AS converted,`,
+        `  c.chain_times[${start}] AS path_start,`,
+        `  if(converted, c.chain_times[${end}], addSeconds(${windowStart}, ${window})) AS path_end`,
         `FROM ${levels.source} AS l`,
-        "INNER JOIN funnel_chain AS c ON c.actor = l.actor",
-        `WHERE l.level >= ${start} AND c.c_${start} > 0`,
+        "INNER JOIN funnel_chains AS c ON c.actor = l.actor",
+        `WHERE l.level >= ${start} AND length(c.chain_times) >= ${start}`,
       ].join("\n"),
     },
     {

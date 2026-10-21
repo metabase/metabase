@@ -76,8 +76,13 @@ export {
   getTimelineSelectionSeries,
 } from "./echarts/cartesian/option";
 export { TREND_LINE_DASH } from "./echarts/cartesian/option/trend-line";
-export { getFunnelStepsModel } from "./echarts/cartesian/funnel-steps/model";
+export {
+  FUNNEL_STEPS_GHOST_SERIES_ID,
+  FUNNEL_STEPS_MEDIAN_SECONDS_COLUMN,
+  getFunnelStepsModel,
+} from "./echarts/cartesian/funnel-steps/model";
 export { getFunnelStepsOption } from "./echarts/cartesian/funnel-steps/option";
+export { getFunnelStepsTooltipModel } from "./echarts/cartesian/funnel-steps/tooltip";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
 export {

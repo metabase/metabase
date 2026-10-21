@@ -13,6 +13,7 @@ import type { ProjectedColumn } from "../../frontend/src/metabase/product-analyt
 import type {
   AnalysisKind,
   AnalysisSpec,
+  FunnelSpec,
   PathsSpec,
 } from "../../frontend/src/metabase/product-analytics/spec/types";
 import {
@@ -124,7 +125,8 @@ SELECT
   if(startsWith(url_path, '/app') OR event_name IN ('report_created', 'invite_sent', 'checkout_completed'), 1, 0) AS ev_5,
   if(event_name = 'invite_sent', 1, 0) AS ev_6,
   if(event_name = 'error', 1, 0) AS ev_7,
-  if(event_name = 'report_created', 1, 0) AS ev_8
+  if(event_name = 'report_created', 1, 0) AS ev_8,
+  if(event_name = 'integration_connected', 1, 0) AS ev_9
 FROM product_analytics.pa_events_resolved
 WHERE created_at >= toDateTime('${chDateTime(truth.start)}')
   AND created_at < toDateTime('${chDateTime(truth.end)}')
@@ -622,6 +624,150 @@ for (const range of funnelPathsRanges) {
       .join(", "),
   );
 }
+
+// Funnel timing, on hand-written events: durations come from the run the
+// funnel counted, not from each step's first time ever.
+type FixtureEvent = {
+  actor: string;
+  flag: (typeof FLAG)[keyof typeof FLAG];
+  at: string;
+};
+
+const fixtureEventsSql = (events: FixtureEvent[]): string =>
+  events
+    .map(
+      ({ actor, flag, at }, index) =>
+        `SELECT '${actor}' AS person_id, toDateTime('${at}') AS created_at, ` +
+        `'s' AS session_id, 'e${index}' AS event_id, 'event' AS event_name, '/' AS url_path, ` +
+        Object.values(FLAG)
+          .map((other) => `${Number(other === flag)} AS ${other}`)
+          .join(", "),
+    )
+    .join("\nUNION ALL\n");
+
+const funnelFixtureRows = (
+  events: FixtureEvent[],
+  funnelOverrides: Partial<FunnelSpec>,
+  funnelView: NonNullable<AnalysisSpec["output"]["funnelView"]>,
+) => {
+  const spec = defaultSpec("funnel");
+  const fixtureSpec: AnalysisSpec = {
+    ...spec,
+    funnel: spec.funnel && {
+      ...spec.funnel,
+      window: { value: 7, unit: "day" },
+      ...funnelOverrides,
+    },
+    output: { funnelView },
+  };
+  return chJson(
+    buildSql(fixtureSpec, fixtureEventsSql(events), baseColumns(fixtureSpec))
+      .sql,
+  );
+};
+
+// Each expected value's key, from the row, as a number when the expected one is.
+const checkRows = (
+  name: string,
+  rows: Record<string, unknown>[],
+  expected: Record<string, string | number | null>[],
+) => {
+  const actual = rows.map((row, index) =>
+    Object.fromEntries(
+      Object.entries(expected[index] ?? row).map(([key, value]) => [
+        key,
+        typeof value === "number" ? asNumber(row[key], NaN) : row[key],
+      ]),
+    ),
+  );
+  check(
+    name,
+    JSON.stringify(actual) === JSON.stringify(expected),
+    JSON.stringify(actual),
+  );
+};
+
+const HOUR_SECONDS = 3600;
+const DAY_SECONDS = 24 * HOUR_SECONDS;
+
+// Viewed pricing and went no further, came back 10 days later, and finished 2
+// days after that. In a 7 day window, only the second run finishes.
+const RETURNING: FixtureEvent[] = [
+  { actor: "returning", flag: FLAG.pricing, at: "2026-01-01 00:00:00" },
+  { actor: "returning", flag: FLAG.pricing, at: "2026-01-11 00:00:00" },
+  { actor: "returning", flag: FLAG.trial, at: "2026-01-11 01:00:00" },
+  { actor: "returning", flag: FLAG.checkout, at: "2026-01-13 00:00:00" },
+];
+// Started a trial a day after viewing pricing, again 9 days later, and
+// purchased a day after that.
+const RETRYING: FixtureEvent[] = [
+  { actor: "retrying", flag: FLAG.pricing, at: "2026-01-01 00:00:00" },
+  { actor: "retrying", flag: FLAG.trial, at: "2026-01-02 00:00:00" },
+  { actor: "retrying", flag: FLAG.trial, at: "2026-01-11 00:00:00" },
+  { actor: "retrying", flag: FLAG.checkout, at: "2026-01-12 00:00:00" },
+];
+// Viewed pricing twice, started a trial an hour after the second view, and
+// purchased 2 days later.
+const REVIEWING: FixtureEvent[] = [
+  { actor: "reviewing", flag: FLAG.pricing, at: "2026-01-01 00:00:00" },
+  { actor: "reviewing", flag: FLAG.pricing, at: "2026-01-03 00:00:00" },
+  { actor: "reviewing", flag: FLAG.trial, at: "2026-01-03 01:00:00" },
+  { actor: "reviewing", flag: FLAG.checkout, at: "2026-01-05 00:00:00" },
+];
+// From the fastest anyone took to the end of the window, with no one past it.
+const TOOK_TWO_DAYS = [
+  { time_to_convert: "2d–3d", people: 1 },
+  { time_to_convert: "3d–5d", people: 0 },
+  { time_to_convert: "5d–7d", people: 0 },
+];
+
+console.log("\nfunnel timing");
+for (const ordering of ["loose", "strict"] as const) {
+  checkRows(
+    `a ${ordering} funnel is timed from the run that finished, not the first step ever`,
+    await funnelFixtureRows(RETURNING, { ordering }, "timeToConvert"),
+    TOOK_TWO_DAYS,
+  );
+}
+checkRows(
+  "each step is timed from the previous one in the same run",
+  await funnelFixtureRows(RETURNING, {}, "steps"),
+  [
+    { people: 1, median_seconds_from_previous: null },
+    { people: 1, median_seconds_from_previous: HOUR_SECONDS },
+    { people: 1, median_seconds_from_previous: 2 * DAY_SECONDS - HOUR_SECONDS },
+  ],
+);
+const [returningWeek] = await chJson(
+  `SELECT toString(toStartOfInterval(toDateTime('2026-01-11 00:00:00'), INTERVAL 1 WEEK)) AS period`,
+);
+checkRows(
+  "a run is in the period it started",
+  await funnelFixtureRows(RETURNING, {}, "overTime"),
+  [
+    { period: String(returningWeek?.period), conversion: 1 },
+    { period: String(returningWeek?.period), conversion: 1 },
+  ],
+);
+checkRows(
+  "counted from each step, a step done again goes on from its latest time",
+  await funnelFixtureRows(RETRYING, { anchor: "each" }, "steps"),
+  [
+    { people: 1, median_seconds_from_previous: null },
+    { people: 1, median_seconds_from_previous: DAY_SECONDS },
+    { people: 1, median_seconds_from_previous: DAY_SECONDS },
+  ],
+);
+checkRows(
+  "counted from each step, a run can take longer than the window",
+  await funnelFixtureRows(RETRYING, { anchor: "each" }, "timeToConvert"),
+  [{ time_to_convert: "7d+", people: 1 }],
+);
+checkRows(
+  "counted from each step, a run starts at the last first step before going on",
+  await funnelFixtureRows(REVIEWING, { anchor: "each" }, "timeToConvert"),
+  TOOK_TWO_DAYS,
+);
 
 if (failures.length > 0) {
   console.error(`\n${failures.length} check(s) failed`);

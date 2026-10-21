@@ -7,7 +7,9 @@ import {
   type ComputedVisualizationSettings,
   type DataKey,
   EChartsTooltip,
+  FUNNEL_STEPS_GHOST_SERIES_ID,
   GOAL_LINE_SERIES_ID,
+  getFunnelStepsTooltipModel,
   getTooltipBaseOption,
 } from "metabase/viz-core";
 import type { CardDisplayType } from "metabase-types/api";
@@ -31,13 +33,14 @@ const ChartItemTooltip = ({
     return null;
   }
 
-  const tooltipModel = getTooltipModel(
-    chartModel,
-    settings,
-    dataIndex,
-    display,
-    seriesId,
-  );
+  const tooltipModel = settings["product_analytics.funnel_steps"]
+    ? getFunnelStepsTooltipModel(
+        chartModel,
+        settings,
+        dataIndex,
+        seriesId === FUNNEL_STEPS_GHOST_SERIES_ID,
+      )
+    : getTooltipModel(chartModel, settings, dataIndex, display, seriesId);
 
   if (!tooltipModel) {
     return null;

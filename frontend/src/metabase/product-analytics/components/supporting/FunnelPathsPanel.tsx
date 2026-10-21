@@ -1,13 +1,18 @@
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { Alert, Box, Group, Loader, Select, Text } from "metabase/ui";
+import { Alert, Box, Group, Loader, Select, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { Legend } from "metabase/visualizations/components/legend/Legend";
+import { getPathColors } from "metabase/viz-core";
 
 import type { FunnelPaths } from "../../funnel-paths/use-funnel-paths";
 import type { Step } from "../../spec/types";
 import { getFunnelStepLabel } from "../../sql/analyses/funnel";
-import type { FunnelPathsRange } from "../../sql/analyses/funnel-paths";
+import {
+  type FunnelPathsRange,
+  getOutcomeLabels,
+} from "../../sql/analyses/funnel-paths";
 
 import { NO_CLICK_ACTIONS, SupportingPanel } from "./SupportingPanel";
 
@@ -104,13 +109,30 @@ const FunnelPathsBody = ({ paths }: { paths: FunnelPaths }) => {
     );
   }
   return (
-    <Box h={CHART_HEIGHT_PX}>
-      <Visualization
-        rawSeries={[paths.series]}
-        isQueryBuilder={false}
-        mode={NO_CLICK_ACTIONS}
-        onChangeCardAndRun={noop}
-      />
-    </Box>
+    <Stack gap="md">
+      <PathsLegend />
+      <Box h={CHART_HEIGHT_PX}>
+        <Visualization
+          rawSeries={[paths.series]}
+          isQueryBuilder={false}
+          mode={NO_CLICK_ACTIONS}
+          onChangeCardAndRun={noop}
+        />
+      </Box>
+    </Stack>
+  );
+};
+
+/** How the flows are colored. The events' colors are subtler, and left to the docs. */
+const PathsLegend = () => {
+  const colors = getPathColors();
+  const outcomes = getOutcomeLabels();
+  return (
+    <Legend
+      items={[
+        { key: "converted", color: colors.converted, name: outcomes.converted },
+        { key: "dropped", color: colors.dropped, name: outcomes.notConverted },
+      ]}
+    />
   );
 };

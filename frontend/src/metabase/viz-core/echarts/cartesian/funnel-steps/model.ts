@@ -26,3 +26,7 @@ export const getFunnelStepsModel = (
     },
   };
 };
+
+/** An optional result column: the median seconds from the previous step, shown in the tooltip. */
+export const FUNNEL_STEPS_MEDIAN_SECONDS_COLUMN =
+  "median_seconds_from_previous";
