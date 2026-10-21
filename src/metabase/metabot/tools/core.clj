@@ -470,7 +470,7 @@
   test to say so."
   (str (ns-name (:ns (meta #'recoverable.pipeline/unknown-table!)))))
 
-(defn- pipeline-error-code
+(defn pipeline-error-code
   "The `recoverable.pipeline` code for a pipeline `:error` keyword, or nil when none is declared."
   [error]
   (when (keyword? error)

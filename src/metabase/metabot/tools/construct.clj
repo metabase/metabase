@@ -653,14 +653,16 @@
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
 (defn database-error?
-  "Returns true for JDBC or Toucan failures without an explicit 4xx status."
+  "Returns true for database failures that must not be relayed as input errors."
   [e]
-  (let [status-code (:status-code (ex-data e))]
+  (let [{:keys [status-code agent-error? error]} (ex-data e)
+        causes (u/full-exception-chain e)]
     (boolean
      (and (not (and status-code (<= 400 status-code 499)))
-          (some #(or (instance? SQLException %)
-                     (contains? (ex-data %) :toucan2/context-trace))
-                (u/full-exception-chain e))))))
+          (or (some #(instance? SQLException %) causes)
+              (and (not (and (nil? status-code)
+                             (or agent-error? (tools/pipeline-error-code error))))
+                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
 
 (defn- as-agent-input-error
   "Return database failures unchanged; wrap other exceptions as agent-input errors.

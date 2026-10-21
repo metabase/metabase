@@ -598,7 +598,9 @@
 (deftest ^:parallel declared-errors-in-toucan-scopes-are-recoverable-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [query (orders-query {:fields [(field-name-ref :orders :id)]})]
-      (doseq [[error message expected] [[:invalid-representations-query
+      (doseq [status-code [nil 400]
+              agent-error? [false true]
+              [error message expected] [[:invalid-representations-query
                                          "Representations query has an invalid structure."
                                          "\"Representations query has an invalid structure.\""]
                                         [:unknown-field
@@ -608,7 +610,9 @@
         (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
                                     (fn [& _]
                                       (t2/with-connection [_conn]
-                                        (throw (ex-info message {:status-code 400 :error error}))))]
+                                        (throw (ex-info message (cond-> {:error error}
+                                                                  status-code (assoc :status-code status-code)
+                                                                  agent-error? (assoc :agent-error? true))))))]
           (is (= {:result {:isError true :content [{:type "text" :text expected}]}}
                  (registry/call-tool execute-scope (str (random-uuid)) "execute_query" {:query query}))))))))
 

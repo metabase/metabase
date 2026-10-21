@@ -333,7 +333,9 @@
 
 (deftest construct-query-declared-errors-in-toucan-scopes-test
   (let [query (orders-query :fields [(orders-field-ref "ID")])]
-    (doseq [[error message expected] [[:invalid-representations-query
+    (doseq [status-code [nil 400]
+            agent-error? [false true]
+            [error message expected] [[:invalid-representations-query
                                        "Representations query has an invalid structure."
                                        "Representations query has an invalid structure."]
                                       [:unknown-field
@@ -343,7 +345,9 @@
       (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
                                   (fn [& _]
                                     (t2/with-connection [_conn]
-                                      (throw (ex-info message {:status-code 400 :error error}))))]
+                                      (throw (ex-info message (cond-> {:error error}
+                                                                status-code (assoc :status-code status-code)
+                                                                agent-error? (assoc :agent-error? true))))))]
         (is (=? {:error (name error) :message expected}
                 (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
 

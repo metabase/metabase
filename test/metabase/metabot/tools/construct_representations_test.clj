@@ -219,7 +219,11 @@
     {"Toucan"         (ex-info message {:toucan2/context-trace []})
      "nested Toucan"  (ex-info message {} (ex-info message {:toucan2/context-trace nil} root-cause))
      "JDBC"           (SQLException. message)
-     "nested JDBC"    (ex-info message {} (RuntimeException. message (SQLException. message root-cause)))}))
+     "nested JDBC"    (ex-info message {} (RuntimeException. message (SQLException. message root-cause)))
+     "declared JDBC"  (ex-info message {:error :unknown-field :toucan2/context-trace []}
+                                        (SQLException. message))
+     "unknown code"   (ex-info message {:error :not-a-pipeline-error :toucan2/context-trace []})
+     "Malli data"     (ex-info message {:error {:type :invalid-type} :toucan2/context-trace []})}))
 
 (def ^:private orders-id-query
   {:lib/type "mbql/query"
@@ -252,33 +256,44 @@
             (is (= "Unknown field" (ex-message caught)))
             (is (identical? failure (ex-cause caught)))))))))
 
+(deftest ^:parallel authored-errors-in-toucan-scopes-test
+  (doseq [[status database-error?] [[nil false] [500 true]]
+          data [{:error :unknown-field} {:agent-error? true}]]
+    (is (= database-error?
+           (construct/database-error?
+            (ex-info "Failure" (assoc data :status-code status :toucan2/context-trace [])))))))
+
 (deftest declared-errors-in-toucan-scopes-are-recoverable-test
   (with-mp-and-stubs!
     (fn []
-      (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
-                                  (fn [& _]
-                                    (t2/with-connection [_conn]
-                                      (throw (ex-info "Representations query has an invalid structure."
-                                                      {:status-code 400 :error :invalid-representations-query}))))]
-        (let [caught (try
-                       (construct/execute-representations-query orders-id-query)
-                       (catch clojure.lang.ExceptionInfo e e))
-              entries (tools/entries [construct/construct-notebook-query-tool])
-              outcome (tools.runtime/invoke entries
-                                            {:profile-id :nlq :metabot nil
-                                             :user-scope #{"agent:notebook:create"}
-                                             :tool-names (set (keys entries))}
-                                            "construct_notebook_query"
-                                            {:query orders-id-query
-                                             :title "Order IDs" :description "IDs of orders."})]
-          (is (contains? (ex-data caught) :toucan2/context-trace))
-          (is (=? {:agent-error? true :status-code 400 :error :invalid-representations-query}
-                  (ex-data caught)))
-          (is (= {:output "Representations query has an invalid structure."
-                  :error {:class :recoverable
-                          :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
-                 outcome))
-          (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))
+      (doseq [status-code [nil 400]
+              agent-error? [false true]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                    (fn [& _]
+                                      (t2/with-connection [_conn]
+                                        (throw (ex-info "Representations query has an invalid structure."
+                                                        (cond-> {:error :invalid-representations-query}
+                                                          status-code (assoc :status-code status-code)
+                                                          agent-error? (assoc :agent-error? true))))))]
+          (let [caught (try
+                         (construct/execute-representations-query orders-id-query)
+                         (catch clojure.lang.ExceptionInfo e e))
+                entries (tools/entries [construct/construct-notebook-query-tool])
+                outcome (tools.runtime/invoke entries
+                                              {:profile-id :nlq :metabot nil
+                                               :user-scope #{"agent:notebook:create"}
+                                               :tool-names (set (keys entries))}
+                                              "construct_notebook_query"
+                                              {:query orders-id-query
+                                               :title "Order IDs" :description "IDs of orders."})]
+            (is (contains? (ex-data caught) :toucan2/context-trace))
+            (is (=? {:agent-error? true :status-code 400 :error :invalid-representations-query}
+                    (ex-data caught)))
+            (is (= {:output "Representations query has an invalid structure."
+                    :error {:class :recoverable
+                            :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
+                   outcome))
+            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
 
 (deftest metadata-lookup-failures-end-metabot-turn-test
   (with-mp-and-stubs!
