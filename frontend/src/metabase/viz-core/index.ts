@@ -502,3 +502,6 @@ export type {
   SmartScalarComparisonWidgetProps,
   TreemapGroupsPickerProps,
 } from "./types/widget-props";
+
+// Prototype: state names for the state filter.
+export { STATE_CODES } from "./lib/mapping_codes";

@@ -126,6 +126,7 @@ function FilterValuePicker({
       canSearchValues={canSearchValues}
       canRemapValues={canRemapValues}
       isCountry={Lib.isCountry(column)}
+      isState={Lib.isState(column)}
       comboboxProps={comboboxProps}
       parseValue={parseValue}
       useGetFieldValues={useGetFieldValues}

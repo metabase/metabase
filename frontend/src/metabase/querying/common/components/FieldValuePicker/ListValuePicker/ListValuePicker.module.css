@@ -36,3 +36,15 @@
   border-radius: 3px;
   object-fit: cover;
 }
+
+/* List rows stay on one line. A long label ends with an ellipsis. */
+.checkboxRoot,
+.checkboxBody,
+.checkboxLabelWrapper {
+  min-width: 0;
+}
+
+.checkboxLabel {
+  overflow: hidden;
+  white-space: nowrap;
+}
