@@ -366,7 +366,7 @@
                                     (if (and (= profile :internal) (= expected-type "metric"))
                                       (str "\nRead `metabase://" actual-type "/" source-id "/fields/"
                                            (mt/id :orders :id) "` instead.")
-                                      (str "\nRetry using a " expected-type " ID."))))))))))
+                                      (str "\nRetry using a " expected-type " ID.")))))))))))
 
 (deftest question-field-details-use-returned-columns-test
   (mt/as-admin
