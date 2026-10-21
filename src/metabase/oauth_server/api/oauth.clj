@@ -16,6 +16,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.throttle :as u.throttle]
@@ -304,9 +305,11 @@
 
 (defn- do-with-token-throttling
   "Apply the token throttles to `f`.
-   Requests use only the IP limit if the client ID is missing, empty or longer than 255 characters."
+   Requests use only the IP limit if the client ID is missing, empty or longer than 255 characters.
+   The client limit ignores letter case, as the app DB does when it finds a client on MySQL and MariaDB."
   [ip-address client-id f]
-  (let [client-id (when (and (seq client-id) (<= (count client-id) max-client-id-length)) client-id)
+  (let [client-id (when (and (seq client-id) (<= (count client-id) max-client-id-length))
+                    (u/lower-case-en client-id))
         response  (with-throttling-429 [token-ip-throttler ip-address]
                     (if client-id
                       (with-throttling-429 [token-client-throttler client-id]

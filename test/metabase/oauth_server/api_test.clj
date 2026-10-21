@@ -1087,6 +1087,20 @@
                                        :authorization (basic-auth-header client-id client-secret)
                                        :expected-status 429))))))))
 
+(deftest token-client-throttle-ignores-letter-case-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id} (create-test-client! {:client_id "Mixed-Case-Client"})
+            refresh-error          (fn [client-id expected-status]
+                                     (:error (token-request! {:grant_type    "refresh_token"
+                                                              :client_id     client-id
+                                                              :refresh_token "bogus-token"}
+                                                             :expected-status expected-status)))]
+        (dotimes [i 10]
+          (is (= "invalid_request"
+                 (refresh-error (if (even? i) (str/upper-case client-id) (str/lower-case client-id)) 400))))
+        (is (= "too_many_requests" (refresh-error client-id 429)))))))
+
 (deftest token-basic-auth-determines-client-throttle-key-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
