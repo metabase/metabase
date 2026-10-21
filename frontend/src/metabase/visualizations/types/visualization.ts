@@ -62,7 +62,6 @@ export interface VisualizationProps {
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
   actionButtons?: ReactNode;
-  cardLevelFilters?: ReactNode;
   fontFamily: string;
   isFullscreen: boolean;
   isQueryBuilder: boolean;

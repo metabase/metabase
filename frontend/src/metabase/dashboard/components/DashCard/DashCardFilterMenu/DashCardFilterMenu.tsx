@@ -1,20 +1,40 @@
 import cx from "classnames";
-import { type MouseEvent, useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
   setEditingParameter,
   setParameterValue,
+  setParameterValueToDefault,
 } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { useLinkedFilterParameters } from "metabase/dashboard/hooks";
 import { ParameterDropdownWidget } from "metabase/parameters/components/ParameterDropdownWidget";
-import { getParameterIconName } from "metabase/parameters/utils/ui";
+import { WidgetStatus } from "metabase/parameters/components/WidgetStatus";
+import {
+  getParameterIconName,
+  getParametersWithValues,
+  getVisibleParameters,
+} from "metabase/parameters/utils/ui";
 import { useDispatch } from "metabase/redux";
-import { Box, Icon, Menu, Text, Tooltip, UnstyledButton } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  areParameterValuesIdentical,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterId } from "metabase-types/api";
+
+import { preventDragOrInputFocus } from "../utils";
 
 import S from "./DashCardFilterMenu.module.css";
 
@@ -25,9 +45,12 @@ interface DashCardFilterMenuProps {
   parameters: UiParameter[];
 }
 
-export function DashCardFilterMenu({ parameters }: DashCardFilterMenuProps) {
+export function DashCardFilterMenu({
+  parameters: allParameters,
+}: DashCardFilterMenuProps) {
   const dispatch = useDispatch();
-  const { isEditing } = useDashboardContext();
+  const { isEditing, hideParameters } = useDashboardContext();
+  const parameters = getVisibleParameters(allParameters, hideParameters);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedParameterId, setSelectedParameterId] =
     useState<ParameterId | null>(null);
@@ -35,9 +58,7 @@ export function DashCardFilterMenu({ parameters }: DashCardFilterMenuProps) {
   const selectedParameter = parameters.find(
     (parameter) => parameter.id === selectedParameterId,
   );
-  const activeCount = parameters.filter(
-    (parameter) => parameter.value != null,
-  ).length;
+  const activeCount = getParametersWithValues(parameters).length;
 
   const handleOpenChange = (nextIsOpen: boolean) => {
     setIsOpen(nextIsOpen);
@@ -57,6 +78,10 @@ export function DashCardFilterMenu({ parameters }: DashCardFilterMenuProps) {
     }
   };
 
+  if (parameters.length === 0) {
+    return null;
+  }
+
   return (
     <Menu
       opened={isOpen}
@@ -71,7 +96,7 @@ export function DashCardFilterMenu({ parameters }: DashCardFilterMenuProps) {
             aria-label={t`Show filters`}
             data-active={activeCount > 0 || undefined}
             data-testid="show-filter-parameter-button"
-            onMouseDown={stopDragging}
+            onMouseDown={preventDragOrInputFocus}
           >
             <Icon name="filter" size={12} />
             {activeCount > 0 && (
@@ -92,7 +117,7 @@ export function DashCardFilterMenu({ parameters }: DashCardFilterMenuProps) {
       <Menu.Dropdown
         className={S.dropdown}
         data-testid="show-filter-parameter-dropdown"
-        onMouseDown={stopDragging}
+        onMouseDown={preventDragOrInputFocus}
       >
         {selectedParameter ? (
           <FilterWidget
@@ -127,36 +152,45 @@ interface FilterWidgetProps {
 
 function FilterWidget({ parameter, onBack, onClose }: FilterWidgetProps) {
   const dispatch = useDispatch();
-  const {
-    dashboard,
-    parameters: dashboardParameters,
-    parameterValues,
-  } = useDashboardContext();
+  const { dashboard } = useDashboardContext();
+  const linkedFilterParameters = useLinkedFilterParameters();
 
-  const linkedFilterParameters = useMemo(
-    () =>
-      getValuePopulatedParameters({
-        parameters: dashboardParameters,
-        values: parameterValues,
-      }),
-    [dashboardParameters, parameterValues],
-  );
+  const status = getValueStatus(parameter);
 
   return (
     <Box w={WIDGET_WIDTH} maw="100%">
-      <UnstyledButton className={S.backButton} p="md" onClick={onBack}>
-        <Icon name="chevronleft" size={12} />
-        <Text component="span" fw={700} c="inherit">
-          {parameter.name}
-        </Text>
-      </UnstyledButton>
+      <Flex align="center" pr="md">
+        <UnstyledButton className={S.backButton} p="md" onClick={onBack}>
+          <Icon name="chevronleft" size={12} />
+          <Text component="span" fw={700} c="inherit">
+            {parameter.name}
+          </Text>
+        </UnstyledButton>
+        {status && (
+          <WidgetStatus
+            status={status}
+            highlighted
+            onClick={() => {
+              if (status === "reset") {
+                dispatch(setParameterValueToDefault(parameter.id));
+              } else {
+                dispatch(setParameterValue(parameter.id, null));
+              }
+              onClose();
+            }}
+          />
+        )}
+      </Flex>
       <ParameterDropdownWidget
         parameter={parameter}
         parameters={linkedFilterParameters}
         value={parameter.value}
         dashboardId={dashboard?.id}
         enableRequiredBehavior
-        setValue={(value) => dispatch(setParameterValue(parameter.id, value))}
+        setValue={(value) => {
+          dispatch(setParameterValue(parameter.id, value));
+          onClose();
+        }}
         onFocusChanged={() => undefined}
         onPopoverClose={onClose}
       />
@@ -164,6 +198,20 @@ function FilterWidget({ parameter, onBack, onClose }: FilterWidgetProps) {
   );
 }
 
-function stopDragging(event: MouseEvent) {
-  event.stopPropagation();
+// Same rules as the pill widget's action icon, with required behavior on.
+function getValueStatus(parameter: UiParameter): "reset" | "clear" | null {
+  const hasValue = !parameterHasNoDisplayValue(parameter.value);
+  const hasDefault = !parameterHasNoDisplayValue(parameter.default);
+  const wrap = (value: unknown) => (Array.isArray(value) ? value : [value]);
+
+  if (
+    hasDefault &&
+    !areParameterValuesIdentical(wrap(parameter.value), wrap(parameter.default))
+  ) {
+    return "reset";
+  }
+  if (hasValue && !(parameter.required && hasDefault)) {
+    return "clear";
+  }
+  return null;
 }

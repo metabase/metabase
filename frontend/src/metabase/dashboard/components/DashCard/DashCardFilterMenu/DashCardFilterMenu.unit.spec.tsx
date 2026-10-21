@@ -29,9 +29,14 @@ const VENDOR = createMockParameter({
 interface SetupOpts {
   parameters: UiParameter[];
   isEditing?: boolean;
+  hideParameters?: string;
 }
 
-const setup = ({ parameters, isEditing = false }: SetupOpts) => {
+const setup = ({
+  parameters,
+  isEditing = false,
+  hideParameters,
+}: SetupOpts) => {
   const dashboard = createMockDashboard({ parameters });
   const parameterValues = Object.fromEntries(
     parameters.map((parameter) => [parameter.id, parameter.value ?? null]),
@@ -44,6 +49,7 @@ const setup = ({ parameters, isEditing = false }: SetupOpts) => {
       parameters={parameters}
       parameterValues={parameterValues}
       isEditing={isEditing}
+      hideParameters={hideParameters}
     >
       <DashCardFilterMenu parameters={parameters} />
     </MockDashboardContext>,
@@ -73,6 +79,35 @@ describe("DashCardFilterMenu", () => {
     expect(getTrigger()).not.toHaveAttribute("data-active");
     expect(
       screen.queryByTestId("show-filter-parameter-count"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should leave hidden filters out of the list and the count", async () => {
+    setup({
+      parameters: [{ ...CATEGORY, value: ["Gadget"] }, VENDOR],
+      hideParameters: "category",
+    });
+
+    expect(getTrigger()).not.toHaveAttribute("data-active");
+    expect(
+      screen.queryByTestId("show-filter-parameter-count"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(getTrigger());
+    const dropdown = within(
+      await screen.findByTestId("show-filter-parameter-dropdown"),
+    );
+    expect(dropdown.getByRole("menuitem", { name: /Vendor/ })).toBeVisible();
+    expect(
+      dropdown.queryByRole("menuitem", { name: /Category/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should render nothing when every filter is hidden", () => {
+    setup({ parameters: [CATEGORY], hideParameters: "category" });
+
+    expect(
+      screen.queryByTestId("show-filter-parameter-button"),
     ).not.toBeInTheDocument();
   });
 
@@ -124,6 +159,93 @@ describe("DashCardFilterMenu", () => {
     expect(setParameterValue).toHaveBeenCalledWith("category", ["Gadget"]);
     expect(
       screen.queryByTestId("show-filter-parameter-dropdown"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should set a text variable's value and close when it is committed", async () => {
+    const setParameterValue = jest.spyOn(dashboardActions, "setParameterValue");
+    setup({
+      parameters: [
+        {
+          ...CATEGORY,
+          hasVariableTemplateTagTarget: true,
+          values_query_type: "none",
+        },
+      ],
+    });
+
+    await userEvent.click(getTrigger());
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Category/ }),
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("Enter a value..."),
+      "Gadget{enter}",
+    );
+
+    expect(setParameterValue).toHaveBeenCalledWith("category", "Gadget");
+    expect(
+      screen.queryByTestId("show-filter-parameter-dropdown"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should clear the value and close from the filter's header", async () => {
+    const setParameterValue = jest.spyOn(dashboardActions, "setParameterValue");
+    setup({ parameters: [{ ...CATEGORY, value: ["Gadget"] }] });
+
+    await userEvent.click(getTrigger());
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Category/ }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(setParameterValue).toHaveBeenCalledWith("category", null);
+    expect(
+      screen.queryByTestId("show-filter-parameter-dropdown"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should offer a reset instead of a clear when the value differs from the default", async () => {
+    const setParameterValueToDefault = jest.spyOn(
+      dashboardActions,
+      "setParameterValueToDefault",
+    );
+    setup({
+      parameters: [
+        { ...CATEGORY, value: ["Gadget"], default: ["Widget"], required: true },
+      ],
+    });
+
+    await userEvent.click(getTrigger());
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Category/ }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Clear" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reset filter to default state" }),
+    );
+
+    expect(setParameterValueToDefault).toHaveBeenCalledWith("category");
+    expect(
+      screen.queryByTestId("show-filter-parameter-dropdown"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should offer neither clear nor reset when the filter has no value", async () => {
+    setup({ parameters: [CATEGORY] });
+
+    await userEvent.click(getTrigger());
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Category/ }),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Clear" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reset filter to default state" }),
     ).not.toBeInTheDocument();
   });
 

@@ -4,16 +4,10 @@ import { Box } from "metabase/ui";
 
 import type { ScalarSizeTier } from "./sizing";
 
-interface ScalarActionButtonsProps {
-  tier: ScalarSizeTier;
-  position?: "left" | "right";
-}
-
 export const ScalarActionButtons = ({
   children,
   tier,
-  position = "right",
-}: PropsWithChildren<ScalarActionButtonsProps>) => {
+}: PropsWithChildren<{ tier: ScalarSizeTier }>) => {
   if (!children) {
     return null;
   }
@@ -22,13 +16,8 @@ export const ScalarActionButtons = ({
       pos="absolute"
       style={{ zIndex: 1 }}
       top={tier.menuOffset.top}
-      left={position === "left" ? tier.menuOffset.right : undefined}
-      right={position === "right" ? tier.menuOffset.right : undefined}
-      data-testid={
-        position === "left"
-          ? "scalar-card-level-filters"
-          : "scalar-action-buttons"
-      }
+      right={tier.menuOffset.right}
+      data-testid="scalar-action-buttons"
     >
       {children}
     </Box>
