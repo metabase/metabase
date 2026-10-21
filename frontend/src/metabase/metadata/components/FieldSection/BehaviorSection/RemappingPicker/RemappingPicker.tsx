@@ -52,10 +52,34 @@ type RemappingPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
+type FkRemappingFieldSelectProps = {
+  error?: boolean;
+  fieldName?: string;
+  readOnly?: boolean;
+};
+
+const FkRemappingFieldSelect = ({
+  error,
+  fieldName,
+  readOnly,
+}: FkRemappingFieldSelectProps) => (
+  <Select
+    data={[{ label: fieldName ?? t`Choose a field`, value: "choose-a-field" }]}
+    dropdownOpened={false}
+    error={error}
+    placeholder={t`Choose a field`}
+    readOnly={readOnly}
+    value="choose-a-field"
+    w="100%"
+    onClick={(event) => event.preventDefault()}
+  />
+);
+
 export const RemappingPicker = ({
   database,
   field,
   comboboxProps,
+  readOnly,
   onTrackMetadataChange,
   ...props
 }: RemappingPicker) => {
@@ -257,6 +281,7 @@ export const RemappingPicker = ({
         onDropdownOpen={() => setIsChoosingDisplayValue(true)}
         onDropdownClose={() => setIsChoosingDisplayValue(false)}
         onChange={handleDisplayValueChange}
+        readOnly={readOnly}
         {...props}
       />
 
@@ -266,12 +291,19 @@ export const RemappingPicker = ({
             <SubInputIllustration />
           </Flex>
 
+          {fkTargetTable && readOnly && (
+            <FkRemappingFieldSelect
+              fieldName={fkRemappingField?.display_name}
+              readOnly
+            />
+          )}
+
           {/**
            * FieldDataSelector won't work correctly when databases are present
            * but fkTargetTable is not. It would go to "schema" step of DataSelector
            * which does not exist in FieldDataSelector, hence this conditional render.
            */}
-          {fkTargetTable && (
+          {fkTargetTable && !readOnly && (
             <FieldDataSelector
               databases={[database]}
               isInitiallyOpen={isChoosingInitialFkTarget}
@@ -284,20 +316,9 @@ export const RemappingPicker = ({
               // come from there rather than from the store.
               fields={fkTargetTable.fields ?? []}
               triggerElement={
-                <Select
-                  data={[
-                    {
-                      label:
-                        fkRemappingField?.display_name ?? t`Choose a field`,
-                      value: "choose-a-field",
-                    },
-                  ]}
-                  dropdownOpened={false}
+                <FkRemappingFieldSelect
                   error={isFkTargetTouched && !fkRemappingField}
-                  placeholder={t`Choose a field`}
-                  value="choose-a-field"
-                  w="100%"
-                  onClick={(event) => event.preventDefault()}
+                  fieldName={fkRemappingField?.display_name}
                 />
               }
               onClose={() => {
@@ -327,16 +348,18 @@ export const RemappingPicker = ({
                 onClose={() => setIsCustomMappingOpen(false)}
               />
 
-              <Group mt="sm">
-                <Button
-                  size="compact-md"
-                  variant="transparent"
-                  disabled={isLoadingFieldValues}
-                  onClick={() => setIsCustomMappingOpen(true)}
-                >
-                  {t`Edit mapping`}
-                </Button>
-              </Group>
+              {!readOnly && (
+                <Group mt="sm">
+                  <Button
+                    size="compact-md"
+                    variant="transparent"
+                    disabled={isLoadingFieldValues}
+                    onClick={() => setIsCustomMappingOpen(true)}
+                  >
+                    {t`Edit mapping`}
+                  </Button>
+                </Group>
+              )}
 
               {hasChanged && <NamingTip mt="lg" />}
             </>
