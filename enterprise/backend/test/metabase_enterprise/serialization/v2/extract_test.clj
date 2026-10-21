@@ -858,7 +858,7 @@
                        :definition  {:database "My Database"
                                      :lib/type :mbql/query
                                      :stages [{:source-table ["My Database" nil "Schemaless Table"]
-                                               :aggregation  [[:sum {} [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]]]}]}}
+                                               :aggregation  [[:sum {} [:field {} "Some Field"]]]}]}}
                       ser))
               (is (not (contains? ser :id)))
               (testing "have no dependencies; the Database/Table/Fields from the definition are not dependencies"

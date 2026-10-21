@@ -298,7 +298,7 @@ describe("format", () => {
     });
 
     it.each([
-      { result: "[Unknown Field]", parts: fields.orders.TOTAL },
+      { result: "[Total]", parts: fields.orders.TOTAL },
       { result: "[Unknown Segment]", parts: segments.EXPENSIVE_THINGS },
       { result: "[Unknown Metric]", parts: metrics.FOO },
       { result: "[Unknown Measure]", parts: measures.BAR },

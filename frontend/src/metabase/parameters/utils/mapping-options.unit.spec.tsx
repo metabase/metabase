@@ -21,10 +21,7 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
-  PEOPLE,
-  PRODUCTS,
   PRODUCTS_ID,
-  REVIEWS,
   REVIEWS_ID,
   createOrdersTable,
   createSampleDatabase,
@@ -160,7 +157,7 @@ describe("parameters/utils/mapping-options", () => {
             name: "Created At",
             target: [
               "dimension",
-              ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
               { "stage-number": 0 },
             ],
             isForeign: false,
@@ -173,10 +170,10 @@ describe("parameters/utils/mapping-options", () => {
               "dimension",
               [
                 "field",
-                PRODUCTS.CREATED_AT,
+                "CREATED_AT",
                 {
                   "base-type": "type/DateTime",
-                  "source-field": REVIEWS.PRODUCT_ID,
+                  "source-field-name": "PRODUCT_ID",
                 },
               ],
               { "stage-number": 0 },
@@ -225,7 +222,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             target: [
               "dimension",
-              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
               { "stage-number": 0 },
             ],
             isForeign: false,
@@ -238,7 +235,7 @@ describe("parameters/utils/mapping-options", () => {
               "dimension",
               [
                 "field",
-                PRODUCTS.CREATED_AT,
+                "CREATED_AT",
                 { "base-type": "type/DateTime", "join-alias": "Products" },
               ],
               { "stage-number": 0 },
@@ -253,10 +250,10 @@ describe("parameters/utils/mapping-options", () => {
               "dimension",
               [
                 "field",
-                PEOPLE.BIRTH_DATE,
+                "BIRTH_DATE",
                 {
                   "base-type": "type/Date",
-                  "source-field": ORDERS.USER_ID,
+                  "source-field-name": "USER_ID",
                 },
               ],
               { "stage-number": 0 },
@@ -271,10 +268,10 @@ describe("parameters/utils/mapping-options", () => {
               "dimension",
               [
                 "field",
-                PEOPLE.CREATED_AT,
+                "CREATED_AT",
                 {
                   "base-type": "type/DateTime",
-                  "source-field": ORDERS.USER_ID,
+                  "source-field-name": "USER_ID",
                 },
               ],
               { "stage-number": 0 },
@@ -306,7 +303,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             target: [
               "dimension",
-              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
               { "stage-number": 0 },
             ],
             isForeign: false,
@@ -360,7 +357,7 @@ describe("parameters/utils/mapping-options", () => {
           created: {
             type: "dimension",
             name: "created",
-            dimension: ORDERS.CREATED_AT,
+            "field-id": ORDERS.CREATED_AT,
           },
         },
       });

@@ -7,6 +7,7 @@ import {
   createMockMetabotGeneratedCardPart,
   createMockMetabotMessage,
   createMockMetabotTextMessage,
+  setupAdhocQueryMetadataEndpoint,
   setupCardDataset,
   setupDatabaseListEndpoint,
   setupGetMetabotConversationEndpoint,
@@ -19,7 +20,11 @@ import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { createMockTable, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockTable,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { FIXED_METABOT_ENTITY_IDS } from "../../constants";
 import { MetabotProvider } from "../../context";
@@ -195,6 +200,7 @@ describe("MetabotConversationPage", () => {
 
   it("renders generated charts inline", async () => {
     setupCardDataset();
+    setupAdhocQueryMetadataEndpoint(createMockCardQueryMetadata());
     setupTableEndpoints(createMockTable({ id: TABLE_ID }));
     mockConversationDetail(
       createMockMetabotConversationDetail({

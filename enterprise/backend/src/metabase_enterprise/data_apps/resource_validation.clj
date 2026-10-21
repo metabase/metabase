@@ -169,7 +169,8 @@
 (defn- portable-refs
   "The portable table references (`[db schema table]`) and field references (`[db schema table field ...]`) that
   `entity` makes, in each place where serialization reads one: a query's source table, a field clause in either form,
-  the source field of a field clause, a table template tag, and a column of the result metadata."
+  the source field of a field clause, a table template tag, a column of the result metadata, and a field clause that
+  names a column of its stage's source table."
   [entity]
   (let [refs   (volatile! #{})
         names? (fn [x] (and (vector? x) (string? (first x)) (every? #(or (nil? %) (string? %)) x)))
@@ -195,6 +196,18 @@
                          (add! :field part)))
                      x)
                    (select-keys entity [:dataset_query :query :parameter_mappings :result_metadata]))
+    (doseq [stage (get-in entity [:dataset_query :stages])
+            :when (table? (:source-table stage))
+            :let  [table-path (:source-table stage)]]
+      (walk/postwalk (fn [x]
+                       (when (and (vector? x)
+                                  (#{"field" :field} (first x))
+                                  (map? (second x))
+                                  (string? (nth x 2 nil))
+                                  (not-any? (second x) [:join-alias :source-field-name :source-field-join-alias]))
+                         (add! :field (conj table-path (nth x 2))))
+                       x)
+                     (dissoc stage :joins :lib/stage-metadata)))
     @refs))
 
 (defn- table-and-field-warnings

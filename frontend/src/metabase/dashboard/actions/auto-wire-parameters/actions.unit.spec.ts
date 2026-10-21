@@ -4,6 +4,7 @@ import { createMockParameterMapping } from "metabase-types/api/mocks";
 
 import { showAutoWireToast } from "./actions";
 import {
+  AUTO_WIRED_TARGET,
   MATCHING_TARGET,
   PARAMETER_ID,
   createAutoWireState,
@@ -41,7 +42,7 @@ describe("showAutoWireToast", () => {
       {
         parameter_id: PARAMETER_ID,
         card_id: 1,
-        target: MATCHING_TARGET,
+        target: AUTO_WIRED_TARGET,
       },
     ]);
 

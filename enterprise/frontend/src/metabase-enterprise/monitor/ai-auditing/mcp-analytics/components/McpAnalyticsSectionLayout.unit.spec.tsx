@@ -43,9 +43,6 @@ const GROUP_MEMBERS_TABLE_ID = 2002;
 
 // Field ids are deterministic — `table_id * 100 + field index` (see `buildTable`). Indices below
 // match the field order of the `v_mcp_tool_calls` table defined further down.
-const TOOL_CALL_ID_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 0;
-const CREATED_AT_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 1;
-const TOOL_NAME_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 2;
 
 const BASE_TYPE = {
   text: "type/Text",
@@ -237,7 +234,6 @@ function setup({
   );
 }
 
-// MBQL 5 order-by clause: [direction, opts, ["field", opts, fieldId]]
 type OrderByClause = [string, unknown, [string, unknown, number]];
 
 type EventsMbqlStage = {
@@ -384,13 +380,13 @@ describe("McpAnalyticsSectionLayout", () => {
         (stage) => stage.page != null && stage["order-by"]?.[0]?.[0] === "asc",
       );
       expect(
-        sortedStage?.["order-by"]?.map(([direction, , [, , fieldId]]) => [
+        sortedStage?.["order-by"]?.map(([direction, , [, , fieldName]]) => [
           direction,
-          fieldId,
+          fieldName,
         ]),
       ).toEqual([
-        ["asc", TOOL_NAME_FIELD_ID],
-        ["desc", TOOL_CALL_ID_FIELD_ID],
+        ["asc", "tool_name"],
+        ["desc", "tool_call_id"],
       ]);
     });
   });
@@ -468,8 +464,8 @@ describe("McpAnalyticsSectionLayout", () => {
         (stage) => stage.page != null,
       );
       expect(eventsStage?.["order-by"]?.map((clause) => clause[2][2])).toEqual([
-        CREATED_AT_FIELD_ID,
-        TOOL_CALL_ID_FIELD_ID,
+        "created_at",
+        "tool_call_id",
       ]);
     });
   });

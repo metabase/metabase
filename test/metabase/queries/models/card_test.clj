@@ -1630,7 +1630,9 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :field-id    (mt/id :orders :created_at)}}}})
+                                    :dimension    [:field
+                                                   {:base-type :type/DateTime}
+                                                   (mt/id :orders :created_at)]}}}})
 
 (deftest create-card!-with-malformed-dataset-query-throws-test
   (testing "queries/create-card! with structurally malformed :dataset_query throws a normalization error, not a SQL constraint error (#74615)"

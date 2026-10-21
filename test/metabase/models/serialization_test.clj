@@ -101,7 +101,7 @@
                                           {}
                                           [:field
                                            {:effective-type :type/BigInteger, :base-type :type/BigInteger}
-                                           ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
+                                           "ID"]
                                           1]]
                           :aggregation  [[:count {:lib/uuid (fake-uuid 0)}]]
                           :order-by     [[:asc

@@ -465,7 +465,7 @@ describe("metabase/parameters/utils/dashboards", () => {
                   bar: {
                     type: "dimension",
                     "widget-type": "string/contains",
-                    dimension: PRODUCTS.TITLE,
+                    "field-id": PRODUCTS.TITLE,
                   },
                 },
               }),
