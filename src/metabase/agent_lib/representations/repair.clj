@@ -1397,6 +1397,49 @@
                     stages)))))
 
 ;;; ============================================================
+;;; Pass 1.56 -- split top-level `and` filters into separate `filters:` entries.
+;;;
+;;; A stage's `filters:` entries are implicitly combined with `and`, so
+;;; `filters: [["and", {}, A, B]]` means the same as `filters: [A, B]`. The notebook renders the
+;;; compound `and` as one custom expression (BOT-1446). Splitting it gives each condition its own
+;;; editable filter without changing the rows, whether the model or the user wrote the `and`.
+;;;
+;;; Top-level `and` clauses and directly nested `and` clauses are split case-insensitively (`AND`).
+;;; An `and` under `or` or `not` must stay nested to preserve the boolean logic. An `and` with a
+;;; non-clause operand, such as a trailing map, stays intact so validation can report the original
+;;; clause. The `and`'s options map is dropped because its operands need nothing from it in the
+;;; portable form. Repeating the pass makes no further changes.
+;;;
+;;; Pass 1.56 runs in `normalize-shape*`, after Pass 1 adds options maps and before Pass 1.5.
+;;; It must precede Pass 2.9 (`split-post-agg-filters*`), which moves whole `filters:` entries,
+;;; so a row condition stays in stage 0 while only the condition on an aggregation moves.
+;;;
+;;; `metabase.lib.filter/flatten-and-clause`, used by `lib/atomic-filters`, does the same flattening
+;;; but requires keyword-keyed MBQL. This pass receives the string-keyed portable form before resolution.
+;;; ============================================================
+
+(defn- and-filter-clause?
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (string? (nth clause 0))
+       (= "and" (u/lower-case-en (nth clause 0)))
+       (map? (nth clause 1))
+       (every? clause-like? (drop 2 clause))))
+
+(defn- and-filter-operands
+  [clause]
+  (if (and-filter-clause? clause)
+    (mapcat and-filter-operands (drop 2 clause))
+    [clause]))
+
+(defn- split-top-level-and-filters*
+  [form]
+  (match/replace-all form
+    {"filters" (filters :guard (and (sequential? filters) (some and-filter-clause? filters)))}
+    (assoc &match "filters" (into [] (mapcat and-filter-operands) filters))))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -1597,12 +1640,13 @@
        (contains? #{"asc" "desc"} (first clause))))
 
 (defn- rewrite-order-by-inline-aggs-in-stage
-  "Apply the inline-agg-in-`order-by` rewrite to a single string-keyed stage map. Returns the
-  updated stage. No-op when the stage has no `order-by` or no `aggregation`."
+  "Rewrite inline aggregations in a stage's `order-by` clauses.
+
+  Leave the stage unchanged if `order-by` is missing or `aggregation` isn't a list of clauses."
   [stage]
   (let [aggs    (get stage "aggregation")
         ord     (get stage "order-by")]
-    (if-not (and (vector? aggs) (seq aggs) (vector? ord) (seq ord))
+    (if-not (and (vector? aggs) (seq aggs) (every? clause-like? aggs) (vector? ord) (seq ord))
       stage
       ;; Build a structural-key → index lookup over the aggregations once.
       (let [agg-key->idx (into {}
@@ -1774,6 +1818,9 @@
   [stage]
   (let [aggs (get stage "aggregation")]
     (cond
+      (not (map? stage))
+      stage
+
       ;; No integer refs anywhere in the stage - nothing to do.
       (not (stage-has-integer-agg-ref? stage))
       stage
@@ -1970,26 +2017,29 @@
    form))
 
 (defn- split-post-agg-filter-stage
-  "Detect post-agg-filter shape in `stage`. Return `[stage]` if no split is needed, or
-  `[stage' new-stage]` if the stage was split. Throws `:agent-error?` ex-info when split is
-  required but unsafe to perform automatically.
+  "Split a stage whose filters refer to its own aggregations.
 
-  Auto-fix is intentionally narrow: it moves the offending filter(s) into a second stage and
-  rewrites their agg-refs to cross-stage `[\"field\" {} \"<col-name>\"]` clauses. It does
-  NOT move `order-by` / `limit` / `fields` — those frequently reference pre-aggregation
-  columns that don't survive the split, and silently relocating them produces either a
-  hard-to-diagnose 'no matching field' error or, worse, a different-row-count query. When
-  any of those keys is present we refuse and ask the LLM to author two stages explicitly."
+  Return `[stage]` if no split is needed, or `[stage' new-stage]` after a split.
+  Rewrite aggregation references in the new stage as cross-stage field references.
+  Throw an `:agent-error?` exception if a split is needed but can't be done safely.
+
+  Moving `order-by`, `limit` or `fields` could change the results because those clauses
+  may refer to columns absent from the aggregation output. Ask the LLM to write two stages
+  explicitly in that case. Leave the stage unchanged for validation if `order-by` or `fields`
+  can't be read as a sequence."
   [stage]
   (let [aggs              (get stage "aggregation")
-        same-stage-uuids  (collect-stage-agg-uuids stage)]
-    (if-not (and (vector? aggs) (seq aggs) (seq same-stage-uuids))
+        same-stage-uuids  (when (vector? aggs) (collect-stage-agg-uuids stage))]
+    (if-not (seq same-stage-uuids)
       [stage]
       (let [filters             (get stage "filters")
             offending-filter?   (fn [f] (form-references-stage-agg? f same-stage-uuids))
             offending-filters   (when (vector? filters) (filterv offending-filter? filters))]
         (cond
           (empty? offending-filters)
+          [stage]
+
+          (some #(not (seqable? (get stage %))) ["order-by" "fields"])
           [stage]
 
           (or (seq (get stage "order-by"))
@@ -2408,7 +2458,8 @@
 ;;; ============================================================
 
 (defn- stage-join-aliases [stage]
-  (into #{} (keep #(when (map? %) (get % "alias"))) (get stage "joins")))
+  (let [joins (get stage "joins")]
+    (into #{} (keep #(when (map? %) (get % "alias"))) (when (sequential? joins) joins))))
 
 (defn- string-cross-stage-field-clause?
   "True if `v` is a string-named field ref to a previous-stage column of a stage whose joins are
@@ -2703,7 +2754,8 @@
   problem per join that has refs naming columns it doesn't return."
   [query mp content-store import-resolver idx stage]
   (let [{:keys [named path]} (join-alias-refs stage)
-        checks               (vec (for [join  (when (or (seq named) (seq path)) (get stage "joins"))
+        joins                (get stage "joins")
+        checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
                                         :let  [alias      (when (map? join) (get join "alias"))
                                                named-refs (get named alias)
                                                path-refs  (when-not (plain-table-join? join) (get path alias))]
@@ -2777,7 +2829,8 @@
              q query]
         (if (>= i n)
           q
-          (let [cols (mini-resolved-columns mp q i content-store)
+          (let [cols (when (map? (get-in q ["stages" i]))
+                       (mini-resolved-columns mp q i content-store))
                 q'   (if cols
                        (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols)
                        q)]
@@ -3114,6 +3167,7 @@
       normalise-case-clauses*
       normalise-fields-shape*
       normalise-aggregation-clauses*
+      split-top-level-and-filters*
       normalize-expressions-shape*
       ensure-lib-types*))
 
@@ -3131,6 +3185,8 @@
     1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
+    1.56. split a top-level `and` in `filters:` into separate entries that the notebook shows as
+       individual filters (runs in `normalize-shape*`, before 1.5; must precede 2.9);
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);

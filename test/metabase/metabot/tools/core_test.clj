@@ -301,6 +301,18 @@
                             (tools/with-entity {:kind :timeline :id 5}
                               (throw (ex-info "nope" {:status-code status})))))))))))
 
+(deftest ^:parallel with-entity-keeps-inner-entity-test
+  (doseq [status [403 404]]
+    (is (=? {:class   :recoverable
+             :code    :metabase.metabot.tools.recoverable.common/not-found
+             :message "Field 2 was not found. It may not exist, or you may not have access to it."
+             :data    {:kind :field :id 2}}
+            (tools.error/classify
+             (is (thrown? clojure.lang.ExceptionInfo
+                          (tools/with-entity {:kind :table :id 1}
+                            (tools/with-entity {:kind :field :id 2}
+                              (throw (ex-info "Field lookup refused" {:status-code status})))))))))))
+
 (deftest ^:parallel with-entity-passes-everything-else-through-test
   (testing "a real failure inside the body stays unrecoverable instead of being reported as a miss"
     (doseq [data [{:status-code 500} {} {:status-code 400}]]
