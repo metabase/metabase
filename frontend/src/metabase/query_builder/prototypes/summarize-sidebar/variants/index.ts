@@ -1,6 +1,6 @@
 import { SummarySidebar } from "../../../components/view/SummarySidebar";
+import type { SidebarPrototypeVariant } from "../../shared/types";
 
-import { SummarySidebar as AiFormulaSummarySidebar } from "./ai-formula";
 import { SummarySidebar as BreakoutsSummarySidebar } from "./breakouts";
 import { SummarySidebar as ClickToSwapSummarySidebar } from "./click-to-swap";
 import { SummarySidebar as OriginalSummarySidebar } from "./original";
@@ -9,7 +9,6 @@ import { SummarySidebar as RowsOnDemandSummarySidebar } from "./rows-on-demand";
 import { SummarySidebar as SectionsSummarySidebar } from "./sections";
 import { SummarySidebar as SectionsTopSummarySidebar } from "./sections-top";
 import { SummarySidebar as SideBySideSummarySidebar } from "./side-by-side";
-import type { SummarizeSidebarVariant } from "./types";
 import { SummarySidebar as WellsLeftSummarySidebar } from "./wells-left";
 import { SummarySidebar as WellsTopSummarySidebar } from "./wells-top";
 import { SummarySidebar as WellsTopSwapSummarySidebar } from "./wells-top-swap";
@@ -19,7 +18,7 @@ import { SummarySidebar as WellsTopSwapSummarySidebar } from "./wells-top-swap";
  * (everything but `types`, `utils`, and `summary-session`, which stay shared) into
  * `variants/<slug>/` and append an entry here; `default` stays the sidebar the query builder ships.
  */
-export const VARIANTS: readonly SummarizeSidebarVariant[] = [
+export const VARIANTS: readonly SidebarPrototypeVariant[] = [
   {
     slug: "default",
     name: "Default",
@@ -91,12 +90,6 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
     name: "Sections swap",
     axis: "Click to swap with Sections' field list; now shipped in the query builder, the same sidebar as Default",
     Sidebar: SummarySidebar,
-  },
-  {
-    slug: "ai-formula",
-    name: "AI formula",
-    axis: "Sections swap, plus: text that matches nothing in a well is a description, and Enter has AI write the formula",
-    Sidebar: AiFormulaSummarySidebar,
   },
   {
     slug: "wells-top-swap",

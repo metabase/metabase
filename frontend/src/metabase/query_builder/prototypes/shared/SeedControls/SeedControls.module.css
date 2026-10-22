@@ -1,0 +1,5 @@
+.root {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  padding: 0.5rem 1.5rem;
+}

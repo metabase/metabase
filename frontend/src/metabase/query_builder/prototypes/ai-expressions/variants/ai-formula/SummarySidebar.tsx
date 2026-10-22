@@ -28,11 +28,13 @@ import {
   type SummaryDefinition,
   type SummaryDimension,
   type SummaryDragItem,
+  type SummaryExpression,
   type SummaryValue,
   type SummaryWellId,
 } from "../../../../components/view/SummarySidebar/types";
 import {
   addCountValue,
+  addExpressionValue,
   buildSummaryQuery,
   dropOnWell,
   getItemKey,
@@ -47,6 +49,7 @@ import { SummaryWells } from "./SummaryWells";
 type SummarySidebarProps = {
   question: Question;
   onQuestionChange: (question: Question) => void;
+  seededValues?: readonly SummaryExpression[] | null;
 };
 
 function getDropWellId(data: unknown): SummaryWellId | null {
@@ -142,6 +145,21 @@ function addItem(
     : dropOnWell(base, definition, item, "columns");
 }
 
+/** Adds each seeded formula to the values, skipping any whose name the values already have. */
+function addSeededValues(
+  definition: SummaryDefinition,
+  seededValues: readonly SummaryExpression[],
+): SummaryDefinition {
+  const valueNames = new Set(
+    definition.values.flatMap((value) =>
+      value.type === "expression" ? [value.expression.name] : [],
+    ),
+  );
+  return seededValues
+    .filter((expression) => !valueNames.has(expression.name))
+    .reduce(addExpressionValue, definition);
+}
+
 /**
  * Summarizes the question starting from Count of rows. Clicking a column swaps it in as the one
  * breakout and option-clicking adds it; dragging places it in any well, and dragging one below
@@ -150,6 +168,7 @@ function addItem(
 export function SummarySidebar({
   question,
   onQuestionChange,
+  seededValues,
 }: SummarySidebarProps) {
   const [session, setSession] = useState(() =>
     withStartingCount(getSummarySession(question)),
@@ -197,6 +216,17 @@ export function SummarySidebar({
       onQuestionChange(nextQuestion);
     }
   };
+
+  // the seed controls hand over a new array per click, applied once; skipped on mount, where it's left over
+  useUpdateEffect(() => {
+    if (seededValues == null) {
+      return;
+    }
+    const nextDefinition = addSeededValues(definition, seededValues);
+    if (nextDefinition !== definition) {
+      handleChange(nextDefinition);
+    }
+  }, [seededValues]);
 
   const handleFieldClick = (nextDefinition: SummaryDefinition) => {
     // a click that changes nothing shouldn't rerun the question
