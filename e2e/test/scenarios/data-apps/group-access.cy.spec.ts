@@ -14,6 +14,7 @@ describe("scenarios > data apps > group access (EMB-2415)", () => {
 
     H.setupGitSync();
     H.copySyncedCollectionFixture();
+    H.updateSetting("remote-sync-custom-collections-enabled", true);
 
     H.writeDataAppResources(H.LOCAL_GIT_PATH, {
       collection: H.dataAppRepresentations.collection(
