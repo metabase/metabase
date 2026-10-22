@@ -315,9 +315,6 @@ export async function checkQuarantineGate(opts: {
   );
   log(RULE);
 
-  // The gate runs only after the test step failed. No failing tests means the
-  // step failed for another reason (a crash, a timeout, no results written), and
-  // the quarantine list cannot excuse that.
   if (failures.length === 0) {
     log("⚠️  the test step failed, but no failing tests were reported.");
     return finish({

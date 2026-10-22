@@ -155,9 +155,9 @@ for idx in "${INDEXES[@]}"; do
   prepare_jvm_dir "$JVM_DIRS_ROOT/partition-$idx"
 done
 
-# On its first start the `clojure` launcher copies its default config files into
-# ~/.config/clojure when they are missing. Two launchers that start at the same time
-# can both try the copy, and the second one fails. Run the launcher once first.
+# run_partition below can have a race where two `clojure` launchers both check if a file exists
+# and try to copy it at the same time, and one fails and exits before the tests start. We avoid
+# that by running this to ensure that the file exists.
 clojure -Sdescribe >/dev/null || die "clojure -Sdescribe failed"
 
 for idx in "${INDEXES[@]}"; do
