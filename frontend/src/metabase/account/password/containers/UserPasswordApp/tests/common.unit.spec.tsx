@@ -145,6 +145,29 @@ describe("UserPasswordApp (OSS)", () => {
     expect(screen.getByLabelText("Confirm your password")).toBeInTheDocument();
   });
 
+  it.each(["ldap", "google", "jwt", "saml"] as const)(
+    "should prevent %s users from editing SSO credentials (metabase#23298)",
+    (ssoSource) => {
+      setup({
+        user: createMockUser({
+          sso_source: ssoSource,
+          slack_account_status: null,
+        }),
+        mfaStatus: createMockMfaStatus({ mfa_enabled: false }),
+      });
+
+      expect(
+        screen.queryByLabelText("Current password"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Create a password"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Confirm your password"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it("should not show two-factor authentication settings, even when the instance has it on", async () => {
     setup({ mfaStatus: createMockMfaStatus({ mfa_enabled: true }) });
 
