@@ -6,6 +6,7 @@ import type {
   UseDocumentPageAddon,
 } from "metabase/documents/routes";
 import { Box } from "metabase/ui";
+import { usePrototypeFlag } from "metabase/utils/prototype-flags";
 import { getProductAnalyticsDocumentContext } from "metabase-types/guards";
 
 import { ANALYSIS_KINDS, getAnalysisConfig } from "../analyses/config";
@@ -23,8 +24,16 @@ import {
 } from "./editor-host";
 import { useAnalysisDocumentState } from "./use-analysis-document-state";
 
+const NO_COMMANDS: ReturnType<typeof useEventAnalysisCommands> = [];
+
+const useFlaggedEventAnalysisCommands = () => {
+  const hasEventAnalytics = usePrototypeFlag("event-analytics");
+  const commands = useEventAnalysisCommands();
+  return hasEventAnalytics ? commands : NO_COMMANDS;
+};
+
 const DOCUMENT_EDITOR_HOST: DocumentPageAddon["hostOverride"] = {
-  useEventAnalysisCommands,
+  useEventAnalysisCommands: useFlaggedEventAnalysisCommands,
 };
 
 /**
@@ -38,6 +47,7 @@ export const useDocumentAnalysesAddon: UseDocumentPageAddon = ({
   savedContent,
 }) => {
   const prototype = usePrototypeTable();
+  const hasEventAnalytics = usePrototypeFlag("event-analytics");
   const editorContext = useEditorState({
     editor,
     selector: ({ editor }) =>
@@ -72,19 +82,21 @@ export const useDocumentAnalysesAddon: UseDocumentPageAddon = ({
         }
       : null;
 
-  const startActions: DocumentPageAddon["startActions"] = [
-    {
-      key: "event-analysis",
-      label: t`New event analysis`,
-      icon: "funnel",
-      options: ANALYSIS_KINDS.map((kind) => ({
-        key: kind,
-        label: getAnalysisConfig(kind).name,
-        icon: ANALYSIS_ICONS[kind],
-        onSelect: () => state.insertAnalysis(kind),
-      })),
-    },
-  ];
+  const startActions: DocumentPageAddon["startActions"] = hasEventAnalytics
+    ? [
+        {
+          key: "event-analysis",
+          label: t`New event analysis`,
+          icon: "funnel",
+          options: ANALYSIS_KINDS.map((kind) => ({
+            key: kind,
+            label: getAnalysisConfig(kind).name,
+            icon: ANALYSIS_ICONS[kind],
+            onSelect: () => state.insertAnalysis(kind),
+          })),
+        },
+      ]
+    : [];
 
   return {
     startActions,

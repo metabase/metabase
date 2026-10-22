@@ -29,6 +29,7 @@ import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
+import { PrototypeFlagsToggle } from "metabase/nav/components/PrototypeFlagsToggle";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
@@ -130,6 +131,7 @@ function _init(
             <AppThemeProvider>
               <GlobalStyles />
               {createPortal(<PortalContainer />, document.body)}
+              <PrototypeFlagsToggle />
               <MetabotProvider>
                 <RouterProvider
                   routes={routes}

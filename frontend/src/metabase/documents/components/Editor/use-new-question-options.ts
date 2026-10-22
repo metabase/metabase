@@ -8,11 +8,13 @@ import {
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useSelector } from "metabase/redux";
 import type { NewQuestionOption } from "metabase/rich_text_editing/tiptap/extensions/Command/types";
+import { usePrototypeFlag } from "metabase/utils/prototype-flags";
 
 export const useNewQuestionOptions = (): NewQuestionOption[] => {
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const { canUseMetabot } = useUserMetabotPermissions();
+  const hasEventAnalytics = usePrototypeFlag("event-analytics");
 
   return useMemo(() => {
     const options: NewQuestionOption[] = [];
@@ -21,15 +23,20 @@ export const useNewQuestionOptions = (): NewQuestionOption[] => {
       options.push({ label: t`AI question`, icon: "metabot", value: "ai" });
     }
 
+    if (hasDataAccess && hasEventAnalytics) {
+      options.push({
+        label: t`Product event analysis`,
+        icon: "funnel",
+        value: "event-analysis",
+      });
+    }
+
     if (hasDataAccess) {
-      options.push(
-        {
-          label: t`Product event analysis`,
-          icon: "funnel",
-          value: "event-analysis",
-        },
-        { label: t`GUI query`, icon: "notebook", value: "notebook" },
-      );
+      options.push({
+        label: t`GUI query`,
+        icon: "notebook",
+        value: "notebook",
+      });
     }
 
     if (hasNativeWrite) {
@@ -37,5 +44,5 @@ export const useNewQuestionOptions = (): NewQuestionOption[] => {
     }
 
     return options;
-  }, [canUseMetabot, hasDataAccess, hasNativeWrite]);
+  }, [canUseMetabot, hasDataAccess, hasEventAnalytics, hasNativeWrite]);
 };

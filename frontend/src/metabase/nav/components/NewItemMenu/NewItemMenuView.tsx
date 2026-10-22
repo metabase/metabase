@@ -11,6 +11,7 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { usePrototypeFlag } from "metabase/utils/prototype-flags";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
@@ -46,6 +47,7 @@ export const NewItemMenuView = ({
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const { hasNlqAccess } = useUserMetabotPermissions();
+  const hasEventAnalytics = usePrototypeFlag("event-analytics");
 
   const menuItems = useMemo(() => {
     const items = [];
@@ -60,7 +62,7 @@ export const NewItemMenuView = ({
       );
     }
 
-    if (hasDataAccess) {
+    if (hasDataAccess && hasEventAnalytics) {
       items.push(
         <Menu.Item
           key="event-analysis"
@@ -147,6 +149,7 @@ export const NewItemMenuView = ({
     dispatch,
     canWriteToCollections,
     hasNlqAccess,
+    hasEventAnalytics,
   ]);
 
   if (menuItems.length === 0) {
