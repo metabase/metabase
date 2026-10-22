@@ -43,3 +43,68 @@
     opacity: 0;
   }
 }
+
+/* Prototype: the result is out of date. A tint on the result, a large run
+   button, and a button that puts back the question of the result. */
+/* Only the buttons react to clicks, so the overlay has the default cursor. */
+.root .overlay.dirtyTint,
+.root .overlay.dirtyTint:hover {
+  cursor: default;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-background_surface-primary-inverse) 35%,
+    transparent
+  );
+}
+
+/* Prototype: looks like a large primary button. */
+.runPill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 9rem;
+  padding: 0.875rem 2.5rem 0.75rem;
+  border: none;
+  border-radius: 999px;
+  background-color: var(--mb-color-button-filled-brand-default);
+  box-shadow: 0 4px 16px var(--mb-color-shadow-default);
+  color: var(--mb-color-button_label-filled-brand-default);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.15s ease-out;
+}
+
+.runPill:hover {
+  background-color: var(--mb-color-button-filled-brand-hover);
+}
+
+.runPillShortcut {
+  font-size: 0.75rem;
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.resetButton {
+  padding: 0.125rem 0.625rem;
+  border: none;
+  border-radius: 999px;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-background_surface-primary) 70%,
+    transparent
+  );
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease-out;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary);
+  }
+}

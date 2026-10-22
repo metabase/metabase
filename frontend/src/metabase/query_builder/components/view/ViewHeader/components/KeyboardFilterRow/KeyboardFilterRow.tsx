@@ -41,7 +41,10 @@ interface KeyboardFilterRowProps {
   draftKey: number | null;
   onAddDraft: () => void;
   onRemoveDraft: () => void;
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 }
 
 /**
@@ -90,7 +93,13 @@ export function KeyboardFilterRow({
   const setQuery = (newQuery: Lib.Query) => {
     const question = latestQuestion.current;
     if (!areQueriesEqual(newQuery, question.query())) {
-      updateQuestion(question.setQuery(newQuery), { run: true });
+      // Prototype: on slow data, a filter change only makes the result out of
+      // date, and the user reruns the question with the run button.
+      const isSlowData = !(autoApply?.isEnabled(newQuery) ?? true);
+      updateQuestion(question.setQuery(newQuery), {
+        run: !isSlowData,
+        shouldUpdateUrl: isSlowData,
+      });
     }
   };
 

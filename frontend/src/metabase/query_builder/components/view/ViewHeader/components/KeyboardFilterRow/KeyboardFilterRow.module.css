@@ -257,5 +257,5 @@
 
 .aiModeIcon {
   flex-shrink: 0;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-icon-brand);
 }

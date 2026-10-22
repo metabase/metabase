@@ -72,7 +72,10 @@ interface ViewTitleHeaderProps {
   isShowingQuestionInfoSidebar: boolean;
   onCloseQuestionInfo: () => void;
 
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 
   className?: string;
   style?: React.CSSProperties;

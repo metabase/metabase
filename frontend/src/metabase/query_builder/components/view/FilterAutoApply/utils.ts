@@ -27,6 +27,31 @@ export function areQueriesEqual(query1: Lib.Query, query2: Lib.Query): boolean {
   );
 }
 
+function removeFilters(query: Lib.Query): Lib.Query {
+  const stageIndexes = Array.from(
+    { length: Lib.stageCount(query) },
+    (_, index) => index,
+  );
+  const queryWithoutFilters = stageIndexes.reduce(
+    (newQuery, stageIndex) =>
+      Lib.filters(newQuery, stageIndex).reduce(
+        (stageQuery, filter) =>
+          Lib.removeClause(stageQuery, stageIndex, filter),
+        newQuery,
+      ),
+    query,
+  );
+  return Lib.dropEmptyStages(queryWithoutFilters);
+}
+
+/** True when the queries differ in their filters and in nothing else. */
+export function isFilterOnlyChange(query1: Lib.Query, query2: Lib.Query) {
+  return (
+    !areQueriesEqual(query1, query2) &&
+    areQueriesEqual(removeFilters(query1), removeFilters(query2))
+  );
+}
+
 export function readsSlowTable(
   query: Lib.Query,
   prototypeData: PrototypeDataInfo | null | undefined,
