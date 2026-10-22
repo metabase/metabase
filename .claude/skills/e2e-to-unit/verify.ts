@@ -42,6 +42,8 @@ import {
   writeWrappers,
 } from "./verify/jest";
 import {
+  type MutantVerdict,
+  NO_CLEAN_RUN_NOTE,
   collectPass,
   failingPairs,
   judgeMutant,
@@ -393,7 +395,7 @@ function runMutants(
   repoRoot: string,
   byFile: Map<string, Mutant[]>,
   options: Options,
-): { fast: PassResults; confirm: PassResults | null } {
+): { fast: PassResults; confirm: PassResults | null; timedOut: boolean } {
   const files = [...byFile.keys()];
   const dirty = dirtyFiles(repoRoot, files);
   if (dirty.length > 0) {
@@ -432,21 +434,26 @@ function runMutants(
     log(
       `fast pass: ${allIds.length} mutants, ${wrappers.length} wrapper specs`,
     );
-    const fast = timed("fast pass", () =>
-      collectPass(
-        runJest(repoRoot, [...wrappers, timeout], log, options.passTimeoutMs)
-          .results,
-        wrapperSpecs,
-      ),
-    );
+    let timedOut = false;
+    const fast = timed("fast pass", () => {
+      const run = runJest(
+        repoRoot,
+        [...wrappers, timeout],
+        log,
+        options.passTimeoutMs,
+        true,
+      );
+      timedOut = timedOut || run.timedOut;
+      return collectPass(run.results, wrapperSpecs);
+    });
     removeWrappers(repoRoot, wrappers);
     wrappers = [];
     if (!options.confirm) {
-      return { fast: fast.pass, confirm: null };
+      return { fast: fast.pass, confirm: null, timedOut };
     }
     const failing = failingPairs(fast);
     if (failing.pairs.size === 0) {
-      return { fast: fast.pass, confirm: new Map() };
+      return { fast: fast.pass, confirm: new Map(), timedOut };
     }
     wrappers = [...failing.pairs].flatMap(([spec, mutants]) =>
       write(
@@ -458,18 +465,18 @@ function runMutants(
     log(
       `confirm pass: ${wrappers.length} spec and mutant pairs in their own files across ${failing.pairs.size} specs, ${failing.titles.length} tests`,
     );
-    const confirm = timed("confirm pass", () =>
-      collectPass(
-        runJest(
-          repoRoot,
-          [...wrappers, timeout, "-t", pattern],
-          log,
-          options.passTimeoutMs,
-        ).results,
-        wrapperSpecs,
-      ),
-    );
-    return { fast: fast.pass, confirm: confirm.pass };
+    const confirm = timed("confirm pass", () => {
+      const run = runJest(
+        repoRoot,
+        [...wrappers, timeout, "-t", pattern],
+        log,
+        options.passTimeoutMs,
+        true,
+      );
+      timedOut = timedOut || run.timedOut;
+      return collectPass(run.results, wrapperSpecs);
+    });
+    return { fast: fast.pass, confirm: confirm.pass, timedOut };
   } finally {
     cleanup();
     process.off("SIGINT", onSignal);
@@ -477,10 +484,29 @@ function runMutants(
   }
 }
 
+/**
+ * A killed pass leaves mutants whose wrapper never ran. They read as if their
+ * file was never reached, which is a different finding, so say which it was.
+ */
+function timeoutAware(verdict: MutantVerdict, passTimedOut: boolean) {
+  if (
+    passTimedOut &&
+    verdict.status === "unmeasured" &&
+    verdict.reason === NO_CLEAN_RUN_NOTE
+  ) {
+    return {
+      status: "unmeasured" as const,
+      reason: "the pass was killed before this mutant ran",
+    };
+  }
+  return verdict;
+}
+
 function judgeFunctions(
   functions: ScopedFunction[],
   fast: PassResults,
   confirm: PassResults | null,
+  passTimedOut = false,
 ) {
   const cleanRerunVoids = new Map<string, number>();
   for (const scoped of functions) {
@@ -489,7 +515,10 @@ function judgeFunctions(
     }
     const verdicts = scoped.mutants.map((mutant) => ({
       mutant,
-      verdict: judgeMutant(mutant.id, fast, confirm),
+      verdict: timeoutAware(
+        judgeMutant(mutant.id, fast, confirm),
+        passTimedOut,
+      ),
     }));
     for (const { verdict } of verdicts) {
       if (verdict.status !== "unmeasured") {
@@ -550,6 +579,7 @@ function toReport(
   reports: TestReport[],
   mutantCount: number,
   cleanRerunWarning?: CleanRerunWarning,
+  passTimedOut?: boolean,
 ): VerifyReport {
   for (const scoped of functions) {
     const row: FunctionRow = {
@@ -570,6 +600,7 @@ function toReport(
     unitSpecs: options.unitSpecs,
     mutantCount,
     cleanRerunWarning,
+    passTimedOut,
     tests: reports,
   };
 }
@@ -631,6 +662,7 @@ async function main() {
 
   let mutantCount = 0;
   let cleanRerunWarning: CleanRerunWarning | undefined;
+  let passTimedOut = false;
   if (pending.length > 0 && options.unitSpecs.length > 0) {
     const files = [...new Set(pending.map((scoped) => scoped.file))];
     const executed = timed("coverage pass", () =>
@@ -652,8 +684,18 @@ async function main() {
       const byFile = planMutants(repoRoot, functions, options);
       mutantCount = [...byFile.values()].flat().length;
       if (mutantCount > 0) {
-        const { fast, confirm } = runMutants(repoRoot, byFile, options);
-        const { cleanRerunVoids } = judgeFunctions(functions, fast, confirm);
+        const { fast, confirm, timedOut } = runMutants(
+          repoRoot,
+          byFile,
+          options,
+        );
+        passTimedOut = timedOut;
+        const { cleanRerunVoids } = judgeFunctions(
+          functions,
+          fast,
+          confirm,
+          timedOut,
+        );
         if (cleanRerunVoids.size > 0) {
           // Worst offender first: one test can be the only witness for most of
           // the budget, and that is the one worth fixing before a rerun.
@@ -692,6 +734,7 @@ async function main() {
     reports,
     mutantCount,
     cleanRerunWarning,
+    passTimedOut,
   );
   const markdown = renderMarkdown(report);
   if (options.out) {

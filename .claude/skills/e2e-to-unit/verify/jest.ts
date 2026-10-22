@@ -23,6 +23,72 @@ export interface TestResult {
 export interface JestRun {
   success: boolean;
   results: TestResult[];
+  /** The pass hit --pass-timeout, so `results` is only what finished. */
+  timedOut: boolean;
+}
+
+/** Where the progress reporter appends its lines. */
+const PROGRESS_ENV = "E2E_VERIFY_PROGRESS";
+
+/**
+ * Jest writes its --json output once, at the end, so a pass that is killed
+ * leaves nothing behind. This reporter appends one line per test as each file
+ * finishes, which is what a killed pass can still be judged on.
+ */
+const PROGRESS_REPORTER_SOURCE = `const fs = require("node:fs");
+module.exports = class ProgressReporter {
+  onTestFileResult(_test, result) {
+    const target = process.env.${PROGRESS_ENV};
+    if (!target) {
+      return;
+    }
+    const lines = result.testResults.map((test) =>
+      JSON.stringify({
+        file: result.testFilePath,
+        fullName: test.fullName,
+        title: test.title,
+        status: test.status,
+        failureMessages: test.failureMessages,
+      }),
+    );
+    if (lines.length > 0) {
+      fs.appendFileSync(target, lines.join("\\n") + "\\n");
+    }
+  }
+};
+`;
+
+export function parseProgress(file: string): TestResult[] {
+  if (!fs.existsSync(file)) {
+    return [];
+  }
+  const results: TestResult[] = [];
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    if (line.trim() === "") {
+      continue;
+    }
+    try {
+      const row: unknown = JSON.parse(line);
+      if (typeof row !== "object" || row === null) {
+        continue;
+      }
+      const field = (name: string) =>
+        name in row ? Reflect.get(row, name) : undefined;
+      const failureMessages: unknown = field("failureMessages");
+      results.push({
+        file: String(field("file") ?? ""),
+        fullName: String(field("fullName") ?? ""),
+        title: String(field("title") ?? ""),
+        status: String(field("status") ?? ""),
+        failureMessages: Array.isArray(failureMessages)
+          ? failureMessages.map(String)
+          : [],
+      });
+    } catch {
+      // A kill can cut the last line in half; the rest of the file still counts.
+    }
+  }
+  return results;
 }
 
 const JEST_BIN = path.join("node_modules", ".bin", "jest");
@@ -74,7 +140,7 @@ function parseJestJson(file: string): JestRun {
     parsed !== null &&
     "success" in parsed &&
     parsed.success === true;
-  return { success, results };
+  return { success, results, timedOut: false };
 }
 
 export function runJest(
@@ -82,10 +148,14 @@ export function runJest(
   args: string[],
   log: (line: string) => void,
   timeoutMs = DEFAULT_PASS_TIMEOUT_MS,
+  allowPartial = false,
 ): JestRun {
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-verify-"));
   const outputFile = path.join(workDir, "jest.json");
   const logFile = path.join(workDir, "jest.log");
+  const progressFile = path.join(workDir, "progress.ndjson");
+  const reporterFile = path.join(workDir, "progress-reporter.cjs");
+  fs.writeFileSync(reporterFile, PROGRESS_REPORTER_SOURCE);
   log(`jest ${args.join(" ")}`);
   // A failing mutant prints the rendered DOM, so a pass over a few hundred
   // mutants writes far more than a pipe will hold. Send it to a file and read
@@ -95,12 +165,20 @@ export function runJest(
   try {
     result = spawnSync(
       JEST_BIN,
-      [...args, "--silent", "--json", `--outputFile=${outputFile}`],
+      [
+        ...args,
+        "--silent",
+        "--json",
+        `--outputFile=${outputFile}`,
+        "--reporters=default",
+        `--reporters=${reporterFile}`,
+      ],
       {
         cwd: repoRoot,
         stdio: ["ignore", logFd, logFd],
         timeout: timeoutMs,
         killSignal: "SIGKILL",
+        env: { ...process.env, [PROGRESS_ENV]: progressFile },
       },
     );
   } finally {
@@ -114,8 +192,16 @@ export function runJest(
     // process never started, which is what a command line over the system
     // argument limit looks like.
     if (result.signal === "SIGKILL") {
+      const minutes = Math.round(timeoutMs / 60000);
+      const partial = allowPartial ? parseProgress(progressFile) : [];
+      if (partial.length > 0) {
+        log(
+          `jest was killed after ${minutes} minutes, so a mutant probably wedged a spec. Judging the ${partial.length} test result(s) that finished; raise --pass-timeout or narrow the run for the rest.`,
+        );
+        return { success: false, results: partial, timedOut: true };
+      }
       throw new Error(
-        `jest was killed after ${Math.round(timeoutMs / 60000)} minutes, so a mutant probably wedged a spec. Raise --pass-timeout, or narrow the run.\n${tail}`,
+        `jest was killed after ${minutes} minutes, so a mutant probably wedged a spec, and no test finished first. Raise --pass-timeout, or narrow the run.\n${tail}`,
       );
     }
     const detail = result.error ? result.error.message : tail;

@@ -58,6 +58,13 @@ const SPEC_FILE_RE = /\.spec\.[jt]sx?$/;
  */
 export const CLEAN_RERUN_NOTE = "fails on a clean rerun";
 
+/**
+ * No test that passes on clean code ran this mutant. Without a timeout that
+ * means the mutant's own file was never reached; with one it usually means the
+ * pass was killed before its wrapper ran.
+ */
+export const NO_CLEAN_RUN_NOTE = "no test ran it on clean code";
+
 export function classifyFailure(messages: string[]): Observation {
   const text = messages.join("\n");
   if (TIMEOUT_RE.test(text)) {
@@ -146,7 +153,7 @@ export function judgeMutant(
     };
   }
   if (ranBy === 0) {
-    return { status: "unmeasured", reason: "no test ran it on clean code" };
+    return { status: "unmeasured", reason: NO_CLEAN_RUN_NOTE };
   }
   return { status: "survived", ranBy };
 }

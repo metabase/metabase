@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import ts from "typescript";
 
@@ -13,6 +16,7 @@ import {
   chunk,
   colocatedSpecs,
   mutantOf,
+  parseProgress,
   stripMutant,
   wrapperPath,
   wrapperSource,
@@ -737,5 +741,71 @@ describe("index from the nightly function manifest", () => {
     expect(index.sha).toBe("abc");
     expect(index.boot).toEqual([0]);
     expect(index.tests[0].rare).toEqual([1]);
+  });
+});
+
+describe("progress from a killed pass", () => {
+  const row = (title: string, status: string) =>
+    JSON.stringify({
+      file: "/repo/a/__e2e_verify_a_0.unit.spec.tsx",
+      fullName: `A \u203a ${title}`,
+      title,
+      status,
+      failureMessages: status === "failed" ? ["expect(1).toBe(2)"] : [],
+    });
+
+  const write = (contents: string) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-progress-"));
+    const file = path.join(dir, "progress.ndjson");
+    fs.writeFileSync(file, contents);
+    return file;
+  };
+
+  it("reads the lines a killed pass already wrote", () => {
+    const results = parseProgress(
+      write(
+        `${row("[m0] renders", "passed")}\n${row("[m1] renders", "failed")}\n`,
+      ),
+    );
+    expect(results.map(({ title, status }) => [title, status])).toEqual([
+      ["[m0] renders", "passed"],
+      ["[m1] renders", "failed"],
+    ]);
+    expect(results[1].failureMessages).toEqual(["expect(1).toBe(2)"]);
+  });
+
+  it("keeps the whole lines when a kill cut the last one in half", () => {
+    const results = parseProgress(
+      write(`${row("[m0] renders", "passed")}\n{"file":"/repo/a/__e`),
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toBe("[m0] renders");
+  });
+
+  it("reports nothing when the pass died before any test finished", () => {
+    expect(parseProgress(write(""))).toEqual([]);
+    expect(parseProgress("/no/such/progress.ndjson")).toEqual([]);
+  });
+});
+
+describe("the pass-timeout warning in the report", () => {
+  const report = (passTimedOut?: boolean): VerifyReport => ({
+    runId: "1",
+    sha: "abcdef1234",
+    unitSpecs: ["a.unit.spec.tsx"],
+    mutantCount: 2,
+    passTimedOut,
+    tests: [],
+  });
+
+  it("says the rows are only what finished", () => {
+    const markdown = renderMarkdown(report(true));
+    expect(markdown).toContain("hit `--pass-timeout`");
+    expect(markdown).toContain("finished first");
+  });
+
+  it("says nothing when no pass was killed", () => {
+    expect(renderMarkdown(report(false))).not.toContain("--pass-timeout");
+    expect(renderMarkdown(report(undefined))).not.toContain("--pass-timeout");
   });
 });

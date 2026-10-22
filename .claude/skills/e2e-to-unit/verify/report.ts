@@ -40,6 +40,8 @@ export interface VerifyReport {
   unitSpecs: string[];
   mutantCount: number;
   cleanRerunWarning?: CleanRerunWarning;
+  /** A jest pass hit --pass-timeout, so the rows are only what finished. */
+  passTimedOut?: boolean;
   tests: TestReport[];
 }
 
@@ -122,6 +124,12 @@ export function renderMarkdown(report: VerifyReport): string {
     "The e2e share column is the fraction of all e2e tests that fire the function. A low share means the function is specific to the deleted test, so an open row there matters most.",
   );
   lines.push("");
+  if (report.passTimedOut) {
+    lines.push(
+      "**A jest pass hit `--pass-timeout` and was killed.** The rows below are the test results that finished first; mutants whose wrapper never ran report as `unmeasured`. Raise `--pass-timeout`, or narrow the run, for the rest.",
+    );
+    lines.push("");
+  }
   const warning = report.cleanRerunWarning;
   if (warning && warning.tests.length > 0) {
     lines.push(
