@@ -1018,9 +1018,9 @@
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
-                                                   (fn [db]
-                                                     (swap! create-count inc)
-                                                     (original db)))]
+                                                                 (fn [db]
+                                                                   (swap! create-count inc)
+                                                                   (original db)))]
           (driver.w/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
@@ -1049,9 +1049,9 @@
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
-                                                   (fn [db]
-                                                     (swap! create-count inc)
-                                                     (original db)))]
+                                                                 (fn [db]
+                                                                   (swap! create-count inc)
+                                                                   (original db)))]
           (driver.w/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
@@ -1081,9 +1081,9 @@
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
-                                                   (fn [db]
-                                                     (swap! create-count inc)
-                                                     (original db)))]
+                                                                 (fn [db]
+                                                                   (swap! create-count inc)
+                                                                   (original db)))]
           (driver.w/with-swapped-connection-details db-id {:test-swap true}
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]

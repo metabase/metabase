@@ -14,7 +14,9 @@ export const ExternalMenuTarget = forwardRef<
   Element | null,
   ExternalMenuTargetProps
 >(function ExternalMenuTarget({ element }, ref) {
-  useImperativeHandle(ref, () => element, [element]);
+  useImperativeHandle<Element | null, Element | null>(ref, () => element, [
+    element,
+  ]);
 
   return null;
 });

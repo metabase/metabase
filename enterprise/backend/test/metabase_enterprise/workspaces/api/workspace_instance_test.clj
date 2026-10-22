@@ -34,8 +34,8 @@
 (deftest current-with-workspace-test
   (testing "GET /ee/workspace-instance/current returns the workspace wrapped in {:data ...}"
     (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly {:name      "Current Test"
-                                                     :databases {(mt/id) {:input_schemas ["PUBLIC"]
-                                                                          :output        {:schema "ws_alice"}}}})]
+                                                                   :databases {(mt/id) {:input_schemas ["PUBLIC"]
+                                                                                        :output        {:schema "ws_alice"}}}})]
       (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")
             data   (:data result)]
         (is (= "Current Test" (:name data)))

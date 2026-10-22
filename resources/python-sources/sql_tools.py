@@ -626,6 +626,10 @@ def fold_lookup(folded, key):
     return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
 
 
+# Catalog slot of a table key that sets `db` to null, so it can't be confused with a key that leaves `db` out.
+NO_CATALOG = object()
+
+
 def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     Replace schema, table, and column names in a SQL query.
@@ -656,8 +660,10 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     replacements = json.loads(replacements_json)
     schemas = replacements.get("schemas") or {}
     # Tables: (db, schema, table) -> replacement. `db` is the catalog (BigQuery project, ClickHouse database, etc),
-    # None when the key doesn't name one.
-    table_map = {(key.get("db"), key.get("schema"), key["table"]): new_name
+    # None when the key doesn't name one, and NO_CATALOG when the key sets it to null: such a key matches only references
+    # that omit the catalog, which resolve to the connection's own.
+    table_map = {(NO_CATALOG if "db" in key and key["db"] is None else key.get("db"), key.get("schema"), key["table"]):
+                 new_name
                  for key, new_name in replacements.get("tables") or []}
     # Columns: (schema, table, column) -> new name. `table` is None for a key that matches any table.
     column_map = {(key.get("schema"), key.get("table"), key["column"]): new_name
@@ -673,6 +679,8 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
         def part_matches(key_part, ref_part, quoted):
             """Whether one part of a replacement key names the same thing as the reference's."""
+            if key_part is NO_CATALOG or ref_part is NO_CATALOG:
+                return key_part is ref_part
             if key_part is None or ref_part is None:
                 return key_part is None and ref_part is None
             # A quoted reference is case-significant to the engine — Postgres `"Orders"` is not `orders` — so that part
@@ -681,10 +689,11 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
         def find_table_replacement(db, schema, table, quoted):
             # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
-            # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
+            # A key without a db matches a reference in any catalog; a key with one only matches that catalog, and a key
+            # with a null db only matches a reference that names no catalog.
             # Each shape is tried as written before it is tried part by part, so an exact key always wins, and keys that
             # differ only in the case of an unquoted part answer nothing rather than one of them arbitrarily.
-            shapes = ((db, schema, table), (None, schema, table), (None, None, table))
+            shapes = ((NO_CATALOG if db is None else db, schema, table), (None, schema, table), (None, None, table))
             for key in shapes:
                 replacement = table_map.get(key)
                 if replacement:

@@ -1572,7 +1572,8 @@
               util
               util.config
               warehouse-schema-overlay
-              warehouses}
+              warehouses
+              xrays}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -3591,7 +3592,7 @@
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
-   :model-imports #{:model/Database :model/Sandbox}}
+   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
 
   enterprise/analytics.internal-stats
   {:team "UX West"
@@ -3845,36 +3846,27 @@
    :uses #{actions
            api
            api-scope
-           audit-app
            collections
            events
            lib
-           lib.be
            lib.schema
            lib.types
-           metabot
-           metrics
            models
            permissions
            premium-features
-           queries
            remote-sync
            request
            settings
-           system
            users
            util
            util.graph
            warehouse-schema-overlay
-           enterprise/dependencies
-           enterprise/serialization}
+           enterprise/dependencies}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Database
                     :model/Field
-                    :model/Measure
                     :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
@@ -4725,6 +4717,7 @@
            util
            warehouse-schema-overlay
            workspaces}
+   :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table
                     :model/User}}}

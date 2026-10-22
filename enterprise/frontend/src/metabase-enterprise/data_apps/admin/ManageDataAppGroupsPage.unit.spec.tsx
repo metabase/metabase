@@ -73,7 +73,7 @@ describe("ManageDataAppGroupsPage", () => {
 
     await waitFor(() => {
       const requests = fetchMock.callHistory.calls(
-        "path:/api/apps/sales/groups",
+        "path:/api/ee/apps/sales/groups",
         { method: "POST" },
       );
 
@@ -115,7 +115,7 @@ describe("ManageDataAppGroupsPage", () => {
     ).toBeInTheDocument();
 
     const requests = fetchMock.callHistory.calls(
-      "path:/api/apps/sales/groups",
+      "path:/api/ee/apps/sales/groups",
       { method: "POST" },
     );
 
