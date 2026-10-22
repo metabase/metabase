@@ -8,6 +8,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -438,7 +439,9 @@
                                (let [metadata (.getMetaData conn)]
                                  (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
               (testing "`describe-table` returns the fields anyway"
-                (is (not-empty (:fields (driver/describe-table :athena db table))))))))))))
+                (is (not-empty (:fields (driver/describe-table :athena db table)))))
+              (testing "sync gives the table its fields"
+                (is (pos? (t2/count :model/Field :table_id (:id table), :active true)))))))))))
 
 (deftest describe-table-falls-back-to-describe-on-duplicate-jdbc-columns-test
   (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441, GHY-3273)"
@@ -459,6 +462,62 @@
                      {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
                    (:fields (driver/describe-table :athena db table))))
             (is (true? @get-columns-called))))))))
+
+;;; ------------------------------------------------ describe-fields -------------------------------------------------
+
+(deftest ^:parallel describe-fields-sql-test
+  (testing "without `dbname`, read the given schemas"
+    (is (= [(str "SELECT \"table_schema\" AS \"table-schema\", \"table_name\" AS \"table-name\","
+                 " \"column_name\" AS \"name\", \"ordinal_position\" - 1 AS \"database-position\","
+                 " \"data_type\" AS \"database-type\", \"comment\" AS \"field-comment\""
+                 " FROM \"information_schema\".\"columns\""
+                 " WHERE (\"table_schema\" IN ('s1', 's2')) AND (\"table_name\" IN ('t1'))"
+                 " ORDER BY \"table_schema\" ASC, \"table_name\" ASC, \"ordinal_position\" ASC")]
+           (sql-jdbc.sync/describe-fields-sql :athena
+                                              :schema-names [nil "s1" "s2"]
+                                              :table-names  ["t1"]
+                                              :details      {}))))
+  (testing "with `dbname`, read only that Glue database, and return no schema"
+    (let [[sql] (sql-jdbc.sync/describe-fields-sql :athena
+                                                   :schema-names [nil]
+                                                   :details      {:dbname "mydb"})]
+      (is (str/starts-with? sql "SELECT NULL AS \"table-schema\","))
+      (is (str/includes? sql "WHERE \"table_schema\" IN ('mydb') ORDER BY")))))
+
+(deftest ^:parallel describe-fields-pre-process-xf-test
+  (testing "types are the same as from `DESCRIBE`, and a column name occurs only once in each table"
+    (is (= [{:table-schema "s", :table-name "t1", :name "id", :database-type "int", :base-type :type/Integer, :database-position 0, :field-comment "ID"}
+            {:table-schema "s", :table-name "t1", :name "data", :database-type "struct", :base-type :type/Dictionary, :database-position 1}
+            {:table-schema "s", :table-name "t1", :name "tags", :database-type "array", :base-type :type/Array, :database-position 2}
+            {:table-schema "s", :table-name "t1", :name "price", :database-type "decimal(10,2)", :base-type :type/Decimal, :database-position 3}
+            {:table-schema "s", :table-name "t2", :name "c", :database-type "bigint", :base-type :type/BigInteger, :database-position 0}
+            {:table-schema "s", :table-name "t3", :name "c", :database-type "string", :base-type :type/Text, :database-position 0}]
+           (into []
+                 (sql-jdbc.sync/describe-fields-pre-process-xf :athena nil)
+                 [{:table-schema "s", :table-name "t1", :name "id", :database-type "int", :database-position 0, :field-comment "ID"}
+                  {:table-schema "s", :table-name "t1", :name "data", :database-type "struct<name:string>", :database-position 1, :field-comment ""}
+                  {:table-schema "s", :table-name "t1", :name "tags", :database-type "array<string>", :database-position 2}
+                  {:table-schema "s", :table-name "t1", :name "price", :database-type "decimal(10,2)", :database-position 3}
+                  {:table-schema "s", :table-name "t2", :name "c", :database-type "bigint", :database-position 0}
+                  {:table-schema "s", :table-name "t2", :name "c", :database-type "string", :database-position 1}
+                  {:table-schema "s", :table-name "t3", :name "c", :database-type "string", :database-position 0}])))))
+
+(deftest describe-fields-matches-describe-table-test
+  (mt/test-driver :athena
+    (testing "`describe-fields` returns the same fields as `describe-table`"
+      (let [db (mt/db)]
+        (doseq [table (t2/select :model/Table :db_id (:id db), :active true)]
+          (testing (:name table)
+            (is (= (into #{}
+                         (map #(select-keys % [:name :base-type :database-position]))
+                         (:fields (driver/describe-table :athena db table)))
+                   (into #{}
+                         (comp (filter #(and (= (:schema table) (:table-schema %))
+                                             (= (:name table) (:table-name %))))
+                               (map #(select-keys % [:name :base-type :database-position])))
+                         (driver/describe-fields :athena db
+                                                 :schema-names [(:schema table)]
+                                                 :table-names  [(:name table)]))))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"

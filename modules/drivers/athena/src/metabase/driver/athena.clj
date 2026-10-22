@@ -50,6 +50,7 @@
 (doseq [[feature supported?] {:connection/multiple-databases    true
                               :database-routing                 true
                               :datetime-diff                    true
+                              :describe-fields                  true
                               :expression-literals              true
                               :identifiers-with-spaces          false
                               :metadata/key-constraints         false
@@ -155,6 +156,38 @@
   ;; in eg. `CREATE TABLE` statements. However, Athena has an admin interface where the case typed by the user is what
   ;; gets returned by JDBC calls. Therefore, lower-case the incoming `database-type` and then look up its `base-type`.
   (-> database-type name u/lower-case-en keyword db-type->base-type))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :athena
+  [driver & {:keys [schema-names table-names details]}]
+  ;; when `dbname` is set, tables have no schema, and `dbname` is the only Glue database to read
+  (let [dbname       (not-empty (:dbname details))
+        schema-names (if dbname [dbname] (remove nil? schema-names))]
+    (sql/format {:select   [[(if dbname nil :table_schema) :table-schema]
+                            [:table_name :table-name]
+                            [:column_name :name]
+                            [[:- :ordinal_position [:inline 1]] :database-position]
+                            [:data_type :database-type]
+                            [:comment :field-comment]]
+                 :from     [:information_schema.columns]
+                 :where    [:and
+                            (when (seq schema-names) [:in :table_schema schema-names])
+                            (when (seq table-names) [:in :table_name table-names])]
+                 :order-by [:table_schema :table_name :ordinal_position]}
+                :dialect (sql.qp/quote-style driver)
+                :inline  true)))
+
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :athena
+  [_driver _database & _args]
+  (comp
+   ;; rows of a table are contiguous. Keep the first column of each name, as `DESCRIBE` does.
+   (partition-by (juxt :table-schema :table-name))
+   (mapcat (partial m/distinct-by :name))
+   (map (fn [{col-name :name, :keys [database-type field-comment database-position], :as col}]
+          (cond-> col
+            database-type              (merge (athena.schema-parser/parse-schema
+                                               {:name col-name, :type database-type, :database-position database-position}))
+            (nil? database-type)       (assoc :base-type :type/*)
+            (str/blank? field-comment) (dissoc :field-comment))))))
 
 ;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
 
