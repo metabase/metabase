@@ -3205,7 +3205,7 @@
           (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
                  (:code classified)))
           (when (contains? stage-kvs "breakout")
-            (is (vector? (get-in classified [:data :humanized "stages" 2 "breakout"]))))
+            (is (vector? (get-in (ex-data (ex-cause error)) [:humanized "stages" 2 "breakout"]))))
           (is (str/includes? (tools.error/recoverable-text classified #{}) expected)))))))
 
 (deftest diagnostic-stage-numbers-after-split-test
