@@ -2027,8 +2027,7 @@
 
   Moving `order-by`, `limit` or `fields` could change the results because those clauses
   may refer to columns absent from the aggregation output. Ask the LLM to write two stages
-  explicitly in that case. Leave malformed `order-by` or `fields` for validation unless
-  another trailing clause requires the two-stage error."
+  explicitly in that case. Only nil and empty collections count as absent trailing clauses."
   [stage]
   (let [aggs              (get stage "aggregation")
         same-stage-uuids  (when (vector? aggs) (collect-stage-agg-uuids stage))]
@@ -2041,19 +2040,16 @@
           (empty? offending-filters)
           [stage]
 
-          (or (and (seqable? (get stage "order-by"))
-                   (seq (get stage "order-by")))
-              (some? (get stage "limit"))
-              (and (seqable? (get stage "fields"))
-                   (seq (get stage "fields"))))
+          (some (fn [clause]
+                  (if (coll? clause)
+                    (seq clause)
+                    (some? clause)))
+                (map stage ["order-by" "limit" "fields"]))
           (throw (ex-info
                   (tru "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don''t survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation''s output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs.")
                   {:agent-error? true
                    :error        :post-agg-filter-with-trailing-clauses
                    :stage        stage}))
-
-          (some #(not (seqable? (get stage %))) ["order-by" "fields"])
-          [stage]
 
           :else
           (if-let [uuid->col (aggregation-uuid->column-name aggs)]
