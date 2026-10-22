@@ -284,19 +284,41 @@
       (is (nil? (premium-features/clear-cache!)))
       (is (= #{"sandboxes"} (token-check/*token-features*))))))
 
+(defn- do-with-refresher-started!
+  [thunk]
+  ;; an hour between ticks, so none runs during the test
+  (premium-features/start-refresher! (u/hours->ms 1))
+  (try
+    (thunk)
+    (finally
+      (premium-features/stop-refresher!))))
+
 (deftest clear-local-cache-refreshes-unless-just-refreshed-test
+  (do-with-refresher-started!
+   (fn []
+     (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+       (with-store [calls (constantly good-status)]
+         (testing "with nothing held, a hint refreshes"
+           (premium-features/clear-local-cache!)
+           (is (= 1 @calls)))
+         (testing "a hint right after a refresh does not"
+           (premium-features/clear-local-cache!)
+           (is (= 1 @calls)))
+         (testing "a hint once the held status is older than the floor does"
+           (age-entry! (t/minutes 1))
+           (premium-features/clear-local-cache!)
+           (is (= 2 @calls))))))))
+
+(deftest clear-local-cache-before-the-refresher-starts-leaves-the-refresh-to-the-first-tick-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
     (with-store [calls (constantly good-status)]
-      (testing "with nothing held, a hint refreshes"
-        (premium-features/clear-local-cache!)
-        (is (= 1 @calls)))
-      (testing "a hint right after a refresh does not"
-        (premium-features/clear-local-cache!)
-        (is (= 1 @calls)))
-      (testing "a hint once the held status is older than the floor does"
-        (age-entry! (t/minutes 1))
-        (premium-features/clear-local-cache!)
-        (is (= 2 @calls))))))
+      (premium-features/refresh-at-startup!)
+      (premium-features/clear-local-cache!)
+      (age-entry! (t/minutes 1))
+      (premium-features/clear-local-cache!)
+      (is (= 1 @calls) "a hint that arrives during initialization does not fetch")
+      (token-check/tick!)
+      (is (= 2 @calls) "the first tick makes the refresh the hint asked for"))))
 
 (deftest tick-with-no-entry-held-fetches-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
@@ -456,7 +478,6 @@
         (is (= 1 (count (refresher-threads))))
         (finally
           (premium-features/stop-refresher!)))
-      ;; the worker thread exits just after the executor reports termination
       (is (u/poll {:thunk refresher-threads :done? empty? :interval-ms 1}) "stopping leaves no thread behind")
       (testing "it can be started again after a stop"
         (try

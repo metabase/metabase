@@ -392,6 +392,8 @@
 ;; token hash -> promise of `{:status ...}` or `{:error ...}`
 (defonce ^:private in-flight (atom {}))
 
+(defonce ^:private refresher-executor (atom nil))
+
 (def ^:private retry-policy
   {:max-retries             2
    :initial-interval-millis 1000
@@ -463,9 +465,8 @@
   (refresh! {}))
 
 (defn refresh-at-startup!
-  "Make one attempt, without retries, to fetch and hold the status of the configured token, so a healthy instance knows
-  its features before it serves. A failure is logged, not thrown: the instance starts with no features and [[tick!]]
-  tries again."
+  "Make one attempt, without retries, to fetch and hold the status of the configured token. A failure is left for
+  [[tick!]] to retry, not thrown."
   []
   (try
     (refresh! {:retry? false})
@@ -485,13 +486,18 @@
 ;; the cross-instance hint comes from an untrusted cookie, so forged hints must not turn each request into a store call
 (def ^:private local-refresh-floor (t/seconds 30))
 
+(declare request-refresh!)
+
 (defn clear-local-cache!
-  "Refresh the token status unless it was refreshed within [[local-refresh-floor]]. Never throws."
+  "Refresh the token status unless it was refreshed within [[local-refresh-floor]]. Before [[start-refresher!]], only
+  request the refresh, since initialization makes its own. Never throws."
   []
   (let [{:keys [fetched-at]} @entry]
     (when (or (nil? fetched-at)
               (t/before? (t/plus fetched-at local-refresh-floor) (t/instant)))
-      (clear-cache!))))
+      (if @refresher-executor
+        (clear-cache!)
+        (request-refresh!)))))
 
 (defonce ^:private refresh-interval
   ;; jittered per instance so a fleet started together does not fetch together
@@ -541,19 +547,17 @@
 
 (def ^:private tick-interval-ms (u/minutes->ms 1))
 
-(defonce ^:private refresher-executor (atom nil))
-
 (defn- safe-tick!
-  "`scheduleWithFixedDelay` stops rescheduling a task that throws, so nothing may escape a tick."
   []
   (try
     (tick!)
+    ;; `scheduleWithFixedDelay` stops rescheduling a task that throws
     (catch Throwable t
       (log/errorf "Unexpected error in the premium features token tick; ticking continues: %s" (ex-message t)))))
 
 (defn start-refresher!
-  "Start this instance's daemon thread that calls [[tick!]] every `interval-ms`, a minute by default. Returns `true`
-  if this call started it, `false` if one was already running."
+  "Start a daemon thread that calls [[tick!]] every `interval-ms`, a minute by default. Returns `true` if this call
+  started it, `false` if one was already running."
   ([]
    (start-refresher! tick-interval-ms))
   ([interval-ms]
@@ -569,7 +573,7 @@
            false)))))
 
 (defn stop-refresher!
-  "Stop the thread started by [[start-refresher!]], interrupting a tick in progress and waiting briefly for it to end."
+  "Stop the thread started by [[start-refresher!]]."
   []
   (when-let [^ScheduledExecutorService exec (first (reset-vals! refresher-executor nil))]
     (.shutdownNow exec)
