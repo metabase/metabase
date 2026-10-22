@@ -18,6 +18,8 @@ export type SuggestionGroup = {
   /** A header above this group and the next groups with the same section. */
   section?: string;
   label?: string;
+  /** The text of the input does not filter the options of this group. */
+  isUnfiltered?: boolean;
   options: SuggestionOption[];
 };
 

@@ -9,6 +9,11 @@ import {
   useGetFieldValuesQuery,
   useSearchFieldValuesQuery,
 } from "metabase/api";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  SEMANTIC_COLUMN_SEARCH,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   canListFieldValues,
@@ -27,8 +32,10 @@ import {
   ColumnPickerModeControl,
   useColumnSuggestions,
 } from "./column-picker";
-import type { DraftOperator, DraftState } from "./types";
+import { useSemanticColumnMatches } from "./semantic-column-search";
+import type { DraftOperator, DraftState, SuggestionGroup } from "./types";
 import {
+  type ColumnGroup,
   changeDraftColumn,
   formatDraftValue,
   getColumnGroups,
@@ -41,6 +48,8 @@ import { type ValueAndLabel, useValueWidget } from "./value-widgets";
 
 const SEARCH_LIMIT = 20;
 const COLUMN_DROPDOWN_WIDTH = 340;
+// 1.5 times the max height of the other dropdowns of the pill.
+const COLUMN_OPTIONS_MAX_HEIGHT = "30rem";
 
 export type DraftChangeSource = "selection" | "typing";
 
@@ -484,12 +493,17 @@ function ColumnInput({
     () => getColumnGroups(query, stageIndex),
     [query, stageIndex],
   );
-  const { groups, getItem } = useColumnSuggestions(
+  const { groups: modeGroups, getItem } = useColumnSuggestions(
     query,
     stageIndex,
     columnGroups,
     mode,
     text.trim().length > 0,
+  );
+  const relatedGroup = useRelatedColumnGroup(columnGroups, text);
+  const groups = useMemo(
+    () => (relatedGroup != null ? [...modeGroups, relatedGroup] : modeGroups),
+    [modeGroups, relatedGroup],
   );
 
   const handleSelect = (key: string) => {
@@ -521,6 +535,7 @@ function ColumnInput({
         </Stack>
       }
       dropdownWidth={COLUMN_DROPDOWN_WIDTH}
+      optionsMaxHeight={COLUMN_OPTIONS_MAX_HEIGHT}
       text={text}
       placeholder={placeholder}
       emptyMessage={
@@ -531,6 +546,60 @@ function ColumnInput({
       onKeyDown={onKeyDown}
     />
   );
+}
+
+/**
+ * Prototype: a "Related columns" group with the columns that match the search
+ * by meaning, from the on-device model of Chrome. It leaves out the columns
+ * that the normal search shows, and is empty while the model answers, so that
+ * the list does not jump.
+ */
+function useRelatedColumnGroup(
+  columnGroups: ColumnGroup[],
+  text: string,
+): SuggestionGroup | null {
+  const [isEnabled] = usePrototypeSetting(SEMANTIC_COLUMN_SEARCH);
+  const entries = useMemo(
+    () =>
+      columnGroups.flatMap((group, groupIndex) =>
+        group.columns.map((column, columnIndex) => ({
+          key: `column:${groupIndex}:${columnIndex}`,
+          column,
+          tableLabel: group.label,
+        })),
+      ),
+    [columnGroups],
+  );
+  const labels = useMemo(
+    () =>
+      entries.map(({ column, tableLabel }) =>
+        columnGroups.length > 1
+          ? `${column.label} (${tableLabel})`
+          : column.label,
+      ),
+    [entries, columnGroups.length],
+  );
+  const matches = useSemanticColumnMatches(labels, text, isEnabled);
+
+  return useMemo(() => {
+    const searchText = text.trim().toLowerCase();
+    const options = matches
+      .map((index) => entries[index])
+      .filter(
+        (entry) =>
+          entry != null &&
+          !entry.column.label.toLowerCase().includes(searchText),
+      )
+      .map(({ key, column, tableLabel }) => ({
+        value: key,
+        label: column.label,
+        icon: getColumnIcon(column.column),
+        description: tableLabel,
+      }));
+    return options.length > 0
+      ? { section: t`Related columns`, isUnfiltered: true, options }
+      : null;
+  }, [entries, matches, text]);
 }
 
 interface ValueInputProps {

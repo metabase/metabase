@@ -68,6 +68,15 @@ export const INLINE_PILL_CLICK_OUTSIDE: SegmentedPrototypeSetting = {
   defaultValue: "apply",
 };
 
+export const SEMANTIC_COLUMN_SEARCH: BooleanPrototypeSetting = {
+  type: "boolean",
+  key: "semantic-column-search",
+  label: "Match columns by meaning",
+  description:
+    "The column search of a filter pill also shows related columns from Gemini Nano, the on-device model of Chrome. It works only in desktop Chrome 138 or later with the model already downloaded.",
+  defaultValue: true,
+};
+
 export const LOADING_SPINNER_DELAY_MS: NumberPrototypeSetting = {
   type: "number",
   key: "loading-spinner-delay-ms",
@@ -155,6 +164,7 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   AUTO_APPLY_DELAY_MS,
   INLINE_PILL_EDITING,
   INLINE_PILL_CLICK_OUTSIDE,
+  SEMANTIC_COLUMN_SEARCH,
   LOADING_SPINNER_DELAY_MS,
   LIVE_FILTER_PREVIEW_MODE,
   LIVE_FILTER_PREVIEW_DELAY_MS,

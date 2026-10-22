@@ -13,6 +13,7 @@ import {
 } from "metabase/ui";
 
 import S from "./KeyboardFilterRow.module.css";
+import { UNSCORED, getOptionScores } from "./fuzzy-search";
 import type { SuggestionGroup, SuggestionOption } from "./types";
 
 const DEFAULT_DROPDOWN_WIDTH = 280;
@@ -32,6 +33,8 @@ interface SuggestionInputProps {
   /** Number of option columns in the list. */
   columns?: number;
   dropdownWidth?: number;
+  /** Max height of the scrolling list of options, like "20rem". */
+  optionsMaxHeight?: string;
   /** Content above the options, like presets or a map. */
   header?: ReactNode;
   /** Shown when no option matches the text. */
@@ -64,6 +67,7 @@ export function SuggestionInput({
   isTiles = false,
   columns = 1,
   dropdownWidth = DEFAULT_DROPDOWN_WIDTH,
+  optionsMaxHeight,
   header,
   emptyMessage = t`No results`,
   onTextChange,
@@ -75,15 +79,37 @@ export function SuggestionInput({
 
   const filteredGroups = useMemo(() => {
     const searchText = text.trim().toLowerCase();
-    return groups
-      .map((group) => ({
-        ...group,
-        options: group.options.filter(
-          (option) =>
-            option.label.toLowerCase().includes(searchText) ||
-            option.description?.toLowerCase().includes(searchText),
-        ),
-      }))
+    const scores = getOptionScores(groups, searchText);
+    const scoreOf = (option: SuggestionOption) =>
+      scores.get(option.value) ?? UNSCORED;
+    // Each group keeps its place, and its best matches come first.
+    const matchedGroups = groups.map((group) => ({
+      ...group,
+      options:
+        group.isUnfiltered || matchesGroupLabel(group.label, searchText)
+          ? group.options
+          : group.options
+              .filter((option) => scores.has(option.value))
+              .sort((a, b) => scoreOf(a) - scoreOf(b)),
+    }));
+    // An unfiltered group, like related columns, leaves out the options that
+    // the other groups already show.
+    const shownValues = new Set(
+      matchedGroups
+        .filter((group) => !group.isUnfiltered)
+        .flatMap((group) => group.options.map((option) => option.value)),
+    );
+    return matchedGroups
+      .map((group) =>
+        group.isUnfiltered
+          ? {
+              ...group,
+              options: group.options.filter(
+                (option) => !shownValues.has(option.value),
+              ),
+            }
+          : group,
+      )
       .filter((group) => group.options.length > 0);
   }, [groups, text]);
 
@@ -246,7 +272,7 @@ export function SuggestionInput({
               {header}
             </div>
           )}
-          <Combobox.Options className={S.options}>
+          <Combobox.Options className={S.options} mah={optionsMaxHeight}>
             {hasOptions ? (
               filteredGroups.map((group, groupIndex) => (
                 <Fragment key={groupIndex}>
@@ -281,6 +307,27 @@ export function SuggestionInput({
       )}
     </Combobox>
   );
+}
+
+const MIN_GROUP_SEARCH_LENGTH = 3;
+
+/**
+ * A search that matches the start of a word in the group label, like "ident"
+ * for "Identifiers" or "info" for "Personal Information", shows the whole
+ * group.
+ */
+function matchesGroupLabel(label: string | undefined, searchText: string) {
+  if (label == null || searchText.length < MIN_GROUP_SEARCH_LENGTH) {
+    return false;
+  }
+  const lowerLabel = label.toLowerCase();
+  return lowerLabel
+    .split("")
+    .some(
+      (_, index) =>
+        (index === 0 || !/[a-z0-9]/.test(lowerLabel[index - 1])) &&
+        lowerLabel.startsWith(searchText, index),
+    );
 }
 
 function isTextInput(target: EventTarget) {
