@@ -9,11 +9,10 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useMount, useUpdateEffect } from "react-use";
+import { useUpdateEffect } from "react-use";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { type SummaryFieldItem, SummaryFieldList } from "./SummaryFieldList";
@@ -55,7 +54,10 @@ function getDropWellId(data: unknown): SummaryWellId | null {
   return SUMMARY_WELL_IDS.find((wellId) => wellId === data.wellId) ?? null;
 }
 
-/** A summary that's empty to start from Count of rows, so the first breakout already shows something. */
+/**
+ * A new, empty summary starts with Count of rows in Summarize by, so picking a Group by column
+ * already shows something. The count alone isn't run: the question stays as it is until then.
+ */
 function withStartingCount(session: SummarySession): SummarySession {
   const { rows, columns, values } = session.definition;
   if (rows.length > 0 || columns.length > 0 || values.length > 0) {
@@ -101,7 +103,7 @@ function isSelectedItem(
 }
 
 /**
- * Swaps a clicked field in for what its well holds: a column replaces the breakouts, a metric or
+ * Swaps a clicked field in for what its well holds: a column replaces the Group by columns, a metric or
  * the count replaces the values. Returns `definition` itself when the field is already all its well holds.
  */
 function swapItem(
@@ -118,7 +120,7 @@ function swapItem(
 }
 
 /**
- * Adds an option-clicked field next to what its well holds: a column to the breakouts, a metric or
+ * Adds an option-clicked field next to what its well holds: a column to Group by, a metric or
  * the count to the values. Returns `definition` itself when the well already has the field.
  */
 function addItem(
@@ -142,9 +144,10 @@ function addItem(
 }
 
 /**
- * Summarizes the question starting from Count of rows. Clicking a column swaps it in as the one
- * breakout and option-clicking adds it; dragging places it in any well, and dragging one below
- * Breakouts turns the summary into a pivot. Every change updates and reruns the question.
+ * Summarizes the question starting from Count of rows, which waits in Summarize by while the
+ * question keeps showing its table. Clicking a column swaps it in as the one grouping and
+ * option-clicking adds it; dragging places it in any well, and dragging one below Group by turns
+ * the summary into a pivot. Every change after that updates and reruns the question.
  */
 export function SummarySidebar({
   question,
@@ -155,24 +158,16 @@ export function SummarySidebar({
   );
   const { base, definition } = session;
 
-  // the count it starts from is only in the wells so far: show it in the results too
-  useMount(() => {
-    const startingQuestion = getSummaryQuestion(session);
-    if (
-      startingQuestion != null &&
-      !Lib.areLegacyQueriesEqual(
-        startingQuestion.datasetQuery(),
-        question.datasetQuery(),
-      )
-    ) {
-      onQuestionChange(startingQuestion);
-    }
-  });
-
-  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch.
-  // skipped on mount, where the question is still the one from before the starting count
+  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch, from
+  // the starting count again. Skipped on mount, which already started from it. A session the
+  // question still shows is kept as is, so removing the count doesn't bring it back
   useUpdateEffect(() => {
-    setSession((currentSession) => getSummarySession(question, currentSession));
+    setSession((currentSession) => {
+      const nextSession = getSummarySession(question, currentSession);
+      return nextSession === currentSession
+        ? currentSession
+        : withStartingCount(nextSession);
+    });
   }, [question]);
 
   useEffect(() => {

@@ -45,8 +45,8 @@ type SummaryWellsProps = {
 };
 
 /**
- * The Values and Breakouts drop targets to start. The pivot button on Breakouts, or dragging a
- * column below it, makes it a pivot: a Rows well appears and Breakouts becomes Columns. A pivot
+ * The Summarize by and Group by drop targets to start. The pivot button on Group by, or dragging a
+ * column below it, makes it a pivot: a Rows well appears and Group by becomes Columns. A pivot
  * made by dragging ends once Rows is empty; one made with the button stays until it's pressed again.
  */
 export function SummaryWells({
@@ -73,7 +73,7 @@ export function SummaryWells({
 
   const handleTogglePivot = () => {
     if (isPivot && definition.rows.length > 0) {
-      // back to one list of breakouts, rows first since they're the pivot's first grouping
+      // back to one Group by list, rows first since they're the pivot's first grouping
       onChange({
         ...definition,
         rows: [],
@@ -133,7 +133,7 @@ export function SummaryWells({
     <Box className={S.wells} data-testid="summary-wells">
       <SummaryWell
         wellId="values"
-        title={t`Values`}
+        title={t`Summarize by`}
         definition={definition}
         draggedItem={draggedItem}
       >
@@ -163,7 +163,7 @@ export function SummaryWells({
       </SummaryWell>
       <SummaryWell
         wellId="columns"
-        title={isPivot ? t`Columns` : t`Breakouts`}
+        title={isPivot ? t`Columns` : t`Group by`}
         definition={definition}
         draggedItem={draggedItem}
         action={<PivotToggle isPivot={isPivot} onToggle={handleTogglePivot} />}
@@ -304,7 +304,7 @@ type PivotToggleProps = {
 };
 
 function PivotToggle({ isPivot, onToggle }: PivotToggleProps) {
-  const label = isPivot ? t`Back to breakouts` : t`Pivot into rows and columns`;
+  const label = isPivot ? t`Back to Group by` : t`Pivot into rows and columns`;
   return (
     <Tooltip label={label}>
       <ActionIcon

@@ -12,6 +12,7 @@ import { SummarySidebar as SideBySideSummarySidebar } from "./side-by-side";
 import type { SummarizeSidebarVariant } from "./types";
 import { SummarySidebar as WellsLeftSummarySidebar } from "./wells-left";
 import { SummarySidebar as WellsTopSummarySidebar } from "./wells-top";
+import { SummarySidebar as WellsTopSwapSummarySidebar } from "./wells-top-swap";
 
 /**
  * The variants, in picker order. To add one, copy the UI files of `components/view/SummarySidebar`
@@ -96,5 +97,11 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
     name: "AI formula",
     axis: "Sections swap, plus: text that matches nothing in a well is a description, and Enter has AI write the formula",
     Sidebar: AiFormulaSummarySidebar,
+  },
+  {
+    slug: "wells-top-swap",
+    name: "Wells top swap",
+    axis: "The shipped Sections swap behavior with wells on top and fields below",
+    Sidebar: WellsTopSwapSummarySidebar,
   },
 ];
