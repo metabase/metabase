@@ -684,6 +684,15 @@
                  :where  [:<= [:raw "rownum"] [:inline (+ offset items)]]}]
        :where  [:> :__rownum__ offset]})))
 
+(defmethod sql.qp/use-ctes-for-stages? :oracle
+  [_driver]
+  true)
+
+;; Oracle does not accept a `WITH` clause anywhere inside the body of a CTE.
+(defmethod sql.qp/nested-ctes? :oracle
+  [_driver]
+  false)
+
 ;; Prior to version 23, Oracle does not have a separate boolean type and instead uses 0/1 which are mapped to
 ;; :database-type "NUMBER" and :base-type :type/Decimal.
 (def ^:private boolean-field-types #{:type/Boolean :type/Decimal})
