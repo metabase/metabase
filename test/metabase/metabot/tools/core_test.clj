@@ -332,7 +332,9 @@
   (try
     (tools/with-pipeline-errors (throw (ex-info message data)))
     (catch Throwable e
-      (assoc (tools.error/classify e) ::ex-message (ex-message e)))))
+      (assoc (tools.error/classify e)
+             ::ex-message   (ex-message e)
+             ::agent-error? (:agent-error? (ex-data e))))))
 
 (deftest ^:parallel with-pipeline-errors-converts-declared-codes-test
   (testing "an :agent-error? with a declared :error code becomes that error, keeping the pipeline's
@@ -381,10 +383,11 @@
               (pipeline-failure "no" {:status-code status}))))))
 
 (deftest ^:parallel with-pipeline-errors-does-not-relay-foreign-messages-test
-  (testing "Lib exceptions stay unrecoverable without a declared `:error` code, even if `:agent-error?` is true."
-    (is (=? {:class       :unrecoverable
-             :code        :internal
-             ::ex-message "No matching clause: :whatever"}
+  (testing "Lib exceptions stay unrecoverable without a declared `:error` code and lose the `:agent-error?` flag."
+    (is (=? {:class         :unrecoverable
+             :code          :internal
+             ::ex-message   "No matching clause: :whatever"
+             ::agent-error? nil}
             (pipeline-failure "No matching clause: :whatever"
                               {:agent-error? true :status-code 400}))))
   (testing "an :error code with no declaration is not converted either — the pipeline-code test is
