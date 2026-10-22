@@ -10,11 +10,17 @@ import {
   within,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { TemporalUnit } from "metabase-types/api";
+import type { FieldReference, TemporalUnit } from "metabase-types/api";
 import {
   createMockCard,
+  createMockField,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
@@ -23,6 +29,7 @@ import {
   createOrdersIdField,
   createOrdersTable,
   createSampleDatabase,
+  createSavedNativeCard,
 } from "metabase-types/api/mocks/presets";
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
@@ -143,6 +150,24 @@ function createQueryWithMultipleBreakoutsAndTemporalBucket() {
         ],
       },
     ],
+  });
+}
+
+type NativeCardFieldOpts = {
+  name: string;
+  baseType: string;
+};
+
+function createNativeCardField({ name, baseType }: NativeCardFieldOpts) {
+  const fieldRef: FieldReference = ["field", name, { "base-type": baseType }];
+  // Native result columns have no field id; the column ref stands in for it.
+  return createMockField({
+    id: fieldRef,
+    field_ref: fieldRef,
+    name,
+    display_name: name,
+    base_type: baseType,
+    effective_type: baseType,
   });
 }
 
@@ -538,6 +563,119 @@ describe("BreakoutStep", () => {
       const breakouts = getNextBreakouts();
       expect(breakouts).toHaveLength(1);
       expect(breakouts[0].displayName).toBe("Created At: Year");
+    });
+  });
+
+  describe("saved native question source", () => {
+    const NATIVE_CARD = createSavedNativeCard({
+      id: 2,
+      name: "Native products",
+      dataset_query: createMockNativeDatasetQuery({
+        database: SAMPLE_DB_ID,
+        native: createMockNativeQuery({ query: "select * from products" }),
+      }),
+      result_metadata: [
+        createNativeCardField({ name: "ID", baseType: "type/BigInteger" }),
+        createNativeCardField({
+          name: "CREATED_AT",
+          baseType: "type/DateTime",
+        }),
+      ],
+    });
+
+    const NATIVE_CARD_PROVIDER = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [NATIVE_CARD],
+      }),
+    });
+
+    it("should not render duplicate temporal buckets (metabase#16327)", async () => {
+      const query = Lib.createTestQuery(NATIVE_CARD_PROVIDER, {
+        stages: [{ source: { type: "card", id: NATIVE_CARD.id } }],
+      });
+      setup({ step: createMockNotebookStep({ query }) });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      const option = await screen.findByRole("option", { name: "CREATED_AT" });
+      await userEvent.click(within(option).getByLabelText("Temporal bucket"));
+
+      // userEvent.click closes the popover
+      fireEvent.click(await screen.findByText("More…"));
+
+      const itemNames = screen
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent);
+      expect(itemNames).toContain("Day");
+      expect(itemNames).toContain("Hour of day");
+      expect(new Set(itemNames).size).toBe(itemNames.length);
+    });
+
+    it("should keep the sort in sync when changing the temporal bucket of a breakout (metabase#17975)", async () => {
+      const query = Lib.createTestQuery(NATIVE_CARD_PROVIDER, {
+        stages: [
+          {
+            source: { type: "card", id: NATIVE_CARD.id },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+            orderBys: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          },
+        ],
+      });
+      const { getNextQuery } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByText("CREATED_AT: Month"));
+      const option = await screen.findByRole("option", { name: "CREATED_AT" });
+      await userEvent.click(within(option).getByLabelText("Temporal bucket"));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Quarter" }));
+
+      const nextQuery = getNextQuery();
+      const orderBys = Lib.orderBys(nextQuery, 0).map(
+        (orderBy) => Lib.displayInfo(nextQuery, 0, orderBy).displayName,
+      );
+      expect(orderBys).toEqual(["CREATED_AT: Quarter"]);
+    });
+
+    it("should apply the default temporal bucket to a column of a joined native question (metabase#10441, metabase#18646)", async () => {
+      const query = Lib.createTestQuery(NATIVE_CARD_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "card", id: NATIVE_CARD.id },
+                strategy: "left-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: { type: "column", name: "PRODUCT_ID" },
+                    right: { type: "column", name: "ID" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      const { getNextBreakouts } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      await userEvent.click(await screen.findByText("Native products"));
+      const option = await screen.findByRole("option", {
+        name: "Native products - Product → CREATED_AT",
+      });
+      expect(within(option).getByText("by month")).toBeInTheDocument();
+
+      await userEvent.click(
+        within(option).getByText("Native products - Product → CREATED_AT"),
+      );
+      expect(getNextBreakouts()).toMatchObject([
+        { longDisplayName: "Native products - Product → CREATED_AT: Month" },
+      ]);
     });
   });
 
