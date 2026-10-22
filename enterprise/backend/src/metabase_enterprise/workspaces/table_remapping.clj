@@ -262,11 +262,16 @@
 (defn build-table-replacements
   "Convert a `{from-spec to-spec}` remappings map into the format expected by
    `sql-tools/replace-names`. SQLGlot handles quoting internally based on the
-   dialect, so we pass raw identifiers."
+   dialect, so we pass raw identifiers.
+
+   The from-side key omits the catalog: SQLGlot matches a key carrying `:db` only against
+   references that name that catalog, and native SQL on SQL Server usually writes
+   `schema.table`. The from-catalog is always the connection's own database. The to-side
+   keeps it, so a remap into another database still qualifies the rewritten reference."
   [remappings]
   (into {}
         (map (fn [[from-spec to-spec]]
-               [(table-spec->sqlglot-key from-spec)
+               [(dissoc (table-spec->sqlglot-key from-spec) :db)
                 (table-spec->sqlglot-key to-spec)]))
         remappings))
 
