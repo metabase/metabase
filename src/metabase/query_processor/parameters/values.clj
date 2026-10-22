@@ -12,6 +12,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.parameters.parse.types :as params.types]
@@ -254,7 +255,8 @@
             {:keys [query params]} (or (when (and (qp.persistence/can-substitute? card persisted-info)
                                                   (persisted-cache-allowed-for-current-user? database-id))
                                          {:query (qp.persistence/persisted-info-native-query database-id persisted-info)})
-                                       (qp.compile/compile (qp/disable-max-results query)))]
+                                       (binding [driver/*compile-nested-query* true]
+                                         (qp.compile/compile (qp/disable-max-results query))))]
         (lib/parsed-referenced-card-query-param card-id query params))
       (catch ExceptionInfo e
         (throw (ex-info
