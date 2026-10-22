@@ -34,6 +34,10 @@ Monitor contains three sections:
 - **[Scheduled jobs](./scheduled-jobs.md)**: View the recurring work Metabase performs on a schedule, like cache refreshes, model persistence refreshes, and health checks.
 - **[Application logs](./application-logs.md)**: View Metabase's logs, and configure how much information Metabase logs.
 - **[Model persistence log](./model-persistence-log.md)**: View the status of persisted models and refresh their cached results.
+- **[Session management](./session-management.md)**\*: View and revoke specific sessions or all sessions.
+- **[API key usage](./api-key-usage.md)**\*: See which [API keys](../people-and-groups/api-keys.md) are still in use, which routes they call, and which tools call them.
+
+\* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing). On other plans, these tabs show an upgrade page.
 
 ### AI auditing
 
@@ -50,6 +54,6 @@ Who can see each Monitor page depends on their group:
 
 - **Admin group** can view every page.
 - **[Data Analysts](../people-and-groups/managing.md#data-analysts) group** can view Dependency diagnostics.\*
-- **Groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics and Alerts management.\*
+- **Groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics, Alerts management, and API key usage.\*
 
 \* On OSS, only admins can view Monitor. The Data Analysts group and the Monitoring access permission are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing).

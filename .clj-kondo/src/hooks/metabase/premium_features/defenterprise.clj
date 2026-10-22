@@ -27,8 +27,7 @@
                                  fn-name
                                  docstring))
                    fn-tail))
-                 (with-meta (meta node))
-                 hooks.common/add-lsp-ignore-unused-public-var-metadata)))}))
+                 (with-meta (meta node)))))}))
 
 (comment
   (defn- defenterprise* [form]

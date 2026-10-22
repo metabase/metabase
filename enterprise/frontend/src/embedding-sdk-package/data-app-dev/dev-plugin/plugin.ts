@@ -2,10 +2,6 @@ import path from "node:path";
 
 import type { Plugin } from "vite";
 
-import {
-  ACTION_DEFINITIONS,
-  QUERY_DEFINITIONS,
-} from "../../data-app-resources/discover";
 import { validateDataAppManifest } from "../config/validate-manifest";
 import { DATA_APP_REBUILT_EVENT } from "../constants/bundle";
 import { DATA_APP_DIAGNOSTICS_CHANGED_EVENT } from "../constants/diagnostics-channel";
@@ -21,18 +17,12 @@ import {
   resolveDataAppVirtualId,
 } from "./virtual-modules";
 
-// `src/` imports the definitions from the root-level `queries/` and `actions/`,
-// so the bundle is built from all three.
-const BUNDLED_DIRECTORIES: readonly string[] = [
-  "src",
-  QUERY_DEFINITIONS.directory,
-  ACTION_DEFINITIONS.directory,
-];
+const BUNDLED_DIRECTORY = "src";
 
 const isBundledFile = (root: string, file: string) => {
   const [topDirectory] = path.relative(root, file).split(path.sep);
 
-  return BUNDLED_DIRECTORIES.includes(topDirectory);
+  return topDirectory === BUNDLED_DIRECTORY;
 };
 
 export function dataAppSandboxDevPlugin(

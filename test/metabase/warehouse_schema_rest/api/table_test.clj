@@ -265,6 +265,7 @@
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    true
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -358,6 +359,7 @@
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    false
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -701,6 +703,7 @@
               (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
+               :can_write    false
                :name         "CATEGORIES"
                :display_name "Categories"
                :fields       [(merge
@@ -1536,7 +1539,7 @@
         (sync/sync-database! db {:scan :schema})
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
 
-;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
+;;; -------------------------------------------- can-query filter tests --------------------------------------------
 
 (deftest list-tables-can-query-filter-returns-only-queryable-tables-test
   (testing "can-query=true filters to only queryable tables"
@@ -1559,26 +1562,16 @@
         (is (= 1 (count response)))
         (is (= "queryable_table" (-> response first :name)))))))
 
-(deftest list-tables-can-write-filter-returns-only-editable-tables-test
-  (testing "can-write=true filters to only editable tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {table-1-id :id} {:db_id db-id :name "editable_table" :active true}
-                   :model/Table _ {:db_id db-id :name "not_editable_table" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
-      ;; Block database-level access
-      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
-      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
-      ;; Grant manage-table-metadata to table-1 only (editable)
-      (data-perms/set-table-permission! pg table-1-id :perms/manage-table-metadata :yes)
-      ;; table-2 gets no manage-table-metadata (not editable)
-
-      (let [response (->> (mt/user-http-request :crowberto :get 200 "table" :can-write true)
-                          (filter #(= (:db_id %) db-id)))]
-        ;; crowberto is an admin, so should see all tables when they have manage-table-metadata
-        (is (>= (count response) 1))
-        (is (contains? (set (map :name response)) "editable_table"))))))
+(deftest list-tables-include-editable-data-model-filter-test
+  (testing "include-editable-data-model=true filters to only tables the user can edit the data model of"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table    {table-id :id} {:db_id db-id :active true}]
+        (let [table-ids (fn [user]
+                          (into #{} (comp (filter #(= db-id (:db_id %))) (map :id))
+                                (mt/user-http-request user :get 200 "table" :include-editable-data-model true)))]
+          (is (= #{table-id} (table-ids :crowberto)))
+          (is (= #{} (table-ids :rasta))))))))
 
 ;;; ---------------------------------------- /data endpoint permission tests ----------------------------------------
 

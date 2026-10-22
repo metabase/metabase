@@ -155,7 +155,9 @@ export {
 export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
+  PLUGIN_TRANSFORMS_TESTING,
   type TransformsPlugin,
+  type TransformsTestingPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,
   type PythonTransformSourceValidationResult,
