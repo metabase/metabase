@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMount, useUpdateEffect } from "react-use";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -41,6 +42,7 @@ import {
 } from "../../../../components/view/SummarySidebar/utils";
 
 import { type SummaryFieldItem, SummaryFieldList } from "./SummaryFieldList";
+import { SummaryPromptBar } from "./SummaryPromptBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 
@@ -180,6 +182,11 @@ export function SummarySidebar({
     rememberSummarySession(session);
   }, [session]);
 
+  const databaseId = Lib.databaseID(base.query);
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+
   const summaryQuery = useMemo(
     () => buildSummaryQuery(base, definition),
     [base, definition],
@@ -249,6 +256,12 @@ export function SummarySidebar({
           />
         </Box>
       </SidebarContent>
+      <SummaryPromptBar
+        base={base}
+        database={database}
+        definition={definition}
+        onChange={handleChange}
+      />
       {createPortal(
         <DragOverlay dropAnimation={null}>
           {draggedItem && (

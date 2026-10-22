@@ -578,3 +578,79 @@
   opacity: 1;
   cursor: progress;
 }
+
+.chipAiEdit {
+  opacity: 0.7;
+
+  &:hover,
+  &[data-expanded] {
+    opacity: 1;
+  }
+}
+
+/* sits above the prototype picker, centered on the page like it */
+.promptBar {
+  position: fixed;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  width: min(560px, calc(100vw - 48px));
+}
+
+.promptBarField {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+}
+
+.promptBarIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-core-brand);
+}
+
+.promptBarInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--mantine-font-size-md);
+  color: var(--mb-color-text-primary);
+
+  &::placeholder {
+    color: var(--mb-color-text-secondary);
+  }
+}
+
+.promptBarMessage {
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mb-color-text-secondary);
+}
+
+.promptBarExamples {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.promptBarExample {
+  padding: 2px var(--mantine-spacing-sm);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-xl);
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mb-color-text-secondary);
+  box-shadow: var(--mantine-shadow-xs_outline);
+
+  &:hover {
+    color: var(--mb-color-text-primary);
+    border-color: var(--mb-color-border-neutral-strong);
+  }
+}

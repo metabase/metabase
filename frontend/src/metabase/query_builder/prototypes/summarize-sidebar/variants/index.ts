@@ -94,7 +94,7 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
   {
     slug: "ai-formula",
     name: "AI formula",
-    axis: "Sections swap, plus: text that matches nothing in a well is a description, and Enter has AI write the formula",
+    axis: "Sections swap, plus AI: Enter on text that matches nothing writes a formula, ✨ on a chip changes it, and the bottom bar builds a whole summary",
     Sidebar: AiFormulaSummarySidebar,
   },
 ];
