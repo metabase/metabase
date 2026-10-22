@@ -468,20 +468,20 @@ describe("checkQuarantineGate", () => {
     }
   }
 
-  it("passes without a verdict line when there are no failures to gate", async () => {
+  it("fails when the test step failed with no failing tests", async () => {
     const { result, verdict } = await runCapturingLogs({
       suite: "e2e",
       failures: [],
       baseUrl: undefined,
       secret: undefined,
-      dryRun: true,
+      dryRun: false,
     });
     expect(result).toEqual({
-      shouldFail: false,
-      enforced: false,
-      reason: "no failures to gate",
+      shouldFail: true,
+      enforced: true,
+      reason: "the test step failed with no failing tests to check",
     });
-    expect(verdict).toBeUndefined();
+    expect(verdict).toContain("VERDICT: FAIL");
   });
 
   it("reports COULD NOT CHECK — not FAIL — when the base URL is unset", async () => {
