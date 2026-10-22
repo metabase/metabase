@@ -7,7 +7,9 @@ import { Box, Icon, Stack, Text, Title } from "metabase/ui";
 import S from "./EmptyFormPlaceholder.module.css";
 
 export const EmptyFormPlaceholder = () => {
-  const { url, showMetabaseLinks } = useDocsUrl("actions/custom");
+  const { url, showMetabaseLinks } = useDocsUrl(
+    "data-modeling/models/actions/custom",
+  );
 
   return (
     <Stack justify="center" h="100%" p="3rem" gap={0}>

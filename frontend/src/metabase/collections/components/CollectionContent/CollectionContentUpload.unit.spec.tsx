@@ -77,6 +77,10 @@ async function setupCollectionContent({
       schema_name: null,
       table_prefix: null,
     },
+    // The new-item menu loads metabot permissions in the background, and under
+    // React 19 that query resolves after the fast tests finish, tripping the
+    // act() warning guard. These tests do not exercise metabot, so keep it off.
+    "metabot-enabled?": false,
   });
 
   renderWithProviders(
