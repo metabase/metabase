@@ -693,7 +693,7 @@
 (defn- assert-source-field-in-stage!
   [query stage-number [_ {:keys [source-field] :as opts} target :as field-ref]]
   (let [columns (filter #(source-field-column? opts %) (lib/visible-columns query stage-number))]
-    (when-not (lib/find-matching-column query stage-number field-ref columns)
+    (when-not (lib/find-matching-column query stage-number field-ref columns {:generous? true})
       (let [mp          (lib.metadata/->metadata-provider query)
             table-id    (when (pos-int? target) (:table-id (fetch-field mp target)))
             fk-field    (fetch-field mp source-field)
