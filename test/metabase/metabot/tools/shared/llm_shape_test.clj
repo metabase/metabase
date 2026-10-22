@@ -19,6 +19,18 @@
   (testing "escape-xml handles nil"
     (is (nil? (#'llm-shape/escape-xml nil)))))
 
+(deftest ^:parallel next-page-uri-xml-escaping-test
+  (let [output (llm-shape/metabot-list->xml
+                {:list-type :recent-items
+                 :items []
+                 :total 30
+                 :page 1
+                 :pages 2
+                 :next-page-uri "metabase://user/recent-items?filter=<&\"&page=2"})]
+    (is (str/includes? output
+                       (str "Fetch metabase://user/recent-items?filter=&lt;&amp;&quot;&amp;page=2 for the next page. "
+                            "Copy it exactly; do not modify its query string.")))))
+
 (deftest ^:parallel field->xml-test
   (testing "formats field with all attributes matching Python format"
     ;; for field data format see `metabase.metabot.tools.util/->result-column`

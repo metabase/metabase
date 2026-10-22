@@ -9,9 +9,14 @@ import * as Lib from "metabase-lib";
 
 type NewQuestionButtonProps = {
   viewName: string;
+  /** Narrows the view to the rows the page shows, for a view other pages share. */
+  scopeQuery?: (query: Lib.Query) => Lib.Query;
 };
 
-export function NewQuestionButton({ viewName }: NewQuestionButtonProps) {
+export function NewQuestionButton({
+  viewName,
+  scopeQuery,
+}: NewQuestionButtonProps) {
   const { provider, table } = useAuditTable(viewName);
 
   const url = useMemo(() => {
@@ -20,10 +25,10 @@ export function NewQuestionButton({ viewName }: NewQuestionButtonProps) {
     }
     const query = Lib.queryFromTableOrCardMetadata(provider, table);
     return Urls.newQuestion({
-      dataset_query: Lib.toJsQuery(query),
+      dataset_query: Lib.toJsQuery(scopeQuery ? scopeQuery(query) : query),
       mode: "notebook",
     });
-  }, [provider, table]);
+  }, [provider, scopeQuery, table]);
 
   if (url == null) {
     return null;

@@ -325,6 +325,11 @@ They provide a rough idea of the data characteristics but may not reflect the co
 
 {{stats_table|safe}}
 {% endif %}
+{% if stats_unavailable %}
+
+**Field Statistics**
+Metabase couldn't sample this field from the database, so there are no statistics to show. Continue without them.
+{% endif %}
 {% endif %}
 {% if is_field_metadata %}
 {% if field_metadata_value_xml %}
