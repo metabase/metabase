@@ -102,14 +102,18 @@
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
 (defmethod mi/can-read? :model/DataApp
-  ([app] (mi/can-read? :model/DataApp (:id app)))
+  ([app]
+   (or api/*is-superuser?*
+       (boolean
+        (and (:enabled app)
+             api/*current-user-id*
+             (nil? (:tenant_id @api/*current-user*))
+             (let [group-ids (user/group-ids api/*current-user-id*)]
+               (some (comp group-ids :permission_group_id)
+                     (data-apps.db/app-assignments [(:id app)])))))))
   ([_model pk]
    (or api/*is-superuser?*
-       (and api/*current-user-id*
-            (nil? (:tenant_id @api/*current-user*))
-            (let [group-ids (user/group-ids api/*current-user-id*)]
-              (boolean (some (comp group-ids :permission_group_id)
-                             (data-apps.db/app-assignments [pk]))))))))
+       (boolean (some-> (data-apps.db/data-app pk) mi/can-read?)))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)

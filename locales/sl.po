@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-10-21 11:44+0000\n"
+"POT-Creation-Date: 2026-10-21 12:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Slovenian\n"
 "Language: sl_SI\n"
-"PO-Revision-Date: 2026-10-21 12:41\n"
+"PO-Revision-Date: 2026-10-22 12:55\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -10507,7 +10507,11 @@ msgstr "in"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "tabela"
+msgid_plural "tables"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+msgstr[3] ""
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -19138,6 +19142,7 @@ msgstr "Kako je ime vašemu dokumentu?"
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextEditedInfo.tsx
+#: frontend/src/metabase/common/components/ItemsTable/ItemsTable.tsx
 #: frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
 #: frontend/src/metabase/dashboard/components/DashboardGridSkeleton/DashboardGridSkeleton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopoverContent.tsx
@@ -20190,7 +20195,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "minuta"
 msgstr[1] "{0} minuti"
 msgstr[2] "{0} minute"

@@ -60,17 +60,17 @@ export const setup = ({
 } = {}) => {
   let assigned = [...groups];
 
-  fetchMock.get("path:/api/apps", [app]);
+  fetchMock.get("path:/api/ee/apps", [app]);
   fetchMock.get("path:/api/permissions/group", candidates);
-  fetchMock.get("path:/api/apps/sales/groups", () => assigned);
+  fetchMock.get("path:/api/ee/apps/sales/groups", () => assigned);
 
   fetchMock.get(
-    "path:/api/apps/sales",
+    "path:/api/ee/apps/sales",
     !app.enabled ? 404 : !app.resource_collection_id ? 409 : app,
   );
 
   fetchMock.get(
-    "path:/api/apps/sales/group-permission-warnings",
+    "path:/api/ee/apps/sales/group-permission-warnings",
     () =>
       warningsResponse ??
       (warningsError
@@ -81,7 +81,7 @@ export const setup = ({
     { name: "data-app-group-permission-warnings" },
   );
 
-  fetchMock.post("path:/api/apps/sales/groups", ({ options: { body } }) => {
+  fetchMock.post("path:/api/ee/apps/sales/groups", ({ options: { body } }) => {
     if (failFirstAdd) {
       failFirstAdd = false;
       return 500;
@@ -99,8 +99,8 @@ export const setup = ({
     return assigned;
   });
 
-  fetchMock.delete("express:/api/apps/sales/groups/:id", ({ url }) => {
-    // `/api/apps/sales/groups/5` -> `5`
+  fetchMock.delete("express:/api/ee/apps/sales/groups/:id", ({ url }) => {
+    // `/api/ee/apps/sales/groups/5` -> `5`
     const groupId = Number(url.split("/").pop());
     assigned = assigned.filter((group) => group.id !== groupId);
 

@@ -224,7 +224,7 @@ describe("ManageDataAppsPage", () => {
         await screen.findByRole("menuitem", { name: "Disable" }),
       );
 
-      const request = fetchMock.callHistory.lastCall("path:/api/apps/sales");
+      const request = fetchMock.callHistory.lastCall("path:/api/ee/apps/sales");
       expect(await request?.request?.json()).toEqual({ enabled: false });
     });
 
@@ -239,7 +239,7 @@ describe("ManageDataAppsPage", () => {
         await screen.findByRole("menuitem", { name: "Re-enable" }),
       );
 
-      const request = fetchMock.callHistory.lastCall("path:/api/apps/sales");
+      const request = fetchMock.callHistory.lastCall("path:/api/ee/apps/sales");
       expect(await request?.request?.json()).toEqual({ enabled: true });
     });
 
@@ -277,7 +277,7 @@ describe("ManageDataAppsPage", () => {
       );
 
       expect(
-        fetchMock.callHistory.called("path:/api/apps/sales", {
+        fetchMock.callHistory.called("path:/api/ee/apps/sales", {
           method: "DELETE",
         }),
       ).toBe(true);

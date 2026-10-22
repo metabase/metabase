@@ -3349,10 +3349,13 @@
             (is (true? (mi/can-read? dashboards)))
             (is (false? (mi/can-write? dashboards)))))))))
 
-(deftest data-apps-collection-is-read-only-test
-  (testing "Nobody writes a collection of the data apps namespace, administrators included"
+(deftest data-apps-collection-is-admin-only-test
+  (testing "Only administrators write a collection of the data apps namespace"
     (mt/with-temp [:model/Collection collection {:namespace "data-apps"}]
       (mt/with-test-user :crowberto
+        (is (true? (mi/can-write? collection)))
+        (is (true? (mi/can-write? :model/Collection (:id collection)))))
+      (mt/with-test-user :rasta
         (is (false? (mi/can-write? collection)))
         (is (false? (mi/can-write? :model/Collection (:id collection))))))))
 
