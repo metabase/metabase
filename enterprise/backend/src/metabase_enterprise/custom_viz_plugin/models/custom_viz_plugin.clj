@@ -103,16 +103,18 @@
    ;; a plugin is enabled unless the file says otherwise, as an upload enables it; the column defaults the same way
    :defaults  {:enabled true}
    :transform {:bundle     {:as     :serdes/resources
-                            :export (fn [bundle]
-                                      (if bundle
-                                        (try
-                                          (served-files (cache/bundle->files bundle))
-                                          (catch Exception e
-                                            ;; a stored archive that can't be read exports as the YAML alone, so one
-                                            ;; broken plugin doesn't fail the export; it imports as an error plugin
-                                            (log/warnf "Not exporting custom viz plugin bundle: %s" (ex-message e))
-                                            ::serdes/skip))
-                                        ::serdes/skip))
+                            :export-with-context
+                            (fn [{:keys [identifier]} _k bundle]
+                              (if bundle
+                                (try
+                                  (served-files (cache/bundle->files bundle))
+                                  (catch Exception e
+                                    ;; a stored archive that can't be read exports as the YAML alone, so one broken
+                                    ;; plugin doesn't fail the export; it imports as an error plugin
+                                    (log/warnf "Not exporting the bundle of custom viz plugin \"%s\": %s"
+                                               identifier (ex-message e))
+                                    ::serdes/skip))
+                                ::serdes/skip))
                             ;; a file that isn't there is left out, and validation names it
                             :import (fn [files]
                                       (cache/files->bundle (into {} (filter val) files)))}}})

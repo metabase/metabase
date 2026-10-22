@@ -111,6 +111,18 @@
           (is (= (set (keys files))
                  (disj (set (keys (files-in (io/file dump-dir "custom_viz_plugins" "thumbs")))) "custom_viz_plugin.yaml"))))))))
 
+(deftest export-of-an-unreadable-bundle-writes-the-yaml-alone-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
+      (insert-plugin! "garbled" (.getBytes "not an archive" "UTF-8"))
+      (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+        (export! dump-dir)
+        (testing "the YAML is written without files, so the export goes on and the plugin imports as an error"
+          (is (= ["custom_viz_plugin.yaml"] (vec (.list (io/file dump-dir "custom_viz_plugins" "garbled"))))))
+        (testing "the warning names the plugin"
+          (is (some #(re-find #"Not exporting the bundle of custom viz plugin \"garbled\"" (:message %))
+                    (messages))))))))
+
 (deftest export-skips-plugins-that-cannot-be-represented-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]

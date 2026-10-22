@@ -21,9 +21,9 @@
                     "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
                     "dist/assets/icon.png" (byte-array [0 (int 0x80) (int 0xff)])}
         bundle     (cv.tu/make-tgz-bytes (map (fn [[path content]] [(str "./" path) content]) files))
-        export     (get-in (serdes/make-spec "CustomVizPlugin" {}) [:transform :bundle :export])]
+        export     (get-in (serdes/make-spec "CustomVizPlugin" {}) [:transform :bundle :export-with-context])]
     (is (some? (cache/validate-bundle! bundle)))
-    (let [exported (export bundle)]
+    (let [exported (export {:identifier identifier} :bundle bundle)]
       (is (= (update-vals files seq) (when (map? exported) (update-vals exported seq))))
       (when (map? exported)
         (let [ingested (ingest/read-resources
@@ -142,7 +142,8 @@
       (is (= :serdes/resources (get-in spec [:transform :bundle :as])))))
   (testing "the bundle exports as its files and imports back as an archive of them"
     (let [spec     (serdes/make-spec "CustomVizPlugin" {})
-          export   (get-in spec [:transform :bundle :export])
+          export   (let [f (get-in spec [:transform :bundle :export-with-context])]
+                     (fn [bundle] (f {:identifier "my-viz"} :bundle bundle)))
           import   (get-in spec [:transform :bundle :import])
           manifest (json/encode {:name "my-viz" :icon "icon.svg"})
           files    {"metabase-plugin.json" (.getBytes ^String manifest "UTF-8")
