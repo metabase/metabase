@@ -495,9 +495,24 @@ function judgeFunctions(
       scoped.detail = `${caught.length}/${verdicts.length} mutants caught, e.g. ${first.mutant.description} (line ${first.mutant.line}) by \`${by}\``;
     } else if (survived.length > 0) {
       scoped.status = "survived";
-      scoped.detail = survived
+      const unmeasured = verdicts.filter(
+        ({ verdict }) => verdict.status === "unmeasured",
+      );
+      const detail = survived
         .map(({ mutant }) => `${mutant.description} (line ${mutant.line})`)
         .join("; ");
+      const notMeasured = unmeasured
+        .map(
+          ({ mutant, verdict }) =>
+            `${mutant.description} (line ${mutant.line}): ${
+              verdict.status === "unmeasured" ? verdict.reason : ""
+            }`,
+        )
+        .join("; ");
+      scoped.detail =
+        unmeasured.length > 0
+          ? `${detail}. ${unmeasured.length} not measured: ${notMeasured}`
+          : detail;
     } else {
       scoped.status = "unmeasured";
       scoped.detail = verdicts
