@@ -2829,7 +2829,7 @@
   {:team "Cloud"
    :api  #{metabase.store-api.core
            metabase.store-api.init}
-   :uses #{settings util util.config}}
+   :uses #{settings util.config}}
 
   sync
   {:team "Graphy"
