@@ -32,6 +32,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -699,86 +701,84 @@
               :status-code  400
               :error        :wrong-source-field})))
 
-(defn- source-field-column?
-  [{:keys [source-field source-field-join-alias source-field-name]} column]
-  (and (= source-field ((some-fn :fk-field-id :lib/original-fk-field-id) column))
-       (or (nil? source-field-join-alias)
-           (= source-field-join-alias ((some-fn :fk-join-alias :lib/original-fk-join-alias) column)))
-       (or (nil? source-field-name)
-           (= source-field-name ((some-fn :fk-field-name :lib/original-fk-field-name) column)))))
+(defn- source-field-contexts
+  [query]
+  (let [contexts (volatile! [])]
+    (lib.walk/walk-clauses
+     query
+     (fn [query path-type path clause]
+       (when (and (lib.util/clause? clause)
+                  (= :field (first clause))
+                  (:source-field (second clause))
+                  (nil? (:join-alias (second clause))))
+         (let [stage-path (if (= path-type :lib.walk/join) (lib.walk/join-parent-stage-path path) path)]
+           (vswap! contexts conj
+                   (lib.walk/apply-f-for-stage-at-path
+                    (fn [query stage-number]
+                      {:query query :stage-number stage-number :field-ref clause})
+                    query stage-path))))
+       nil))
+    @contexts))
 
-(defn- source-field-key-column
-  [query stage-number {:keys [source-field source-field-name source-field-join-alias]} columns]
-  (when-let [field (lib.metadata/field query source-field)]
-    (let [key-ref (lib/with-join-alias (lib/ref field) source-field-join-alias)]
-      (some (fn [column]
-              (when (and (= source-field (:id column))
-                         (lib/find-matching-column query stage-number key-ref [column]
-                                                   {:generous? (nil? source-field-join-alias)})
-                         (or (nil? source-field-name)
-                             (= source-field (:id (lib/metadata query stage-number
-                                                                (assoc key-ref 2 source-field-name))))))
-                column))
-            columns))))
+(defn- unavailable-key-context
+  [preprocessed contexts]
+  (let [unavailable (volatile! nil)]
+    (lib.walk/walk-stages
+     preprocessed
+     (fn [query path {:keys [source-table joins]}]
+       (when source-table
+         (doseq [join joins :when (:qp/is-implicit-join join)
+                 :let [key-ref (get-in join [:conditions 0 2])
+                       column (lib.walk/apply-f-for-stage-at-path lib/metadata query path key-ref)]
+                 :when (and (= :source/table-defaults (:lib/source column))
+                            (:table-id column)
+                            (not= source-table (:table-id column)))]
+           (when-let [context (some (fn [{:keys [query stage-number field-ref] :as context}]
+                                      (when (and (= (:fk-field-id join) (:source-field (second field-ref)))
+                                                 (= source-table (:source-table (lib/query-stage query stage-number))))
+                                        context))
+                                    contexts)]
+             (vreset! unavailable context))))
+       nil))
+    @unavailable))
 
-(defn- unsummarized-stage?
-  [query stage-number]
-  (not (or (seq (lib/aggregations query stage-number)) (seq (lib/breakouts query stage-number)))))
+(defn- qp-source-field-problem
+  [query contexts]
+  (try
+    (let [preprocessed (qp.preprocess/preprocess query)]
+      (or (unavailable-key-context preprocessed contexts)
+          (try
+            (qp.compile/compile-preprocessed preprocessed)
+            nil
+            (catch Exception e
+              (some (fn [cause]
+                      (let [column (:col (ex-data cause))]
+                        (when (and (= :source/implicitly-joinable (:lib/source column))
+                                   (nil? (:lib/join-alias column)))
+                          (some (fn [{[_ {:keys [source-field]} target] :field-ref :as context}]
+                                  (when (or (= target (:id column)) (= source-field (:id column))) context))
+                                contexts))))
+                    (u/full-exception-chain e))))))
+    ;; Other preprocessing and compilation failures are left to the query processor.
+    (catch Exception _ nil)))
 
-(defn- available-source-field
-  ([query stage-number opts]
-   (available-source-field query stage-number opts #{}))
-  ([query stage-number opts visited-cards]
-   (or (source-field-key-column query stage-number opts
-                                (lib/visible-columns query stage-number {:include-implicitly-joinable? false}))
-       ;; The query processor can add a needed key to an earlier stage's projection.
-       (if-let [previous-stage (lib.util/previous-stage-number query stage-number)]
-         (when (unsummarized-stage? query previous-stage)
-           (recur query previous-stage opts visited-cards))
-         (when-let [card-id (lib.util/source-card-id query)]
-           (when-not (contains? visited-cards card-id)
-             (when-let [card (lib.metadata/card query card-id)]
-               (when (:dataset-query card)
-                 (let [card-query (lib/card->underlying-query query card)]
-                   (when (unsummarized-stage? card-query -1)
-                     (recur card-query -1 opts (conj visited-cards card-id))))))))))))
-
-(defn- assert-source-field-in-stage!
-  [query stage-number [_ {:keys [source-field] :as opts} target :as field-ref]]
-  (let [columns (lib/visible-columns query stage-number)]
-    (when-not (lib/find-matching-column query stage-number field-ref
-                                        (filter #(source-field-column? opts %) columns) {:generous? true})
-      (let [mp          (lib.metadata/->metadata-provider query)
-            table-id    (:table-id (if (pos-int? target)
-                                     (fetch-field mp target)
-                                     (lib/metadata query stage-number field-ref)))
+(defn- assert-source-fields-reach-their-tables!
+  "Reject implicit field references that the query processor cannot resolve."
+  [pmbql-query]
+  (let [contexts (source-field-contexts pmbql-query)]
+    (when-let [{:keys [query stage-number field-ref]} (when (seq contexts)
+                                                        (qp-source-field-problem pmbql-query contexts))]
+      (let [[_ {:keys [source-field]} target] field-ref
+            mp          (lib.metadata/->metadata-provider query)
+            table-id    (when (pos-int? target) (:table-id (fetch-field mp target)))
             fk-field    (fetch-field mp source-field)
             fk-table-id (some->> (:fk-target-field-id fk-field) (fetch-field mp) :table-id)
             field-ref   (field-ref-for-error mp field-ref)]
-        (when-not (and table-id (= table-id fk-table-id) (available-source-field query stage-number opts))
-          (if (and (pos-int? target) table-id fk-field (not= table-id fk-table-id))
-            (throw (wrong-source-field-error mp field-ref table-id fk-table-id columns))
-            (throw (ex-info (format "Field %s cannot be reached through `source-field` %s in this stage. Use a foreign key available in this stage, or join the field's table explicitly and reference it with `join-alias`."
-                                    (pr-str (nth field-ref 2)) (pr-str (get-in field-ref [1 :source-field])))
-                            {:agent-error? true
-                             :status-code  400
-                             :error        :wrong-source-field}))))))))
-
-(defn- assert-source-fields-reach-their-tables!
-  "Reject implicit field references that cannot be reached through their stage's visible columns."
-  [pmbql-query]
-  (lib.walk/walk-clauses
-   pmbql-query
-   (fn [query path-type path clause]
-     (when (and (lib.util/clause? clause)
-                (= :field (first clause))
-                (:source-field (second clause))
-                (nil? (:join-alias (second clause))))
-       (let [stage-path (if (= path-type :lib.walk/join)
-                          (lib.walk/join-parent-stage-path path)
-                          path)]
-         (lib.walk/apply-f-for-stage-at-path assert-source-field-in-stage! query stage-path clause)))
-     nil)))
+        (if (and table-id fk-field (not= table-id fk-table-id))
+          (throw (wrong-source-field-error mp field-ref table-id fk-table-id (lib/visible-columns query stage-number)))
+          (throw (ex-info (format "Field %s cannot be reached through `source-field` %s in this stage. Use a foreign key available in this stage, or join the field's table explicitly and reference it with `join-alias`."
+                                  (pr-str (nth field-ref 2)) (pr-str (get-in field-ref [1 :source-field])))
+                          {:agent-error? true :status-code 400 :error :wrong-source-field})))))))
 
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
@@ -972,7 +972,7 @@
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
     6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
-       ([[query-not-runnable-explanation]]), check implicit field references against their stage's visible columns
+       ([[query-not-runnable-explanation]]), check implicit field references using query processor resolution
        ([[assert-source-fields-reach-their-tables!]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
