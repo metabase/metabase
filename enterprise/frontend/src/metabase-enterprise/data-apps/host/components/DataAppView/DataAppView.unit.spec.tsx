@@ -25,6 +25,7 @@ type SetupOpts = {
   data?: ReturnType<typeof createMockDataApp>;
   isLoading?: boolean;
   error?: unknown;
+  enableDrafts?: boolean;
 };
 
 function setup({
@@ -32,6 +33,7 @@ function setup({
   data,
   isLoading = false,
   error,
+  enableDrafts,
 }: SetupOpts = {}) {
   // RTK Query's hook result is a wide discriminated union (refetch, status,
   // isFetching, …); the component reads only these three fields.
@@ -44,8 +46,11 @@ function setup({
   renderWithProviders(
     <>
       {/* The empty-name case has no `:name` segment to match. */}
-      <Route path="/" element={<DataAppView />} />
-      <Route path=":name" element={<DataAppView />} />
+      <Route path="/" element={<DataAppView enableDrafts={enableDrafts} />} />
+      <Route
+        path=":name"
+        element={<DataAppView enableDrafts={enableDrafts} />}
+      />
     </>,
     { withRouter: true, initialRoute: `/${name}` },
   );
@@ -64,6 +69,18 @@ describe("DataAppView", () => {
     setup({ error: { status: 404 } });
 
     expect(screen.getByText("Data app not found")).toBeInTheDocument();
+  });
+
+  it("shows a not-found screen when an admin opens a disabled app", () => {
+    setup({ data: createMockDataApp({ enabled: false }) });
+
+    expect(screen.getByText("Data app not found")).toBeInTheDocument();
+  });
+
+  it("shows a disabled app when drafts are allowed", () => {
+    setup({ data: createMockDataApp({ enabled: false }), enableDrafts: true });
+
+    expect(screen.queryByText("Data app not found")).not.toBeInTheDocument();
   });
 
   it("shows a generic error screen for an unexpected failure", async () => {

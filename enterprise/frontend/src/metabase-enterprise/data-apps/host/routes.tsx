@@ -18,7 +18,9 @@ const dataAppView = () =>
   import(
     /* webpackChunkName: "data-apps" */ "./components/DataAppView/DataAppView"
   ).then(({ DataAppView }) => ({
-    Component: DataAppView,
+    Component: function DataAppViewRoute() {
+      return <DataAppView enableUrlMirroring />;
+    },
   }));
 
 /**
