@@ -31,6 +31,15 @@
   :export?    false
   :audit      :never)
 
+(defsetting oauth-server-codex-refresh-token-reuse-enabled
+  (deferred-tru "Allow clients registered as Codex to reuse refresh tokens until expiry or revocation.")
+  :type       :boolean
+  :visibility :admin
+  :default    false
+  :doc        false
+  :export?    false
+  :audit      :getter)
+
 ;; Gated on mcp-enabled? so registration is off whenever MCP is; stored override can still force false.
 (defsetting oauth-server-dynamic-registration-enabled
   (deferred-tru "Whether dynamic client registration (RFC 7591) is enabled for the embedded OAuth server.")
