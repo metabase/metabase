@@ -53,8 +53,8 @@ describe("scenarios > data apps > admin management", () => {
   });
 
   it("dismisses the promo banner and keeps it hidden across a reload", () => {
-    cy.intercept("GET", "/api/apps/repo-status", { configured: true });
-    cy.intercept("GET", "/api/apps", []);
+    cy.intercept("GET", "/api/ee/apps/repo-status", { configured: true });
+    cy.intercept("GET", "/api/ee/apps", []);
     cy.intercept(
       "PUT",
       "/api/user-key-value/namespace/user_acknowledgement/key/data-apps-admin-settings-banner",
@@ -86,11 +86,11 @@ describe("scenarios > data apps > admin management", () => {
 
     function markAppOutdated() {
       H.pullExampleDataApps();
-      cy.request<DataApp>("GET", `/api/apps/${OUTDATED_APP}`)
+      cy.request<DataApp>("GET", `/api/ee/apps/${OUTDATED_APP}`)
         .its("body.display_name")
         .as("outdatedAppName");
 
-      cy.intercept("GET", "/api/apps", (req) => {
+      cy.intercept("GET", "/api/ee/apps", (req) => {
         req.continue((res) => {
           res.body = res.body.map((app: DataApp) =>
             app.name === OUTDATED_APP
@@ -100,7 +100,7 @@ describe("scenarios > data apps > admin management", () => {
         });
       });
       cy.intercept(
-        { method: "GET", pathname: `/api/apps/${OUTDATED_APP}` },
+        { method: "GET", pathname: `/api/ee/apps/${OUTDATED_APP}` },
         (req) => {
           req.continue((res) => {
             res.body = { ...res.body, version: 1, outdated: true };

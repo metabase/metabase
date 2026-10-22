@@ -1572,7 +1572,8 @@
               util
               util.config
               warehouse-schema-overlay
-              warehouses}
+              warehouses
+              xrays}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -3845,36 +3846,27 @@
    :uses #{actions
            api
            api-scope
-           audit-app
            collections
            events
            lib
-           lib.be
            lib.schema
            lib.types
-           metabot
-           metrics
            models
            permissions
            premium-features
-           queries
            remote-sync
            request
            settings
-           system
            users
            util
            util.graph
            warehouse-schema-overlay
-           enterprise/dependencies
-           enterprise/serialization}
+           enterprise/dependencies}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Database
                     :model/Field
-                    :model/Measure
                     :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}

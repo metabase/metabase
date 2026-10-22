@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import {
   type StaticVisualizationProps,

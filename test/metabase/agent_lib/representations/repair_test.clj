@@ -2135,6 +2135,26 @@
           out (repair/repair mp-fks q)]
       (is (= {} (get-in out ["stages" 0 "breakout" 0 1]))))))
 
+(deftest ^:parallel fill-from-candidates-unexportable-fk-test
+  (let [fill     #'repair/fill-from-candidates
+        unused   #(throw (ex-info "unexpected resolver call" {}))
+        resolver (reify serdes.resolve/SerdesExportResolver
+                   (export-fk [_ _ _] (unused))
+                   (export-fk-keyed [_ _ _ _] (unused))
+                   (export-user [_ _] (unused))
+                   (export-table-fk [_ _] (unused))
+                   (export-field-fk [_ _] (throw (ex-info "boom" {}))))
+        clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
+        run      (fn [strict?]
+                   (fill clause {} (nth clause 2) resolver [{:source-field-id 1}]
+                         {:source-label "Orders by user" :target-table-id 2 :strict? strict?}))]
+    (testing "a single candidate whose FK cannot be exported is its own error on a strict stage, not :no-fk-path"
+      (let [e (try (run true) nil (catch clojure.lang.ExceptionInfo e e))]
+        (is (=? {:error :unexportable-fk, :agent-error? true, :target-table 2} (ex-data e)))
+        (is (re-find #"only through a foreign key that could not be resolved" (ex-message e)))))
+    (testing "and leaves the clause bare on a non-strict stage"
+      (is (= clause (run false))))))
+
 (deftest ^:parallel implicit-join-no-fk-path-test
   (testing "throws :no-fk-path when the target table isn't reachable via any FK"
     (try
@@ -2145,9 +2165,10 @@
           (is (= :no-fk-path (:error d)))
           (is (true? (:agent-error? d)))
           (is (= (str "Field [\"Sample\" \"PUBLIC\" \"PRODUCTS\" \"CATEGORY\"] is on table \"PRODUCTS\", which has no foreign key "
-                      "from the source table \"ORDERS\", so it cannot be reached implicitly. "
+                      "from the source \"ORDERS\", so it cannot be reached implicitly. "
                       "To group or filter by a column from that table, add an explicit `joins:` entry "
-                      "and reference the field using the join alias. Otherwise use a field from the source table.")
+                      "and reference the field using the join alias. If the foreign key comes from a table you joined "
+                      "in this stage, set `source-field-join-alias` instead. Otherwise use a field from the source.")
                  (ex-message e))))))))
 
 (deftest ^:parallel implicit-join-ambiguous-fk-test
@@ -2990,6 +3011,21 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
+(deftest ^:parallel split-post-agg-refuses-when-order-by-is-a-string-test
+  (testing "a string `order-by` with a post-aggregation filter gets advice to split the stage"
+    (is (=? {:error :post-agg-filter-with-trailing-clauses}
+            (try
+              (repair/repair trivial-mp {"lib/type" "mbql/query"
+                                         "database" "Sample"
+                                         "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                      "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}]]
+                                                      "filters"      [[">" {} ["aggregation" {} 0] 10]]
+                                                      "order-by"     "TOTAL"}]})
+              nil
+              (catch clojure.lang.ExceptionInfo e
+                (ex-data e)))))))
+
 (deftest ^:parallel split-post-agg-refuses-when-raw-column-order-by-test
   (testing (str "specifically the pre-agg `order-by [desc TOTAL]` case the reviewer flagged "
                 "as silent-intent-destruction in the prior implementation: TOTAL doesn't "
@@ -3164,6 +3200,35 @@
                (get-in (repair/repair trivial-mp
                                       (build ["count-where" {} ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]))
                        ["stages" 1 "filters"])))))))
+
+(deftest ^:parallel malformed-clauses-reach-validation-test
+  (testing "repair leaves malformed stages and clauses for validation"
+    ;; ORDERS has to resolve for the cross-stage pass to reach a later stage
+    (let [orders   {"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders "aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label stages] {"a number as `aggregation`"
+                              [(assoc orders "aggregation" 42)]
+                              "an empty aggregation clause used in `order-by`"
+                              [(assoc orders "aggregation" [[]] "order-by" [["desc" {} []]])]
+                              "a number as `joins`"
+                              [(assoc orders "joins" 42)]
+                              "a join-alias reference with a number as `joins`"
+                              [(assoc orders "joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]])]
+                              "a post-aggregation filter with a number as `order-by`"
+                              [(assoc post-agg "order-by" 42)]
+                              "a post-aggregation filter with a number as `fields`"
+                              [(assoc post-agg "fields" 42)]
+                              "a number as a later stage"            [orders 42]
+                              "a string as a later stage"            [orders "ORDERS"]
+                              "true as a later stage"                [orders true]
+                              "an empty list as a later stage"       [orders []]
+                              "an aggregation list as a later stage" [orders [["count" {}]]]}]
+        (testing label
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Representations query has an invalid structure"
+                                (repr/validate-query
+                                 (repair/repair mp-fks {"lib/type" "mbql/query"
+                                                        "database" "Sample"
+                                                        "stages"   stages})))))))))
 
 ;;; ============================================================
 ;;; Pass 6 - friendly error messages (E1..E6)
