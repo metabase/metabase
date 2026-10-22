@@ -4569,6 +4569,8 @@
            lib.schema
            models
            premium-features
+           query-processor
+           request
            revisions
            run-tracking
            sql-tools

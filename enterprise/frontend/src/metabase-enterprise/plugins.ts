@@ -54,6 +54,7 @@ import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeTransforms } from "./transforms";
 import { initializePlugin as initializeTransformsInspector } from "./transforms-inspector";
 import { initializePlugin as initializeTransformsPython } from "./transforms-python";
+import { initializePlugin as initializeTransformsTesting } from "./transforms-testing";
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
@@ -111,6 +112,7 @@ export function initializePlugins() {
   initializeTools();
   initializeTransforms();
   initializeTransformsInspector();
+  initializeTransformsTesting();
   initializeTransformsPython();
   initializeUploadManagement();
   initializeUserProvisioning();
