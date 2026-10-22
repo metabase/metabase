@@ -1,14 +1,17 @@
+import cx from "classnames";
+import { useRef } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
   Alert,
   Box,
   Button,
+  Flex,
   Group,
   Icon,
-  Loader,
   Paper,
   Stack,
   Text,
@@ -16,6 +19,8 @@ import {
   Tooltip,
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
+import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import type { ClickActionsMode } from "metabase/visualizations/types";
 import type {
   CardDisplayType,
@@ -29,6 +34,9 @@ import type { MissingSetting } from "../analyses/types";
 
 const SYNTHETIC_CARD_ID = -1;
 const MIN_HEIGHT_PX = 400;
+// Where the cohort table's "Cohort" header text starts: the grid's padding
+// plus the header cell's, in CohortTable.module.css. The title lines up with it.
+const COHORT_LABEL_INSET = "1rem";
 
 type AnalysisSeriesInput = {
   title: string;
@@ -105,6 +113,14 @@ export const AnalysisResult = ({
   const isIncomplete = missing.length > 0 && !error && !isLoading;
   const isShowingVisualization =
     !isIncomplete && !isLoading && !error && rawSeries !== null;
+  // A rerun empties `dataset`, so the last chart shown stays up under the
+  // running overlay, as in the query builder. Before any chart, a skeleton.
+  const lastShownSeries = useRef<RawSeries | null>(null);
+  if (isShowingVisualization) {
+    lastShownSeries.current = rawSeries;
+  }
+  const staleSeries = isLoading ? lastShownSeries.current : null;
+  const shownSeries = isShowingVisualization ? rawSeries : staleSeries;
   const displayLabel = isDisplayOpen
     ? t`Hide display options`
     : t`Show display options`;
@@ -114,7 +130,12 @@ export const AnalysisResult = ({
     <Paper withBorder radius="md" p="lg" miw={0} mih={MIN_HEIGHT_PX} flex={1}>
       <Stack h="100%">
         <Group justify="space-between" wrap="nowrap" gap="sm">
-          <Title order={4}>{title}</Title>
+          <Title
+            order={4}
+            pl={display === "cohort" ? COHORT_LABEL_INSET : undefined}
+          >
+            {title}
+          </Title>
           <Tooltip label={displayLabel}>
             <ActionIcon
               // Metabase's theme makes the default variant's border
@@ -140,22 +161,25 @@ export const AnalysisResult = ({
             />
           )}
           {!isIncomplete && error && <Alert color="error">{error}</Alert>}
-          {!isIncomplete && isLoading && (
-            <Box ta="center" py="xl">
-              <Loader />
-            </Box>
+          {!isIncomplete && isLoading && staleSeries === null && (
+            <Flex direction="column" flex={1} mih={0}>
+              {getChartSkeletonImage(display)}
+            </Flex>
           )}
           {!isIncomplete && !isLoading && !error && rawSeries === null && (
             <Text c="text-secondary">{t`Results will appear here.`}</Text>
           )}
-          {isShowingVisualization && (
-            <Box flex={1} mih={0}>
+          {shownSeries !== null && (
+            <Box flex={1} mih={0} pos="relative">
               <Visualization
-                rawSeries={rawSeries}
+                rawSeries={shownSeries}
                 isQueryBuilder={false}
                 mode={clickActionsMode}
                 onChangeCardAndRun={noop}
               />
+              {staleSeries !== null && (
+                <VisualizationRunningState className={cx(CS.spread, CS.z2)} />
+              )}
             </Box>
           )}
         </Stack>
