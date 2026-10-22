@@ -58,8 +58,7 @@
 (defn- quote-query-error
   [error-message]
   (bounded-quote error-message
-                 (- tools.runtime/max-output-length (count query-failed-prefix)
-                    (reduce + (map (comp inc count :text) query-failed-recovery)))))
+                 (tools.runtime/output-budget query-failed-prefix query-failed-recovery)))
 
 (tools/defrecoverable query-failed!
   "The query failed to compile, or its database returned an error."
@@ -82,7 +81,7 @@
                     ". Parser details: ")
         recovery [{:uses #{} :text (str "Fix the SQL syntax and retry. No changes were saved.\n\n"
                                         instructions/sql-dialect-checklist)}]
-        budget (- tools.runtime/max-output-length (count prefix) (reduce + (map (comp inc count :text) recovery)))]
+        budget (tools.runtime/output-budget prefix recovery)]
     {:message (str prefix (bounded-quote error-message budget))
      :recovery recovery}))
 
