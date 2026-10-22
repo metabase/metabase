@@ -153,7 +153,7 @@
                                [:= :member.id :membership.user_id]]
                       :where  [:and
                                [:= :app.enabled true]
-                               [:= :membership.user_id user-id]
+                               [:= :membership.user_id [:auto/param user-id]]
                                [:= :member.tenant_id nil]]}))
 
 (mu/defn readable-data-app?
@@ -161,7 +161,7 @@
   [user-id :- ms/PositiveInt
    app-id  :- ms/PositiveInt]
   (t2/exists? :model/DataApp {:where [:and
-                                      [:= :id app-id]
+                                      [:= :id [:auto/param app-id]]
                                       [:in :id (readable-data-app-ids-select user-id false)]]}))
 
 (defn insert-assignments!
