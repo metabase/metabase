@@ -46,6 +46,7 @@ import {
   getColumnGroups,
   getDraftFilterClause,
   getMaxValueCount,
+  getOperatorAliases,
   getPillOperatorLabel,
   isValidValue,
 } from "./utils";
@@ -435,6 +436,7 @@ export function DraftFilterPill({
                 options: column.operators.map((operator) => ({
                   value: operator.key,
                   label: operator.label,
+                  aliases: getOperatorAliases(operator),
                 })),
               },
             ]}

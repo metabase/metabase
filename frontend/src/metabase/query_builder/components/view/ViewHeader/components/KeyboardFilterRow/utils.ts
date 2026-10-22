@@ -221,6 +221,21 @@ function getNumberValueKind(operator: Lib.NumberFilterOperator): ValueKind {
   return hasMultipleValues ? "multi" : "single";
 }
 
+const OPERATOR_ALIASES: Partial<Record<string, string[]>> = {
+  "=": ["=", "==", "==="],
+  "!=": ["!=", "!==", "<>", "≠"],
+  ">": [">"],
+  "<": ["<"],
+  ">=": [">=", "=>", "≥"],
+  "<=": ["<=", "=<", "≤"],
+  between: [".."],
+};
+
+/** Symbols that find an operator in the operator search, like "!=". */
+export function getOperatorAliases(operator: DraftOperator) {
+  return OPERATOR_ALIASES[operator.key];
+}
+
 export function getMaxValueCount(valueKind: ValueKind): number {
   switch (valueKind) {
     case "none":

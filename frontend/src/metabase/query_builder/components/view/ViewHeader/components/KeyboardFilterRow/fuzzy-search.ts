@@ -25,7 +25,10 @@ export function getOptionScores(
     .flatMap((group) => group.options);
   const scores = new Map<string, number>();
   for (const option of options) {
-    if (hasText(option, searchText)) {
+    const aliasScore = getAliasScore(option, searchText);
+    if (aliasScore != null) {
+      scores.set(option.value, aliasScore);
+    } else if (hasText(option, searchText)) {
       scores.set(option.value, 0);
     }
   }
@@ -48,6 +51,21 @@ export function getOptionScores(
     }
   }
   return scores;
+}
+
+// An exact alias is the best match. An alias that starts with the search, like
+// ">=" for ">", comes after it.
+const ALIAS_PREFIX_SCORE = 0.1;
+
+function getAliasScore(option: SuggestionOption, searchText: string) {
+  const aliases = option.aliases ?? [];
+  if (aliases.includes(searchText)) {
+    return 0;
+  }
+  return searchText.length > 0 &&
+    aliases.some((alias) => alias.startsWith(searchText))
+    ? ALIAS_PREFIX_SCORE
+    : undefined;
 }
 
 function hasText(option: SuggestionOption, searchText: string) {

@@ -9,6 +9,8 @@ export type SuggestionOption = {
   icon?: IconName;
   /** Shown before the label, like a flag. */
   leftSection?: ReactNode;
+  /** Other texts that find this option, like "!=" for "Not equal to". */
+  aliases?: string[];
   /** Shown after the label in grey, like a state code. */
   description?: string;
   isChecked?: boolean;
