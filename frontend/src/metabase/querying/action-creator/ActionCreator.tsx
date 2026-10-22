@@ -76,6 +76,7 @@ export function ActionCreator({
     >
       <ActionCreatorContent
         modelId={modelId}
+        canCreateActions={isAdmin}
         canWriteModelActions={canWriteActions({
           model,
           database: modelDatabase,

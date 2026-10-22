@@ -12,7 +12,7 @@ import { setup } from "./common";
 describe("ActionCreator > Query Actions", () => {
   describe("New Action", () => {
     it("renders correctly", async () => {
-      await setup();
+      await setup({ isAdmin: true });
 
       expect(screen.getByText(/New action/i)).toBeInTheDocument();
       expect(
@@ -27,14 +27,23 @@ describe("ActionCreator > Query Actions", () => {
       ).toBeInTheDocument();
     });
 
+    it("doesn't let non-admins create an action", async () => {
+      await setup({ isAdmin: false });
+
+      expect(screen.getByText(/New action/i)).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("should disable submit by default", async () => {
-      await setup();
+      await setup({ isAdmin: true });
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
 
     it("should show clickable data reference icon", async () => {
-      await setup();
+      await setup({ isAdmin: true });
       await userEvent.click(getIcon("reference"));
 
       await waitFor(() =>
@@ -46,7 +55,7 @@ describe("ActionCreator > Query Actions", () => {
     });
 
     it("should show action settings button", async () => {
-      await setup();
+      await setup({ isAdmin: true });
       expect(
         screen.getByRole("button", { name: "Action settings" }),
       ).toBeInTheDocument();
@@ -82,7 +91,7 @@ describe("ActionCreator > Query Actions", () => {
 
     describe("Save Modal", () => {
       it("should show default message in model picker", async () => {
-        await setup({ model: null });
+        await setup({ model: null, isAdmin: true });
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
@@ -107,7 +116,7 @@ describe("ActionCreator > Query Actions", () => {
           can_write: true,
           name: MODEL_NAME,
         });
-        await setup({ model });
+        await setup({ model, isAdmin: true });
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");

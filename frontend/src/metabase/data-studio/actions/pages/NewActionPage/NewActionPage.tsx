@@ -13,7 +13,9 @@ import {
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { hasNativeWritePermissions } from "metabase/common/utils/database";
+import { getUserIsAdmin } from "metabase/current-user";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useSelector } from "metabase/redux";
 import { type Location, useNavigate } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -29,6 +31,7 @@ import { useActionDraft } from "../../hooks/use-action-draft";
 import { CreateActionModal } from "./CreateActionModal";
 
 export function NewActionPage() {
+  const isAdmin = useSelector(getUserIsAdmin);
   const { databases, isLoading, error } = useActionDatabases();
   const editableDatabases = useMemo(
     () => databases.filter(hasNativeWritePermissions),
@@ -39,6 +42,14 @@ export function NewActionPage() {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper error={t`Only admins can create actions.`} />
       </Center>
     );
   }

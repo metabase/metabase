@@ -21,6 +21,7 @@ export interface ActionCreatorProps {
   modelId?: CardId;
   /** Whether the model accepts new actions, i.e. `Question.canWriteActions`. */
   canWriteModelActions?: boolean;
+  canCreateActions?: boolean;
   /**
    * Whether the creator is mounted as its own route. A routed creator guards
    * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
@@ -35,6 +36,7 @@ export interface ActionCreatorProps {
 export function ActionCreator({
   modelId,
   canWriteModelActions = false,
+  canCreateActions = false,
   isRouted,
   dataReference,
   onSubmit,
@@ -62,7 +64,7 @@ export function ActionCreator({
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || canWriteModelActions;
+  const isEditable = (isNew && canCreateActions) || canWriteModelActions;
 
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
