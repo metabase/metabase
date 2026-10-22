@@ -113,6 +113,12 @@ async function assertErrorToast(message: string) {
   });
 }
 
+function getShownListboxes() {
+  return screen
+    .queryAllByRole("listbox")
+    .filter((listbox) => !listbox.closest('[data-hidden="true"]'));
+}
+
 async function selectOption(input: HTMLElement, name: string) {
   await userEvent.click(input);
   const listbox = within(await screen.findByRole("listbox"));
@@ -232,6 +238,57 @@ describe("FieldSection", () => {
       await userEvent.tab();
 
       await assertErrorToast("Failed to update formatting of Quantity");
+    });
+  });
+
+  describe("read-only table", () => {
+    it("shows the field settings of a table that cannot be written as read-only", async () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: false } });
+
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).toHaveAttribute("readonly");
+      expect(
+        within(screen.getByTestId("field-section")).getAllByRole("img")[0],
+      ).toHaveAttribute("aria-label", expect.stringMatching(/icon$/));
+      expect(
+        screen.getByPlaceholderText("Give this field a description"),
+      ).toHaveAttribute("readonly");
+      expect(
+        screen.getByLabelText("Cast to a specific data type"),
+      ).toBeDisabled();
+      expect(screen.getByTestId("prefix")).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select a semantic type"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select a field visibility"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select field filtering"),
+      ).toBeDisabled();
+      expect(
+        await screen.findByPlaceholderText("Select display values"),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /Field values/ }),
+      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: /Preview/ })).toBeEnabled();
+    });
+
+    it("keeps the field settings of a writable table editable", async () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: true } });
+
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).not.toHaveAttribute("readonly");
+      expect(
+        screen.getByLabelText("Cast to a specific data type"),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByPlaceholderText("Select a semantic type"),
+      );
+      await waitFor(() => expect(getShownListboxes()).toHaveLength(1));
     });
   });
 });

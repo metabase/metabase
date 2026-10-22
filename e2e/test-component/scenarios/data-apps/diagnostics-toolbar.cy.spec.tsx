@@ -240,6 +240,7 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
     it("renders the manifest status the feed carries", () => {
       serveDiagnosticsFeed([], {
         manifest: {
+          exists: true,
           name: "Demo",
           bundlePath: "dist/index.js",
           bundlePathExists: false,

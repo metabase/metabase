@@ -231,5 +231,11 @@
         (testing code
           (is (some? (v1-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))
           (is (some? (v2-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))))
+      (testing "and so do the codes only a `source-card:` stage raises, given the card"
+        (doseq [code [:column-not-returned :unexportable-fk]]
+          (testing code
+            (let [data {:error code :source-card 12 :source-card-type "model"}]
+              (is (some? (v1-hints/recovery-hint data)))
+              (is (some? (v2-hints/recovery-hint data)))))))
       (testing "and every one of them is declared here"
         (is (= #{} (set/difference (set codes) (declared-codes))))))))

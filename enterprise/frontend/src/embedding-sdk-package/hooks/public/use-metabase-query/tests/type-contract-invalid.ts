@@ -18,13 +18,24 @@ import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
-const queryWithInvalidSavedQuestionEntityId = {
-  savedQuestionEntityId: 54,
-  source: TEST_SCHEMA.tables.orders,
+const queryWithInvalidQuestionEntityId = {
+  source: { type: "card", entityId: 54 },
 } as const;
 
 // @ts-expect-error saved-question entity IDs are strings
-defineQuery(queryWithInvalidSavedQuestionEntityId);
+defineQuery(queryWithInvalidQuestionEntityId);
+
+const questionQueryWithStaticLimit = {
+  source: {
+    type: "card",
+    entityId: "ordersQuestionEntity1",
+    columns: TEST_SCHEMA.questions.ordersQuestion.columns,
+  },
+  limit: 10,
+} as const;
+
+// @ts-expect-error a card query's static clauses are the question's own
+defineQuery(questionQueryWithStaticLimit);
 
 // @ts-expect-error query definitions with breakouts require aggregations
 defineQuery({
@@ -32,13 +43,12 @@ defineQuery({
   breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
 });
 
-const actionWithInvalidCopiedActionEntityId = {
-  copiedActionEntityId: 91,
-  action: TEST_SCHEMA.actions.createOrder,
+const actionWithInvalidId = {
+  action: { ...TEST_SCHEMA.actions.createOrder, id: true },
 } as const;
 
-// @ts-expect-error copied action entity IDs are strings
-defineAction(actionWithInvalidCopiedActionEntityId);
+// @ts-expect-error action ids are numbers or entity IDs
+defineAction(actionWithInvalidId);
 
 // @ts-expect-error action definitions must reference a generated action
 defineAction({ action: TEST_SCHEMA.tables.orders });
@@ -190,13 +200,24 @@ const aggregatedOrdersQuery = defineQuery({
 function InvalidTypeFixtures() {
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
-  // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object
+  const questionQuery = defineQuery({
+    source: {
+      type: "card",
+      entityId: "ordersQuestionEntity1",
+      columns: TEST_SCHEMA.questions.ordersQuestion.columns,
+    },
+  });
+
+  const questionResult = useMetabaseQuery(questionQuery);
+  // @ts-expect-error a card query's rows hold only the card's result columns
+  const _missing = questionResult.data?.rows[0]?.MISSING;
+
+  // @ts-expect-error a query is a `defineQuery` definition, never an inline object
   useMetabaseQuery({ source: TEST_SCHEMA.tables.orders });
 
-  // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object
+  // @ts-expect-error a query is a `defineQuery` definition, never an inline object
   useMetabaseQueryObject({ source: TEST_SCHEMA.tables.orders });
 
   const plainQuery = {
@@ -209,16 +230,13 @@ function InvalidTypeFixtures() {
   // @ts-expect-error a typed query object is still not a `defineQuery` export
   useMetabaseQueryObject(plainQuery);
 
-  // @ts-expect-error saved-question metadata cannot be passed to querying hooks
-  defineQuery({ source: TEST_SCHEMA.questions.ordersQuestion });
-
   // @ts-expect-error a copy of a definition is not the definition
   useMetabaseQuery({ ...staticQuery, limit: 10 });
 
   // @ts-expect-error a copy of a definition is not the definition
   useMetabaseQueryObject({ ...staticQuery, limit: 10 });
 
-  // @ts-expect-error a data app's action is a `defineAction` export from `actions/`, never an inline object
+  // @ts-expect-error a data app's action is a `defineAction` definition, never an inline object
   useDataAppAction({ action: TEST_SCHEMA.actions.createOrder });
 
   // @ts-expect-error a copy of a definition is not the definition
