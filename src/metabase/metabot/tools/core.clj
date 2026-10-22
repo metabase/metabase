@@ -33,6 +33,7 @@
   follow one tool's behaviour without knowing which other shapes exist."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations :as repr]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
@@ -479,7 +480,7 @@
           (tools.error/throw-recoverable!
            code
            (cond-> {:message (or (ex-message e) "")}
-             (some? humanized) (assoc :humanized humanized)
+             (some? humanized) (assoc :paths (repr/humanized->paths humanized))
              entity-type       (assoc :entity-type entity-type)
              (some? entity-id) (assoc :entity-id entity-id)
              source-card       (assoc :source-card source-card

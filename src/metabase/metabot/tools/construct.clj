@@ -912,7 +912,11 @@
                                                :usable-sources usable-sources
                                                :status-code    400}))))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
-            _validated'   (repr/validate-query exported-repr repaired)
+            _validated'   (try
+                            (repr/validate-query exported-repr)
+                            (catch clojure.lang.ExceptionInfo e
+                              (throw (IllegalStateException.
+                                      "Exported representations query has an invalid structure." e))))
             query-id      (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
