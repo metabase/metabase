@@ -7,6 +7,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.db :as premium-features.db]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
@@ -30,6 +31,7 @@
         breaker @#'token-check/breaker
         saved   @entry]
     (reset! entry nil)
+    (reset! @#'token-check/refresh-requested? false)
     (.close ^dev.failsafe.CircuitBreaker breaker)
     (try
       (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2)]
@@ -294,6 +296,113 @@
         (age-entry! (t/minutes 1))
         (premium-features/clear-local-cache!)
         (is (= 2 @calls))))))
+
+(deftest tick-with-no-entry-held-fetches-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [calls (constantly good-status)]
+      (token-check/tick!)
+      (is (= 1 @calls))
+      (is (premium-features/has-feature? :sandboxes)))))
+
+(deftest tick-with-a-fresh-matching-entry-does-nothing-test
+  (let [token (tu/random-token)]
+    (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+      (with-store [calls (constantly good-status)]
+        (token-check/refresh-now!)
+        (let [row (hash-row token)]
+          (token-check/tick!)
+          (is (= 1 @calls))
+          (is (= row (hash-row token)))
+          (is (=? {:valid true :status "ok"} (premium-features/token-status))))))))
+
+(defn- change-hash-row!
+  "Change the hash row for `token` as another instance would after a refresh that got a different status."
+  [token]
+  (t2/update! :model/PremiumFeaturesCache :token_hash (#'token-check/hash-token token)
+              {:token_status_hash (#'token-check/hash-token-status {:valid true :status "ok" :features ["audit-app"]})}))
+
+(deftest tick-after-another-instance-changed-the-hash-fetches-test
+  (let [token    (tu/random-token)
+        response (atom good-status)]
+    (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+      (with-store [calls #(deref response)]
+        (token-check/refresh-now!)
+        (reset! response {:valid true :status "ok" :features ["audit-app"]})
+        (change-hash-row! token)
+        (token-check/tick!)
+        (is (= 2 @calls))
+        (is (premium-features/has-feature? :audit-app))
+        (is (not (premium-features/has-feature? :sandboxes)))
+        (testing "the next tick sees the hash it now holds and does nothing"
+          (token-check/tick!)
+          (is (= 2 @calls)))))))
+
+(deftest tick-after-the-refresh-interval-fetches-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [calls (constantly good-status)]
+      (token-check/refresh-now!)
+      (testing "an entry younger than 11h, the shortest jittered interval, is not refreshed"
+        (age-entry! (t/minus (t/hours 11) (t/minutes 1)))
+        (token-check/tick!)
+        (is (= 1 @calls)))
+      (testing "an entry older than 12h, the longest jittered interval, is"
+        (age-entry! (t/minutes 62))
+        (token-check/tick!)
+        (is (= 2 @calls))
+        (is (premium-features/has-feature? :sandboxes)))
+      (testing "the refreshed entry is fresh again"
+        (token-check/tick!)
+        (is (= 2 @calls))))))
+
+(deftest tick-after-a-requested-refresh-fetches-once-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [calls (constantly good-status)]
+      (token-check/refresh-now!)
+      (token-check/request-refresh!)
+      (is (= 1 @calls) "requesting a refresh does not fetch")
+      (token-check/tick!)
+      (is (= 2 @calls))
+      (testing "the request is cleared, so the next tick does nothing"
+        (token-check/tick!)
+        (is (= 2 @calls))))))
+
+(deftest tick-whose-fetch-fails-leaves-the-entry-alone-test
+  (let [token (tu/random-token)]
+    (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+      (with-store [_ (constantly good-status)]
+        (token-check/refresh-now!))
+      (let [held @@#'token-check/entry
+            row  (hash-row token)]
+        (with-store [calls #(throw (ex-info "network failure!" {}))]
+          (token-check/request-refresh!)
+          (is (nil? (token-check/tick!)))
+          (is (pos? @calls))
+          (is (= held @@#'token-check/entry))
+          (is (= row (hash-row token)))
+          (is (premium-features/has-feature? :sandboxes)))))))
+
+(deftest tick-whose-hash-read-fails-does-not-throw-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [calls (constantly good-status)]
+      (token-check/refresh-now!)
+      (mt/with-dynamic-fn-redefs [premium-features.db/token-status-cache (fn [_] (throw (ex-info "app DB down" {})))]
+        (is (nil? (token-check/tick!))))
+      (is (= 1 @calls))
+      (is (premium-features/has-feature? :sandboxes)))))
+
+(deftest tick-reads-the-app-db-at-most-once-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [calls (constantly good-status)]
+      (token-check/refresh-now!)
+      ;; the first read may run the settings cache's own once-a-minute staleness check
+      (token-check/tick!)
+      (t2/with-call-count [call-count]
+        (token-check/tick!)
+        (is (= 1 (call-count)) "a tick with nothing due reads the hash row and nothing else"))
+      (t2/with-call-count [call-count]
+        (is (premium-features/has-feature? :sandboxes))
+        (is (zero? (call-count)) "a feature check reads nothing"))
+      (is (= 1 @calls)))))
 
 (deftest quotas-and-meters-reflect-a-fresh-fetch-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
