@@ -33,6 +33,7 @@ import { registerDashboardVisualizations } from "metabase/dashboard/visualizatio
 import { reinitialize } from "metabase/plugins";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -1353,6 +1354,9 @@ describe("DashCard", () => {
     });
 
     describe("Number cards", () => {
+      // The Number chart loads on demand; load it up front so the render does not suspend mid-test.
+      beforeAll(() => loadVisualizationComponents(["scalar"]));
+
       const parameter = createMockParameter({
         id: "param-1",
         name: "Category",
