@@ -3,6 +3,11 @@ import { t } from "ttag";
 import { getCountryName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/countries";
 import { getStateName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/states";
 import { getFilterClause as getBooleanFilterClause } from "metabase/querying/filters/components/FilterPicker/BooleanFilterPicker/utils";
+import { OPERATORS as COORDINATE_OPERATORS } from "metabase/querying/filters/components/FilterPicker/CoordinateFilterPicker/constants";
+import {
+  getFilterClause as getCoordinateFilterClause,
+  getAvailableOptions as getCoordinateOperatorOptions,
+} from "metabase/querying/filters/components/FilterPicker/CoordinateFilterPicker/utils";
 import { OPERATORS as NUMBER_OPERATORS } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/constants";
 import {
   getFilterClause as getNumberFilterClause,
@@ -73,7 +78,7 @@ function getColumnKind(column: Lib.ColumnMetadata): ColumnKind {
     return "other";
   }
   if (Lib.isNumeric(column)) {
-    return Lib.isCoordinate(column) ? "other" : "number";
+    return "number";
   }
   return Lib.isStringOrStringLike(column) ? "string" : "other";
 }
@@ -140,7 +145,7 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
 
   if (Lib.isNumeric(column)) {
     if (Lib.isCoordinate(column)) {
-      return undefined;
+      return getCoordinateOperators(column);
     }
     return getNumberOperatorOptions(column).map(
       ({ operator, displayName }) => ({
@@ -179,6 +184,30 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
   }
 
   return undefined;
+}
+
+// Prototype: "inside" needs a second column, latitude and longitude, so only
+// the popover filter picker offers it.
+function getCoordinateOperators(column: Lib.ColumnMetadata): DraftOperator[] {
+  return getCoordinateOperatorOptions()
+    .filter(({ operator }) => operator !== "inside")
+    .map(({ operator, displayName }) => {
+      const { valueCount, hasMultipleValues } = COORDINATE_OPERATORS[operator];
+      return {
+        key: operator,
+        label: displayName,
+        valueKind:
+          valueCount === 2 ? "range" : hasMultipleValues ? "multi" : "single",
+        isNumeric: true,
+        numberOperator: operator === "inside" ? undefined : operator,
+        getFilterClause: (values) => {
+          const numbers = values.map(parseNumber);
+          return numbers.every((value) => value != null)
+            ? getCoordinateFilterClause(operator, column, undefined, numbers)
+            : undefined;
+        },
+      };
+    });
 }
 
 function getNumberValueKind(operator: Lib.NumberFilterOperator): ValueKind {
@@ -240,6 +269,19 @@ export function getDraftStateFromFilter(
   stageIndex: number,
   filter: Lib.FilterClause,
 ): DraftState | undefined {
+  const coordinateParts = Lib.coordinateFilterParts(query, stageIndex, filter);
+  if (coordinateParts != null) {
+    return coordinateParts.longitudeColumn == null
+      ? getDraftState(
+          query,
+          stageIndex,
+          coordinateParts.column,
+          coordinateParts.operator,
+          coordinateParts.values.map(String),
+        )
+      : undefined;
+  }
+
   const numberParts = Lib.numberFilterParts(query, stageIndex, filter);
   if (numberParts != null) {
     return getDraftState(

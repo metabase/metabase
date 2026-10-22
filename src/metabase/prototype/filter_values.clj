@@ -25,8 +25,10 @@ reliably."}
    :required   ["status" "values"]})
 
 (def ^:private system-prompt
-  "You fill in the values of one filter in a data tool. The user already picked the column and the operator. They
-describe the values they want in natural language, and you return the exact values.
+  "You are a smart autocomplete for the values of one filter in a data tool, like a search engine in place. The user
+already picked the column and the operator. They describe the values they want in natural language, and you return
+the exact values. Answer the request as asked, with your world knowledge. Do not judge whether it fits the column:
+that is the user's choice. Example: \"average yearly salary in NY\" for a number column returns that number.
 
 Rules:
 - Return only values for this one filter. Do not change the column or the operator.
@@ -35,10 +37,13 @@ Rules:
   returns the codes of the EU member countries that are in the list.
 - The value kind tells how many values to return: `single` is exactly 1 value, `range` is exactly 2 values (the
   start and the end, start first), `multi` is 1 or more values.
-- Number columns take plain numbers, like `1500` or `0.25`, with no units or thousands separators. Use the column
-  statistics, when they are given, to choose sensible numbers.
-- Return `rejected` with a short reason when the request is unclear, unrelated to the column, or when you cannot
-  find the values reliably. Do not guess.")
+- Number columns take plain numbers, like `1500` or `0.25`, with no units or thousands separators. When the request
+  is about the data, like \"the top 10%\", use the column statistics, when they are given. An estimate is fine.
+- Never reject a request because it seems unrelated to the column, its meaning or its unit. The user may compare
+  the data with an outside number on purpose. Example: \"average yearly salary in NY\" for Lifetime Value returns
+  about `75000`.
+- Return `rejected` only when you cannot give any value: the request is gibberish, or, for a column with a list of
+  known values, no known value matches it. Then give a short, neutral reason.")
 
 (defn- fingerprint-stats [fingerprint]
   (let [number-stats (get-in fingerprint [:type :type/Number])
@@ -60,7 +65,8 @@ Rules:
          (str "\nCurrent values: " (json/encode values)))
        (when-let [known (seq (or options listed-values))]
          (str "\nKnown values of the column: " (json/encode known)))
-       "\n\nRequest: " prompt))
+       "\n\nRequest: " prompt
+       "\n\nAnswer the request with values, even when it seems unrelated to the column."))
 
 (defn- matching-values
   "The `values` that are in `known-values`, in the spelling of `known-values`. Case does not matter."
@@ -84,7 +90,9 @@ Rules:
                                prototype.db/field-values-for-filter
                                (map #(if (sequential? %) (first %) %))
                                (remove nil?))
-        listed-values (when (<= (count field-values) max-listed-values)
+        ;; Number filters compare with any number, so the known values do not limit them.
+        number?       (some-> (:base_type field) (isa? :type/Number))
+        listed-values (when (and (not number?) (<= (count field-values) max-listed-values))
                         (seq (map str field-values)))
         known-values  (or (seq options) listed-values)
         response      (metabot.self/call-llm-structured
