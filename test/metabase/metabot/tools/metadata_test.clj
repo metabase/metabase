@@ -208,7 +208,7 @@
                                 :field_id (str (mt/id :products :category))}))))))
 
 (deftest numeric-column-aliases-keep-their-identity-test
-  (mt/as-admin
+  (mt/with-test-user :crowberto
     (let [mp (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           physical-column (first (lib/returned-columns query))
@@ -397,7 +397,7 @@
                 (is (str/includes? output message))))))))))
 
 (deftest native-pivot-fields-use-saved-result-metadata-test
-  (mt/as-admin
+  (mt/with-test-user :crowberto
     (let [query (lib/native-query (mt/metadata-provider) "SELECT 17 AS \"bird_count\"")
           columns (-> query qp/process-query :data :results_metadata :columns)]
       (mt/with-temp [:model/Card {card-id :id} {:type :question :display :pivot :dataset_query query
