@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { type JSX, memo } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Icon, Stack, Text } from "metabase/ui";

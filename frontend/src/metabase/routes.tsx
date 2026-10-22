@@ -90,8 +90,10 @@ export function LegacyBrowseRedirect() {
  * them is visited.
  *
  * A `lazy` route makes that first navigation asynchronous: the router resolves
- * the module before it commits the location. It resolves the route in place, so
- * every later navigation to the query builder is synchronous again.
+ * the module before it commits the location, or gives up waiting for it and
+ * shows a spinner in the page's place (see `withChunkFallback`). It resolves the
+ * route in place, so every later navigation to the query builder is synchronous
+ * again.
  */
 const queryBuilder = () =>
   loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));

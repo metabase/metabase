@@ -441,7 +441,8 @@
   (try
     (thunk)
     (catch Throwable e
-      (if (contains? refusal-status-codes (:status-code (ex-data e)))
+      (if (and (not (contains? (ex-data e) tools.error/error-key))
+               (contains? refusal-status-codes (:status-code (ex-data e))))
         (tools.error/throw-recoverable! ::recoverable.common/not-found
                                         (cond-> {} kind (assoc :kind kind) (some? id) (assoc :id id))
                                         {:cause e})
@@ -453,10 +454,10 @@
     (with-entity {:kind :timeline :id timeline-id}
       (timeline/include-events-singular (timeline/get-timeline timeline-id)))
 
-  `entity` is `{:kind <keyword> :id <id>}`. A 403 and a 404 — the two things `api/read-check` raises
-  — both become the same recoverable error; see `recoverable.common/not-found!` for why they are not
-  distinguished. Every other exception passes through, so a genuine failure inside `body` stays
-  unrecoverable instead of being reported to the model as a missing entity."
+  `entity` is `{:kind <keyword> :id <id>}`. Both 403 and 404 errors from `api/read-check` become
+  the same recoverable error; see `recoverable.common/not-found!` for why they are not distinguished.
+  Declared tool errors and other exceptions pass through unchanged, so other failures remain
+  unrecoverable."
   {:style/indent [:defn]}
   [entity & body]
   `(do-with-entity ~entity (fn [] ~@body)))
@@ -484,7 +485,7 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error entity-type entity-id]} (ex-data e)
+      (let [{:keys [agent-error? status-code error entity-type entity-id source-card source-card-type]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
@@ -493,11 +494,17 @@
            code
            (cond-> {:message (or (ex-message e) "")}
              entity-type       (assoc :entity-type entity-type)
-             (some? entity-id) (assoc :entity-id entity-id))
+             (some? entity-id) (assoc :entity-id entity-id)
+             source-card       (assoc :source-card source-card
+                                      :source-card-type source-card-type))
            {:cause e})
 
           (contains? refusal-status-codes status-code)
           (tools.error/throw-recoverable! ::recoverable.common/not-found {} {:cause e})
+
+          ;; Tools that still use the legacy adapter expose any message marked with `:agent-error?`.
+          agent-error?
+          (throw (ex-info (ex-message e) (dissoc (ex-data e) :agent-error?) e))
 
           :else
           (throw e))))))
@@ -513,9 +520,8 @@
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;
   - a 403 or 404 becomes `recoverable.common/not-found!`;
-  - anything else passes through and is therefore unrecoverable, including an `:error` code with no
-    declaration. `metabase.metabot.tools.recoverable.pipeline-test` scans the pipeline sources and
-    fails when a code has none, so a new pipeline error cannot quietly start ending turns."
+  - anything else is unrecoverable and loses its `:agent-error?` flag, which prevents legacy tools
+    from exposing its message. This includes `:error` codes with no declaration."
   {:style/indent [:defn]}
   [& body]
   `(do-with-pipeline-errors (fn [] ~@body)))
