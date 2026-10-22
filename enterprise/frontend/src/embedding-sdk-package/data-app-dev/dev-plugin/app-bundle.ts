@@ -35,6 +35,12 @@ export function createAppBundle({
         mode,
         configFile: false,
         define: getDataAppDefine(mode),
+        // The comment dock maps a selected element back to the JSX that
+        // rendered it through React's `_debugSource`, which only the dev JSX
+        // transform stamps onto elements. It applies to the preview alone:
+        // `npm run build` never comes through here, so the bundle Metabase
+        // serves is unchanged. esbuild ignores it for the classic transform.
+        esbuild: { jsxDev: mode !== "production" },
         logLevel: "warn",
         plugins: dataAppBuildPlugins(),
         build: {

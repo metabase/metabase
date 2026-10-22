@@ -1,0 +1,273 @@
+/* Dev-only chrome, like the diagnostics toolbar: its own palette, so it looks
+   the same whatever the app being previewed is themed as. It sits bottom-left to
+   stay clear of the diagnostics toolbar's bottom-right button and dock. */
+
+.CommentDock {
+  --comment-brand: #509ee3;
+  --comment-accent: #f2a86f;
+  --comment-border: #eeecec;
+  --comment-surface: #fff;
+  --comment-surface-muted: #f9fbfc;
+  --comment-text: #4c5773;
+  --comment-text-muted: #696e7b;
+  --comment-text-on-brand: #fff;
+  --comment-shadow: rgb(0 0 0 / 13%);
+
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-size: 13px;
+  color: var(--comment-text);
+}
+
+.Buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.Toggle {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--comment-text-on-brand);
+  background: var(--comment-brand);
+  box-shadow: 0 2px 8px var(--comment-shadow);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.ToggleActive {
+  background: var(--comment-accent);
+}
+
+.ToggleSecondary {
+  color: var(--comment-text);
+  background: var(--comment-surface);
+}
+
+/* Covers the preview while a target is being chosen. `elementsFromPoint` sees
+   through it, so it can stay interactive and still not hide the app. */
+.Overlay {
+  position: fixed;
+  inset: 0;
+  cursor: crosshair;
+  background: rgb(80 158 227 / 4%);
+}
+
+.Hint {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--comment-text);
+  color: var(--comment-text-on-brand);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* The box drawn around what is hovered, or around the frozen selection. */
+.Highlight {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid var(--comment-brand);
+  border-radius: 3px;
+  background: rgb(80 158 227 / 8%);
+}
+
+.HighlightLabel {
+  position: absolute;
+  left: 0;
+  top: -20px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--comment-brand);
+  color: var(--comment-text-on-brand);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.Marker {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--comment-surface);
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--comment-accent);
+  color: var(--comment-text-on-brand);
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 4px var(--comment-shadow);
+}
+
+.Card {
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--comment-border);
+  border-radius: 10px;
+  background: var(--comment-surface);
+  box-shadow: 0 8px 24px var(--comment-shadow);
+}
+
+/* Anchored to the selection rather than to the dock, so the author reads the
+   comment next to the thing it is about. Position comes from component state. */
+.Composer {
+  position: fixed;
+}
+
+.CardHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.CardTitle {
+  font-weight: 700;
+}
+
+.Spacer {
+  flex: 1;
+}
+
+.Target {
+  margin-bottom: 8px;
+  word-break: break-word;
+  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--comment-text-muted);
+}
+
+.Textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px;
+  border: 1px solid var(--comment-border);
+  border-radius: 6px;
+  resize: vertical;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.Row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.Checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--comment-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.Primary,
+.Secondary {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.Primary {
+  color: var(--comment-text-on-brand);
+  background: var(--comment-brand);
+}
+
+.Primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.Secondary {
+  color: var(--comment-text);
+  background: var(--comment-surface);
+  border-color: var(--comment-border);
+}
+
+.Comment {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--comment-border);
+}
+
+.CommentResolved {
+  opacity: 0.6;
+}
+
+.CommentBody {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.CommentActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.Link {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--comment-brand);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.AgentRun {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--comment-surface-muted);
+  font-size: 11px;
+  color: var(--comment-text-muted);
+}
+
+.AgentOutput {
+  max-height: 160px;
+  margin: 4px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.Error {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: hsl(0deg 76% 97%);
+  color: #e35050;
+  font-size: 12px;
+}
+
+.Empty {
+  padding: 8px 0;
+  color: var(--comment-text-muted);
+}

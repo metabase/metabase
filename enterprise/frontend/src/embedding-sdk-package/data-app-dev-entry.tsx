@@ -1,6 +1,8 @@
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
+  CommentDock,
+  DEV_CHROME_ATTRIBUTE,
   DataAppDevProvider,
   DevToolbar,
   createDataAppSandbox,
@@ -18,9 +20,12 @@ import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
 import * as ReactJsxRuntime from "react/jsx-runtime";
 import {
   allowedHosts,
+  appRoot as appDirectory,
   appSlug,
   buildIdHeader,
   bundleUrl,
+  commentsChangedEvent,
+  devToken,
   diagnosticsChangedEvent,
   rebuiltEvent,
   sdkVersion,
@@ -47,19 +52,35 @@ sdkCallCapture.install(authConfig.metabaseInstanceUrl);
 
 const hot = import.meta.hot;
 
-const subscribeToDiagnostics = hot
-  ? (onChange: () => void) => {
-      hot.on(diagnosticsChangedEvent, onChange);
+const subscribeTo = (event: string) =>
+  hot
+    ? (onChange: () => void) => {
+        hot.on(event, onChange);
 
-      return () => hot.off(diagnosticsChangedEvent, onChange);
-    }
-  : undefined;
+        return () => hot.off(event, onChange);
+      }
+    : undefined;
 
+// Dev chrome mounts in its own roots, outside the app's: a rebuild re-renders
+// the app without disturbing the toolbar or a comment being written.
 const toolbarRoot = document.createElement("div");
 
+toolbarRoot.setAttribute(DEV_CHROME_ATTRIBUTE, "true");
 document.body.appendChild(toolbarRoot);
 createRoot(toolbarRoot).render(
-  <DevToolbar subscribe={subscribeToDiagnostics} />,
+  <DevToolbar subscribe={subscribeTo(diagnosticsChangedEvent)} />,
+);
+
+const commentDockRoot = document.createElement("div");
+
+document.body.appendChild(commentDockRoot);
+createRoot(commentDockRoot).render(
+  <CommentDock
+    appSlug={appSlug}
+    appRoot={appDirectory}
+    devToken={devToken}
+    subscribe={subscribeTo(commentsChangedEvent)}
+  />,
 );
 
 const root = document.getElementById("root");
