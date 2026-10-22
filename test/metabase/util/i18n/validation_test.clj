@@ -96,6 +96,25 @@
     ""                   nil
     nil                  nil))
 
+(deftest ^:parallel regex-message-format-error-test
+  (are [msgid s expected] (= expected (validation/regex-message-format-error msgid s))
+    "[Q]Q YYYY" "[Q]Q YYYY"   nil
+    "[Q]Q YYYY" "[T]Q YYYY"   nil
+    "[Q]Q YYYY" "Q[Kw.] YYYY" nil
+    "[Q]Q YYYY" "Q YYYY"      "expected `[xx]`"
+    "[Q]Q YYYY" "[T]T YYYY"   "expected `Q`"
+    "[Q]Q YYYY" "[C]Q yyyy"   "expected `YYYY`"
+
+    "[Q]Q"      "[Q]Q"        nil
+    "[Q]Q"      "[K]Q"        nil
+    "[Q]Q"      "Q[T]"        nil
+    "[Q]Q"      "QQ"          "expected `[xx]`"
+    "[Q]Q"      "T[T]"        "expected `Q`"
+
+    "something-else" nil   nil
+    "something-else" ""    nil
+    "something-else" "foo" nil))
+
 (deftest ^:parallel arg-count-mismatch-test
   (testing "string input (macro-time path — parses format string)"
     (is (nil? (validation/arg-count-mismatch "{0} {1}" 2))
