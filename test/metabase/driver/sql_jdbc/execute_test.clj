@@ -16,7 +16,7 @@
    [metabase.util.malli.registry :as mr])
   (:import
    (java.sql Connection DatabaseMetaData SQLException SQLNonTransientConnectionException SQLRecoverableException
-             SQLTimeoutException)
+             SQLTimeoutException SQLTransientConnectionException)
    (javax.sql DataSource)))
 
 (deftest ^:parallel ConnectionOptions-test
@@ -363,9 +363,11 @@
           error-type (fn [e]
                        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw e))]
                          (:error_type (qp/process-query query))))]
-      (testing "A database error raised while rows are read is an invalid query"
+      (testing "A database error raised while rows are read is an invalid query, whatever its exception class"
         (doseq [e [(SQLException. "Division by zero" "22012")
-                   (SQLException. "malformed JSON")]]
+                   (SQLException. "malformed JSON")
+                   (SQLTransientConnectionException. "Field 'a' can't be set for JSON_TABLE 'jt'." "HY000" 4176)
+                   (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]]
           (testing (ex-message e)
             (is (= :invalid-query (error-type e))))))
       (testing "A failed connection, a canceled or timed-out statement or a transient failure is a QP error"

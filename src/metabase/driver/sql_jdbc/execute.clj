@@ -34,7 +34,7 @@
    (com.mchange.v2.c3p0 PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException SQLFeatureNotSupportedException
-             SQLNonTransientConnectionException SQLRecoverableException SQLTransientException Statement Types)
+             SQLNonTransientConnectionException SQLRecoverableException SQLTimeoutException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
@@ -887,17 +887,26 @@
              (assoc :query/query-canceled? true))
            e))
 
+(def ^:private connection-or-timeout-exception-classes
+  "JDBC exception classes that drivers throw for a failed connection or a timeout, with SQLStates of their own. Not
+  `SQLTransientConnectionException`: MariaDB Connector/J throws it for every SQLState class it doesn't map, `HY000`
+  errors in the query included."
+  [SQLTimeoutException SQLNonTransientConnectionException SQLRecoverableException])
+
 (defn- error-in-query?
   "Whether `e`, raised while reading rows, is the database rejecting the query.
-  A failed connection, a canceled or timed-out statement and a transient failure such as a deadlock are not. Drivers
-  report those with a JDBC exception class, a SQLState class (`08` connection exception, `40` transaction rollback,
-  `57` operator intervention) or a vendor code that [[driver/query-canceled?]] recognizes."
+  A canceled or timed-out statement, a failed connection and a rolled-back transaction are not. A cancel that
+  [[driver/query-canceled?]] recognizes is never one. Otherwise the SQLState class decides when it can: `08`
+  (connection exception), `40` (transaction rollback) and `57` (operator intervention) are not errors in the query,
+  while `0A` and the `2x`, `3x` and `4x` classes are. For any other SQLState, or none,
+  [[connection-or-timeout-exception-classes]] decide."
   [driver ^SQLException e]
-  (not (or (instance? SQLTransientException e)
-           (instance? SQLNonTransientConnectionException e)
-           (instance? SQLRecoverableException e)
-           (some->> (.getSQLState e) (re-find #"^(?:08|40|57)"))
-           (driver/query-canceled? driver e))))
+  (let [sql-state (str (.getSQLState e))]
+    (cond
+      (driver/query-canceled? driver e)    false
+      (re-find #"^(?:08|40|57)" sql-state) false
+      (re-find #"^(?:0A|[234])" sql-state) true
+      :else                                (not-any? #(instance? % e) connection-or-timeout-exception-classes))))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
