@@ -367,7 +367,7 @@
                                   {:agent-error? true :error error :source-card 12 :source-card-type "model"}))))))
   (testing "an ambiguous foreign key on a `source-table:` stage still points at the table's fields"
     (is (=? {:recovery [{:uses #{"read_resource"}
-                         :text (str "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source "
+                         :text (str "Call `read_resource` with `metabase://table/3/fields` for the source "
                                     "table to list the available foreign-key columns.")}]}
             (pipeline-failure "Two foreign keys reach the table."
                               {:agent-error? true :error :ambiguous-fk :source-table 3})))))
