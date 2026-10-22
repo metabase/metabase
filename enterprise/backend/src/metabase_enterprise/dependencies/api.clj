@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.schema :as deps.schema]
    [metabase-enterprise.sandbox.schema]
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
@@ -53,7 +54,13 @@
    :measure   [:name :description :created_at :creator :creator_id :table :table_id]
    :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]})
 
-(defn- format-subentity [entity]
+(mr/def ::data-value
+  [:schema {::mr/deliberately-open true, :description "any column or hydrated value of a dependency-tracked entity"}
+   :any])
+
+(mu/defn- format-subentity :- ::data-value
+  "`entity` slimmed to the keys the response shows when it is a hydrated Collection, Dashboard, or Document."
+  [entity :- ::data-value]
   (case (t2/model entity)
     :model/Collection (select-keys entity [:id :name :authority_level :is_personal :namespace :location])
     :model/Dashboard  (select-keys entity [:id :name])
@@ -65,15 +72,31 @@
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure :action]
    ::deps.dependency-types/entity-id])
 
+(mr/def ::normalized-finding-error
+  "The slim `{:type :detail}` shape [[normalize-finding-error]] produces from an AnalysisFindingError."
+  [:map {:closed true}
+   [:type ::lib.schema.validate/validate-error-type]
+   [:detail {:optional true} [:maybe :string]]])
+
 (mr/def ::dependent-error
   "One entry of `::base-entity`'s `:dependents_errors`: either the slim `{:type :detail}` shape
   [[normalize-finding-error]] produces for an entity's own errors (`node-errors`), or the raw AnalysisFindingError row
   `node-downstream-errors` keeps so callers can tell which downstream entity each error belongs to."
   [:or
-   [:map {:closed true}
-    [:type ::lib.schema.validate/validate-error-type]
-    [:detail {:optional true} [:maybe :string]]]
+   ::normalized-finding-error
    ::analysis-finding-error/analysis-finding-error])
+
+(mr/def ::nodes-by-type
+  "Entity ids grouped by entity type."
+  [:map-of ::deps.dependency-types/dependency-types [:sequential ::deps.dependency-types/entity-id]])
+
+(mr/def ::node->usages
+  "The dependent counts of each node."
+  [:map-of ::deps.schema/node ::usages])
+
+(mr/def ::node->errors
+  "The errors of each node."
+  [:map-of ::deps.schema/node [:set ::dependent-error]])
 
 (mr/def ::base-entity
   [:map
@@ -83,10 +106,10 @@
    [:dependents_count  [:maybe [:ref ::usages]]]
    [:dependents_errors {:optional true} [:set [:ref ::dependent-error]]]])
 
-(defn- fields-for [entity-key]
-  ;; these specs should really use something like
-  #_[:data [:select-keys [:ref :blah/table] (entity-keys :table)]]
-  ;; but :select-keys seems to mess up open-api spec generation
+(mu/defn- fields-for :- [:cat [:= :map] [:* [:tuple :keyword [:map {:closed true} [:optional [:= true]]] [:= :any]]]]
+  "An open map schema with every key of `entity-key`'s `entity-keys` optional; not a `:select-keys` schema, which
+  breaks the OpenAPI spec generation."
+  [entity-key :- (into [:enum] (keys entity-keys))]
   (into [:map]
         (map (fn [key] [key {:optional true} :any]))
         (entity-keys entity-key)))
@@ -174,6 +197,26 @@
    [:measure   [:ref ::measure-entity]]
    [:action    [:ref ::action-entity]]])
 
+(mr/def ::entity-data
+  "The `:data` of an `::entity` as the helpers that filter and sort entities read it: the keys of `entity-keys`, each
+  optional."
+  (into [:map {:closed true}]
+        (map (fn [k]
+               [k {:optional true} (case k
+                                     (:name :display_name) [:maybe :string]
+                                     :view_count           [:maybe :int]
+                                     ::data-value)]))
+        (distinct (mapcat val entity-keys))))
+
+(mr/def ::entity-node
+  "An `::entity`, or a `::broken-dependent-entity`, as the helpers that filter and sort entities read it."
+  [:map {:closed true}
+   [:id                ::deps.dependency-types/entity-id]
+   [:type              ::deps.dependency-types/dependency-types]
+   [:data              ::entity-data]
+   [:dependents_count  {:optional true} [:maybe [:ref ::usages]]]
+   [:dependents_errors {:optional true} [:set [:ref ::dependent-error]]]])
+
 (def ^:private Entity
   "Any dependency-tracked entity `entity-value` accepts, hydrated the way `hydrate-entities` hydrates it."
   [:or
@@ -191,12 +234,8 @@
 (mu/defn- entity-value :- ::entity
   [entity-type :- ::deps.dependency-types/dependency-types
    {:keys [id] :as entity} :- Entity
-   usages :- [:maybe [:map-of
-                      [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
-                      ::usages]]
-   errors :- [:maybe [:map-of
-                      [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
-                      [:set ::dependent-error]]]]
+   usages :- [:maybe ::node->usages]
+   errors :- [:maybe ::node->errors]]
   (cond-> {:id id
            :type entity-type
            :data (-> (select-keys entity (entity-keys entity-type))
@@ -233,34 +272,55 @@
    :measure   [:id :name :description :created_at :creator_id :table_id]
    :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]})
 
-(defn- current-user-visibility
+(mr/def ::include-archived-items
+  [:enum :exclude :all :only])
+
+(mr/def ::visible-opts
+  "The `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`."
+  [:map {:closed true}
+   [:user-id                ::lib.schema.id/user]
+   [:is-superuser?          {:optional true} [:maybe :boolean]]
+   [:is-data-analyst?       {:optional true} [:maybe :boolean]]
+   [:include-archived-items {:optional true} ::include-archived-items]])
+
+(mu/defn- current-user-visibility :- ::visible-opts
   "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`.
 
   Analyst-wide visibility comes with the role rather than a permissions graph, so it pauses while the
   `advanced-permissions` feature is unavailable (see [[api/entitled-data-analyst?]])."
-  [{:keys [include-archived-items]}]
+  [{:keys [include-archived-items]} :- [:maybe [:map {:closed true}
+                                                [:include-archived-items {:optional true}
+                                                 [:maybe ::include-archived-items]]]]]
   (cond-> {:user-id          api/*current-user-id*
            :is-superuser?    api/*is-superuser?*
            :is-data-analyst? (api/entitled-data-analyst?)}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
-(defn- readable-graph-dependencies
+(mu/defn- readable-graph-dependencies :- ::graph/graph
+  "The upstream dependency graph, restricted to the entities the current user can see."
   ([]
    (readable-graph-dependencies nil))
-  ([opts]
+  ([opts :- [:maybe [:map {:closed true}
+                     [:include-archived-items {:optional true} [:maybe ::include-archived-items]]]]]
    (dependency/filtered-graph-dependencies {:visible (current-user-visibility opts)})))
 
-(defn- readable-graph-dependents
+(mu/defn- readable-graph-dependents :- ::graph/graph
+  "The downstream dependents graph, restricted to the entities the current user can see, and to broken ones when
+  `broken`."
   ([]
    (readable-graph-dependents nil))
-  ([{:keys [include-archived-items broken] :or {include-archived-items :exclude}}]
+  ([{:keys [include-archived-items broken] :or {include-archived-items :exclude}}
+    :- [:maybe [:map {:closed true}
+                [:include-archived-items {:optional true} [:maybe ::include-archived-items]]
+                [:broken                 {:optional true} [:maybe :boolean]]]]]
    (dependency/filtered-graph-dependents
     (cond-> {:visible (current-user-visibility {:include-archived-items include-archived-items})}
       broken (assoc :broken? true)))))
 
-(defn- node-usages
-  "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
-  [graph nodes]
+(mu/defn- node-usages :- ::node->usages
+  "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`."
+  [graph :- ::graph/graph
+   nodes :- [:sequential ::deps.schema/node]]
   (let [children-map (graph/children-of graph nodes)
         all-cards (->> (vals children-map)
                        (apply concat)
@@ -279,18 +339,19 @@
                                  {dependency-type 1})))
                         (apply merge-with +))))))
 
-(defn- normalize-finding-error
-  [{:keys [error_type error_detail]}]
+(mu/defn- normalize-finding-error :- ::normalized-finding-error
+  "The error type and detail of an AnalysisFindingError."
+  [{:keys [error_type error_detail]} :- ::analysis-finding-error/analysis-finding-error]
   (cond-> {:type error_type}
     error_detail (assoc :detail error_detail)))
 
-(defn- node-downstream-errors
+(mu/defn- node-downstream-errors :- [:maybe ::node->errors]
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
    Filters out errors where the analyzed entity is not visible to the current user.
    Unlike `node-errors` which fetches errors on an entity, this fetches errors that
    the entity is causing in other entities that depend on it. Keeps the raw AnalysisFindingError shape (unlike
    `node-errors`'s normalized one) so callers can tell which downstream entity each error belongs to."
-  [nodes-by-type]
+  [nodes-by-type :- ::nodes-by-type]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
               (let [finding-errors (dependencies.db/finding-errors-from-sources
@@ -301,11 +362,11 @@
          (into {} (mapcat errors-by-source-type-and-id))
          not-empty)))
 
-(defn- node-errors
+(mu/defn- node-errors :- [:maybe ::node->errors]
   "Fetches and normalizes AnalysisFindingErrors for the given entities.
    Filters out errors where the source entity is not visible to the current user.
    Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
-  [nodes-by-type]
+  [nodes-by-type :- ::nodes-by-type]
   (letfn [(errors-by-entity-type-and-id [[type ids]]
             (when (seq ids)
               (let [finding-errors (dependencies.db/finding-errors-for-entities-with-visible-sources
@@ -316,7 +377,10 @@
          (into {} (mapcat errors-by-entity-type-and-id))
          not-empty)))
 
-(defn- hydrate-entities [entity-type entities]
+(mu/defn- hydrate-entities :- [:sequential Entity]
+  "`entities` of the entity type `entity-type`, hydrated with what the dependency graph responses show."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entities    :- [:sequential Entity]]
   (case entity-type
     :card (-> entities
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
@@ -344,21 +408,27 @@
                         (collection.root/root-collection-with-ui-details
                          (dependencies.db/action-root-namespace (nil? (:model_id %)))))))))
 
-(defn- fetch-and-hydrate-nodes
+(mu/defn- fetch-and-hydrate-nodes :- [:map-of ::deps.schema/node Entity]
   "Fetches and hydrates entities for the given nodes.
    Returns a map from [entity-type entity-id] -> hydrated entity."
-  [nodes-by-type]
+  [nodes-by-type :- ::nodes-by-type]
   (into {}
         (mapcat (fn [[entity-type entity-ids]]
                   (when (seq entity-ids)
                     (let [fields (entity-select-fields entity-type)]
-                      (->> (dependencies.db/instances-with-columns entity-type fields entity-ids)
+                      (->> (dependencies.db/entities-with-columns entity-type fields entity-ids)
                            (hydrate-entities entity-type)
                            (map (fn [entity]
                                   [[entity-type (:id entity)] entity])))))))
         nodes-by-type))
 
-(defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
+(mu/defn- expanded-nodes :- [:sequential ::entity]
+  "The `::entity` of each of `nodes` the current user can see, with its dependent counts from `downstream-graph`, and
+  its errors when `include-errors?`."
+  [downstream-graph          :- ::graph/graph
+   nodes                     :- [:sequential ::deps.schema/node]
+   {:keys [include-errors?]} :- [:map {:closed true}
+                                 [:include-errors? :boolean]]]
   (let [usages (node-usages downstream-graph nodes)
         nodes-by-type (-> (group-by first nodes)
                           (update-vals #(map second %)))
@@ -394,8 +464,8 @@
         upstream-graph (readable-graph-dependencies {:include-archived-items :all})
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
-        nodes (into (set starting-nodes)
-                    (graph/transitive upstream-graph starting-nodes))
+        nodes (vec (into (set starting-nodes)
+                         (graph/transitive upstream-graph starting-nodes)))
         edges (graph/edges-between edge-graph nodes)]
     {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
      :edges edges}))
@@ -408,18 +478,18 @@
   "Valid sort columns for the /graph/dependents endpoint."
   #{:name :location :view-count})
 
-(defn- entity-name
+(mu/defn- entity-name :- [:maybe :string]
   "Returns the name string for an entity based on its type. Might return nil."
-  [entity]
+  [entity :- ::entity-node]
   (let [data (:data entity)]
     (case (:type entity)
       :table   (:display_name data)
       :sandbox nil
       (:name data))))
 
-(defn- entity-location
+(mu/defn- entity-location :- [:maybe :string]
   "Returns the location string for an entity based on its type. Might return nil."
-  [entity]
+  [entity :- ::entity-node]
   (let [data (:data entity)]
     (case (:type entity)
       :card                                      (or (-> data :dashboard :name)
@@ -431,27 +501,31 @@
       (:segment :measure)                        (-> data :table :display_name)
       nil)))
 
-(defn- string-matches-query?
+(mu/defn- string-matches-query? :- [:maybe :boolean]
   "Returns true if `s` is a string and its lower-case version contains the string `query`.
   `query` is expected to be lower-case."
-  [s query]
+  [s     :- [:maybe :string]
+   query :- :string]
   (some-> s u/lower-case-en (str/includes? query)))
 
-(defn- entity-matches-query?
+(mu/defn- entity-matches-query? :- [:maybe :boolean]
   "Returns true if `entity`'s name or location contains the string `query` (case-insensitive)."
-  [entity query]
+  [entity :- ::entity-node
+   query  :- :string]
   (let [q (u/lower-case-en query)]
     (or (string-matches-query? (entity-name entity) q)
         (string-matches-query? (entity-location entity) q))))
 
-(defn- in-personal-collection?
+(mu/defn- in-personal-collection? :- [:maybe :boolean]
   "Returns true if `entity` is in a personal collection."
-  [entity]
+  [entity :- ::entity-node]
   (get-in entity [:data :collection :is_personal]))
 
-(defn- sort-dependents
+(mu/defn- sort-dependents :- [:sequential ::entity-node]
   "Sort `entities` by `sort-column` in `sort-direction`."
-  [entities sort-column sort-direction]
+  [entities       :- [:sequential ::entity-node]
+   sort-column    :- (into [:enum] dependents-sort-columns)
+   sort-direction :- (into [:enum] sort-directions)]
   (let [key-fn  (case sort-column
                   :name       #(some-> (entity-name %) u/lower-case-en)
                   :location   #(some-> (entity-location %) u/lower-case-en)
@@ -503,8 +577,8 @@
          sort-direction :asc}} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (let [downstream-graph (graph/cached-graph (readable-graph-dependents {:broken broken}))
-        nodes (-> (graph/children-of downstream-graph [[type id]])
-                  (get [type id]))
+        nodes (vec (-> (graph/children-of downstream-graph [[type id]])
+                       (get [type id])))
         dep-types-set (cond
                         (nil? dependent-types) deps.dependency-types/dependency-types
                         (sequential? dependent-types) (set dependent-types)
@@ -537,18 +611,100 @@
   "Valid sort columns for /graph/broken and /graph/unreferenced endpoints."
   #{:name :location :dependents-with-errors :dependents-errors})
 
+(def ^:private types-arg
+  [:or
+   ::deps.dependency-types/dependency-types
+   [:sequential ::deps.dependency-types/dependency-types]])
+
+(def ^:private card-types-arg
+  [:or
+   (ms/enum-decode-keyword lib.schema.metadata/card-types)
+   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]])
+
 (def ^:private dependency-items-args
   [:map {:closed true}
-   [:types {:optional true} [:or
-                             ::deps.dependency-types/dependency-types
-                             [:sequential ::deps.dependency-types/dependency-types]]]
-   [:card-types {:optional true} [:or
-                                  (ms/enum-decode-keyword lib.schema.metadata/card-types)
-                                  [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
+   [:types {:optional true} types-arg]
+   [:card-types {:optional true} card-types-arg]
    [:query {:optional true} :string]
    [:include-personal-collections {:optional true} :boolean]
    [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
    [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
+
+(mu/defn- dependency-item-params :- ::dependencies.db/dependency-item-filter-params
+  [query-type :- [:enum :unreferenced :breaking]
+   {:keys [types card-types query include-personal-collections sort-column]
+    :or {card-types (vec lib.schema.metadata/card-types)
+         include-personal-collections false
+         sort-column :name}} :- [:maybe dependency-items-args]]
+  (let [types (or types (case query-type
+                          :unreferenced (vec deps.dependency-types/dependency-types)
+                          :breaking [:card :table]))
+        selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes have no name or location to search.
+                         query (remove #{:sandbox}))]
+    (merge (current-user-visibility nil)
+           {:query-type query-type
+            :entity-types selected-types
+            :card-types (if (sequential? card-types) card-types [card-types])
+            :search-text query
+            :include-personal-collections? include-personal-collections
+            :sort-column sort-column})))
+
+(mu/defn- dependency-item-page-ids
+  "A page of [[dependencies.db/dependency-item-ids]] for `item-params`, sorted in the request's `sort-direction`
+  (default `:asc`)."
+  [item-params :- ::dependencies.db/dependency-item-filter-params
+   {:keys [sort-direction] :or {sort-direction :asc}} :- [:maybe dependency-items-args]
+   offset :- ms/IntGreaterThanOrEqualToZero
+   limit :- ms/PositiveInt]
+  (dependencies.db/dependency-item-ids
+   (assoc item-params :sort-direction sort-direction :offset offset :limit limit)))
+
+(def ^:private counted-list-args
+  "The list args `/counts` accepts for each list, prefixed with the list's query type."
+  {:types                        types-arg
+   :card-types                   card-types-arg
+   :include-personal-collections :boolean})
+
+(mu/defn- counts-arg-key :- :keyword
+  "The `/counts` param naming `query-type`'s list `arg`, e.g. `:breaking-types`."
+  [query-type :- [:enum :breaking :unreferenced]
+   arg        :- :keyword]
+  (keyword (str (name query-type) "-" (name arg))))
+
+(def ^:private counts-args
+  (into [:map {:closed true}]
+        (for [query-type [:breaking :unreferenced]
+              [arg schema] counted-list-args]
+          [(counts-arg-key query-type arg) {:optional true} schema])))
+
+(mu/defn- counted-list-params :- dependency-items-args
+  "The `query-type` list's args among the prefixed `/counts` `params`."
+  [query-type :- [:enum :breaking :unreferenced]
+   params     :- [:maybe counts-args]]
+  (into {}
+        (keep (fn [arg]
+                (let [value (get params (counts-arg-key query-type arg))]
+                  (when (some? value)
+                    [arg value]))))
+        (keys counted-list-args)))
+
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:breaking nat-int?]
+                                           [:unreferenced nat-int?]]
+  "Returns the `total` of the `/graph/breaking` and `/graph/unreferenced` lists in one request.
+
+   Accepts each list's `types`, `card-types`, and `include-personal-collections` params, prefixed with the list's
+   name (e.g. `breaking-types`, `unreferenced-include-personal-collections`). Omitted params use the list's
+   defaults."
+  [_route-params
+   params :- counts-args
+   _body _request]
+  (into {}
+        (map (fn [query-type]
+               [query-type (dependencies.db/dependency-item-count
+                            (dependency-item-params query-type (counted-list-params query-type params)))]))
+        [:breaking :unreferenced]))
 
 (def ^:private dependency-items-response
   [:map
@@ -577,29 +733,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
-    :or {types (vec deps.dependency-types/dependency-types)
-         card-types (vec lib.schema.metadata/card-types)
-         include-personal-collections false
-         sort-column :name
-         sort-direction :asc}} :- dependency-items-args]
+   params :- dependency-items-args
+   _body _request]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
-                         query (remove #{:sandbox}))
-        card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
-                           {:query-type :unreferenced
-                            :entity-types selected-types
-                            :card-types card-types
-                            :search-text query
-                            :include-personal-collections? include-personal-collections
-                            :sort-column sort-column
-                            :sort-direction sort-direction
-                            :offset offset
-                            :limit limit})
-        all-ids (dependencies.db/dependency-item-ids item-params)
+        item-params (dependency-item-params :unreferenced params)
+        all-ids (dependency-item-page-ids item-params params offset limit)
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         total (dependencies.db/dependency-item-count item-params)]
     {:data   (expanded-nodes downstream-graph all-ids {:include-errors? false})
@@ -628,29 +767,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
-    :or {types [:card :table]
-         card-types (vec lib.schema.metadata/card-types)
-         include-personal-collections false
-         sort-column :name
-         sort-direction :asc}} :- dependency-items-args]
+   params :- dependency-items-args
+   _body _request]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
-                         query (remove #{:sandbox}))
-        card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
-                           {:query-type :breaking
-                            :entity-types selected-types
-                            :card-types card-types
-                            :search-text query
-                            :include-personal-collections? include-personal-collections
-                            :sort-column sort-column
-                            :sort-direction sort-direction
-                            :offset offset
-                            :limit limit})
-        all-ids (dependencies.db/dependency-item-ids item-params)
+        item-params (dependency-item-params :breaking params)
+        all-ids (dependency-item-page-ids item-params params offset limit)
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         nodes-by-type (u/group-by first second all-ids)
         downstream-errors (node-downstream-errors nodes-by-type)
@@ -658,7 +780,7 @@
         usages (node-usages downstream-graph all-ids)
         fetch-entity (fn [entity-type entity-id]
                        (let [fields (entity-select-fields entity-type)]
-                         (dependencies.db/instance-with-columns entity-type fields entity-id)))
+                         (dependencies.db/entity-with-columns entity-type fields entity-id)))
         data (into []
                    (keep (fn [[entity-type entity-id]]
                            (when-let [entity (fetch-entity entity-type entity-id)]
@@ -742,10 +864,10 @@
 
 (api.macros/defendpoint :get "/backfill-status" :- [:map
                                                     [:complete :boolean]]
-  "Returns whether the dependency backfill has pending work.
-  `complete` is true when there are no stale or outdated entities awaiting processing."
+  "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers."
   [_route-params _query-params]
-  {:complete (not (deps.dependency-status/has-stale-or-outdated?))})
+  (api/check-superuser)
+  {:complete (not (deps.dependency-status/has-pending-entities?))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

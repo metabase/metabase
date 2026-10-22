@@ -328,13 +328,39 @@ describe("dataAppSandboxDevPlugin", () => {
       expect(mockedBuild).toHaveBeenCalledTimes(3);
     });
 
-    it("ignores changes outside src/", async () => {
+    it("rebuilds when a query or action definition changes", async () => {
+      const { server } = await setup();
+
+      await server.watcher.emit(
+        "all",
+        "change",
+        path.join("/app", "queries", "orders.query.ts"),
+      );
+      await server.watcher.emit(
+        "all",
+        "change",
+        path.join("/app", "actions", "orders.action.ts"),
+      );
+
+      expect(mockedBuild).toHaveBeenCalledTimes(3);
+      expect(server.ws.send).toHaveBeenCalledWith({
+        type: "custom",
+        event: DATA_APP_REBUILT_EVENT,
+      });
+    });
+
+    it("ignores changes outside the app's src/, queries/, and actions/", async () => {
       const { server } = await setup();
 
       await server.watcher.emit(
         "all",
         "change",
         path.join("/app", "README.md"),
+      );
+      await server.watcher.emit(
+        "all",
+        "change",
+        path.join("/app", "node_modules", "some-package", "src", "index.js"),
       );
 
       expect(mockedBuild).toHaveBeenCalledTimes(1);

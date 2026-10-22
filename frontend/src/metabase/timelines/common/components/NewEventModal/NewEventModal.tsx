@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 
 import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";

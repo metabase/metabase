@@ -16,6 +16,7 @@ describe("scenarios > data apps > repo sync", () => {
 
   it("materializes each app with its bundle, then removes an app whose files are removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
+    H.updateSetting("remote-sync-custom-collections-enabled", true);
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");

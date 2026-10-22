@@ -5,9 +5,9 @@ import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/Sidebar";
+import { SidebarLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
-
-import { DataAppNavbarLink } from "./DataAppNavbarLink";
 
 export function DataAppsNavbarSection({
   onItemSelect,
@@ -30,11 +30,16 @@ export function DataAppsNavbarSection({
         aria-label={t`Data apps`}
       >
         {dataApps.map((dataApp) => (
-          <DataAppNavbarLink
+          <SidebarLink
             key={dataApp.name}
-            dataApp={dataApp}
-            onItemSelect={onItemSelect}
-          />
+            icon="app"
+            onClick={onItemSelect}
+            rel="noopener noreferrer"
+            target="_blank"
+            url={Urls.dataApp(dataApp.name)}
+          >
+            {dataApp.display_name}
+          </SidebarLink>
         ))}
       </CollapseSection>
     </SidebarSection>
