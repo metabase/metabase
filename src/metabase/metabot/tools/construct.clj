@@ -672,9 +672,8 @@
                 table-name)))))
 
 (defn- wrong-source-field-error
-  "The agent error for `field-ref`, whose column is on table `table-id` while its `source-field` points at table
-  `fk-table-id`, or at no table when it is not a foreign key."
-  [metadata-provider [_ {:keys [source-field]} target] table-id fk-table-id columns]
+  "Return an agent error for a field reached through an invalid foreign key."
+  [metadata-provider [_ {:keys [source-field source-field-join-alias]} target] table-id fk-table-id columns]
   (let [table-name    (pr-str (:name (lib.metadata.protocols/table metadata-provider table-id)))
         ;; The metadata provider skips permission checks, so name the key's table only if the user may query it
         fk-table-name (when (and fk-table-id (contains? (metabot.perms/queryable-table-ids #{fk-table-id}) fk-table-id))
@@ -689,8 +688,11 @@
                       (if (and fk-table-name
                                (= 1 (count (filter #(= table-id (:target-table-id %))
                                                    (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)))))
-                        (format "%s has a foreign key to %s: join %s explicitly on %s and leave out `source-field`, so the field is reached through that join."
-                                fk-table-name table-name fk-table-name (pr-str source-field))
+                        (format "%s has a foreign key to %s: join %s explicitly on %s%s and leave out `source-field`, so the field is reached through that join."
+                                fk-table-name table-name fk-table-name (pr-str source-field)
+                                (if source-field-join-alias
+                                  (format " with `join-alias` %s" (pr-str source-field-join-alias))
+                                  ""))
                         (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
                                 table-name table-name))))
              {:agent-error? true

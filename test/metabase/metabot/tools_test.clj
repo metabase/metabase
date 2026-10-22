@@ -405,6 +405,42 @@
       (testing "the direct key suggested by the hint builds and runs"
         (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
 
+(deftest construct-notebook-query-source-field-join-alias-hint-test
+  (let [db            (t2/select-one-fn :name :model/Database (mt/id))
+        fk            (fn [table column] [db "PUBLIC" table column])
+        checkins-join {:alias      "Checkins"
+                       :strategy   "left-join"
+                       :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" "CHECKINS"]}]
+                       :conditions [["=" {}
+                                     ["field" {} (fk "USERS" "ID")]
+                                     ["field" {:join-alias "Checkins"} (fk "CHECKINS" "USER_ID")]]]}
+        query         (fn [joins opts]
+                        (construct/execute-representations-query
+                         {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db "PUBLIC" "USERS"]
+                                      :joins        joins
+                                      :aggregation  [["count" {}]]
+                                      :breakout     [["field" opts (fk "CATEGORIES" "NAME")]]}]}))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [e (try
+                (query [checkins-join] {:source-field            (fk "CHECKINS" "VENUE_ID")
+                                        :source-field-join-alias "Checkins"})
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :wrong-source-field (:error (ex-data e))))
+        (is (str/includes? (or (ex-message e) "") "with `join-alias` \"Checkins\"")))
+      (testing "the suggested join runs with an explicit or inferred alias for its key"
+        (let [rows (mapv (fn [join-alias]
+                           (let [venues-join (cond-> (checkins-venues-join db)
+                                               join-alias (assoc-in [:conditions 0 2 1 :join-alias] join-alias))
+                                 result      (query [checkins-join venues-join]
+                                                    {:source-field            (fk "VENUES" "CATEGORY_ID")
+                                                     :source-field-join-alias "Venues"})]
+                             (mt/rows (qp/process-query (get-in result [:structured-output :query])))))
+                         [nil "Checkins"])]
+          (is (seq (first rows)))
+          (is (= (set (first rows)) (set (second rows)))))))))
+
 (deftest construct-notebook-query-joined-key-propagation-test
   (let [db     (t2/select-one-fn :name :model/Database (mt/id))
         stages [{:fields [["field" {} [db "PUBLIC" "CHECKINS" "ID"]]]
