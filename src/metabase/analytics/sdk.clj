@@ -45,6 +45,17 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+(def ^:private data-app-client
+  "The [[*client*]] a published data app reports. It must match `EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader` on
+  the FE: [[metabase.server.middleware.data-app-scope]] confines requests that carry it."
+  "data-app")
+
+(defn data-app-client?
+  "Whether `client`, by default the current [[*client*]], is a published data app. A data app's dev preview reports
+  another client."
+  ([] (data-app-client? (get-client)))
+  ([client] (= data-app-client client)))
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client-identifier*
   "Used to track the identifier of the concrete embedding client, e.g. the data-app name."
@@ -195,12 +206,12 @@
     "embedding-iframe-static"
     "embedding-public"
     "embedding-simple"
-    "data-app"})
+    data-app-client})
 
 (defn- track-sdk-response
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
-  (case sdk-client
+  (condp = sdk-client
     "embedding-sdk-react"       (analytics/inc! :metabase-sdk/response {:status (str status)})
     "embedding-iframe"          (analytics/inc! :metabase-embedding-iframe/response {:status (str status)})
     "embedding-iframe-full-app" (analytics/inc! :metabase-embedding-iframe-full-app/response {:status (str status)})
@@ -208,7 +219,7 @@
     "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
     ;; Known client, but a response-code counter tells us nothing actionable about data apps - so no metric.
-    "data-app"                  nil
+    data-app-client             nil
     (log/info "Unknown client.")))
 
 (defn embedding-context?

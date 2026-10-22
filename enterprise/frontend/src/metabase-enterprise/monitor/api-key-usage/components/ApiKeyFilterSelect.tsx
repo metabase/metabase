@@ -4,9 +4,7 @@ import { t } from "ttag";
 import { useListApiKeysQuery } from "metabase/admin/settings/api/api-key";
 import { Select } from "metabase/ui";
 import { apiKeyMatchesScope } from "metabase-enterprise/monitor/api-key-usage/query-utils";
-
-// Matches the width of the shared ConversationFilters selects it sits alongside.
-const FILTER_WIDTH = 205;
+import { FILTER_WIDTH } from "metabase-enterprise/monitor/constants";
 
 type Props = {
   value: string | null;

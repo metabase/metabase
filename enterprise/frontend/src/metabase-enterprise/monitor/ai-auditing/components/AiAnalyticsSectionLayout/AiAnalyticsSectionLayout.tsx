@@ -17,7 +17,8 @@ type AiAnalyticsSectionLayoutProps = {
   isInitialLoading: boolean;
   isTableRoute: boolean;
   showEmpty: boolean;
-  tabs: PillTab[];
+  tabs?: PillTab[];
+  filtersAction?: ReactNode;
   title: string;
 };
 
@@ -30,12 +31,16 @@ export function AiAnalyticsSectionLayout({
   isTableRoute,
   showEmpty,
   tabs,
+  filtersAction,
   title,
 }: AiAnalyticsSectionLayoutProps) {
   const sectionContent = (
     <>
-      <PillTabNavigation tabs={tabs} />
-      {filters}
+      {tabs && <PillTabNavigation tabs={tabs} />}
+      <Flex justify="space-between" align="center" gap="md">
+        {filters}
+        {filtersAction}
+      </Flex>
       <RouteContent
         emptyState={emptyState}
         error={error}
@@ -86,7 +91,7 @@ type RouteContentProps = {
   showEmpty: boolean;
 };
 
-function RouteContent({
+export function RouteContent({
   children,
   emptyState,
   error,
@@ -109,5 +114,13 @@ function RouteContent({
     );
   }
 
-  return showEmpty ? emptyState : children;
+  if (showEmpty) {
+    return (
+      <Flex flex={1} mih="60vh" align="center" justify="center">
+        {emptyState}
+      </Flex>
+    );
+  }
+
+  return children;
 }
