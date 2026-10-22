@@ -115,20 +115,6 @@ describe("ActionCreator > Common", () => {
       });
     });
 
-    describe("as a non-admin with write permissions on the model", () => {
-      it("should not allow editing success message", async () => {
-        await setup({ action: getAction(), canWrite: true, isAdmin: false });
-
-        await openSidebar();
-
-        expect(
-          screen.getByRole("textbox", {
-            name: "Success message",
-          }),
-        ).toBeDisabled();
-      });
-    });
-
     describe("with read-only permissions", () => {
       it("should show action settings button", async () => {
         await setup({ action: getAction(), canWrite: false });

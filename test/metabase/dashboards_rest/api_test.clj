@@ -2653,6 +2653,18 @@
                   (is (partial= {:dashcards [{:action {:database_enabled_actions enable-actions?}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))))
 
+(deftest dashcard-action-can-write-test
+  (testing "Dashcard actions hydrate can_write, which only admins have"
+    (mt/test-driver :h2
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard _ {:action_id action-id :card_id model-id :dashboard_id dashboard-id}]
+            (doseq [[user can-write?] [[:crowberto true] [:rasta false]]]
+              (testing user
+                (is (partial= {:dashcards [{:action {:id action-id :can_write can-write?}}]}
+                              (mt/user-http-request user :get 200 (format "dashboard/%s" dashboard-id))))))))))))
+
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"

@@ -3,15 +3,12 @@ import type { DataReferenceSlot } from "metabase/actions/containers/ActionCreato
 import {
   skipToken,
   useGetActionQuery,
-  useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import type {
-  Card,
   CardId,
-  Database,
   DatabaseId,
   WritebackAction,
   WritebackActionId,
@@ -55,19 +52,18 @@ export function ActionCreator({
 }: ActionCreatorProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { data: databases } = useListDatabasesQuery();
-  const { data: model } = useGetCardQuery(
-    modelId != null ? { id: modelId } : skipToken,
-  );
-  // `dataset_query.database` and not `database_id`: the v1 wrapper this
-  // replaced read the database off the query, and the two can differ.
-  const modelDatabase = databases?.data.find(
-    (database) => database.id === model?.dataset_query.database,
-  );
   const { data: initialAction } = useGetActionQuery(
     actionId != null ? { id: actionId } : skipToken,
   );
   // This is needed in case we already have an action and pass it from the outside
   const contextAction = action || initialAction;
+  const savedAction = initialAction ?? action;
+  const actionDatabase = databases?.data.find(
+    (database) => database.id === savedAction?.database_id,
+  );
+  const canWriteAction =
+    savedAction?.can_write === true &&
+    Boolean(actionDatabase?.settings?.["database-enable-actions"]);
 
   return (
     <ActionContextProvider
@@ -77,35 +73,12 @@ export function ActionCreator({
       <ActionCreatorContent
         modelId={modelId}
         canCreateActions={isAdmin}
-        canWriteModelActions={canWriteActions({
-          model,
-          database: modelDatabase,
-          isAdmin,
-        })}
+        canWriteAction={canWriteAction}
         isRouted={isRouted}
         dataReference={DATA_REFERENCE}
         onSubmit={onSubmit}
         onClose={onClose}
       />
     </ActionContextProvider>
-  );
-}
-
-type CanWriteActionsOpts = {
-  model: Card | undefined;
-  database: Database | undefined;
-  isAdmin: boolean;
-};
-
-function canWriteActions({
-  model,
-  database,
-  isAdmin,
-}: CanWriteActionsOpts): boolean {
-  return (
-    isAdmin &&
-    model?.can_write === true &&
-    database?.native_permissions === "write" &&
-    Boolean(database.settings?.["database-enable-actions"])
   );
 }

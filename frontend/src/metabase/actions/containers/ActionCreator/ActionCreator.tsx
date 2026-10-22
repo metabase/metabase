@@ -19,9 +19,8 @@ import type { DataReferenceSlot } from "./types";
 
 export interface ActionCreatorProps {
   modelId?: CardId;
-  /** Whether the model accepts new actions, i.e. `Question.canWriteActions`. */
-  canWriteModelActions?: boolean;
   canCreateActions?: boolean;
+  canWriteAction?: boolean;
   /**
    * Whether the creator is mounted as its own route. A routed creator guards
    * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
@@ -35,8 +34,8 @@ export interface ActionCreatorProps {
 
 export function ActionCreator({
   modelId,
-  canWriteModelActions = false,
   canCreateActions = false,
+  canWriteAction = false,
   isRouted,
   dataReference,
   onSubmit,
@@ -64,7 +63,7 @@ export function ActionCreator({
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = (isNew && canCreateActions) || canWriteModelActions;
+  const isEditable = isSavedAction(action) ? canWriteAction : canCreateActions;
 
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;

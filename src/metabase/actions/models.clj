@@ -595,14 +595,14 @@
          actions)))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/DashboardCard :dashcard/action]
-  "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to
-  the\n `database-enable-actions` setting for the action's database."
+  "Hydrates DashboardCard actions, with `:can_write` and `:database_enabled_actions` from the action's database."
   [_model _k dashcards]
   (let [actions-by-id
         (when-let [action-ids (seq (keep :action_id dashcards))]
-          (->> (select-actions-for-ids nil action-ids)
-               map-assoc-database-enable-actions
-               (m/index-by :id)))]
+          (as-> (select-actions-for-ids nil action-ids) actions
+            (map-assoc-database-enable-actions actions)
+            (t2/hydrate actions :can_write)
+            (m/index-by :id actions)))]
     (for [dashcard dashcards
           :let [action-id (:action_id dashcard)
                 action    (get actions-by-id action-id)]]

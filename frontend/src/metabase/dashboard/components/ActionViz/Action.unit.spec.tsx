@@ -34,7 +34,6 @@ import {
   createMockImplicitQueryAction,
   createMockQueryAction,
   createMockStructuredDatasetQuery,
-  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { ActionProps } from "./Action";
@@ -51,6 +50,7 @@ const ACTION = createMockQueryAction({
   name: "My Awesome Action",
   database_id: DATABASE_ID,
   model_id: ACTION_MODEL_ID,
+  can_write: true,
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
@@ -127,11 +127,9 @@ async function setup({
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
-  isAdmin = true,
   ...props
 }: SetupOpts & {
   database?: Database;
-  isAdmin?: boolean;
 } = {}) {
   const card = checkNotNull(dashcard.card);
 
@@ -158,7 +156,6 @@ async function setup({
     />,
     {
       storeInitialState: {
-        currentUser: createMockUser({ is_superuser: isAdmin }),
         entities: createMockEntitiesState({
           databases: [database],
         }),
@@ -196,6 +193,18 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toBeDisabled();
       expect(
         screen.getByLabelText(/actions are not enabled/i),
+      ).toBeInTheDocument();
+    });
+
+    it("should render a disabled state for a button with an archived action", async () => {
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          action: { ...ACTION, archived: true },
+        }),
+      });
+      expect(screen.getByRole("button")).toBeDisabled();
+      expect(
+        screen.getByLabelText(/this action is archived/i),
       ).toBeInTheDocument();
     });
 
@@ -320,36 +329,12 @@ describe("Actions > ActionViz > Action", () => {
       });
     });
 
-    it("should NOT allow to edit underlying action if a user does not has edit permissions for this model", async () => {
+    it("should NOT allow to edit underlying action if a user can't write it", async () => {
       await setup({
         dashcard: createMockActionDashboardCard({
-          card: {
-            ...CARD,
-            can_write: false,
-          },
+          action: { ...ACTION, can_write: false },
         }),
       });
-
-      await userEvent.click(screen.getByText("Click me"));
-
-      expect(queryIcon("pencil")).not.toBeInTheDocument();
-    });
-
-    it("should NOT allow to edit underlying action if a user does not has edit permissions for this database", async () => {
-      const readOnlyDB: Database = {
-        ...DATABASE,
-        native_permissions: "none",
-      };
-
-      await setup({ database: readOnlyDB });
-
-      await userEvent.click(screen.getByText("Click me"));
-
-      expect(queryIcon("pencil")).not.toBeInTheDocument();
-    });
-
-    it("should NOT allow to edit underlying action if a user is not an admin", async () => {
-      await setup({ isAdmin: false });
 
       await userEvent.click(screen.getByText("Click me"));
 

@@ -26,6 +26,7 @@ import { ActionListPage } from "./ActionListPage";
 type SetupOpts = {
   databases?: Database[];
   actions?: WritebackAction[];
+  isAdmin?: boolean;
 };
 
 const ACTIONS_DATABASE = createMockDatabase({
@@ -33,7 +34,11 @@ const ACTIONS_DATABASE = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 
-function setup({ databases = [ACTIONS_DATABASE], actions = [] }: SetupOpts) {
+function setup({
+  databases = [ACTIONS_DATABASE],
+  actions = [],
+  isAdmin = true,
+}: SetupOpts) {
   setupDatabasesEndpoints(databases);
   setupActionsEndpoints(actions);
   setupCollectionsEndpoints({
@@ -49,7 +54,7 @@ function setup({ databases = [ACTIONS_DATABASE], actions = [] }: SetupOpts) {
   renderWithProviders(<Route path="/" element={<ActionListPage />} />, {
     withRouter: true,
     storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: true }),
+      currentUser: createMockUser({ is_superuser: isAdmin }),
     }),
   });
 }
@@ -84,6 +89,17 @@ describe("ActionListPage", () => {
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
     ).toEqual(["Action", "Collection"]);
+  });
+
+  it("does not offer non-admins to create anything", async () => {
+    setup({ isAdmin: false });
+
+    expect(
+      await screen.findByText("Queries that change data"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /New/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not offer to create anything without an actions-enabled database, but still links to the archive", async () => {
