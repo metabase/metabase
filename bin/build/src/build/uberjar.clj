@@ -220,7 +220,11 @@
    "Multi-Release"    "true"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
-   "Main-Class"       "metabase.core.bootstrap"})
+   "Main-Class"       "metabase.core.bootstrap"
+   ;; Needed for Apache Arrow, which is used by the Snowflake driver.
+   ;; When we update that driver, check if this is still needed.
+   ;; (https://github.com/apache/arrow-java/pull/1334)
+   "Add-Opens"        "java.base/java.nio"})
 
 (defn- manifest ^Manifest []
   (doto (Manifest.)
