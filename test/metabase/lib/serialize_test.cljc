@@ -328,7 +328,8 @@
   {:metadata/own-model-query? true
    :metadata/model-metadata   [{:lib/type :metadata/column, :name "ID", :base-type :type/Integer}]
    :pivot/original-query      clean-query
-   :pivot/result-metadata     :none})
+   :pivot/result-metadata     :none
+   :pivot/query-hash          nil})
 
 (deftest ^:parallel internal-keys-fixture-covers-the-schemas-test
   (testing "the fixtures carry every internal key the schemas declare, so these tests cannot drift"

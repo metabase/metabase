@@ -75,13 +75,12 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
-(defmethod driver/validate-db-details! :databricks
-  [_driver details]
-  (sql-jdbc/reject-dangerous-additional-options! details)
-  (when-let [opts (not-empty (:additional-options details))]
-    ;; `StagingAllowedLocalPaths` is the older spelling of the same setting, and the client still honors it
-    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths|StagingAllowedLocalPaths" opts)
-      (throw (Exception. "Potentially dangerous keys in connection details")))))
+(defmethod driver/disallowed-connection-parameters :databricks
+  [driver]
+  ;; enable Unity Catalog volume operations, which read and write arbitrary local files. `StagingAllowedLocalPaths` is
+  ;; the older spelling of the same setting, and the client still honors it
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["VolumeOperationAllowedLocalPaths" "StagingAllowedLocalPaths"]))
 
 (defn- catalog-present?
   [jdbc-spec catalog]
@@ -294,7 +293,11 @@
          :HttpPath       http-path
          :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
          :UseNativeQuery 1
-         :UseThriftClient 0}]
+         :UseThriftClient (if-let [[_ use-thrift] (and additional-options
+                                                       (re-matches #"UseThriftClient=(.*)"
+                                                                   additional-options))]
+                            (parse-long use-thrift)
+                            0)}]
     (merge base-spec
            (when log-level
              {:LogLevel log-level})

@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.core :as warehouse-schema]
@@ -62,20 +63,16 @@
    name->display-name :- [:map-of :string :string]]
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
         name->display-name (apply dissoc name->display-name user-edited)]
-    (when (seq name->display-name)
-      ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of PostgreSQL:
-      ;; SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND must be type boolean).
-      (t2/query {:update (t2/table-name :model/Field)
-                 :set    {:display_name (into [:case]
-                                              (mapcat identity)
-                                              (for [[n display-name] name->display-name]
-                                                [[:= [:lower :name] n]
-                                                 [:case
-                                                  [:= :display_name (humanization/name->human-readable-name n)] display-name
-                                                  :else                                                       :display_name]]))}
-                 :where  [:and
-                          [:= :table_id table-id]
-                          [:in [:lower :name] (keys name->display-name)]]}))))
+    (doseq [{:keys [id name display_name]} (when (seq name->display-name)
+                                             (t2/select [:model/Field :id :name :display_name]
+                                                        {:from  [(warehouse-schema-overlay/field-query
+                                                                  {:user-settings? false})]
+                                                         :where [:and
+                                                                 [:= :table_id table-id]
+                                                                 [:in [:lower :name] (keys name->display-name)]]}))
+            :let  [lower-name (u/lower-case-en name)]
+            :when (= display_name (humanization/name->human-readable-name lower-name))]
+      (t2/update! :model/Field id {:display_name (name->display-name lower-name)}))))
 
 (mu/defn mark-table-upload!
   "Flag the Table with `table-id` as an authoritative, writable upload table."

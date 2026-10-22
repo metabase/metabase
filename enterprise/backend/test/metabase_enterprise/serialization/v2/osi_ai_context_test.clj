@@ -53,18 +53,22 @@
                        :model/OsiAiContext _ {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
                                               :entity_type entity-type :entity_local_id card-id}]
           (let [extracted (extract-for "card" card-id)]
-            (testing "path nests the row under the Card; ai_context copies verbatim; no entity_id/key fields"
+            (testing "path nests the row under the Card; ai_context and entity_id copy verbatim"
               (is (=? {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
+                       :entity_id   string?
                        :serdes/meta [{:model "Card" :id card-eid} {:model "OsiAiContext" :id "ai_context"}]}
-                      extracted))
-              (is (not (contains? extracted :entity_id))))
+                      extracted)))
             (testing "depends on the referenced Card"
               (is (= [[{:model "Card" :id card-eid}]] (serdes/deserialization-dependencies extracted))))
             (testing "importing resolves the path back to the local card row"
               (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
               (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-              (is (=? {:entity_type "card" :entity_local_id card-id}
+              (is (=? {:entity_type "card" :entity_local_id card-id :entity_id (:entity_id extracted)}
                       (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))))))))
+
+(deftest ^:parallel extract-order-columns-test
+  (testing "exported rows are ordered by entity_id, so same-named files get the same suffixes on every instance"
+    (is (= [:entity_id] (serdes/extract-order-columns "OsiAiContext" {})))))
 
 (deftest measure-segment-entity-round-trip-test
   (testing "measure and segment refs nest under the entity's path and import back"

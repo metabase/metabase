@@ -103,6 +103,10 @@ function mapDatabricksValues(parsedValues: RegexFields) {
     ]),
   );
 
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -127,9 +131,14 @@ function mapMysqlValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      objectToString(parsedValues.params, ["ssl"]),
+      objectToString(parsedValues.params, ["ssl"], "&"),
     ],
   ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -156,9 +165,13 @@ function mapPostgresValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      objectToString(parsedValues.params, ["ssl"]),
+      objectToString(parsedValues.params, ["ssl"], "&"),
     ],
   ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
 
   return fieldsMap;
 }
@@ -389,14 +402,16 @@ export function mapFieldsToNestedObject(
 }
 
 /**
- * Converts an object to a semicolon-separated string.
+ * Converts an object to a string of key=value pairs.
  * @param obj - The object to convert.
  * @param filterProperties - The properties to filter out.
- * @returns The semicolon-separated string.
+ * @param separator - The string between pairs.
+ * @returns The joined string.
  */
 function objectToString(
   obj: Record<string, string | undefined> | undefined,
   filterProperties: Array<string> = [],
+  separator = ";",
 ) {
   if (!obj) {
     return "";
@@ -405,5 +420,5 @@ function objectToString(
   return Object.entries(obj)
     .filter(([key]) => !filterProperties.includes(key))
     .map(([key, value]) => `${key}=${value}`)
-    .join(";");
+    .join(separator);
 }

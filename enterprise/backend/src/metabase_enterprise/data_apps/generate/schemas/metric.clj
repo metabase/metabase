@@ -207,7 +207,10 @@
       source-table)))
 
 (defn- source-card-id
-  "Returns the source card id for metrics that are based on saved questions."
+  "Return the source card ID from the first stage of a metric's definition.
+
+  This identifies the card the definition reads from. The source needed to use the metric is returned by
+  [[metabase.metabot.tools.util/metric-required-source]]; a multi-stage definition can require its base table."
   [card]
   (or (when-let [source-card (get-in card [:dataset_query :stages 0 :source-card])]
         (when (integer? source-card)
