@@ -44,7 +44,7 @@ Named reference:
 - `["stddev", {}, <num>]` / `["var", {}, <num>]`
 - `["count-where", {}, <bool-pred>]` / `["sum-where", {}, <num>, <bool-pred>]` / `["distinct-where", {}, <expr>, <bool-pred>]`
 - `["share", {}, <bool-pred>]` — fraction of rows where the predicate holds, 0–1.
-- `["metric", {}, <numeric card id>]` / `["measure", {}, <numeric measure id>]` — saved definitions; base table must be the stage's source.
+- `["metric", {}, <numeric card id>]` / `["measure", {}, <numeric measure id>]` — saved definitions. A metric goes on a stage built on its required source: the base table in `source-table` for a table metric, or the model or saved question in `source-card` for a card metric. A measure's base table must be the stage's source.
 - `["offset", {}, <expr>, <n>]` — window function: the value `<n>` rows back (negative) or ahead. Valid **only** inside `aggregation` or `order-by`, never in `expressions` or a filter.
 
 Name the output in options — `["sum", {"name": "revenue", "display-name": "Revenue"}, <field>]`; later stages and visualization settings reference that `name`.
