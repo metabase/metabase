@@ -134,7 +134,9 @@
         (when (str/blank? (:name parsed))
           (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
                           {:status-code 400})))
-        (when-let [error (manifest/directory-name-error (:name parsed))]
+        ;; only the serving rule: a bundle may replace one of a plugin registered before the directory rule existed.
+        ;; Registration applies `manifest/directory-name-error` itself.
+        (when-let [error (manifest/identifier-error (:name parsed))]
           (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
                           {:status-code 400})))
         {:bytes       bundle-bytes

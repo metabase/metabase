@@ -227,6 +227,10 @@
         (is (re-find #"identifier.*already exists"
                      (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
                                         (cvp.tu/valid-bundle-bytes "dup-viz"))))))
+    (testing "an identifier a repository can't name is refused at upload"
+      (is (re-find #"must be letters, digits"
+                   (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
+                                      (cvp.tu/valid-bundle-bytes "a b")))))
     (testing "an identifier that is an existing one in another case is refused, it would share a repository directory"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "Thumbs"
                                                :display_name "Thumbs"
@@ -512,6 +516,20 @@
                                       (str "ee/custom-viz-plugin/" id "/bundle") zip
                                       :method :put)]
           (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
+
+(deftest replace-bundle-legacy-non-directory-identifier-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "PUT /:id/bundle updates a plugin registered before the directory rule, it is served and stays updatable"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "My Heatmap"
+                                                      :display_name "My Heatmap"
+                                                      :status       :active
+                                                      :bundle_hash  "old"}]
+        (let [zip  (cvp.tu/valid-bundle-bytes "My Heatmap")
+              resp (multipart-upload! :crowberto 200
+                                      (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                      :method :put)]
+          (is (= "My Heatmap" (:identifier resp)))
+          (is (= (cvp.tu/bundle-hash zip) (:bundle_hash resp))))))))
 
 (deftest replace-bundle-legacy-colon-identifier-test
   (mt/with-premium-features #{:custom-viz}

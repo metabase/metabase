@@ -268,6 +268,17 @@
       (serdes/load-one! (dissoc (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")) :serdes/directory) nil)
       (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :identifier "thumbs"))))))
 
+(deftest load-refuses-a-new-identifier-that-cannot-name-a-directory-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (testing "a new plugin is a registration, held to the directory rule"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"bad identifier\" must be letters, digits"
+                            (serdes/load-one! (ingested-plugin "bad identifier" (cv.tu/valid-bundle-bytes "bad identifier")) nil))))
+    (testing "an existing plugin from before the rule still updates in place"
+      (let [bundle (cv.tu/valid-bundle-bytes "bad identifier")]
+        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "bad identifier" bundle)]
+          (serdes/load-one! (ingested-plugin "bad identifier" bundle) (t2/select-one :model/CustomVizPlugin :id id))
+          (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :id id))))))))
+
 (deftest load-refuses-an-identifier-differing-only-in-case-test
   (let [bundle (cv.tu/valid-bundle-bytes "Thumbs")]
     (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "Thumbs" bundle)]

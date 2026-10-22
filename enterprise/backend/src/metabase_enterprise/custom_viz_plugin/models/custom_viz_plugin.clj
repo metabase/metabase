@@ -189,6 +189,10 @@
 (defmethod serdes/load-one! "CustomVizPlugin"
   [{:keys [identifier] :as ingested} maybe-local]
   (check-directory! ingested)
+  ;; a new plugin is a registration, so it is held to the directory rule; an existing one may predate it
+  (when (nil? maybe-local)
+    (when-let [error (manifest/directory-name-error identifier)]
+      (throw (ex-info error {:status-code 400}))))
   ;; on an app DB that compares identifiers case-insensitively (MySQL), `maybe-local` is found in another case
   (check-identifier-case! identifier (or (:identifier maybe-local)
                                          (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier)))

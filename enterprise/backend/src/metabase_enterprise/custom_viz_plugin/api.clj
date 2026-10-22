@@ -162,6 +162,8 @@
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (cache/validate-bundle! bundle-bytes)
             identifier   (get-in validated [:manifest :name])
+            _            (when-let [error (manifest/directory-name-error identifier)]
+                           (throw (ex-info error {:status-code 400})))
             _            (check-identifier-free! identifier)
             plugin       (cache/insert-bundle! identifier validated)]
         (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
