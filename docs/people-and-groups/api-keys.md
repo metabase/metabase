@@ -41,6 +41,10 @@ To view and manage existing API keys:
 4. Click on the **Authentication** tab on the left menu.
 5. Scroll to **API Keys** and click **Manage**.
 
+### See how your API keys get used
+
+See [API key usage](../monitor/api-key-usage.md) in Monitor.
+
 ### Editing API keys
 
 To edit an API key, scroll to the key you want to edit and click on the **pencil** icon. Metabase will pop up an **Edit API Key** modal where you can edit:
@@ -116,4 +120,5 @@ getGroups().then((groups) => console.log("Groups in your Metabase:", groups));
 ## Further reading
 
 - [Metabase API reference](../api.html).
+- [API key usage](../monitor/api-key-usage.md).
 - [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).

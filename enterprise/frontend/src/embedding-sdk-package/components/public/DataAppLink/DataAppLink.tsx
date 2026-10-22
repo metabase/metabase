@@ -1,7 +1,7 @@
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 
 import {
-  getBasename,
+  getPageBasename,
   navigate,
 } from "embedding-sdk-package/lib/private/data-app-routing";
 
@@ -18,6 +18,10 @@ export interface DataAppLinkProps extends Omit<
  *
  * Renders a plain anchor rather than a router `<Link>`: a data app is mounted
  * outside the app's route tree, so it has no router context to read.
+ *
+ * The `href` is the app's page in Metabase, so opening the link in a new tab or
+ * copying its address lands on the app rather than on its iframe, which refuses
+ * to load as a top-level page. A plain click navigates inside the app.
  */
 export const DataAppLink = ({
   to,
@@ -27,7 +31,7 @@ export const DataAppLink = ({
   rel,
   ...rest
 }: DataAppLinkProps) => {
-  const href = getBasename() + to;
+  const href = getPageBasename() + to;
 
   const isExternalTarget = target != null && target !== "_self";
   const resolvedRel = rel ?? (isExternalTarget ? "noopener noreferrer" : rel);

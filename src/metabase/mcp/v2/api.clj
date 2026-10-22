@@ -1,8 +1,8 @@
 (ns metabase.mcp.v2.api
   "The MCP tool surface mounted on every path in
-   [[metabase.mcp.paths/endpoint-paths]]. [[metabase.mcp.transport]] supplies the JSON-RPC framing,
-   origin checks, cookie/bearer auth, session handling, and throttling; `tools/list` and
-   `tools/call` are driven by the [[metabase.mcp.v2.registry]]. Gated by
+   [[metabase.mcp.paths/endpoint-paths]]. [[metabase.mcp.transport]] supplies the JSON-RPC framing, origin checks,
+  bearer auth, session handling, and throttling; `tools/list` and `tools/call` are driven by
+  the [[metabase.mcp.v2.registry]]. Gated by
    [[metabase.mcp.validation/+mcp-enabled]]."
   (:require
    [clojure.string :as str]
@@ -51,9 +51,7 @@
   "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
    `token-scopes` matches, in `surface-scopes` order, then `required` when it is outside the surface."
   [surface-scopes token-scopes required]
-  ;; Held scopes ride along because a client may replace its grant with the challenged scope. They are matched, not
-  ;; looked up, so a wildcard grant such as `agent:content:*` keeps the surface scopes it covers. Only scope strings
-  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  ;; Held scopes ride along because a client may replace its grant with the challenged scope.
   (let [held (set (filter string? token-scopes))]
     (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
       (not (some #{required} surface-scopes)) (conj required))))
@@ -69,7 +67,7 @@
    asking for [[step-up-scopes]] over `token-scopes`, with [[step-up-description]] as the `error_description`."
   [error-response token-scopes {:keys [required-scope description]}]
   (transport/insufficient-scope error-response
-                                (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
+                                (step-up-scopes mcp.scope/v2-surface-scopes token-scopes required-scope)
                                 (step-up-description description)))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
@@ -220,7 +218,7 @@
   ;; untick away. A call needing a scope the token lacks is still answered with a 403 `insufficient_scope`, for
   ;; clients that step up. A scope outside the ceiling is answered "Invalid scope" for a client that follows the
   ;; challenge.
-  mcp.paths/v2-surface-scopes)
+  mcp.scope/v2-surface-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

@@ -84,10 +84,19 @@ function setup({
   return { router: checkNotNull(router) };
 }
 
-function getLastUpdateBody(): unknown {
-  return fetchMock.callHistory.lastCall("path:/api/dashboard/10", {
+function getUpdateCalls() {
+  return fetchMock.callHistory.calls("path:/api/dashboard/10", {
     method: "PUT",
-  })?.options.body;
+  });
+}
+
+function getLastUpdateBody(): unknown {
+  return getUpdateCalls().at(-1)?.options.body;
+}
+
+async function startEditingDescription(): Promise<HTMLElement> {
+  await userEvent.click(await screen.findByTestId("editable-text"));
+  return screen.getByTestId("dashboard-description-input");
 }
 
 describe("DashboardInfo", () => {
@@ -203,6 +212,120 @@ describe("DashboardInfo", () => {
 
       expect(await screen.findByText("Auto-apply filters")).toBeInTheDocument();
       expect(screen.queryByText("Caching policy")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("description", () => {
+    it("saves the new description", async () => {
+      setup({
+        dashboard: createMockDashboard({ id: 10, description: "Old" }),
+      });
+
+      const input = await startEditingDescription();
+      await userEvent.clear(input);
+      await userEvent.type(input, "New");
+      await userEvent.tab();
+
+      await waitFor(() =>
+        expect(getLastUpdateBody()).toBe(
+          JSON.stringify({ description: "New" }),
+        ),
+      );
+    });
+
+    it("clears the description when it is emptied", async () => {
+      setup({
+        dashboard: createMockDashboard({ id: 10, description: "Old" }),
+      });
+
+      await userEvent.clear(await startEditingDescription());
+      await userEvent.tab();
+
+      await waitFor(() =>
+        expect(getLastUpdateBody()).toBe(JSON.stringify({ description: null })),
+      );
+    });
+
+    it("trims the description", async () => {
+      setup({
+        dashboard: createMockDashboard({ id: 10, description: "Old" }),
+      });
+
+      const input = await startEditingDescription();
+      await userEvent.clear(input);
+      await userEvent.type(input, "  New  ");
+      await userEvent.tab();
+
+      await waitFor(() =>
+        expect(getLastUpdateBody()).toBe(
+          JSON.stringify({ description: "New" }),
+        ),
+      );
+    });
+
+    it("shows an error and keeps the unsaved description when the description cannot be saved", async () => {
+      setup({
+        dashboard: createMockDashboard({ id: 10, description: "Old" }),
+        hasUpdateError: true,
+      });
+
+      await userEvent.type(await startEditingDescription(), " text");
+      await userEvent.tab();
+
+      const toast = await screen.findByRole("status");
+      expect(
+        within(toast).getByText("Failed to update dashboard description"),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Old text")).toBeInTheDocument();
+      expect(getUpdateCalls()).toHaveLength(1);
+    });
+
+    it.each([
+      {
+        name: "the user cannot write the dashboard",
+        opts: {
+          dashboard: createMockDashboard({
+            id: 10,
+            description: "Revenue",
+            can_write: false,
+          }),
+        },
+      },
+      {
+        name: "the dashboard is in the trash",
+        opts: {
+          dashboard: createMockDashboard({
+            id: 10,
+            description: "Revenue",
+            archived: true,
+          }),
+        },
+      },
+      {
+        name: "remote sync is read-only",
+        opts: {
+          dashboard: createMockDashboard({ id: 10, description: "Revenue" }),
+          isRemoteSyncReadOnly: true,
+        },
+      },
+    ])("is read-only when $name", async ({ opts }) => {
+      setup(opts);
+
+      expect(await screen.findByText("Revenue")).toBeInTheDocument();
+      expect(screen.queryByTestId("editable-text")).not.toBeInTheDocument();
+    });
+
+    it("says when a read-only dashboard has no description", async () => {
+      setup({
+        dashboard: createMockDashboard({
+          id: 10,
+          description: null,
+          can_write: false,
+        }),
+      });
+
+      expect(await screen.findByText("No description")).toBeInTheDocument();
+      expect(screen.queryByTestId("editable-text")).not.toBeInTheDocument();
     });
   });
 

@@ -10,6 +10,7 @@ import {
   columnSettings,
   dimensionSetting,
   getDefaultSize,
+  getLegendPositionSetting,
   getMinSize,
   metricSetting,
 } from "metabase/viz-core";
@@ -168,5 +169,9 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
       getDefault: (series: RawSeries) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,
     },
+    "legend.position": getLegendPositionSetting({
+      getHidden: (_series, settings) => settings["funnel.type"] !== "bar",
+      readDependencies: ["funnel.type"],
+    }),
   },
 };

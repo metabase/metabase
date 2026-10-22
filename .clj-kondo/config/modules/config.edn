@@ -366,6 +366,7 @@
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
+           funnysql
            task.secure-delegate
            util
            util.classloader
@@ -1139,6 +1140,11 @@
            request
            util}}
 
+  funnysql
+  {:team "Querying Platform"
+   :api  #{metabase.funnysql.core}
+   :uses #{util}}
+
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
@@ -1455,9 +1461,11 @@
            mcp
            metabot.agent-api
            models
+           premium-features
            request
            server
            settings
+           sso.auth-identity
            system
            task
            tracing
@@ -1523,6 +1531,7 @@
               collections
               documents
               driver
+              embedding
               events
               explorations
               interestingness
@@ -1559,7 +1568,8 @@
               util
               util.config
               warehouse-schema-overlay
-              warehouses}
+              warehouses
+              xrays}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -1593,6 +1603,7 @@
               metabase.agent-api.schema
               metabase.agent-api.settings}
    :uses    #{ai-tracing
+              analytics.interface
               api
               channel
               collections
@@ -2287,10 +2298,12 @@
               metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
+              metabase.query-processor.pivot.common
               metabase.query-processor.preprocess
               metabase.query-processor.reducible
               metabase.query-processor.result-serialization
               metabase.query-processor.schema
+              metabase.query-processor.sensitive-fields
               metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -3815,38 +3828,28 @@
    :uses #{actions
            api
            api-scope
-           audit-app
            collections
-           driver
            events
            lib
-           lib.be
-           lib.metadata
            lib.schema
            lib.types
-           metabot
-           metrics
            models
            permissions
            premium-features
-           queries
            remote-sync
            request
            settings
-           system
            users
            util
+           util.graph
            warehouse-schema-overlay
-           enterprise/serialization}
+           enterprise/dependencies}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Database
                     :model/Field
-                    :model/Measure
                     :model/Permissions
-                    :model/QueryAction
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -3906,6 +3909,7 @@
            lib.metadata
            lib.metric
            lib.schema
+           lib.types
            measures
            models
            native-query-snippets
@@ -3937,6 +3941,7 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/QueryAction
@@ -4427,7 +4432,6 @@
            app-db
            appearance
            collections
-           dependencies
            lib
            lib.schema
            logger

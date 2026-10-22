@@ -385,8 +385,8 @@ export const useDataGridInstance = <TData, TValue>({
   }, [sorting, data, table]);
 
   const { measureGrid, columnVirtualizer } = virtualGrid;
-  const prevColumnSizing = useRef<ColumnSizingState>();
-  const prevWrappedColumns = useRef<string[]>();
+  const prevColumnSizing = useRef<ColumnSizingState>(undefined);
+  const prevWrappedColumns = useRef<string[]>(undefined);
 
   useEffect(() => {
     const didColumnSizingChange =

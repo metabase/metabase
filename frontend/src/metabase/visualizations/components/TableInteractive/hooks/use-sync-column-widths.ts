@@ -33,8 +33,8 @@ export function useSyncColumnWidths(
   data?: DatasetData,
   columnWidths?: number[],
 ) {
-  const prevCols = useRef<DatasetColumn[]>();
-  const prevWidths = useRef<number[]>();
+  const prevCols = useRef<DatasetColumn[]>(undefined);
+  const prevWidths = useRef<number[]>(undefined);
 
   useEffect(() => {
     if (!data) {

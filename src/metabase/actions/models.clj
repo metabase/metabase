@@ -166,10 +166,8 @@
       (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
         (check-collection-content <>))
       (let [in-data-app? (and (some? (:collection_id <>)) (perms/data-app-collection? (:collection_id <>)))]
-        ;; an export leaves out an archived action, and the next pull would then delete it from every instance
         (when (and in-data-app? (changed? :archived) (:archived <>))
           (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
-        ;; an export writes the link into the action's file, which every pull then refuses
         (when (and in-data-app? (changed? :public_uuid) (:public_uuid <>))
           (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))))))
 
@@ -275,7 +273,6 @@
   "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
   while the collection is a data app's."
   [collection-id query]
-  ;; the next export writes the action into the app's files, and a pull refuses one that reads a card outside
   (when (and (some? collection-id)
              (perms/data-app-collection? collection-id))
     (let [card-ids (query-card-ids query)
@@ -638,14 +635,13 @@
   {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
    :skip      [;; always re-derived from public_uuid on import
                :public_uuid_prefix]
-   :transform {:created_at             (serdes/date)
-               :type                   (serdes/kw)
+   :transform {:type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :collection_id          (serdes/fk :model/Collection)
                :model_id               (serdes/fk :model/Card)
-               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
-               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
+               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by :name} opts))
+               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by :name} opts))
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}

@@ -38,7 +38,6 @@
   Written down as data so the agent loop, the adapters and the tests share one list rather than
   three sets of literal keywords. `:repeated-error` is the agent loop's and is not raised here."
   {:unknown-tool       :validation
-   :invalid-json       :validation
    :invalid-arguments  :validation
    :scope-denied       :unrecoverable
    :internal           :unrecoverable})
@@ -92,12 +91,6 @@
 
 ;;; ------------------------------------------------ Arguments -----------------------------------------------------
 
-;;; The argument-repair machinery below currently also lives in `metabase.metabot.self.core`. It is
-;;; duplicated rather than shared because the dependency runs the other way once tools are migrated
-;;; — `self.core/run-tool` will call [[invoke]] — and `self.core`'s copies go away with the checks
-;;; they serve. Keep the wording identical until then: this is the text models have been repairing
-;;; against.
-
 (def ^:private stringified-scalar-transformer
   "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
   Restricted to the types models get wrong — strings, keywords and enums are left alone."
@@ -150,18 +143,6 @@
              (str "expected an object of named arguments; received "
                   (json-type-name arguments) "."))))))
 
-(def raw-arguments-key
-  "The key the stream collector leaves behind when a model's tool-call arguments were not valid JSON.
-
-  Its *presence* is what [[invoke]] reports as `:invalid-json`; the value is the model's own
-  malformed output and never reaches a message. Malformed JSON and schema-valid JSON that breaks the
-  schema are separate codes because they are separate mistakes, and the repair differs: resend the
-  call as an object, versus fix a named argument."
-  :_raw_arguments)
-
-(def ^:private invalid-json-message
-  "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object.")
-
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
 
 (defn- unrecoverable-output
@@ -194,9 +175,10 @@
                            ". Tool errors may only carry authored text; log the exception instead.")
                       {:where where})))))
 
-(def ^:private max-output-length
-  "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
-  so that a pathological payload cannot spend the turn's context on one failure."
+(def max-output-length
+  "Maximum number of characters in a rendered failure, including recovery steps.
+
+  Leave room for recovery steps when including excerpts."
   4000)
 
 (defn render
@@ -210,7 +192,7 @@
 
   `:user-message` is copied onto the outcome for unrecoverable errors so the agent loop can show it
   to the user. It never becomes part of `:output`."
-  [{:keys [class code message recovery user-message]} tool-names]
+  [{:keys [class code message recovery user-message] :as error} tool-names]
   (let [output (case class
                  :validation  message
                  ;; The same assembly an item's failure gets, so a `not-found!` reads identically
@@ -224,7 +206,10 @@
       ;; in `metabase.metabot.tools.error-test` rather than on every render — which also means this
       ;; path needs no exemption for `tools.core/all-items-failed`, whose message is not authored at
       ;; all but assembled from text each item already had filtered for this profile.
-      (assert-authored! output (str class " " code)))
+      (assert-authored! (if (= :recoverable class)
+                          (tools.error/authored-text error output)
+                          output)
+                        (str class " " code)))
     {:output (cond-> output
                (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}
@@ -234,7 +219,7 @@
 
 (defn- validation-ex
   "The exception for one of the runtime's validation errors. Thrown rather than returned so that all
-  seven steps of [[invoke]] leave by the same door."
+  six steps of [[invoke]] leave by the same door."
   ^Throwable [code message]
   (ex-info message {tools.error/error-key {:class :validation :code code :message message}}))
 
@@ -279,8 +264,6 @@
   "`args` coerced and checked against the declaration's `:args` schema. Throws a validation error
   otherwise."
   [{:keys [args]} arguments]
-  (when (and (map? arguments) (contains? arguments raw-arguments-key))
-    (throw (validation-ex :invalid-json invalid-json-message)))
   (let [coerced (coerce-stringified-scalars args arguments)]
     (when-let [message (invalid-arguments-message args coerced)]
       (throw (validation-ex :invalid-arguments message)))
@@ -341,12 +324,11 @@
 
   In order:
   1. an unknown `tool-name` is a validation error listing what this profile does have;
-  2. arguments that were not valid JSON are a validation error (see [[raw-arguments-key]]);
-  3. stringified scalars are coerced, then the arguments are validated against `:args`;
-  4. the scope is checked, and a denial is unrecoverable;
-  5. the tool runs with the dynamic vars bound from `ctx`, through `tools.core/call`;
-  6. its result is validated against `tools.core/result` and its `:output` rendered to a string;
-  7. any exception is classified, logged in full, and rendered for its audience."
+  2. stringified scalars are coerced, then the arguments are validated against `:args`;
+  3. the scope is checked, and a denial is unrecoverable;
+  4. the tool runs with the dynamic vars bound from `ctx`, through `tools.core/call`;
+  5. its result is validated against `tools.core/result` and its `:output` rendered to a string;
+  6. any exception is classified, logged in full, and rendered for its audience."
   [entries ctx tool-name args]
   (let [tool-names (:tool-names ctx)]
     (try

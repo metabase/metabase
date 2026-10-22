@@ -159,7 +159,7 @@ describe("MetabotSlackSetup", () => {
         screen.getByRole("link", { name: "Learn how to enable encryption" }),
       ).toHaveAttribute(
         "href",
-        expect.stringContaining("encrypting-database-details-at-rest"),
+        expect.stringContaining("databases/encrypting-details-at-rest"),
       );
 
       expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument();

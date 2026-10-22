@@ -55,9 +55,10 @@
 (deftest oauth-token->token-scopes-test
   (testing "a token carrying the full-access scope maps to the unrestricted sentinel (general REST reachable)"
     (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope})))
-    (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:query:execute"}))))
+           (oauth-token->token-scopes #{oauth-server/full-access-scope}))))
+  (testing "GHY-4942: the other scopes it was granted ride along, since MCP ignores the sentinel and gates on them"
+    (is (= #{::scope/unrestricted "agent:sql:run"}
+           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:sql:run"}))))
   (testing "any narrower scope set is passed through verbatim (only opted-in agent endpoints reachable)"
     (is (= #{"agent:query:execute"}
            (oauth-token->token-scopes #{"agent:query:execute"})))
@@ -163,20 +164,18 @@
 
 (deftest non-oauth-auth-is-unaffected-by-oauth-fail-closed-test
   (testing "GHY-4542: session and API-key requests carry nil `:token-scopes` and must keep passing the scope
-            middleware. A stray bearer header does not make a session request OAuth-authenticated: the session
-            takes precedence and the bearer is never resolved."
+            middleware. Off the bearer-only paths, a stray bearer header does not make a session request
+            OAuth-authenticated: the session takes precedence and the bearer is never resolved."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [user-info {:metabase-user-id (mt/user->id :rasta) :is-superuser? false}]
         (testing "a session request"
           (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
             (let [req (merge-current-user-info {:metabase-session-key "session-key"})]
-              (is (= "session" (:embedding/auth-method req)))
               (is (nil? (:authenticated-via-oauth? req)))
               (is (passes-scope-middleware? req)))))
         (testing "an API-key request"
           (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-api-key (fn [_] user-info)]
             (let [req (merge-current-user-info {:headers {"x-api-key" "mb_whatever"}})]
-              (is (= "api-key" (:embedding/auth-method req)))
               (is (nil? (:authenticated-via-oauth? req)))
               (is (passes-scope-middleware? req)))))
         (testing "a session request carrying a stray bearer header"
@@ -187,7 +186,6 @@
                 (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
                   (let [req (merge-current-user-info (assoc (bearer-request token) :metabase-session-key "session-key"))]
                     (is (= (mt/user->id :rasta) (:metabase-user-id req)))
-                    (is (= "session" (:embedding/auth-method req)))
                     (is (nil? (:authenticated-via-oauth? req)))
                     (is (passes-scope-middleware? req))))
                 (testing "and over HTTP"
@@ -293,8 +291,51 @@
               (t2/query {:update :core_user :set {:is_active true} :where [:= :id user-id]})
               (t2/delete! :model/OAuthAccessToken :token token))))))))
 
+(deftest bearer-only-paths-ignore-sessions-and-api-keys-test
+  (testing "GHY-4941: on a bearer-only path the middleware reads only the bearer token. A session or an API key
+            authenticates no one there, and a bearer token authenticates even when a session is also present"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [user-info {:metabase-user-id (mt/user->id :crowberto) :is-superuser? true}
+                token     (str (random-uuid))]
+            (save-access-token! token (mt/user->id :rasta) client-id ["agent:content:read"] (in-one-hour))
+            (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)
+                                        mw.session/current-user-info-for-api-key (fn [_] user-info)]
+              (doseq [uri ["/api/metabase-mcp" "/api/mcp" "/api/mcp/" "/api/metabase-mcp/anything"]]
+                (testing uri
+                  (testing "a session authenticates no one"
+                    (let [req (merge-current-user-info {:uri uri :metabase-session-key "session-key"})]
+                      (is (nil? (:metabase-user-id req)))
+                      (is (nil? (:metabase/authed-session-key-hash req)))))
+                  (testing "an API key authenticates no one"
+                    (is (nil? (:metabase-user-id (merge-current-user-info {:uri     uri
+                                                                           :headers {"x-api-key" "mb_whatever"}})))))
+                  (testing "a bearer token wins over a session on the same request"
+                    (let [req (merge-current-user-info (assoc (bearer-request token)
+                                                              :uri uri
+                                                              :metabase-session-key "session-key"))]
+                      (is (= (mt/user->id :rasta) (:metabase-user-id req)))
+                      (is (true? (:authenticated-via-oauth? req)))
+                      (is (= "oauth" (:embedding/auth-method req)))))))
+              (doseq [uri ["/api/mcpfoo" "/api/metabase-mcp-other" "/api/user/current" "/mcp"]]
+                (testing (str uri " is not a bearer-only path, so a session still authenticates")
+                  (is (= (mt/user->id :crowberto)
+                         (:metabase-user-id (merge-current-user-info {:uri uri :metabase-session-key "session-key"})))))))))))))
+
+(deftest bearer-only-paths-ignore-mcp-ui-credentials-test
+  (testing "GHY-4941: an MCP UI credential authenticates no one on a bearer-only path"
+    (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-mcp-ui-credential
+                                (fn [_ _] {:metabase-user-id (mt/user->id :rasta) :is-superuser? false})]
+      (is (nil? (:metabase-user-id (merge-current-user-info {:uri     "/api/metabase-mcp"
+                                                             :headers {"x-metabase-mcp-ui-auth" "credential"}}))))
+      (testing "and still authenticates elsewhere"
+        (is (= (mt/user->id :rasta)
+               (:metabase-user-id (merge-current-user-info {:uri     "/api/embed-mcp/bootstrap"
+                                                            :headers {"x-metabase-mcp-ui-auth" "credential"}}))))))))
+
 (deftest bearer-bridge-precedence-test
-  (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"
+  (testing "off the bearer-only paths, session/api-key auth takes precedence — bearer resolution is not even attempted"
     (let [called? (atom false)]
       (mt/with-dynamic-fn-redefs [oauth-server/resolve-access-token (fn [_] (reset! called? true) nil)
                                   ;; pretend an API key authenticated the request
@@ -302,6 +343,5 @@
         (let [req (merge-current-user-info {:headers {"authorization" "Bearer anything"
                                                       "x-api-key"     "mb_whatever"}})]
           (is (= 99 (:metabase-user-id req)))
-          (is (= "api-key" (:embedding/auth-method req)))
           (is (nil? (:token-scopes req)) "api-key auth must not set token-scopes")
           (is (false? @called?) "bearer token store must not be consulted when api-key already authenticated"))))))

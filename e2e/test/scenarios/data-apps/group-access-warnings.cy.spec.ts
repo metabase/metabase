@@ -30,6 +30,7 @@ describe("scenarios > data apps > group access warnings (EMB-2416)", () => {
         }),
       ],
     });
+    H.waitForBackfillComplete();
 
     cy.request<GroupInfo>("POST", "/api/permissions/group", {
       name: GROUP_NAME,
@@ -90,9 +91,10 @@ describe("scenarios > data apps > group access warnings (EMB-2416)", () => {
     H.modifyPermission(GROUP_NAME, DATA_ACCESS_PERMISSION_INDEX, "Can view");
     H.savePermissions();
 
-    cy.intercept("GET", `/api/apps/${APP_NAME}/group-permission-warnings`).as(
-      "groupWarnings",
-    );
+    cy.intercept(
+      "GET",
+      `/api/ee/apps/${APP_NAME}/group-permission-warnings`,
+    ).as("groupWarnings");
 
     cy.go("back");
     cy.location("pathname").should(

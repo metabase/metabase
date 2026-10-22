@@ -29,11 +29,15 @@
   "The payload every pipeline-error declaration takes.
 
   `:message` is the pipeline's own sentence. `:entity-type` and `:entity-id` are present only for
-  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]])."
+  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]]).
+  `:source-card` and `:source-card-type` are the numeric ID and type of the stage's `source-card:`,
+  present only for the codes a `source-card:` stage raises (see [[column-not-returned!]])."
   [:map {:closed true}
-   [:message     :string]
-   [:entity-type {:optional true} [:maybe :string]]
-   [:entity-id   {:optional true} [:maybe [:or :string :int]]]])
+   [:message          :string]
+   [:entity-type      {:optional true} [:maybe :string]]
+   [:entity-id        {:optional true} [:maybe [:or :string :int]]]
+   [:source-card      {:optional true} [:maybe :int]]
+   [:source-card-type {:optional true} [:maybe [:enum "model" "question"]]]])
 
 ;;; ------------------------------------------- Shared recovery steps ----------------------------------------------
 
@@ -89,6 +93,14 @@
   {:uses #{}
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
+
+(defn- card-fields-step
+  "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
+  [{:keys [source-card source-card-type]} what]
+  (when (and source-card source-card-type)
+    {:uses #{"read_resource"}
+     :text (str "Call `read_resource` with `metabase://" source-card-type "/" source-card "/fields` to list the "
+                what " this " source-card-type " returns.")}))
 
 ;;; ------------------------------------------- Declarations -------------------------------------------------------
 
@@ -166,11 +178,34 @@
   "A later stage referenced a column no earlier stage returns."
   [list-fields-step])
 
+(defpipeline-error unresolved-join-alias-field!
+  "A reference through a join alias named a column that join does not return."
+  ;; No step: the message already lists the columns the join returns, and for a grouped join those
+  ;; are its breakouts and aggregations, not a table's fields.
+  [])
+
+(defrecoverable column-not-returned!
+  "A field on a `source-card:` stage is on a table the card reads but is not a column the card returns."
+  {:payload ::payload}
+  [payload]
+  {:message  (:message payload)
+   :recovery (filterv some? [(card-fields-step payload "columns")])})
+
 ;;; Joins
 
-(defpipeline-error ambiguous-fk!
+(defrecoverable ambiguous-fk!
   "More than one foreign key connects the two tables, so the join path is ambiguous."
-  [list-fks-step])
+  {:payload ::payload}
+  [payload]
+  {:message  (:message payload)
+   :recovery [(or (card-fields-step payload "foreign-key columns") list-fks-step)]})
+
+(defrecoverable unexportable-fk!
+  "The only foreign key that reaches a field's table could not be resolved, so the field cannot be reached implicitly."
+  {:payload ::payload}
+  [payload]
+  {:message  (:message payload)
+   :recovery (filterv some? [(card-fields-step payload "columns")])})
 
 (defpipeline-error ambiguous-fk-via-join!
   "More than one foreign key connects the joined tables, so the join path is ambiguous."
@@ -230,6 +265,11 @@
 
 (defpipeline-error cross-database-segment!
   "The referenced segment belongs to a different database than the query."
+  [])
+
+(defpipeline-error incompatible-metric!
+  "A metric was used with an incompatible stage source."
+  ;; No step: the message names the source each metric needs, or says it has none.
   [])
 
 ;;; Query shape
@@ -325,9 +365,10 @@
                 "metric"
                 {:uses #{"read_resource"}
                  :text (str "Metrics are aggregations, not sources. To use metric " entity-id
-                            ", put its base table into `source-table:` — combine the `database_name` and "
-                            "`base_table_fully_qualified_name` attributes from its search result or "
-                            "`read_resource metabase://metric/" entity-id "` — and reference the metric as "
+                            ", build the stage on the source specified by its `<metric>` tag (in its search result or "
+                            "`read_resource metabase://metric/" entity-id "`): `base_table_fully_qualified_name` "
+                            "with `database_name` as `source-table:`, or `source_card_portable_entity_id` as "
+                            "`source-card:`. Then reference the metric as "
                             "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")}
 
                 ("question" "model" "card")

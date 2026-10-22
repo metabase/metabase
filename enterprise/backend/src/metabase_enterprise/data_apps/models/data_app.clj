@@ -40,8 +40,7 @@
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts mi/transform-json
-   :table_ids     mi/transform-json})
+   :allowed_hosts mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -100,18 +99,21 @@
 (t2/define-after-select :model/DataApp
   [app]
   (cond-> app
-    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
-    (contains? app :table_ids)     (update :table_ids #(or % []))))
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
 (defmethod mi/can-read? :model/DataApp
-  ([app] (mi/can-read? :model/DataApp (:id app)))
+  ([app]
+   (or api/*is-superuser?*
+       (boolean
+        (and (:enabled app)
+             api/*current-user-id*
+             (nil? (:tenant_id @api/*current-user*))
+             (let [group-ids (user/group-ids api/*current-user-id*)]
+               (some (comp group-ids :permission_group_id)
+                     (data-apps.db/app-assignments [(:id app)])))))))
   ([_model pk]
    (or api/*is-superuser?*
-       (and api/*current-user-id*
-            (nil? (:tenant_id @api/*current-user*))
-            (let [group-ids (user/group-ids api/*current-user-id*)]
-              (boolean (some (comp group-ids :permission_group_id)
-                             (data-apps.db/app-assignments [pk]))))))))
+       (boolean (some-> (data-apps.db/data-app pk) mi/can-read?)))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -157,11 +159,8 @@
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
-               :bundle_hash
-               ;; server-managed resources, recreated on import
-               :table_ids]
-   :transform {:created_at   (serdes/date)
-               ;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
+               :bundle_hash]
+   :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}
                :display_name {:as :name :export identity :import identity}

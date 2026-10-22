@@ -21,6 +21,34 @@
    :recovery [{:uses #{"search"}        :text "Call `search` to find a widget id."}
               {:uses #{"read_resource"} :text "Or call `read_resource` on the widget collection."}]})
 
+(tools.error/defrecoverable runtime-test-quoted-failure!
+  "Quote a database error as `run_query` does."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str "The database said: " (pr-str database-error))
+   :recovery []})
+
+(tools.error/defrecoverable runtime-test-branching-quoted-failure!
+  "Quote a database error after a prefix chosen from its contents.
+   One prefix includes a class name."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str (if (str/includes? database-error "syntax")
+                    "clojure.lang.ExceptionInfo: The query has invalid syntax. "
+                    "The database said: ")
+                  (pr-str database-error))
+   :recovery []})
+
+(tools.error/defrecoverable runtime-test-misquoted-failure!
+  "Declare a quoted database error but write its value without quotes."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str "The database said: " database-error)
+   :recovery []})
+
 (defn- tool
   "A one-off `Tool` with `declared` and a body of `f`, for the runtime to drive."
   [declared f]
@@ -149,16 +177,6 @@
     (is (= {:class :validation :code :invalid-arguments} (:error outcome)))
     (is (= "Invalid tool arguments: `m` is not a supported argument. `n` is required."
            (:output outcome)))))
-
-(deftest ^:parallel invalid-json-is-its-own-code-test
-  (testing "malformed JSON and schema-invalid JSON are different mistakes with different repairs"
-    (let [outcome (invoke "happy" {tools.runtime/raw-arguments-key "{\"n\": "})]
-      (is (= {:class :validation :code :invalid-json} (:error outcome)))
-      (is (= (str "Invalid tool arguments: the arguments were not valid JSON. "
-                  "Send the call again as a JSON object.")
-             (:output outcome)))
-      (testing "and the model's own malformed output is not quoted back at it"
-        (is (not (str/includes? (:output outcome) "{\"n\":")))))))
 
 ;;; ------------------------------------------------ Recoverable ---------------------------------------------------
 
@@ -342,6 +360,24 @@
              (tools.runtime/render {:class :validation :code :invalid-arguments :message message}
                                    all-tool-names)))))))
 
+(deftest ^:parallel render-checks-all-but-the-quoted-text-test
+  (let [render (fn [code database-error]
+                 (tools.runtime/render (tools.error/classify
+                                        (try (tools.error/throw-recoverable! code {:database-error database-error})
+                                             (catch Throwable e e)))
+                                       all-tool-names))]
+    (testing "a class name inside a quoted database error is data, so the check lets it through"
+      (is (= (str "The database said: " (pr-str "Column \"clojure.lang.foo\" not found"))
+             (:output (render ::runtime-test-quoted-failure "Column \"clojure.lang.foo\" not found")))))
+    (testing "a class name written by the error body is rejected even when it depends on quoted text"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"may only carry authored text"
+           (render ::runtime-test-branching-quoted-failure "syntax error near SELECT"))))
+    (testing "a declared value stays in the checked text when the body writes it without quotes"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"may only carry authored text"
+           (render ::runtime-test-misquoted-failure "clojure.lang.ExceptionInfo: boom"))))))
+
 ;; Whether a declaration's text names a tool it has not declared is a property of the declaration,
 ;; not of a render, so `render` no longer checks it — see
 ;; `metabase.metabot.tools.error-test/a-declarations-text-is-profile-neutral-test`, which checks the
@@ -358,7 +394,6 @@
   (testing "the agent loop and the adapters branch on these, so the list is shared rather than
            re-spelled in each place"
     (is (= {:unknown-tool      :validation
-            :invalid-json      :validation
             :invalid-arguments :validation
             :scope-denied      :unrecoverable
             :internal          :unrecoverable}
@@ -366,12 +401,11 @@
     (testing "and every one of them is reachable through invoke"
       ;; The scoped case needs a ctx that grants nothing; the rest run under the default
       ;; unrestricted one.
-      (is (= #{:unknown-tool :invalid-json :invalid-arguments :scope-denied :internal}
+      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal}
              (set (keep (fn [[tool-name args overrides]]
                           (get-in (tools.runtime/invoke entries (ctx overrides) tool-name args)
                                   [:error :code]))
                         [["nope" {}]
-                         ["happy" {tools.runtime/raw-arguments-key "{"}]
                          ["happy" {:m 1}]
                          ["scoped" {} {:user-scope #{}}]
                          ["crash" {}]])))))))
