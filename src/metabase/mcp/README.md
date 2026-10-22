@@ -46,8 +46,9 @@ The flow for a first-time connection:
 3. The user is redirected to Metabase to log in and approve the connection.
 4. The client receives an access token scoped to the user's Metabase permissions.
 
-Browser-based sessions (cookie auth), API keys, and `mb:full` tokens hold no MCP scope, so they can connect but
-call no scoped tool.
+MCP accepts only an OAuth access token. On the MCP paths the session middleware ignores session cookies and API
+keys, so such a request gets the same 401 discovery challenge as a request with no credential. An `mb:full` token
+holds no MCP scope, so it can connect but call no scoped tool.
 
 ### Scopes
 
@@ -211,7 +212,7 @@ The implementation lives in these files:
 MCP client
   -> POST /api/metabase-mcp (JSON-RPC)
   -> Origin + session validation
-  -> Auth: OAuth bearer token or browser session
+  -> Auth: OAuth bearer token
   -> Scope check against requested tool
   -> Synthetic request to Agent API endpoint
   -> Response materialized as MCP content

@@ -512,7 +512,6 @@
                :type                   "question"
                :display                "table"
                :creator_id             "crowberto@metabase.com"
-               :created_at             string?
                :card_schema            pos-int?
                :visualization_settings {}
                :parameters             []
@@ -628,3 +627,15 @@
                                                                                          :column {:type "column" :name "CATEGORY_ID"}}]}]})]})]
       (is (=? [["field" {:name "category"} some?]]
               (get-in (file-entity file) [:dataset_query :stages 0 :breakout]))))))
+
+(deftest unsupported-bin-count-lists-presets-test
+  (is (=? {:queries [{:error "Unsupported bin count 20. Supported counts for this field are 10, 50, and 100."}
+                     {:file string?}]}
+          (generate! :crowberto 200
+                     {:queries (for [num-bins [20 50]]
+                                 (query-item (str "Venues by price " num-bins)
+                                             (venues-definition
+                                              :aggregations [{:type "operator" :operator "count"}]
+                                              :breakouts [(venues-column "PRICE"
+                                                                         :binning {:strategy "num-bins"
+                                                                                   :numBins num-bins})])))}))))

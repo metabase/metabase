@@ -19,7 +19,7 @@ Fixes for timeout problems will depend on your specific setup. These resources m
 - [Jetty connectors][configuring-jetty]
 - [EC2 Troubleshooting][ec2-troubleshooting]
 - [Elastic Load Balancing Connection Timeout Management][elb-timeout]
-- [App Engine: Dealing with DeadlineExceededErrors][app-engine-timeout]
+- [App Engine: Handling request timeouts][app-engine-timeout]
 
 ## Are you still stuck?
 
@@ -28,7 +28,7 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
 
-[app-engine-timeout]: https://cloud.google.com/appengine/articles/deadlineexceedederrors
+[app-engine-timeout]: https://docs.cloud.google.com/appengine/docs/standard/how-requests-are-handled#the_request_timer
 [configuring-jetty]: https://jetty.org/docs/jetty/12/operations-guide/protocols/index.html
 [discourse]: https://discourse.metabase.com/
 [ec2-troubleshooting]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html

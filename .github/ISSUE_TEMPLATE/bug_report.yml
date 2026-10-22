@@ -54,7 +54,7 @@ body:
       description: |
         Please include relevant JavaScript console logs from the "console" tab in the browser dev tools.
         Additionally, include Metabase server logs (`Settings -> Admin -> Troubleshooting -> Logs`) around the time this bug occurred.
-        For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
+        For information about how to get these, consult our [bug troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/bugs)
     validations:
       required: false
 

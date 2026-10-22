@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -245,9 +246,10 @@
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
-    (mapv (fn [table-metadata]
-            (create-table! database (m/assoc-some table-metadata :field_order field-order)))
-          (sort-by (juxt :schema :name) new-table-metadatas))))
+    (dependencies.hooks/with-batched-marks
+      (mapv (fn [table-metadata]
+              (create-table! database (m/assoc-some table-metadata :field_order field-order)))
+            (sort-by (juxt :schema :name) new-table-metadatas)))))
 
 (mu/defn- retire-tables!
   "Mark the active Tables with `table-ids` as inactive."
