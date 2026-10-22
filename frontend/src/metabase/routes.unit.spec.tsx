@@ -19,10 +19,6 @@ import { createMockUser } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { LegacyBrowseRedirect, getRoutes } from "./routes";
-import {
-  type EntityIdRedirectProps,
-  createEntityIdRedirect,
-} from "./routes-stable-id-aware";
 
 function setupLegacyBrowseRedirect(initialRoute: string) {
   setupCurrentUserEndpoint(createMockUser());
@@ -80,6 +76,10 @@ jest.mock("metabase/collections/components/CollectionLanding", () => {
   const { Outlet } = jest.requireActual("metabase/router");
   return { __esModule: true, default: () => <Outlet /> };
 });
+
+jest.mock("metabase/dashboard/containers/DashboardApp/DashboardApp", () => ({
+  DashboardApp: () => <div>dashboard app</div>,
+}));
 
 function setupAppRoutes({
   initialRoute,
@@ -332,37 +332,18 @@ describe("dashboard entity-id deep links", () => {
   const TAB_ID = 2;
   const DASHCARD_ID = 25;
 
-  const dashboardRedirectConfig: EntityIdRedirectProps = {
-    parametersToTranslate: [
-      { name: "entity_id", resourceType: "dashboard", type: "param" },
-      { name: "tab", resourceType: "dashboard-tab", type: "search" },
-      { name: "scrollTo", resourceType: "dashboard-card", type: "hash" },
-    ],
-  };
-
   type SetupOpts = {
     initialRoute: string;
   };
 
   function setup({ initialRoute }: SetupOpts) {
-    setupCurrentUserEndpoint(createMockUser());
     setupEntityIdEndpoint({
       dashboard: { [DASHBOARD_EID]: DASHBOARD_ID },
       "dashboard-tab": { [TAB_EID]: TAB_ID },
       "dashboard-card": { [DASHCARD_EID]: DASHCARD_ID },
     });
 
-    const { router } = renderWithProviders(
-      <>
-        <Route
-          path="dashboard/entity/:entity_id/*"
-          element={createEntityIdRedirect(dashboardRedirectConfig)}
-        />
-        <Route path="dashboard/:slug" element={<div>dashboard app</div>} />
-      </>,
-      { withRouter: true, initialRoute },
-    );
-
+    const { router } = setupAppRoutes({ initialRoute });
     return router;
   }
 
