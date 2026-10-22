@@ -544,11 +544,30 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
+(defn- sync-tables
+  "Returns the tables that table sync saved, as `{:name :schema}` maps."
+  [database schema-names table-names]
+  ;; Realize everything in a vector to close the connection.
+  (into []
+        (map #(select-keys % [:name :schema]))
+        (driver-api/reducible-sync-tables database
+                                          :schema-names (not-empty (remove nil? schema-names))
+                                          :table-names  (not-empty table-names))))
+
+(defn- describe-fields-using-describe-table
+  "Returns the fields of the tables in `schema-names` with [[driver/describe-table]].
+  This is much slower than [[describe-fields-using-get-columns]] and is used as a fallback when it throws.
+  It mimics `metabase.sync.fetch-metadata/describe-fields-using-describe-table`."
+  [driver database schema-names table-names]
+  (eduction
+   (mapcat (fn [table]
+             (for [field (:fields (driver/describe-table driver database table))]
+               (assoc field :table-schema (:schema table), :table-name (:name table)))))
+   (sync-tables database schema-names table-names)))
+
 (defn- column-rows->fields-xf
-  "Returns a transducer that converts column rows into field metadata. Types are parsed the same as for `DESCRIBE`."
   []
   (comp
-   ;; rows of a table are contiguous. Keep the first column of each name, as `DESCRIBE` does.
    (partition-by (juxt :table-schema :table-name))
    (mapcat (partial m/distinct-by :name))
    (map (fn [{col-name :name, :keys [database-type field-comment database-position], :as col}]
@@ -560,75 +579,45 @@
             (nil? database-type)       (assoc :base-type :type/*)
             (str/blank? field-comment) (dissoc :field-comment))))))
 
-(defn- describe-fields-per-table
-  "Returns the fields of the tables in `schema-names` with [[driver/describe-table]]. It is slower than
-  [[describe-fields-with-get-columns]], but an error for one table does not stop the other tables."
-  [driver database schema-names table-names]
-  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)
-        table-names              (set table-names)
-        tables                   (sql-jdbc.execute/do-with-connection-with-options
-                                  driver
-                                  database
-                                  nil
-                                  (fn [^Connection conn]
-                                    (let [metadata (.getMetaData conn)]
-                                      (vec (for [schema (if (seq dbname) [dbname] (remove nil? schema-names))
-                                                 table  (get-tables metadata schema (not-empty catalog))
-                                                 :when  (or (empty? table-names)
-                                                            (contains? table-names (:table_name table)))]
-                                             {:name   (:table_name table)
-                                              :schema (when-not (seq dbname) schema)})))))]
-    (eduction
-     (mapcat (fn [table]
-               (for [field (:fields (driver/describe-table driver database table))]
-                 (assoc field :table-schema (:schema table), :table-name (:name table)))))
-     (sort-by (juxt :schema :name) tables))))
-
-(defn- schema-fields-with-get-columns
-  "Returns the fields of the tables in `schema` with one JDBC `getColumns` call. A table with no columns in the result
-  gets its fields from `DESCRIBE`."
-  [database ^DatabaseMetaData metadata catalog schema table-schema table-names]
-  (let [;; with one table, ask only for that table
-        table-pattern (if (= 1 (count table-names))
+(defn- schema-fields-using-get-columns
+  "Returns the fields of the tables in `glue-schema` with one JDBC `getColumns` call.
+  This reads from the Glue catalog and is much faster than an Athena query (i.e. DESCRIBE or querying information_schema).
+  `glue-schema` is the actual schema name that the tables are in, it is always set.
+  `mb-schema` is the schema value that we will set for the field. It is nil if the user has set `dbname` in the
+  connection details, otherwise it is the same as `glue-schema`."
+  [database ^DatabaseMetaData metadata catalog glue-schema mb-schema table-names]
+  (let [table-pattern (if (= 1 (count table-names))
                         (escape-metadata-pattern metadata (first table-names))
                         "%")
-        rows          (with-open [rs (.getColumns metadata
-                                                  catalog
-                                                  (escape-metadata-pattern metadata schema)
-                                                  table-pattern
-                                                  nil)]
-                        (->> (jdbc/metadata-result rs)
-                             (filter #(or (empty? table-names) (contains? table-names (:table_name %))))
-                             (map (fn [{:keys [table_name column_name type_name ordinal_position remarks]}]
-                                    {:table-schema      table-schema
-                                     :table-name        table_name
-                                     :name              column_name
-                                     :database-type     type_name
-                                     :database-position (dec ordinal_position)
-                                     :field-comment     remarks}))
-                             (sort-by (juxt :table-name :database-position))
-                             (into [] (column-rows->fields-xf))))
-        found         (into #{} (map :table-name) rows)
-        ;; `getColumns` can return no columns for a table (#43980). Compare with the tables that table sync saved.
-        missing       (remove found (if (seq table-names)
-                                      table-names
-                                      (into []
-                                            (comp (filter #(= table-schema (:schema %)))
-                                                  (map :name))
-                                            ;; a nil schema matches no table in SQL, so filter it here
-                                            (driver-api/reducible-sync-tables
-                                             database
-                                             :schema-names (when table-schema [table-schema])))))
-        described     (for [table-name missing
-                            field      (describe-table-fields-with-nested-fields database schema table-name)]
-                        (-> field
-                            (dissoc :nested-fields)
-                            (assoc :table-schema table-schema, :table-name table-name)))]
-    (sort-by (juxt :table-name :database-position) (concat rows described))))
+        fields (with-open [rs (.getColumns metadata
+                                           catalog
+                                           (escape-metadata-pattern metadata glue-schema)
+                                           table-pattern
+                                           nil)]
+                 (->> (jdbc/metadata-result rs)
+                      (filter #(or (empty? table-names) (contains? table-names (:table_name %))))
+                      (map (fn [{:keys [table_name column_name type_name ordinal_position remarks]}]
+                             {:table-schema      mb-schema
+                              :table-name        table_name
+                              :name              column_name
+                              :database-type     type_name
+                              :database-position (dec ordinal_position)
+                              :field-comment     remarks}))
+                      (sort-by (juxt :table-name :database-position))
+                      (into [] (column-rows->fields-xf))))
+        found-tables (into #{} (map :table-name) fields)
+        ;; `getColumns` can return no columns for a table (#43980).
+        ;; Compare `found-tables` with the tables that table sync saved,
+        ;; and use DESCRIBE to get the fields for any missing tables.
+        missing-tables (remove found-tables (if (seq table-names)
+                                              table-names
+                                              (map :name (sync-tables database [mb-schema] nil))))
+        missing-table-fields (for [table-name missing-tables
+                                   field      (describe-table-fields-with-nested-fields database glue-schema table-name)]
+                               (assoc field :table-schema mb-schema, :table-name table-name))]
+    (sort-by (juxt :table-name :database-position) (concat fields missing-table-fields))))
 
-(defn- describe-fields-with-get-columns
-  "Returns the fields of the tables in `schema-names` with one JDBC `getColumns` call for each schema. This reads the
-  Glue catalog and runs no Athena query."
+(defn- describe-fields-using-get-columns
   [driver database schema-names table-names]
   (let [{:keys [catalog dbname]} (driver.conn/effective-details database)]
     (sql-jdbc.execute/do-with-connection-with-options
@@ -638,21 +627,24 @@
      (fn [^Connection conn]
        (let [metadata (.getMetaData conn)
              catalog  (if (str/blank? catalog) (.getCatalog conn) catalog)]
-         ;; when `dbname` is set, tables have no schema, and `dbname` is the only Glue database to read
+         ;; Tables have no schema when `dbname` is set, so we pass 2 schema values here.
+         ;; The first is the actual schema name, used for reading from Athena. The second
+         ;; is the schema value to set for the field. So it is nil when `dbname` is set.
          (into []
-               (mapcat #(schema-fields-with-get-columns database metadata catalog %
-                                                        (when-not (seq dbname) %)
-                                                        (set table-names)))
+               (mapcat #(schema-fields-using-get-columns database metadata catalog
+                                                         %                         ;; the actual schema name
+                                                         (when-not (seq dbname) %) ;; the schema value to set for the field
+                                                         (set table-names)))
                (if (seq dbname) [dbname] (remove nil? schema-names))))))))
 
 (defmethod driver/describe-fields :athena
   [driver database & {:keys [schema-names table-names]}]
   (try
-    (describe-fields-with-get-columns driver database schema-names table-names)
+    (describe-fields-using-get-columns driver database schema-names table-names)
     (catch Exception e
       (log/warnf e "Cannot read fields for schemas %s with getColumns, describing each table instead"
                  (pr-str schema-names))
-      (describe-fields-per-table driver database schema-names table-names))))
+      (describe-fields-using-describe-table driver database schema-names table-names))))
 
 ;; one-off REPL script kept for reference; requires test namespaces a driver module can't normally use
 #_{:clj-kondo/ignore [:discouraged-var :metabase/modules]}

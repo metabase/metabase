@@ -486,11 +486,11 @@
   (testing "if `getColumns` fails, describe each table separately"
     (let [called (atom nil)
           fields [{:table-schema "s", :table-name "t", :name "id", :database-type "int", :base-type :type/Integer, :database-position 0}]]
-      (mt/with-dynamic-fn-redefs [athena/describe-fields-with-get-columns (fn [_driver _database _schema-names _table-names]
-                                                                            (throw (ex-info "AccessDeniedException" {})))
-                                  athena/describe-fields-per-table        (fn [_driver _database schema-names table-names]
-                                                                            (reset! called [schema-names table-names])
-                                                                            fields)]
+      (mt/with-dynamic-fn-redefs [athena/describe-fields-using-get-columns    (fn [_driver _database _schema-names _table-names]
+                                                                                (throw (ex-info "AccessDeniedException" {})))
+                                  athena/describe-fields-using-describe-table (fn [_driver _database schema-names table-names]
+                                                                                (reset! called [schema-names table-names])
+                                                                                fields)]
         (is (= fields
                (into [] (driver/describe-fields :athena
                                                 (assoc meta/database :engine :athena, :details {})
