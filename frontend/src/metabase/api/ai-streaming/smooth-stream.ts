@@ -29,18 +29,34 @@ type SmoothableDelta = TextDeltaEvent | ReasoningDeltaEvent;
 const isSmoothable = (event: SSEEvent): event is SmoothableDelta =>
   event.type === "text-delta" || event.type === "reasoning-delta";
 
-export type SmoothTextOptions = { delayInMs?: number };
+export type SmoothTextOptions = {
+  delayInMs?: number;
+  // Returns true while the user can see the reasoning of this stream.
+  shouldPaceReasoning?: () => boolean;
+};
 
-// Re-emits text/reasoning deltas one word at a time on a fixed cadence, so they
-// render steadily however unevenly the server chunks them. Awaiting between words
+// Re-emits text deltas one word at a time on a fixed cadence, so they render
+// steadily however unevenly the server chunks them. Awaiting between words
 // backpressures the stream, which is what paces it. While the document is hidden,
 // it emits the whole buffer at once and starts no new wait.
+// Reasoning deltas are paced only while `shouldPaceReasoning` returns true.
+// When it returns false, the buffered words go out at once and the reasoning
+// passes through. Paced reasoning delays every later event, such as the SQL edit,
+// by minutes, so it is paced only while the user can see it.
+// https://github.com/metabase/metabase/issues/84969
 export async function* smoothStreamEvents(
   events: AsyncIterable<SSEEvent>,
-  { delayInMs = DEFAULT_SMOOTHING_DELAY_MS }: SmoothTextOptions = {},
+  {
+    delayInMs = DEFAULT_SMOOTHING_DELAY_MS,
+    shouldPaceReasoning = () => false,
+  }: SmoothTextOptions = {},
 ): AsyncGenerator<SSEEvent> {
   let buffer = "";
   let pending: SmoothableDelta | null = null;
+
+  const canPace = () =>
+    !isDocumentHidden() &&
+    (pending?.type === "text-delta" || shouldPaceReasoning());
 
   function* flush() {
     if (pending && buffer.length > 0) {
@@ -50,8 +66,12 @@ export async function* smoothStreamEvents(
   }
 
   for await (const event of events) {
-    // any other event flushes the buffered tail first, to preserve ordering
-    if (!isSmoothable(event)) {
+    // other events, and reasoning that is not paced, flush the buffered tail
+    // first, to keep the order, and then pass through
+    if (
+      !isSmoothable(event) ||
+      (event.type === "reasoning-delta" && !shouldPaceReasoning())
+    ) {
       yield* flush();
       yield event;
       continue;
@@ -66,17 +86,17 @@ export async function* smoothStreamEvents(
     pending = event;
 
     let word = takeWord(buffer);
-    while (word !== null && !isDocumentHidden()) {
+    while (word !== null && canPace()) {
       yield { ...pending, delta: word };
       buffer = buffer.slice(word.length);
-      if (isDocumentHidden()) {
+      if (!canPace()) {
         break;
       }
       await wait(delayInMs);
       word = takeWord(buffer);
     }
 
-    if (isDocumentHidden()) {
+    if (!canPace()) {
       yield* flush();
     }
   }
