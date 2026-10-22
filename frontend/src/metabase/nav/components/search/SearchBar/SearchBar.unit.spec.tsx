@@ -16,6 +16,7 @@ import {
 } from "__support__/ui";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import { Route } from "metabase/router";
+import * as iframeUtils from "metabase/utils/iframe";
 import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
@@ -161,6 +162,37 @@ describe("SearchBar", () => {
           // Unjustified type cast. FIXME
           within(filteredElement as HTMLElement).getByText("Our analytics"),
         ).toHaveFocus();
+      }
+    });
+  });
+
+  describe("command palette trigger", () => {
+    it("should show the trigger when the search bar is active", async () => {
+      setup();
+
+      await userEvent.click(getSearchBar());
+
+      expect(
+        await screen.findByRole("button", { name: / \+ K/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show the trigger in full app embedding", async () => {
+      const isWithinIframeSpy = jest
+        .spyOn(iframeUtils, "isWithinIframe")
+        .mockReturnValue(true);
+
+      try {
+        setup();
+
+        await userEvent.click(getSearchBar());
+
+        expect(await screen.findByText("Recents ABC")).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: / \+ K/ }),
+        ).not.toBeInTheDocument();
+      } finally {
+        isWithinIframeSpy.mockRestore();
       }
     });
   });

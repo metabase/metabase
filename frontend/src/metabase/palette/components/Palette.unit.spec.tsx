@@ -10,6 +10,7 @@ import {
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
+import * as iframeUtils from "metabase/utils/iframe";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -63,6 +64,22 @@ describe("command palette", () => {
     await userEvent.keyboard("[ControlLeft>]k");
 
     expect(screen.getByTestId("command-palette")).toBeInTheDocument();
+  });
+
+  it("should not open with the keyboard shortcut in full app embedding", async () => {
+    const isWithinIframeSpy = jest
+      .spyOn(iframeUtils, "isWithinIframe")
+      .mockReturnValue(true);
+
+    try {
+      setup();
+
+      await userEvent.keyboard("[ControlLeft>]k");
+
+      expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument();
+    } finally {
+      isWithinIframeSpy.mockRestore();
+    }
   });
 
   it("should not render on a path that disables the command palette", async () => {
