@@ -191,49 +191,20 @@
   ([_ pk]
    (mi/can-read? (queries.db/card pk))))
 
-(defn- collection-permits-write?
-  "Whether the Collection of `card` grants the current user write, which a Card in the audit collection never has."
-  [card]
-  (and
-   (not (and
-         ;; We want to make sure there's an existing audit collection before doing the equality check below.
-         ;; If there is no audit collection, this will be nil:
-         (some? (:id (audit/default-audit-collection)))
-         ;; Is a direct descendant of audit collection
-         (= (:collection_id card) (:id (audit/default-audit-collection)))))
-   (mi/current-user-has-full-permissions? (mi/perms-objects-set card :write))))
-
-(defn- actions-permit-write?
-  "Whether the Actions of `card` let the current user write it: only an admin writes a Card that has any Action."
-  [card]
-  (or (mi/superuser?)
-      (not (some-> (:id card) queries.db/card-has-actions?))))
-
 (defmethod mi/can-write? :model/Card
   ([instance]
-   (and (collection-permits-write? instance)
-        (parent-document-permits? instance :write)
-        (actions-permit-write? instance)))
+   ;; Cards in audit collection should not be writable.
+   (and
+    (not (and
+          ;; We want to make sure there's an existing audit collection before doing the equality check below.
+          ;; If there is no audit collection, this will be nil:
+          (some? (:id (audit/default-audit-collection)))
+          ;; Is a direct descendant of audit collection
+          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
+    (parent-document-permits? instance :write)))
   ([_ pk]
    (mi/can-write? (queries.db/card pk))))
-
-(methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
-  "Hydrates `:can_write` like [[mi/can-write?]], looking up which `cards` have Actions in one query."
-  [_model k cards]
-  (let [card-ids     (into #{} (keep :id) cards)
-        with-actions (if (or (mi/superuser?) (empty? card-ids))
-                       #{}
-                       (queries.db/card-ids-with-actions card-ids))]
-    (mi/instances-with-hydrated-data
-     cards k
-     #(into {}
-            (map (juxt :id (fn [card]
-                             (and (collection-permits-write? card)
-                                  (parent-document-permits? card :write)
-                                  (not (contains? with-actions (:id card)))))))
-            (t2/hydrate (remove nil? cards) :collection))
-     :id
-     {:default false})))
 
 (defn model?
   "Returns true if `card` is a model."
@@ -621,7 +592,11 @@
         (queries.db/archive-explicit-actions-for-model! id)
         (queries.db/delete-implicit-actions-for-model! id))
       (when (contains? changes :archived)
-        (queries.db/set-actions-of-model-archived! id (boolean (:archived changes))))
+        (if (:archived changes)
+          (queries.db/archive-actions-of-model! id)
+          (when-let [action-ids (seq (keep #(when (:can_write %) (:id %))
+                                           (t2/hydrate (queries.db/actions-archived-with-model id) :can_write)))]
+            (queries.db/unarchive-actions! action-ids))))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection

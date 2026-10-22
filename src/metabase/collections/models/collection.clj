@@ -1758,14 +1758,6 @@
   [_seed-table-ids]
   nil)
 
-(defn- check-can-write-items-archived-with!
-  "Throws a 403 unless the current user can write every Card and Action that archiving the Collections with
-  `collection-ids` changes, or with `archived? false` that unarchiving them changes."
-  [collection-ids archived?]
-  (doseq [model [:model/Card :model/Action]]
-    (api/check-403 (every? :can_write (t2/hydrate (collections.db/items-archived-with-collections model collection-ids archived?)
-                                                  :can_write)))))
-
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1781,7 +1773,6 @@
           affected-collection-ids (cons (u/the-id collection)
                                         (collections.db/not-yet-archived-collection-ids-with-location-like
                                          (str (children-location collection) "%")))]
-      (check-can-write-items-archived-with! affected-collection-ids true)
       (collections.db/update-collection! (u/the-id collection)
                                          {:archive_operation_id archive-operation-id
                                           :archived_directly    true
@@ -1790,7 +1781,7 @@
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-action-archived-in-collections! affected-collection-ids true)
+      (collections.db/archive-actions-in-collections! affected-collection-ids)
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
@@ -1840,7 +1831,6 @@
       ;; Restoring to original location, use `can_restore` for a single source of truth
       (api/check-403
        (:can_restore (t2/hydrate collection :can_restore))))
-    (check-can-write-items-archived-with! affected-collection-ids false)
     (t2/with-transaction [_conn]
       (collections.db/update-collection! (u/the-id collection)
                                          {:location             new-location
@@ -1859,7 +1849,10 @@
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
+      (when-let [action-ids (seq (keep #(when (:can_write %) (:id %))
+                                       (t2/hydrate (collections.db/actions-archived-with-collections affected-collection-ids)
+                                                   :can_write)))]
+        (collections.db/unarchive-actions! action-ids))
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 

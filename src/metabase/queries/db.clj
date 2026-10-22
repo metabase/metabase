@@ -366,24 +366,20 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
 
-(mu/defn set-actions-of-model-archived!
-  "Archive the unarchived Actions of the Card with `model-id` along with it, or unarchive the ones archived along with
-  it, returning the number updated."
-  [model-id  :- ms/PositiveInt
-   archived? :- :boolean]
-  (if archived?
-    (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
-    (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
+(mu/defn archive-actions-of-model!
+  "Archive the unarchived Actions of the Card with `model-id` along with it, returning the number updated."
+  [model-id :- ms/PositiveInt]
+  (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false}))
 
-(mu/defn card-has-actions?
-  "Whether the Card with `card-id` has any Action, archived ones included."
-  [card-id :- ::lib.schema.id/card]
-  (t2/exists? :model/Action :model_id card-id))
+(mu/defn actions-archived-with-model
+  "The Actions of the Card with `model-id` archived along with it."
+  [model-id :- ms/PositiveInt]
+  (t2/select :model/Action :model_id model-id :archived true :archived_directly false))
 
-(mu/defn card-ids-with-actions
-  "The IDs among `card-ids` of the Cards that have any Action, archived ones included."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-fn-set :model_id [:model/Action :model_id] :model_id [:in card-ids]))
+(mu/defn unarchive-actions!
+  "Unarchive the Actions with `action-ids`, returning the number updated."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/update! :model/Action :id [:in action-ids] {:archived false}))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."

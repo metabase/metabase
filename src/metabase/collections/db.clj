@@ -403,38 +403,30 @@
    archived?      :- :boolean]
   (t2/update! :model/Timeline {:collection_id [:in collection-ids]} {:archived archived?}))
 
-(mu/defn set-action-archived-in-collections!
-  "Archive the unarchived Actions in the Collections with `collection-ids` along with them, or unarchive the ones
-  archived along with them whose model, if any, is not archived, returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (if archived?
-    (t2/update! :model/Action {:collection_id [:in collection-ids], :archived false}
-                {:archived true, :archived_directly false})
-    (if-let [action-ids (not-empty (into #{} (map :id)
-                                         (t2/query {:select    [:action.id]
-                                                    :from      [[(t2/table-name :model/Action) :action]]
-                                                    :left-join [[(t2/table-name :model/Card) :model]
-                                                                [:= :model.id :action.model_id]]
-                                                    :where     [:and
-                                                                [:in :action.collection_id collection-ids]
-                                                                [:= :action.archived true]
-                                                                [:= :action.archived_directly false]
-                                                                [:or [:= :action.model_id nil] [:= :model.archived false]]]})))]
-      (t2/update! :model/Action :id [:in action-ids] {:archived false})
-      0)))
+(mu/defn archive-actions-in-collections!
+  "Archive the unarchived Actions in the Collections with `collection-ids` along with them, returning the number
+  updated."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/update! :model/Action {:collection_id [:in collection-ids], :archived false}
+              {:archived true, :archived_directly false}))
 
-(mu/defn items-archived-with-collections
-  "The instances of `model` (Cards or Actions) in the Collections with `collection-ids` that archiving them archives
-  along with them, or with `archived? false` that unarchiving them restores."
-  [model          :- [:enum :model/Card :model/Action]
-   collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/select model {:where [:and
-                            [:in :collection_id collection-ids]
-                            (if archived?
-                              [:= :archived false]
-                              [:and [:= :archived true] [:= :archived_directly false]])]}))
+(mu/defn actions-archived-with-collections
+  "The Actions archived along with the Collections with `collection-ids` whose model, if any, is not archived."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action {:select    [:action.*]
+                            :from      [[(t2/table-name :model/Action) :action]]
+                            :left-join [[(t2/table-name :model/Card) :model]
+                                        [:= :model.id :action.model_id]]
+                            :where     [:and
+                                        [:in :action.collection_id collection-ids]
+                                        [:= :action.archived true]
+                                        [:= :action.archived_directly false]
+                                        [:or [:= :action.model_id nil] [:= :model.archived false]]]}))
+
+(mu/defn unarchive-actions!
+  "Unarchive the Actions with `action-ids`, returning the number updated."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/update! :model/Action :id [:in action-ids] {:archived false}))
 
 (mu/defn delete-actions-in-collections!
   "Delete the Actions in the Collections with `collection-ids`, returning the number deleted."

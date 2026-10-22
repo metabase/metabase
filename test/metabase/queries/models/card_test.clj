@@ -865,24 +865,17 @@
                 (action-events-during! #(update-model! model-id {:archived false}))))
          (is (= {implicit [false false], query [false false], archived [true true]} (archived-state))))))))
 
-(deftest card-with-actions-is-admin-only-test
-  (testing "Only an admin can write a Card that has any Action, archived ones included"
+(deftest model-unarchive-restores-only-writable-actions-test
+  (testing "unarchiving a model restores only the actions the current user can write, so a non-admin restores none"
     (do-with-model-actions!
      (fn [{:keys [model-id implicit query]}]
-       (mt/with-temp [:model/Card {plain-id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
-         (let [can-write  #(mi/can-write? :model/Card %)
-               hydrated   #(into {} (map (juxt :id :can_write))
-                                 (t2/hydrate (t2/select :model/Card :id [:in [model-id plain-id]]) :can_write))]
-           (mt/with-test-user :crowberto
-             (is (true? (can-write model-id)))
-             (is (= {model-id true, plain-id true} (hydrated))))
-           (mt/with-test-user :rasta
-             (is (false? (can-write model-id)))
-             (is (true? (can-write plain-id)))
-             (is (= {model-id false, plain-id true} (hydrated)))
-             (t2/delete! :model/Action :id [:in [implicit query]])
-             (testing "an archived Action is enough"
-               (is (false? (can-write model-id)))))))))))
+       (let [archived-state #(t2/select-pk->fn :archived :model/Action :id [:in [implicit query]])]
+         (update-model! model-id {:archived true})
+         (mt/with-test-user :rasta
+           (card/update-card! {:card-before-update (t2/select-one :model/Card model-id)
+                               :card-updates       {:archived false}}))
+         (is (false? (t2/select-one-fn :archived :model/Card :id model-id)))
+         (is (= {implicit true, query true} (archived-state))))))))
 
 (deftest model-actions-follow-model-collection-test
   (testing "the actions of a model are kept in the model's collection"
