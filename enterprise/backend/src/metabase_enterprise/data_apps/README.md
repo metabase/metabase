@@ -84,7 +84,7 @@ assets (`metabase.server.routes/static-files-handler`).
 - `GET /api/apps/:slug/bundle` — the cached bytes, with a content-hash ETag and `If-None-Match`
   → 304. Carries `X-Metabase-Data-App-Allowed-Hosts`, which the iframe reads to configure its
   sandbox fetch allowlist.
-- `GET /api/apps/sandbox-host` — the empty document loaded as the Near-Membrane realm iframe,
+- `GET /api/ee/near-membrane-plugin/sandbox-host` — the empty document loaded as the Near-Membrane realm iframe,
   carrying the CSP that confines `'unsafe-eval'` to that realm.
 - `POST /api/apps` — create an app from its manifest fields and bundle text (superuser).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).

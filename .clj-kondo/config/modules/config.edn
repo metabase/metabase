@@ -3804,7 +3804,6 @@
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
-           metabase-enterprise.custom-viz-plugin.api.sandbox-host
            metabase-enterprise.custom-viz-plugin.init
            metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
@@ -4168,6 +4167,11 @@
            remote-sync
            util}
    :model-imports #{:model/NativeQuerySnippet}}
+
+  enterprise/near-membrane-plugin
+  {:team "Gadget"
+   :api #{metabase-enterprise.near-membrane-plugin.api}
+   :uses #{api premium-features}}
 
   enterprise/permissions
   {:team "UX West"
