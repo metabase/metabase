@@ -83,10 +83,9 @@
   (let [unsupported (fn [reason]
                       {:name      (:name metric)
                        :unique-id (:unique-id metric)
-                       :reason    reason})]
+                       :reason    reason})
+        {:keys [relation columns] :as model} (get semantic-models semantic-model)]
     (b/cond
-      :let [{:keys [relation columns] :as model} (get semantic-models semantic-model)]
-
       (not model)
       (unsupported (format "semantic model %s not found" (pr-str semantic-model)))
 
