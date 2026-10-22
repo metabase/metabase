@@ -1,13 +1,17 @@
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
-
-import { useRouteDataApp } from "../use-route-data-app";
+import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 export function useRouteDataAppQuestion() {
-  const params = useParams<{ cardId: string }>();
+  const params = useParams<{ name: string; cardId: string }>();
+  const name = params.name ?? "";
   const cardId = Urls.extractEntityId(params.cardId);
-  const { app, isLoading: isLoadingApp, error: appError } = useRouteDataApp();
+  const {
+    data: app,
+    isLoading: isLoadingApp,
+    error: appError,
+  } = useGetDataAppQuery(name);
   const {
     data: card,
     isLoading: isLoadingCard,
