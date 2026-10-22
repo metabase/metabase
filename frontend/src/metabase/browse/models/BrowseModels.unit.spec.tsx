@@ -356,7 +356,7 @@ describe("BrowseModels", () => {
       expect(src).toContain("autoplay=0");
     });
 
-    it("shows the empty state without the explanation banner when no models exist (models empty states)", async () => {
+    it("correctly displays models empty states (no models)", async () => {
       setup({ modelCount: 0 });
 
       const emptyState = await screen.findByTestId("empty-state");
@@ -414,7 +414,7 @@ describe("BrowseModels", () => {
       expect(dismissButton).toBeInTheDocument();
     });
 
-    it("hides the explanation banner and saves the dismissal when Dismiss is clicked (models empty states)", async () => {
+    it("correctly displays models empty states (dismiss the banner)", async () => {
       setupPropertiesEndpoints(createMockSettings());
       setupUpdateSettingEndpoint();
       const { store } = setup({ modelCount: 1 });
@@ -581,7 +581,7 @@ describe("BrowseModels", () => {
     expect(router?.location.pathname).toBe("/model/1-model-1");
   });
 
-  it("shows an error in the recents and the table when the search request fails (browse models search error)", async () => {
+  it("The Browse models page shows an error message if the search endpoint throws an error", async () => {
     setup({ modelCount: 25, searchError: true });
 
     const page = screen.getByLabelText("Models");
@@ -597,7 +597,7 @@ describe("BrowseModels", () => {
     });
 
     it.each(["Meta", "Control"])(
-      "opens the model in a new tab when the %s key is held (meta-click new tab)",
+      "can browse to a model in a new tab by meta-clicking (%s key)",
       async (modifierKey) => {
         const openSpy = jest
           .spyOn(window, "open")

@@ -122,7 +122,7 @@ describe("BrowseSchemas name-based permalinks", () => {
     });
 
     it.each(["/browse/databases/Sales", "/browse/databases/7-sales"])(
-      "requests only the opened database's schemas at %s (only selected database schemas)",
+      "browsing to a database only triggers a request for schemas for that specific database (%s)",
       async (initialRoute) => {
         setup({
           databases: [MULTI_SCHEMA_SALES, MULTI_SCHEMA_MARKETING],

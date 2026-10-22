@@ -50,7 +50,7 @@ describe("BrowseMetrics (OSS)", () => {
     expect(screen.getByText("Read the docs")).toBeInTheDocument();
   });
 
-  it("shows an error when the search request fails (browse metrics search error)", async () => {
+  it("The Browse metrics page shows an error message if the search endpoint throws an error", async () => {
     setup({ searchError: true });
 
     const page = screen.getByLabelText("Metrics");
