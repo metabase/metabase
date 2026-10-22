@@ -50,7 +50,7 @@
   "The identifiers of the CustomVizPlugin rows [[reducible-plugins-with-bundles]] would reduce over."
   [filter-column :- [:maybe :keyword]
    filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
-  (t2/select-fn-vec :identifier :model/CustomVizPlugin {:where (with-bundles-where filter-column filter-ids)}))
+  (vec (t2/select-fn-vec :identifier :model/CustomVizPlugin {:where (with-bundles-where filter-column filter-ids)})))
 
 (mu/defn reducible-plugins-with-bundles
   "A reducible of the CustomVizPlugin rows that have a bundle, bundle included, whose `filter-column` is one of

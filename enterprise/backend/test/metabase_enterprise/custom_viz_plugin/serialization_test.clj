@@ -137,6 +137,13 @@
       (export! dump-dir)
       (is (= ["exported"] (vec (.list (io/file dump-dir "custom_viz_plugins"))))))))
 
+(deftest export-with-no-plugins-writes-nothing-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
+      (t2/delete! :model/CustomVizPlugin)
+      (export! dump-dir)
+      (is (not (.exists (io/file dump-dir "custom_viz_plugins")))))))
+
 (deftest export-skips-plugins-whose-identifiers-differ-only-in-case-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
