@@ -191,6 +191,12 @@
              :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
                                                 :model_id model-id})}))))))
 
+(defn venues-query
+  "A query of the VENUES table, which a card in a data app's collection may read once it is published."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
 (defn do-with-published-tables!
   "Call `f` with the Tables with `table-ids` published to the Library's Data collection, which a card in a data app's
   collection must read, creating the Library for the call when the instance has none."

@@ -432,7 +432,10 @@
         (is (= :success (:status (import-at! src "v0" :force? true))))
         (let [collection-id (shop-collection-id)
               card!         (fn [card-type]
-                              (mt/with-temp [:model/Card {card-id :id} {:name "Saved here" :type card-type :collection_id collection-id}]
+                              (mt/with-temp [:model/Card {card-id :id} {:name          "Saved here"
+                                                                        :type          card-type
+                                                                        :collection_id collection-id
+                                                                        :dataset_query (data-apps.tu/venues-query)}]
                                 (t2/select-one :model/Card :id card-id)))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions, metrics, and query actions"
                                 (mt/with-temp [:model/Dashboard _ {:name "Saved here" :collection_id collection-id}])))

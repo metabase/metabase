@@ -14,17 +14,19 @@
 (set! *warn-on-reflection* true)
 
 (defn- do-with-app-reading!
-  "Call `f` with a data app whose resource collection holds a card that reads `table-ids`."
+  "Call `f` with a data app whose resource collection holds a venues question that the dependency graph says reads
+  `table-ids`."
   [table-ids f]
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                 :model/Card card {:collection_id (:resource_collection_id app)}]
-    (mt/with-model-cleanup [:model/Dependency]
-      (when (seq table-ids)
-        (t2/insert! :model/Dependency
-                    (for [table-id table-ids]
-                      {:from_entity_type :card :from_entity_id (:id card)
-                       :to_entity_type :table :to_entity_id table-id})))
-      (f app))))
+  (data-apps.tu/with-published-tables! [(mt/id :venues)]
+    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                   :model/Card card {:collection_id (:resource_collection_id app) :dataset_query (data-apps.tu/venues-query)}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (when (seq table-ids)
+          (t2/insert! :model/Dependency
+                      (for [table-id table-ids]
+                        {:from_entity_type :card :from_entity_id (:id card)
+                         :to_entity_type :table :to_entity_id table-id})))
+        (f app)))))
 
 (defmacro ^{:private true :clj-kondo/lint-as 'clojure.core/let} with-app-reading!
   "Bind `app-sym` to a data app whose resource collection reads `table-ids`, and run `body`."

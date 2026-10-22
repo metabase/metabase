@@ -146,13 +146,52 @@
   [{model-id :model_id, :as action}]
   (assoc action :collection_id (actions.db/card-collection-id model-id)))
 
+(defn- query-card-ids
+  "The IDs of the Cards the native `query` reads through card template tags."
+  [query]
+  (into #{}
+        (keep (fn [path]
+                (let [{:keys [model id]} (last path)]
+                  (when (= "Card" model) id))))
+        (serdes/mbql-deps true query)))
+
+(defn- check-data-app-action-query
+  "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
+  while the collection is a data app's."
+  [collection-id query]
+  (when (and (some? collection-id)
+             (perms/data-app-collection? collection-id))
+    (let [card-ids (query-card-ids query)
+          outside  (when (seq card-ids)
+                     (actions.db/card-ids-outside-collection card-ids collection-id))]
+      (when (seq outside)
+        (throw (ex-info (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
+                             (str/join ", " (sort outside)))
+                        {:status-code 400}))))))
+
+(defn- check-data-app-action
+  "Throws unless `action`, when it is in a data app's collection, is a query action that is neither archived nor public
+  and whose parameters take no values from a card."
+  [{collection-id :collection_id, :as action}]
+  (when (and (some? collection-id) (perms/data-app-collection? collection-id))
+    (when-not (= :query (keyword (:type action)))
+      (throw (ex-info (tru "An action in a data app''s collection must be a query action.") {:status-code 400})))
+    (when (:archived action)
+      (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
+    (when (:public_uuid action)
+      (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))
+    (when (some #(= "card" (some-> (:values_source_type %) name)) (:parameters action))
+      (throw (ex-info (tru "An action in a data app''s collection can''t take a parameter''s values from a card.")
+                      {:status-code 400})))))
+
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
   (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
              model-id set-model-collection)
     (when (implicit? action)
       (check-implicit-action-model model-id))
-    (check-collection-content <>)))
+    (check-collection-content <>)
+    (check-data-app-action <>)))
 
 (t2/define-before-update :model/Action
   [{model-id :model_id, :as action}]
@@ -165,11 +204,10 @@
         (check-implicit-actions-supported action))
       (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
         (check-collection-content <>))
-      (let [in-data-app? (and (some? (:collection_id <>)) (perms/data-app-collection? (:collection_id <>)))]
-        (when (and in-data-app? (changed? :archived) (:archived <>))
-          (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
-        (when (and in-data-app? (changed? :public_uuid) (:public_uuid <>))
-          (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))))))
+      (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id :type :archived :public_uuid :parameters])
+        (check-data-app-action <>))
+      (when (contains? (t2/changes <>) :collection_id)
+        (check-data-app-action-query (:collection_id <>) (:dataset_query (actions.db/query-action (:id <>))))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -180,11 +218,21 @@
 
 (t2/define-before-insert :model/QueryAction
   [query-action]
-  (set-query-database query-action))
+  (u/prog1 (set-query-database query-action)
+    (check-data-app-action-query (actions.db/action-collection-id (:action_id <>)) (:dataset_query <>))))
 
 (t2/define-before-update :model/QueryAction
   [query-action]
-  (set-query-database query-action))
+  (u/prog1 (set-query-database query-action)
+    (when (contains? (t2/changes query-action) :dataset_query)
+      (check-data-app-action-query (actions.db/action-collection-id (:action_id <>)) (:dataset_query <>)))))
+
+(t2/define-before-insert :model/ImplicitAction
+  [implicit-action]
+  (u/prog1 implicit-action
+    (when-let [collection-id (actions.db/action-collection-id (:action_id implicit-action))]
+      (when (perms/data-app-collection? collection-id)
+        (throw (ex-info (tru "An action in a data app''s collection must be a query action.") {:status-code 400}))))))
 
 (defn- action-database-ids
   "The ids of the Databases `action` runs against: its query's, or its model's for an implicit action."
@@ -260,33 +308,9 @@
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
-(defn- query-card-ids
-  "The IDs of the Cards the native `query` reads through card template tags."
-  [query]
-  (into #{}
-        (keep (fn [path]
-                (let [{:keys [model id]} (last path)]
-                  (when (= "Card" model) id))))
-        (serdes/mbql-deps true query)))
-
-(defn- check-data-app-action-query
-  "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
-  while the collection is a data app's."
-  [collection-id query]
-  (when (and (some? collection-id)
-             (perms/data-app-collection? collection-id))
-    (let [card-ids (query-card-ids query)
-          outside  (when (seq card-ids)
-                     (actions.db/card-ids-outside-collection card-ids collection-id))]
-      (when (seq outside)
-        (throw (ex-info (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
-                             (str/join ", " (sort outside)))
-                        {:status-code 400}))))))
-
 ;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
 (mu/defn- insert*! :- ::actions.schema/id
   [action-data :- ::actions.schema/action.for-insert]
-  (check-data-app-action-query (:collection_id action-data) (:dataset_query action-data))
   (t2/with-transaction [_conn]
     (let [action (actions.db/insert-action! (select-keys action-data action-columns))
           row    (-> (apply dissoc action-data action-columns)
@@ -307,12 +331,6 @@
    existing-action          :- ::actions.schema/action]
   (let [updates (cond-> (assoc updates :type (or (:type updates) (:type existing-action)))
                   (get updates :model_id (:model_id existing-action)) (dissoc :collection_id))]
-    (check-data-app-action-query (if (contains? updates :collection_id)
-                                   (:collection_id updates)
-                                   (:collection_id existing-action))
-                                 (if (contains? updates :dataset_query)
-                                   (:dataset_query updates)
-                                   (:dataset_query existing-action)))
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))

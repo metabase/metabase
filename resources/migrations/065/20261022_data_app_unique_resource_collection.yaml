@@ -1,0 +1,35 @@
+## Two data apps can't share one resource collection. On MySQL and MariaDB the unique index takes the place of the
+## index behind fk_data_app_resource_collection_id, and InnoDB drops that one, so the rollback adds a plain index back
+## in the same statement that drops the unique one.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-22T00:00:00
+      author: ranquild
+      comment: Add a unique constraint on data_app.resource_collection_id
+      dbms: postgresql,h2
+      changes:
+        - addUniqueConstraint:
+            tableName: data_app
+            columnNames: resource_collection_id
+            constraintName: uq_data_app_resource_collection_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: data_app
+            constraintName: uq_data_app_resource_collection_id
+
+  - changeSet:
+      id: v65.2026-10-22T00:00:01
+      author: ranquild
+      comment: Add a unique constraint on data_app.resource_collection_id (MySQL, MariaDB)
+      dbms: mysql,mariadb
+      changes:
+        - addUniqueConstraint:
+            tableName: data_app
+            columnNames: resource_collection_id
+            constraintName: uq_data_app_resource_collection_id
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE data_app ADD INDEX idx_data_app_resource_collection_id (resource_collection_id),
+              DROP INDEX uq_data_app_resource_collection_id

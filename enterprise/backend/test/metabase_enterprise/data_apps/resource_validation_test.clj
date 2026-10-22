@@ -168,12 +168,14 @@
         (is (some #(str/includes? % "already exists outside the data-apps namespace") (messages (shop (question-resources)))))
         (is (names-its-file? (shop (question-resources))))))
     (testing "the app's own collection and card"
-      (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
-                     :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
-                                          :entity_id (data-apps.tu/app-entity-id "shop")
-                                          :resource_collection_id collection-id}
-                     :model/Card       _ {:name "Mine" :entity_id question-eid :collection_id collection-id}]
-        (is (= [] (messages (shop (question-resources)))))))))
+      (data-apps.tu/with-published-tables! [(mt/id :venues)]
+        (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
+                       :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
+                                            :entity_id (data-apps.tu/app-entity-id "shop")
+                                            :resource_collection_id collection-id}
+                       :model/Card       _ {:name "Mine" :entity_id question-eid :collection_id collection-id
+                                            :dataset_query (data-apps.tu/venues-query)}]
+          (is (= [] (messages (shop (question-resources))))))))))
 
 (deftest warns-of-a-field-that-doesnt-exist-test
   (testing "a field a query names that doesn't exist loads as a placeholder and is logged, on a database without schemas too"

@@ -1001,8 +1001,9 @@
   (ex-info (str "A card in a data app's collection " message) {:status-code 400}))
 
 (defn- check-data-app-card-query
-  "Throws unless `dataset_query` is MBQL with no source card, reading only published tables and Library metrics, and
-  returns the IDs of those metrics; a load skips the tables, whose published state it may load later."
+  "Throws unless `dataset_query` is an MBQL query on a database with no source card, reading only published tables and
+  Library metrics, and returns the IDs of those metrics; a load skips the tables, whose published state it may load
+  later."
   [{:keys [dataset_query]}]
   (if-let [database-id (:database dataset_query)]
     (let [query      (lib/query (lib-be/application-database-metadata-provider database-id) dataset_query)
@@ -1024,7 +1025,7 @@
         (throw (data-app-card-error (str "can read only tables published to the Library, not "
                                          (str/join ", " (sort unpublished))))))
       metric-ids)
-    #{}))
+    (throw (data-app-card-error "must hold a query on a database"))))
 
 (defn- check-data-app-card
   "Throws unless `card`, when it is in a data app's collection, is a question or metric that is not archived, public
