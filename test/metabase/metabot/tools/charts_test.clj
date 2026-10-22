@@ -17,7 +17,6 @@
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
-   [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
@@ -160,8 +159,9 @@
 
 (deftest create-chart-unknown-query-id-test
   (testing "a query ID that the conversation doesn't hold fails, and the model reads the query IDs that it does hold"
-    (is (= {:output "No query with ID q-9. Known query IDs: [q-1]."
-            :error  {:class :recoverable :code ::run-query/unknown-query-id}}
+    (is (= {:output (str "Query \"q-9\" was not found. Available query IDs: \"q-1\".\n"
+                         "Use an available query ID from this conversation.")
+            :error  {:class :recoverable :code ::recoverable.common/unknown-query-id}}
            (invoke "create_chart"
                    (assoc chart-args :data_source {:query_id "q-9"} :viz_settings {:chart_type "bar"})
                    {:queries {"q-1" stub-query}})))))

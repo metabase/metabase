@@ -51,7 +51,7 @@
   (testing "throws error when query not found"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"No query with ID nonexistent"
+         #"Query \"nonexistent\" was not found"
          (create-chart/create-chart
           {:query-id "nonexistent"
            :chart-type :bar
