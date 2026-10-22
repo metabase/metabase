@@ -1755,6 +1755,43 @@
               (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
     nil))
 
+(defn- read-grants-to-role
+  "The relations and schemas, outside `iso-schema`, on which `role` holds a SELECT or USAGE
+   grant, as `{:schema :object}` maps (`:object` nil for a schema grant). Read from the
+   catalog rather than the workspace's input schemas, so teardown also finds grants left by
+   a crashed provisioning or an earlier input-schema list."
+  [conn role iso-schema]
+  (jdbc/query
+   conn
+   [(str "WITH r AS (SELECT oid FROM pg_roles WHERE rolname = ?) "
+         "SELECT n.nspname AS schema, c.relname AS object "
+         "FROM pg_class c "
+         "JOIN pg_namespace n ON n.oid = c.relnamespace "
+         "CROSS JOIN LATERAL aclexplode(c.relacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) AND a.privilege_type = 'SELECT' "
+         "  AND c.relkind IN ('r','p','v','m','f') AND n.nspname <> ? "
+         "UNION "
+         "SELECT n.nspname AS schema, NULL AS object "
+         "FROM pg_namespace n "
+         "CROSS JOIN LATERAL aclexplode(n.nspacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) AND a.privilege_type = 'USAGE' "
+         "  AND n.nspname <> ? "
+         "ORDER BY schema, object NULLS LAST")
+    role iso-schema iso-schema]))
+
+(defn- revoke-read-grant-sql
+  "The REVOKE undoing one grant from [[read-grants-to-role]]. It names the privilege that
+   was granted rather than ALL: Postgres picks the grantor by its best-grantor rule, so a
+   login holding SELECT/USAGE WITH GRANT OPTION directly records itself as grantor, while
+   `REVOKE ALL` and `DROP OWNED BY` need grant options the login only has through the owner
+   role, act as the owner, and miss those grants. The leftover grants then make `DROP USER`
+   fail."
+  [username {:keys [schema object]}]
+  (if object
+    (format "REVOKE SELECT ON TABLE %s.%s FROM %s"
+            (quote-schema schema) (quote-table object) (quote-field username))
+    (format "REVOKE USAGE ON SCHEMA %s FROM %s" (quote-schema schema) (quote-field username))))
+
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database workspace]
   (let [schema-name   (:schema workspace)
@@ -1765,8 +1802,11 @@
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema)]
                       (user-exists? t-conn username)
-                      (into [(format "DROP OWNED BY %s" quoted-user)
-                             (format "DROP USER IF EXISTS %s" quoted-user)]))]
+                      (into (concat
+                             (map #(revoke-read-grant-sql username %)
+                                  (read-grants-to-role t-conn username schema-name))
+                             [(format "DROP OWNED BY %s" quoted-user)
+                              (format "DROP USER IF EXISTS %s" quoted-user)])))]
           (.addBatch ^Statement stmt ^String sql))
         (try
           (.executeBatch ^Statement stmt)
