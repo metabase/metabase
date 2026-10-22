@@ -407,7 +407,7 @@
     "prosemirror-transform": "^1.12.1",
     "prosemirror-view": "^1.42.3",
     "js-cookie": "^3.0.7",
-    "qs": "6.16.0",
+    "qs": "6.16.1",
     "redux": "5.0.1",
     "webpack": "5.105.0"
   },
