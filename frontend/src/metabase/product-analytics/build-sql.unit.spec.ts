@@ -119,9 +119,11 @@ describe("buildSql", () => {
       const sql = getCohortsSql({});
 
       expect(sql).toContain(
-        "uniqExactIf(actor, has(came_back, offset) AND reached >= offset) / uniqExactIf(actor, reached >= offset)",
+        "ARRAY JOIN range(toUInt32(greatest(observable + 1, 0))) AS offset",
       );
-      expect(sql).toContain("HAVING uniqExactIf(actor, reached >= offset) > 0");
+      expect(sql).toContain(
+        "uniqExactIf(actor, has(came_back, offset)) / nullIf(uniqExact(actor), 0)",
+      );
     });
 
     it("pools every cohort for the average", () => {
