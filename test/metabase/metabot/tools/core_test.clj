@@ -403,10 +403,13 @@
     (is (= :fine (tools/with-pipeline-errors :fine)))))
 
 (deftest ^:parallel structural-validation-paths-test
-  (let [e    (agent-lib.tu/structural-validation-error)
-        data (ex-data e)
-        hint "Invalid at stages[0].filters: invalid type. Fix the named paths."]
+  (let [e     (agent-lib.tu/structural-validation-error)
+        data  (ex-data e)
+        error (pipeline-failure (ex-message e) (assoc data :agent-error? true))
+        hint  "Invalid at stages[0].filters: invalid type. Fix the named paths."]
+    (is (= {:message "Representations query has an invalid structure."
+            :paths "stages[0].filters: invalid type"}
+           (:data error)))
     (is (= hint (recovery-hints/recovery-hint data)))
     (is (= (str "Representations query has an invalid structure.\n" hint)
-           (tools.error/recoverable-text
-            (pipeline-failure (ex-message e) (assoc data :agent-error? true)) #{})))))
+           (tools.error/recoverable-text error #{})))))
