@@ -2081,6 +2081,7 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
                     :model/Glossary
                     :model/Measure
                     :model/OsiAiContext

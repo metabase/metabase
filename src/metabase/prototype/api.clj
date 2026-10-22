@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.prototype.field-categories :as field-categories]
    [metabase.prototype.filter-usage :as filter-usage]
+   [metabase.prototype.filter-values :as filter-values]
    [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :get "/filter-usage"
@@ -41,3 +42,23 @@
    {:keys [force]}    :- [:map {:closed true} [:force {:default false} ms/BooleanValue]]]
   (api/check-superuser)
   (field-categories/categorize-table! id force))
+
+(api.macros/defendpoint :post "/filter-values"
+  :- [:map
+      [:status [:enum "ok" "rejected"]]
+      [:values {:optional true} [:sequential :string]]
+      [:reason {:optional true} :string]]
+  "Prototype: turn a natural language `prompt`, like \"EU countries\", into the values of one filter. The filter
+  keeps its column and operator. `options` are the values to pick from, when the client knows them."
+  [_route-params
+   _query-params
+   body :- [:map {:closed true}
+            [:prompt      ms/NonBlankString]
+            [:field_id    {:optional true} [:maybe ms/PositiveInt]]
+            [:table_name  :string]
+            [:column_name :string]
+            [:operator    :string]
+            [:value_kind  [:enum "single" "range" "multi"]]
+            [:values      {:default []} [:sequential :string]]
+            [:options     {:optional true} [:maybe [:sequential :string]]]]]
+  (filter-values/suggest-filter-values body))

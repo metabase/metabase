@@ -165,3 +165,17 @@
   "The names of the not archived Cards in the Collection with `collection-id`. Prototype: reads the table directly."
   [collection-id]
   (t2/select-fn-vec :name [:report_card :name] :collection_id collection-id :archived false))
+
+(mu/defn field-for-filter-values :- [:maybe :map]
+  "The Field with `field-id`, with its Table name and fingerprint, for the AI filter values."
+  [field-id :- ::lib.schema.id/field]
+  (when-let [field (t2/select-one [:model/Field :id :table_id :name :display_name :description :base_type
+                                   :semantic_type :fingerprint]
+                                  :id field-id
+                                  {:from [(warehouse-schema-overlay/field-query)]})]
+    (assoc field :table (table-for-categories (:table_id field)))))
+
+(mu/defn field-values-for-filter :- [:maybe [:sequential :any]]
+  "The full list of values of the Field with `field-id`, or nil when sync did not list them."
+  [field-id :- ::lib.schema.id/field]
+  (:values (t2/select-one [:model/FieldValues :values] :field_id field-id :type :full)))

@@ -21,12 +21,17 @@ import {
 } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker/utils";
 import { HistogramSlider } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/HistogramSlider";
 import { useNumberColumnStats } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
-import { Icon, Popover, Stack } from "metabase/ui";
+import { Icon, Loader, Popover, Stack, Tooltip } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
 import S from "./KeyboardFilterRow.module.css";
 import { SuggestionInput } from "./SuggestionInput";
+import {
+  type AiValuesState,
+  isAiPrompt,
+  useAiFilterValues,
+} from "./ai-filter-values";
 import {
   type ColumnPickerMode,
   ColumnPickerModeControl,
@@ -115,6 +120,7 @@ export function DraftFilterPill({
     const trimmedText = text.trim();
     const canAddText =
       operator != null &&
+      !isAiPrompt(trimmedText) &&
       values.length < getMaxValueCount(operator.valueKind) &&
       isValidValue(operator, trimmedText);
     return getDraftFilterClause({
@@ -124,6 +130,7 @@ export function DraftFilterPill({
   };
 
   const updateDraft = (newDraft: DraftState) => {
+    aiValues.reset();
     setDraft(newDraft);
     setEditedPart(undefined);
     setText("");
@@ -132,6 +139,12 @@ export function DraftFilterPill({
   };
 
   const handleTextChange = (newText: string) => {
+    aiValues.reset();
+    if (isAiPrompt(newText)) {
+      // A request to the AI can have commas, and it is not a value.
+      setText(newText);
+      return;
+    }
     setText(newText.replace(/,/g, ""));
     if (step === "value") {
       onDraftChange(getFilterWithText(draft, newText), "typing");
@@ -145,6 +158,24 @@ export function DraftFilterPill({
     }
     return filter != null;
   };
+
+  const aiValues = useAiFilterValues({
+    query,
+    stageIndex,
+    column,
+    operator,
+    values,
+    onValues: (newValues) => {
+      const newDraft = { ...draft, values: newValues };
+      setDraft(newDraft);
+      setText("");
+      onDraftChange(getDraftFilterClause(newDraft), "selection");
+      inputRef.current?.focus();
+    },
+  });
+  const isAiPromptActive =
+    step === "value" &&
+    (isAiPrompt(text) || values.some((value) => isAiPrompt(value)));
 
   const latestState = useLatest({ step, isClickOutsideApply, submit });
   const pillRef = useClickOutside(() => {
@@ -231,6 +262,15 @@ export function DraftFilterPill({
     hasSelectedOption: boolean,
     firstOptionValue: string | undefined,
   ) => {
+    if (step === "value" && isAiPrompt(text)) {
+      if (event.key === "Enter") {
+        aiValues.ask(text);
+        return true;
+      }
+      if (event.key !== "Escape" && event.key !== "Backspace") {
+        return false;
+      }
+    }
     switch (event.key) {
       case "Escape":
         if (editedPart != null) {
@@ -292,7 +332,11 @@ export function DraftFilterPill({
   ) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      submit();
+      if (isAiPrompt(event.currentTarget.value)) {
+        aiValues.ask(event.currentTarget.value);
+      } else {
+        submit();
+      }
     } else if (event.key === "Escape") {
       event.preventDefault();
       onCancel();
@@ -347,95 +391,125 @@ export function DraftFilterPill({
   }
 
   return (
-    <div ref={pillRef} className={S.draftPill} data-testid="draft-filter-pill">
-      {step === "column" ? (
-        <ColumnInput
-          query={query}
-          stageIndex={stageIndex}
-          text={text}
-          placeholder={column?.label ?? t`Search filters`}
-          onTextChange={handleTextChange}
-          onSelect={(newColumn) =>
-            updateDraft(changeDraftColumn(draft, newColumn))
-          }
-          onSelectSegment={onSubmit}
-          onKeyDown={handleKeyDown}
-        />
-      ) : (
-        columnSegment
-      )}
-      {step !== "operator" && operator != null && (
-        <button
-          className={`${S.segment} ${S.operatorSegment}`}
-          onClick={() => editPart("operator")}
-        >
-          {getPillOperatorLabel(operator)}
-        </button>
-      )}
-      {step === "operator" && column?.operators != null && (
-        <SuggestionInput
-          inputRef={inputRef}
-          groups={[
-            {
-              options: column.operators.map((operator) => ({
-                value: operator.key,
-                label: operator.label,
-              })),
-            },
-          ]}
-          text={text}
-          placeholder={operator?.label ?? t`Operator`}
-          isFirstOptionHighlighted
-          onTextChange={handleTextChange}
-          onOptionSubmit={(key) => {
-            const operator = column.operators?.find(
-              (operator) => operator.key === key,
-            );
-            if (operator != null) {
-              selectOperator(operator);
-            }
-          }}
-          onKeyDown={handleKeyDown}
-        />
-      )}
-      {step === "value" && operator != null && isFixedValueCount(operator) && (
-        <FixedValuesInput
-          query={query}
-          stageIndex={stageIndex}
-          column={column?.column}
-          filter={filter}
-          operator={operator}
-          values={values}
-          onChange={setFixedValues}
-          onKeyDown={handleFixedValueKeyDown}
-        />
-      )}
-      {step === "value" &&
-        column != null &&
-        operator != null &&
-        !isFixedValueCount(operator) && (
-          <ValueInput
-            inputRef={inputRef}
+    <Tooltip
+      label={getAiTooltip(aiValues.state, isAiPromptActive)}
+      opened={getAiTooltip(aiValues.state, isAiPromptActive) != null}
+      position="top-start"
+      multiline
+      maw={320}
+    >
+      <div
+        ref={pillRef}
+        className={S.draftPill}
+        data-testid="draft-filter-pill"
+      >
+        {step === "column" ? (
+          <ColumnInput
             query={query}
-            column={column.column}
-            operator={operator}
-            values={values}
+            stageIndex={stageIndex}
             text={text}
+            placeholder={column?.label ?? t`Search filters`}
             onTextChange={handleTextChange}
-            onToggleValue={toggleValue}
-            onValuesChange={(newValues) =>
-              updateDraft({ ...draft, values: newValues })
+            onSelect={(newColumn) =>
+              updateDraft(changeDraftColumn(draft, newColumn))
             }
-            onRemoveValue={removeValue}
+            onSelectSegment={onSubmit}
+            onKeyDown={handleKeyDown}
+          />
+        ) : (
+          columnSegment
+        )}
+        {step !== "operator" && operator != null && (
+          <button
+            className={`${S.segment} ${S.operatorSegment}`}
+            onClick={() => editPart("operator")}
+          >
+            {getPillOperatorLabel(operator)}
+          </button>
+        )}
+        {step === "operator" && column?.operators != null && (
+          <SuggestionInput
+            inputRef={inputRef}
+            groups={[
+              {
+                options: column.operators.map((operator) => ({
+                  value: operator.key,
+                  label: operator.label,
+                })),
+              },
+            ]}
+            text={text}
+            placeholder={operator?.label ?? t`Operator`}
+            isFirstOptionHighlighted
+            onTextChange={handleTextChange}
+            onOptionSubmit={(key) => {
+              const operator = column.operators?.find(
+                (operator) => operator.key === key,
+              );
+              if (operator != null) {
+                selectOperator(operator);
+              }
+            }}
             onKeyDown={handleKeyDown}
           />
         )}
-      {step !== "value" && operator != null && (
-        <ValueTokens values={values} operator={operator} />
-      )}
-      <RemoveIcon onClick={onCancel} />
-    </div>
+        {step === "value" &&
+          operator != null &&
+          isFixedValueCount(operator) && (
+            <FixedValuesInput
+              query={query}
+              stageIndex={stageIndex}
+              column={column?.column}
+              filter={filter}
+              operator={operator}
+              values={values}
+              onChange={setFixedValues}
+              onKeyDown={handleFixedValueKeyDown}
+            />
+          )}
+        {step === "value" &&
+          column != null &&
+          operator != null &&
+          !isFixedValueCount(operator) && (
+            <ValueInput
+              inputRef={inputRef}
+              query={query}
+              column={column.column}
+              operator={operator}
+              values={values}
+              text={text}
+              onTextChange={handleTextChange}
+              onToggleValue={toggleValue}
+              onValuesChange={(newValues) =>
+                updateDraft({ ...draft, values: newValues })
+              }
+              onRemoveValue={removeValue}
+              onKeyDown={handleKeyDown}
+            />
+          )}
+        {step !== "value" && operator != null && (
+          <ValueTokens values={values} operator={operator} />
+        )}
+        {aiValues.state.status === "loading" && <Loader size="xs" />}
+        <RemoveIcon onClick={onCancel} />
+      </div>
+    </Tooltip>
   );
+}
+
+function getAiTooltip(state: AiValuesState, isAiPromptActive: boolean) {
+  if (state.status === "loading") {
+    return t`Asking AI…`;
+  }
+  if (state.status === "error") {
+    return (
+      <>
+        {state.message}
+        {state.reason && <div className={S.aiReason}>{state.reason}</div>}
+      </>
+    );
+  }
+  return isAiPromptActive ? t`Press Enter to ask AI for the values` : null;
 }
 
 function RemoveIcon({ onClick }: { onClick: () => void }) {
@@ -634,7 +708,12 @@ function ValueInput({
   onRemoveValue,
   onKeyDown,
 }: ValueInputProps) {
-  const { fieldValues, isListed } = useFieldValues(query, column, text);
+  const isAiPromptText = isAiPrompt(text);
+  const { fieldValues, isListed } = useFieldValues(
+    query,
+    column,
+    isAiPromptText ? "" : text,
+  );
   const widget = useValueWidget({
     column,
     operator,
@@ -669,8 +748,8 @@ function ValueInput({
       )}
       <SuggestionInput
         inputRef={inputRef}
-        groups={widget.groups}
-        header={widget.header}
+        groups={isAiPromptText ? NO_GROUPS : widget.groups}
+        header={isAiPromptText ? undefined : widget.header}
         isTiles={widget.isTiles}
         columns={widget.columns}
         dropdownWidth={widget.dropdownWidth}
@@ -867,6 +946,8 @@ function NumberHistogramPopover({
     </Popover>
   );
 }
+
+const NO_GROUPS: SuggestionGroup[] = [];
 
 function getValuePlaceholder(operator: DraftOperator, values: string[]) {
   if (operator.valueKind === "multi" && values.length > 0) {

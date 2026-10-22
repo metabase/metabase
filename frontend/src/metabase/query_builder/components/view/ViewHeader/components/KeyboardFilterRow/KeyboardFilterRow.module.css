@@ -243,6 +243,11 @@
   pointer-events: none;
 }
 
+.aiReason {
+  margin-top: var(--mantine-spacing-xs);
+  opacity: 0.8;
+}
+
 .removeIcon {
   flex-shrink: 0;
   margin-left: 0.25rem;
