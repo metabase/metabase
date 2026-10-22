@@ -15,7 +15,6 @@
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -402,9 +401,7 @@
                               :dataset_query (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
                                                      :type name)
                               :parameters    [{:id "x" :type "number"}]}
-              created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-              action-id      (u/the-id created-action)
-              action-path    (str "action/" action-id)]
+              _              (mt/user-http-request :crowberto :post 200 "action" initial-action)]
           (testing "Validate POST"
             (testing "Required fields"
               (is (=? {:errors {:name "string"},

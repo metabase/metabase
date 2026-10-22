@@ -3703,9 +3703,9 @@
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
 
 (deftest delete-actions-of-non-models-test
-  (testing "v65.1y8qok: the actions of non-models and archived models, and the archived actions of models, are deleted
+  (testing "v65.2026-10-22T02:00:00: the actions of non-models and archived models, and the archived actions of models, are deleted
             with their dashboard buttons"
-    (impl/test-migrations ["v65.1y8qok"] [migrate!]
+    (impl/test-migrations ["v65.2026-10-22T02:00:00"] [migrate!]
       (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
                                                                 :last_name   "Owner"
                                                                 :email       "non-model-action-owner@metabase.com"
