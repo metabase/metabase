@@ -48,8 +48,7 @@ describe("getGaugeWarningValues", () => {
   });
 
   it("merges warnings that land on the same spot of the arc", () => {
-    // [failed, 100] [0, 50] [60, failed]: only [0, 50] is drawn, so both
-    // warnings are clamped to its end
+    // [failed, 100] [0, 50] [60, failed]: only [0, 50] is drawn, so both warnings are clamped to its end
     expect(
       getGaugeWarningValues(
         [
