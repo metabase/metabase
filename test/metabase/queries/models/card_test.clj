@@ -26,6 +26,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
@@ -36,6 +37,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -1177,16 +1180,18 @@
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
 
-(deftest card-in-a-data-apps-collection-is-read-only-test
-  (testing "Nobody writes a card in a collection of the data apps namespace, administrators included"
+(deftest card-in-a-data-apps-collection-is-admin-only-test
+  (testing "Only administrators write a card in a collection of the data apps namespace"
     (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
                    :model/Card       card                {:collection_id collection-id}]
       (mt/with-test-user :crowberto
+        (is (true? (mi/can-write? card)))
+        (is (true? (mi/can-write? :model/Card (:id card))))
+        (is (true? (:can_write (t2/hydrate card :can_write))))
+        (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
+      (mt/with-test-user :rasta
         (is (false? (mi/can-write? card)))
-        (is (false? (mi/can-write? :model/Card (:id card))))
-        (is (false? (:can_write (t2/hydrate card :can_write))))
-        (testing "nor creates one there"
-          (is (false? (mi/can-create? :model/Card {:collection_id collection-id}))))))))
+        (is (false? (mi/can-create? :model/Card {:collection_id collection-id})))))))
 
 (deftest ^:parallel breakouts->identifier->action-fn-test
   (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
@@ -1836,7 +1841,7 @@
       (is (= :question
              (t2/select-one-fn :type :model/Card :id (:id card)))))))
 
-(deftest create-card-no-remaps
+(deftest create-card-remaps-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
                                        :name                    "User ID"
@@ -1856,8 +1861,8 @@
                                      :dataset_query query}
                                     @api/*current-user*)]
         (try
-          (is (= 9
-                 (count (:result_metadata card))))
+          (testing "a created card stores the remapped columns of a run"
+            (is (= 2 (count (filter :remapped_from (:result_metadata card))))))
           (finally
             (t2/delete! :model/Card (:id card))))))))
 
@@ -1911,9 +1916,9 @@
                                           :name                   "Orders Model for remap test"
                                           :dataset_query          query}
                                          @api/*current-user*)]
-            (testing "model result_metadata should not include remap columns"
-              (is (not-any? #(re-find #"(?i)remap" (:name %))
-                            (:result_metadata card))))
+            (testing "model result_metadata includes the remap column of a run, marked as remapped"
+              (is (=? [{:remapped_from "QUANTITY"}]
+                      (filter #(re-find #"(?i)remap" (:name %)) (:result_metadata card)))))
             (let [mp          (mt/metadata-provider)
                   model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
                                   (lib/aggregate (lib/count))

@@ -11,6 +11,7 @@
    [metabase.channel.render.body :as body]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
@@ -676,6 +677,29 @@
                     (ex-data e)))
             (is (= #{:channel/email :channel/slack}
                    (set (map :channel_type (:failed-handlers (ex-data e))))))))))))
+
+(deftest channels-of-one-pulse-are-queued-separately-test
+  (testing "each channel of a dashboard subscription is its own queue entry, so one channel does not replace another (GDGT-3400)"
+    (mt/with-temp
+      [:model/Dashboard    {dashboard-id :id} {}
+       :model/Pulse        {pulse-id :id}     {:name         "Test Pulse"
+                                               :dashboard_id dashboard-id}
+       :model/PulseChannel _                  {:pulse_id     pulse-id
+                                               :channel_type "email"
+                                               :details      {:emails ["foo@metabase.com"]}}
+       :model/PulseChannel _                  {:pulse_id     pulse-id
+                                               :channel_type "slack"
+                                               :details      {:channel "#general"}}]
+      ;; no worker takes from this queue, so every channel is still in it when the send ends
+      (let [queue (#'notification.send/create-dedup-priority-queue)]
+        (mt/with-dynamic-fn-redefs [notification.send/send-notification-async!
+                                    (fn [notification]
+                                      (#'notification.send/put-notification! queue notification))]
+          (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id) :async? true))
+        (is (= #{:channel/email :channel/slack}
+               (set (for [notification (repeatedly #(#'notification.send/take-notification-with-timeout! queue 0))
+                          :while       notification]
+                      (-> notification :handlers first :channel_type)))))))))
 
 (deftest webhook-failure-names-the-channel-test
   (testing "a pulse webhook handler carries its channel under :channel; the failure still names the channel (GDGT-3144)"

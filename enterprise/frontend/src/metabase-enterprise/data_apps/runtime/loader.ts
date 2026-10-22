@@ -77,7 +77,7 @@ export const fetchDataAppBundleCode = async (
   name: string,
 ): Promise<FetchedDataAppBundle> => {
   const url = getSubpathSafeUrl(
-    `/api/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
+    `/api/ee/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
 
   let res: Response;

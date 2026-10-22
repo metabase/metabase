@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
@@ -74,6 +75,7 @@ function setup({
     ...dashboardOpts,
   });
   setupListSubscriptionsEndpoint([]);
+  setupBookmarksEndpoints([]);
   if (hasUpdateError) {
     // Registered before the default endpoints so this PUT route matches first
     setupUpdateDashboardEndpointWithError(dashboard.id);

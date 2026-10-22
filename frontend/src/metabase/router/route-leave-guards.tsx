@@ -1,4 +1,4 @@
-import type { PropsWithChildren, RefObject } from "react";
+import type { JSX, PropsWithChildren, RefObject } from "react";
 import {
   createContext,
   useCallback,

@@ -11,6 +11,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import * as Browser from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
@@ -138,11 +139,14 @@ describe("CodemirrorEditor", () => {
     expect(getDiffControls().previousLine).toHaveTextContent("LIMIT 10");
   });
 
-  it("keeps the editor configuration and styles stable when callbacks change", () => {
+  it("keeps the editor configuration and styles stable when callbacks change", async () => {
     const { rerender, onRejectProposed } = setup({
       text: ORIGINAL,
       proposedText: PROPOSED,
     });
+
+    await waitForRequestsToSettle();
+
     const styleRuleCount = () =>
       Array.from(document.styleSheets).reduce(
         (count, sheet) => count + sheet.cssRules.length,
@@ -180,10 +184,13 @@ describe("CodemirrorEditor", () => {
     expect(onAcceptProposed).toHaveBeenCalledTimes(1);
   });
 
-  it("Should render the natie query's text", () => {
+  it("Should render the natie query's text", async () => {
     const text = "SELECT 1;";
 
     setup({ text });
+
+    await waitForRequestsToSettle();
+
     expect(screen.getByRole("textbox")).toHaveTextContent(text);
   });
 
@@ -215,12 +222,14 @@ describe("CodemirrorEditor", () => {
     },
   ])(
     "resolves the proposal with the $platform shortcuts",
-    ({ isWindows, hint, modifiers }) => {
+    async ({ isWindows, hint, modifiers }) => {
       jest.spyOn(Browser, "isWindows").mockReturnValue(isWindows);
       const { onAcceptProposed, onRejectProposed, onRunQuery } = setup({
         text: "SELECT 1",
         proposedText: "SELECT 2",
       });
+
+      await waitForRequestsToSettle();
 
       expect(screen.getByRole("button", { name: /Accept/ })).toHaveTextContent(
         `Accept${hint}Y`,
@@ -246,11 +255,13 @@ describe("CodemirrorEditor", () => {
     },
   );
 
-  it("runs the query with Ctrl+Enter while reviewing a proposal", () => {
+  it("runs the query with Ctrl+Enter while reviewing a proposal", async () => {
     const { onRunQuery } = setup({
       text: "SELECT 1",
       proposedText: "SELECT 2",
     });
+
+    await waitForRequestsToSettle();
 
     fireEvent.keyDown(screen.getByRole("textbox"), {
       key: "Enter",
@@ -260,8 +271,10 @@ describe("CodemirrorEditor", () => {
     expect(onRunQuery).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps read-only proposals read-only", () => {
+  it("keeps read-only proposals read-only", async () => {
     setup({ text: "SELECT 1", proposedText: "SELECT 2", readOnly: true });
+
+    await waitForRequestsToSettle();
 
     expect(
       screen.queryByRole("button", { name: /Accept/ }),

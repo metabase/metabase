@@ -66,7 +66,7 @@ describe("DataAppActionsMenu", () => {
   });
 
   it("should show a toast when toggling enabled fails", async () => {
-    fetchMock.put("path:/api/apps/sales", 500);
+    fetchMock.put("path:/api/ee/apps/sales", 500);
     setup({ enabled: true });
 
     await openMenu();
@@ -80,7 +80,7 @@ describe("DataAppActionsMenu", () => {
   });
 
   it("should show a toast when removal fails", async () => {
-    fetchMock.delete("path:/api/apps/sales", 500);
+    fetchMock.delete("path:/api/ee/apps/sales", 500);
     setup({ canRemove: true });
 
     await openMenu();
@@ -97,7 +97,7 @@ describe("DataAppActionsMenu", () => {
   it("should show a loading state on the trigger while a delete is in flight", async () => {
     let finishDelete = () => {};
     fetchMock.delete(
-      "path:/api/apps/sales",
+      "path:/api/ee/apps/sales",
       () =>
         new Promise(
           (resolve) => (finishDelete = () => resolve({ status: 204 })),

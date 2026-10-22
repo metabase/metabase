@@ -16,6 +16,7 @@ describe("scenarios > data apps > repo sync", () => {
 
   it("materializes each app with its bundle, then removes an app whose files are removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
+    H.updateSetting("remote-sync-custom-collections-enabled", true);
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");
@@ -33,18 +34,18 @@ describe("scenarios > data apps > repo sync", () => {
       cy.findByTestId("data-app-list-item-second-app").should("exist");
     });
 
-    cy.request("GET", "/api/apps").then(({ body: apps }) => {
+    cy.request("GET", "/api/ee/apps").then(({ body: apps }) => {
       expect(apps.map((app: { name: string }) => app.name).sort()).to.deep.eq([
         "good",
         "second-app",
       ]);
     });
 
-    cy.request("/api/apps/good/bundle").its("status").should("eq", 200);
+    cy.request("/api/ee/apps/good/bundle").its("status").should("eq", 200);
 
     // The good app's collection files were loaded with it: its collection, and
     // the saved question in it, addressed by the entity IDs the files carry.
-    cy.request<DataApp>("/api/apps/good").then(({ body: app }) => {
+    cy.request<DataApp>("/api/ee/apps/good").then(({ body: app }) => {
       cy.request("/api/collection/goodAppCollection0000")
         .its("body.id")
         .should("eq", app.resource_collection_id);
@@ -66,12 +67,12 @@ describe("scenarios > data apps > repo sync", () => {
     H.commitToRepo("Remove the good app from the repo");
     H.configureGitAndPullChanges("read-write");
 
-    cy.request("GET", "/api/apps").then(({ body: apps }) => {
+    cy.request("GET", "/api/ee/apps").then(({ body: apps }) => {
       expect(apps.map((app: { name: string }) => app.name)).to.deep.eq([
         "second-app",
       ]);
     });
-    cy.request({ url: "/api/apps/good", failOnStatusCode: false })
+    cy.request({ url: "/api/ee/apps/good", failOnStatusCode: false })
       .its("status")
       .should("eq", 404);
     cy.request({
