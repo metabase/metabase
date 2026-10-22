@@ -11,6 +11,7 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import { Palette } from "metabase/palette/components/Palette";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { Route } from "metabase/router";
 import {
   createMockCollection,
@@ -75,7 +76,6 @@ describe("global keyboard shortcuts", () => {
       ["g a", "ga", "/admin/settings"],
       ["g s", "gs", "/data-studio"],
       ["g p", "gp", `/collection/${PERSONAL_COLLECTION_ID}`],
-      ["g Shift+a", "g{Shift>}a{/Shift}", "/admin/settings/apps"],
     ])("%s navigates to %s", async (_name, keys, pathname) => {
       const { router } = await setup();
 
@@ -89,6 +89,28 @@ describe("global keyboard shortcuts", () => {
         }
         expect(router?.location.pathname).toBe(pathname);
       });
+    });
+
+    it("navigates to Data Studio's data apps when data apps are enabled", async () => {
+      jest.replaceProperty(PLUGIN_DATA_APPS, "isEnabled", true);
+      const { router } = await setup();
+
+      await waitFor(async () => {
+        if (router?.location.pathname !== "/data-studio/apps") {
+          await userEvent.keyboard("g{Shift>}a{/Shift}");
+        }
+        expect(router?.location.pathname).toBe("/data-studio/apps");
+      });
+    });
+
+    it("does not navigate to data apps when they are not enabled", async () => {
+      const { router } = await setup();
+
+      await userEvent.keyboard("g{Shift>}a{/Shift}");
+      expect(router?.location.pathname).toBe("/");
+      await userEvent.keyboard("gt");
+
+      await waitFor(() => expect(router?.location.pathname).toBe("/trash"));
     });
 
     it("does not navigate to Data Studio for users without access", async () => {

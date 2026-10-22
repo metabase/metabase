@@ -28,11 +28,6 @@ export function dataApp(name: string) {
   return `${DATA_APP_ROOT_URL}/${encodeURIComponent(name)}`;
 }
 
-/** Admin page listing the data apps: `/admin/settings/apps`. */
-export function dataAppsSettings() {
-  return `/admin/settings/${DATA_APP_URL_SEGMENT}`;
-}
-
 export function dataStudioDataApps() {
   return `/data-studio/${DATA_APP_URL_SEGMENT}`;
 }

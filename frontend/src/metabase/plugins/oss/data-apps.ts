@@ -8,8 +8,6 @@ export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
   getDataStudioRoutes: (IsAdmin: ComponentType) => ReactNode | null;
-  ManageDataAppsPage: ComponentType;
-  ManageDataAppGroupsPage: ComponentType;
   MainNavbarSection: ComponentType<{ onItemSelect: () => void }>;
 };
 
@@ -17,8 +15,6 @@ const getDefaultPluginDataApps = (): DataAppsPlugin => ({
   isEnabled: false,
   getRoutes: () => null,
   getDataStudioRoutes: () => null,
-  ManageDataAppsPage: PluginPlaceholder,
-  ManageDataAppGroupsPage: PluginPlaceholder,
   MainNavbarSection: PluginPlaceholder,
 });
 
