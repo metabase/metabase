@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type JSX, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { FormMessage } from "metabase/forms";

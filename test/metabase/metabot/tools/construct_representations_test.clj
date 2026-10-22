@@ -8,31 +8,49 @@
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
+   [metabase.metabot.tools.resources :as resources]
+   [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private mp
   (lib.tu/mock-metadata-provider
@@ -186,6 +204,23 @@
                 (is (= exported
                        (get-in redo [:structured-output :query-json])))))))))))
 
+(deftest top-level-and-filter-split-into-separate-filters-end-to-end-test
+  (testing "A top-level `and` becomes separate filters in the constructed MBQL 5 query."
+    (with-mp-and-stubs!
+      (fn []
+        (let [q (get-in (construct/execute-representations-query
+                         (query-data
+                          {"lib/type" "mbql/query"
+                           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                        "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                        "filters"      [["and" {}
+                                                         [">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 100]
+                                                         ["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] 1 10]]]}]}))
+                        [:structured-output :query])]
+          (is (=? [[:> {} [:field {} pos-int?] 100]
+                   [:between {} [:field {} pos-int?] 1 10]]
+                  (lib/filters q 0))))))))
+
 (deftest unknown-table-surfaces-agent-error-test
   (with-mp-and-stubs!
     (fn []
@@ -202,6 +237,108 @@
           (let [d (ex-data e)]
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
+
+(defn- metadata-lookup-failures []
+  (let [message    "SELECT private_metadata failed: connection unavailable"
+        root-cause (RuntimeException. message)]
+    {"Toucan"         (ex-info message {:toucan2/context-trace []})
+     "nested Toucan"  (ex-info message {} (ex-info message {:toucan2/context-trace nil} root-cause))
+     "JDBC"           (SQLException. message)
+     "nested JDBC"    (ex-info message {} (RuntimeException. message (SQLException. message root-cause)))
+     "declared JDBC"  (ex-info message {:error :unknown-field :toucan2/context-trace []}
+                               (SQLException. message))
+     "unknown code"   (ex-info message {:error :not-a-pipeline-error :toucan2/context-trace []})
+     "Malli data"     (ex-info message {:error {:type :invalid-type} :toucan2/context-trace []})}))
+
+(def ^:private orders-id-query
+  {:lib/type "mbql/query"
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table ["Sample" "PUBLIC" "ORDERS"]
+               :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
+
+(deftest metadata-lookup-failures-propagate-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[label failure] (metadata-lookup-failures)]
+        (testing label
+          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+            (let [caught (try
+                           (construct/execute-representations-query orders-id-query)
+                           (catch Throwable e e))]
+              (is (identical? failure caught))
+              (is (nil? (:agent-error? (ex-data caught))))
+              (is (nil? (:status-code (ex-data caught)))))))))))
+
+(deftest metadata-validation-errors-are-agent-input-errors-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [failure (ex-info "Unknown field" {:error :unknown-field})]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (let [caught (try
+                         (construct/execute-representations-query orders-id-query)
+                         (catch clojure.lang.ExceptionInfo e e))]
+            (is (= {:error :unknown-field :agent-error? true :status-code 400} (ex-data caught)))
+            (is (= "Unknown field" (ex-message caught)))
+            (is (identical? failure (ex-cause caught)))))))))
+
+(deftest ^:parallel authored-errors-in-toucan-scopes-test
+  (doseq [[status database-error?] [[nil false] [500 true]]
+          data [{:error :unknown-field} {:agent-error? true}]]
+    (is (= database-error?
+           (construct/database-error?
+            (ex-info "Failure" (assoc data :status-code status :toucan2/context-trace [])))))))
+
+(deftest declared-errors-in-toucan-scopes-are-recoverable-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [status-code [nil 400]
+              agent-error? [false true]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                    (fn [& _]
+                                      (t2/with-connection [_conn]
+                                        (throw (ex-info "Representations query has an invalid structure."
+                                                        (cond-> {:error :invalid-representations-query}
+                                                          status-code (assoc :status-code status-code)
+                                                          agent-error? (assoc :agent-error? true))))))]
+          (let [caught (try
+                         (construct/execute-representations-query orders-id-query)
+                         (catch clojure.lang.ExceptionInfo e e))
+                entries (tools/entries [construct/construct-notebook-query-tool])
+                outcome (tools.runtime/invoke entries
+                                              {:profile-id :nlq :metabot nil
+                                               :user-scope #{"agent:notebook:create"}
+                                               :tool-names (set (keys entries))}
+                                              "construct_notebook_query"
+                                              {:query orders-id-query
+                                               :title "Order IDs" :description "IDs of orders."})]
+            (is (contains? (ex-data caught) :toucan2/context-trace))
+            (is (=? {:agent-error? true :status-code 400 :error :invalid-representations-query}
+                    (ex-data caught)))
+            (is (= {:output "Representations query has an invalid structure."
+                    :error {:class :recoverable
+                            :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
+                   outcome))
+            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+
+(deftest metadata-lookup-failures-end-metabot-turn-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[label failure] (metadata-lookup-failures)]
+        (testing label
+          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+            (let [entries (tools/entries [construct/construct-notebook-query-tool])
+                  outcome (tools.runtime/invoke entries
+                                                {:profile-id :nlq :metabot nil
+                                                 :user-scope #{"agent:notebook:create"}
+                                                 :tool-names (set (keys entries))}
+                                                "construct_notebook_query"
+                                                {:query orders-id-query
+                                                 :title "Order IDs" :description "IDs of orders."})]
+              (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
+                      :error  {:class :unrecoverable :code :internal}}
+                     outcome))
+              (is (= "Something went wrong."
+                     (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
@@ -658,6 +795,22 @@
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
 
+(deftest editor-rejection-between-message-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [e (editor-rejection
+               {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "filters"      [["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                              1 true]]}]})]
+        (is (= :expression-editor-rejection (:error (ex-data e))))
+        (is (= (str "The query builder's expression editor rejects a `filters:` clause in stage 0: "
+                    "Types are incompatible. The query would build but could not be visualized or saved "
+                    "- rewrite the offending clause.")
+               (ex-message e)))))))
+
 (deftest editor-gate-offset-nested-in-aggregation-function-surfaces-error-end-to-end-test
   (testing (str "A window function embedded *inside* an aggregation function\n"
                 "(`sum(offset(...))`) surfaces an :expression-editor-rejection agent-error -\n"
@@ -832,6 +985,44 @@
 ;;; ============================================================
 ;;; Step-10 contract: aggregation references via 0-based integer index
 ;;; ============================================================
+
+(deftest bare-aggregation-clause-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [ordered? [false true]]
+        (testing (str "single count aggregation, sorting enabled: " ordered?)
+          (let [stage  (cond-> {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  ["count" {}]}
+                         ordered? (assoc "order-by" [["desc" {} ["aggregation" {} 0]]]))
+                result (construct/execute-representations-query
+                        (query-data {"lib/type" "mbql/query", "stages" [stage]}))
+                query  (get-in result [:structured-output :query])
+                aggs   (get-in query [:stages 0 :aggregation])]
+            (is (mr/validate :metabase.lib.schema/query query))
+            (is (= [:count] (mapv first aggs)))
+            (when ordered?
+              (is (= (get-in aggs [0 1 :lib/uuid])
+                     (get-in query [:stages 0 :order-by 0 2 2]))))))))))
+
+(deftest invalid-aggregation-entry-surfaces-agent-error-test
+  (with-mp-and-stubs!
+    (fn []
+      (try
+        (tools/handle construct/construct-notebook-query-tool
+                      {:query (query-data {"lib/type" "mbql/query"
+                                           "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}] 42]
+                                                      "order-by"     [["desc" {} ["aggregation" {} 0]]]}]})}
+                      {})
+        (is false "Invalid aggregation entries should throw an exception")
+        (catch clojure.lang.ExceptionInfo e
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= 400 (:status-code (ex-data e))))
+          (is (= {:class    :recoverable
+                  :code     :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                  :message  "Representations query has an invalid structure."
+                  :recovery []}
+                 (select-keys (tools.error/classify e) [:class :code :message :recovery]))))))))
 
 (deftest aggregation-ref-integer-index-in-order-by-end-to-end-test
   (testing (str "`[aggregation, {}, <index>]` in order-by is resolved to the canonical\n"
@@ -1189,7 +1380,7 @@
     (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})
           hinted   (#'construct/with-recovery-hint original (constantly "do the thing"))]
       (testing "message carries the hint"
-        (is (= "boom do the thing" (ex-message hinted))))
+        (is (= "boom\ndo the thing" (ex-message hinted))))
       (testing "the original exception is the direct cause (not its cause, which is nil here)"
         (is (identical? original (ex-cause hinted)))))))
 
@@ -2050,6 +2241,804 @@
                 (is (true? (:agent-error? d)))
                 (is (= :temporal-unit-on-non-temporal-column (:error d)))
                 (is (str/includes? (ex-message e) (str "is a " type-name " column")))))))))))
+
+;;; ============================================================
+;;; Metric/source compatibility
+;;; ============================================================
+
+(defn- table-source-table-fk [table-id]
+  (let [db (t2/select-one-fn :name :model/Database :id (mt/id))
+        t  (t2/select-one [:model/Table :schema :name] :id table-id)]
+    [db (:schema t) (:name t)]))
+
+(defn- products-source-table-fk [] (table-source-table-fk (mt/id :products)))
+(defn- orders-source-table-fk [] (table-source-table-fk (mt/id :orders)))
+
+(defn- metric-query-data [source metric-eid]
+  (query-data
+   {"lib/type" "mbql/query"
+    "stages"   [(merge source
+                       {"lib/type"    "mbql.stage/mbql"
+                        "aggregation" [["metric" {} metric-eid]]})]}))
+
+(deftest card-based-metric-on-base-table-surfaces-agent-error-test
+  (testing "A single-stage card metric requires the card it was defined on"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-eid :entity_id}
+                   {:name "Card-based metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "sourcing the base table is rejected, naming the metric and the source it needs"
+          (let [e (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo #"Card-based metric"
+                       (construct/execute-representations-query
+                        (metric-query-data {"source-table" (products-source-table-fk)} metric-eid))))]
+            (is (=? {:agent-error? true, :error :incompatible-metric, :status-code 400}
+                    (ex-data e)))
+            (is (str/includes? (ex-message e) question-eid)
+                "the message names the source card to build the stage on")))
+        (testing "sourcing the card it was defined on is accepted"
+          (let [result (construct/execute-representations-query
+                        (metric-query-data {"source-card" question-eid} metric-eid))]
+            (is (= question-id (get-in result [:structured-output :query :stages 0 :source-card])))))))))
+
+(deftest table-based-metric-source-compatibility-test
+  (testing "A single-stage table metric also works on a card built on that table"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-eid :entity_id}
+                   {:name "Table-based metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "on the table it was defined on"
+          (is (= (mt/id :products)
+                 (-> (construct/execute-representations-query
+                      (metric-query-data {"source-table" (products-source-table-fk)} metric-eid))
+                     (get-in [:structured-output :query :stages 0 :source-table])))))
+        (testing "and on a card that resolves to that table"
+          (is (= question-id
+                 (-> (construct/execute-representations-query
+                      (metric-query-data {"source-card" question-eid} metric-eid))
+                     (get-in [:structured-output :query :stages 0 :source-card])))))))))
+
+(deftest multi-stage-table-based-metric-is-pinned-to-source-table-test
+  (testing "A multi-stage table metric requires its base table directly"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Multi-stage metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-query {:source-table (mt/id :products)}
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "precondition: the metric is table-based and its table is the one the card reads from"
+          (let [mp     (lib-be/application-database-metadata-provider (mt/id))
+                metric (lib.metadata/card mp metric-id)]
+            (is (nil? (:source-card-id metric)))
+            (is (= (mt/id :products) (:table-id metric)))
+            (is (= 2 (lib/stage-count (lib/query mp (:dataset-query metric))))
+                "and its definition really is multi-stage")
+            (is (= (mt/id :products)
+                   (:table-id (lib.metadata/card mp question-id))))))
+        (testing "on its own table it is accepted, and the query the LLM gets back runs"
+          (let [query (-> (construct/execute-representations-query
+                           (metric-query-data {"source-table" (products-source-table-fk)} metric-eid))
+                          (get-in [:structured-output :query]))]
+            (is (= (mt/id :products) (get-in query [:stages 0 :source-table])))
+            (is (= [[200]] (mt/rows (qp/process-query query))))))
+        (testing "a card over the same table is rejected"
+          (let [e (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo #"Multi-stage metric"
+                       (construct/execute-representations-query
+                        (metric-query-data {"source-card" question-eid} metric-eid))))]
+            (is (=? {:agent-error? true, :error :incompatible-metric} (ex-data e)))
+            (is (str/includes? (ex-message e)
+                               (str "needs source-table: " (json/encode (products-source-table-fk))))
+                "and it is told to use the base table, named as the portable FK to paste")))))))
+
+(deftest multi-stage-card-based-metric-is-pinned-to-base-table-test
+  (testing "A multi-stage card metric requires its base table, not its source card"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Multi-stage card metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-query {:source-table (str "card__" question-id)}
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "precondition: stage 0 names the card, but the definition is multi-stage"
+          (let [mp     (lib-be/application-database-metadata-provider (mt/id))
+                metric (lib.metadata/card mp metric-id)]
+            (is (= question-id (:source-card-id metric))
+                "stage 0 names the card, which is the one source the metric cannot be used on")
+            (is (= 2 (lib/stage-count (lib/query mp (:dataset-query metric)))))
+            (is (= (mt/id :products) (:table-id metric)))))
+        (testing "on its base table it is accepted, and the query the LLM gets back runs"
+          (let [query (-> (construct/execute-representations-query
+                           (metric-query-data {"source-table" (products-source-table-fk)} metric-eid))
+                          (get-in [:structured-output :query]))]
+            (is (= (mt/id :products) (get-in query [:stages 0 :source-table])))
+            (is (= [[200]] (mt/rows (qp/process-query query)))
+                "the query processor accepts the base table as the source")))
+        (testing "the source card named by the definition is rejected"
+          (let [e (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo #"Multi-stage card metric"
+                       (construct/execute-representations-query
+                        (metric-query-data {"source-card" question-eid} metric-eid))))]
+            (is (=? {:agent-error? true, :error :incompatible-metric} (ex-data e)))
+            (is (str/includes? (ex-message e)
+                               (str "needs source-table: " (json/encode (products-source-table-fk))))
+                "and it is told to use the base table, named as the portable FK to paste")))))))
+
+(deftest multi-stage-card-based-metric-really-does-500-on-its-source-card-test
+  (testing "The query processor rejects a multi-stage card metric used on its source card"
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id}
+                   {:name "Multi-stage card metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-query {:source-table (str "card__" question-id)}
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp    (lib-be/application-database-metadata-provider (mt/id))
+              query (-> (lib/query mp (lib.metadata/card mp question-id))
+                        (lib/aggregate (lib.metadata/metric mp metric-id)))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Incompatible metric"
+               (qp/process-query query))))))))
+
+(deftest multi-stage-card-based-metric-with-column-aggregation-executes-on-base-table-test
+  (testing "A multi-stage sum metric runs on its base table"
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Orders question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)}}}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Multi-stage sum metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-query {:source-table (str "card__" question-id)}
+                                               :aggregation  [[:sum [:field (mt/id :orders :total) nil]]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+          (is (= {:kind :table, :table-id (mt/id :orders), :bare-table-only? true}
+                 (metabot.tools.util/metric-required-source (lib.metadata/card mp metric-id)))))
+        (let [query (-> (construct/execute-representations-query
+                         (metric-query-data {"source-table" (orders-source-table-fk)} metric-eid))
+                        (get-in [:structured-output :query]))
+              rows  (mt/rows (qp/process-query query))]
+          (is (= 1 (count rows)))
+          (is (number? (ffirst rows))
+              "the query compiles and returns a number"))))))
+
+(deftest gate-does-not-reject-metrics-that-are-merely-unavailable-test
+  (testing "An archived metric on its own source is not a source mismatch"
+    (mt/with-temp [:model/Card {metric-eid :entity_id}
+                   {:name "Archived metric" :type :metric :archived true
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "it resolves against the table it was defined on"
+          (let [result (construct/execute-representations-query
+                        (metric-query-data {"source-table" (products-source-table-fk)} metric-eid))]
+            (is (= (mt/id :products)
+                   (get-in result [:structured-output :query :stages 0 :source-table])))
+            (is (= :metric (first (get-in result [:structured-output :query :stages 0 :aggregation 0]))))))))))
+
+(deftest incompatible-metric-message-does-not-disclose-unreadable-source-card-test
+  (testing "The error does not reveal an unreadable source card"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
+                   :model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Secret question" :type :question :collection_id coll-id
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id}
+                   {:name "Metric on secret question" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)
+                                               :aggregation  [[:count]]}}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [{msg :message, :keys [usable-sources]}
+              (#'construct/incompatible-metric-explanation
+               (lib-be/application-database-metadata-provider (mt/id))
+               {metric-id {:kind :card, :card-id question-id}})]
+          (is (empty? usable-sources)
+              "nor its numeric ID")
+          (is (str/includes? msg "Metric on secret question")
+              "the metric itself is readable to this user, so naming it is fine")
+          (is (not (str/includes? msg question-eid))
+              "but the source card's portable entity ID must not leak")
+          (is (str/includes? msg "do not have access")))))))
+
+(deftest incompatible-metric-message-does-not-disclose-unreadable-metric-name-test
+  (testing "The error does not reveal an unreadable metric name"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name          "Secret metric"
+                    :type          :metric
+                    :collection_id coll-id
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]}}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "the pipeline refuses an unreadable metric on either source"
+          (let [refusal   (fn [source-table]
+                            (try
+                              (construct/execute-representations-query
+                               (metric-query-data {"source-table" source-table} metric-eid))
+                              :constructed
+                              (catch clojure.lang.ExceptionInfo e
+                                {:status  (:status-code (ex-data e))
+                                 :error   (:error (ex-data e))
+                                 :message (ex-message e)})))
+                on-orders (refusal (orders-source-table-fk))]
+            (is (=? {:status 403} on-orders))
+            (is (= on-orders (refusal (products-source-table-fk)))
+                "so the refusal says nothing about which source the metric needs")))
+        (let [msg (:message (#'construct/incompatible-metric-explanation
+                             (lib-be/application-database-metadata-provider (mt/id))
+                             {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? false}}))]
+          (is (not (str/includes? msg "Secret metric"))
+              "the name of a metric this user cannot read must not come back")
+          (is (str/includes? msg (str metric-id))
+              "it falls back to the numeric ID, which the caller already had"))))))
+
+(deftest incompatible-metric-message-does-not-disclose-unqueryable-base-table-test
+  (testing "The error names a required table only when the user may query it"
+    (mt/with-temp [:model/Card {metric-id :id}
+                   {:name          "Products metric"
+                    :type          :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]}}}]
+      (let [mp       (lib-be/application-database-metadata-provider (mt/id))
+            required {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? true}}]
+        (testing "queryable: the portable FK to paste"
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [{:keys [message usable-sources]} (#'construct/incompatible-metric-explanation mp required)]
+              (is (str/includes? message
+                                 (str "\"Products metric\" (needs source-table: "
+                                      (json/encode (products-source-table-fk)) ")")))
+              (is (= {metric-id {:source-table (mt/id :products)}} usable-sources)))))
+        (testing "not queryable: no table name"
+          ;; Use a fresh permission cache after changing permissions.
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [{msg :message, :keys [usable-sources]} (#'construct/incompatible-metric-explanation mp required)]
+                (is (str/includes? msg "\"Products metric\" (defined on a source you do not have access to)"))
+                (is (not (str/includes? msg "PRODUCTS")))
+                (is (empty? usable-sources))))))))))
+
+(defn- table-query
+  "A Lib query on the test-data table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
+(defn- card-count-query
+  "A count query on the card with `card-id`."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/card mp card-id))
+        (lib/aggregate (lib/count)))))
+
+(defn- field-col
+  [table-key field-key]
+  (lib.metadata/field (mt/metadata-provider) (mt/id table-key field-key)))
+
+(deftest metric-on-a-model-over-the-model-base-table-test
+  (testing "a metric defined on a model and aggregated over the model's base table"
+    (mt/with-temp [:model/Card {model-id :id, model-eid :entity_id} {:name          "Orders model"
+                                                                     :type          :model
+                                                                     :dataset_query (table-query :orders)}
+                   :model/Card {metric-id :id, metric-eid :entity_id} {:name          "Order count"
+                                                                       :type          :metric
+                                                                       :dataset_query (card-count-query model-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "fails in the query processor"
+          (let [mp (mt/metadata-provider)]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Incompatible metric"
+                                  (qp/process-query (lib/aggregate (table-query :orders)
+                                                                   (lib.metadata/metric mp metric-id)))))))
+        (testing "so the tool refuses it with an error the model can act on"
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.recoverable.pipeline/incompatible-metric
+                   :text  (str "These metrics cannot be used on this stage's source: \"Order count\" (needs "
+                               "source-card: \"" model-eid "\"). "
+                               "Either change the stage's "
+                               "source-table:/source-card: to the one shown for each metric, or drop the metric "
+                               "and express the aggregation directly.")}
+                  (test-util/tool-failure construct/construct-notebook-query-tool
+                                          {:query (metric-query-data {"source-table" (orders-source-table-fk)}
+                                                                     metric-eid)}))))
+        (testing "and the query built on the model, as the error says, runs"
+          (let [query (-> (construct/execute-representations-query
+                           (metric-query-data {"source-card" model-eid} metric-eid))
+                          (get-in [:structured-output :query]))]
+            (is (= [[18760]] (mt/rows (qp/process-query query))))))))))
+
+(deftest metric-with-unreadable-definition-is-rejected-on-any-source-test
+  (testing "A metric with a blank definition has no usable source"
+    (mt/with-temp [:model/Card {metric-id :id}
+                   {:name          "Blank metric"
+                    :type          :metric
+                    :dataset_query (lib/aggregate (table-query :products) (lib/count))}]
+      ;; Straight to the table: the model's `:in` transform would not store a blank query.
+      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp    (lib-be/application-database-metadata-provider (mt/id))
+              query (assoc-in (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                              [:stages 0 :aggregation]
+                              [[:metric {:lib/uuid (str (random-uuid))} metric-id]])]
+          (testing "precondition: the definition really is unreadable, though a table is still recorded"
+            (is (nil? (metabot.tools.util/metric-required-source (lib.metadata/card mp metric-id))))
+            (is (= (mt/id :products) (:table-id (lib.metadata/card mp metric-id)))))
+          (testing "it is reported even on the table it records"
+            (is (= {metric-id nil} (#'construct/incompatible-metrics mp query))))
+          (testing "and the explanation names no source"
+            (is (= (str "These metrics cannot be used on this stage's source: \"Blank metric\" (has no usable source). "
+                        "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                        "or drop the metric and express the aggregation directly.")
+                   (:message (#'construct/incompatible-metric-explanation mp {metric-id nil}))))))))))
+
+(deftest card-based-metric-pinned-to-its-own-card-test
+  (testing "A card metric rejects a different card over the same table"
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {other-eid :entity_id}
+                   {:name "Another products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-eid :entity_id}
+                   {:name "Card-based metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [e (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo #"Card-based metric"
+                     (construct/execute-representations-query
+                      (metric-query-data {"source-card" other-eid} metric-eid))))]
+          (is (=? {:agent-error? true, :error :incompatible-metric} (ex-data e))))))))
+
+(deftest fk-dimension-breakout-on-source-card-stage-test
+  (testing "A card metric can group by a dimension reached through a foreign key returned by the card"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Orders question" :type :question
+                    :dataset_query (table-query :orders)}
+                   :model/Card {metric-eid :entity_id}
+                   {:name "Card-based metric" :type :metric
+                    :dataset_query (card-count-query question-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name  (t2/select-one-fn :name :model/Database :id (mt/id))
+              breakout (fn [source fk]
+                         (-> (construct/execute-representations-query
+                              (query-data
+                               {"lib/type" "mbql/query"
+                                "stages"   [(merge source
+                                                   {"lib/type"    "mbql.stage/mbql"
+                                                    "breakout"    [["field" {} fk]]
+                                                    "aggregation" [["metric" {} metric-eid]]})]}))
+                             (get-in [:structured-output :query])))]
+          (testing "an FK-reachable dimension is wired to the FK column on the card's own base table"
+            (let [query (breakout {"source-card" question-eid}
+                                  [db-name "PUBLIC" "PRODUCTS" "CATEGORY"])]
+              (is (=? {:source-field (mt/id :orders :product_id)}
+                      (get-in query [:stages 0 :breakout 0 1])))
+              (testing "the constructed query runs"
+                (is (= [["Doohickey" 3976] ["Gadget" 4939]]
+                       (take 2 (mt/rows (qp/process-query query))))))))
+          (testing "a column returned by the card needs no implicit join"
+            (let [query (breakout {"source-card" question-eid}
+                                  [db-name "PUBLIC" "ORDERS" "QUANTITY"])]
+              (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
+              (is (= [[0 67] [1 3443]]
+                     (take 2 (mt/rows (qp/process-query query))))))))))))
+
+(deftest table-based-metric-breakout-on-a-related-table-column-test
+  (testing "a table-based metric broken out by a column one foreign key away runs on the metric's table"
+    (mt/with-temp [:model/Card {metric-eid :entity_id} {:name          "Order count"
+                                                        :type          :metric
+                                                        :dataset_query (lib/aggregate (table-query :orders) (lib/count))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              query   (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" [db-name "PUBLIC" "ORDERS"]
+                                          "breakout"     [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                          "aggregation"  [["metric" {} metric-eid]]}]}))
+                          (get-in [:structured-output :query]))]
+          (is (=? {:source-field (mt/id :orders :product_id)}
+                  (get-in query [:stages 0 :breakout 0 1])))
+          (is (= [["Doohickey" 3976] ["Gadget" 4939] ["Gizmo" 4784] ["Widget" 5061]]
+                 (mt/rows (qp/process-query query)))))))))
+
+(deftest card-computed-dimension-by-machine-name-executes-on-source-card-stage-test
+  (testing "A computed dimension can be referenced by its output name on the metric source card"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name          "Orders with double total" :type :question
+                    :dataset_query (lib/expression (table-query :orders) "double_total" (lib/* (field-col :orders :total) 2))}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name          "Card-based metric" :type :metric
+                    :dataset_query (card-count-query question-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [dims (:queryable-dimensions (:structured-output (entity-details/get-metric-details
+                                                               {:metric-id          metric-id
+                                                                :with-field-values? false})))
+              dim  (m/find-first #(= "double_total" (:name %)) dims)]
+          (testing "precondition: the dimension is offered by machine name, with no portable FK"
+            (is (=? {:field_id "double_total"} dim))
+            (is (nil? (:portable_fk dim))))
+          (let [query (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" question-eid
+                                          "filters"     [[">" {} ["field" {} (:field_id dim)] 100]]
+                                          "aggregation" [["metric" {} metric-eid]]}]}))
+                          (get-in [:structured-output :query]))]
+            (is (= (mt/rows (qp/process-query (-> (table-query :orders)
+                                                  (lib/filter (lib/> (field-col :orders :total) 50))
+                                                  (lib/aggregate (lib/count)))))
+                   (mt/rows (qp/process-query query)))
+                "it filters on the card's computed column: count of orders with total > 50")))))))
+
+(deftest source-card-stage-rejects-unreachable-dimensions-like-source-table-test
+  (testing "A card stage rejects a field on an unreachable table"
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Reviews question" :type :question
+                    :dataset_query (table-query :reviews)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; PEOPLE is not reachable from REVIEWS by any foreign key.
+        (let [db-name  (t2/select-one-fn :name :model/Database :id (mt/id))
+              breakout [["field" {} [db-name "PUBLIC" "PEOPLE" "SOURCE"]]]
+              run      (fn [source]
+                         (try
+                           (construct/execute-representations-query
+                            (query-data
+                             {"lib/type" "mbql/query"
+                              "stages"   [(merge source
+                                                 {"lib/type"    "mbql.stage/mbql"
+                                                  "breakout"    breakout
+                                                  "aggregation" [["count" {}]]})]}))
+                           :no-throw
+                           (catch clojure.lang.ExceptionInfo e
+                             (:error (ex-data e)))))]
+          (testing "the source-card stage errors, giving the LLM something it can act on"
+            (is (= :no-fk-path (run {"source-card" question-eid}))))
+          (testing "exactly as the same reference on a source-table stage does"
+            (is (= :no-fk-path (run {"source-table" [db-name "PUBLIC" "REVIEWS"]})))))))))
+
+(deftest aggregating-source-card-implicit-join-executes-test
+  (testing "An aggregating card can join through a foreign key returned as a breakout"
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Orders count by user" :type :question
+                    :dataset_query (-> (table-query :orders)
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (field-col :orders :user_id)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              query   (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" question-eid
+                                          "breakout"    [["field" {} [db-name "PUBLIC" "PEOPLE" "SOURCE"]]]
+                                          "aggregation" [["count" {}]]}]}))
+                          (get-in [:structured-output :query]))]
+          (is (= (mt/id :orders :user_id)
+                 (:source-field (get-in query [:stages 0 :breakout 0 1])))
+              "wired to the FK column the card actually returns")
+          (is (= [["Affiliate" 341] ["Facebook" 354] ["Google" 361] ["Organic" 341] ["Twitter" 349]]
+                 (mt/formatted-rows [str int] (qp/process-query query)))
+              "the constructed query counts the card's users per source"))))))
+
+(deftest aggregating-source-card-rejects-fk-it-does-not-return-test
+  (testing "An omitted foreign key cannot be used for an implicit join"
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Orders count by user" :type :question
+                    :dataset_query (-> (table-query :orders)
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (field-col :orders :user_id)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              e (is (thrown? clojure.lang.ExceptionInfo
+                             (construct/execute-representations-query
+                              (query-data
+                               {"lib/type" "mbql/query"
+                                "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                             "source-card" question-eid
+                                             "breakout"    [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                             "aggregation" [["count" {}]]}]}))))]
+          (is (=? {:agent-error? true, :error :no-fk-path} (ex-data e)))
+          (is (str/includes? (ex-message e) "Orders count by user")
+              "and it names the card, not a base table the LLM never mentioned"))))))
+
+(deftest model-with-restricted-fields-names-the-model-test
+  (mt/with-temp [:model/Card {model-eid :entity_id}
+                 {:name "Orders id and total" :type :model
+                  :dataset_query (lib/with-fields (table-query :orders) [(field-col :orders :id) (field-col :orders :total)])}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+            e       (is (thrown? clojure.lang.ExceptionInfo
+                                 (construct/execute-representations-query
+                                  (query-data
+                                   {"lib/type" "mbql/query"
+                                    "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                 "source-card" model-eid
+                                                 "breakout"    [["field" {} [db-name "PUBLIC" "ORDERS" "QUANTITY"]]]
+                                                 "aggregation" [["count" {}]]}]}))))]
+        (is (=? {:error :column-not-returned, :source-card-type "model"} (ex-data e)))
+        (is (str/includes? (ex-message e) "The model \"Orders id and total\" reads from that table"))
+        (is (not (str/includes? (ex-message e) "saved question")))
+        (is (not (str/includes? (ex-message e) "source-table"))
+            "a stage built on the model's table instead would lose the model's own filters and joins")))))
+
+(deftest source-card-with-restricted-fields-rejects-column-it-does-not-return-test
+  (testing "A card stage rejects an omitted column from a table the card reads"
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Orders id and total" :type :question
+                    :dataset_query (lib/with-fields (table-query :orders) [(field-col :orders :id) (field-col :orders :total)])}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              query   (fn [fk]
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                       "source-card" question-eid
+                                       "breakout"    [["field" {} fk]]
+                                       "aggregation" [["count" {}]]}]}))
+              run!    #(construct/execute-representations-query (query %))]
+          (testing (str "an omitted column from a table the card reads is rejected: "
+                        "pick a projected column. The generic no-FK-path text would tell the agent to add a "
+                        "`joins:` entry joining ORDERS to itself, and `:agent-error?` relays it verbatim.")
+            (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                 (run! [db-name "PUBLIC" "ORDERS" "QUANTITY"])))]
+              (is (=? {:agent-error? true, :error :column-not-returned} (ex-data e)))
+              (is (str/includes? (ex-message e) "does not return"))
+              (is (not (str/includes? (ex-message e) "source-table")))
+              (is (not (str/includes? (ex-message e) "read_resource"))
+                  "the shared pipeline's message stays surface-neutral; the lookup advice is each surface's own")
+              (testing "and the URI that Metabot's recovery step and the Agent API's hint send the agent to resolves"
+                (doseq [advice [(:text (test-util/tool-failure construct/construct-notebook-query-tool
+                                                               {:query (query [db-name "PUBLIC" "ORDERS" "QUANTITY"])}
+                                                               #{"read_resource"}))
+                                (v1-hints/recovery-hint (ex-data e))]
+                        :let   [uri (second (re-find #"`(metabase://[^`]+)`" advice))]]
+                  (is (str/starts-with? uri "metabase://question/"))
+                  (is (str/includes? (:output (test-util/call-tool resources/read-resource-tool {:uris [uri]}))
+                                     "TOTAL")
+                      (str "the agent is sent to " uri))))
+              (is (not (str/includes? (ex-message e) "joins:"))
+                  "specifically not told to build a self-join")))
+          (testing "while a genuinely unreachable table still gets the no-FK-path advice"
+            (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                 (run! [db-name "PUBLIC" "PRODUCTS" "CATEGORY"])))]
+              (is (=? {:agent-error? true, :error :no-fk-path} (ex-data e)))
+              (is (str/includes? (ex-message e) "joins:"))))
+          (testing "while a column it does return is left alone and runs"
+            (let [query (-> (construct/execute-representations-query
+                             (query-data
+                              {"lib/type" "mbql/query"
+                               "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                            "source-card" question-eid
+                                            "breakout"    [["field" {} [db-name "PUBLIC" "ORDERS" "TOTAL"]]]}]}))
+                            (get-in [:structured-output :query]))]
+              (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
+              (is (= 4958 (count (mt/rows (qp/process-query query))))
+                  "one row per distinct TOTAL the card returns"))))))))
+
+(deftest native-source-card-stage-leaves-clauses-alone-test
+  (testing "A native source card is left unchanged when its fields cannot be inspected"
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Native orders" :type :question
+                    :dataset_query (mt/native-query {:query "SELECT ID, PRODUCT_ID FROM ORDERS"})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              query   (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" question-eid
+                                          "breakout"    [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                          "aggregation" [["count" {}]]}]}))
+                          (get-in [:structured-output :query]))]
+          (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field))
+              "no implicit join is guessed for a source we could not inspect"))))))
+
+(deftest source-card-stage-keeps-columns-the-card-already-returns-test
+  (testing "A column returned through the source card's own join keeps that join"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Orders joined to Products on quantity" :type :question
+                    :dataset_query (lib/join (table-query :orders)
+                                             (-> (lib/join-clause (lib.metadata/table (mt/metadata-provider)
+                                                                                      (mt/id :products))
+                                                                  [(lib/= (field-col :orders :quantity)
+                                                                          (field-col :products :id))])
+                                                 (lib/with-join-alias "P")
+                                                 (lib/with-join-fields :all)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name     (t2/select-one-fn :name :model/Database :id (mt/id))
+              category-fk [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]
+          (testing "precondition: the card's own CATEGORY column is offered under exactly this portable FK"
+            (is (=? {:name "P__CATEGORY", :portable_fk category-fk}
+                    (->> (:fields (:structured-output (entity-details/get-table-details
+                                                       {:entity-type        :question
+                                                        :entity-id          question-id
+                                                        :with-field-values? false})))
+                         (m/find-first #(= "P__CATEGORY" (:name %)))))))
+          (let [query (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" question-eid
+                                          "breakout"    [["field" {} category-fk]]
+                                          "aggregation" [["count" {}]]}]}))
+                          (get-in [:structured-output :query]))]
+            (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field))
+                "the clause is left alone")
+            (testing "so it answers from the card's join, not the base table's foreign key"
+              (is (= [[nil 67] ["Doohickey" 12682] ["Gadget" 2270] ["Gizmo" 3532] ["Widget" 209]]
+                     (mt/rows (qp/process-query query)))))))))))
+
+(deftest source-card-stage-keeps-fields-its-explicit-joins-return-test
+  (testing "a field returned by an explicit join keeps that join when its reference omits the join alias"
+    (mt/with-temp [:model/Card {products-eid :entity_id} {:name          "Products"
+                                                          :type          :question
+                                                          :dataset_query (table-query :products)}]
+      (doseq [card-type [:question :model]]
+        (mt/with-temp [:model/Card {orders-eid :entity_id} {:name          "Orders"
+                                                            :type          card-type
+                                                            :dataset_query (table-query :orders)}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                  ;; The join condition is not the foreign key, so the explicit join and an implicit one disagree.
+                  join    (fn [join-source]
+                            {"alias"      "P"
+                             "strategy"   "left-join"
+                             "stages"     [(assoc join-source "lib/type" "mbql.stage/mbql")]
+                             "conditions" [["=" {}
+                                            ["field" {} [db-name "PUBLIC" "ORDERS" "QUANTITY"]]
+                                            ["field" {"join-alias" "P"} [db-name "PUBLIC" "PRODUCTS" "ID"]]]]})]
+              (doseq [[join-label join-source] [["a saved question" {"source-card" products-eid}]
+                                                ["a table" {"source-table" [db-name "PUBLIC" "PRODUCTS"]}]]]
+                (testing (str "a " (name card-type) " joined to " join-label)
+                  (let [query (-> (construct/execute-representations-query
+                                   (query-data
+                                    {"lib/type" "mbql/query"
+                                     "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                  "source-card" orders-eid
+                                                  "joins"       [(join join-source)]
+                                                  "breakout"    [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                                  "aggregation" [["count" {}]]}]}))
+                                  (get-in [:structured-output :query]))]
+                    (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
+                    (is (= [[nil 67] ["Doohickey" 12682] ["Gadget" 2270] ["Gizmo" 3532] ["Widget" 209]]
+                           (mt/rows (qp/process-query query))))))))))))))
+
+(deftest source-card-stage-with-explicit-joins-gets-no-implicit-join-repair-test
+  (testing "a `source-card:` stage with an explicit join is left as written, and lib resolves its fields"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [native (mt/native-query {:query "SELECT ID, CATEGORY FROM PRODUCTS"})]
+        (mt/with-temp [:model/Card {native-eid :entity_id} {:name            "Native products"
+                                                            :type            :question
+                                                            :dataset_query   native
+                                                            :result_metadata (get-in (qp/process-query native)
+                                                                                     [:data :cols])}
+                       :model/Card {products-eid :entity_id} {:name          "Products"
+                                                              :type          :question
+                                                              :dataset_query (table-query :products)}]
+          (doseq [card-type [:question :model]]
+            (mt/with-temp [:model/Card {orders-eid :entity_id} {:name          "Orders"
+                                                                :type          card-type
+                                                                :dataset_query (table-query :orders)}
+                           :model/Card {people-eid :entity_id} {:name          "People"
+                                                                :type          card-type
+                                                                :dataset_query (table-query :people)}]
+              (let [db-name       (t2/select-one-fn :name :model/Database :id (mt/id))
+                    column        (fn [table column-name] [db-name "PUBLIC" table column-name])
+                    build         (fn [source-eid source-column join-stage]
+                                    (let [join {"alias"      "P"
+                                                "strategy"   "left-join"
+                                                "stages"     [(assoc join-stage "lib/type" "mbql.stage/mbql")]
+                                                "conditions" [["=" {}
+                                                               ["field" {} source-column]
+                                                               ["field" {"join-alias" "P"} (column "PRODUCTS" "ID")]]]}]
+                                      (-> (construct/execute-representations-query
+                                           (query-data
+                                            {"lib/type" "mbql/query"
+                                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                          "source-card" source-eid
+                                                          "joins"       [join]
+                                                          "breakout"    [["field" {} (column "PRODUCTS" "CATEGORY")]]
+                                                          "aggregation" [["count" {}]]}]}))
+                                          (get-in [:structured-output :query]))))
+                    source-field? #(contains? (get-in % [:stages 0 :breakout 0 1]) :source-field)]
+                (testing (str "orders as a " (name card-type) ", joined to a native question")
+                  (let [query (build orders-eid (column "ORDERS" "QUANTITY") {"source-card" native-eid})]
+                    (is (not (source-field? query)))
+                    (is (= [[nil 67] ["Doohickey" 12682] ["Gadget" 2270] ["Gizmo" 3532] ["Widget" 209]]
+                           (mt/rows (qp/process-query query))))))
+                (testing (str "people as a " (name card-type) ", joined to a native question")
+                  (let [query (build people-eid (column "PEOPLE" "ID") {"source-card" native-eid})]
+                    (is (not (source-field? query)))
+                    (is (= [[nil 2300] ["Doohickey" 42] ["Gadget" 53] ["Gizmo" 51] ["Widget" 54]]
+                           (mt/rows (qp/process-query query))))))
+                (doseq [[join-label join-source] [["question" {"source-card" products-eid}]
+                                                  ["table" {"source-table" [db-name "PUBLIC" "PRODUCTS"]}]]]
+                  (testing (str "orders as a " (name card-type) ", joined to a grouped " join-label)
+                    (is (not (source-field? (build orders-eid
+                                                   (column "ORDERS" "QUANTITY")
+                                                   (assoc join-source
+                                                          "breakout"    [["field" {} (column "PRODUCTS" "ID")]]
+                                                          "aggregation" [["count" {}]])))))))))))))))
+
+(deftest gate-checks-only-the-first-stage-test
+  (testing "Metric compatibility is checked only in the first stage"
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id}
+                   {:name "Card-based metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [provider     (lib-be/application-database-metadata-provider (mt/id))
+              on-products  (lib/query provider (lib.metadata/table provider (mt/id :products)))
+              metric-agg   [[:metric {:lib/uuid (str (random-uuid))} metric-id]]
+              first-stage  (assoc-in on-products [:stages 0 :aggregation] metric-agg)
+              second-stage (-> on-products
+                               lib/append-stage
+                               (assoc-in [:stages 1 :aggregation] metric-agg))]
+          (testing "precondition: this metric really is incompatible with a products source"
+            (is (= [metric-id] (keys (#'construct/incompatible-metrics provider first-stage)))))
+          (testing "the same reference one stage later is not reported"
+            (is (nil? (#'construct/incompatible-metrics provider second-stage)))))))))
 
 ;;; ============================================================
 ;;; BOT-2222: refs to a grouped join's columns

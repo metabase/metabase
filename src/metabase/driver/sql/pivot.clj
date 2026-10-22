@@ -13,10 +13,8 @@
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.util :as lib.util]
-   ;; :as-alias only, for ::add-remaps keywords; no runtime dependency on QP internals
-   ^{:clj-kondo/ignore [:metabase/modules]}
-   [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util :as u]
    [metabase.util.performance :refer [mapv not-empty some]]))
 
@@ -37,6 +35,15 @@
     :union-all          false
     (and (driver.u/supports? (driver.u/database->driver database) :native-pivot-tables database)
          (not (stage-has-window-fn-aggregation? stage)))))
+
+(defmethod qp.pivot/pivot-shapes :sql
+  [query database]
+  (let [driver       (:engine database)
+        native-safe? (and (driver.u/supports? driver :native-pivot-tables database)
+                          (or (not (stage-has-window-fn-aggregation? (lib.util/query-stage query -1)))
+                              (driver.u/supports? driver :native-pivot-tables/window-functions database)))]
+    (cond-> [:union-all]
+      native-safe? (->> (cons :native-pivot-query) vec))))
 
 (defn- format-exprs
   "Format each expression in `exprs` via [[honey.sql/format-expr]] and return `[[sql-strings] [args]]`."
@@ -109,49 +116,6 @@
 
 (sql/register-fn! ::grouping-sets #'format-grouping-sets)
 
-(defn- remap-original->new-field-positions
-  "Map `original-position` → `new-field-position` for each remap pair in `breakouts`. Returns `{}` when the query
-  has no remapped breakouts."
-  [breakouts]
-  (let [new-field-by-dim-id (into {}
-                                  (keep-indexed
-                                   (fn [i b]
-                                     (when-let [dim-id (-> b lib.options/options
-                                                           (get ::add-remaps/new-field-dimension-id))]
-                                       [dim-id i])))
-                                  breakouts)]
-    (into {}
-          (keep-indexed
-           (fn [orig-pos b]
-             (when-let [dim-id (-> b lib.options/options
-                                   (get ::add-remaps/original-field-dimension-id))]
-               (when-let [new-pos (get new-field-by-dim-id dim-id)]
-                 [orig-pos new-pos]))))
-          breakouts)))
-
-(defn- non-remap-positions
-  "Indices in `breakouts` of the breakouts that are NOT remap new-field breakouts, in original order."
-  [breakouts]
-  (into []
-        (keep-indexed
-         (fn [i b]
-           (when-not (-> b lib.options/options (get ::add-remaps/new-field-dimension-id))
-             i)))
-        breakouts))
-
-(defn- expand-grouping-combo
-  "Map a `combo` of indices into the non-remap-breakouts vector to the corresponding sorted indices into the full
-  `breakouts` vector, dragging each remap new-field along with its original via `original->new-field`."
-  [combo non-remap-positions original->new-field]
-  (sort
-   (into #{}
-         (mapcat (fn [non-remap-combo-idx]
-                   (let [orig-pos (nth non-remap-positions non-remap-combo-idx)]
-                     (if-let [new-pos (get original->new-field orig-pos)]
-                       [orig-pos new-pos]
-                       [orig-pos]))))
-         combo)))
-
 (defn- splice-pivot-grouping-select
   "Insert `pivot-grouping-select` into `select` immediately after the leading `n-breakouts` columns, mirroring
   [[lib.pivot/splice-pivot-grouping]]'s placement in `returned-columns` so the SQL row layout matches the result
@@ -167,20 +131,20 @@
   Assumes `driver` supports the `GROUPING SETS` extension via `:native-pivot-tables`."
   [driver honeysql-form {:keys [breakout pivot]}]
   (let [breakout-hsql     (mapv #(sql.qp/->honeysql driver %) breakout)
-        non-remap-poss    (non-remap-positions breakout)
+        non-remap-poss    (pivot.common/non-remap-positions breakout)
         non-remap-bos     (mapv breakout non-remap-poss)
-        orig->new         (remap-original->new-field-positions breakout)
+        orig->new         (pivot.common/remap-original->new-field-positions breakout)
         nr-idx-by-uuid    (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
         rows-idx          (mapv nr-idx-by-uuid (:rows pivot))
         cols-idx          (mapv nr-idx-by-uuid (:columns pivot))
-        combos            (qp.pivot/breakout-combinations (count non-remap-bos)
-                                                          rows-idx
-                                                          cols-idx
-                                                          (get pivot :show-row-totals    true)
-                                                          (get pivot :show-column-totals true))
+        combos            (pivot.common/breakout-combinations (count non-remap-bos)
+                                                              rows-idx
+                                                              cols-idx
+                                                              (get pivot :show-row-totals    true)
+                                                              (get pivot :show-column-totals true))
         sets-hsql         (mapv (fn [combo]
                                   (mapv #(nth breakout-hsql %)
-                                        (expand-grouping-combo combo non-remap-poss orig->new)))
+                                        (pivot.common/expand-grouping-combo combo non-remap-poss orig->new)))
                                 combos)
         non-remap-hsql    (mapv breakout-hsql non-remap-poss)
         ;; Args reversed so the bitmask convention matches `pivot.common/group-bitmask`: bit 0 = first non-remap breakout.
@@ -188,7 +152,8 @@
         grouping-sets     (into [::grouping-sets] sets-hsql)
         ;; With only one grouping set the grouping bitmask is constant; skip the ORDER BY prefix so dialects that
         ;; reject constants in ORDER BY (e.g. SQL Server) don't fail, and to avoid the redundant sort.
-        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :asc]])]
+        ;; `:desc` sorts rollups first so a `:max-results` truncation drops detail rows rather than totals.
+        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :desc]])]
     (-> honeysql-form
         (update :select splice-pivot-grouping-select (count breakout) [grouping-fn lib.pivot/pivot-grouping-column-name])
         (assoc :group-by [grouping-sets]
@@ -260,17 +225,17 @@
   [driver honeysql-form {:keys [breakout pivot] :as stage}]
   (let [breakout             (vec breakout)
         breakout-hsql        (mapv #(sql.qp/->honeysql driver %) breakout)
-        non-remap-poss       (non-remap-positions breakout)
+        non-remap-poss       (pivot.common/non-remap-positions breakout)
         non-remap-bos        (mapv breakout non-remap-poss)
-        orig->new            (remap-original->new-field-positions breakout)
+        orig->new            (pivot.common/remap-original->new-field-positions breakout)
         nr-idx-by-uuid       (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
         rows-idx             (mapv nr-idx-by-uuid (:rows pivot))
         cols-idx             (mapv nr-idx-by-uuid (:columns pivot))
-        combos               (qp.pivot/breakout-combinations (count non-remap-bos)
-                                                             rows-idx
-                                                             cols-idx
-                                                             (get pivot :show-row-totals    true)
-                                                             (get pivot :show-column-totals true))
+        combos               (pivot.common/breakout-combinations (count non-remap-bos)
+                                                                 rows-idx
+                                                                 cols-idx
+                                                                 (get pivot :show-row-totals    true)
+                                                                 (get pivot :show-column-totals true))
         n-breakouts          (count breakout)
         orig-breakout-select (subvec (:select honeysql-form) 0 n-breakouts)
         orig-agg-select      (subvec (:select honeysql-form) n-breakouts)
@@ -297,9 +262,9 @@
                                        (conj (bos fti)))
                                    bos))
         compile-branch         (fn [combo]
-                                 (let [kept-full-idx (vec (expand-grouping-combo combo non-remap-poss orig->new))
+                                 (let [kept-full-idx (vec (pivot.common/expand-grouping-combo combo non-remap-poss orig->new))
                                        kept-breakout (mapv breakout kept-full-idx)
-                                       bitmask       (qp.pivot/group-bitmask (count non-remap-bos) combo)
+                                       bitmask       (pivot.common/group-bitmask (count non-remap-bos) combo)
                                        ;; Strip :pivot to avoid recursing into this method. Set :order-by to
                                        ;; the user's explicit order-bys followed by canonical breakouts
                                        ;; (finest-temporal last) — window-fn aggregations read this from
@@ -369,12 +334,15 @@
                                                    (when-let [entry (and agg-idx (nth orig-agg-select agg-idx nil))]
                                                      [(alias-ident (alias-of entry)) dir])))))
                                        user-order-bys)
-        ;; `[:pivot-grouping :asc]` sorts combos so grand totals sort last; only meaningful when >1 combo.
-        ;; User `:order-by` and the breakout tiebreakers apply in every case, so they're always included
-        ;; when non-empty — dropping them for the single-combo case silently discarded the user's sort.
+        ;; `[:pivot-grouping :desc]` sorts combos so grand totals sort first; only meaningful when >1 combo.
+        ;; Rollups-first means truncation at `:max-results` drops detail rows rather than totals, so a
+        ;; capped pivot still renders with correct subtotals/grand totals (details can be recovered by
+        ;; narrowing the question). User `:order-by` and the breakout tiebreakers apply in every case,
+        ;; so they're always included when non-empty — dropping them for the single-combo case silently
+        ;; discarded the user's sort.
         outer-order-by           (not-empty
                                   (into (if (> (count combos) 1)
-                                          [[(keyword lib.pivot/pivot-grouping-column-name) :asc]]
+                                          [[(keyword lib.pivot/pivot-grouping-column-name) :desc]]
                                           [])
                                         cat
                                         [user-order-by-outer

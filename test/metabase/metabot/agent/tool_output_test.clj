@@ -8,8 +8,9 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
-   [metabase.metabot.tools.metadata :as metadata-tools]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as resource-tools]
    [metabase.metabot.tools.search :as search-tools]
    [metabase.search.core :as search]
@@ -23,6 +24,13 @@
 ;; ---------------------------------------------------------------------------
 ;; Helpers
 ;; ---------------------------------------------------------------------------
+
+(defn- metadata-tool [tool-name args]
+  (binding [scope/*current-user-scope* #{"*"}]
+    (let [entries (metabot.tools/->entries [#'metabot.tools/list-available-fields-tool
+                                            #'metabot.tools/get-field-values-tool]
+                                           nil nil :document-generate-content)]
+      ((get-in entries [tool-name :fn]) args))))
 
 (defn- ensure-fresh-field-values!
   [field-id]
@@ -198,10 +206,10 @@
     (mt/test-driver :h2
       (search/init-index! {:force-reset? false :re-populate? true})
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (search-tools/search-tool
-                      {:semantic_queries ["orders"]
-                       :keyword_queries  ["orders"]
-                       :entity_types     ["table"]})]
+        (let [result (test-util/call-tool search-tools/search-tool
+                                          {:semantic_queries ["orders"]
+                                           :keyword_queries  ["orders"]
+                                           :entity_types     ["table"]})]
           (assert-formatted-structured result "search: tables" #"<search-results\b"))))))
 
 (deftest search-tool-with-models-structured-output-test
@@ -218,10 +226,10 @@
                                                       :name          "Searchable Test Model"
                                                       :type          :model}]
             (search/init-index! {:force-reset? false :re-populate? true})
-            (let [result (search-tools/search-tool
-                          {:semantic_queries ["Searchable Test Model"]
-                           :keyword_queries  ["Searchable Test Model"]
-                           :entity_types     ["model"]})]
+            (let [result (test-util/call-tool search-tools/search-tool
+                                              {:semantic_queries ["Searchable Test Model"]
+                                               :keyword_queries  ["Searchable Test Model"]
+                                               :entity_types     ["model"]})]
               (assert-formatted-structured
                result "search: model" #"<search-results\b"))))))))
 
@@ -230,10 +238,10 @@
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         ;; get-metadata result renders <tables> directly (no <metadata> wrapper)
-        (let [result (metadata-tools/list-available-fields-tool
-                      {:table_ids  [(mt/id :orders)]
-                       :model_ids  []
-                       :metric_ids []})]
+        (let [result (metadata-tool "list_available_fields"
+                                    {:table_ids  [(mt/id :orders)]
+                                     :model_ids  []
+                                     :metric_ids []})]
           (assert-formatted-structured result "list_available_fields: table" #"<tables\b"))))))
 
 (deftest list-available-fields-multiple-sources-test
@@ -248,10 +256,10 @@
                                                       :database_id   (mt/id)
                                                       :name          "Metadata Test Metric"
                                                       :type          :metric}]
-            (let [result (metadata-tools/list-available-fields-tool
-                          {:table_ids  [(mt/id :orders)]
-                           :model_ids  []
-                           :metric_ids [metric-id]})]
+            (let [result (metadata-tool "list_available_fields"
+                                        {:table_ids  [(mt/id :orders)]
+                                         :model_ids  []
+                                         :metric_ids [metric-id]})]
               (assert-formatted-structured result "list_available_fields: table + metric" #"<(?:tables|metrics)\b"))))))))
 
 (deftest get-field-values-table-structured-output-test
@@ -261,10 +269,10 @@
         (let [table-id (mt/id :orders)
               field-id (find-field-id table-id "QUANTITY")]
           (ensure-fresh-field-values! (mt/id :orders :quantity))
-          (let [result (metadata-tools/get-field-values-tool
-                        {:data_source "table"
-                         :source_id   table-id
-                         :field_id    field-id})]
+          (let [result (metadata-tool "get_field_values"
+                                      {:data_source "table"
+                                       :source_id   table-id
+                                       :field_id    field-id})]
             (assert-formatted-structured result "get_field_values: table field" #"<field-metadata\b")))))))
 
 (deftest get-field-values-metric-structured-output-test
@@ -283,10 +291,10 @@
             ;; Temp metrics may not have fingerprints, so field metadata may be "No metadata available"
             ;; — still a valid formatted string, just not XML-wrapped
             (let [field-id (mt/id :orders :total)
-                  result   (metadata-tools/get-field-values-tool
-                            {:data_source "metric"
-                             :source_id   metric-id
-                             :field_id    field-id})]
+                  result   (metadata-tool "get_field_values"
+                                          {:data_source "metric"
+                                           :source_id   metric-id
+                                           :field_id    field-id})]
               (assert-formatted-structured
                result "get_field_values: metric dimension" #"(?:<field-metadata\b|No metadata available)"))))))))
 
@@ -306,10 +314,10 @@
             ;; Temp models may not have fingerprints, so we accept either
             ;; <field-metadata> XML or "No metadata available" fallback
             (let [field-id (mt/id :orders :id)
-                  result   (metadata-tools/get-field-values-tool
-                            {:data_source "model"
-                             :source_id   model-id
-                             :field_id    field-id})]
+                  result   (metadata-tool "get_field_values"
+                                          {:data_source "model"
+                                           :source_id   model-id
+                                           :field_id    field-id})]
               (assert-formatted-structured
                result "get_field_values: model field" #"(?:<field-metadata\b|No metadata available)"))))))))
 

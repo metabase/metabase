@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection.model]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
@@ -503,9 +504,13 @@
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-schema-rows
-  "The ID, name, schema, and Database ID of the Tables with `table-ids`."
+  "Return the ID, name, schema, and database ID of each table in `table-ids`.
+
+  Rows also include `:is_published` and `:collection_id`, which `can-read?` and `can-query?` need to check access
+  through a collection. Both keys must be present, even when nil."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
@@ -809,10 +814,25 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
 
-(mu/defn card-table-ids
-  "A map of Card ID to Table ID for `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn :table_id :model/Card :id [:in card-ids]))
+(mu/defn card-source-info
+  "Return a map of Card IDs to stored metric definitions for `card-ids`.
+
+  Each row contains `:table_id` and `:dataset_query` for [[metabase.metabot.tools.util/metric-required-source]].
+  Queries are returned with the model's output transform, without running card-schema upgrades."
+  ;; The first stage's `:source_card_id` cannot distinguish single-stage and multi-stage card metrics.
+  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
+  (let [query-out (:out lib-be/transform-query)]
+    (into {}
+          (map (fn [{:keys [id table_id dataset_query]}]
+                 [id {:table_id table_id, :dataset_query (query-out dataset_query)}]))
+          (when (seq card-ids)
+            (t2/select [(t2/table-name :model/Card) :id :table_id :dataset_query] :id [:in card-ids])))))
+
+(mu/defn card-source-rows
+  "Return the source cards in `card-ids`, including the columns needed by `can-read?`."
+  ;; `can-read?` needs `:collection_id` and `:document_id`, including nil values, to check access.
+  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
+  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."

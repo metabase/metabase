@@ -4,6 +4,18 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.66.0
+
+- The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
+  `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
+  `GET /api/table`, have been removed and are ignored. To list only what the current user can edit the data model of,
+  pass `include_editable_data_model=true` to the database endpoints and `include-editable-data-model=true` to
+  `GET /api/table` instead.
+
+- `GET /api/database/:id/metadata?include_hidden=true` no longer returns fields whose visibility is "Do not include"
+  (`sensitive`). Pass the new `include_sensitive_fields=true` to get them, for tables whose data model the current user
+  can edit, as with `GET /api/table/:id/query_metadata`.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
