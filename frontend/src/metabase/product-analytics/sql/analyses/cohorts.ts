@@ -4,11 +4,11 @@ import type {
   Granularity,
   Period,
 } from "../../spec/types";
-import { lit } from "../compile/dialect";
+import { dateTimeLit, lit, num } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
-import type { Cte, QueryPlan } from "../compose";
+import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
-import { scopedEvents, startOf } from "./base";
+import { pointString, scopedEvents, startOf } from "./base";
 
 /** The column the planner reads on `events_base` beyond the roles, when cohorts are by attribute. */
 export const COHORT_ATTRIBUTE_COLUMN = "cohort_attribute";
@@ -185,22 +185,49 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       ]
     : [...groupColumns, "offset"];
 
+  // Each actor only in the offsets the range can show. The chart's cells and
+  // the people behind one read the same rows.
+  const offsetJoin =
+    "ARRAY JOIN range(toUInt32(greatest(observable + 1, 0))) AS offset";
+
+  // The people a cell counts: in its cohort, followable to its offset, and
+  // returned by the same rule as its value. Averaged lines pool every cohort.
+  const members = (point: DrillPoint): string | null => {
+    const offset = pointString(point.offset);
+    const cohort = pointString(point.cohort);
+    if (offset === null || (!isAverage && cohort === null)) {
+      return null;
+    }
+    const conditions = [`offset = ${num(offset)}`, matched];
+    if (!isAverage && cohort !== null) {
+      conditions.push(
+        `cohort = ${isGrouped ? lit(cohort) : dateTimeLit(cohort)}`,
+      );
+    }
+    return [
+      "SELECT actor FROM offsets",
+      offsetJoin,
+      `WHERE ${conditions.join(" AND ")}`,
+    ].join("\n");
+  };
+
   return {
+    members,
     ctes,
     select: [
       "SELECT",
       ...groupColumns.map((column) => `  ${column},`),
       "  offset,",
       ...dateColumn,
-      // Each actor only in the offsets the range can show, so a late period's
-      // rate isn't diluted by people who couldn't have returned yet, and the
-      // size at offset 0, the first row, is the whole cohort.
+      // A late period's rate isn't diluted by people who couldn't have
+      // returned yet, and the size at offset 0, the first row, is the whole
+      // cohort.
       "  uniqExact(actor) AS cohort_size,",
       percent
         ? `  round(uniqExactIf(actor, ${matched}) / nullIf(uniqExact(actor), 0), 4) AS value`
         : `  uniqExactIf(actor, ${matched}) AS value`,
       "FROM offsets",
-      "ARRAY JOIN range(toUInt32(greatest(observable + 1, 0))) AS offset",
+      offsetJoin,
       `GROUP BY ${[...groupColumns, "offset"].join(", ")}`,
       `ORDER BY ${orderColumns.join(", ")}`,
     ].join("\n"),

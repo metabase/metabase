@@ -121,7 +121,7 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
     isValid: (value) => isOptionalEventDefinition(value),
     getProps: (context) => ({
       ...getEventDefinitionProps(context),
-      emptyLabel: t`Any action or event`,
+      emptyLabel: t`Any event`,
     }),
   }),
   "lifecycle.first_seen_column": withWidgetProps({

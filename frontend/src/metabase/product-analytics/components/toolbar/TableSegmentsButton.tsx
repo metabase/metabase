@@ -12,6 +12,8 @@ type TableSegmentsButtonProps = {
   onTableChange?: (tableId: ConcreteTableId) => void;
   isSegmentsOpen: boolean;
   onToggleSegments: () => void;
+  /** The segments button is hovered, so the open panel can show it's the one. */
+  onHintSegments: (isHinted: boolean) => void;
 };
 
 /**
@@ -24,6 +26,7 @@ export const TableSegmentsButton = ({
   onTableChange,
   isSegmentsOpen,
   onToggleSegments,
+  onHintSegments,
 }: TableSegmentsButtonProps) => {
   const segmentsLabel = isSegmentsOpen ? t`Hide segments` : t`Show segments`;
 
@@ -53,6 +56,8 @@ export const TableSegmentsButton = ({
           aria-pressed={isSegmentsOpen}
           disabled={tableId === undefined}
           onClick={onToggleSegments}
+          onMouseEnter={() => onHintSegments(true)}
+          onMouseLeave={() => onHintSegments(false)}
         >
           <Icon name="segment" />
         </Button>

@@ -47,6 +47,8 @@ type SegmentsPanelProps = {
   usersTable: UsersTable | undefined;
   /** A click on a people segment, which adds it as a filter. */
   onSelectPeopleSegment: (segment: PaletteSegment) => void;
+  /** The toolbar button that hides this panel is hovered. */
+  isHinted?: boolean;
   onClose: () => void;
 };
 
@@ -59,11 +61,18 @@ export const SegmentsPanel = ({
   table,
   usersTable,
   onSelectPeopleSegment,
+  isHinted = false,
   onClose,
 }: SegmentsPanelProps) => {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   return (
-    <Paper withBorder radius="md" className={S.root} w={width}>
+    <Paper
+      withBorder
+      radius="md"
+      className={S.root}
+      w={width}
+      data-hinted={isHinted}
+    >
       <ResizeHandle
         className={S.handle}
         getSize={() => width}

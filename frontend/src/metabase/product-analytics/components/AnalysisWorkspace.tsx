@@ -36,7 +36,6 @@ import { AnalysisToolbar } from "./AnalysisToolbar";
 import { DisplayPanel } from "./DisplayPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
-import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
@@ -72,6 +71,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   );
   // The setup button's hover lights up the setup panel's border.
   const [isSetupHinted, setIsSetupHinted] = useState(false);
+  // Likewise the segments button's hover and the segments panel.
+  const [isSegmentsHinted, setIsSegmentsHinted] = useState(false);
   // Collapsed behind the Filters button until it's clicked; showing an empty
   // row opens its column picker, which a page load shouldn't do on its own.
   const [areFiltersExpanded, setAreFiltersExpanded] = useState(false);
@@ -131,9 +132,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     [config, computed],
   );
   const drillActions = useDrillActions({
-    tableId,
-    stored,
-    settings: computed,
     countColumn: grainLabel(computed.counting),
     describePoint,
     queries: drillQueries,
@@ -216,6 +214,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             onTableChange={onTableChange}
             isSegmentsOpen={isSegmentsOpen}
             onToggleSegments={handleToggleSegments}
+            onHintSegments={setIsSegmentsHinted}
             setupLabel={config.setupLabel}
             sql={query.sql}
             canSave={canSave}
@@ -254,6 +253,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               table={table}
               usersTable={usersTable}
               onSelectPeopleSegment={handleAddPeopleFilter}
+              isHinted={isSegmentsHinted}
               onClose={() => setIsSegmentsOpen(false)}
             />
           )}
@@ -338,16 +338,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         <MembersModal
           drill={drillActions.modal.drill}
           queries={drillQueries}
-          onClose={drillActions.closeModal}
-        />
-      )}
-      {drillActions.modal?.type === "segment" && (
-        <CreateSegmentModal
-          drill={drillActions.modal.drill}
-          settings={computed}
-          table={table}
-          queries={drillQueries}
-          toCohort={drillActions.toCohort}
           onClose={drillActions.closeModal}
         />
       )}

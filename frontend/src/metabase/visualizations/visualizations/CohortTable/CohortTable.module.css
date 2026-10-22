@@ -61,6 +61,15 @@
   text-align: right;
 }
 
+/* Cells the host can drill into, e.g. to the people in them. */
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+}
+
 .cell {
   min-width: 4.5rem;
   min-height: 3rem;

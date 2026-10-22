@@ -24,6 +24,8 @@ type AnalysisToolbarProps = {
   onTableChange?: (tableId: ConcreteTableId) => void;
   isSegmentsOpen: boolean;
   onToggleSegments: () => void;
+  /** The segments button is hovered, so the segments panel can show it's the one. */
+  onHintSegments: (isHinted: boolean) => void;
   setupLabel: string;
   sql: string | null;
   canSave: boolean;
@@ -50,6 +52,7 @@ export const AnalysisToolbar = ({
   onTableChange,
   isSegmentsOpen,
   onToggleSegments,
+  onHintSegments,
   setupLabel,
   sql,
   canSave,
@@ -76,6 +79,7 @@ export const AnalysisToolbar = ({
             onTableChange={onTableChange}
             isSegmentsOpen={isSegmentsOpen}
             onToggleSegments={onToggleSegments}
+            onHintSegments={onHintSegments}
           />
           <Button
             variant="default"

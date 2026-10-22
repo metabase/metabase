@@ -54,7 +54,7 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
     isValid: (value) => isOptionalEventDefinition(value),
     getProps: (context) => ({
       ...getEventDefinitionProps(context),
-      emptyLabel: t`Any action or event`,
+      emptyLabel: t`Any event`,
     }),
   }),
   "habit.measure": {
