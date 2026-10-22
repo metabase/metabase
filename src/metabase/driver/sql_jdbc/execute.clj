@@ -975,6 +975,8 @@
                       (finally
                         (when-not (or @exhausted? (drivers-exempt-from-cancelation driver))
                           (vreset! canceled? (cancel-statement! driver stmt)))))))
+             (catch SQLException e
+               (throw (ex-info (ex-message e) {:type driver-api/qp.error-type.qp} e)))
              ;; `with-open` has closed the ResultSet and Statement by the time this runs, which is required: on
              ;; ClickHouse and Presto their `.close` round-trips to the server and throws once the Connection is gone.
              ;; Discarding is safe here because this Connection was acquired for this query alone -- see
