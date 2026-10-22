@@ -485,7 +485,7 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error entity-type entity-id]} (ex-data e)
+      (let [{:keys [agent-error? status-code error entity-type entity-id source-card source-card-type]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
@@ -494,7 +494,9 @@
            code
            (cond-> {:message (or (ex-message e) "")}
              entity-type       (assoc :entity-type entity-type)
-             (some? entity-id) (assoc :entity-id entity-id))
+             (some? entity-id) (assoc :entity-id entity-id)
+             source-card       (assoc :source-card source-card
+                                      :source-card-type source-card-type))
            {:cause e})
 
           (contains? refusal-status-codes status-code)

@@ -17,6 +17,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.sql.common :as sql.common]
+   [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -309,18 +310,19 @@
 (defn- metric-source
   "Return the source that [[metric-not-runnable!]] accepts for a readable `metric`.
 
-   Use the model or question that the metric is built on, or its base table. Return `:none` if the user can't read
-   the source card or query the base table."
+   Use the source selected by [[metabase.metabot.tools.util/metric-required-source]]. Return `:none` if the user
+   can't read the source card or query the base table."
   [metric]
-  (let [source-card (some-> (:source_card_id metric) metabot.db/card)]
+  (let [{:keys [kind card-id table-id]} (tools.u/metric-required-source metric)
+        source-card (when (= :card kind) (metabot.db/card card-id))]
     (cond
       (some-> source-card mi/can-read?)
       {:card-type (:type source-card)
        :entity-id (:entity_id source-card)}
 
       ;; Reading the metric is collection-based and does not imply querying its table.
-      (and (nil? (:source_card_id metric))
-           (some->> (:table_id metric) (mi/can-query? :model/Table)))
+      (and (= :table kind)
+           (some->> table-id (mi/can-query? :model/Table)))
       :base-table
 
       :else

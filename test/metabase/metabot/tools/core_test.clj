@@ -351,7 +351,24 @@
                :data {:entity-type "metric" :entity-id 7}}
               error))
       (is (str/starts-with? (:text (first (:recovery error)))
-                            "Metrics are aggregations, not sources.")))))
+                            "Metrics are aggregations, not sources."))))
+  (testing "an error from a `source-card:` stage carries the card, so the recovery step reads that card's columns"
+    (doseq [[error what] [[:column-not-returned "columns"]
+                          [:unexportable-fk "columns"]
+                          [:ambiguous-fk "foreign-key columns"]]]
+      (testing error
+        (is (=? {:data     {:source-card 12 :source-card-type "model"}
+                 :recovery [{:uses #{"read_resource"}
+                             :text (str "Call `read_resource` with `metabase://model/12/fields` to list the " what
+                                        " this model returns.")}]}
+                (pipeline-failure "The field cannot be referenced here."
+                                  {:agent-error? true :error error :source-card 12 :source-card-type "model"}))))))
+  (testing "an ambiguous foreign key on a `source-table:` stage still points at the table's fields"
+    (is (=? {:recovery [{:uses #{"read_resource"}
+                         :text (str "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source "
+                                    "table to list the available foreign-key columns.")}]}
+            (pipeline-failure "Two foreign keys reach the table."
+                              {:agent-error? true :error :ambiguous-fk :source-table 3})))))
 
 (deftest ^:parallel with-pipeline-errors-converts-refusals-test
   (doseq [status [403 404]]
