@@ -329,6 +329,56 @@
               (substitute query {"snippet:outer" (params/->ReferencedQuerySnippet 123 "{{snippet:symbol_is_A}}")
                                  "snippet:symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
 
+(deftest ^:parallel substitute-repeated-native-query-snippets-test
+  (testing "The same snippet can be used more than once, including from within other snippets"
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:outer")
+                 " OR " (param "snippet:symbol_is_A")]]
+      (is (=? ["SELECT * FROM test_scores WHERE (symbol = 'A' AND symbol = 'A') OR symbol = 'A'" nil]
+              (substitute query {"snippet:outer"       (params/->ReferencedQuerySnippet
+                                                        123 "({{snippet:symbol_is_A}} AND {{snippet:symbol_is_A}})")
+                                 "snippet:symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
+
+(deftest ^:parallel substitute-circular-native-query-snippets-test
+  (testing "Snippets that (directly or indirectly) reference themselves are rejected"
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: a")]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"circular"
+           (substitute query {"snippet: a" (params/->ReferencedQuerySnippet 1 "{{snippet: a}}")})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"circular"
+           (substitute query {"snippet: a" (params/->ReferencedQuerySnippet 1 "x {{snippet: b}}")
+                              "snippet: b" (params/->ReferencedQuerySnippet 2 "y {{snippet: a}}")}))))))
+
+(defn- doubling-snippets
+  "Snippets `s0` ... `s<depth>` where each references the next one twice, and the last one has `leaf-content`."
+  [depth leaf-content]
+  (into {(str "snippet: s" depth) (params/->ReferencedQuerySnippet (inc depth) leaf-content)}
+        (for [i (range depth)
+              :let [next-tag (str "{{snippet: s" (inc i) "}}")]]
+          [(str "snippet: s" i) (params/->ReferencedQuerySnippet (inc i) (str next-tag next-tag))])))
+
+(deftest ^:parallel substitute-native-query-snippets-expansion-limit-test
+  (testing "Snippets that expand into too many nested snippets are rejected"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"too many"
+         (substitute ["SELECT " (param "snippet: s0")]
+                     (doubling-snippets 20 ""))))))
+
+(deftest ^:parallel substitute-native-query-snippets-length-limit-test
+  (testing "Snippets that expand into a huge query are rejected"
+    (let [leaf (str/join (repeat 10000 "x"))]
+      (is (= (+ (count "SELECT ") (* 512 (count leaf)))
+             (count (first (substitute ["SELECT " (param "snippet: s0")]
+                                       (doubling-snippets 9 leaf))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"too long"
+           (substitute ["SELECT " (param "snippet: s0")]
+                       (doubling-snippets 10 leaf)))))))
+
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e [sql params]
