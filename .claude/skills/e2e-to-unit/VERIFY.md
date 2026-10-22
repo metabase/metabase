@@ -6,7 +6,7 @@
 bun .claude/skills/e2e-to-unit/verify.ts --out local/claude/verify.md --json local/claude/verify-open.json
 ```
 
-With no other flags it reads the deleted `it()` titles and the changed unit specs from `git diff master`. Pass `--test "<spec>::<it title>"` and `--unit-spec <path>` to name them yourself, for example before the e2e tests are deleted.
+With no other flags it reads the deleted `it()` titles and the changed unit specs from `git diff` against the merge base with `origin/master`, so a stale local `master` cannot widen the scope. Pass `--test "<spec>::<it title>"` and `--unit-spec <path>` to name them yourself, for example before the e2e tests are deleted.
 
 ## How it works
 

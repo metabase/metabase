@@ -52,6 +52,7 @@ import {
   dirtyFiles,
   fileExistsAtHead,
   lineMapper,
+  mergeBase,
   restoreFiles,
 } from "./verify/lines";
 import {
@@ -90,7 +91,7 @@ interface Options {
 
 function parseArgs(argv: string[]): Options {
   const options: Options = {
-    base: "master",
+    base: "origin/master",
     tests: [],
     unitSpecs: [],
     bootThreshold: 0.2,
@@ -537,6 +538,7 @@ async function main() {
   const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
     encoding: "utf8",
   }).trim();
+  options.base = mergeBase(repoRoot, options.base);
 
   if (options.tests.length === 0) {
     options.tests = deletedTests(repoRoot, options.base);

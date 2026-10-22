@@ -28,6 +28,13 @@ export function parseDeletedTests(diff: string): DeletedTest[] {
   return deleted;
 }
 
+export function mergeBase(repoRoot: string, base: string): string {
+  return execFileSync("git", ["merge-base", base, "HEAD"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  }).trim();
+}
+
 export function deletedTests(repoRoot: string, base: string): DeletedTest[] {
   const diff = execFileSync("git", ["diff", base, "--", "e2e/test/scenarios"], {
     cwd: repoRoot,
