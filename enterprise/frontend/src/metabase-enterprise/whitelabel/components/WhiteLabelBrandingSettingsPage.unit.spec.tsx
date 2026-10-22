@@ -1,9 +1,14 @@
+import userEvent from "@testing-library/user-event";
+
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import type { LoadingMessage } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -11,8 +16,14 @@ import {
 
 import { WhiteLabelBrandingSettingsPage } from "./WhiteLabelBrandingSettingsPage";
 
-const setup = async () => {
-  const settings = createMockSettings({});
+interface SetupOpts {
+  loadingMessage?: LoadingMessage;
+}
+
+const setup = async ({ loadingMessage }: SetupOpts = {}) => {
+  const settings = createMockSettings({
+    ...(loadingMessage && { "loading-message": loadingMessage }),
+  });
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([
@@ -21,6 +32,7 @@ const setup = async () => {
       description: "Login page illustration",
     }),
   ]);
+  setupUpdateSettingEndpoint();
 
   renderWithProviders(
     <>
@@ -47,5 +59,25 @@ describe("branding settings", () => {
     await setup();
 
     expect((await screen.findAllByText(setting)).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    { label: "Loading results...", value: "loading-results" },
+    { label: "Running query...", value: "running-query" },
+    { label: "Doing science...", value: "doing-science" },
+  ] as const)("saves the $label loading message", async ({ label, value }) => {
+    await setup({
+      loadingMessage:
+        value === "doing-science" ? "running-query" : "doing-science",
+    });
+
+    await userEvent.click(await screen.findByLabelText("Loading message"));
+    await userEvent.click(await screen.findByRole("option", { name: label }));
+
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].url).toContain("/api/setting/loading-message");
+    expect(puts[0].body).toEqual({ value });
   });
 });
