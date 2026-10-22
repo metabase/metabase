@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { getActionDisplayType } from "metabase/actions/utils";
 import { skipToken, useGetCardQuery } from "metabase/api";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   executeRowAction,
   reloadDashboardCards,
@@ -13,7 +14,7 @@ import {
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import { useQuestionFromCard } from "metabase/metadata-store";
-import { connect } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
 import { Box, Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -102,7 +103,8 @@ const ActionComponent = ({
     shouldConfirm
   );
 
-  const canWrite = Boolean(model?.canWriteActions());
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canWrite = isAdmin && Boolean(model?.canWriteActions());
 
   const onSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {

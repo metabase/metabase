@@ -34,6 +34,7 @@ import {
   createMockImplicitQueryAction,
   createMockQueryAction,
   createMockStructuredDatasetQuery,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { ActionProps } from "./Action";
@@ -126,9 +127,11 @@ async function setup({
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
+  isAdmin = true,
   ...props
 }: SetupOpts & {
   database?: Database;
+  isAdmin?: boolean;
 } = {}) {
   const card = checkNotNull(dashcard.card);
 
@@ -155,6 +158,7 @@ async function setup({
     />,
     {
       storeInitialState: {
+        currentUser: createMockUser({ is_superuser: isAdmin }),
         entities: createMockEntitiesState({
           databases: [database],
         }),
@@ -338,6 +342,14 @@ describe("Actions > ActionViz > Action", () => {
       };
 
       await setup({ database: readOnlyDB });
+
+      await userEvent.click(screen.getByText("Click me"));
+
+      expect(queryIcon("pencil")).not.toBeInTheDocument();
+    });
+
+    it("should NOT allow to edit underlying action if a user is not an admin", async () => {
+      await setup({ isAdmin: false });
 
       await userEvent.click(screen.getByText("Click me"));
 

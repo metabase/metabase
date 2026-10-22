@@ -135,7 +135,7 @@ describe("ActionCreator > Query Actions", () => {
   describe("Editing Action", () => {
     it("renders correctly", async () => {
       const action = createMockQueryAction();
-      await setup({ action });
+      await setup({ action, isAdmin: true });
 
       await waitFor(() => {
         expect(screen.getByText(action.name)).toBeInTheDocument();
@@ -171,7 +171,7 @@ describe("ActionCreator > Query Actions", () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
-      await setup({ action, canWrite: false });
+      await setup({ action, canWrite: false, isAdmin: true });
 
       await waitFor(() => {
         expect(screen.getByDisplayValue(action.name)).toBeDisabled();

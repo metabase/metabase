@@ -47,6 +47,7 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createNativeModelCard as _createNativeModelCard,
@@ -162,6 +163,7 @@ function createMockQueryAction(
   opts?: Partial<WritebackQueryAction>,
 ): WritebackQueryAction {
   return _createMockQueryAction({
+    can_write: true,
     ...opts,
     dataset_query: createMockNativeDatasetQuery({
       native: createMockNativeQuery({ query: TEST_QUERY }),
@@ -178,6 +180,7 @@ type SetupOpts = {
   usedBy?: Card[];
   settings?: Partial<Settings>;
   deferDatabaseList?: boolean;
+  isAdmin?: boolean;
 };
 
 async function setup({
@@ -188,8 +191,10 @@ async function setup({
   usedBy = [],
   settings = {},
   deferDatabaseList = false,
+  isAdmin = true,
 }: SetupOpts) {
   const storeInitialState = createMockState({
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: createMockSettingsState(settings),
   });
   const metadata = createMockMetadata({
@@ -524,7 +529,10 @@ describe("ModelActions", () => {
       });
 
       it("doesn't allow to edit actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
@@ -533,11 +541,44 @@ describe("ModelActions", () => {
       });
 
       it("doesn't allow to archive actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
 
+        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("non-admin with write permissions on the model", () => {
+      const modelCard = getModel();
+
+      it("doesn't allow to create actions", async () => {
+        await setupActions({ model: modelCard, actions: [], isAdmin: false });
+        expect(screen.queryByText("New action")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Create basic actions"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
+      });
+
+      it("doesn't allow to edit or archive actions", async () => {
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
+        await setupActions({
+          model: modelCard,
+          actions: [action],
+          isAdmin: false,
+        });
+
+        await openActionMenu(action);
+
+        expect(await screen.findByText("View")).toBeInTheDocument();
         expect(screen.queryByText("Archive")).not.toBeInTheDocument();
       });
     });

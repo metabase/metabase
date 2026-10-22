@@ -6,6 +6,8 @@ import {
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import type {
   Card,
   CardId,
@@ -51,6 +53,7 @@ export function ActionCreator({
   onSubmit,
   onClose,
 }: ActionCreatorProps) {
+  const isAdmin = useSelector(getUserIsAdmin);
   const { data: databases } = useListDatabasesQuery();
   const { data: model } = useGetCardQuery(
     modelId != null ? { id: modelId } : skipToken,
@@ -73,7 +76,7 @@ export function ActionCreator({
     >
       <ActionCreatorContent
         modelId={modelId}
-        canWriteModelActions={canWriteActions(model, modelDatabase)}
+        canWriteModelActions={isAdmin && canWriteActions(model, modelDatabase)}
         isRouted={isRouted}
         dataReference={DATA_REFERENCE}
         onSubmit={onSubmit}

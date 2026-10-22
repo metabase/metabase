@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -20,6 +21,7 @@ import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockQueryAction,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -87,6 +89,9 @@ async function setup({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
     },
   );
 

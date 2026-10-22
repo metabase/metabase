@@ -15,9 +15,10 @@ import { setup as baseSetup } from "./common";
 
 async function setup({
   action = createMockImplicitQueryAction(),
+  isAdmin = true,
   ...opts
 }: SetupOpts = {}) {
-  await baseSetup({ action, ...opts });
+  await baseSetup({ action, isAdmin, ...opts });
   return { action };
 }
 
@@ -112,6 +113,20 @@ describe("ActionCreator > Common", () => {
 
         expect(checkbox).not.toBeChecked();
         expect(input).toBeDisabled();
+      });
+    });
+
+    describe("as a non-admin with write permissions on the model", () => {
+      it("should not allow editing success message", async () => {
+        await setup({ action: getAction(), canWrite: true, isAdmin: false });
+
+        await openSidebar();
+
+        expect(
+          screen.getByRole("textbox", {
+            name: "Success message",
+          }),
+        ).toBeDisabled();
       });
     });
 

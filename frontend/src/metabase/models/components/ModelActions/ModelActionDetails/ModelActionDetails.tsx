@@ -10,6 +10,8 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Alert,
@@ -64,7 +66,8 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
 
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
-  const canWrite = model.canWriteActions();
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canWrite = isAdmin && model.canWriteActions();
   const supportsImplicitActions = model.supportsImplicitActions();
 
   const actionsSorted = useMemo(
