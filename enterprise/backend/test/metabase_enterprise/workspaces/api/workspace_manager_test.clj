@@ -182,6 +182,10 @@
                    :model/Field _ {:table_id orders-id :name "card_number" :base_type :type/Text
                                    :visibility_type :sensitive}
                    :model/Field _ {:table_id orders-id :name "dropped" :base_type :type/Text :active false}
+                   :model/Field _ {:table_id orders-id :name "internal_note" :base_type :type/Text
+                                   :visibility_type :hidden}
+                   :model/Field _ {:table_id orders-id :name "legacy_code" :base_type :type/Text
+                                   :visibility_type :retired}
                    :model/Workspace {ws-id :id} {:name "Meta WS"}
                    :model/WorkspaceDatabase _ {:workspace_id     ws-id
                                                :database_id      db-id
@@ -201,6 +205,18 @@
                           {:id created-id :table_id orders-id :name "created_at" :base_type "type/Text" :database_type "text"
                            :effective_type "type/DateTime" :coercion_strategy "Coercion/ISO8601->DateTime"}]}
              (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/metadata"))))
+      (testing "a database with no input schemas contributes no tables"
+        (mt/with-temp [:model/Workspace {empty-ws-id :id} {:name "Empty WS"}
+                       :model/WorkspaceDatabase _ {:workspace_id     empty-ws-id
+                                                   :database_id      db-id
+                                                   :database_details {}
+                                                   :output_namespace ""
+                                                   :input_schemas    []
+                                                   :status           :provisioned}]
+          (is (= {:databases [{:id db-id :name "Meta DW" :engine "postgres"}]
+                  :tables    []
+                  :fields    []}
+                 (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" empty-ws-id "/metadata"))))))
       (testing "404 for a missing workspace"
         (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/metadata")))))
 
