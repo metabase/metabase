@@ -5,8 +5,13 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
@@ -44,14 +49,39 @@
           (not (map? result))                   ::unavailable
           (pos? (:updated-fingerprints result)) (metabot.db/field-fingerprint id)))))
 
+(defn- database-unrestricted?
+  [db-id]
+  (and (= :unrestricted (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data db-id))
+       (not (perms/sandboxed-user-for-db? db-id))
+       (let [{:keys [impersonation routing]} (perms/data-access-token {:database-id db-id :table-ids #{}})]
+         (not (or impersonation routing)))))
+
+(defn- query-statistics-restricted?
+  [query]
+  (try
+    (if (database-unrestricted? (:database query))
+      false
+      (let [query (binding [qp.i/*skip-middleware-because-app-db-access* true]
+                    (request/as-admin (qp.preprocess/preprocess query)))
+            table-ids (set (lib/all-source-table-ids query))]
+        (or (lib/any-native-stage? query)
+            (not= table-ids (metabot.perms/data-accessible-table-ids table-ids))
+            (boolean (seq (metabot.perms/row-restricted-table-ids table-ids))))))
+    (catch Exception e
+      (log/debug e "Could not determine source tables for virtual column statistics")
+      true)))
+
 (defn- field-statistics
   "Fingerprint statistics are global (computed across every row of the table), so they're withheld
   for a user whose actual row access is narrowed by sandboxing, connection impersonation, or
   database routing -- and a missing fingerprint is never computed on demand for such a user either,
   since that would run an unrestricted warehouse sample and persist its result to the shared
   `Field` row. The restriction check uses the persisted Field's owning table rather than the
-  caller's column metadata, since saved Card result metadata can be stale or user-edited."
-  [{:keys [id fingerprint]} limit]
+  caller's column metadata, since saved Card result metadata can be stale or user-edited.
+  Virtual column fingerprints require unrestricted access to every source table. Queries containing
+  native SQL require unrestricted database access without sandboxing, impersonation or routing.
+  Unrestricted database users keep fingerprints even when source tables cannot be determined."
+  [query {:keys [id fingerprint]} limit]
   (if id
     (let [field (metabot.db/field id)
           table-id (:table_id field)
@@ -61,7 +91,7 @@
           fp (when-not restricted?
                (or fingerprint (get-or-create-fingerprint! field)))]
       (build-field-statistics fvs fp limit))
-    (build-field-statistics nil fingerprint limit)))
+    (build-field-statistics nil (when (and fingerprint (not (query-statistics-restricted? query))) fingerprint) limit)))
 
 (defn- field-metadata-output
   "Build the `:field-metadata` tool result for `col` of `query`. Surfaces the column's portable
@@ -70,74 +100,66 @@
   [query col field-id limit]
   {:structured-output (merge {:result-type    :field-metadata
                               :field_id       field-id
-                              :value_metadata (field-statistics col limit)}
+                              :value_metadata (field-statistics query col limit)}
                              (select-keys (metabot.tools.u/->result-column query col)
                                           [:portable_fk :table_reference]))})
 
-(defn- check-column-table-perms!
-  [col]
-  (let [field-id (:id col)
-        ;; A saved Card's result metadata can override :table-id while retaining a real Field ID.
-        ;; Always authorize physical Fields against their persisted owner; only virtual columns may
-        ;; fall back to the table carried by Lib metadata.
-        table-id (if (pos-int? field-id)
-                   (or (get (metabot.perms/field-id->table-id #{field-id}) field-id)
-                       (throw (ex-info (str "No field found with ID " field-id)
-                                       {:agent-error? true :status-code 404})))
-                   (:table-id col))]
-    (when (int? table-id)
-      (api/check-403
-       (contains? (if (= :source/implicitly-joinable (:lib/source col))
-                    (metabot.perms/queryable-table-ids #{table-id})
-                    (metabot.perms/data-accessible-table-ids #{table-id}))
-                  table-id))
-      (when-let [allowed (get (metabot.perms/sandbox-restricted-fields #{table-id}) table-id)]
-        (api/check-403 (contains? allowed field-id))))))
+(def ^:private max-suggested-field-ids 100)
+
+(tools/defrecoverable unknown-field!
+  "The field ID does not identify an accessible column of this data source."
+  {:payload [:map {:closed true}
+             [:field-id [:or :int :string]]
+             [:entity-type [:enum "table" "model" "metric" "question"]]
+             [:entity-id :int]
+             [:available-ids [:sequential {:max 100} [:or :int :string]]]
+             [:remaining-count :int]]}
+  [{:keys [field-id entity-type entity-id available-ids remaining-count]}]
+  {:message (str "Field " field-id " was not found in " entity-type " " entity-id
+                 (if (seq available-ids)
+                   (str ". Valid field IDs: " (pr-str available-ids)
+                        (when (pos? remaining-count) (str " and " remaining-count " more")) ".")
+                   ". No accessible field IDs are available for this data source."))
+   :recovery [{:text (if (seq available-ids)
+                       "Retry with one of these field IDs."
+                       "Choose another data source.")
+               :uses #{}}]})
+
+(defn- field-column
+  [entity-type entity-id field-id columns]
+  (let [columns (entity-details/permission-filter-columns columns)]
+    (or (metabot.tools.u/find-column-by-field-id field-id columns)
+        (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct)) columns)]
+          (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
+                           :available-ids (vec (take max-suggested-field-ids available-ids))
+                           :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))})))))
 
 (defn- table-field-stats
   [table-id field-id limit]
-  (try
-    (let [query        (or (metabot.tools.u/table-query table-id)
-                           (throw (ex-info (str "No table found with ID " table-id)
-                                           {:agent-error? true :status-code 404})))
-          visible-cols (lib/visible-columns query)
-          col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
-      (check-column-table-perms! col)
-      (field-metadata-output query col field-id limit))
-    (catch Exception ex
-      (metabot.tools.u/handle-agent-error ex))))
+  (let [query (metabot.tools.u/table-query table-id)
+        col (field-column "table" table-id field-id (lib/visible-columns query))]
+    (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
-  [card-id field-id limit card-type]
-  (try
-    (let [query        (or (metabot.tools.u/card-query card-id)
-                           (throw (ex-info (str "No " card-type " found with ID " card-id)
-                                           {:agent-error? true :status-code 404})))
-          visible-cols (lib/visible-columns query)
-          col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
-      (check-column-table-perms! col)
-      (field-metadata-output query col field-id limit))
-    (catch Exception ex
-      (metabot.tools.u/handle-agent-error ex))))
+  [entity-type card-id field-id limit]
+  (let [query (metabot.tools.u/card-query card-id (keyword entity-type))
+        columns (if (= entity-type "question")
+                  (lib/returned-columns query)
+                  (distinct (concat (lib/returned-columns query) (lib/visible-columns query))))
+        col (field-column entity-type card-id field-id columns)]
+    (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
-  (try
-    (let [query           (or (metabot.tools.u/metric-query metric-id)
-                              (throw (ex-info (str "No metric found with ID " metric-id)
-                                              {:agent-error? true :status-code 404})))
-          filterable-cols (lib/filterable-columns query)
-          col             (metabot.tools.u/find-column-by-field-id field-id filterable-cols)]
-      (check-column-table-perms! col)
-      (field-metadata-output query col field-id limit))
-    (catch Exception ex
-      (metabot.tools.u/handle-agent-error ex))))
+  (let [query (metabot.tools.u/metric-query metric-id)
+        col (field-column "metric" metric-id field-id (lib/filterable-columns query))]
+    (field-metadata-output query col field-id limit)))
 
 (defn field-values
   "Return statistics and/or values for a given field of a given entity."
   [{:keys [entity-type entity-id field-id limit]}]
   (case entity-type
     "metric"                      (metric-field-stats entity-id field-id limit)
-    ("model" "report" "question") (card-field-stats entity-id field-id limit entity-type)
-    "table"                       (table-field-stats entity-id field-id limit)
-    {:output (str "Unknown data source type: " entity-type)}))
+    ("model" "report" "question") (card-field-stats (if (= entity-type "report") "question" entity-type)
+                                                    entity-id field-id limit)
+    "table"                       (table-field-stats entity-id field-id limit)))

@@ -96,7 +96,7 @@
                   :description "Sum of all revenue"
                   :verified true
                   :collection {:name "Finance"}
-                  :default_time_dimension_field {:name "created_at"}
+                  :default_time_dimension_field_name "date"
                   :queryable-dimensions [{:name "date" :field_id "d1" :base-type :type/Date :database_type "DATE"}]}
           xml (llm-shape/metric->xml metric)]
       (is (str/starts-with? xml "<metric"))
@@ -109,7 +109,7 @@
       (is (str/includes? xml "The following dimensions can be used for filter- or group-by operations"))
       (is (str/includes? xml "metabase://metric/42/dimensions/{field_id}"))
       (is (str/includes? xml "The metric is stored in the following collection"))
-      (is (str/includes? xml "Default Time Dimension Field: created_at"))
+      (is (str/includes? xml "Default Time Dimension Field: date"))
       (is (str/ends-with? (str/trim xml) "</metric>"))))
   (testing "handles metric without dimensions"
     (let [metric {:id 1 :name "Test" :verified false}
@@ -606,6 +606,50 @@
       (is (str/includes? xml "Collection: Finance"))
       (is (str/ends-with? (str/trim xml) "</metric>")))))
 
+(deftest ^:parallel metric->xml-source-test
+  (testing "a metric's source renders as exactly one of base-table / source-card"
+    (testing "table-based"
+      (let [xml (llm-shape/metric->xml {:id 1 :name "Table metric" :database_name "Sample"
+                                        :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]})]
+        (is (str/includes? xml "base_table_fully_qualified_name=\"PUBLIC.ORDERS\""))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))
+    (testing "the source card includes the ID to copy into `source-card:`"
+      (let [xml (llm-shape/metric->xml {:id 1 :name "Card metric" :database_name "Sample"
+                                        :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                                        :source_card_name "Orders question"})]
+        (is (str/includes? xml "source_card_portable_entity_id=\"T4wA_GPFwGb6R4FxIDGTo\""))
+        (is (str/includes? xml "source_card_name=\"Orders question\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))))
+    (testing "an unreadable source card is explicitly marked unavailable"
+      (let [xml (llm-shape/metric->xml {:id 1 :name "Walled-off metric" :database_name "Sample"
+                                        :source_unavailable true})]
+        (is (str/includes? xml "source_unavailable=\"true\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))))
+
+(deftest ^:parallel search-result->xml-metric-source-test
+  (testing "a metric search result's source renders as exactly one of base-table / source-card"
+    (testing "table-based"
+      (let [xml (llm-shape/search-result->xml {:id 100 :type :metric :name "Table metric"
+                                               :database_name "Sample"
+                                               :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]})]
+        (is (str/includes? xml "base_table_fully_qualified_name=\"PUBLIC.ORDERS\""))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))
+    (testing "card-based"
+      (let [xml (llm-shape/search-result->xml {:id 100 :type :metric :name "Card metric"
+                                               :database_name "Sample"
+                                               :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                                               :source_card_name "Orders question"})]
+        (is (str/includes? xml "source_card_portable_entity_id=\"T4wA_GPFwGb6R4FxIDGTo\""))
+        (is (str/includes? xml "source_card_name=\"Orders question\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))))
+    (testing "an unreadable source card uses the same unavailable marker as metric details"
+      (let [xml (llm-shape/search-result->xml {:id 100 :type :metric :name "Walled-off metric"
+                                               :database_name "Sample" :source_unavailable true})]
+        (is (str/includes? xml "source_unavailable=\"true\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))))
+
 (deftest ^:parallel search-result->xml-test-2
   (testing "table search result includes database_id, database_engine, and fully_qualified_name"
     (let [result {:id 133
@@ -1043,6 +1087,53 @@
       (is (str/includes? xml "<query>\n```json"))
       (is (str/includes? xml "```\n</query>"))
       (is (str/includes? xml "\"PRODUCTS\"")))))
+
+(deftest ^:parallel metric->xml-dimension-reference-form-test
+  (testing "Dimensions use portable FKs for database fields and output names for computed columns"
+    (let [dims      [{:name "ID" :field_id 5 :type "number"
+                      :portable_fk ["Sample" "PUBLIC" "ORDERS" "ID"]}
+                     {:name "ID" :field_id 6 :type "number" :table_reference "Product"
+                      :portable_fk ["Sample" "PUBLIC" "PRODUCTS" "ID"]}
+                     {:name "CATEGORY" :field_id 7 :type "string" :table_reference "Product"
+                      :portable_fk ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]}
+                     ;; Computed columns have no database field, so they use their output names.
+                     {:name "PROFIT" :field_id "PROFIT" :type "number"}]
+          table-xml (llm-shape/metric->xml {:id 1 :name "Table metric" :database_name "Sample"
+                                            :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]
+                                            :queryable-dimensions dims})
+          card-xml  (llm-shape/metric->xml {:id 1 :name "Card metric" :database_name "Sample"
+                                            :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                                            :queryable-dimensions dims})]
+      (doseq [[label xml] [["table-based" table-xml] ["card-based" card-xml]]]
+        (testing label
+          (testing "every FK-backed column references its portable FK, which pins the table it came from"
+            (is (str/includes? xml "[\"Sample\",\"PUBLIC\",\"ORDERS\",\"ID\"]"))
+            (is (str/includes? xml "[\"Sample\",\"PUBLIC\",\"PRODUCTS\",\"ID\"]"))
+            (is (str/includes? xml "[\"Sample\",\"PUBLIC\",\"PRODUCTS\",\"CATEGORY\"]")))
+          (testing "so no FK-backed column is offered as a bare name"
+            (is (not (str/includes? xml "| \"ID\" |")))
+            (is (not (str/includes? xml "| \"CATEGORY\" |"))))
+          (testing "the expression column, which has no portable FK, falls back to its machine name"
+            (is (str/includes? xml "| \"PROFIT\" |")))
+          (testing "the Source table column distinguishes the two `ID` fields"
+            (is (str/includes? xml "Source table"))
+            (is (str/includes? xml "PUBLIC.PRODUCTS (via Product)")))))
+      (testing "the two renderings are identical: the metric's source does not change the reference form"
+        (is (= (re-find #"(?s)\| Field Name \|.*?\n\n" table-xml)
+               (re-find #"(?s)\| Field Name \|.*?\n\n" card-xml)))))))
+
+(deftest ^:parallel metric->xml-dimension-reference-omitted-without-portable-fk-test
+  (testing "A database field without a portable FK is listed without a reference"
+    (let [xml (llm-shape/metric->xml
+               {:id 1 :name "Metric" :database_name "Sample"
+                :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]
+                :queryable-dimensions [{:name "ID" :field_id 5 :type "number"}
+                                       {:name "PROFIT" :field_id "PROFIT" :type "number"}]})]
+      (testing "the real field is listed but left without a reference to copy"
+        (is (str/includes? xml "| ID |") "the dimension is still described")
+        (is (not (str/includes? xml "| \"ID\" |"))))
+      (testing "while the card-computed column still gets its machine name"
+        (is (str/includes? xml "| \"PROFIT\" |"))))))
 
 (deftest ^:parallel related-tables-note-does-not-presuppose-sql-test
   (testing "table/model XML reaches profiles without SQL tools (read_resource, viewing context), so the related-tables usage note carries no SQL-writing guidance (BOT-1891)"
