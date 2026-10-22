@@ -20,6 +20,7 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import { FileUploadStatus } from "metabase/status/components/FileUploadStatus/FileUploadStatus";
+import type { CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -61,9 +62,12 @@ const uploadedModel2 = createMockCollectionItem({
   based_on_upload: 124,
 });
 
-async function setupCollectionContent(overrides = {}) {
+async function setupCollectionContent({
+  canUpload = true,
+  ...overrides
+}: { canUpload?: boolean; collectionId?: CollectionId } = {}) {
   setupUserMetabotPermissionsEndpoint();
-  setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
+  setupDatabasesEndpoints([createMockDatabase({ can_upload: canUpload })]);
   setupBookmarksEndpoints([]);
   setupNullGetUserKeyValueEndpoints();
 
@@ -73,6 +77,10 @@ async function setupCollectionContent(overrides = {}) {
       schema_name: null,
       table_prefix: null,
     },
+    // The new-item menu loads metabot permissions in the background, and under
+    // React 19 that query resolves after the fast tests finish, tripping the
+    // act() warning guard. These tests do not exercise metabot, so keep it off.
+    "metabot-enabled?": false,
   });
 
   renderWithProviders(
@@ -95,7 +103,14 @@ async function setupCollectionContent(overrides = {}) {
   );
 
   // wait for loading to complete
-  await screen.findByTestId("upload-input");
+  if (canUpload) {
+    await screen.findByTestId("upload-input");
+  } else {
+    await screen.findByTestId("collection-menu");
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("path:/api/database")).toBe(true),
+    );
+  }
 }
 
 describe("CollectionContent file uploads", () => {
@@ -129,6 +144,18 @@ describe("CollectionContent file uploads", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it("should show the upload button when the upload database allows uploads", async () => {
+    await setupCollectionContent();
+
+    expect(screen.getByLabelText("Upload data")).toBeInTheDocument();
+  });
+
+  it("should not show the upload button when the upload database does not allow uploads", async () => {
+    await setupCollectionContent({ canUpload: false });
+
+    expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
   });
 
   it("Should show a start exploring link on completion", async () => {

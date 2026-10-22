@@ -1,14 +1,12 @@
 import { useAction } from "@metabase/embedding-sdk-react/data-app";
 import { useState } from "react";
 
-// @ts-expect-error generated at test time
 import { CreateScore } from "../actions/orders.action";
 
 /**
- * Passes a source-controlled definition to `useAction` rather than a bare ID, so
- * a production build executes whatever `sync-resources` wrote into it — the copy
- * the app's own group is permitted to run. The spec that drives this app writes
- * `actions/orders.action.ts` before synchronizing.
+ * Passes a typed-schema definition to `useAction`, which executes the action in
+ * the app's collection by its entity ID. The spec that drives this app writes
+ * `actions/orders.action.ts` after creating the action.
  */
 export default function App() {
   const action = useAction(CreateScore);

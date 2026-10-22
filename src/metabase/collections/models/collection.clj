@@ -53,7 +53,7 @@
 (defn- collectable-models
   []
   (set/union (archived-directly-models)
-             #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))
+             #{:model/Action :model/Pulse :model/NativeQuerySnippet :model/Timeline}))
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
@@ -75,12 +75,17 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def ^:constant library-dashboards-collection-type
+  "The value of the `:type` field for collections that only allow dashboards and their questions."
+  "library-dashboards")
+
 (def library-collection-types
   "All library `:type` values — collections users curate as the canonical place to find content.
    Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
   #{library-collection-type
     library-data-collection-type
-    library-metrics-collection-type})
+    library-metrics-collection-type
+    library-dashboards-collection-type})
 
 (def ^:constant tenant-specific-root-collection-type
   "The value of the `:type` field for root collections that belong to a single tenant"
@@ -93,6 +98,14 @@
 (def snippets-ns
   "Namespace for snippets"
   :snippets)
+
+(def data-apps-ns
+  "Namespace for the resource collections of data apps"
+  :data-apps)
+
+(def data-actions-ns
+  "Namespace for the collections of actions without a model"
+  :data-actions)
 
 (defn- trash-collection* []
   (collections.db/collection-of-type trash-collection-type))
@@ -162,11 +175,17 @@
   [collection]
   (= (:type collection) library-metrics-collection-type))
 
+(defn- is-library-dashboards-collection?
+  "Is this the Dashboards collection?"
+  [collection]
+  (= (:type collection) library-dashboards-collection-type))
+
 (defn remote-synced-collection
   "Get the remote-synced collection if it exists."
   []
   (collections.db/root-remote-synced-collection))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
 (defn clear-remote-synced-collection!
@@ -226,6 +245,14 @@
                                parse-long)]
       (root-collection-type-by-id root-id))))
 
+(defn table-root-collection-type
+  "Return the `:type` of the top-level ancestor of the collection that holds a record's parent table.
+  Reads `:table_collection_id`, `:table_collection_location`, `:table_collection_type` from the ingestion record map."
+  [{:keys [table_collection_id table_collection_location table_collection_type]}]
+  (root-collection-type {:collection_id       table_collection_id
+                         :collection_location table_collection_location
+                         :collection_type     table_collection_type}))
+
 (def library-entity-id
   "The entity_id for the Library collection."
   "librarylibrarylibrary")
@@ -236,17 +263,46 @@
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
 
+(def library-dashboards-entity-id
+  "The entity_id for the Library's Dashboards collection."
+  "librarylibrarydashbrd")
+
 (def ^:private library-entity-id?
   "Returns true if the given entity ID is one of the hard-coded Library keys."
   #{library-entity-id
     library-data-entity-id
-    library-metrics-entity-id})
+    library-metrics-entity-id
+    library-dashboards-entity-id})
+
+(defn- grant-library-collection-permissions!
+  "Gives All Users read and Data Analysts read-write access to the Library `collection`."
+  [collection]
+  (collections.db/delete-permissions-for-collection! (:id collection))
+  (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+  (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
+
+(defn- insert-library-dashboards-collection!
+  "Inserts the Dashboards collection under `library` and returns it."
+  [library]
+  (u/prog1 (collections.db/insert-collection! {:name             "Dashboards"
+                                               :type             library-dashboards-collection-type
+                                               :location         (str "/" (:id library) "/")
+                                               :entity_id        library-dashboards-entity-id
+                                               :is_remote_synced (boolean (:is_remote_synced library))})
+    (grant-library-collection-permissions! <>)))
+
+(defn ensure-library-dashboards-collection!
+  "Creates the Library's Dashboards collection when the Library exists without one, returning the created collection."
+  []
+  (when-let [library (collections.db/collection-with-entity-id library-entity-id)]
+    (when-not (collections.db/collection-with-entity-id library-dashboards-entity-id)
+      (insert-library-dashboards-collection! library))))
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
-    (throw (ex-info "Library already exists" {})))
+    (throw (ex-info "Semantic layer already exists" {})))
   (let [library       (collections.db/insert-collection! {:name      "Library"
                                                           :type      library-collection-type
                                                           :location  "/"
@@ -260,10 +316,8 @@
                                                           :type      library-metrics-collection-type
                                                           :location  base-location
                                                           :entity_id library-metrics-entity-id})]
-    (doseq [col [library data metrics]]
-      (collections.db/delete-permissions-for-collection! (:id col))
-      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
-      (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
+    (run! grant-library-collection-permissions! [library data metrics])
+    (insert-library-dashboards-collection! library)
     library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
@@ -277,13 +331,13 @@
    :authority_level mi/transform-keyword})
 
 (defn library-root-collection?
-  "Is this one of the immutable system-created Library collections (root, data, or metrics)?
+  "Is this one of the immutable system-created Library collections (root, data, metrics, or dashboards)?
   Returns false for user-created subcollections that inherit a library type."
   [collection]
   (library-entity-id? (:entity_id collection)))
 
 (defn maybe-localize-system-collection-name
-  "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  "If the collection is a system-defined collection (Trash, Library, Data, Metrics, or Dashboards), translate the `name`.
   Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
@@ -299,7 +353,10 @@
     (assoc :name (tru "Data"))
 
     (and (is-library-metrics-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Metrics"))))
+    (assoc :name (tru "Metrics"))
+
+    (and (is-library-dashboards-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Dashboards"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -340,7 +397,9 @@
 ;;; |                                              Slug Validation                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- slugify [collection-name]
+(defn slugify
+  "The slug a collection named `collection-name` is stored with."
+  [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
     (throw (ex-info (tru "Collection name cannot be blank!")
@@ -548,11 +607,30 @@
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
-(defenterprise check-allowed-content
-  "Checks contents of a collection before saving it. The OSS implementation is a no-op."
+(defn assert-remote-syncable
+  "Throws when `collection` is remote-synced but remote sync can't sync it."
+  [{:keys [is_remote_synced] :as collection}]
+  (when (and is_remote_synced (not (remote-sync/collection-syncable? collection)))
+    (let [msg (tru "Remote sync syncs only the Library, transforms, snippets and data apps unless remote-sync-custom-collections-enabled is on.")]
+      (throw (ex-info msg {:status-code 400, :errors {:is_remote_synced msg}})))))
+
+(defenterprise check-library-content
+  "Checks contents of a library collection before saving it. The OSS implementation is a no-op."
   metabase-enterprise.library.validation
   [_model-type _collection-id]
   true)
+
+(defn check-allowed-content
+  "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
+  content of `model-type`; a data app's collection holds only what a remote-sync pull of the app accepts."
+  [model-type collection-id]
+  (when (and collection-id
+             (some? model-type)
+             (not= :model/CollectionBookmark model-type)
+             (not (contains? #{:question :dashboard-question :metric :action} (keyword model-type)))
+             (perms/data-app-collection? collection-id))
+    (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
+  (check-library-content model-type collection-id))
 
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed changes."
@@ -811,7 +889,7 @@
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)
-                                          (personal-collection-ids (first (location-path->ids location))))))]
+                                          (contains? personal-collection-ids (first (location-path->ids location))))))]
       (map (fn [{:keys [location personal_owner_id] :as coll}]
              (if (some? coll)
                (assoc coll :is_personal (or (some? personal_owner_id)
@@ -837,7 +915,8 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
-   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
+   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]
+   [:root-namespace {:optional true} [:maybe [:or :keyword :string]]]])
 
 (def ^:private UserScope
   [:map {:closed true}
@@ -850,24 +929,26 @@
    :include-trash-collection? false
    :effective-child-of nil
    :archive-operation-id nil
-   :permission-level :read})
+   :permission-level :read
+   :root-namespace nil})
 
-(def ^:private ^{:arglists '([user-scope read-or-write])} can-access-root-collection?
-  "Cached function to determine whether the current user can access the root collection"
+(def ^:private ^{:arglists '([user-scope read-or-write root-namespace])} can-access-root-collection?
+  "Cached function to determine whether the current user can access the root collection of `root-namespace`"
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write]]
+   ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write root-namespace]]
                          ;; If this is running in the context of a request, cache it for the duration of that request.
                          ;; Otherwise, don't cache the results at all.)
                          (if-let [req-id *request-id*]
-                           [req-id current-user-id read-or-write]
-                           [(random-uuid) current-user-id read-or-write]))}
+                           [req-id current-user-id read-or-write (some-> root-namespace name)]
+                           [(random-uuid) current-user-id read-or-write (some-> root-namespace name)]))}
    (fn can-access-root-collection?*
-     [{:keys [current-user-id is-superuser?]} read-or-write]
+     [{:keys [current-user-id is-superuser?]} read-or-write root-namespace]
      (or is-superuser?
-         (collections.db/user-has-root-collection-permission?
-          current-user-id
-          (cond-> ["/collection/root/"]
-            (= :read read-or-write) (conj "/collection/root/read/")))))
+         (let [root (assoc root-collection :namespace root-namespace)]
+           (collections.db/user-has-root-collection-permission?
+            current-user-id
+            (cond-> [(perms/collection-readwrite-path root)]
+              (= :read read-or-write) (conj (perms/collection-read-path root)))))))
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
 
@@ -881,7 +962,7 @@
   ([user-scope visibility-config]
    (and
     ;; we have permission for it.
-    (can-access-root-collection? user-scope (:permission-level visibility-config))
+    (can-access-root-collection? user-scope (:permission-level visibility-config) (:root-namespace visibility-config))
     ;; we're not *only* looking for archived items
     (not= :only (:include-archived-items visibility-config))
     ;; we're not looking for a particular `archive_operation_id`
@@ -952,7 +1033,7 @@
                                                                             (when (perms/is-data-analyst? current-user-id)
                                                                               ^:allow-subquery {:select visible-union-columns
                                                                                                 :from [[:collection :c]]
-                                                                                                :where [:= :namespace ^:allow-raw-sql [:inline "transforms"]]})])}
+                                                                                                :where [:= :namespace "transforms"]})])}
                                :c])]
                      ;; The `WHERE` clause is where we apply the other criteria we were given:
                      :where [:and
@@ -972,7 +1053,7 @@
                                [:not [:exists ^:allow-subquery {:select [1]
                                                                 :from [[:collection :sub_c]]
                                                                 :where [:and [:= :c.id :sub_c.id]
-                                                                        [:= :sub_c.namespace ^:allow-raw-sql [:inline "shared-tenant-collection"]]]}]])
+                                                                        [:= :sub_c.namespace (h2x/literal "shared-tenant-collection")]]}]])
                              ;; excluding things outside of the `archive_operation_id` you wanted...
                              (when-let [op-id (:archive-operation-id visibility-config)]
                                [:or
@@ -1330,6 +1411,12 @@
       (collections.db/instances-with-columns [model-key :id :namespace :is_remote_synced] ids)
       :model/Table
       (collections.db/instances-with-columns [model-key :id :collection_id :is_published] ids)
+      ;; Actions without a model are synced with the Library rather than their collection
+      :model/Action
+      (collections.db/instances-with-columns [model-key :id :collection_id :model_id] ids)
+      ;; The Document spec's `:conditions` read `:exploration_id`; a row without the key never matches
+      :model/Document
+      (collections.db/instances-with-columns [model-key :id :collection_id :exploration_id] ids)
       ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
       (:model/DashboardCard :model/DashboardCardSeries)
       nil
@@ -1460,7 +1547,8 @@
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
                     {:non-remote-synced-models non-remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:non-remote-synced-models}})))
   model)
 
 (defn check-remote-synced-dependents
@@ -1475,7 +1563,8 @@
   (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
                     {:remote-synced-models remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:remote-synced-models}})))
   model)
 
 (defn moving-into-remote-synced?
@@ -1650,6 +1739,7 @@
      (cons (perms/collection-readwrite-path (u/the-id collection))
            (map perms/collection-readwrite-path descendant-ids)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-modifying-tenant-root-collections?*
   "We archive tenant root collections only when the tenant is archived."
   false)
@@ -1691,6 +1781,7 @@
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids true)
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
@@ -1758,6 +1849,7 @@
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 
@@ -1788,6 +1880,8 @@
                        :new-location new-location})))
     (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
+    (when (perms/data-app-collection? (:id collection))
+      (throw (ex-info "You cannot move a data app's collection." {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
@@ -1822,12 +1916,14 @@
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
+  ;; a collection without a type is a plain child collection, which a parent may refuse like any other content
+  (check-allowed-content (or (:type collection) :collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)))
+    (assert-valid-remote-synced-parent <>)
+    (assert-remote-syncable <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2010,6 +2106,10 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
+    (api/check
+     (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
+               (perms/data-app-collection? (:id collection-before-updates))))
+     [400 "You cannot move a data app's collection to the trash or make it official."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
@@ -2025,7 +2125,7 @@
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
     ;; (3.6) Check that the parent collection allows this collection to be there
-    (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
+    (check-allowed-content (or (:type collection) :collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
     (check-library-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
@@ -2042,10 +2142,13 @@
                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
                collection-name (assoc :slug (slugify collection-name)))
       (when-not *clearing-remote-sync*
-        (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
+        (assert-valid-remote-synced-parent (merge collection-before-updates <>))
+        (when (contains? <> :is_remote_synced)
+          (assert-remote-syncable (merge collection-before-updates <>)))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^{:doc "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
@@ -2068,7 +2171,8 @@
     (collections.db/delete-dashboards-in-collections! affected-collection-ids)
     (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
     (collections.db/delete-pulses-in-collections! affected-collection-ids)
-    (collections.db/delete-timelines-in-collections! affected-collection-ids))
+    (collections.db/delete-timelines-in-collections! affected-collection-ids)
+    (collections.db/delete-actions-in-collections! affected-collection-ids))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
@@ -2107,7 +2211,7 @@
        [:not= (maybe-alias :type) instance-analytics-collection-type]
        [:not= (maybe-alias :type) trash-collection-type]]]
      [:or [:= (maybe-alias :namespace) nil]
-      [:not= (maybe-alias :namespace) ^:allow-raw-sql [:inline "analytics"]]]
+      [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]
@@ -2155,22 +2259,19 @@
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id skip-archived)]
                                {["Timeline" timeline-id] {"Collection" id}}))
+        actions     (into {} (for [action-id (collections.db/action-ids-in-collection id skip-archived)]
+                               {["Action" action-id] {"Collection" id}}))
         tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id skip-archived)]
                                {["Table" table-id] {"Collection" id}}))
         ;; Transforms don't have an archived column, so we don't filter by skip-archived
         transforms  (when config/ee-available?
                       (into {} (for [transform-id (collections.db/transform-ids-in-collection id)]
                                  {["Transform" transform-id] {"Collection" id}})))]
-    (merge child-colls dashboards cards documents timelines tables transforms)))
+    (merge child-colls dashboards cards documents timelines actions tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
-  (let [path      (get collections (:entity_id coll))
-        ns-folder (case (:namespace coll)
-                    :snippets   "snippets"
-                    :transforms "transforms"
-                    nil         "main"
-                    "main")]
-    (into [{:label "collections"} {:label ns-folder}] path)))
+  (into [{:label "collections"} {:label (serdes/collection-namespace-folder (:namespace coll))}]
+        (get collections (:entity_id coll))))
 
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id
@@ -2193,8 +2294,7 @@
           :slug
           :type]
    :skip []
-   :transform {:created_at        (serdes/date)
-               ;; We only dump the parent id, and recalculate the location from that on load.
+   :transform {;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
                                               (serdes/fk :model/Collection)
@@ -2243,9 +2343,13 @@
   {:arglists '([model])}
   t2.protocols/dispatch-value)
 
+(def default-allowed-namespaces
+  "The Collection namespaces most models may go in: the default namespace and the ones that hold the same content."
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
+
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics :shared-tenant-collection :tenant-specific})
+  default-allowed-namespaces)
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
@@ -2269,7 +2373,8 @@
           (throw (ex-info msg {:status-code          400
                                :errors               {:collection_id msg}
                                :allowed-namespaces   allowed-namespaces
-                               :collection-namespace collection-namespace})))))))
+                               :collection-namespace collection-namespace
+                               :response/keys        #{:allowed-namespaces :collection-namespace}})))))))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
@@ -2491,9 +2596,13 @@
   "Return true if the given collection ID corresponds to a collection in the library."
   [collection-id]
   (when collection-id
-    (pos-int? (collections.db/collection-count-of-types collection-id [library-collection-type
-                                                                       library-data-collection-type
-                                                                       library-metrics-collection-type]))))
+    (pos-int? (collections.db/collection-count-of-types collection-id (vec library-collection-types)))))
+
+(defn library-dashboards-collection?
+  "Return true if the collection with `collection-id` only holds dashboards and their questions."
+  [collection-id]
+  (when collection-id
+    (pos-int? (collections.db/collection-count-of-types collection-id [library-dashboards-collection-type]))))
 
 (defn collections-in-namespace
   "Return all collections in the given namespace."

@@ -34,10 +34,6 @@
   "The largest page a caller may ask for, matching the other v2 listings' ceiling."
   500)
 
-(defn- entry-message
-  [{:keys [term definition]}]
-  (message/msg ["%s: %s"] term definition))
-
 (defn- find-entries
   "Every entry of `entries` whose term matches `term` compared case-insensitively, in term order: a model echoes a
    term as it read it in a question or a column name, not as it happens to be stored."
@@ -47,29 +43,30 @@
 
 (registry/deftool glossary
   "Look up a business term as this Metabase instance defines it, as its own data analysts wrote it down. glossary() lists terms with their definitions, paged with limit (default 50, max 500) and offset; glossary(term) returns matching terms (case insensitive). Call glossary() before answering any question about this instance's data: these definitions override your own reading of a word, and the question itself will not tell you which words are defined here."
-  {:name        "glossary"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        [:map {:closed true}
-                 [:term {:optional true}
-                  [:maybe [:string {:min 1
-                                    :description (str "The term to define, matched case-insensitively. "
-                                                      "Omit to list terms with their definitions.")}]]]
-                 [:limit {:optional true}
-                  [:maybe [:int {:min 1 :max max-limit
-                                 :description (str "Maximum entries to return (default 50, max 500). "
-                                                   "Ignored with \"term\", which is a lookup, not a "
-                                                   "page.")}]]]
-                 [:offset {:optional true}
-                  [:maybe [:int {:min 0
-                                 :description (str "Number of entries to skip, for paging (default 0). "
-                                                   "Ignored with \"term\".")}]]]]}
+  {:name           "glossary"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           [:map {:closed true}
+                    [:term {:optional true}
+                     [:maybe [:string {:min 1
+                                       :description (str "The term to define, matched case-insensitively. "
+                                                         "Omit to list terms with their definitions.")}]]]
+                    [:limit {:optional true}
+                     [:maybe [:int {:min 1 :max max-limit
+                                    :description (str "Maximum entries to return (default 50, max 500). "
+                                                      "Ignored with \"term\", which is a lookup, not a "
+                                                      "page.")}]]]
+                    [:offset {:optional true}
+                     [:maybe [:int {:min 0
+                                    :description (str "Number of entries to skip, for paging (default 0). "
+                                                      "Ignored with \"term\".")}]]]]}
   [{:keys [term limit offset]} _context]
   (let [entries (glossary/entries)]
     (if term
       (common/success-content
        (if-let [matches (seq (find-entries entries term))]
-         (common/lines-message (map entry-message matches))
+         (common/list-envelope (mapv #(select-keys % [:term :definition]) matches))
          (common/throw-teaching-error
           (message/msg ["No glossary entry for %s."] term))))
       ;; The page is cut in memory because the module reads the table whole. That bounds the response, which is

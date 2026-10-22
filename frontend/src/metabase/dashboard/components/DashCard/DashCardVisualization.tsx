@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getActionDisplayType, isActionDashCard } from "metabase/actions/utils";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
@@ -15,6 +16,11 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
+import {
+  getIsDashCardTimelineEventsEnabled,
+  useDashCardTimelineEvents,
+  useReportDashCardTimelineEventsEnabled,
+} from "metabase/dashboard/timeline-events";
 import {
   getVirtualCardType,
   isDashcardAccessRestricted,
@@ -35,7 +41,7 @@ import type { LoadingViewProps } from "metabase/visualizations/components/Visual
 import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
-} from "metabase/visualizations/components/legend/LegendCaption";
+} from "metabase/visualizations/components/legend/constants";
 import type {
   CardSlownessStatus,
   ClickObject,
@@ -88,7 +94,10 @@ import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
-import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  DashCardGetCardHref,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import {
   getCardsFromSeries,
   getMissingColumnsFromVisualizationSettings,
@@ -124,6 +133,7 @@ interface DashCardVisualizationProps {
   series: DashCardSeries;
   question: Question | null;
   getHref?: () => string | undefined;
+  getCardHref?: DashCardGetCardHref;
 
   gridSize: {
     width: number;
@@ -164,6 +174,7 @@ export function DashCardVisualization({
   series: rawSeries,
   question,
   getHref,
+  getCardHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -295,7 +306,7 @@ export function DashCardVisualization({
         name: dashcard.card.name,
         description: dashcard.card.description,
         display: display ?? DEFAULT_VISUALIZER_DISPLAY,
-        visualization_settings: settings,
+        visualization_settings: _.omit(settings, "click_behavior"),
         dataset_query: STRUCTURED_QUERY_TEMPLATE,
       },
       _.omit(dashcard.visualization_settings, "visualization"),
@@ -438,6 +449,17 @@ export function DashCardVisualization({
     [onChangeCardAndRun, findCardById],
   );
 
+  const getNextCardHref = useMemo(() => {
+    if (!getCardHref) {
+      return;
+    }
+
+    return (nextCard: SeriesCard) => {
+      const previousCard = findCardById(nextCard.id);
+      return previousCard ? getCardHref({ nextCard, previousCard }) : undefined;
+    };
+  }, [getCardHref, findCardById]);
+
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
       const card = findCardById(cardId);
@@ -490,6 +512,24 @@ export function DashCardVisualization({
       bufferSpace: 100,
     });
 
+  const {
+    isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
+    timelineEventsVisibility,
+    selectedTimelineEventIds,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
+  } = useDashCardTimelineEvents(dashcard);
+  const isChartTimelineEventsEnabled = useSelector((state) =>
+    getIsDashCardTimelineEventsEnabled(state, dashcard.id),
+  );
+  const handleTimelineEventsEnabledChange =
+    useReportDashCardTimelineEventsEnabled(dashcard.id);
+  const withTimelineEvents =
+    isTimelineEventsEnabled && isChartTimelineEventsEnabled;
+
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
@@ -508,6 +548,7 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
+        withTimelineEvents,
       });
 
     const errorStatus =
@@ -541,6 +582,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
+            withTimelineEvents={withTimelineEvents}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -556,6 +598,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
+    withTimelineEvents,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -589,6 +632,15 @@ export function DashCardVisualization({
     <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
   );
 
+  // An action button fills its borderless card and has its own rounded outline,
+  // so clipping it to the card's radius would cut its corners off.
+  const isActionButton =
+    isActionDashCard(dashcard) &&
+    getActionDisplayType(
+      dashcard.visualization_settings.actionDisplayType,
+      dashcard.action,
+    ) === "button";
+
   return (
     <div
       className={cx(S.VisualizationContainer, CS.flexFull, CS.fullHeight, {
@@ -600,7 +652,7 @@ export function DashCardVisualization({
         <Visualization
           className={cx(S.Visualization, CS.flexFull, {
             [CS.overflowAuto]: visualizationOverlay,
-            [CS.overflowHidden]: !visualizationOverlay,
+            [CS.overflowHidden]: !visualizationOverlay && !isActionButton,
           })}
           dashboard={dashboard ?? undefined}
           dashcard={dashcard}
@@ -613,6 +665,7 @@ export function DashCardVisualization({
           }
           mode={clickActionMode ?? dashboardClickActionMode}
           getHref={getHref}
+          getCardHref={getNextCardHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
           headerIcon={headerIcon}
@@ -642,9 +695,16 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          timelineEvents={timelineEvents}
+          timelineEventsVisibility={timelineEventsVisibility}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          onOpenTimelines={onOpenTimelines}
+          onSelectTimelineEvents={onSelectTimelineEvents}
+          onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onTimelineEventsShown={onTimelineEventsShown}
+          onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
-          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

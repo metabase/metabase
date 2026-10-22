@@ -7,6 +7,7 @@
   scope grants."
   (:require
    [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -192,12 +193,14 @@
 ;;; Metabot-specific scope state
 ;;; ──────────────────────────────────────────────────────────────────
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user-scope*
   "Set of scope strings granted to the current user. Defaults to `#{}` (no
   permissions granted). Bind this in the request path once scope resolution
   is wired up."
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user-metabot-permissions*
   "Map of metabot permission type to value for the current user.
   e.g. `{:permission/metabot-sql-generation :yes, :permission/metabot-nlq :no, ...}`.
@@ -205,12 +208,14 @@
   consumers should fall back to `perm-type-defaults`."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user-capabilities*
   "The request's capabilities (strings/keywords as sent by the API). Bound in the request path
   alongside `*current-user-scope*` so capability-gated checks (e.g. which skills are loadable)
   match the manifest, which is built from the same capabilities. Defaults to `#{}`."
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-loadable-skill-ids*
   "Request-scoped atom containing the set of skill ids that appeared in the current
   profile's skill manifest. When bound, `load_skill` rejects ids outside this set
@@ -308,3 +313,14 @@
        acc))
    always-granted-scopes
    (or perms perm-type-defaults)))
+
+(defn sql-execution-allowed?
+  "Whether Metabot may run SQL for the current user: SQL execution is on, the user has Metabot's SQL
+  generation permission, and the request's scope satisfies `agent:sql:run`, the scope MCP's `execute_sql` requires.
+  NLQ alone grants `agent:query:run`, which is all `run_query` itself needs, so running SQL checks this too.
+  Native query permission on the query's database is checked separately, per query."
+  []
+  (boolean
+   (and (metabot.settings/metabot-sql-execution-enabled?)
+        (= :yes (:permission/metabot-sql-generation (or *current-user-metabot-permissions* perm-type-defaults)))
+        (api-scope/scope-matches? *current-user-scope* agent-sql-run))))

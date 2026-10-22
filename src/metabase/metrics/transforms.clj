@@ -34,6 +34,10 @@
            [:default-temporal-unit {:optional true} [:or :string :keyword]]
            [:default               {:optional true} [:maybe :boolean]]]]
   (cond-> dim
+    ;; `:lib/source` arrives as a keyword on a computed dimension and as a string once it has been through the
+    ;; JSON column. Keywordizing it here, like every other enum below, is what keeps a metric's serialization the
+    ;; same before and after the backfill is persisted.
+    (:lib/source dim)            (update :lib/source keyword)
     (:status dim)                (update :status keyword)
     (:effective-type dim)        (update :effective-type keyword)
     (:semantic-type dim)         (update :semantic-type keyword)
@@ -109,10 +113,11 @@
     (mapv export-dimension dimensions)))
 
 (defn import-dimensions
-  "Inverse of [[export-dimensions]]."
+  "Inverse of [[export-dimensions]]. Normalized like [[transform-dimensions]] output, since a file-based import reads
+  keyword values back as strings."
   [dimensions]
   (when (some? dimensions)
-    (mapv import-dimension dimensions)))
+    (mapv (comp normalize-dimension import-dimension) dimensions)))
 
 (defn export-dimension-mappings
   "Serialize a curated entity's `:dimension_mappings`: convert `:table-id` and the Field IDs inside each mapping's
@@ -126,13 +131,15 @@
           mappings)))
 
 (defn import-dimension-mappings
-  "Inverse of [[export-dimension-mappings]]."
+  "Inverse of [[export-dimension-mappings]]. Normalized like [[transform-dimension-mappings]] output, for the same
+  reason as [[import-dimensions]]."
   [mappings]
   (when (some? mappings)
     (mapv (fn [mapping]
-            (cond-> mapping
-              (vector? (:table-id mapping)) (update :table-id serdes/*import-table-fk*)
-              (:target mapping)             (update :target serdes/import-mbql)))
+            (normalize-dimension-mapping
+             (cond-> mapping
+               (vector? (:table-id mapping)) (update :table-id serdes/*import-table-fk*)
+               (:target mapping)             (update :target serdes/import-mbql))))
           mappings)))
 
 (defn dimension-mappings-deps

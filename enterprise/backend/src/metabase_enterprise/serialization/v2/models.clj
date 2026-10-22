@@ -4,7 +4,9 @@
 (def data-model
   "Schema model types"
   ["Database"
+   "Dimension"
    "Field"
+   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
@@ -17,6 +19,8 @@
   ["Table"
    "TableUserSettings"
    "Field"
+   "FieldUserSettings"
+   "Dimension"
    "Segment"])
 
 (def content
@@ -30,11 +34,17 @@
    "NativeQuerySnippet"
    "Timeline"])
 
+(def elidable-content-models
+  "Content models a reference may name without the target being in the archive or the destination. Such references
+  are dropped on import instead of failing the load."
+  #{"Timeline"})
+
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
           ["CustomVizPlugin"
+           "DataApp"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -52,8 +62,6 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "DashboardTab"
-   "Dimension"
-   "FieldUserSettings"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -68,7 +76,9 @@
    "AiUsageLog"
    "AnalysisFinding"
    "AnalysisFindingError"
+   "AnalysisFindingStatus"
    "ApiKey"
+   "ApiKeyUsageLog"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"
@@ -82,15 +92,17 @@
    "Comment"
    "CommentReaction"
    "ConnectionImpersonation"
+   "ContentDiagnosticsFinding"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataApp"
+   "DataAppGroupAssignment"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
    "DependencyStatus"
    "DocumentBookmark"
+   "EmbeddingSdkReact18Host"
    "Exploration"
    "ExplorationBlock"
    "ExplorationBookmark"
@@ -99,10 +111,10 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
+   "McpGroupPermission"
    "McpQueryHandle"
    "McpSessionLog"
    "McpToolCallLog"
@@ -147,6 +159,7 @@
    "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"
+   "ResultMetadataStatus"
    "Revision"
    "Sandbox"
    "SearchIndexMetadata"
@@ -170,6 +183,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTestRun"
    "Undo"
    "User"
    "UserKeyValue"

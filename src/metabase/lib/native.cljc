@@ -360,13 +360,6 @@
   [s]
   (str/replace s #"[.*+?^${}()|\[\]\\]" (fn [c] (str "\\" c))))
 
-(defn- replace-tag-in-text
-  [text old-name new-name]
-  (str/replace text
-               (re-pattern (str "\\{\\{\\s*" (regex-escape old-name) "\\s*\\}\\}"))
-               ;; function replacement so a `$` in the new name can't be misread as a match reference
-               (constantly (str "{{" new-name "}}"))))
-
 (defn- rename-tag
   "Rename a template tag, replacing its `:display-name` only if it was the humanized default for the
   old name (same rule as [[rename-template-tag]])."
@@ -374,6 +367,30 @@
   (cond-> (assoc tag :name new-name)
     (= display-name (u.humanization/name->human-readable-name :simple tag-name))
     (assoc :display-name (u.humanization/name->human-readable-name :simple new-name))))
+
+(mu/defn rename-template-tags-in-text :- :string
+  "`text` with its `{{...}}` references renamed per `renames`, a map of old tag name => new tag name, all in one pass,
+  so a new name that is another tag's old name is not renamed again."
+  [text    :- :string
+   renames :- [:map-of :string :string]]
+  (if (empty? renames)
+    text
+    (str/replace text
+                 (re-pattern (str "\\{\\{\\s*(" (str/join "|" (map regex-escape (keys renames))) ")\\s*\\}\\}"))
+                 (fn [[_match old-name]]
+                   (str "{{" (get renames old-name) "}}")))))
+
+(mu/defn rename-template-tags :- ::lib.schema.template-tag/template-tag-map
+  "`tags`, a map of tag name => tag, with the tags in `renames` renamed the way [[replace-template-tag-names]] renames
+  them."
+  [tags    :- ::lib.schema.template-tag/template-tag-map
+   renames :- [:map-of :string :string]]
+  (into {}
+        (map (fn [[tag-name tag]]
+               (if-let [new-name (get renames tag-name)]
+                 [new-name (rename-tag tag new-name)]
+                 [tag-name tag])))
+        tags))
 
 (mu/defn replace-template-tag-names :- ::lib.schema/query
   "Apply `renames`, a map of old tag name => new tag name, across the query's native stages: each
@@ -400,7 +417,7 @@
                                                                tag)))
                                                       (m/distinct-by :name))
                                                 tags)))
-                 (update :native #(reduce-kv replace-tag-in-text % stage-renames))))))))))
+                 (update :native rename-template-tags-in-text stage-renames)))))))))
 
 (mu/defn native-query-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/native-query-snippet]]
   "Returns the card IDs from the template tags of the native query of `query`."

@@ -23,7 +23,7 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
     cy.signInAsAdmin();
   });
 
-  it("lists registration, approval, and denial events with client and user details", () => {
+  it("lists registration, approval, and denial events with client and user details, and filters events by type via the API", () => {
     registerClient("E2E MCP Client A");
     registerClient("E2E MCP Client B", {
       token_endpoint_auth_method: "client_secret_basic",
@@ -32,8 +32,13 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
       token_endpoint_auth_method: "client_secret_basic",
     }).then(denyClient);
 
+    cy.intercept("GET", "/api/oauth/authorizations*").as("list");
     cy.visit(PATH);
+    cy.wait("@list");
 
+    cy.log(
+      "lists registration, approval, and denial events with client and user details",
+    );
     // Every client's registration row renders, and each decision event lands in the same row as
     // its client (and the deciding user). Client A's row also shows the registered redirect URI.
     assertEventRow("E2E MCP Client A", "Registered", REDIRECT_URI);
@@ -41,17 +46,8 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
     assertEventRow("E2E MCP Client C", "Registered");
     assertEventRow("E2E MCP Client B", "Approved", USERS.admin.email);
     assertEventRow("E2E MCP Client C", "Denied", USERS.admin.email);
-  });
 
-  it("filters events by type via the API", () => {
-    registerClient("E2E Filter Client", {
-      token_endpoint_auth_method: "client_secret_basic",
-    }).then(approveClient);
-
-    cy.intercept("GET", "/api/oauth/authorizations*").as("list");
-    cy.visit(PATH);
-    cy.wait("@list");
-
+    cy.log("filters events by type via the API");
     cy.findByLabelText("Filter by event").click();
     cy.findByRole("option", { name: "Approved" }).click();
 
@@ -62,6 +58,41 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
     cy.findByTestId("oauth-authorizations-table").within(() => {
       cy.findByText("Approved").should("be.visible");
       cy.findByText("Registered").should("not.exist");
+    });
+  });
+
+  it("does not send the long authorization URL as a Referer header on submit (#76305)", () => {
+    // A long authorization URL (many scopes, PKCE challenge, etc.) sent as the Referer header on
+    // the consent form POST can exceed the server's header size limit and cause a 431. The consent
+    // page sets `<meta name="referrer" content="no-referrer">` so the browser omits it entirely.
+    // This needs a real browser navigation (cy.visit + click) — cy.request would not replicate the
+    // browser's automatic Referer behavior.
+    registerClient("E2E Referer Client", {
+      token_endpoint_auth_method: "client_secret_basic",
+    }).then((client) => {
+      const authorizeUrl =
+        `/oauth/authorize?client_id=${client.client_id}` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+        `&response_type=code&scope=${encodeURIComponent(SCOPE)}&state=test-state`;
+
+      // Stub a same-origin HTML response so the browser navigates to it (firing a `load` event
+      // Cypress can wait on) instead of following the real 302 to the external redirect_uri, which
+      // would break Cypress with a cross-origin navigation. A 204 would leave the browser on the
+      // current page with no `load` event, so `cy.wait` would hang until the page-load timeout.
+      cy.intercept("POST", "/oauth/authorize/decision", (req) => {
+        req.reply({
+          statusCode: 200,
+          headers: { "content-type": "text/html" },
+          body: "<html><body>ok</body></html>",
+        });
+      }).as("decision");
+
+      cy.visit(authorizeUrl);
+      cy.findByRole("button", { name: "Authorize" }).click();
+
+      cy.wait("@decision").then(({ request }) => {
+        expect(request.headers).to.not.have.property("referer");
+      });
     });
   });
 

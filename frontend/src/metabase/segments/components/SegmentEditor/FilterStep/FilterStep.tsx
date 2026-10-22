@@ -3,7 +3,13 @@ import { t } from "ttag";
 
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { Button, Flex, Icon, Popover } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Icon,
+  Popover,
+  useStablePopoverPosition,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";
@@ -77,6 +83,7 @@ function FilterPopover({
   readOnly,
 }: FilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const stablePositionProps = useStablePopoverPosition();
   const filterInfo = filter
     ? Lib.displayInfo(query, stageIndex, filter)
     : undefined;
@@ -97,7 +104,13 @@ function FilterPopover({
   };
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover
+      position={stablePositionProps.position}
+      middlewares={stablePositionProps.middlewares}
+      onClose={stablePositionProps.onClose}
+      opened={isOpened}
+      onChange={setIsOpened}
+    >
       <Popover.Target>
         {filterInfo ? (
           <FilterPill
@@ -142,9 +155,8 @@ const AddFilterButton = forwardRef(function AddFilterButton(
     <Button
       ref={ref}
       c="text-disabled"
-      p={compact ? undefined : 0}
-      variant={compact ? "default" : "subtle"}
-      size={compact ? "compact-md" : "md"}
+      variant={compact ? "default" : "transparent"}
+      size={compact ? "sm" : "compact-md"}
       disabled={disabled}
       rightSection={<Icon name="add" />}
       aria-label={compact ? t`Add filters` : undefined}

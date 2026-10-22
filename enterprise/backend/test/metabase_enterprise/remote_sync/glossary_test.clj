@@ -15,6 +15,7 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
    [metabase.glossary.core :as glossary.core]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -33,9 +34,10 @@
     (finally
       (t2/delete! :model/RemoteSyncObject))))
 
-(use-fixtures :each (fn [f]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (clean-remote-sync-state f)))
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections (fn [f]
+                                                   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                                                     (clean-remote-sync-state f)))
   test-helpers/commit-with-temp)
 
 (defn- rso [entry]
@@ -54,7 +56,7 @@
 
 (deftest create-event-tracks-entry-when-library-synced-test
   (collections.tu/with-library-synced
-    (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (mt/with-model-cleanup [:model/Glossary]
         (let [entry (glossary.core/create-entry! (mt/user->id :rasta) {:term "ARR" :definition "Annual recurring revenue"})]
           (is (=? {:status "create" :model_name "ARR"} (rso entry))))))))
@@ -68,7 +70,7 @@
 
 (deftest update-event-marks-synced-entry-for-update-test
   (collections.tu/with-library-synced
-    (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
         (with-rso! entry "synced")
         (testing "saving the same term and definition again stays synced"
@@ -80,7 +82,7 @@
 
 (deftest delete-event-test
   (collections.tu/with-library-synced
-    (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (testing "deleting a synced entry marks it for deletion and keeps the tracked name"
         (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
           (with-rso! entry "synced")
@@ -165,7 +167,7 @@
       (let [[conflict :as conflicts] (spec/check-feature-conflicts #{"Glossary"} #{})]
         (is (= 1 (count conflicts)))
         (is (=? {:type :snippets-conflict :category "Snippets"} conflict))
-        (is (str/includes? (:message conflict) "Library content (snippets, glossary)"))))
+        (is (str/includes? (:message conflict) "Library content (snippets, data actions, glossary)"))))
     (testing "import! surfaces the conflict"
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (let [task-id     (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"

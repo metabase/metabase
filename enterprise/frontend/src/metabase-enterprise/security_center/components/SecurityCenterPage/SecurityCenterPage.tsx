@@ -78,8 +78,7 @@ export function SecurityCenterPage() {
       setIsPolling(true);
     } catch {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to check for security advisories`,
       });
     }
@@ -105,8 +104,7 @@ export function SecurityCenterPage() {
     } else if (pollCountRef.current >= MAX_POLL_COUNT) {
       setIsPolling(false);
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "warning",
         message: t`Security advisory check is taking longer than expected. Results will appear when ready.`,
       });
     }
@@ -166,21 +164,17 @@ export function SecurityCenterPage() {
               </Button>
               <Button
                 variant="subtle"
-                leftSection={isSmallScreen ? undefined : <Icon name="gear" />}
+                leftSection={<Icon name="gear" />}
                 onClick={() => setSettingsOpen(true)}
                 data-testid="notification-config-toggle"
               >
-                {isSmallScreen ? (
-                  <Icon name="gear" />
-                ) : (
-                  t`Notification settings`
-                )}
+                {isSmallScreen ? null : t`Notification settings`}
               </Button>
             </Group>
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
-            {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
+            <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
           <Stack gap="xxl" className={S.content}>
             <AdvisoryFilterBar

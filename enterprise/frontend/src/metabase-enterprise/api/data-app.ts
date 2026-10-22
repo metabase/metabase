@@ -1,8 +1,10 @@
 import type {
+  AddDataAppGroupsRequest,
   DataApp,
+  DataAppGroup,
+  DataAppGroupPermissionWarning,
   DataAppRepoStatus,
-  DataAppUserPermissionWarning,
-  GetDataAppUserPermissionWarningsRequest,
+  RemoveDataAppGroupRequest,
   SetDataAppEnabledRequest,
 } from "metabase-types/api";
 
@@ -20,7 +22,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     listDataApps: builder.query<DataApp[], ListDataAppsOptions | void>({
       query: (options) => ({
         method: "GET",
-        url: "/api/apps",
+        url: "/api/ee/apps",
         params: options,
       }),
       providesTags: (apps = []) => [
@@ -31,31 +33,92 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     getDataApp: builder.query<DataApp, string>({
       query: (name) => ({
         method: "GET",
-        url: `/api/apps/${encodeURIComponent(name)}`,
+        url: `/api/ee/apps/${encodeURIComponent(name)}`,
       }),
       providesTags: (_, __, name) => [idTag("data-app", name)],
     }),
     getDataAppRepoStatus: builder.query<DataAppRepoStatus, void>({
       query: () => ({
         method: "GET",
-        url: "/api/apps/repo-status",
+        url: "/api/ee/apps/repo-status",
       }),
       providesTags: () => [REPO_STATUS_TAG],
     }),
-    getDataAppUserPermissionWarnings: builder.query<
-      DataAppUserPermissionWarning[],
-      GetDataAppUserPermissionWarningsRequest
+    getDataAppGroupPermissionWarnings: builder.query<
+      DataAppGroupPermissionWarning[],
+      string
     >({
-      query: ({ name, user_ids }) => ({
-        method: "POST",
-        url: `/api/apps/${encodeURIComponent(name)}/user-permission-warnings`,
-        body: { user_ids },
+      query: (name) => ({
+        method: "GET",
+        url: `/api/ee/apps/${encodeURIComponent(name)}/group-permission-warnings`,
       }),
+      providesTags: (_, __, name) => [idTag("data-app", name)],
+    }),
+    getDataAppGroups: builder.query<DataAppGroup[], string>({
+      query: (name) => ({
+        method: "GET",
+        url: `/api/ee/apps/${encodeURIComponent(name)}/groups`,
+      }),
+      providesTags: (_, __, name) => [idTag("data-app", name)],
+    }),
+    addDataAppGroups: builder.mutation<DataAppGroup[], AddDataAppGroupsRequest>(
+      {
+        query: ({ name, group_ids }) => ({
+          method: "POST",
+          url: `/api/ee/apps/${encodeURIComponent(name)}/groups`,
+          body: { group_ids },
+        }),
+        async onQueryStarted({ name }, { dispatch, queryFulfilled }) {
+          try {
+            const { data: groups } = await queryFulfilled;
+
+            // pending group-permission-warnings request delays tag invalidation; after a
+            // successful add, replace the groups cache so new groups appear immediately.
+            dispatch(
+              dataAppApi.util.updateQueryData(
+                "getDataAppGroups",
+                name,
+                () => groups,
+              ),
+            );
+          } catch {
+            return;
+          }
+        },
+        invalidatesTags: (_, error, { name }) =>
+          invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+      },
+    ),
+    removeDataAppGroup: builder.mutation<void, RemoveDataAppGroupRequest>({
+      query: ({ name, group_id }) => ({
+        method: "DELETE",
+        url: `/api/ee/apps/${encodeURIComponent(name)}/groups/${group_id}`,
+      }),
+
+      async onQueryStarted({ name, group_id }, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+
+          // pending group-permission-warnings request delays tag invalidation; after a
+          // successful removal, filter the group from the cache so it disappears immediately.
+          dispatch(
+            dataAppApi.util.updateQueryData(
+              "getDataAppGroups",
+              name,
+              (groups) => groups.filter((group) => group.id !== group_id),
+            ),
+          );
+        } catch {
+          return;
+        }
+      },
+      invalidatesTags: (_, error, { name }) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
     }),
     setDataAppEnabled: builder.mutation<DataApp, SetDataAppEnabledRequest>({
       query: ({ name, enabled }) => ({
         method: "PUT",
-        url: `/api/apps/${encodeURIComponent(name)}`,
+        url: `/api/ee/apps/${encodeURIComponent(name)}`,
         body: { enabled },
       }),
       invalidatesTags: (_, error, { name }) =>
@@ -64,7 +127,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     deleteDataApp: builder.mutation<void, string>({
       query: (name) => ({
         method: "DELETE",
-        url: `/api/apps/${encodeURIComponent(name)}`,
+        url: `/api/ee/apps/${encodeURIComponent(name)}`,
       }),
       invalidatesTags: (_, error, name) =>
         invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
@@ -76,7 +139,10 @@ export const {
   useListDataAppsQuery,
   useGetDataAppQuery,
   useGetDataAppRepoStatusQuery,
-  useGetDataAppUserPermissionWarningsQuery,
+  useGetDataAppGroupsQuery,
+  useGetDataAppGroupPermissionWarningsQuery,
+  useAddDataAppGroupsMutation,
+  useRemoveDataAppGroupMutation,
   useSetDataAppEnabledMutation,
   useDeleteDataAppMutation,
 } = dataAppApi;

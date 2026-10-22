@@ -106,15 +106,10 @@
    changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
   (t2/update! :model/User user-id changes))
 
-(mu/defn session-exists-for-user?
-  "Whether the User with `user-id` has a Session."
+(mu/defn unended-session-exists-for-user?
+  "Whether the User with `user-id` has a Session whose ending has not been recorded."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/Session :user_id user-id))
-
-(mu/defn delete-sessions-of-user!
-  "Delete the Sessions of the User with `user-id`, returning the number deleted."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/Session :user_id user-id))
+  (t2/exists? :model/Session :user_id user-id :ended_at nil))
 
 (mu/defn auth-identity-ids-of-user
   "The IDs of the AuthIdentities of the User with `user-id`."

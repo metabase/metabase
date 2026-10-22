@@ -4,6 +4,7 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
@@ -15,6 +16,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -113,10 +115,11 @@
 (defn- throw-scim-error
   [status message]
   (throw (ex-info message
-                  {:schemas     [error-schema-uri]
-                   :detail      message
-                   :status      status
-                   :status-code status})))
+                  {:schemas       [error-schema-uri]
+                   :detail        message
+                   :status        status
+                   :status-code   status
+                   :response/keys #{:schemas :detail :status}})))
 
 (defn- scim-response
   "Wraps an object in a response with the correct SCIM content-type. Status defaults to 200 unless otherwise specified."
@@ -146,11 +149,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- hidden-group-ids
-  "IDs of the groups SCIM never exposes or manages: the static Administrators and All Users groups, and the groups
-  data apps own (see [[perms/data-app-group-ids]])."
+  "IDs of the static groups that SCIM never exposes or manages."
   []
-  (into [(:id (perms/all-users-group)) (:id (perms/admin-group))]
-        (perms/data-app-group-ids)))
+  [(:id (perms/all-users-group)) (:id (perms/admin-group))])
 
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships
@@ -301,10 +302,11 @@
           (catch Exception e
             (let [message (format "Error updating user: %s" (ex-message e))]
               (throw (ex-info message
-                              {:schemas     [error-schema-uri]
-                               :detail      message
-                               :status      400
-                               :status-code 400})))))))))
+                              {:schemas       [error-schema-uri]
+                               :detail        message
+                               :status        400
+                               :status-code   400
+                               :response/keys #{:schemas :detail :status}})))))))))
 
 (defn- patch->boolean
   "SCIM sends `active` as a JSON boolean, but clients in the wild send the strings \"true\"/\"false\" too. Anything
@@ -378,8 +380,8 @@
                                    (sort-by :entity_id)))))))
 
 (mu/defn ^:private get-group-by-entity-id
-  "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
-  static, nor data-app groups, as Metabase manages their membership itself, so none can be managed via SCIM."
+  "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups,
+  as these are static and cannot be managed via SCIM."
   [entity-id :- ms/NonBlankString]
   (or (scim.db/scim-group-by-entity-id entity-id (hidden-group-ids))
       (throw-scim-error 404 "Group not found")))
@@ -450,15 +452,22 @@
         mb-group->scim)))
 
 (defn- update-group-membership
-  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
-  any existing members."
+  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`.
+
+  Member values that match no User are skipped. When none of them match, the push is a no-op rather than an
+  emptying of the group: the IdP is referring to users this instance never provisioned, and wiping the group
+  would hide that drift behind a successful response."
   [group-id user-entity-ids]
-  (let [user-ids (scim.db/user-ids-by-entity-ids user-entity-ids)]
-    (when-let [memberships (not-empty (map
-                                       (fn [user-id] {:group group-id :user user-id})
-                                       user-ids))]
-      (perms/remove-all-users-from-group! group-id)
-      (perms/add-users-to-groups! memberships))))
+  (let [desired-ids (set (scim.db/user-ids-by-entity-ids user-entity-ids))
+        current-ids (set (scim.db/group-member-user-ids group-id))]
+    (if (empty? desired-ids)
+      (log/warnf "SCIM group %d membership push named %d member(s), none of them known users; leaving membership alone"
+                 group-id (count user-entity-ids))
+      (do
+        (doseq [user-id (set/difference current-ids desired-ids)]
+          (perms/remove-user-from-group! user-id group-id))
+        (perms/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
+                                      {:group group-id :user user-id}))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

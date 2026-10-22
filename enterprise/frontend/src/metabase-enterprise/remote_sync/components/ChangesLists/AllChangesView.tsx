@@ -39,13 +39,12 @@ interface AllChangesViewProps {
 
 export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const isUsingTenants = useSetting("use-tenants");
-  const isTransformsSyncEnabled = useSetting("remote-sync-transforms");
   const { data: collectionTree = [] } = useListCollectionsTreeQuery({
     namespaces: [
       "",
       "analytics",
       ...(isUsingTenants ? ["shared-tenant-collection"] : []),
-      ...(isTransformsSyncEnabled ? ["transforms"] : []),
+      "transforms",
     ],
     "include-library": true,
   });
@@ -54,6 +53,9 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
     namespace: "snippets",
   });
+  const { data: dataActionCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "data-actions",
+  });
 
   // Build namespace-to-collection-ids map in a single pass
   const namespaceCollectionMap = useMemo(
@@ -61,8 +63,9 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
       buildNamespaceCollectionMap([
         ...collectionTree,
         ...snippetCollectionTree,
+        ...dataActionCollectionTree,
       ]),
-    [collectionTree, snippetCollectionTree],
+    [collectionTree, snippetCollectionTree, dataActionCollectionTree],
   );
 
   // Find the Transforms root entity (id=-1) if it exists
@@ -134,7 +137,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
               group.items.length > 0 || group.tableGroups.length > 0;
 
             return (
-              <Fragment key={group.collectionId}>
+              <Fragment key={group.collectionId ?? "root"}>
                 {groupIndex > 0 && <Divider />}
                 <Box p="lg">
                   <Group

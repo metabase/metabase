@@ -7,10 +7,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -21,9 +24,8 @@
 
 (defn- call-content
   "Invoke get_content through the registry — the same seam the JSON-RPC route uses, so scope
-   gating and argument validation are exercised. `token-scopes` of nil means an internal
-   caller, which satisfies every scope check."
-  ([args] (call-content nil args))
+   gating and argument validation are exercised. The 1-arity holds every MCP scope."
+  ([args] (call-content v2.tu/all-scopes args))
   ([token-scopes args]
    ;; `call-tool` answers `{:result …}` after dispatch, or `{:error …}` when the registry rejects
    ;; the call before it. Present a rejection in the same `{:isError true}` shape a handler error
@@ -37,22 +39,22 @@
 (defn- content-results
   "The `:results` vector from a successful get_content call. Throws when the call was rejected
    before per-item work, so a tool-level error can never masquerade as an empty batch."
-  ([args] (content-results nil args))
+  ([args] (content-results v2.tu/all-scopes args))
   ([token-scopes args]
    (let [result (call-content token-scopes args)]
      (when (:isError result)
        (throw (ex-info (str "get_content returned a tool-level error: "
                             (-> result :content first :text))
                        {:result result})))
-     (:results (json/decode+kw (-> result :content first :text))))))
+     (:results (json/decode+kw (-> result :content first :text v2.tu/strip-data-boundary))))))
 
 (defn- content-one
-  ([args] (content-one nil args))
+  ([args] (content-one v2.tu/all-scopes args))
   ([token-scopes args] (first (content-results token-scopes args))))
 
 (defn- content-error
   "The tool-level error text for calls rejected before any per-item work."
-  ([args] (content-error nil args))
+  ([args] (content-error v2.tu/all-scopes args))
   ([token-scopes args] (-> (call-content token-scopes args) :content first :text)))
 
 (defn- venues-query
@@ -138,6 +140,73 @@
           (let [row (content-one {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
             (is (re-find #"hello" (:content_markdown row)))))))))
+
+(deftest get-content-fields-name-a-card-foreign-key-for-source-field-name-test
+  (testing "the `fields` include gives each column the name `source-field-name` takes on a stage built on the card"
+    (let [mp        (mt/metadata-provider)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          field     #(lib.metadata/field mp (mt/id :orders %))
+          ;; O2 is the order whose ID is this order's PRODUCT_ID, so the card's two USER_ID columns differ.
+          self-join (-> (lib/join-clause orders [(lib/= (field :product_id) (field :id))])
+                        (lib/with-join-alias "O2")
+                        (lib/with-join-fields :all))
+          by-source (fn [stage]
+                      (-> (v2.queries/execute-representations-query
+                           {:lib/type "mbql/query"
+                            :stages   [(merge stage {:lib/type    "mbql.stage/mbql"
+                                                     :aggregation [["count" {}]]})]})
+                          (get-in [:structured-output :query])
+                          qp/process-query
+                          mt/rows))]
+      (doseq [card-type [:question :model]]
+        (mt/with-temp [:model/Card {card-id :id} {:type          card-type
+                                                  :dataset_query (lib/join (lib/query mp orders) self-join)}]
+          (mt/with-test-user :crowberto
+            (testing card-type
+              (let [user-id-cols (->> (content-one {:items [{:type (name card-type) :id card-id}] :include ["fields"]})
+                                      :result_metadata
+                                      (filterv #(= (mt/id :orders :user_id) (:id %))))
+                    via          (fn [fk-name]
+                                   (by-source {:source-card card-id
+                                               :breakout    [["field" {:source-field      (mt/id :orders :user_id)
+                                                                       :source-field-name fk-name}
+                                                              (mt/id :people :source)]]}))]
+                (is (= ["USER_ID" "O2__USER_ID"] (mapv :lib/desired-column-alias user-id-cols))
+                    (pr-str user-id-cols))
+                (testing "and each name picks its own foreign key"
+                  (is (= (by-source {:source-table (mt/id :orders)
+                                     :breakout     [["field" {} (mt/id :people :source)]]})
+                         (via "USER_ID")))
+                  (is (not= (via "USER_ID") (via "O2__USER_ID"))))))))))))
+
+(deftest card-column-error-hint-lists-the-card-columns-test
+  (testing "a column the card does not return gets a hint naming the get_content call that lists the ones it does"
+    (let [mp    (mt/metadata-provider)
+          field #(lib.metadata/field mp (mt/id :orders %))]
+      (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                                :dataset_query (lib/with-fields
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                 [(field :id) (field :total)])}]
+        (mt/with-test-user :crowberto
+          (let [e    (try
+                       (v2.queries/execute-representations-query
+                        {:lib/type "mbql/query"
+                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                     :source-card card-id
+                                     :aggregation [["count" {}]]
+                                     :breakout    [["field" {} (mt/id :orders :quantity)]]}]})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e e))
+                items (some->> (ex-message e)
+                               (re-find #"Call \"get_content\" with items (\[.*?\]) and include \[\"fields\"\]")
+                               second
+                               json/decode+kw)]
+            (is (=? {:error :column-not-returned} (ex-data e)))
+            (is (= [{:type "model" :id card-id}] items)
+                (ex-message e))
+            (is (= ["ID" "TOTAL"]
+                   (mapv :name (:result_metadata (content-one {:items items :include ["fields"]}))))
+                "and that call lists the columns the model returns")))))))
 
 (deftest get-content-dashboard-skeleton-test
   (testing "GHY-4140: a dashboard returns the editing skeleton, never the raw REST dashcards array"
@@ -413,11 +482,9 @@
             (is (not (contains? (-> row :channels first) :recipients))
                 "and the channel recipient list is gone")))))))
 
-(deftest get-content-transform-test
-  (testing "GHY-4140: a transform read carries source type and target"
-    ;; The transform read-check gates on the transforms feature before the superuser bypass, so the
-    ;; feature and its setting must be on for the read to succeed — otherwise `can-read?` is false and
-    ;; the transform collapses to not-found. Enable them explicitly rather than inheriting ambient state.
+(deftest get-content-has-no-transform-type-test
+  (testing "GHY-4746: MCP v2 has no transforms, so get_content refuses the type, even for an admin on an instance
+            with transforms enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp-env-var-value! [mb-transforms-enabled true]
         (mt/with-temp [:model/Transform {id :id} {:name   "t1"
@@ -430,10 +497,13 @@
                                                                                      :id (mt/id :venues))
                                                            :name   "t1_out"}}]
           (mt/with-test-user :crowberto
-            (let [row (content-one {:items [{:type "transform" :id id}]})]
-              (is (nil? (:error row)))
-              (is (= "t1" (:name row)))
-              (is (= "t1_out" (-> row :target :name))))))))))
+            (let [error (content-error {:items [{:type "transform" :id id}]})]
+              (is (str/starts-with? error "Invalid arguments: "))
+              (is (re-find #"\"type\": \"should be either" error)))))))
+    (testing "a transform folder reads as not found, the same answer a missing id gets"
+      (mt/with-temp [:model/Collection {folder-id :id} {:name "Rollups" :namespace "transforms"}]
+        (mt/with-test-user :crowberto
+          (is (re-find #"not found" (:error (content-one {:items [{:type "collection" :id folder-id}]})))))))))
 
 (deftest get-content-resolves-entity-ids-test
   (testing "GHY-4140: `id` takes a 21-character entity_id as well as a numeric id, for every type
@@ -477,60 +547,6 @@
         (testing "a string that is neither a numeric id nor an entity_id"
           (is (re-find #"21-character entity_id"
                        (:error (content-one {:items [{:type "question" :id "nope"}]})))))))))
-
-(deftest get-content-transform-target-table-test
-  (testing "GHY-4140: `table` is the transform's target, hydrated with no permission check of its own
-            — `can-read?` on a Transform gates on the SOURCE tables only — so `fetch-transform`
-            re-checks it before returning it.
-
-            That gate's false branch is unreachable through permissions today, so there is no test
-            for it: reading a transform at all requires superuser or data analyst; superusers read
-            every table; and `table-permission-for-user` hands every data analyst
-            `manage-table-metadata :yes` unconditionally, which by itself satisfies `can-read?` on a
-            Table. The check is defence in depth for the day the transform read check widens. What
-            is reachable is covered here."
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-        ;; Target an already-synced table rather than the usual nonexistent one, so `:table` actually
-        ;; hydrates and there is something to withhold. Source and target must differ: blocking the
-        ;; source would make the transform itself unreadable and prove nothing.
-        (mt/with-temp [:model/Transform {id :id}
-                       {:name   "t1"
-                        :source {:type  :query
-                                 :query {:database (mt/id)
-                                         :type     "query"
-                                         :query    {:source-table (mt/id :venues)}}}
-                        :target {:type   :table
-                                 :schema (t2/select-one-fn :schema :model/Table :id (mt/id :checkins))
-                                 :name   (t2/select-one-fn :name :model/Table :id (mt/id :checkins))}}]
-          ;; `table` is a detailed-only key, so the gate only ever runs on a detailed read.
-          (testing "an admin, who can read the target, gets it"
-            (mt/with-test-user :crowberto
-              (let [row (content-one {:items           [{:type "transform" :id id}]
-                                      :response_format "detailed"})]
-                (is (nil? (:error row)))
-                (is (= (mt/id :checkins) (-> row :table :id))))))
-          (testing "and it is a detailed-only key, absent from a concise read"
-            (mt/with-test-user :crowberto
-              (is (nil? (:table (content-one {:items [{:type "transform" :id id}]})))))))))
-    (testing "a transform whose target table does not exist yet reads without a `table`"
-      (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-          (mt/with-temp [:model/Transform {id :id}
-                         {:name   "t2"
-                          :source {:type  :query
-                                   :query {:database (mt/id)
-                                           :type     "query"
-                                           :query    {:source-table (mt/id :venues)}}}
-                          :target {:type   :table
-                                   :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
-                                   :name   "never_run_out"}}]
-            (mt/with-test-user :crowberto
-              (let [row (content-one {:items           [{:type "transform" :id id}]
-                                      :response_format "detailed"})]
-                (is (nil? (:error row)))
-                (is (= "t2" (:name row)))
-                (is (nil? (:table row)) "nothing to hydrate, so the section is omitted")))))))))
 
 (deftest get-content-not-found-is-not-an-existence-oracle-test
   (testing "GHY-4140: a nonexistent id and an existing-but-unreadable id are indistinguishable,
@@ -616,7 +632,7 @@
         (is (re-find #"you passed 11" error))))))
 
 (deftest get-content-reads-formerly-gated-types-test
-  (testing "GHY-4225: alerts, transforms, snippets and documents each used to need their own read
+  (testing "GHY-4225: alerts, snippets and documents each used to need their own read
             scope on top of the base one. Those folded into `agent:content:read`, so the single
             scope now carries them — the per-type gate is gone, not merely renamed."
     (testing "alert"
@@ -642,23 +658,7 @@
         (mt/with-test-user :crowberto
           (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
-            (is (re-find #"hello" (:content_markdown row)))))))
-    (testing "transform — `agent:transforms:read` is still declared, but this tool does not ask for it"
-      (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
-                                                    :source {:type  :query
-                                                             :query {:database (mt/id)
-                                                                     :type     "query"
-                                                                     :query    {:source-table (mt/id :venues)}}}
-                                                    :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table
-                                                                                       :id (mt/id :venues))
-                                                             :name   "t1_out"}}]
-            (mt/with-test-user :crowberto
-              (let [row (content-one #{"agent:content:read"} {:items [{:type "transform" :id id}]})]
-                (is (nil? (:error row)))
-                (is (= "t1" (:name row)))))))))))
+            (is (re-find #"hello" (:content_markdown row)))))))))
 
 (defn- comment-content
   [text]
@@ -1001,25 +1001,7 @@
             (is (nil? (:error row)))
             (is (some? (:definition row)) "the definition section is present")
             (is (= "=" (-> row :definition first first))
-                "and carries the stored filter")))))
-    (testing "transform — the source, with its query serialized"
-      (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
-                                                    :source {:type  :query
-                                                             :query {:database (mt/id)
-                                                                     :type     "query"
-                                                                     :query    {:source-table (mt/id :venues)}}}
-                                                    :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table
-                                                                                       :id (mt/id :venues))
-                                                             :name   "t1_out"}}]
-            (mt/with-test-user :crowberto
-              (let [row (content-one {:items [{:type "transform" :id id}] :include ["definition"]})]
-                (is (nil? (:error row)))
-                (is (some? (:definition row)) "the definition section is present")
-                (is (= (mt/id) (-> row :definition :query :database))
-                    "and the query round-trips as the numeric-id MBQL 5 shape")))))))))
+                "and carries the stored filter")))))))
 
 (deftest get-content-include-unknown-for-every-item-test
   (testing "GHY-4140: a section no item in the batch supports is a tool-level teaching error,

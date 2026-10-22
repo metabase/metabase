@@ -9,7 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { getNextId } from "__support__/utils";
+import { getNextId, waitForRequestsToSettle } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import type { WritebackAction } from "metabase-types/api";
 import {
@@ -273,10 +273,10 @@ function setup(
 }
 
 describe("ObjectDetailPanel", () => {
-  it("renders an object detail component", () => {
+  it("renders an object detail component", async () => {
     setup({ question: mockQuestion });
 
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Product/i)).toBeInTheDocument();
     expect(
       screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
     ).toBeInTheDocument();
@@ -344,10 +344,14 @@ describe("ObjectDetailPanel", () => {
   });
 
   describe("renders actions menu", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setupDatabasesEndpoints([databaseWithActionsEnabled]);
       setupActionsEndpoints(actions);
       setup({ question: mockDataset });
+      // `ActionExecuteModal` initialises its values state after this render.
+      // Nothing observable changes when it does, and it issues no request to
+      // wait on, so flush that update rather than leaving it for the next test.
+      await waitForRequestsToSettle();
     });
 
     it("should not show implicit create action", async () => {
@@ -396,8 +400,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
     setup({ question: mockDataset });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should not render actions menu for non-model questions", async () => {
@@ -405,8 +408,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockQuestion });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it(`should not render actions menu when "showControls" is "false"`, async () => {
@@ -414,8 +416,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDataset, showControls: false });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should render actions menu when user has write permission", async () => {
@@ -423,8 +424,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeInTheDocument();
+    expect(await screen.findByTestId("actions-menu")).toBeInTheDocument();
   });
 
   it("should not render actions menu when user has no write permission", async () => {
@@ -432,8 +432,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetNoWritePermission });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   /**
@@ -446,8 +445,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetWithClauses });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should not render actions menu when model's source table does not have a primary key", async () => {
@@ -455,8 +453,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetNoPk });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should not render actions menu when model's source table has multiple primary keys", async () => {
@@ -464,8 +461,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetMultiplePks });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should show update object modal on update action click", async () => {
@@ -502,7 +498,7 @@ describe("ObjectDetailPanel", () => {
 
     const action = await findActionInActionMenu(implicitDeleteAction);
     expect(action).toBeInTheDocument();
-    action?.click();
+    await userEvent.click(checkNotNull(action));
 
     const modal = await screen.findByTestId("delete-object-modal");
     expect(modal).toBeInTheDocument();
@@ -560,13 +556,11 @@ async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
 }
 
 /**
- * There is no loading indicator in ObjectDetail component, so there is no easy way
- * to wait for relevant API requests to finish. This function relies on DOM changes instead.
+ * The menu appears once the actions and databases requests resolve, so settle
+ * them before asserting it is absent.
  */
-async function findActionsMenu() {
-  try {
-    return await screen.findByTestId("actions-menu");
-  } catch (error) {
-    return undefined;
-  }
+async function expectNoActionsMenu() {
+  await screen.findByTestId("object-detail");
+  await waitForRequestsToSettle();
+  expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
 }

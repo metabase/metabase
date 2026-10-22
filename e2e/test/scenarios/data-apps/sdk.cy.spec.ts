@@ -1,4 +1,3 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
@@ -7,8 +6,6 @@ import {
 } from "e2e/support/helpers";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
@@ -26,16 +23,15 @@ describe("scenarios > data apps > SDK runtime", () => {
         displayName: APP_DISPLAY_NAME,
         testEnv: {
           ...TEST_ENV,
-          // A card that doesn't exist → the query resolves to an error, rather
-          // than to the refusal an unsynchronized table source would raise.
+          // A card that doesn't exist, so the query resolves to an error.
           errorQuery: {
-            source: { type: "table", id: ORDERS_ID },
-            savedQuestionSourceId: 999999,
+            source: { type: "card", entityId: "missingQuestionEntity" },
           },
         },
       });
 
-    it("surfaces the useMetabaseQuery error state", () => {
+    it("surfaces the useMetabaseQuery error state, and re-runs the query when the app calls refetch", () => {
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
       setupQueryStatesApp();
 
       visitAppRoute("query-states");
@@ -44,15 +40,7 @@ describe("scenarios > data apps > SDK runtime", () => {
           "have.text",
           "error",
         );
-      });
-    });
 
-    it("re-runs the query when the app calls refetch", () => {
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      setupQueryStatesApp();
-
-      visitAppRoute("query-states");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         // The query has to have resolved before refetching means anything.
         cy.findByTestId("query-value", { timeout: 30000 })
           .invoke("text")

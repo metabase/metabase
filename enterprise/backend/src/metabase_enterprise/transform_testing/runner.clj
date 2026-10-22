@@ -27,11 +27,11 @@
    [metabase-enterprise.transform-testing.expectations.empty]
    [metabase-enterprise.transform-testing.expectations.equals]
    [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.run-tracking :as transform-testing.run-tracking]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -205,7 +205,7 @@
         source         (parsed-source driver transform transform-id)
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table   (driver/temp-table-name driver)
-        default-schema (sql.normalize/default-schema driver database)
+        default-schema (:default_schema database)
         replacements   (transform-testing.compile/table-replacements transform input->table output-table default-schema)
         compiled       (transform-testing.compile/compile-transform driver source replacements)]
     (transform-testing.validator/validate
@@ -241,21 +241,31 @@
 
   Throws a typed refusal from [[metabase-enterprise.transform-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
-  [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
+  [{:keys [id transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
   (let [{:keys [driver database input->table output-table labels replacements compiled]}
-        (validated-plan transform_id inputs expectations)]
-    (driver/do-with-test-connection
-     driver database
-     (fn [conn]
-       (try
-         (create-inputs! driver conn input->table labels)
-         (create-output! driver conn output-table compiled labels)
-         (let [results (check-expectations driver conn
-                                           {:driver driver :output-table output-table :replacements replacements}
-                                           expectations labels)]
-           {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
-            :expectations results
-            :tables       labels})
-         (finally
-           (doseq [table (cons output-table (vals input->table))]
-             (transform-testing.executor/drop-temp-table! driver conn table))))))))
+        (validated-plan transform_id inputs expectations)
+        {run-id :id} (transform-testing.run-tracking/start-run! id api/*current-user-id*)
+        final-status (atom :error)]
+    (try
+      (let [result
+            (driver/do-with-test-connection
+             driver database
+             (fn [conn]
+               (try
+                 (create-inputs! driver conn input->table labels)
+                 (create-output! driver conn output-table compiled labels)
+                 (let [results (check-expectations driver conn
+                                                   {:driver driver
+                                                    :output-table output-table
+                                                    :replacements replacements}
+                                                   expectations labels)]
+                   {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
+                    :expectations results
+                    :tables       labels})
+                 (finally
+                   (doseq [table (cons output-table (vals input->table))]
+                     (transform-testing.executor/drop-temp-table! driver conn table))))))]
+        (reset! final-status (:status result))
+        result)
+      (finally
+        (transform-testing.run-tracking/finish-run! run-id @final-status)))))

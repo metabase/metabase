@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -52,6 +53,7 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :entity_id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :default_schema
                          :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
                          :uploads_table_prefix])
    {:engine                      "h2"
@@ -259,11 +261,12 @@
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (table-defaults)
+                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :admin_details nil, :initial_sync_error nil})
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    true
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -336,8 +339,16 @@
                                        :database_is_auto_increment false
                                        :name_field                 nil)]
                  :id           (mt/id :users)})
-               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
+               (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
             "Make sure that getting the User table *does* include info about the password field, but not actual values themselves")))))
+
+(deftest ^:parallel sensitive-fields-require-write-perms-test
+  (mt/with-premium-features #{}
+    (testing "GET api/table/:id/query_metadata?include_sensitive_fields ignores the flag for users who can't edit the table's metadata"
+      (is (= ["ID" "NAME" "LAST_LOGIN"]
+             (->> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users)))
+                  :fields
+                  (map :name)))))))
 
 (deftest ^:parallel sensitive-fields-not-included-test
   (mt/with-premium-features #{}
@@ -349,6 +360,7 @@
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    false
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -470,7 +482,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
@@ -692,6 +704,7 @@
               (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
+               :can_write    false
                :name         "CATEGORIES"
                :display_name "Categories"
                :fields       [(merge
@@ -1527,7 +1540,7 @@
         (sync/sync-database! db {:scan :schema})
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
 
-;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
+;;; -------------------------------------------- can-query filter tests --------------------------------------------
 
 (deftest list-tables-can-query-filter-returns-only-queryable-tables-test
   (testing "can-query=true filters to only queryable tables"
@@ -1550,26 +1563,16 @@
         (is (= 1 (count response)))
         (is (= "queryable_table" (-> response first :name)))))))
 
-(deftest list-tables-can-write-filter-returns-only-editable-tables-test
-  (testing "can-write=true filters to only editable tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {table-1-id :id} {:db_id db-id :name "editable_table" :active true}
-                   :model/Table _ {:db_id db-id :name "not_editable_table" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
-      ;; Block database-level access
-      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
-      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
-      ;; Grant manage-table-metadata to table-1 only (editable)
-      (data-perms/set-table-permission! pg table-1-id :perms/manage-table-metadata :yes)
-      ;; table-2 gets no manage-table-metadata (not editable)
-
-      (let [response (->> (mt/user-http-request :crowberto :get 200 "table" :can-write true)
-                          (filter #(= (:db_id %) db-id)))]
-        ;; crowberto is an admin, so should see all tables when they have manage-table-metadata
-        (is (>= (count response) 1))
-        (is (contains? (set (map :name response)) "editable_table"))))))
+(deftest list-tables-include-editable-data-model-filter-test
+  (testing "include-editable-data-model=true filters to only tables the user can edit the data model of"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table    {table-id :id} {:db_id db-id :active true}]
+        (let [table-ids (fn [user]
+                          (into #{} (comp (filter #(= db-id (:db_id %))) (map :id))
+                                (mt/user-http-request user :get 200 "table" :include-editable-data-model true)))]
+          (is (= #{table-id} (table-ids :crowberto)))
+          (is (= #{} (table-ids :rasta))))))))
 
 ;;; ---------------------------------------- /data endpoint permission tests ----------------------------------------
 
@@ -1625,3 +1628,69 @@
                             {:ids [t1 t2] :field_order "alphabetical"})
       (is (= [:alphabetical :alphabetical]
              (map #(user-table-fn :field_order %) [t1 t2]))))))
+
+;;; ---------------------------------- #83937 dimension-backfill canary -----------------------------------
+
+(defn- counting-dimension-pairs
+  "Calls `thunk` with [[lib-metric.dimension.jvm/compute-dimension-pairs]] counted, returning
+  `[result call-count]`.
+
+  That function is the expensive primitive behind the `card_schema` 24 dimension backfill: it runs
+  `lib/visible-columns` over the metric's table *plus* every FK-reachable table and fetches every one of those
+  Fields. Running it once per metric is what made `query_metadata` for a wide table take minutes and exhaust the
+  heap in #83937, so these tests assert it never runs at all on that path."
+  [thunk]
+  (let [calls (atom 0)
+        orig  lib-metric.dimension.jvm/compute-dimension-pairs]
+    (mt/with-dynamic-fn-redefs [lib-metric.dimension.jvm/compute-dimension-pairs
+                                (fn [& args]
+                                  (clojure.core/swap! calls inc)
+                                  (apply orig args))]
+      [(thunk) @calls])))
+
+(defn- make-pre-curation-metric!
+  "Put `card-id` back into the pre-64 shape: `card_schema` 23 with no stored dimensions, so reading it is what
+  triggers the backfill. Needs a raw UPDATE because before-insert forces `:card_schema` to current."
+  [card-id]
+  (t2/query-one {:update :report_card
+                 :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
+                 :where  [:= :id card-id]}))
+
+(deftest query-metadata-does-not-backfill-metric-dimensions-test
+  (testing "query_metadata must not run the pre-64 dimension backfill for a table's metrics (#83937)"
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card {question-id :id} {:database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id, :card_id question-id}]
+      (make-pre-curation-metric! metric-id)
+      ;; Without this the whole test could pass vacuously: if the fixture ever stopped being a genuine
+      ;; pre-curation metric, nothing would backfill and the zero-call assertions below would be meaningless.
+      (testing "the fixture really is a metric whose dimensions get backfilled on an ordinary read"
+        (is (pos? (second (counting-dimension-pairs
+                           #(t2/select-one :model/Card :id metric-id))))))
+      (testing "GET /api/table/:id/query_metadata"
+        (let [[response calls] (counting-dimension-pairs
+                                #(mt/user-http-request :crowberto :get 200
+                                                       (format "table/%d/query_metadata" (mt/id :venues))))
+              metrics          (:metrics response)]
+          (is (zero? calls)
+              "the dimension backfill ran while hydrating a table's metrics")
+          (is (some #(= metric-id (:id %)) metrics)
+              "the metric should still be hydrated, just without its backfilled dimensions")
+          (is (every? (comp nil? :dimensions) metrics)
+              "no metric should come back carrying a backfilled dimension set")))
+      (testing "GET /api/dashboard/:id/query_metadata"
+        (let [[_response calls] (counting-dimension-pairs
+                                 #(mt/user-http-request :crowberto :get 200
+                                                        (format "dashboard/%d/query_metadata" dash-id)))]
+          (is (zero? calls)
+              "the dimension backfill ran while loading dashboard query metadata")))
+      (testing "the stored row is untouched — still schema 23, so a later write still upgrades it"
+        (is (= 23 (:card_schema (t2/query-one {:select [:card_schema]
+                                               :from   [:report_card]
+                                               :where  [:= :id metric-id]}))))))))

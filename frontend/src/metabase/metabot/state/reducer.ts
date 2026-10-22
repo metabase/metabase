@@ -52,7 +52,11 @@ import type {
   MetabotToolCall,
   MetabotUserTextChatMessage,
 } from "./types";
-import { createMessageId, hasInProgressMessage } from "./utils";
+import {
+  createMessageId,
+  hasInProgressMessage,
+  withServerErrorDisplay,
+} from "./utils";
 
 const isLocationChange = (
   action: UnknownAction,
@@ -280,7 +284,12 @@ export const metabot = createSlice({
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
-        endChainTool(convo, action.payload.toolCallId, action.payload.nowMs);
+        endChainTool(
+          convo,
+          action.payload.toolCallId,
+          action.payload.nowMs,
+          action.payload.isError,
+        );
 
         // Update the message in messages array with result for debug history
         const message = findLastToolCallPart(convo, action.payload.toolCallId);
@@ -400,7 +409,9 @@ export const metabot = createSlice({
         castDraft(createConversation({ conversationId }));
 
       convo.messages = castDraft(
-        messages.map((t) => ({ ...t, parts: [...t.parts] })),
+        messages.map((message) =>
+          withServerErrorDisplay({ ...message, parts: [...message.parts] }),
+        ),
       );
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];

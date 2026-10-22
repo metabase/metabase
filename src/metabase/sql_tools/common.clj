@@ -47,7 +47,7 @@
    An unqualified reference resolves to `database`'s default schema, so the database it was parsed against decides."
   [driver database tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
-                          (sql.normalize/default-schema driver database))
+                          (:default-schema database))
         normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))
@@ -60,6 +60,15 @@
                 (when (matches? name schema)
                   {:transform id}))
               transforms))))
+
+(defn resolve-table-specs
+  "Resolve the table `specs` parsed out of a native query with [[find-table-or-transform]], keeping each spec that
+  matches nothing as `{:unresolved-table spec}`."
+  [driver database tables transforms specs]
+  (into #{}
+        (map #(or (find-table-or-transform driver database tables transforms %)
+                  {:unresolved-table (cond-> % (nil? (:schema %)) (dissoc :schema))}))
+        specs))
 
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"

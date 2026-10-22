@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -7,7 +8,7 @@ import { DataAppsNavbarSection } from "./DataAppsNavbarSection";
 
 describe("DataAppsNavbarSection", () => {
   it("does not show apps section when there are no data apps", async () => {
-    fetchMock.get("path:/api/apps?available=true", []);
+    fetchMock.get("path:/api/ee/apps?available=true", []);
 
     renderWithProviders(<DataAppsNavbarSection onItemSelect={jest.fn()} />);
 
@@ -19,15 +20,17 @@ describe("DataAppsNavbarSection", () => {
   });
 
   it("shows every data app as a link", async () => {
-    fetchMock.get("path:/api/apps?available=true", [
+    fetchMock.get("path:/api/ee/apps?available=true", [
       { name: "gizmo", display_name: "Gizmo" },
       { name: "gadget", display_name: "Gadget" },
     ]);
 
+    const onItemSelect = jest.fn();
+
     renderWithProviders(
       <Route
         path="/"
-        element={<DataAppsNavbarSection onItemSelect={jest.fn()} />}
+        element={<DataAppsNavbarSection onItemSelect={onItemSelect} />}
       />,
       { withRouter: true },
     );
@@ -48,5 +51,15 @@ describe("DataAppsNavbarSection", () => {
       "href",
       "/apps/gadget",
     );
+
+    await userEvent.click(gizmoLink);
+
+    expect(onItemSelect).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("button", { name: /Gizmo|Gadget/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Contents/ }),
+    ).not.toBeInTheDocument();
   });
 });

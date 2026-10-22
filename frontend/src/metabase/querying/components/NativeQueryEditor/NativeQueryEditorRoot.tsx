@@ -2,6 +2,7 @@ import { useDebouncedCallback, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import {
   Children,
+  type ReactElement,
   type ReactNode,
   cloneElement,
   forwardRef,
@@ -12,7 +13,6 @@ import {
   useState,
 } from "react";
 import { useLatest, useMount } from "react-use";
-import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
@@ -24,10 +24,10 @@ import {
 } from "metabase/querying/components/CodeMirrorEditor";
 import { SnippetFormModal } from "metabase/querying/components/NativeQueryEditor/SnippetFormModal";
 import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
-import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
-import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import type { QueryModalType } from "metabase/redux/store";
+import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -66,7 +66,7 @@ import {
  */
 export type NativeQueryEditorCoreProps = Omit<
   CodeMirrorEditorProps,
-  "query"
+  "query" | "onAcceptProposed"
 > & {
   availableHeight?: number;
   canAutoOpenDataReference?: boolean;
@@ -256,6 +256,15 @@ export const NativeQueryEditorRoot = forwardRef<
     onBlur?.();
   }, [handleChange, onBlur]);
 
+  const handleAcceptProposed = useCallback(() => {
+    const proposedQuery = proposedQuestion?.legacyNativeQuery();
+    if (proposedQuery) {
+      handleChange(proposedQuery.queryText());
+      handleChange.flush();
+      onAcceptProposed?.(proposedQuery.datasetQuery());
+    }
+  }, [proposedQuestion, handleChange, onAcceptProposed]);
+
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
       // get the query instance with the latest Metadata that has the updated snippet
@@ -353,7 +362,10 @@ export const NativeQueryEditorRoot = forwardRef<
   const bodySlots: ReactNode[] = [];
   Children.toArray(children).forEach((child) => {
     if (isValidElement(child) && child.type === TopBar) {
-      topBar = cloneElement(child, { ref: topBarRef });
+      // TopBar forwards its ref; type the element so cloneElement accepts it.
+      topBar = cloneElement(child as ReactElement<{ ref?: typeof topBarRef }>, {
+        ref: topBarRef,
+      });
     } else {
       bodySlots.push(child);
     }
@@ -398,6 +410,10 @@ export const NativeQueryEditorRoot = forwardRef<
                   onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                   onRightClickSelection={handleRightClickSelection}
                   onFormatQuery={handleFormatQuery}
+                  onAcceptProposed={
+                    onAcceptProposed ? handleAcceptProposed : undefined
+                  }
+                  onRejectProposed={onRejectProposed}
                 />
 
                 <Stack
@@ -406,48 +422,6 @@ export const NativeQueryEditorRoot = forwardRef<
                   justify="flex-end"
                   p="lg"
                 >
-                  {proposedQuestion && onRejectProposed && onAcceptProposed && (
-                    <>
-                      <Tooltip
-                        label={t`Accept proposed changes`}
-                        position="top"
-                      >
-                        <Button
-                          data-testid="accept-proposed-changes-button"
-                          variant="filled"
-                          bg="feedback-positive"
-                          px="0"
-                          w="2.5rem"
-                          onClick={() => {
-                            const proposedQuery =
-                              proposedQuestion.legacyNativeQuery();
-                            if (proposedQuery) {
-                              handleChange(proposedQuery.queryText());
-                              handleChange.flush();
-                              onAcceptProposed(proposedQuery.datasetQuery());
-                            }
-                          }}
-                        >
-                          <Icon name="check" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip
-                        label={t`Reject proposed changes`}
-                        position="top"
-                      >
-                        <Button
-                          data-testid="reject-proposed-changes-button"
-                          w="2.5rem"
-                          px="0"
-                          variant="filled"
-                          bg="feedback-negative"
-                          onClick={onRejectProposed}
-                        >
-                          <Icon name="close" />
-                        </Button>
-                      </Tooltip>
-                    </>
-                  )}
                   <Flex gap="sm">{bodySlots}</Flex>
                 </Stack>
               </Flex>

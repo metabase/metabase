@@ -105,9 +105,9 @@
         {:keys [email sso_source saml_session_index saml_name_id saml_name_id_format]}
         (sso.db/session-user-email-and-source metabase-session-key-hashed)]
     ;; If a user doesn't have SLO setup on their IdP,
-    ;; they will never hit "/handle_slo" so we must delete the session here:
+    ;; they will never hit "/handle_slo" so we must end the session here:
     (when-not (sso-settings/saml-slo-enabled)
-      (sso.db/delete-session! metabase-session-key-hashed))
+      (session/end-sessions! {:key_hashed metabase-session-key-hashed} "sso-logout" :self))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))

@@ -6,16 +6,14 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { RemoteSyncOutcome, RemoteSyncTaskUser } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
 
 const STARTED_AT = "2026-09-15T22:06:23Z";
-const STARTED_AT_TIME = new Date(STARTED_AT).toLocaleTimeString([], {
-  hour: "numeric",
-  minute: "2-digit",
-});
+const STARTED_AT_TIME = dayjs(STARTED_AT).format("LT");
 
 const INITIATED_BY_USER: RemoteSyncTaskUser = {
   id: 231,
@@ -279,6 +277,21 @@ describe("SyncProgressModal", () => {
         screen.getByText("An error occurred during sync."),
       ).toBeInTheDocument();
       expect(screen.getByText("Connection timeout")).toBeInTheDocument();
+    });
+
+    it("should keep the line breaks of a multi-line message", () => {
+      const errorMessage = [
+        "Failed to reload from git repository. Invalid data app files:",
+        "- data_apps/first/data_app.yaml must name the app's resource collection as `collection`.",
+        "- data_apps/second/data_app.yaml must name the app's resource collection as `collection`.",
+      ].join("\n");
+      setup({ isError: true, errorMessage });
+
+      const message = screen.getByText(/Invalid data app files:/);
+      expect(message).toHaveTextContent(errorMessage, {
+        normalizeWhitespace: false,
+      });
+      expect(message).toHaveStyle({ whiteSpace: "pre-line" });
     });
 
     it("should show close button in error state", () => {

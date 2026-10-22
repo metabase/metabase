@@ -2,6 +2,7 @@
   "Code and constants related to getting and setting cookies in Ring requests and responses."
   (:require
    [java-time.api :as t]
+   [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
    [metabase.request.schema :as request.schema]
    [metabase.request.settings :as request.settings]
@@ -139,7 +140,7 @@
 (mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
   [request  :- ::request.schema/request
-   response :- ::request.schema/response
+   response :- ::api.macros/response
    {session-key :key
     session-type :type
     anti-csrf-token :anti_csrf_token

@@ -10,9 +10,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   ;; `mcp.core/all-scopes` reads the agent-api's defendpoint metadata, so the namespace has to be
-   ;; loaded for `resource-scopes-are-advertised-test` to see it (nothing else here pulls it in).
-   [metabase.agent-api.api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,6 +20,7 @@
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.visualize]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -54,9 +52,13 @@
   (boolean (or error (:isError result))))
 
 (defn- response-text
-  "The outcome's text block, or a registry-level rejection's message."
-  [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  "The outcome's text block, or a registry-level rejection's message. A success's JSON must sit
+   inside a data boundary, which is stripped; an error's text is returned raw."
+  [{:keys [result error] :as outcome}]
+  (cond
+    error                     (message/render (:message error))
+    (dispatch-error? outcome) (-> result :content first :text)
+    :else                     (-> result :content first :text v2.tu/strip-data-boundary)))
 
 (defn- payload
   "The `structuredContent` of a successful response. Throws if the tool errored, so a
@@ -331,13 +333,11 @@
 ;;; ------------------------------------------------- Resources ----------------------------------------------------
 
 (deftest resource-scopes-are-advertised-test
-  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a data resource it
-            could never read, or a shell that never gets a credential"
-    (let [advertised (set (mcp.core/all-scopes))]
-      (testing "GHY-4543: data resources count, not just UI shells"
-        (is (contains? (v2.resources/resource-scopes) "agent:resource:read")))
+  (testing "GHY-4157: every v2 resource scope is in the MCP scope list"
+    (is (seq (v2.resources/resource-scopes)) "No scopes in registered resources in MCP")
+    (let [accepted (set (mcp.core/v2-scopes))]
       (doseq [scope (v2.resources/resource-scopes)]
-        (is (contains? advertised scope) scope)))))
+        (is (contains? accepted scope) scope)))))
 
 (deftest resources-scope-gating-test
   (testing "GHY-4543: resources/list lists every resource regardless of scope"
@@ -366,19 +366,21 @@
         (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
           (is (str/includes? text "test-ui-credential"))
           (is (true? minted?))))
-      (testing "GHY-4543: a scope covering the shell's scope earns the credential too: wildcards, and the unrestricted
-                sentinel a cookie session binds"
-        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"} #{:metabase.api.macros.scope/unrestricted}]]
-          (testing (pr-str token-scopes)
-            (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
-              (is (str/includes? text "test-ui-credential"))
-              (is (true? minted?))))))
+      (testing "GHY-4942: the unrestricted sentinel a cookie session binds, or a nil scope set, earns no credential"
+        (doseq [token-scopes [#{:metabase.api.macros.scope/unrestricted} nil]]
+          (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
+            (is (not (str/includes? text "test-ui-credential")) (pr-str token-scopes))
+            (is (false? minted?) (pr-str token-scopes)))))
+      (testing "GHY-4942: a wildcard does not cover the shell's scope, so it earns no credential"
+        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"}]]
+          (is (false? (:minted? (read-with v2.resources/visualize-query-uri token-scopes)))
+              (pr-str token-scopes))))
       (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
                 challenge for it"
-        (is (= {:status :scope-denied :required-scope "agent:resource:read"}
-               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:content:read"} {}))))
-      (testing "the fields catalog reads with agent:resource:read, and a data resource mints no credential"
-        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:resource:read"})]
+        (is (= {:status :scope-denied :required-scope "agent:content:read"}
+               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:query:run"} {}))))
+      (testing "GHY-4939: the fields catalog reads with agent:content:read, and a data resource mints no credential"
+        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:content:read"})]
           (is (= :ok status))
           (is (false? minted?))))
       (testing "GHY-4157: an unknown URI is not found"

@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { c, t } from "ttag";
 
 import EmptyEvent from "assets/img/empty-states/event.svg";
@@ -49,7 +50,7 @@ const TimelineEmptyState = ({
       </Box>
       {canWrite && (
         <Link to={link} target={shouldOpenLinkInNewTab ? "_blank" : undefined}>
-          <Button variant="filled" w="12.5rem">
+          <Button variant="filled" size="lg" w="12.5rem">
             {t`Create event`}
           </Button>
         </Link>

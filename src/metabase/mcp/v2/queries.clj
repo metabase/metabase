@@ -34,7 +34,7 @@
   (if-let [humanized (:humanized (ex-data e))]
     (let [detail (message/msg [(str "Invalid at %s. Fix the named paths, or call "
                                     "\"learn\" with \"query-dialect\" for the clause shapes.")]
-                              (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))]
+                              (common/ellipsize (common/mu-humanize-detail humanized) max-schema-detail-length))]
       (common/message-ex-info (if-let [text (common/exception-message e)]
                                 (message/msg ["%s %s"] text detail)
                                 detail)
@@ -192,8 +192,8 @@
    refusal sentence, naming what the instance refused.
 
    The gate covers every v2 path on which the AGENT AUTHORS the SQL — `execute_sql` itself, and
-   `question_write` / `transform_write` storing agent-authored native SQL — so a switch an admin
-   turned off is not reachable by a second route to the same capability.
+   `question_write` storing agent-authored native SQL — so a switch an admin turned off is not reachable by a second
+   route to the same capability.
 
    It deliberately does not cover running SQL that already exists as a saved, permission-checked
    artifact: `run_saved_question` executes a stored native card without consulting it, as does

@@ -11,7 +11,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql :as sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -113,6 +112,13 @@
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
   [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+
+;; H2 loses a CTE's prepared-statement parameters under the outer `SELECT * FROM (<UNION ALL>)` wrap
+;; the pivot compiler emits — every branch counts zero rows. Opt out so the compiler inlines the
+;; pre-pivot subquery in each branch instead.
+(defmethod sql.qp/apply-cte-hoist? :h2
+  [_driver]
+  false)
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -734,10 +740,6 @@
 (defmethod sql.normalize/normalize-unquoted-name :h2
   [_ name-str]
   (u/upper-case-en name-str))
-
-(defmethod sql/default-schema :h2
-  [_driver _database]
-  "PUBLIC")
 
 (defmethod driver/temp-table-name :h2
   [_driver]

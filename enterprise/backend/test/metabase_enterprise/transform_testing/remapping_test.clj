@@ -18,8 +18,8 @@
 ;; Guard B parses the rewritten SQL through the namespace that registers its result schema.
 (comment metabase.sql-tools.macaw.references/keep-me)
 
-;; `sql.normalize/default-schema`, which decides whether a bare table key is registered, dispatches
-;; on an initialized driver. These tests parse and rewrite SQL only — no connection is needed.
+;; The Database's synced `default_schema` decides whether a bare table key is registered. Identifier normalization
+;; still dispatches on an initialized driver; these tests parse and rewrite SQL only, so no connection is needed.
 (use-fixtures :once (fn [f] (driver/the-initialized-driver :h2) (f)))
 
 ;;; -------------------------------------------- Harness --------------------------------------------

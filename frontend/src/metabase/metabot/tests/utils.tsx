@@ -43,12 +43,13 @@ import {
 
 import { Metabot } from "../components/Metabot";
 import "../components/MetabotChat/MetabotChat";
-import { FIXED_METABOT_ENTITY_IDS, FIXED_METABOT_IDS } from "../constants";
+import { FIXED_METABOT_ENTITY_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,
   type MetabotState,
   fixedMetabotAgentIds,
+  getMetabotState,
   metabotReducer,
   setVisible,
 } from "../state";
@@ -61,7 +62,7 @@ import {
 
 export { createMockReadableStream, createMockSSEStream, createPauses };
 
-type MetabotStoreLike = { getState: () => { metabot: MetabotState } };
+type MetabotStoreLike = { getState: () => { metabot: unknown } };
 
 const agentIn = (state: MetabotState, agentId: MetabotAgentId) =>
   checkNotNull(state.agents[agentId]);
@@ -72,12 +73,16 @@ const convoIn = (state: MetabotState, conversationId: string) =>
 export const conversationIdForAgent = (
   store: MetabotStoreLike,
   agentId: MetabotAgentId = "omnibot",
-) => agentIn(store.getState().metabot, agentId).conversationId;
+) => agentIn(getMetabotState(store.getState()), agentId).conversationId;
 
 export const convoForAgent = (
   store: MetabotStoreLike,
   agentId: MetabotAgentId = "omnibot",
-) => convoIn(store.getState().metabot, conversationIdForAgent(store, agentId));
+) =>
+  convoIn(
+    getMetabotState(store.getState()),
+    conversationIdForAgent(store, agentId),
+  );
 
 // starts turns without making an API request
 export const startRequestlessAgentTurn = (
@@ -184,6 +189,9 @@ export const enterChatMessage = async (message: string, send = true) => {
   if (send) {
     await userEvent.type(await input(), "{Enter}");
   }
+  // The editor picks up these DOM changes through a MutationObserver, which
+  // React cannot see as part of this call, so flush the state it sets.
+  await waitFor(() => {});
 };
 export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");
@@ -330,6 +338,8 @@ export const adminQuotaLimitErroredResponse: SSEEvent[] = [
   },
 ];
 
+export const TEST_METABOT_IDS = { INTERNAL: 41, EMBEDDED: 42 } as const;
+
 type DefaultMetabotOverrides = {
   default?: Partial<MetabotInfo>;
   embedded?: Partial<MetabotInfo>;
@@ -340,12 +350,12 @@ export function buildDefaultMetabots(
 ): MetabotInfo[] {
   return [
     createMockMetabotInfo({
-      id: FIXED_METABOT_IDS.DEFAULT,
+      id: TEST_METABOT_IDS.INTERNAL,
       entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
       ...overrides.default,
     }),
     createMockMetabotInfo({
-      id: FIXED_METABOT_IDS.EMBEDDED,
+      id: TEST_METABOT_IDS.EMBEDDED,
       entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
       name: "Embedded Metabot",
       ...overrides.embedded,
@@ -398,7 +408,7 @@ export function setup(
     });
 
   fetchMock.get(
-    `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
+    `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
   );
   fetchMock.get(

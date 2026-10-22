@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { getActionDisplayType } from "metabase/actions/utils";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   executeRowAction,
@@ -14,7 +15,7 @@ import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
-import { Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
@@ -24,9 +25,8 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { FullContainer } from "./ActionButton.styled";
 import ActionButtonView from "./ActionButtonView";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 import {
   getDashcardParamValues,
   getMappedActionParameters,
@@ -64,9 +64,10 @@ const ActionComponent = ({
   );
   const model = useQuestionFromCard(card);
 
-  const actionSettings = dashcard.action?.visualization_settings;
-  const actionDisplayType =
-    settings?.actionDisplayType ?? actionSettings?.type ?? "button";
+  const actionDisplayType = getActionDisplayType(
+    settings?.actionDisplayType,
+    dashcard.action,
+  );
 
   const dashcardParamValues = useMemo(
     () => getDashcardParamValues(dashcard, parameterValues),
@@ -164,15 +165,16 @@ function ActionFn(props: ActionProps) {
 
     return (
       <Tooltip label={tooltip}>
-        <FullContainer data-testid="action-button-full-container">
+        <Box w="100%" h="100%" data-testid="action-button-full-container">
           <ActionButtonView
             disabled
             icon="bolt"
             tooltip={tooltip}
             settings={props.settings}
+            isFullHeight={!props.isSettings}
             focus={props.isEditingDashcard}
           />
-        </FullContainer>
+        </Box>
       </Tooltip>
     );
   }

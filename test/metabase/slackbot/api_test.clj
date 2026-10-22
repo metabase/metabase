@@ -323,27 +323,25 @@
 (deftest ^:synchronized streaming-request-args-test
   (testing "POST /events passes correct arguments to agent/run-agent-loop"
     (tu/with-slackbot-setup
-      (doseq [[desc event-body]
-              [["DM message"            (assoc-in tu/base-dm-event [:event :channel] "D-MY-DM-CHANNEL")]
-               ["app_mention in channel" (assoc-in tu/base-mention-event [:event :channel] "C-PUBLIC-CHANNEL")]]]
+      (doseq [[desc event-body poll-key]
+              [["DM message" (assoc-in tu/base-dm-event [:event :channel] "D-MY-DM-CHANNEL") :stop-stream-calls]
+               ["app_mention in channel" (assoc-in tu/base-mention-event [:event :channel] "C-PUBLIC-CHANNEL") :post-calls]]]
         (testing desc
           (tu/with-slackbot-mocks
             {:ai-text "response"}
-            (fn [{:keys [ai-request-calls stop-stream-calls update-calls]}]
+            (fn [{:keys [ai-request-calls] :as state}]
               (mt/client :post 200 "metabot/slack/events"
                          (tu/slack-request-options event-body)
                          event-body)
-              (u/poll {:thunk      #(or (>= (count @stop-stream-calls) 1)
-                                        (>= (count @update-calls) 1))
-                       :done?      true?
+              (u/poll {:thunk      #(count @(get state poll-key))
+                       :done?      pos?
                        :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
               (let [opts (first @ai-request-calls)]
-                (is (= :slackbot (:profile-id opts)))
-                (is (map? (:context opts)))
-                (is (= (get-in event-body [:event :channel])
-                       (get-in opts [:context :slack_channel_id])))
-                (is (sequential? (:messages opts)))
+                (is (=? {:profile-id :slackbot
+                         :messages sequential?
+                         :context {:slack_channel_id (get-in event-body [:event :channel])}}
+                        opts))
                 ;; Last message should be the user's request
                 (let [last-msg (last (:messages opts))]
                   (if (= "im" (get-in event-body [:event :channel_type]))
@@ -480,75 +478,107 @@
 (deftest slack-id->user-id-test
   (testing "slack-id->user-id only returns active users with sso_source 'slack'"
     (let [slack-id "U12345SLACK"]
-      (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
-        (mt/with-temp [:model/User {active-slack-user-id :id}   {:email      "active-slack@example.com"
-                                                                 :is_active  true
-                                                                 :sso_source "slack"}
-                       :model/User {inactive-slack-user-id :id} {:email      "inactive-slack@example.com"
-                                                                 :is_active  false
-                                                                 :sso_source "slack"}
-                       :model/User {active-google-user-id :id}  {:email      "active-google@example.com"
-                                                                 :is_active  true
-                                                                 :sso_source "google"}]
-          (testing "returns user ID for active user with sso_source 'slack'"
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-slack-user-id
-                                                  :provider    "slack-connect"
-                                                  :provider_id slack-id
-                                                  :metadata    {:signing_secret_version 0}}]
-              (is (= active-slack-user-id
-                     (#'slackbot/slack-id->user-id slack-id)))))
-          (testing "returns user ID for active user with sso_source 'google'"
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
-                                                  :provider    "slack-connect"
-                                                  :provider_id slack-id
-                                                  :metadata    {:signing_secret_version 0}}]
-              (is (= active-google-user-id
-                     (#'slackbot/slack-id->user-id slack-id)))))
-          (testing "returns nil for inactive user with sso_source 'slack'"
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
-                                                  :provider    "slack-connect"
-                                                  :provider_id slack-id
-                                                  :metadata    {:signing_secret_version 0}}]
-              (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
-          (testing "returns nil for active user with different provider"
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
-                                                  :provider    "google"
-                                                  :provider_id slack-id}]
-              (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
-          (testing "returns nil when no AuthIdentity exists"
-            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))))))
+      (tu/with-slackbot-setup
+        (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+          (mt/with-temp [:model/User {active-slack-user-id :id}   {:email      "active-slack@example.com"
+                                                                   :is_active  true
+                                                                   :sso_source "slack"}
+                         :model/User {inactive-slack-user-id :id} {:email      "inactive-slack@example.com"
+                                                                   :is_active  false
+                                                                   :sso_source "slack"}
+                         :model/User {active-google-user-id :id}  {:email      "active-google@example.com"
+                                                                   :is_active  true
+                                                                   :sso_source "google"}]
+            (testing "returns user ID for active user with sso_source 'slack'"
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     active-slack-user-id
+                                                    :provider    "slack-connect"
+                                                    :provider_id slack-id
+                                                    :metadata    {:signing_secret_version 0}}]
+                (is (= active-slack-user-id
+                       (#'slackbot/slack-id->user-id slack-id)))))
+            (testing "returns user ID for active user with sso_source 'google'"
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                    :provider    "slack-connect"
+                                                    :provider_id slack-id
+                                                    :metadata    {:signing_secret_version 0}}]
+                (is (= active-google-user-id
+                       (#'slackbot/slack-id->user-id slack-id)))))
+            (testing "returns nil for inactive user with sso_source 'slack'"
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
+                                                    :provider    "slack-connect"
+                                                    :provider_id slack-id
+                                                    :metadata    {:signing_secret_version 0}}]
+                (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+            (testing "returns nil for active user with different provider"
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                    :provider    "google"
+                                                    :provider_id slack-id}]
+                (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+            (testing "returns nil when no AuthIdentity exists"
+              (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))))
+
+(deftest disconnect-slack-account-sends-auth-link-test
+  (tu/with-slackbot-setup
+    (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/AuthIdentity _ {:user_id user-id
+                                            :provider "slack-connect"
+                                            :provider_id "U-DISCONNECT"
+                                            :metadata {:signing_secret_version 0}}]
+        (is (= user-id (#'slackbot/slack-id->user-id "U-DISCONNECT")))
+        (mt/user-http-request user-id :delete 204 (str "user/" user-id "/slack"))
+        (let [post-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [slackbot.client/post-message (fn [_ payload] (swap! post-calls conj payload))]
+            (is (nil? (#'slackbot/require-authenticated-slack-user!
+                       {} (assoc (:event tu/base-dm-event) :user "U-DISCONNECT"))))
+            (is (=? [{:text #"Connect your Slack account to Metabase.*"
+                      :blocks [{:type "section"} {:type "actions"}]}]
+                    @post-calls))))))))
 
 (deftest slack-id->user-id-signing-secret-version-test
   (testing "slack-id->user-id respects signing secret version"
     (let [slack-id "U12345VERSION"]
-      (mt/with-temp [:model/User {user-id :id} {:email     "version-test@example.com"
-                                                :is_active true}]
-        (testing "identity with current version is accepted"
-          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
-                                                  :provider    "slack-connect"
-                                                  :provider_id slack-id
-                                                  :metadata    {:signing_secret_version 1}}]
-              (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
-        (testing "identity with old version is rejected after rotation"
-          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 2]
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
-                                                  :provider    "slack-connect"
-                                                  :provider_id slack-id
-                                                  :metadata    {:signing_secret_version 1}}]
-              (is (nil? (#'slackbot/slack-id->user-id slack-id))))))
-        (testing "legacy identity with no version is accepted before any rotation"
-          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
-                                                  :provider    "slack-connect"
-                                                  :provider_id slack-id}]
-              (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
-        (testing "legacy identity with no version is rejected after rotation"
-          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
-            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
-                                                  :provider    "slack-connect"
-                                                  :provider_id slack-id}]
-              (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))))
+      (tu/with-slackbot-setup
+        (mt/with-temp [:model/User {user-id :id} {:email     "version-test@example.com"
+                                                  :is_active true}]
+          (testing "identity with current version is accepted"
+            (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                    :provider    "slack-connect"
+                                                    :provider_id slack-id
+                                                    :metadata    {:signing_secret_version 1}}]
+                (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
+          (testing "identity with old version is rejected after rotation"
+            (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 2]
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                    :provider    "slack-connect"
+                                                    :provider_id slack-id
+                                                    :metadata    {:signing_secret_version 1}}]
+                (is (nil? (#'slackbot/slack-id->user-id slack-id))))))
+          (testing "legacy identity with no version is accepted before any rotation"
+            (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                    :provider    "slack-connect"
+                                                    :provider_id slack-id}]
+                (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
+          (testing "legacy identity with no version is rejected after rotation"
+            (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+              (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                    :provider    "slack-connect"
+                                                    :provider_id slack-id}]
+                (is (nil? (#'slackbot/slack-id->user-id slack-id)))))))))))
+
+(deftest slack-id->user-id-slack-connect-disabled-test
+  (testing "slack-id->user-id returns nil while Slack Connect is disabled"
+    (tu/with-slackbot-setup
+      (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/AuthIdentity _ {:user_id     user-id
+                                              :provider    "slack-connect"
+                                              :provider_id "U-DISABLED"}]
+          (is (= user-id (#'slackbot/slack-id->user-id "U-DISABLED")))
+          (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled false]
+            (is (nil? (#'slackbot/slack-id->user-id "U-DISABLED")))))))))
 
 (deftest ^:synchronized channel-message-without-mention-no-auth-test
   (testing "POST /events with channel message (no @mention) from unlinked user should NOT send auth message"
@@ -1331,15 +1361,15 @@
       (tu/with-slackbot-setup
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
-          (fn [{:keys [update-calls remove-reaction-calls]}]
+          (fn [_]
             (let [response (mt/client :post 200 "metabot/slack/events"
-                                      (tu/slack-request-options tu/base-mention-event) tu/base-mention-event)]
+                                      (tu/slack-request-options tu/base-mention-event) tu/base-mention-event)
+                  response-generated #(mt/metric-value system :metabase-slackbot/responses-generated
+                                                       {:source "channel" :result "success"})]
               (is (= "ok" response))
-              (u/poll {:thunk #(and (>= (count @update-calls) 1) (>= (count @remove-reaction-calls) 1))
-                       :done? true? :timeout-ms 5000})
+              (u/poll {:thunk response-generated, :done? pos?, :timeout-ms 5000})
               (testing "responses-generated counter is incremented for channel/success"
-                (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
-                                                                {:source "channel" :result "success"})))))))))))
+                (is (prometheus-test/approx= 1 (response-generated)))))))))))
 
 (deftest ^:synchronized error-response-metrics-test
   (testing "Failed response increments error counter and records duration"

@@ -128,17 +128,30 @@
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
-(mu/defn active-job-schedules-for-transforms
-  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
-  [transform-ids :- [:set ::lib.schema.id/transform]]
+(defn- job-schedule-rows
+  "Rows of Transform ID and the schedule of the TransformJobs that run it through a shared tag, narrowed
+  by `where`."
+  [where]
   (t2/select :model/TransformTransformTag
              {:select [:ttt.transform_id [:job.schedule :schedule]]
               :from   [[:transform_transform_tag :ttt]]
               :join   [[:transform_job_transform_tag :jtt] [:= :ttt.tag_id :jtt.tag_id]
                        [:transform_job :job] [:= :jtt.job_id :job.id]]
-              :where  [:and
-                       [:in :ttt.transform_id transform-ids]
-                       [:= :job.active true]]}))
+              :where  where}))
+
+(mu/defn active-job-schedules
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for every Transform such a job runs."
+  []
+  (job-schedule-rows [:= :job.active true]))
+
+(mu/defn active-job-schedules-for-transforms
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for `transform-ids`."
+  [transform-ids :- [:set ::lib.schema.id/transform]]
+  (job-schedule-rows [:and
+                      [:in :ttt.transform_id transform-ids]
+                      [:= :job.active true]]))
 
 (mu/defn insert-transform-tag-links!
   "Insert the TransformTransformTag `rows`."
@@ -320,28 +333,28 @@
   "Builds a `:order-by` clause for the paged run listing, translating display values for sortable columns per
   `status-labels`/`run-method-labels`/`tag-name-labels` (maps of raw value to display label)."
   [sort-column sort-direction status-labels run-method-labels tag-name-labels]
-  (let [sort-column    (or (keyword sort-column) :start-time)
-        sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc)
-                         :nulls-last
-                         :nulls-first)]
+  (let [sort-column               (or (keyword sort-column) :start-time)
+        sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (conj
      (case sort-column
-       :transform-name  [[:transform.name sort-direction]]
-       :start-time      [[:start_time sort-direction]]
-       :end-time        [[:end_time sort-direction nulls-sort]]
-       :status          [[(label-case :status status-labels) sort-direction]]
-       :run-method      [[(label-case :run_method run-method-labels) sort-direction]]
-       :transform-tags  [[(first-tag-name-subquery tag-name-labels) sort-direction nulls-sort]]
+       :transform-name [[:transform.name sort-direction]]
+       :start-time     [[:start_time sort-direction]]
+       :end-time       [[:end_time sort-direction-with-nulls]]
+       :status         [[(label-case :status status-labels) sort-direction]]
+       :run-method     [[(label-case :run_method run-method-labels) sort-direction]]
+       :transform-tags [[(first-tag-name-subquery tag-name-labels) sort-direction-with-nulls]]
        ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
        ;; directions — null means "no measurable duration yet," not
        ;; "longest duration."
-       :duration        [[[:is :end_time nil] :asc]
-                         [(h2x/calculate-interval-honeysql-form
-                           (mdb/db-type) :end_time :start_time)
-                          sort-direction]]
+       :duration       [[[:is :end_time nil] :asc]
+                        [(h2x/calculate-interval-honeysql-form
+                          (mdb/db-type) :end_time :start_time)
+                         sort-direction]]
        [[:start_time sort-direction]
-        [:end_time   sort-direction nulls-sort]])
+        [:end_time   sort-direction-with-nulls]])
      [:transform_run.id sort-direction])))
 
 (def ^:private RunFilters
@@ -429,6 +442,31 @@
                          [:in :transform_id transform-ids]
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
+
+(mu/defn latest-run-start-times-query
+  "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
+  `:last_start`, one row per `:transform_id`; optionally restricted to `transform-ids`. The single
+  definition of the \"most recent run\" anchor - embedded as the staleness method's join subquery
+  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by
+  [[last-start-times]] for the schedule-freshness check, so the two can't drift apart."
+  ([]
+   (latest-run-start-times-query nil))
+  ([transform-ids :- [:maybe [:or
+                              [:set ::lib.schema.id/transform]
+                              [:sequential ::lib.schema.id/transform]]]]
+   (cond-> ^:allow-subquery {:select   [:transform_id [[:max :start_time] :last_start]]
+                             :from     [:transform_run]
+                             :group-by [:transform_id]}
+     (seq transform-ids) (assoc :where [:in :transform_id transform-ids]))))
+
+(mu/defn last-start-times
+  "Rows of Transform ID and the latest `start_time` of its runs, any status, restricted to
+  `transform-ids` when non-empty - an empty collection means every Transform (see
+  [[latest-run-start-times-query]])."
+  [transform-ids :- [:maybe [:or
+                             [:set ::lib.schema.id/transform]
+                             [:sequential ::lib.schema.id/transform]]]]
+  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -532,13 +570,15 @@
 
 (defn- job-run-order-by
   [sort-column sort-direction]
-  (let [sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+  (let [sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (case (keyword sort-column)
       :start_time [[:start_time sort-direction]]
-      :end_time   [[:end_time sort-direction nulls-sort]]
+      :end_time   [[:end_time sort-direction-with-nulls]]
       [[:start_time sort-direction]
-       [:end_time   sort-direction nulls-sort]])))
+       [:end_time   sort-direction-with-nulls]])))
 
 (mu/defn job-runs
   "Up to `limit` (offset by `offset`) TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and
@@ -625,11 +665,13 @@
 ;;; ------------------------------------------ Root run listing ------------------------------------------
 
 ;; Each branch must project the same columns in the same order for the UNION ALL to line up;
-;; `[nil :col]` fills in columns a table lacks.
+;; `[nil :col]` fills in columns a table lacks. The `run_type`/`run_method` discriminators have to be real SQL
+;; literals rather than plain strings: a string compiles to a `?` parameter, and H2 cannot work out the type of
+;; a parameter in the select list of a derived table (`Unknown data type: "RUN_TYPE"`).
 
 (defn- job-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "job"] :run_type]
+  {:select [[(h2x/literal "job") :run_type]
             :id
             [:job_id :entity_id]
             [:job_name :entity_name]
@@ -650,13 +692,13 @@
 
 (defn- dag-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "dag"] :run_type]
+  {:select [[(h2x/literal "dag") :run_type]
             :id
             [:source_transform_id :entity_id]
             [:source_transform_name :entity_name]
             :direction
             :transform_count
-            [^:allow-raw-sql [:inline "manual"] :run_method]
+            [(h2x/literal "manual") :run_method]
             :status :is_active :start_time :end_time :message
             :user_id]
    :from   [:transform_dag_run]
@@ -670,7 +712,7 @@
 
 (defn- transform-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "transform"] :run_type]
+  {:select [[(h2x/literal "transform") :run_type]
             :id
             [:transform_id :entity_id]
             [:transform_name :entity_name]
@@ -713,15 +755,18 @@
 (defn- root-run-order-by
   "Standard `:order-by` clause for a paged root-run listing. Sorts by `sort-column` (`:start_time` or `:end_time`;
   anything else — including nil — falls back to ordering by start_time then end_time) in `sort-direction`
-  (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) always ordered last."
+  (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) ordered as the most recent: last
+  ascending, first descending."
   [sort-column sort-direction]
-  (let [sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+  (let [sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (case (keyword sort-column)
       :start_time [[:start_time sort-direction]]
-      :end_time   [[:end_time sort-direction nulls-sort]]
+      :end_time   [[:end_time sort-direction-with-nulls]]
       [[:start_time sort-direction]
-       [:end_time   sort-direction nulls-sort]])))
+       [:end_time   sort-direction-with-nulls]])))
 
 (mu/defn root-run-summaries-page
   "Up to `limit` (offset by `offset`) root-run summary rows -- see [[metabase.transforms.run-listing]] -- of `types`

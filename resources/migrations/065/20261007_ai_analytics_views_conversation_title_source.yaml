@@ -1,0 +1,64 @@
+## Name conversation-title calls in AI usage analytics, and keep them from deciding a conversation's source and model
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-07T12:00:00
+      author: andreis
+      comment: Updated view v_ai_usage_log v6 - name the conversation_title source
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v6/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v6/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v6/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v5/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v5/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v5/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v65.2026-10-07T12:00:01
+      author: andreis
+      comment: Updated view v_metabot_conversations v8 - take source and model from calls other than the title
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v8/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v8/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v8/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v7/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v7/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v7/h2-metabot_conversations.sql
+            relativeToChangelogFile: true

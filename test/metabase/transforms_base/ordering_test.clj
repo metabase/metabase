@@ -1,8 +1,6 @@
 (ns ^:mb/driver-tests metabase.transforms-base.ordering-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -11,9 +9,8 @@
    [metabase.transforms.execute :as transforms.execute]
    [toucan2.core :as t2]))
 
-(defn- default-schema-or-public [& [fallback-driver]]
-  (let [driver (or driver/*driver* fallback-driver)]
-    (or (and driver (driver.sql/default-schema driver (mt/db))) "public")))
+(defn- default-schema-or-public []
+  (or (:default_schema (mt/db)) "public"))
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))

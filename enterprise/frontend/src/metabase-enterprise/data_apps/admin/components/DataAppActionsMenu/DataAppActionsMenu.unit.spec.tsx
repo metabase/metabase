@@ -11,19 +11,16 @@ const setup = ({
   enabled = true,
   canRemove = false,
   resourceCollectionId = 9,
-  permissionGroupId = 9,
 }: {
   enabled?: boolean;
   canRemove?: boolean;
-  resourceCollectionId?: number | null;
-  permissionGroupId?: number | null;
+  resourceCollectionId?: number;
 } = {}) => {
   const app = createMockDataApp({
     name: "sales",
     display_name: "Sales",
     enabled,
     resource_collection_id: resourceCollectionId,
-    permission_group_id: permissionGroupId,
   });
   renderWithProviders(
     <>
@@ -52,40 +49,24 @@ describe("DataAppActionsMenu", () => {
     await openMenu();
 
     const menuItems = await screen.findAllByRole("menuitem");
-
     expect(menuItems).toHaveLength(3);
-    expect(menuItems[0]).toHaveTextContent("View resources");
-    expect(menuItems[0]).toHaveAttribute("href", "/collection/9");
-    expect(menuItems[1]).toHaveTextContent("Manage user access");
-    expect(menuItems[1]).toHaveAttribute(
+
+    const [viewResource, manageAccess, disable] = menuItems;
+
+    expect(viewResource).toHaveTextContent("View resources");
+    expect(viewResource).toHaveAttribute("href", "/collection/9");
+
+    expect(manageAccess).toHaveTextContent("Manage group access");
+    expect(manageAccess).toHaveAttribute(
       "href",
-      "/admin/settings/apps/sales/users",
+      "/admin/settings/apps/sales/groups",
     );
-    expect(menuItems[2]).toHaveTextContent("Disable");
-  });
 
-  it("does not show the collection link before an app has a collection", async () => {
-    setup({ resourceCollectionId: null });
-
-    await openMenu();
-
-    expect(
-      screen.queryByRole("menuitem", { name: "View resources" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not show the group link before an app has a permission group", async () => {
-    setup({ permissionGroupId: null });
-
-    await openMenu();
-
-    expect(
-      screen.queryByRole("menuitem", { name: "Manage user access" }),
-    ).not.toBeInTheDocument();
+    expect(disable).toHaveTextContent("Disable");
   });
 
   it("should show a toast when toggling enabled fails", async () => {
-    fetchMock.put("path:/api/apps/sales", 500);
+    fetchMock.put("path:/api/ee/apps/sales", 500);
     setup({ enabled: true });
 
     await openMenu();
@@ -99,7 +80,7 @@ describe("DataAppActionsMenu", () => {
   });
 
   it("should show a toast when removal fails", async () => {
-    fetchMock.delete("path:/api/apps/sales", 500);
+    fetchMock.delete("path:/api/ee/apps/sales", 500);
     setup({ canRemove: true });
 
     await openMenu();
@@ -116,7 +97,7 @@ describe("DataAppActionsMenu", () => {
   it("should show a loading state on the trigger while a delete is in flight", async () => {
     let finishDelete = () => {};
     fetchMock.delete(
-      "path:/api/apps/sales",
+      "path:/api/ee/apps/sales",
       () =>
         new Promise(
           (resolve) => (finishDelete = () => resolve({ status: 204 })),

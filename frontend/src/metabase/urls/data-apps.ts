@@ -20,8 +20,13 @@ export const DATA_APP_EMBED_PREFIX = `/embed/${DATA_APP_URL_SEGMENT}`;
  * its own CSP granting `'unsafe-eval'`, which is what lets the data-app document
  * itself drop that grant.
  */
-export const DATA_APP_REALM_HOST_URL = "/api/apps/sandbox-host";
+export const DATA_APP_REALM_HOST_URL = "/api/ee/apps/sandbox-host";
 
 export function dataApp(name: string) {
   return `${DATA_APP_ROOT_URL}/${encodeURIComponent(name)}`;
+}
+
+/** Admin page listing the data apps: `/admin/settings/apps`. */
+export function dataAppsSettings() {
+  return `/admin/settings/${DATA_APP_URL_SEGMENT}`;
 }

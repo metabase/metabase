@@ -9,7 +9,6 @@
              [me.flowthing.pp :as pp]
              [metabase.config.core :as config]
              [clojure.pprint :as pprint]
-             ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]
@@ -805,13 +804,12 @@
             pprint-to-str)
      :cljs pprint-to-str))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *profile-level*
   "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
   `profile` form or 1 for a form inside that."
   0)
 
-;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
   [[profile]]d form."

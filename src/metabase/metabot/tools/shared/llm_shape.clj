@@ -189,15 +189,17 @@
   (when s
     (str/replace s "|" "\\u007c")))
 
-(defn- truncate
-  "Cap `s` at `max-len` characters, appending an ellipsis when truncated.
+(defn truncate
+  "Cap `s` at `max-len` characters without splitting a surrogate pair, appending an ellipsis when truncated.
   Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
   Returns nil for nil input."
   [s max-len]
   (when s
     (let [s (str s)]
       (if (> (count s) max-len)
-        (str (subs s 0 max-len) "...")
+        (str (subs s 0 (cond-> max-len
+                         (Character/isHighSurrogate (.charAt s (int (dec max-len)))) dec))
+             "...")
         s))))
 
 (defn- database-type-or-unknown
@@ -423,19 +425,20 @@
         fqn))))
 
 (defn format-metric-dimensions-table
-  "Render a metric's queryable dimensions as a markdown table that names the **source table**
-  each dimension comes from and the exact **portable FK** to copy into a `field` clause.
+  "Render a metric's dimensions with their source tables and field references.
 
-  A metric's dimensions span its base table and every FK-reachable table, so a bare field list
-  is ambiguous: the LLM can't tell which table a name like `name` lives on, and duplicate names
-  across joined tables (e.g. several `campaign_id`/`id` columns) are indistinguishable. The
-  `Source table` and `Reference` columns remove that ambiguity."
+  A portable FK works on table and card stages and distinguishes columns with the same name on different tables.
+  Computed card columns have no portable FK and use their output machine name. Real database fields without a
+  portable FK get no reference; their bare names could resolve to the wrong column."
   [dims]
   (te/markdown-table
    (map (fn [d]
           (assoc d
                  :source    (dimension-source-table d)
-                 :reference (when (vector? (:portable_fk d)) (json/encode (:portable_fk d)))))
+                 :reference (cond
+                              (vector? (:portable_fk d)) (json/encode (:portable_fk d))
+                              ;; A string `:field_id` from `->result-column` is the computed column's output name.
+                              (string? (:field_id d)) (json/encode (:field_id d)))))
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :source "Source table" :reference "Reference (copy into a field clause)"}
@@ -483,15 +486,14 @@
           (format-join-required-dimensions-table dimensions)))))
 
 (defn metric->xml
-  "Format metric for LLM consumption.
-   Matches Python Metric.get_llm_representation exactly, except we additionally surface
-   `database_name`, `base_table_fully_qualified_name`, and `portable_entity_id` as tag
-   attributes — the three pieces of information the LLM needs to correctly use the metric
-   in `construct_notebook_query` (as `aggregation: [[metric, {}, <eid>]]` on top of the
-   metric's base table)."
+  "Format a metric as XML for the LLM.
+
+  Include its database name, portable entity ID, and the source required to use it in `construct_notebook_query`.
+  The source is identified by `base_table_fully_qualified_name` or `source_card_portable_entity_id`.
+  When no source is usable, include `source_unavailable` instead."
   [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
-           default_time_dimension_field database_name base_table_portable_fk
-           portable_entity_id]}]
+           default_time_dimension_field_name database_name base_table_portable_fk
+           portable_entity_id source_card_name source_card_portable_entity_id source_unavailable]}]
   (render-llm-template
    :metric
    {:metric_id                     (str id)
@@ -503,9 +505,12 @@
                                               (= 3 (count base_table_portable_fk)))
                                      (let [[_db schema table] base_table_portable_fk]
                                        (fully-qualified-name schema table)))
+    :metric_source_unavailable     (boolean source_unavailable)
+    :metric_source_card_entity_id  source_card_portable_entity_id
+    :metric_source_card_name       source_card_name
     :metric_portable_entity_id     portable_entity_id
     :metric_collection_xml         (when collection (collection->xml collection))
-    :metric_default_time_dimension (:name default_time_dimension_field)
+    :metric_default_time_dimension default_time_dimension_field_name
     :metric_dimensions_table       (when (seq queryable-dimensions)
                                      (format-metric-dimensions-table queryable-dimensions))
     :metric_join_required_xml      (when (seq join-required-dimensions)
@@ -720,10 +725,35 @@
     ;; Default to viz card
     (viz-card->xml card)))
 
+(def ^:private max-dashboard-filters
+  "Cap on the filters listed for a dashboard."
+  50)
+
+(def ^:private max-dashboard-filter-name-length
+  "Cap on a dashboard filter's name."
+  100)
+
+(defn- dashboard-filters->xml
+  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
+  [[max-dashboard-filters]] of them and says how many were left out."
+  [parameters]
+  (when (seq parameters)
+    (let [total (count parameters)]
+      (str "  <filters>\n"
+           (str/join (for [param (take max-dashboard-filters parameters)]
+                       (str "    <filter id=\"" (escape-xml (:id param))
+                            "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
+                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+           (when (> total max-dashboard-filters)
+             (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
+                  (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
+           "  </filters>\n"))))
+
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly."
-  [{:keys [id name description verified collection dashcards]}]
+   Matches Python Dashboard.llm_representation exactly, except we additionally surface the
+   dashboard's filters."
+  [{:keys [id name description verified collection parameters dashcards]}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -750,6 +780,7 @@
       :dashboard_name name
       :dashboard_description description
       :dashboard_collection_xml (when collection (collection->xml collection))
+      :dashboard_filters_xml (dashboard-filters->xml parameters)
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
@@ -831,14 +862,12 @@
    human-readable name the LLM needs as the first slot of every portable FK in
    `construct_notebook_query`.
 
-   For metric results we additionally surface `base_table_fully_qualified_name` (the
-   `schema.table` of the table the metric aggregates). Combined with `database_name` this
-   gives the LLM the full portable FK `[database_name, schema, table]` it must put in
-   `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `read_resource` round-trip."
+   Metric results also identify the source to use with `[metric, {}, <portable_entity_id>]` in an aggregation.
+   `base_table_fully_qualified_name` and `database_name` identify a table source; `source_card_portable_entity_id`
+   identifies a card source. `source_unavailable` means that no usable source can be offered."
   [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
-           base_table_portable_fk]}]
+           base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]}]
   (let [fqn (cond
               (#{"table" :table} type)
               (when name (fully-qualified-name database_schema name))
@@ -881,7 +910,10 @@
       :search_base_table_fqn (when (and (vector? base_table_portable_fk)
                                         (= 3 (count base_table_portable_fk)))
                                (let [[_db schema table] base_table_portable_fk]
-                                 (fully-qualified-name schema table)))})))
+                                 (fully-qualified-name schema table)))
+      :search_source_unavailable (boolean source_unavailable)
+      :search_source_card_entity_id source_card_portable_entity_id
+      :search_source_card_name source_card_name})))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."
@@ -892,15 +924,19 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation exactly.
-   Note: Tables are used with |safe in the template, so values must be escaped."
-  [{:keys [field_values statistics]}]
+   Matches Python FieldValuesMetadata.llm_representation, with notes when only some values are listed
+   or when the database couldn't be sampled for statistics.
+   Tables use |safe in the template, so values must be escaped."
+  [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
   (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
                                {:value "Value"}
                                {:value-fn escape-value}))
+        shown               (count field_values)
+        partial?            (and field_values_total
+                                 (or has_more_values (< shown field_values_total)))
 
         stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
         stats-table (when (seq stats-map)
@@ -911,7 +947,11 @@
     (render-llm-template
      :field_values_metadata
      {:sample_values_table sample-values-table
-      :stats_table         stats-table})))
+      :sample_values_shown shown
+      :sample_values_total (when partial? field_values_total)
+      :sample_values_more  has_more_values
+      :stats_table         stats-table
+      :stats_unavailable   statistics_unavailable})))
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
@@ -1048,7 +1088,7 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Fetch " next-page-uri " for the next page — copy it exactly, do not "
+                         "Fetch " (escape-xml next-page-uri) " for the next page. Copy it exactly; do not "
                          "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)

@@ -880,6 +880,37 @@
                query
                {"#133-bh-population-model" "#1206-bh-population-model"}))))))
 
+(deftest ^:parallel rename-template-tags-test
+  (testing "a tag map and its text are renamed the way a query's native stage is"
+    (let [renames {"#133-bh-population-model" "#1206-bh-population-model"}]
+      (is (= "select * from {{#1206-bh-population-model}} where {{ state }}"
+             (lib.native/rename-template-tags-in-text
+              "select * from {{ #133-bh-population-model }} where {{ state }}" renames)))
+      (is (=? {"#1206-bh-population-model" {:name         "#1206-bh-population-model"
+                                            :display-name "#1206 Bh Population Model"
+                                            :card-id      1206}
+               "state"                     {:name "state" :display-name "State"}}
+              (lib.native/rename-template-tags
+               {"#133-bh-population-model" {:type         :card
+                                            :name         "#133-bh-population-model"
+                                            :display-name "#133 Bh Population Model"
+                                            :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                            :card-id      1206}
+                "state"                    {:type         :text
+                                            :name         "state"
+                                            :display-name "State"
+                                            :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"}}
+               renames))))))
+
+(deftest ^:parallel rename-template-tags-in-text-one-pass-test
+  (testing "a new name that is another tag's old name is not renamed again"
+    (is (= "{{#2}} {{#1-orders}} {{#2}}"
+           (lib.native/rename-template-tags-in-text "{{ #1 }} {{#2-orders}} {{#1}}" {"#1" "#2", "#2-orders" "#1-orders"})))
+    (is (= "{{#1}} {{#2}}"
+           (lib.native/rename-template-tags-in-text "{{#2}} {{#1}}" {"#1" "#2", "#2" "#1"})))
+    (is (= "{{#7}} {{#9}} {{#70}}"
+           (lib.native/rename-template-tags-in-text "{{#ent}} {{#7}} {{#70}}" {"#ent" "#7", "#7" "#9"})))))
+
 (deftest ^:parallel replace-template-tag-names-noop-test
   (let [query (card-tag-query "select * from {{#133-some-old-slug}}"
                               {:type         :card

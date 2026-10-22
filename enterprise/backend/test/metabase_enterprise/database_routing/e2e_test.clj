@@ -329,7 +329,11 @@
                            response)))
                   (let [response (mt/user-http-request :lucky :get 200 (str "field/" field-id "/values"))]
                     (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
-                           response))))))))))))
+                           response)))
+                  (testing "a routed user gets no values while database routing is unavailable"
+                    (mt/with-premium-features #{}
+                      (is (= [] (:values (mt/user-http-request :rasta :get 200
+                                                               (str "field/" field-id "/values"))))))))))))))))
 
 (defmulti router-dataset-name
   "Name for router dataset"
@@ -339,7 +343,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk :oracle]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -350,7 +354,7 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk :oracle]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti router-dataset-details

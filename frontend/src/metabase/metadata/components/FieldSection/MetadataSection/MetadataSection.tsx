@@ -23,6 +23,7 @@ type MetadataSectionBaseProps = {
   field: Field;
   table: Table;
   getFieldHref: (fieldId: FieldId) => string;
+  disabled?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
@@ -30,13 +31,15 @@ const MetadataSectionBase = ({
   field,
   table,
   getFieldHref,
+  disabled,
   onTrackMetadataChange,
 }: MetadataSectionBaseProps) => {
   const id = getRawTableFieldId(field);
-  const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
-    id: table.db_id,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  });
+  const { data: idFields = [], isLoading: isLoadingIdFields } =
+    useListDatabaseIdFieldsQuery({
+      id: table.db_id,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    });
   const [updateField] = useUpdateFieldMutation();
   const semanticTypeError = useMemo(() => {
     return getSemanticTypeError(table, field, getFieldHref);
@@ -76,7 +79,9 @@ const MetadataSectionBase = ({
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
+        selectProps={{ disabled }}
         semanticTypeError={semanticTypeError}
+        isLoadingIdFields={isLoadingIdFields}
         onChange={handleChange}
       />
     </TitledSection>

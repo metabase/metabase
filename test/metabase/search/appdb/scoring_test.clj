@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.search.appdb.core :as search.appdb.core]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
@@ -380,6 +381,47 @@
               (is (= [false false true true true true true]
                      (map in-library? (with-weights {:library -1} (search-results* "card"))))))))))))
 
+(deftest measure-segment-library-test
+  ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
+  (search.tu/with-temp-index-table
+    (testing "measures and segments on a published Library table inherit its library boost and curated status"
+      (collections.tu/with-library [{data :data}]
+        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
+                       :model/Table   plain-tbl {:name "plain_tbl"}
+                       :model/Measure _ {:name "foo measure lib"   :table_id (:id lib-tbl)}
+                       :model/Measure _ {:name "foo measure plain" :table_id (:id plain-tbl)}
+                       :model/Segment _ {:name "foo segment lib"   :table_id (:id lib-tbl)}
+                       :model/Segment _ {:name "foo segment plain" :table_id (:id plain-tbl)}]
+          (let [results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
+            (is (=? [{:name #".* lib",   :curated true}
+                     {:name #".* lib",   :curated true}
+                     {:name #".* plain", :curated false}
+                     {:name #".* plain", :curated false}]
+                    results))
+            (testing "the ingestion-only table collection columns stay out of the response"
+              (is (not-any? #(contains? % :table_collection_id) results)))
+            (testing "the curated filter keeps the library ones"
+              (is (= [true true]
+                     (map #(str/ends-with? (:name %) " lib")
+                          (search-results** "foo" {:context :metabot :models #{"measure" "segment"} :curated true})))))))))))
+
+(deftest measure-segment-library-user-settings-test
+  ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
+  (search.tu/with-temp-index-table
+    (testing "measures and segments follow a table published and unpublished through its user settings"
+      (collections.tu/with-library [{data :data}]
+        (mt/with-temp [:model/Table   {table-id :id} {:name "tbl"}
+                       :model/Measure _ {:name "foo measure" :table_id table-id}
+                       :model/Segment _ {:name "foo segment" :table_id table-id}]
+          (let [curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
+            (is (= [[false false] [true true] [false false]]
+                   [(curated)
+                    (do (t2/insert! :model/TableUserSettings
+                                    {:table_id table-id :is_published true :collection_id (:id data)})
+                        (curated))
+                    (do (t2/update! :model/TableUserSettings table-id {:is_published false :collection_id nil})
+                        (curated))]))))))))
+
 (deftest ^:parallel data-layer-test
   (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
     (with-index-contents
@@ -411,3 +453,114 @@
                                  :data-layer/hidden   0.03}
                     (search-results* "foo table"))
                   (map second)))))))
+
+(deftest metabot-recency-weights-test
+  (testing "with Metabot weights, recency does not lift a result into a higher tier"
+    (let [user-id  (mt/user->id :crowberto)
+          now      (Instant/now)
+          long-ago (.minus now 365 ChronoUnit/DAYS)
+          viewed   (fn [model model-id] {:model model :model_id model-id :user_id user-id :timestamp now})
+          ranked   (fn [search-string]
+                     (map second (search-results* search-string :context :metabot :current-user-id user-id)))]
+      ;; Create each index table outside `with-temp`'s transaction; see [[user-recency-test]].
+      (testing "a recent model stays below a stale question and metric"
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card        {model-id :id} {}
+                         :model/Card        {question-id :id} {}
+                         :model/Card        {metric-id :id} {}
+                         :model/RecentViews _ (viewed "card" model-id)]
+            (with-index-contents
+              [{:model "dataset" :id model-id    :name "foo model"    :last_viewed_at now}
+               {:model "card"    :id question-id :name "foo question" :last_viewed_at long-ago}
+               {:model "metric"  :id metric-id   :name "foo metric"   :last_viewed_at long-ago}]
+              (is (= [metric-id question-id model-id] (ranked "foo")))))))
+      (testing "a recent final-layer table stays below a stale metric"
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Table       {table-id :id} {}
+                         :model/Card        {metric-id :id} {}
+                         :model/RecentViews _ (viewed "table" table-id)]
+            (with-index-contents
+              [{:model "table"  :id table-id  :name "foo table"  :last_viewed_at now :data_layer "final"}
+               {:model "metric" :id metric-id :name "foo metric" :last_viewed_at long-ago}]
+              (is (= [metric-id table-id] (ranked "foo")))))))
+      (testing "a recent model stays below a stale table without a data layer"
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card        {model-id :id} {}
+                         :model/Table       {table-id :id} {}
+                         :model/RecentViews _ (viewed "card" model-id)]
+            (with-index-contents
+              [{:model "dataset" :id model-id :name "foo model" :last_viewed_at now}
+               {:model "table"   :id table-id :name "foo table" :last_viewed_at long-ago}]
+              (is (= [table-id model-id] (ranked "foo"))))))))))
+
+(deftest ^:parallel metabot-model-weights-test
+  (testing "with Metabot weights, a metric outranks a final-layer table"
+    (with-index-contents
+      [{:model "table"  :id 1 :name "foo table"  :data_layer "final"}
+       {:model "metric" :id 2 :name "foo metric"}]
+      (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))
+  (testing "with Metabot weights, a metric outranks a heavily viewed final-layer table"
+    (with-index-contents
+      [{:model "table"  :id 1 :name "foo table"  :data_layer "final" :view_count 1000}
+       {:model "metric" :id 2 :name "foo metric" :view_count 0}]
+      (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))
+  (testing "with Metabot weights, a table outranks a model even without a data-layer score"
+    (with-index-contents
+      [{:model "dataset" :id 1 :name "foo model"}
+       {:model "table"   :id 2 :name "foo table"}]
+      (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))
+  (testing "with Metabot weights, measures and segments rank with metrics, above questions and models"
+    (with-index-contents
+      [{:model "dataset" :id 1 :name "foo model"}
+       {:model "card"    :id 2 :name "foo question"}
+       {:model "measure" :id 3 :name "foo measure"}
+       {:model "segment" :id 4 :name "foo segment"}]
+      (let [[semantic-layer others] (split-at 2 (map second (search-results* "foo" :context :metabot)))]
+        (is (= [#{3 4} [2 1]]
+               [(set semantic-layer) others])))))
+  (testing "with Metabot weights, collections and actions stay below questions"
+    (with-index-contents
+      [{:model "collection" :id 1 :name "foo collection"}
+       {:model "action"     :id 2 :name "foo action"}
+       {:model "card"       :id 3 :name "foo question"}]
+      (is (= 3 (second (first (search-results* "foo" :context :metabot))))))))
+
+(deftest ^:parallel metabot-relevance-crosses-tier-test
+  (with-index-contents
+    [{:model "table"  :id 1 :name "foo orders" :data_layer "final"}
+     {:model "metric" :id 2 :name "bar metric" :description "mentions foo"}]
+    (case (mdb/db-type)
+      :postgres
+      (testing "with Metabot weights, a final-layer table whose name matches outranks a metric that only mentions the term"
+        (is (= [1 2] (map second (search-results* "foo" :context :metabot)))))
+      :h2
+      ;; TODO text ranking (probably in-memory
+      nil)))
+
+(deftest metabot-library-weight-test
+  (testing "with Metabot weights, library membership outranks type weights"
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
+        (with-index-contents
+          [{:model "metric"  :id 1 :name "foo metric"}
+           {:model               "dataset"
+            :id                  2
+            :name                "foo model"
+            :collection_id       (:id lib)
+            :collection_location (:location lib)
+            :collection_type     "library"}]
+          (is (= [2 1] (map second (search-results* "foo" :context :metabot)))))))))
+
+(deftest metabot-exact-match-test
+  (testing "with Metabot weights, an exact name match outranks a library metric that only contains the term"
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
+        (with-index-contents
+          [{:model "dataset" :id 1 :name "foo"}
+           {:model               "metric"
+            :id                  2
+            :name                "foo metric"
+            :collection_id       (:id lib)
+            :collection_location (:location lib)
+            :collection_type     "library"}]
+          (is (= [1 2] (map second (search-results* "foo" :context :metabot)))))))))

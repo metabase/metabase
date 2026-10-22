@@ -132,9 +132,13 @@
    :has_sample_data                      (analytics.db/sample-database-exists?)
    :enable_embedding                     (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
-   :enable_embedding_simple              (setting/get :enable-embedding-simple)
+   ;; Modular embedding and guest embeds are one setting since 0.65.0. The two field names are kept so existing
+   ;; reports keep resolving; they now both report that one flag.
+   :enable_embedding_simple              (setting/get :enable-embedding-modular)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
-   :enable_embedding_static              (setting/get :enable-embedding-static)
+   :enable_embedding_sidecar             (setting/get :enable-embedding-sidecar)
+   :enable_embedding_static              (setting/get :enable-embedding-modular)
+   :enable_embedding_modular             (setting/get :enable-embedding-modular)
    :embedding_app_origin_set             (boolean
                                           (setting/get :embedding-app-origin))
    ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
@@ -579,6 +583,17 @@
     {:transforms               (analytics.db/transform-count)
      :transform_runs_last_24h  (analytics.db/transform-run-count-since one-day-ago)}))
 
+(defenterprise remote-sync-stats
+  "Counts of the content a full Git sync export serializes, by model and in total, empty without Git sync."
+  metabase-enterprise.remote-sync.stats
+  []
+  {})
+
+(defn- remote-sync-metrics
+  "Returns Git-synced content counts for the Snowplow stats ping."
+  []
+  (update-keys (remote-sync-stats) u/->snake_case_en))
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
@@ -590,9 +605,9 @@
       :new_users_last_24h              (analytics.db/new-active-user-count-since one-day-ago)
       :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
       :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
-      :entity_id_translations_last_24h total-translation-count
-      :scim_users_last_24h             (analytics.db/new-scim-user-count-since one-day-ago)}
-     (transform-metrics))))
+      :entity_id_translations_last_24h total-translation-count}
+     (transform-metrics)
+     (remote-sync-metrics))))
 
 (def ^:private string-keyed-int-histogram
   [:map-of :string :int])
@@ -635,7 +650,9 @@
    [:enable_embedding_sdk :boolean]
    [:enable_embedding_simple :boolean]
    [:enable_embedding_interactive :boolean]
+   [:enable_embedding_sidecar :boolean]
    [:enable_embedding_static :boolean]
+   [:enable_embedding_modular :boolean]
    [:embedding_app_origin_set :boolean]
    [:embedding_app_origin_sdk_set :boolean]
    [:embedding_app_origin_interactive_set [:maybe :string]]
@@ -745,7 +762,25 @@
                    [:query_executions_last_24h :int]
                    [:entity_id_translations_last_24h :int]
                    [:transforms :int]
-                   [:transform_runs_last_24h :int]]]
+                   [:transform_runs_last_24h :int]
+                   [:remote_sync_action_count {:optional true} :int]
+                   [:remote_sync_card_count {:optional true} :int]
+                   [:remote_sync_content_count {:optional true} :int]
+                   [:remote_sync_dashboard_count {:optional true} :int]
+                   [:remote_sync_data_app_count {:optional true} :int]
+                   [:remote_sync_dimension_count {:optional true} :int]
+                   [:remote_sync_document_count {:optional true} :int]
+                   [:remote_sync_field_user_settings_count {:optional true} :int]
+                   [:remote_sync_glossary_entry_count {:optional true} :int]
+                   [:remote_sync_measure_count {:optional true} :int]
+                   [:remote_sync_metric_count {:optional true} :int]
+                   [:remote_sync_model_count {:optional true} :int]
+                   [:remote_sync_question_count {:optional true} :int]
+                   [:remote_sync_segment_count {:optional true} :int]
+                   [:remote_sync_snippet_count {:optional true} :int]
+                   [:remote_sync_table_user_settings_count {:optional true} :int]
+                   [:remote_sync_timeline_count {:optional true} :int]
+                   [:remote_sync_transform_count {:optional true} :int]]]
   (mapv
    (fn [[k v tags]]
      (assert (every? string? tags) "Tags must be strings in snowplow metrics.")
@@ -782,6 +817,24 @@
     [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
     [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
     [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
+    [:remote_sync_action_count        (:remote_sync_action_count metric-info 0)                       #{"remote_sync"}]
+    [:remote_sync_card_count          (:remote_sync_card_count metric-info 0)                         #{"remote_sync"}]
+    [:remote_sync_content_count       (:remote_sync_content_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_dashboard_count     (:remote_sync_dashboard_count metric-info 0)                    #{"remote_sync"}]
+    [:remote_sync_data_app_count      (:remote_sync_data_app_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_dimension_count     (:remote_sync_dimension_count metric-info 0)                    #{"remote_sync"}]
+    [:remote_sync_document_count      (:remote_sync_document_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_field_user_settings_count (:remote_sync_field_user_settings_count metric-info 0)    #{"remote_sync"}]
+    [:remote_sync_glossary_entry_count (:remote_sync_glossary_entry_count metric-info 0)              #{"remote_sync"}]
+    [:remote_sync_measure_count       (:remote_sync_measure_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_metric_count        (:remote_sync_metric_count metric-info 0)                       #{"remote_sync"}]
+    [:remote_sync_model_count         (:remote_sync_model_count metric-info 0)                        #{"remote_sync"}]
+    [:remote_sync_question_count      (:remote_sync_question_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_segment_count       (:remote_sync_segment_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_snippet_count       (:remote_sync_snippet_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_table_user_settings_count (:remote_sync_table_user_settings_count metric-info 0)    #{"remote_sync"}]
+    [:remote_sync_timeline_count      (:remote_sync_timeline_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_transform_count     (:remote_sync_transform_count metric-info 0)                    #{"remote_sync"}]
     [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
     [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
     [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
@@ -867,7 +920,7 @@
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (setting/get :enable-embedding-static)
+                (setting/get :enable-embedding-modular)
                 (or
                  (analytics.db/embedded-dashboard-exists?)
                  (analytics.db/embedded-card-exists?)))}
@@ -948,6 +1001,9 @@
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
+   {:name      :sidecar-embedding
+    :available true
+    :enabled   (setting/get :enable-embedding-sidecar)}
    {:name      :tenants
     :enabled   (setting/get :use-tenants)
     :available (premium-features/enable-tenants?)}

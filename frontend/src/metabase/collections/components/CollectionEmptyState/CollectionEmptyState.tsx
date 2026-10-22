@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { JSX, PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
@@ -87,7 +87,8 @@ const DefaultCollectionEmptyState = ({
         <NewItemMenu
           trigger={
             <Button
-              variant="outline"
+              variant="filled"
+              size="lg"
               leftSection={<Icon name="add" />}
               w="12.5rem"
               onClick={() => trackCollectionNewButtonClicked()}

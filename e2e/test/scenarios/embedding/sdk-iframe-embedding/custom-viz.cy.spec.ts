@@ -39,7 +39,7 @@ describe(
       cy.signOut();
     });
 
-    it("renders the custom visualization when allowedCustomVisualizations includes the display", () => {
+    it("renders the custom visualization when allowedCustomVisualizations includes the display, and falls back to the default display when the allowlist is not set", () => {
       cy.log(
         "EAJS has no eval-permissive page CSP, so the plugin sandbox loads the hosted donor document",
       );
@@ -48,7 +48,7 @@ describe(
       );
 
       cy.get<CardId>("@questionId").then((questionId) => {
-        const frame = H.loadSdkIframeEmbedTestPage({
+        const allowlistedFrame = H.loadSdkIframeEmbedTestPage({
           elements: [
             {
               component: "metabase-question",
@@ -65,17 +65,14 @@ describe(
         cy.log("The sandbox loads the donor document as its iframe src");
         cy.wait("@getSandboxHost").its("response.statusCode").should("eq", 200);
 
-        frame.within(() => {
+        allowlistedFrame.within(() => {
           cy.findByText("Custom viz rendered successfully").should(
             "be.visible",
           );
         });
-      });
-    });
 
-    it("falls back to the default display when the allowlist is not set", () => {
-      cy.get<CardId>("@questionId").then((questionId) => {
-        const frame = H.loadSdkIframeEmbedTestPage({
+        cy.log("Without the allowlist, the question uses its default display");
+        const defaultFrame = H.loadSdkIframeEmbedTestPage({
           elements: [
             {
               component: "metabase-question",
@@ -86,7 +83,7 @@ describe(
 
         cy.wait("@getCardQuery");
 
-        frame.within(() => {
+        defaultFrame.within(() => {
           // The count question renders with its sensible default (a scalar)
           // when the custom viz is not allowlisted.
           cy.findByTestId("scalar-container").should("be.visible");

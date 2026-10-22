@@ -1,4 +1,5 @@
 import type { State } from "metabase/redux/store";
+import { getSubpathSafeUrl } from "metabase/urls/utils";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -50,4 +51,22 @@ export const getSetting = <T extends EnterpriseSettingKey>(
 export const getTokenFeature = (state: State, feature: TokenFeature) => {
   const tokenFeatures = getSetting(state, "token-features");
   return tokenFeatures[feature];
+};
+
+type CustomIllustrationSettingKey =
+  | "login-page-illustration-custom"
+  | "landing-page-illustration-custom"
+  | "no-data-illustration-custom"
+  | "no-object-illustration-custom";
+
+const IMAGE_URL_PREFIX = "api/session/illustration/";
+
+// Prefix the relative URLs of images served by `GET /api/session/illustration/:key`
+// with the basename, so they also work in the embedding SDK and on subpaths.
+export const getCustomIllustrationUrl = (
+  state: State,
+  key: CustomIllustrationSettingKey,
+) => {
+  const value = getSetting(state, key);
+  return value?.startsWith(IMAGE_URL_PREFIX) ? getSubpathSafeUrl(value) : value;
 };

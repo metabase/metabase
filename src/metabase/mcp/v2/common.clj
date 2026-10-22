@@ -14,7 +14,6 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -51,12 +50,14 @@
    `text` self-sufficient: everything the model needs to reason or make its next call. Pass
    `structured` only when a concrete programmatic consumer reads it (e.g. an MCP Apps iframe),
    and make it a faithful mirror of the text — never a subset, never the sole home of anything
-   the model needs. A message or string `text` is [[message/render]]ed; anything else is JSON-encoded."
+   the model needs. Keep untrusted instance content (names, descriptions, rows) out of `structured`: it reaches
+   the model with no data boundary and, once decoded, with invisible characters raw. A message or string `text`
+   is [[message/render]]ed; anything else renders as [[message/data]]."
   ([text] (success-content text nil))
   ([text structured]
-   (cond-> {:content [{:type "text" :text (if (or (message/message? text) (string? text))
-                                            (message/render text)
-                                            (json/encode text))}]}
+   (cond-> {:content [{:type "text" :text (message/render (if (or (message/message? text) (string? text))
+                                                            text
+                                                            (message/data text)))}]}
      (some? structured) (assoc :structuredContent structured))))
 
 (def mcp-apps-meta-key
@@ -157,30 +158,50 @@
   [items]
   (joined-message #(message/msg ["%s; %s"] %1 %2) items))
 
-(defn humanize-detail
-  "Flatten a [[malli.error/humanize]] explanation into a one-line message of `path: expectation`, with the paths
-   and expectations cleaned.
+(defn- humanized-message
+  "Render humanized `errors` for [[humanize-detail]] and [[mu-humanize-detail]].
 
-   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
-   multi-element collection names which element it is in; a run of plain strings is a single
-   value's alternative messages and joins without positions."
-  [errors]
+   Treat a vector of strings as messages for one value when `vector-of-messages?` is true, or as errors
+   at separate positions when false."
+  [errors vector-of-messages?]
   (cond
     (map? errors)
-    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k) (humanize-detail v)))
+    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k)
+                                                          (humanized-message v vector-of-messages?)))
                                  errors))
 
-    (and (sequential? errors) (every? string? errors))
+    (and vector-of-messages? (sequential? errors) (every? string? errors))
     (list-message errors)
 
-    (sequential? errors)
+    (vector? errors)
     (semicolon-list-message (keep-indexed (fn [i v]
                                             (when (some? v)
-                                              (message/msg ["[%d] %s"] i (humanize-detail v))))
+                                              (message/msg ["[%d] %s"] i (humanized-message v vector-of-messages?))))
                                           errors))
+
+    (sequential? errors)
+    (list-message (map #(humanized-message % vector-of-messages?) errors))
 
     :else
     (message/msg ["%s"] (str errors))))
+
+(defn humanize-detail
+  "Format a [[malli.error/humanize]] explanation as one line.
+
+   Messages use `path: expectation`, with paths and expectations cleaned. Collection positions are labelled `[i]`,
+   and entries without errors are omitted. A sequence of strings holds alternative messages for one value
+   and has no position labels. Use [[mu-humanize-detail]] for [[metabase.util.malli.humanize/humanize]] output."
+  [errors]
+  (humanized-message errors true))
+
+(defn mu-humanize-detail
+  "Format a [[metabase.util.malli.humanize/humanize]] explanation as one line.
+
+   Vectors hold errors by position, even when their elements are strings. Lists hold several errors for one value,
+   such as failed branches of an `:or`, and join without adding position labels. The query pipeline uses this format
+   for structural validation errors. Use [[humanize-detail]] for Malli's own output."
+  [errors]
+  (humanized-message errors false))
 
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
@@ -218,7 +239,6 @@
    :model/Pulse              (message/raw "Pulse")
    :model/Segment            (message/raw "Segment")
    :model/Table              (message/raw "Table")
-   :model/Transform          (message/raw "Transform")
    :alert                    (message/raw "alert")
    :collection               (message/raw "collection")
    :subscription             (message/raw "subscription")})
@@ -505,7 +525,7 @@
                        (when (and (= 0 total) (not (pos? (or offset 0)))) empty-hint))
                    (truncation-line opts))]
     (success-content (if line
-                       (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                       (message/msg ["%s" "%s"] (message/data envelope) line)
                        envelope))))
 
 ;;; ------------------------------------------------- Frontend URLs ------------------------------------------------

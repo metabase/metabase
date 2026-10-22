@@ -11,7 +11,7 @@ describe("scenarios > questions > entity id support", () => {
     cy.signInAsAdmin();
   });
 
-  it("/question/entity/${entity_id} should redirect to /question/${id}", () => {
+  it("/question/entity/${entity_id} and /question/entity/${entity_id}/notebook should redirect to /question/${id} and /question/${id}/notebook", () => {
     cy.visit(`/question/entity/${ORDERS_QUESTION_ENTITY_ID}`);
     cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}`);
 
@@ -19,9 +19,7 @@ describe("scenarios > questions > entity id support", () => {
     H.main()
       .findByTestId("saved-question-header-title")
       .should("have.text", "Orders");
-  });
 
-  it("/question/entity/${entity_id}/notebook should redirect to /question/${id}/notebook", () => {
     cy.visit(`/question/entity/${ORDERS_QUESTION_ENTITY_ID}/notebook`);
     cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}/notebook`);
 

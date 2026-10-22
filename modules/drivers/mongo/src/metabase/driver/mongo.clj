@@ -239,6 +239,7 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
   [collection-name :- :string
@@ -523,6 +524,8 @@
                               :metadata/key-constraints             false
                               :native-parameter-card-reference      false
                               :native-parameters                    true
+                              :native-pivot-tables                  true
+                              :native-pivot-tables/window-functions true
                               :native-requires-specified-collection true
                               :nested-fields                        true
                               :nested-queries                       true

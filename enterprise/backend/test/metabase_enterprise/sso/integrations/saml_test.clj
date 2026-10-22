@@ -534,7 +534,7 @@
                                                  {:request-options {:redirect-strategy :none}}
                                                  :redirect redirect-url)]
                  (testing (format "\n%s should not redirect" redirect-url)
-                   (is (= "Invalid redirect URL" (:message get-response)))))))))))))
+                   (is (= "Invalid redirect URL" get-response))))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
@@ -794,13 +794,15 @@
                                                        default-redirect-uri)]
             (client/client-real-response :post 401 "/auth/sso" req-options)))))))
 
-(deftest logout-should-delete-session-test-slo-enabled
-  (testing "Successful SAML SLO logouts should delete the user's session, when saml-slo-enabled."
+(deftest logout-should-end-session-slo-enabled-test
+  (testing "Successful SAML SLO logouts should end the user's session, when saml-slo-enabled."
     (with-other-sso-types-disabled!
       (let [session-key (session/generate-session-key)
             session-key-hashed (session/hash-session-key session-key)]
         (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                       :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
+                       :model/Session {session-id :id} {:user_id    (:id user)
+                                                        :id         (session/generate-session-id)
+                                                        :key_hashed session-key-hashed}]
           (with-saml-default-setup!
             (mt/with-temporary-setting-values [saml-slo-enabled true
                                                saml-identity-provider-issuer "http://localhost:9090/realms/master"
@@ -814,11 +816,12 @@
                     response    (client/client-real-response :post 302 "/auth/sso/handle_slo" req-options)]
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
-                (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))
-                    "After a successful log-out, the session is deleted")))))))))
+                (is (=? {:end_reason "sso-logout", :ended_by_user_id (:id user), :ended_at some?, :key_hashed nil}
+                        (t2/select-one :model/Session :id session-id))
+                    "After a successful log-out, the session is ended and its key destroyed")))))))))
 
-(deftest logout-should-delete-session-test-slo-disabled
-  (testing "Successful SAML SLO logouts should not delete the user's session, when not saml-slo-enabled."
+(deftest logout-should-end-session-slo-disabled-test
+  (testing "Successful SAML SLO logouts should not end the user's session, when not saml-slo-enabled."
     (with-other-sso-types-disabled!
       (mt/with-temporary-setting-values [saml-slo-enabled false]
         (let [session-key (session/generate-session-key)
@@ -836,20 +839,24 @@
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
                 (is (t2/exists? :model/Session :key_hashed session-key-hashed)
-                    "After a successful log-out, the session is deleted")))))))))
+                    "Without SLO the handler leaves the session live")))))))))
 
-(deftest logout-should-delete-session-when-idp-slo-conf-missing-test
-  (testing "Missing SAML SLO config logouts should still delete the user's session."
+(deftest logout-should-end-session-when-idp-slo-conf-missing-test
+  (testing "Missing SAML SLO config logouts should still end the user's session."
     (with-other-sso-types-disabled!
       (mt/with-temporary-setting-values [saml-slo-enabled false]
         (let [session-key (session/generate-session-key)
               session-key-hashed (session/hash-session-key session-key)]
           (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                         :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
+                         :model/Session {session-id :id} {:user_id    (:id user)
+                                                          :id         (session/generate-session-id)
+                                                          :key_hashed session-key-hashed}]
             (is (t2/exists? :model/Session :key_hashed session-key-hashed))
             (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-key)]
               (client/client :post "/auth/sso/logout" req-options)
-              (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))))))))))
+              (is (=? {:end_reason "sso-logout", :ended_by_user_id (:id user), :ended_at some?, :key_hashed nil}
+                      (t2/select-one :model/Session :id session-id))
+                  "the session is ended, attributed to the user, and its key destroyed"))))))))
 
 (deftest saml-embedding-sdk-integration-returns-idp-url-tests
   (testing "should return IdP URL and method info when embedding SDK header is present"
@@ -1119,30 +1126,31 @@
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true
                                            saml-attribute-tenant "tenant"]
-          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
-                                                        :name "Tenant McTenantson"
-                                                        :is_active false}
+          (mt/with-temp [:model/Tenant {tenant-id :id
+                                        collection-id :tenant_collection_id} {:slug "tenant-mctenantson"
+                                                                              :name "Tenant McTenantson"}
                          :model/User {existing-email :email} {:tenant_id tenant-id}]
             (do-with-some-validators-disabled!
              (fn []
-               (testing "a new user fails to log in"
-                 (mt/with-model-cleanup [:model/User]
-                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
-                                                                default-redirect-uri)
-                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
-                     (is (successful-login? response)))))
-               (testing "an existing user also fails to log in"
-                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
-                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-                 (with-redefs [saml.p/saml-response->attributes
-                               (fn [_]
-                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
-                                  "tenant" "tenant-mctenantson"})]
-                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
-                                                                default-redirect-uri)
-                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
-                     (is (successful-login? response)))))))))))))
+               (mt/with-model-cleanup [:model/User]
+                 (doseq [[user-type email] [["new" "newuser@metabase.com"] ["existing" existing-email]]]
+                   (testing (str "a " user-type " user can log into a deactivated tenant")
+                     (mt/user-http-request :crowberto :put 200 (str "/api/ee/tenant/" tenant-id) {:is_active false})
+                     (is (true? (t2/select-one-fn :archived :model/Collection :id collection-id)))
+                     ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                     ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                     #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                     (with-redefs [saml.p/saml-response->attributes
+                                   (fn [_]
+                                     {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email
+                                      "tenant" "tenant-mctenantson"})]
+                       (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                    default-redirect-uri)
+                             response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                         (is (successful-login? response))
+                         (is (true? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
+                         (is (true? (t2/select-one-fn :is_active :model/User :email email)))
+                         (is (false? (t2/select-one-fn :archived :model/Collection :id collection-id))))))))))))))))
 
 (deftest a-user-can-not-log-into-deactivated-tenant-via-saml-if-provisioning-is-off
   (with-other-sso-types-disabled!

@@ -7,7 +7,11 @@ export type SetupGuideStepId =
   | "configure-row-column-security"
   | "sso-configured"
   | "embed-production"
-  | "data-permissions-and-enable-tenants";
+  | "data-permissions-and-enable-tenants"
+  // Embedding hub-only steps. The home-page stepper never renders these; it maps its own
+  // step list and simply never looks them up.
+  | "create-custom-theme"
+  | "configure-ai";
 
 export interface SetupGuideStep {
   id: SetupGuideStepId;
@@ -43,7 +47,7 @@ export interface SetupGuideAction {
   anchor?: string;
 
   /** CTA button variant. */
-  variant?: "outline" | "subtle" | "filled";
+  variant?: "default" | "subtle" | "filled";
 
   /** Which modal to trigger? */
   modal?: SetupGuideModalToTrigger;

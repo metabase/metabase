@@ -67,39 +67,51 @@ describe("operators in questions", () => {
   };
 
   describe("fields have proper operators", () => {
-    it("text operators", () => {
+    it("text, number and id operators", () => {
       setup(PRODUCTS_ID);
 
+      cy.log("text");
       H.popover().within(() => {
         cy.findByText("Title").click();
         cy.findByText("Is").click();
       });
 
       cy.findByRole("menu").within(() => {
-        expected.text.expected.map((e) => cy.contains(e).should("exist"));
+        expected.text.expected.map((e) => cy.findByText(e).should("exist"));
         expected.text.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
-    });
+      reselectOperatorAndGoBack("Is");
 
-    it("number operators", () => {
-      setup(PRODUCTS_ID);
-
+      cy.log("number");
       H.popover().within(() => {
         cy.findByText("Price").click();
         cy.findByText("Between").click();
       });
 
       cy.findByRole("menu").within(() => {
-        expected.number.expected.map((e) => cy.contains(e).should("exist"));
+        expected.number.expected.map((e) => cy.findByText(e).should("exist"));
         expected.number.unexpected.map((e) =>
           cy.contains(e).should("not.exist"),
         );
       });
+      reselectOperatorAndGoBack("Between");
+
+      cy.log("id");
+      H.popover().within(() => {
+        cy.findByText("ID").click();
+        cy.findByText("Is").click();
+      });
+
+      cy.findByRole("menu").within(() => {
+        expected.id.expected.map((e) => cy.findByText(e).should("exist"));
+        expected.id.unexpected.map((e) => cy.contains(e).should("not.exist"));
+      });
     });
 
-    it("relative date operators", () => {
+    it("relative, specific and exclude date operators", () => {
       setup(PRODUCTS_ID);
 
+      cy.log("relative dates");
       H.popover().within(() => {
         cy.findByText("Created At").click();
         cy.findByText("Relative date range…").click();
@@ -108,7 +120,7 @@ describe("operators in questions", () => {
 
       H.clauseStepPopover().within(() => {
         expected.relativeDates.expected.map((e) =>
-          cy.contains(e).should("exist"),
+          cy.findByText(e).should("exist"),
         );
         expected.specificDates.expected.map((e) =>
           cy.contains(e).should("not.exist"),
@@ -119,21 +131,18 @@ describe("operators in questions", () => {
         expected.relativeDates.unexpected.map((e) =>
           cy.contains(e).should("not.exist"),
         );
+        cy.findByLabelText("Back").click();
       });
-    });
 
-    it("specific date operators", () => {
-      setup(PRODUCTS_ID);
-
+      cy.log("specific dates");
       H.popover().within(() => {
-        cy.findByText("Created At").click();
         cy.findByText("Fixed date range…").click();
         cy.findByText("Between").click();
       });
 
       H.popover().within(() => {
         expected.specificDates.expected.map((e) =>
-          cy.contains(e).should("exist"),
+          cy.findByText(e).should("exist"),
         );
         expected.relativeDates.expected.map((e) =>
           cy.contains(e).should("not.exist"),
@@ -144,20 +153,15 @@ describe("operators in questions", () => {
         expected.specificDates.unexpected.map((e) =>
           cy.contains(e).should("not.exist"),
         );
+        cy.findByLabelText("Back").click();
       });
-    });
 
-    it("exclude date operators", () => {
-      setup(PRODUCTS_ID);
-
-      H.popover().within(() => {
-        cy.findByText("Created At").click();
-        cy.findByText("Exclude…").click();
-      });
+      cy.log("exclude dates");
+      H.popover().findByText("Exclude…").click();
 
       H.popover().within(() => {
         expected.excludeDates.expected.map((e) =>
-          cy.contains(e).should("exist"),
+          cy.findByText(e).should("exist"),
         );
         expected.relativeDates.expected.map((e) =>
           cy.contains(e).should("not.exist"),
@@ -171,20 +175,6 @@ describe("operators in questions", () => {
       });
     });
 
-    it("id operators", () => {
-      setup(PRODUCTS_ID);
-
-      H.popover().within(() => {
-        cy.findByText("ID").click();
-        cy.findByText("Is").click();
-      });
-
-      cy.findByRole("menu").within(() => {
-        expected.id.expected.map((e) => cy.contains(e).should("exist"));
-        expected.id.unexpected.map((e) => cy.contains(e).should("not.exist"));
-      });
-    });
-
     it("geo operators", () => {
       setup(PEOPLE_ID);
 
@@ -194,7 +184,7 @@ describe("operators in questions", () => {
       });
 
       cy.findByRole("menu").within(() => {
-        expected.geo.expected.map((e) => cy.contains(e).should("exist"));
+        expected.geo.expected.map((e) => cy.findByText(e).should("exist"));
         expected.geo.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
     });
@@ -204,4 +194,10 @@ describe("operators in questions", () => {
 function setup(tableId) {
   H.openTable({ table: tableId, mode: "notebook" });
   cy.findByRole("button", { name: "Filter" }).click();
+}
+
+function reselectOperatorAndGoBack(operator) {
+  cy.findByRole("menu").findByText(operator).click();
+  cy.findByRole("menu").should("not.exist");
+  H.popover().findByLabelText("Back").click();
 }

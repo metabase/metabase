@@ -3,7 +3,7 @@ import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
-import { idTag } from "metabase/api/tags";
+import { listTag } from "metabase/api/tags";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { getUser } from "metabase/current-user";
 import {
@@ -11,7 +11,7 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+import { Sidebar } from "metabase/nav/containers/MainNavbar/Sidebar";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -49,7 +49,6 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
         </Text>
         <Button
           variant="subtle"
-          size="compact-lg"
           onClick={onRetry}
           data-testid="metabot-error-retry"
         >
@@ -68,9 +67,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
   const handleNewConversation = () => {
     metabot.createNewConversation();
     dispatch(
-      metabotApi.util.invalidateTags([
-        idTag("metabot-prompt-suggestions", metabot.metabotId),
-      ]),
+      metabotApi.util.invalidateTags([listTag("metabot-prompt-suggestions")]),
     );
   };
 
@@ -84,6 +81,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
       {isConfigured && (
         <Tooltip label={t`New conversation`} position="bottom">
           <ActionIcon
+            variant="subtle"
             onClick={handleNewConversation}
             aria-label={t`New conversation`}
             data-testid="metabot-new-conversation"
@@ -99,7 +97,11 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
           onConversationSelect={metabot.loadConversation}
         />
       )}
-      <ActionIcon onClick={handleCloseChat} data-testid="metabot-close-chat">
+      <ActionIcon
+        variant="subtle"
+        onClick={handleCloseChat}
+        data-testid="metabot-close-chat"
+      >
         <Icon c="text-primary" name="close" />
       </ActionIcon>
     </Flex>

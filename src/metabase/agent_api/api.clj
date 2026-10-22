@@ -8,6 +8,7 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -27,6 +28,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
@@ -40,6 +42,7 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -287,10 +290,10 @@
                 "```\n"
                 "{\"query\": {\"lib/type\": \"mbql/query\",\n"
                 "             \"stages\": [{\"lib/type\": \"mbql.stage/mbql\",\n"
-                "                          \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"],\n"
+                "                          \"source-table\": [\"Sample Database\", null, \"ORDERS\"],\n"
                 "                          \"aggregation\": [[\"count\", {}]],\n"
                 "                          \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"},\n"
-                "                                        [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
+                "                                        [\"Sample Database\", null, \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
                 "```\n"
                 "\n"
                 "Common pitfalls: (1) forgetting the `{}` options map; (2) writing numeric "
@@ -678,9 +681,12 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map {:closed true}
-   [:uris [:sequential ms/NonBlankString]]])
+  "Request shape for /v1/read-resource: the tool's own published arguments.
+
+  Taken from the tool rather than written out again, so this endpoint and the agent loop offer the
+  same shape and the same limits. Before, this was a hand-written copy that had already lost the
+  5-URI cap the tool enforces."
+  (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)))
 
 (mr/def ::read-resource-item
   "One fetched resource. Either `:content` (success) or `:error` (failure) is present."
@@ -696,12 +702,33 @@
    [:resources [:sequential ::read-resource-item]]
    [:output    :string]])
 
+(def ^:private read-resource-ctx
+  "The tool context for this endpoint.
+
+  `:tool-names` decides which recovery steps a per-URI failure keeps: a step is dropped unless the
+  caller has every tool its text names. This API publishes `search` (see `/v1/search` below), so the
+  \"find it with search\" steps survive here. Renaming that endpoint's tool drops those steps rather
+  than sending the caller at something it does not have, which is the point of `:uses`."
+  {:tool-names #{"search"}})
+
+(defn- read-resource-item
+  "One [[::read-resource-item]] from the tool's entry for that URI.
+
+  This endpoint's published item shape, built here rather than by the tool: a URI that could not be
+  read is this item's `:error`, not the call's. The tool reports per item and leaves what that means
+  to its caller."
+  [{:keys [item output failed? structured-output]}]
+  (cond-> {:uri (:uri item)}
+    failed?       (assoc :error output)
+    (not failed?) (assoc :content {:structured-output structured-output})))
+
 (api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.
 
-  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,
-  which validates URIs, fetches entities with per-URI permission checks, and
-  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call."
+  Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent
+  loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
+  A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
+  that did read. Up to 5 URIs per call, rejected as a 400 by `::read-resource-request`."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
@@ -712,15 +739,29 @@
   [_route-params
    _query-params
    body :- ::read-resource-request]
-  (try
-    (metabot-resources/read-resource body)
-    (catch clojure.lang.ExceptionInfo e
-      ;; The Metabot dispatcher's "too many URIs" guard throws ex-info without a
-      ;; :status-code. Surface it as a 400 to the HTTP boundary rather than the
-      ;; default 500.
-      (throw (ex-info (ex-message e)
-                      (merge {:status-code 400} (ex-data e))
-                      e)))))
+  ;; `with-batched-entries` rather than `tools.core/call`, because this endpoint's contract differs
+  ;; from the agent loop's in exactly one way: a call where no URI could be read is still a 200 with
+  ;; an `:error` per item, where the agent loop needs it to be a failed call. Composing the entries
+  ;; here is what lets both be true without the tool knowing either of us.
+  (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx
+    {:on-item-fault
+     (fn [{:keys [uri]} e]
+       ;; One URI hitting a fault is this item's error, not the call's: the others read fine and the
+       ;; published response promises every URI it was given. Master did this too, with
+       ;; `(ex-message e)` as the text — a message written for a developer, crossing an API boundary
+       ;; to an agent that can do nothing with it. The exception goes to the log; the caller gets a
+       ;; sentence that is true and says nothing about our internals.
+       (log/error e "Reading a resource faulted" {:uri uri})
+       {:item    {:uri uri}
+        :failed? true
+        :output  (tru "This resource could not be read.")})}
+    (fn [entries]
+      {:resources (mapv read-resource-item entries)
+       ;; The tool's own envelope, so the text is identical to what the agent loop reads. Its
+       ;; `:structured-output` and `:data-parts` title are not part of this response.
+       :output    (tools.core/render-text
+                   (:output (tools.core/compose metabot-resources/read-resource-tool entries
+                                                read-resource-ctx)))})))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
@@ -1348,6 +1389,8 @@
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
   (let [current        (agent-api.db/dashcards dashboard-id)
+        ;; the dashboard row is the same for every mutation in the batch
+        dashboard      (agent-api.db/dashboard dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
         tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
@@ -1374,6 +1417,10 @@
         (case action
           "add"
           (let [card    (api/read-check :model/Card card_id)
+                ;; A card placed on a shared dashboard exposes its selected timeline events, so the
+                ;; same read check the REST writer applies runs here too.
+                _       (queries/check-newly-exposed-dashcards-timeline-permissions!
+                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))
@@ -1782,8 +1829,29 @@
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
+(defn- wrap-database-errors
+  "Return a generic 500 for unhandled database failures, logging the original exception."
+  [handler]
+  (fn [request respond raise]
+    (let [raised? (volatile! false)
+          raise (fn [e]
+                  (vreset! raised? true)
+                  (if (metabot-construct/database-error? e)
+                    (do
+                      (when (nil? (:status-code (ex-data e)))
+                        (analytics/inc! :metabase-api/unhandled-errors))
+                      (log/error e "Database failure in Agent API")
+                      (respond {:status 500 :body {:message (tru "Something went wrong")}}))
+                    (raise e)))]
+      (try
+        (handler request respond raise)
+        (catch Throwable e
+          (if @raised?
+            (throw e)
+            (raise e)))))))
+
 (def ^:private base-routes
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth wrap-database-errors))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
@@ -1826,3 +1894,11 @@
                                      (respond response))
                                    raise))))
    (fn [prefix] (open-api/open-api-spec base-routes prefix))))
+
+(defn defendpoint-scopes
+  "All defendpoint scopes from agent-api as a sorted set."
+  []
+  (into (sorted-set)
+        (comp (keep #(get-in % [:form :metadata :scope]))
+              (filter string?))
+        (vals (api.macros/ns-routes 'metabase.agent-api.api))))

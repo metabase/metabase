@@ -29,6 +29,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -36,7 +37,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 ;;; ------------------------------------------------- State capture --------------------------------------------------
 
@@ -224,8 +226,9 @@
            (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
              (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
                (import-at! src "v1"))                      ; incremental delete of card_b
-             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{b-id} ids))) @deleted)
-                 "the removed card is deleted from the search index by id"))))))))
+             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{(str b-id)} ids))) @deleted)
+                 "the removed card is deleted from the search index by id, as the string the index stores
+                  (an integer id fails on Postgres with `text = integer`)"))))))))
 
 (deftest rename-card-equivalence-test
   (testing "GHY-3779: renaming a card (same entity_id at a new path) imports equivalently — the old

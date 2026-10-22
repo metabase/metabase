@@ -2,42 +2,6 @@ name: Backend
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
-      run-project-backend-checks:
-        description: Run project-level backend checks.
-        type: boolean
-        default: false
-      run-project-migration-checks:
-        description: Run project-level migration checks.
-        type: boolean
-        default: false
-      run-project-ratchet-checks:
-        description: Run the ratchet check for a diff that touches nothing but the ratchets file.
-        type: boolean
-        default: false
-
-  # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
-  # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
-  # whatever the normal CI run uses, because they are the same jobs.
-  workflow_dispatch:
-    inputs:
-      tests:
-        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank runs each leg''s usual set.'
-        type: string
-        required: false
-        default: ''
-      profile:
-        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
-        type: boolean
-        required: false
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
@@ -49,26 +13,55 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  # Both read by the be-tests run step below. Set here rather than passed per job so that turning
-  # either on is one line. Empty (and so off) on workflow_call, where neither input exists.
-  #
-  # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole list: the
-  # partition args no longer apply, and legs that hold none of the named tests run nothing.
-  PROFILE_TESTS: ${{ inputs.profile }}
-  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: backend_all project_backend_checks project_migration_checks project_ratchet_checks
+
+  # Generated static-viz output can shift without any backend source changing, so the suite follows
+  # it too. Only worth probing when nothing else has already decided the suite.
+  static-viz-files-changed:
+    name: Check whether static-viz files changed
+    needs: gate
+    if: >-
+      ${{ needs.gate.outputs.verdict == 'defer'
+      && !contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build static-viz frontend
+        run: bun run build-static-viz
+        env:
+          MB_EDITION: ee
+      - name: Check for static viz changes
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: static_viz
+        with:
+          # An empty token switches paths-filter to git, which is the only way to honor `base`.
+          token: ${{ needs.gate.outputs.diff-base == '' && github.token || '' }}
+          base: ${{ needs.gate.outputs.diff-base }}
+          filters: .github/static-viz-sources.yaml
+
   project-checks:
     name: 'Project tests: Suites'
+    needs: gate
     if: >-
-      ${{ inputs.force-run ||
-      inputs.run-project-backend-checks ||
-      inputs.run-project-migration-checks ||
-      inputs.run-project-ratchet-checks }}
+      ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
+      || contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks')
+      || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       # Bootstrap the shared Mage runtime before concurrent commands try to install it themselves.
@@ -76,21 +69,23 @@ jobs:
         run: ./bin/mage
       - parallel:
         - name: Run backend checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks') }}
           run: ./bin/mage project-tests backend
         - name: Run migration checks
-          if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
+          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks') }}
           run: ./bin/mage project-tests migrations
-        # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
-        # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
+        # Babashka plus a scoped clj-kondo run, not a JVM test run, so it is cheap enough to run alongside the
+        # backend checks. It needs the JDK and Clojure CLI prepare-backend installs.
         - name: Run ratchet checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
+          if: >-
+            ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
+            || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
 
   project-tests:
     name: Project tests
     needs: project-checks
-    if: ${{ always() && !cancelled() }}
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -148,110 +143,27 @@ jobs:
             process.exit(1);
 
   be-linter-clj-kondo:
-    if: ${{ !inputs.skip }}
+    needs: &backend-gate-needs [gate, static-viz-files-changed]
+    # `!cancelled()` so a skipped static-viz probe -- the suite was already decided -- does not skip
+    # this job; its failure still does.
+    if: &backend-gate >-
+      ${{ !cancelled() && needs.gate.result == 'success'
+      && needs.static-viz-files-changed.result != 'failure'
+      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
+      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run clj-kondo
         run: ./bin/mage kondo
 
-  be-linter-eastwood:
-    if: ${{ !inputs.skip }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 20
-    name: Eastwood
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
-        name: Run Eastwood linter
-
-  be-linter-eastwood-test:
-    # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && inputs.force-run }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 45
-    name: Eastwood (tests only)
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
-        name: Run Eastwood linter on our backend tests
-
-  be-linter-eastwood-test-changed:
-    # Lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
-    name: Eastwood (changed tests only)
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          # Enough history for `git merge-base` on a typical PR.
-          fetch-depth: 200
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Compute changed test namespaces
-        id: changed
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -euo pipefail
-
-          # Diff from the merge-base so changes that landed on the base branch after the PR was
-          # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
-          git fetch --no-tags --depth=200 origin "$BASE_SHA"
-          DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
-          # Test roots we lint: core, EE, dev/test, and each driver module's test tree.
-          # :eastwood/test derives matching :source-paths from the classpath, so any
-          # namespace we name here is reachable. Include renames (R) so a test that
-          # was just renamed still gets linted under its new name.
-          FILES=$(git diff --name-only --diff-filter=AMR "$DIFF_BASE" "$HEAD_SHA" \
-                    -- 'test/**/*.clj' 'test/**/*.cljc' \
-                       'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
-                       'dev/test/**/*.clj' 'dev/test/**/*.cljc' \
-                       'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
-
-          if [ -z "$FILES" ]; then
-            echo "No backend test files changed; skipping lint."
-            echo "namespaces=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Defence-in-depth: paths flow into a subsequent shell command via $GITHUB_OUTPUT.
-          if grep -Eqv '^[A-Za-z0-9_./-]+$' <<<"$FILES"; then
-            echo "Refusing to lint: unexpected characters in changed file paths:" >&2
-            echo "$FILES" >&2
-            exit 1
-          fi
-
-          # Convert each test path to a Clojure namespace: strip its known test root and
-          # extension, then translate path separators and underscores. Keep these roots
-          # aligned with FILES above and the Eastwood classpath aliases below.
-          NS=$(sed -E \
-                 -e 's#^(test/|enterprise/backend/test/|dev/test/|modules/drivers/[^/]+/test/)##' \
-                 -e 's#\.cljc?$##' \
-                 -e 's#/#.#g' \
-                 -e 's#_#-#g' <<<"$FILES" \
-                 | sort -u \
-                 | paste -sd' ' -)
-          echo "Changed test namespaces: $NS"
-          echo "namespaces=$NS" >> "$GITHUB_OUTPUT"
-      - name: Run Eastwood on changed test namespaces
-        if: steps.changed.outputs.namespaces != ''
-        env:
-          NAMESPACES: ${{ steps.changed.outputs.namespaces }}
-        run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
-
   be-tests:
-    if: ${{ !inputs.skip }}
+    needs: *backend-gate-needs
+    if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -298,7 +210,7 @@ jobs:
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -374,6 +286,16 @@ jobs:
           else
             $BASE :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
           fi
+        env:
+          # Both come from test.profile-backend.yml, the only workflow that dispatches this suite, so a
+          # dispatch is a profiling run. On a normal CI run these render `false` and empty and the
+          # leg's own selection stands.
+          #
+          # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole
+          # list: the partition args no longer apply, and legs that hold none of the named tests run
+          # nothing.
+          PROFILE_TESTS: ${{ github.event_name == 'workflow_dispatch' }}
+          ONLY_TESTS: ${{ github.event.inputs.tests }}
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
@@ -448,7 +370,8 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    if: ${{ !inputs.skip }}
+    needs: *backend-gate-needs
+    if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -456,7 +379,7 @@ jobs:
         java-version: [25]
     name: "Check Java ${{ matrix.java-version }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
@@ -464,12 +387,13 @@ jobs:
         run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
-    if: ${{ !inputs.skip }}
+    needs: *backend-gate-needs
+    if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run cljfmt
@@ -477,15 +401,14 @@ jobs:
 
   be-tests-result:
     needs:
+      - gate
+      - static-viz-files-changed
       - project-tests
-      - be-linter-eastwood
-      - be-linter-eastwood-test
-      - be-linter-eastwood-test-changed
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
       - be-tests
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:

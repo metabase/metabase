@@ -68,9 +68,7 @@
 
 (mr/def ::id pos-int?)
 
-;; referenced only inside quoted defendpoint args that parse-args resolves at runtime
-#_{:clj-kondo/ignore [:unused-private-var]}
-(def ^:private RouteParams
+(def RouteParams
   [:map
    [:id [:string {:api/regex #"[abc]{4}"}]]])
 
@@ -209,3 +207,17 @@
       ::lib.schema.parameter/parameter
       {:type :string/contains, :value ["A"], :options {:case-sensitive false, :lib/uuid "not-yours"}}
       {:type :string/contains, :value ["A"], :options {:case-sensitive false}})))
+
+(deftest ^:parallel route-template-test
+  (testing "the route template is the accumulated prefix plus the endpoint's declared path"
+    (are [prefix path expected] (= expected
+                                   (#'api.macros/route-template prefix path))
+      "/api/card" "/:id"                      "/api/card/:id"
+      "/api/card" "/:id/query/:export-format" "/api/card/:id/query/:export-format"
+      ;; a `"/"` endpoint is the prefix itself -- no meaningless trailing slash
+      "/api/card" "/"                         "/api/card"
+      ;; no prefix at all (an endpoint handler used on its own)
+      nil         "/:id"                      "/:id"
+      ""          "/:id"                      "/:id"
+      nil         "/"                         "/"
+      ""          "/"                         "/")))

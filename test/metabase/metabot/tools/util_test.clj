@@ -8,7 +8,22 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.permissions.models.permissions :as perms]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(deftest ^:parallel handle-agent-or-api-error-test
+  (testing "an API check's refusal goes back to the agent as output"
+    (doseq [status-code [400 403 404]]
+      (is (= {:output "Refused." :status-code status-code}
+             (metabot.tools.util/handle-agent-or-api-error (ex-info "Refused." {:status-code status-code}))))))
+  (testing "an agent error keeps its flags"
+    (is (= {:output "No access." :status-code 403 :terminal-error? true}
+           (metabot.tools.util/handle-agent-or-api-error
+            (ex-info "No access." {:agent-error? true :status-code 403 :terminal-error? true})))))
+  (testing "anything else is rethrown"
+    (doseq [data [{} {:status-code 500}]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (metabot.tools.util/handle-agent-or-api-error (ex-info "boom" data)))))))
 
 (deftest ^:parallel schedule->schedule-map-test
   (testing "hourly schedule"
@@ -69,6 +84,26 @@
             {:frequency    :monthly
              :hour         12
              :day-of-month :mid})))))
+
+(deftest ^:parallel schedule->schedule-map-drops-unknown-days-test
+  (is (= [nil nil]
+         (for [day ["" "mo"]]
+           (:schedule_day
+            (metabot.tools.util/schedule->schedule-map
+             {:frequency   :daily
+              :hour        9
+              :day-of-week day}))))))
+
+(deftest ^:parallel schedule->schedule-map-snake-case-string-values-test
+  (testing "snake_case keys and string values normalize to the same result as kebab-case keywords"
+    (are [kebab snake] (= (metabot.tools.util/schedule->schedule-map kebab)
+                          (metabot.tools.util/schedule->schedule-map snake))
+      ;; weekly, keyed by day of week
+      {:frequency :weekly,   :hour 8, :day-of-week  :monday}
+      {:frequency "weekly",  :hour 8, :day_of_week  "monday"}
+      ;; monthly, keyed by day of month
+      {:frequency :monthly,  :hour 6, :day-of-month :first-monday}
+      {:frequency "monthly", :hour 6, :day_of_month "first-monday"})))
 
 (deftest metabot-scope-query-test
   (testing "metabot-scope-query with collection hierarchy"
@@ -154,44 +189,17 @@
           (is (contains? card-ids (:id open-model)))
           (is (not (contains? card-ids (:id destination-model)))))))))
 
-(deftest add-table-reference-test
-  (testing "add-table-reference function adds table-reference for FK fields"
-    (mt/dataset test-data
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [test-db-id (mt/id)
-              mp (lib-be/application-database-metadata-provider test-db-id)
-              orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-              columns (lib/visible-columns orders-query)]
-          (testing "adds table-reference for implicitly joined columns"
-            (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
-                  user-name-column (first (filter #(and (= "NAME" (:name %))
-                                                        (:fk-field-id %)) processed-columns))]
-              (is (some? user-name-column) "Expected to find implicitly joined User NAME column")
-              (is (contains? user-name-column :table-reference))
-              (is (string? (:table-reference user-name-column)))
-              (is (seq (:table-reference user-name-column)))
-              (is (= "User" (:table-reference user-name-column)))))
-          (testing "does not add table-reference for direct table columns"
-            (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
-                  id-column (first (filter #(and (= "ID" (:name %))
-                                                 (not (:fk-field-id %))) processed-columns))]
-              (is (some? id-column) "Expected to find direct ORDERS ID column")
-              (is (not (contains? id-column :table-reference)))))
-          (testing "handles columns without fk-field-id or table-id gracefully"
-            (let [mock-column {:name "test-column" :type :string}
-                  result (metabot.tools.util/add-table-reference orders-query mock-column)]
-              (is (= mock-column result))
-              (is (not (contains? result :table-reference)))))
-          (testing "handles columns with fk-field-id but no table-id"
-            (let [mock-column {:name "test-fk" :fk-field-id 123}
-                  result (metabot.tools.util/add-table-reference orders-query mock-column)]
-              (is (= mock-column result))
-              (is (not (contains? result :table-reference)))))
-          (testing "handles columns with table-id but no fk-field-id"
-            (let [mock-column {:name "test-field" :table-id (mt/id :orders)}
-                  result (metabot.tools.util/add-table-reference orders-query mock-column)]
-              (is (= mock-column result))
-              (is (not (contains? result :table-reference))))))))))
+(deftest ^:parallel result-column-table-reference-test
+  (testing "result columns name the FK that an implicitly joined column is reached through"
+    (let [mp           (lib-be/application-database-metadata-provider (mt/id))
+          orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (is (=? {(mt/id :people :name)    "User"
+               (mt/id :products :title) "Product"
+               (mt/id :orders :total)   nil}
+              (into {}
+                    (map (comp (juxt :field_id :table_reference)
+                               #(metabot.tools.util/->result-column orders-query %)))
+                    (lib/visible-columns orders-query)))))))
 
 (deftest metabot-verified-content-test
   (testing "metabot-scope-query with verified content filtering"
@@ -279,34 +287,118 @@
         (is (thrown? clojure.lang.ExceptionInfo
                      (metabot.tools.util/get-table inactive-table-id :db_id)))))))
 
-(deftest find-column-by-field-id-test
-  (testing "finds column by integer field ID"
-    (let [columns [{:id 301 :name "ID"}
-                   {:id 302 :name "NAME"}
-                   {:id 303 :name "EMAIL"}]]
-      (is (= {:id 301 :name "ID"} (metabot.tools.util/find-column-by-field-id 301 columns)))
-      (is (= {:id 303 :name "EMAIL"} (metabot.tools.util/find-column-by-field-id 303 columns)))))
-  (testing "finds column by string-encoded field ID"
-    (let [columns [{:id 301 :name "ID"}
-                   {:id 302 :name "NAME"}]]
-      (is (= {:id 302 :name "NAME"} (metabot.tools.util/find-column-by-field-id "302" columns)))))
-  (testing "throws agent error when field ID not found"
-    (let [columns [{:id 301 :name "ID"}]]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Field 999 not found"
-           (metabot.tools.util/find-column-by-field-id 999 columns)))))
-  (testing "throws for nil field ID"
-    (let [columns [{:id 301 :name "ID"}]]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"not found"
-           (metabot.tools.util/find-column-by-field-id nil columns)))))
-  (testing "error data contains agent-error? flag"
-    (let [columns [{:id 301 :name "ID"}]]
-      (try
-        (metabot.tools.util/find-column-by-field-id 999 columns)
-        (is false "Expected exception")
-        (catch clojure.lang.ExceptionInfo e
-          (is (:agent-error? (ex-data e)))
-          (is (= 404 (:status-code (ex-data e)))))))))
+(deftest ^:parallel find-column-by-field-id-test
+  (let [columns [{:id 301 :name "ID"}
+                 {:id 302 :name "NAME"}
+                 {:name "bird_count" :lib/desired-column-alias "Bird count"}
+                 {:name "wing_count" :lib/source-column-alias "Wing count"}
+                 {:name "number" :lib/desired-column-alias "303"}
+                 {:name "id_count" :lib/desired-column-alias "301"}]]
+    (are [field-id col-index] (= (get columns col-index)
+                                 (metabot.tools.util/find-column-by-field-id field-id columns))
+      301          0
+      "302"        1
+      "Bird count" 2
+      "Wing count" 3
+      "303"        4
+      303          4
+      "301"        5)
+    (are [field-id] (nil? (metabot.tools.util/find-column-by-field-id field-id columns))
+      999 nil "missing")))
+
+;;; ---------------------------------------- metric sources ----------------------------------------
+
+(deftest ^:parallel metric-required-source-classifies-the-four-definition-shapes-test
+  (testing "Metric sources follow the query processor's compatibility rules"
+    (are [expected stages] (= expected
+                              (metabot.tools.util/metric-required-source
+                               {:dataset_query {:stages stages} :table_id 5}))
+      {:kind :table, :table-id 5, :bare-table-only? false} [{:source-table 5}]
+      {:kind :card,  :card-id 42}                          [{:source-card 42}]
+      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-table 5} {}]
+      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-card 42} {}])))
+
+(deftest ^:parallel metric-required-source-unreadable-definition-test
+  (testing "A blank or unconvertible metric definition has no usable source"
+    (are [card] (nil? (metabot.tools.util/metric-required-source card))
+      {:dataset_query {} :table_id 5}
+      ;; legacy, but unconvertible
+      {:dataset_query {:type :bogus} :table_id 5}))
+  (testing "A missing definition has no usable source"
+    (is (nil? (metabot.tools.util/metric-required-source {:table_id 5})))))
+
+(deftest ^:parallel metric-required-source-legacy-definition-test
+  (testing "Legacy definitions are converted before classifying the source"
+    (are [expected query] (= expected (metabot.tools.util/metric-required-source
+                                       {:dataset_query (assoc query :database 1 :type :query) :table_id 5}))
+      {:kind :table, :table-id 5, :bare-table-only? false} {:query {:source-table 5}}
+      {:kind :card, :card-id 12}                           {:query {:source-table "card__12"
+                                                                    :aggregation  [[:count]]}}
+      ;; a nested `:source-query` is two stages, so the base table is the one to use
+      {:kind :table, :table-id 5, :bare-table-only? true}  {:query {:source-query {:source-table "card__12"}
+                                                                    :aggregation  [[:count]]}})))
+
+(deftest ^:parallel metric-compatible-with-stage?-test
+  (testing "a single-stage table metric accepts a card over its table"
+    (let [required {:kind :table, :table-id 5, :bare-table-only? false}]
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 5})))
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage?
+                   required {:stage-table-id 5 :stage-card-id 7})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 9})))))
+  (testing "a multi-stage definition requires a stage directly on its base table"
+    (let [required {:kind :table, :table-id 5, :bare-table-only? true}]
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 5})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage?
+                   required {:stage-table-id 5 :stage-card-id 7})))))
+  (testing "a nil table ID cannot identify a usable table source"
+    (is (false? (metabot.tools.util/metric-compatible-with-stage?
+                 {:kind :table, :table-id nil, :bare-table-only? false} {:stage-table-id nil}))))
+  (testing "an unrecognized source kind throws an exception"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized metric source kind"
+                          (metabot.tools.util/metric-compatible-with-stage? {:kind :bogus} {}))))
+  (testing "a single-stage card metric requires the exact source card"
+    (let [required {:kind :card, :card-id 42}]
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage? required {:stage-card-id 42})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage?
+                   required {:stage-card-id 43 :stage-table-id 5})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 5}))))))
+
+(deftest metric-required-source-reads-both-card-shapes-test
+  (testing "Toucan rows and lib metadata cards produce the same required source"
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id}
+                   {:name "Card metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp        (lib-be/application-database-metadata-provider (mt/id))
+              t2-row    (t2/select-one :model/Card :id metric-id)
+              lib-card  (lib.metadata/card mp metric-id)]
+          (is (= {:kind :card, :card-id question-id}
+                 (metabot.tools.util/metric-required-source t2-row)))
+          (is (= {:kind :card, :card-id question-id}
+                 (metabot.tools.util/metric-required-source lib-card))
+              "lib metadata is read without snake_case access"))))))
+
+(deftest ^:parallel metric-source-fields-test
+  (testing "exactly one group of fields, card first, `source_unavailable` when neither source is usable"
+    (are [expected input] (= expected (metabot.tools.util/metric-source-fields input))
+      {:source_card_id 7, :source_card_name "Q", :source_card_portable_entity_id "eid"}
+      {:source-card {:id 7, :name "Q", :entity_id "eid", :collection_id 3}, :database-name "Sample"}
+
+      {:base_table_id 5, :base_table_name "ORDERS", :base_table_schema "PUBLIC"
+       :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]}
+      {:source-table {:id 5, :schema "PUBLIC", :name "ORDERS"}, :database-name "Sample"}
+
+      ;; no database name, no portable FK
+      {:base_table_id 5, :base_table_name "ORDERS", :base_table_schema "PUBLIC"}
+      {:source-table {:id 5, :schema "PUBLIC", :name "ORDERS"}}
+
+      {:source_unavailable true}
+      {:database-name "Sample"})))

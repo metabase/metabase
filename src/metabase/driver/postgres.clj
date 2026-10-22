@@ -405,7 +405,7 @@
                [:pn.nspname :table-schema]
                [:pc.relname :table-name]
                [false :pk?]
-               [nil :field-comment]
+               [[:col_description :pc.oid :pa.attnum] :field-comment]
                [false :database-required]
                [nil   :database-default]
                [false :database-is-auto-increment]
@@ -492,6 +492,10 @@
 (defmethod driver.sql/json-field-length :postgres
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
+
+(defmethod sql.qp/use-ctes-for-stages? :postgres
+  [_driver]
+  true)
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]

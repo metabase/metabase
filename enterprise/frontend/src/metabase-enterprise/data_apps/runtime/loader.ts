@@ -1,8 +1,8 @@
 import * as React from "react";
-import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as ReactDOMServer from "react-dom/server";
+import * as ReactJsxRuntime from "react/jsx-runtime";
 import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
@@ -77,7 +77,7 @@ export const fetchDataAppBundleCode = async (
   name: string,
 ): Promise<FetchedDataAppBundle> => {
   const url = getSubpathSafeUrl(
-    `/api/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
+    `/api/ee/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
 
   let res: Response;

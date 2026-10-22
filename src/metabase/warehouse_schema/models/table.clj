@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -93,6 +94,7 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -113,9 +115,10 @@
             (let [kw (keyword value)]
               (when-not (contains? writable-data-authority-types kw)
                 (throw (ex-info (str "Illegal value for data_authority: " kw)
-                                {:field       :data_authority
-                                 :value       value
-                                 :status-code 400})))
+                                {:field         :data_authority
+                                 :value         value
+                                 :status-code   400
+                                 :response/keys #{:field}})))
               (name kw))))})
 
 (def legacy-data-layer->current
@@ -126,16 +129,10 @@
    :silver :final
    :gold   :final})
 
-(def ^:private transform-table-boolean
-  "Boolean column transform; a boolean computed in SQL (the merge in `table-query`) comes back as a number from MySQL
-  and MariaDB, which have no boolean type of their own."
-  {:in  identity
-   :out (fn [v] (if (number? v) (pos? v) v))})
-
 (t2/deftransforms :model/Table
   {:entity_type             mi/transform-keyword
-   :is_published            transform-table-boolean
-   :show_in_getting_started transform-table-boolean
+   :is_published            mi/transform-boolean
+   :show_in_getting_started mi/transform-boolean
    :visibility_type         mi/transform-keyword
    :data_layer              (mi/transform-validator-with-fixes
                              mi/transform-keyword
@@ -259,13 +256,12 @@
       (cond
         ;; active: true -> false (table being deactivated)
         (and (true? current-active) (false? new-active))
-        (assoc changes :deactivated_at (mi/now))
+        (merge table changes {:deactivated_at (mi/now)})
 
         ;; active: false -> true (table being reactivated)
         (and (false? current-active) (true? new-active))
-        (assoc changes
-               :deactivated_at nil
-               :archived_at nil)
+        (merge table changes {:deactivated_at nil
+                              :archived_at    nil})
 
         :else (merge table changes)))))
 
@@ -536,11 +532,18 @@
 
 (mi/define-batched-hydration-method with-metrics
   :metrics
-  "Efficiently hydrate the Metrics for a collection of `tables`."
+  "Efficiently hydrate the Metrics for a collection of `tables`.
+
+  Consumers of a Table's `:metrics` want an id, a name and a link, never a metric's `:dimensions`, so the
+  `card_schema` 24 backfill is skipped. Without that the upgrade builds the whole implicitly-joined dimension set
+  for every pre-curation metric on these tables -- work proportional to (metrics x columns), then discarded --
+  which is minutes of CPU and enough garbage to exhaust the heap on a wide table with many old metrics (#83937).
+  Every other `card_schema` upgrade still runs."
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (->> (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids)
+      (->> (binding [card-schema/*skip-dimension-backfill?* true]
+             (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
            (filter mi/can-read?)))
     tables))
 
@@ -566,22 +569,25 @@
   (warehouse-schema.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
-  (cond-> [[{:model "Database" :id db_id}]]
+(defmethod serdes/deserialization-dependencies "Table" [{:keys [collection_id transform_id]}]
+  (cond-> []
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
   (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
                             [["Field" field-id] {"Table" id}]))
-        settings (when (or (warehouse-schema.db/table-user-settings-exist? id)
-                           (warehouse-schema.db/field-user-settings-exist-for-table? id))
+        settings (when (warehouse-schema.db/table-user-settings-exist? id)
                    {["TableUserSettings" id] {"Table" id}})
+        field-settings (into {} (for [field-id (warehouse-schema.db/field-ids-with-user-settings-for-table id)]
+                                  [["FieldUserSettings" field-id] {"Table" id}]))
+        dimensions (into {} (for [dimension-id (warehouse-schema.db/dimension-ids-for-table id)]
+                              [["Dimension" dimension-id] {"Table" id}]))
         segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
                             [["Measure" measure-id] {"Table" id}]))]
-    (merge fields settings segments measures)))
+    (merge fields settings field-settings dimensions segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (warehouse-schema.db/database-name (:db_id table))]
@@ -589,6 +595,9 @@
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
                     {:model "Table" :id (:name table)}])))
+
+(defmethod serdes/ingested-path "Table" [_ {:keys [db_id schema name]}]
+  (serdes/table->path [db_id schema name]))
 
 (defmethod serdes/entity-id "Table" [_ {:keys [name]}]
   name)
@@ -600,20 +609,24 @@
                       (-> path second :id))
         table-name  (-> path last :id)
         db-id       (warehouse-schema.db/database-id-by-name db-name)]
-    (warehouse-schema.db/table-by-name db-id schema-name table-name)))
+    (when db-id
+      (warehouse-schema.db/table-by-name db-id schema-name table-name))))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
+               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count :transform_target]
-   :transform {:created_at     (serdes/date)
-               :archived_at    (serdes/date)
+               :data_source :owner_email :is_published]
+   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target]
+   :transform {:archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
+               ;; older exports copied the local user id; re-importing those files on the same instance, e.g. a
+               ;; remote sync pull before the first new export, keeps the right owner, where nil would drop it
+               :owner_user_id  (update (serdes/fk :model/User) :import
+                                       (fn [import-user] #(if (int? %) % (import-user %))))
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false
               :is_published            false

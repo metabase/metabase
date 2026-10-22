@@ -166,6 +166,7 @@
               :errors      {:host (str (deferred-tru "check your host settings"))}}
              cause)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *allow-private-connection-hosts*
   "When true, an `:external-only` [[driver.settings/warehouse-allowed-networks]] policy is enforced as
   `:allow-private`. Bound only by [[do-with-database-network-policy]]."
@@ -232,6 +233,29 @@
                       (throw (unknown-connection-hosts-exception e))))]
         (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
           (throw (blocked-network-address-exception)))))))
+
+(defn disallowed-connection-parameter
+  "The first name in [[driver/disallowed-connection-parameters]] that the string `s` contains, matched
+  case-insensitively, or nil when it contains none."
+  [driver s]
+  (let [s (u/lower-case-en (str s))]
+    (some #(when (str/includes? s (u/lower-case-en %)) %)
+          (driver/disallowed-connection-parameters driver))))
+
+(defn validate-connection-parameters!
+  "Throw a 400 if `details` set a connection parameter named in [[driver/disallowed-connection-parameters]], either in
+  `:additional-options` or as a detail key. Returns nil when the details are acceptable.
+
+  Reads the details a user supplied rather than the connection spec built from them: the spec also carries properties
+  Metabase sets itself, which are not the user's to have chosen. An auth provider's response is merged into the details
+  as well (see [[driver/incorporate-auth-provider-details]]), so check the details again once it has been."
+  [driver details]
+  (letfn [(refuse! [where match]
+            (throw (ex-info (str "Potentially dangerous keys in " where) {:status-code 400, :disallowed-key match})))]
+    (when-let [match (some->> (:additional-options details) (disallowed-connection-parameter driver))]
+      (refuse! "additional options" match))
+    (when-let [match (some #(disallowed-connection-parameter driver (if (keyword? %) (name %) %)) (keys details))]
+      (refuse! "connection details" match))))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
@@ -315,6 +339,7 @@
    critical metabase features that use this check."
   5000)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memoize-supports?*
   "If true, [[supports?]] is memoized for the application DB. Memoization is disabled in dev and test mode by default to avoid
    accidental coupling between tests."

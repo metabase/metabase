@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -37,6 +38,18 @@
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :redshift
+    (testing "default"
+      (is (= "public"
+             (driver.sql/default-schema :redshift (mt/db)))))
+    (testing "schema configured in the JDBC additional options"
+      (let [schema  (redshift.tx/unique-session-schema)
+            details (assoc (:details (mt/db)) :additional-options (str "currentSchema=" schema))]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
+          (is (= schema
+                 (driver.sql/default-schema :redshift database))))))))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))

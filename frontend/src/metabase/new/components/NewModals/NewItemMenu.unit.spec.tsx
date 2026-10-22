@@ -1,19 +1,22 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockDashboard,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
@@ -29,6 +32,7 @@ type SetupOpts = {
   hasModels?: boolean;
   canWrite?: boolean;
   isConfigured?: boolean;
+  aiFeaturesEnabled?: boolean;
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -38,10 +42,12 @@ async function setup({
   databases = [SAMPLE_DATABASE],
   canWrite = true,
   isConfigured = true,
+  aiFeaturesEnabled = true,
 }: SetupOpts = {}) {
   const settings = mockSettings({
     "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": true,
+    "ai-features-enabled?": aiFeaturesEnabled,
   });
 
   setupUserMetabotPermissionsEndpoint();
@@ -51,7 +57,7 @@ async function setup({
   });
   setupEnterprisePlugins();
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <Route
       path="/"
       element={
@@ -76,6 +82,8 @@ async function setup({
     },
   );
   await userEvent.click(await screen.findByText("New"));
+
+  return { store };
 }
 
 describe("NewItemMenu", () => {
@@ -98,6 +106,13 @@ describe("NewItemMenu", () => {
     await setup({ isConfigured: false });
 
     expect(await screen.findByText("AI exploration")).toBeInTheDocument();
+  });
+
+  it("does not show AI exploration when AI features are disabled", async () => {
+    await setup({ aiFeaturesEnabled: false });
+
+    expect(await screen.findByText("Question")).toBeInTheDocument();
+    expect(screen.queryByText("AI exploration")).not.toBeInTheDocument();
   });
 
   it("should support keyboard navigation", async () => {
@@ -127,6 +142,46 @@ describe("NewItemMenu", () => {
     expect(
       await screen.findByRole("dialog", { name: /New dashboard/ }),
     ).toBeInTheDocument();
+  });
+
+  describe("navbar collapsing", () => {
+    it.each(["Question", "SQL query", "Document"])(
+      "should collapse the navbar when creating a new %s",
+      async (itemName) => {
+        const { store } = await setup();
+        expect(store.getState().app.isNavbarOpen).toBe(true);
+
+        await userEvent.click(await screen.findByText(itemName));
+
+        expect(store.getState().app.isNavbarOpen).toBe(false);
+      },
+    );
+
+    it("should not collapse the navbar when the new dashboard modal is opened and cancelled", async () => {
+      const { store } = await setup();
+      await userEvent.click(await screen.findByText("Dashboard"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Cancel" }),
+      );
+
+      expect(store.getState().app.isNavbarOpen).toBe(true);
+    });
+
+    it("should collapse the navbar once a new dashboard is created", async () => {
+      setupCollectionsEndpoints({ collections: [COLLECTION] });
+      fetchMock.post("path:/api/dashboard", createMockDashboard({ id: 42 }));
+      const { store } = await setup();
+
+      await userEvent.click(await screen.findByText("Dashboard"));
+      expect(store.getState().app.isNavbarOpen).toBe(true);
+
+      await userEvent.type(await screen.findByLabelText("Name"), "Sales");
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+      await waitFor(() =>
+        expect(store.getState().app.isNavbarOpen).toBe(false),
+      );
+    });
   });
 
   describe("New Dashboard", () => {

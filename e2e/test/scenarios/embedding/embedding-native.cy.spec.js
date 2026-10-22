@@ -1,7 +1,7 @@
 import { clone } from "metabase/utils/clone";
 const { H } = cy;
 
-import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
+import * as SQLFilter from "../native/helpers/e2e-sql-filter-helpers";
 
 import {
   questionDetails as questionDetails2,
@@ -67,9 +67,45 @@ describe("scenarios > embedding > native questions", () => {
     it("should display and work with enabled parameters while hiding the locked one", () => {
       createAndVisitQuestion();
 
+      cy.log(
+        "should (dis)allow setting parameters as required for a published embedding",
+      );
       H.setEmbeddingParameter("Order ID", "Editable");
-      H.setEmbeddingParameter("Created At", "Editable");
       H.setEmbeddingParameter("Total", "Locked");
+
+      H.publishChanges("card");
+      H.closeStaticEmbeddingModal();
+
+      cy.findByTestId("native-query-editor-container")
+        .findByText("Open Editor")
+        .click();
+
+      cy.findByTestId("native-query-editor-action-buttons")
+        .icon("variable")
+        .click();
+
+      assertRequiredEnabledForName({ name: "id", enabled: true });
+      assertRequiredEnabledForName({ name: "total", enabled: true });
+      assertRequiredEnabledForName({ name: "created_at", enabled: false });
+      assertRequiredEnabledForName({ name: "source", enabled: false });
+      assertRequiredEnabledForName({ name: "state", enabled: false });
+      assertRequiredEnabledForName({ name: "product_id", enabled: false });
+
+      cy.log("should display and work with enabled parameters");
+      H.visitQuestion("@questionId");
+
+      cy.get("@questionId").then((questionId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
+      });
+
+      H.assertEmbeddingParameter("Order ID", "Editable");
+      H.assertEmbeddingParameter("Total", "Locked");
+      H.setEmbeddingParameter("Created At", "Editable");
       H.setEmbeddingParameter("State", "Editable");
       H.setEmbeddingParameter("Product ID", "Editable");
 
@@ -156,18 +192,24 @@ describe("scenarios > embedding > native questions", () => {
 
       H.assertEmbeddingParameter("Total", "Editable");
 
+      cy.log(
+        "should let the user lock a text parameter to a specific value (metabase#20634)",
+      );
+      H.setEmbeddingParameter("Source", "Locked");
+      H.modal().findByPlaceholderText("Source").type("Organic{enter}");
+
       H.publishChanges("card", ({ request }) => {
         const actual = request.body.embedding_params;
 
         // We only expect total to be "enabled" because the rest
-        // weren't touched and therefore aren't changed, whereas
-        // "enabled" must be set by default for required params.
+        // (except the locked source) weren't touched and therefore aren't changed,
+        // whereas "enabled" must be set by default for required params.
         const expected = {
           id: "disabled",
           state: "disabled",
           created_at: "disabled",
           total: "enabled",
-          source: "disabled",
+          source: "locked",
           product_id: "disabled",
         };
 
@@ -177,38 +219,14 @@ describe("scenarios > embedding > native questions", () => {
       H.visitIframe();
 
       // Filter widget must be visible
-      H.filterWidget().contains("Total");
+      H.filterWidget().should("have.length", 1).and("contain", "Total");
 
       // And its default value must be in the URL
       cy.location("search").should("eq", "?total=100");
-    });
 
-    it("should (dis)allow setting parameters as required for a published embedding", () => {
-      createAndVisitQuestion();
-      // Make one parameter editable and one locked
-      H.setEmbeddingParameter("Order ID", "Editable");
-      H.setEmbeddingParameter("Total", "Locked");
-
-      H.publishChanges("card");
-      H.closeStaticEmbeddingModal();
-
-      cy.findByTestId("native-query-editor-container")
-        .findByText("Open Editor")
-        .click();
-
-      // Open variable editor
-      cy.findByTestId("native-query-editor-action-buttons")
-        .icon("variable")
-        .click();
-
-      // Now check that all disabled parameters can't be required and the rest can
-      assertRequiredEnabledForName({ name: "id", enabled: true });
-      assertRequiredEnabledForName({ name: "total", enabled: true });
-      // disabled parameters
-      assertRequiredEnabledForName({ name: "created_at", enabled: false });
-      assertRequiredEnabledForName({ name: "source", enabled: false });
-      assertRequiredEnabledForName({ name: "state", enabled: false });
-      assertRequiredEnabledForName({ name: "product_id", enabled: false });
+      H.tableInteractiveBody()
+        .should("contain", "Organic")
+        .and("not.contain", "Affiliate");
     });
   });
 
@@ -219,7 +237,8 @@ describe("scenarios > embedding > native questions", () => {
       });
     });
 
-    it("should hide filters via url", () => {
+    it("should hide filters, set filter values via url and lock all parameters", () => {
+      cy.log("should hide filters via url");
       cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
@@ -251,9 +270,9 @@ describe("scenarios > embedding > native questions", () => {
 
         H.filterWidget().should("not.exist");
       });
-    });
 
-    it("should set multiple filter values via url", () => {
+      cy.log("should set multiple filter values via url");
+      cy.signInAsAdmin();
       cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
@@ -296,9 +315,9 @@ describe("scenarios > embedding > native questions", () => {
 
         cy.contains("35.7").should("not.exist");
       });
-    });
 
-    it("should lock all parameters", () => {
+      cy.log("should lock all parameters");
+      cy.signInAsAdmin();
       cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
@@ -355,23 +374,7 @@ describe("scenarios > embedding > native questions", () => {
       });
     });
 
-    it("locked parameters require a value to be specified in the JWT", () => {
-      cy.get("@questionId").then((questionId) => {
-        const payload = {
-          resource: { question: questionId },
-          params: { source: null },
-        };
-
-        H.visitEmbeddedPage(payload);
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You must specify a value for :source in the JWT.").should(
-        "be.visible",
-      );
-    });
-
-    it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
+    it("locked parameters should still render results in the preview by default and require a value in the JWT (metabase#47570)", () => {
       H.visitQuestion("@questionId").then((id) => {
         H.openLegacyStaticEmbeddingModal({
           resource: "question",
@@ -388,6 +391,86 @@ describe("scenarios > embedding > native questions", () => {
         .findByText("2,500")
         .should("be.visible");
       cy.findByRole("heading", { name: "test question" }).should("be.visible");
+
+      cy.log("locked parameters require a value to be specified in the JWT");
+      cy.get("@questionId").then((questionId) => {
+        const payload = {
+          resource: { question: questionId },
+          params: { source: null },
+        };
+
+        H.visitEmbeddedPage(payload);
+      });
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("You must specify a value for :source in the JWT.").should(
+        "be.visible",
+      );
+    });
+  });
+
+  describe("locked numeric parameters (metabase#20845)", () => {
+    function getQuestionDetails(defaultValue = undefined) {
+      return {
+        name: "20845",
+        native: {
+          "template-tags": {
+            qty_locked: {
+              id: "6bd8d7be-bd5b-382c-cfa2-683461891663",
+              name: "qty_locked",
+              "display-name": "Qty locked",
+              type: "number",
+              required: defaultValue ? true : false,
+              default: defaultValue,
+            },
+          },
+          query:
+            "select count(*) from orders where true [[AND quantity={{qty_locked}}]]",
+        },
+        enable_embedding: true,
+        embedding_params: {
+          qty_locked: "locked",
+        },
+      };
+    }
+
+    it("locked parameter should work with numeric values, with and without a required filter with a default value", () => {
+      H.createNativeQuestion(getQuestionDetails(), {
+        wrapId: true,
+        idAlias: "questionId",
+      });
+      H.createNativeQuestion(getQuestionDetails("10"), {
+        wrapId: true,
+        idAlias: "requiredQuestionId",
+      });
+
+      [
+        { alias: "@questionId", label: "without a default value" },
+        {
+          alias: "@requiredQuestionId",
+          label: "with a required default value",
+        },
+      ].forEach(({ alias, label }) => {
+        cy.get(alias).then((questionId) => {
+          // This issue is not possible to reproduce using UI from this point on.
+          // We have to manually send the payload in order to make sure it works for both strings and integers.
+          ["string", "integer"].forEach((type) => {
+            cy.log(
+              `Make sure it works with ${type.toUpperCase()} in the payload ${label}`,
+            );
+
+            H.visitEmbeddedPage({
+              resource: { question: questionId },
+              params: {
+                qty_locked: type === "string" ? "15" : 15, // IMPORTANT: integer
+              },
+            });
+
+            H.tableInteractiveHeader("COUNT(*)");
+            cy.findByRole("gridcell").should("have.text", "5");
+          });
+        });
+      });
     });
   });
 });
@@ -449,3 +532,167 @@ function assertRequiredEnabledForName({ name, enabled }) {
     );
   });
 }
+
+// TODO:
+// - Add tests for embedding previews in both cases
+// - Add tests for disabled, editable and locked parameters in both cases
+// BONUS: Ideally add tests for email subscriptions with the filter applied
+describe("issue 27643", { tags: "@external" }, () => {
+  const PG_DB_ID = 2;
+  const TEMPLATE_TAG_NAME = "expected_invoice";
+  const getQuestionDetails = (fieldId) => {
+    return {
+      name: "27643",
+      database: PG_DB_ID,
+      native: {
+        query:
+          "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]] limit 1",
+        "template-tags": {
+          [TEMPLATE_TAG_NAME]: {
+            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+            dimension: ["field", fieldId, null],
+            name: TEMPLATE_TAG_NAME,
+            "display-name": "Expected Invoice",
+            type: "dimension",
+            "widget-type": "string/=",
+          },
+        },
+      },
+      enable_embedding: true,
+      embedding_params: {
+        [TEMPLATE_TAG_NAME]: "enabled",
+      },
+    };
+  };
+
+  beforeEach(() => {
+    // This issue was only reproducible against the Postgres database.
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+    H.withDatabase(PG_DB_ID, ({ INVOICES }) => {
+      cy.wrap(INVOICES.EXPECTED_INVOICE).as(
+        "postgresInvoicesExpectedInvoiceId",
+      );
+    });
+  });
+
+  describe("should allow a dashboard filter to map to a boolean field filter parameter (metabase#27643)", () => {
+    beforeEach(() => {
+      const dashboardParameter = {
+        id: "2850aeab",
+        name: "Text filter for boolean field",
+        slug: "text_filter_for_boolean_field",
+        type: "string/=",
+      };
+
+      const dashboardDetails = {
+        name: "Dashboard with card with boolean field filter",
+        enable_embedding: true,
+        embedding_params: {
+          [dashboardParameter.slug]: "enabled",
+        },
+        parameters: [dashboardParameter],
+      };
+
+      cy.get("@postgresInvoicesExpectedInvoiceId")
+        .then((fieldId) => {
+          H.createNativeQuestionAndDashboard({
+            questionDetails: getQuestionDetails(fieldId),
+            dashboardDetails,
+          });
+        })
+        .then(({ body: dashboardCard }) => {
+          const { card_id, dashboard_id } = dashboardCard;
+
+          cy.wrap(dashboard_id).as("dashboardId");
+          cy.wrap(card_id).as("questionId");
+
+          const mapFilterToCard = {
+            parameter_mappings: [
+              {
+                parameter_id: dashboardParameter.id,
+                card_id,
+                target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
+              },
+            ],
+          };
+
+          H.editDashboardCard(dashboardCard, mapFilterToCard);
+        });
+    });
+
+    it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
+      cy.log("Test the dashboard");
+      H.visitDashboard("@dashboardId");
+      H.getDashboardCard().should("contain", "true");
+      H.toggleFilterWidgetValues(["false"]);
+      H.getDashboardCard().should("contain", "false");
+
+      cy.log("Test the embedded dashboard");
+      cy.get("@dashboardId").then((dashboard) => {
+        H.visitEmbeddedPage({
+          resource: { dashboard },
+          params: {},
+        });
+
+        H.getDashboardCard().should("contain", "true");
+        H.toggleFilterWidgetValues(["false"]);
+        H.getDashboardCard().should("contain", "false");
+      });
+
+      cy.log("Test the public dashboard");
+      cy.get("@dashboardId").then((dashboardId) => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        H.visitPublicDashboard(dashboardId);
+
+        H.getDashboardCard().should("contain", "true");
+        H.toggleFilterWidgetValues(["false"]);
+        H.getDashboardCard().should("contain", "false");
+      });
+    });
+  });
+
+  describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {
+    beforeEach(() => {
+      cy.get("@postgresInvoicesExpectedInvoiceId").then((fieldId) => {
+        H.createNativeQuestion(getQuestionDetails(fieldId), {
+          wrapId: true,
+          idAlias: "questionId",
+        });
+      });
+    });
+
+    it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
+      cy.log("Test the question");
+      H.visitQuestion("@questionId");
+      cy.findAllByRole("gridcell").should("contain", "true");
+      H.toggleFilterWidgetValues(["false"]);
+      H.queryBuilderMain().button("Get Answer").click();
+      cy.findAllByRole("gridcell").should("contain", "false");
+
+      cy.log("Test the embedded question");
+      cy.get("@questionId").then((question) => {
+        H.visitEmbeddedPage({
+          resource: { question },
+          params: {},
+        });
+
+        cy.findAllByRole("gridcell").should("contain", "true");
+        H.toggleFilterWidgetValues(["false"]);
+        cy.findAllByRole("gridcell").should("contain", "false");
+      });
+
+      cy.log("Test the public question");
+      cy.get("@questionId").then((questionId) => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        H.visitPublicQuestion(questionId);
+
+        cy.findAllByRole("gridcell").should("contain", "true");
+        H.toggleFilterWidgetValues(["false"]);
+        cy.findAllByRole("gridcell").should("contain", "false");
+      });
+    });
+  });
+});

@@ -167,6 +167,8 @@ src="https://www.youtube.com/embed/{{video_id}}
 
 To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `video_id`). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
 
+If Metabase blocks the iframe, an admin needs to [allow iframes from that site](../configuring-metabase/domains.md#allow-iframes-from-a-site-in-dashboards).
+
 ## Dashboard tabs
 
 You can add multiple tabs to a dashboard to keep your cards organized.
@@ -251,6 +253,16 @@ To edit a card's:
 
 - **Underlying query**: click on the card's title while _not_ in dashboard editing mode. If the card displays multiple questions, pick the question you want to edit from the dropdown.
 - **Visualization settings**, see [changing a card's visualization settings](#changing-a-cards-visualization-settings).
+
+## Showing events on dashboard cards
+
+Time series cards can show [events](../exploration-and-organization/events-and-timelines.md) saved to the question.
+
+**To toggle events for a card**, click on the card's **three-dot menu** (**...**) and select **Events**.
+
+**To toggle events for all time series cards on the current tab**, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**.
+
+Toggling events on a dashboard only applies to your session. To change what everyone sees, edit the question's events and save the question. See [Events on dashboards](../exploration-and-organization/events-and-timelines.md#events-on-dashboards).
 
 ## Changing a card's visualization settings
 

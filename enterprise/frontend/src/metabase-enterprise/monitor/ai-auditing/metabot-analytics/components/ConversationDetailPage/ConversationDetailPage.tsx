@@ -199,6 +199,7 @@ export function ConversationDetailPage() {
               <Card withBorder shadow="none" p="xxl">
                 <Messages
                   messages={messages}
+                  size="md"
                   getExtraActions={getExtraActions}
                   isDoingScience={false}
                   debug
@@ -301,6 +302,7 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
+            size="md"
             debug={false}
             readonly
             hideActions
@@ -308,7 +310,6 @@ function FeedbackCard({
             submittedFeedback={undefined}
             bg="background_page-secondary"
             p="lg"
-            pb="0"
             bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />

@@ -2,9 +2,8 @@
   "MCP (Model Context Protocol) Streamable HTTP transport.
 
   Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
-  session issuance, origin validation (DNS-rebinding protection), cookie/bearer auth resolution, per-user throttling,
-  SSE responses and the GET keepalive stream, OAuth discovery hints on 401s, and
-  `insufficient_scope` challenges on 403s."
+  session issuance, origin validation (DNS-rebinding protection), OAuth bearer auth checks, per-user throttling, SSE
+  responses and the GET keepalive stream, OAuth discovery hints on 401s, and `insufficient_scope` challenges on 403s."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -12,9 +11,9 @@
    [compojure.response :as compojure.response]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.core :as mcp]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as v2.common]
@@ -25,7 +24,6 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [throttle.core :as throttle])
   (:import
@@ -74,6 +72,12 @@
             :capabilities    capabilities
             :serverInfo      server-info}
      instructions (assoc :instructions instructions))))
+
+(def mcp-access-disabled-message
+  "The refusal for a user whose groups grant no MCP access, at `initialize` and on requests of a session opened
+  before an admin turned MCP off."
+  (message/msg [(str "MCP access is not enabled for your account. "
+                     "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
@@ -168,18 +172,18 @@
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
   (str/join (for [message messages]
-              (str "event: message\ndata: " (json/encode message) "\n\n"))))
+              (str "event: message\ndata: " (message/json-text message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- json-response
-  "Build a Ring response with a JSON-encoded `body`."
+  "Build a Ring response with `body` as [[message/json-text]]."
   ([status body]
    (json-response status body nil))
   ([status body extra-headers]
    {:status  status
     :headers (merge {"Content-Type" "application/json"} extra-headers)
-    :body    (json/encode body)}))
+    :body    (message/json-text body)}))
 
 (defn- sse-response
   "Return a plain Ring response with SSE-formatted body for POST requests."
@@ -244,8 +248,7 @@
 
   Compares domain AND port: an origin is a (scheme, domain, port) triple, so matching on the domain alone treats
   every other app on the same hostname as same-origin. On a developer machine that is the whole threat model —
-  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server
-  with the user's cookies.
+  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server.
 
   Two deliberate loosenesses:
 
@@ -369,10 +372,16 @@
       (and batch? (some #(and (valid-message? %) (= "initialize" (:method %))) body))
       (json-response 400 (jsonrpc-error nil -32600 (message/msg ["initialize must not be batched"])))
 
+      (and (not batch?) (valid-message? body) (= "initialize" (:method body))
+           (not (mcp.perms/enabled? (mcp.perms/policy-for-current-user))))
+      (json-response 403 (jsonrpc-error (:id body) v2.common/error-code-invalid-request mcp-access-disabled-message))
+
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
-            supports-mcp-ui? (mcp-app-ui-capability? params)
+            ;; A client the admin switched off would only get a broken card: its iframe is blocked by CORS.
+            supports-mcp-ui? (and (mcp-app-ui-capability? params)
+                                  (mcp/inline-ui-enabled-for-client? (get-in params [:clientInfo :name])))
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
             init-response (handle-initialize (:id body) params capabilities instructions)]
@@ -463,23 +472,40 @@
   ;; threads have no such ceiling and cost nothing while parked.
   (Executors/newThreadPerTaskExecutor (.. (Thread/ofVirtual) (name "mcp-keepalive-" 0) factory)))
 
+(defn- read-tools-hash
+  "`[hash failed?]`: `(tools-hash-fn)` and false, or `fallback` and true when it throws. The hash reads the user's
+  group policy from the app database, and a failed read must not end a stream that is otherwise healthy.
+  `failing?` says the previous read failed too, so a sustained failure warns once rather than every tick."
+  [tools-hash-fn fallback failing?]
+  (try
+    [(tools-hash-fn) false]
+    (catch Exception e
+      (if failing?
+        (log/debug e "Still could not hash the MCP tool list for the keepalive stream; keeping the previous hash")
+        (log/warn e "Could not hash the MCP tool list for the keepalive stream; keeping the previous hash"))
+      [fallback true])))
+
 (defn- keepalive-loop!
   "Emit SSE keepalive comments on `writer` every `interval-ms` until `canceled-chan` reports the client is gone.
   Re-reads the tool manifest hash on each tick and emits `notifications/tools/list_changed` when it differs from the
-  previous tick, so the client knows to refetch `tools/list`. Returns nil once canceled."
+  previous tick, so the client knows to refetch `tools/list`; a tick whose hash fails keeps the previous one. Returns
+  nil once canceled."
   [^Writer writer tools-hash-fn canceled-chan interval-ms]
-  (loop [last-hash (tools-hash-fn)]
+  (loop [[last-hash failing?] (read-tools-hash tools-hash-fn nil false)]
     (.write writer ": keepalive\n\n")
     (.flush writer)
     ;; Park on the cancellation channel instead of sleeping through the interval: the cancel loop notices a
     ;; disconnected client within a second, and waiting on it releases this thread then rather than at the next tick.
-    (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)])]
+    ;; `:priority` so a cancellation already delivered wins over a timeout that is ready too.
+    (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)] :priority true)]
       (when-not (= port canceled-chan)
-        (let [current-hash (tools-hash-fn)]
-          (when (not= current-hash last-hash)
+        (let [[current-hash :as read] (read-tools-hash tools-hash-fn last-hash failing?)]
+          ;; A nil `last-hash` means no read has succeeded yet, so the first that does seeds it rather than
+          ;; announcing a change.
+          (when (and last-hash (not= current-hash last-hash))
             (.write writer ^String (sse-body [tools-list-changed-notification]))
             (.flush writer))
-          (recur current-hash))))))
+          (recur read))))))
 
 (def ^:private max-concurrent-keepalive-streams
   "How many GET keepalive streams one user may hold open at once.
@@ -604,7 +630,7 @@
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
-;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
+;; MCP is auth-gated (OAuth bearer token), so the risk is lower than the
 ;; unauthenticated OAuth endpoints. The threshold is generous to accommodate users running
 ;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check records every
 ;; attempt (not just failures) which is correct here — we want to cap total throughput
@@ -693,10 +719,10 @@
   [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [origin-error  (validate-origin request)
-           bearer-token  (oauth-server/extract-bearer-token request)
-           session-auth  api/*current-user-id*
-           token-scopes  (:token-scopes request)
+     (let [origin-error    (validate-origin request)
+           bearer-token    (oauth-server/extract-bearer-token request)
+           current-user-id api/*current-user-id*
+           token-scopes    (:token-scopes request)
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose token
            ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
            invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
@@ -732,30 +758,31 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, the
-           ;; `session-auth` branch below would dispatch nil scopes as unrestricted, so refuse it as an invalid token.
+           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, refuse it
+           ;; as an invalid token.
            (and (:authenticated-via-oauth? request) (empty? token-scopes))
            (respond @invalid-token)
 
-           ;; Respect the scope set attached to an authenticated request. Sessions without one
-           ;; retain unrestricted access.
-           session-auth
-           ;; An OAuth bearer request lands here too — the session middleware resolves the token and
-           ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
-           (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
+           ;; MCP authenticates only with an OAuth bearer token. The session middleware already ignores sessions and
+           ;; API keys on the MCP paths; this check keeps a request with a current user but no OAuth marker from
+           ;; dispatching should one arrive anyway. It gets the 401 discovery challenge below. An `mb:full` token
+           ;; carries the unrestricted sentinel next to its other granted scopes; the sentinel is not an MCP scope, so
+           ;; only those strings reach MCP.
+           (and current-user-id (:authenticated-via-oauth? request))
+           (dispatch current-user-id (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
            ;; token — including checking `user.is_active` and running the granted scopes through the
            ;; `oauth-token->token-scopes` trust hinge — and sets `*current-user-id*`, so an active user's token is
-           ;; served by the `session-auth` branch above. Landing here therefore means the token is unknown, expired,
+           ;; served by the dispatch branch above. Landing here therefore means the token is unknown, expired,
            ;; revoked, or names a DEACTIVATED user. We must not re-resolve and dispatch it: doing so bypassed the
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token
            (respond @invalid-token)
 
-           ;; No auth at all — return 401 with discovery
+           ;; No OAuth — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Authentication required"]))
                                    {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path

@@ -8,6 +8,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
+   [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -19,12 +21,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- call
-  "Invoke the document_write handler directly (unrestricted scopes) and return the decoded
+  "Invoke the document_write handler directly with every v2 scope and return the decoded
    payload map. Teaching errors surface as thrown ex-infos, matching how the registry treats
    handler exceptions."
   [args]
-  (-> (v2.document/document-write-tool args {:token-scopes nil})
+  (-> (v2.document/document-write-tool args {:token-scopes v2.tu/all-scopes})
       (get-in [:content 0 :text])
+      v2.tu/strip-data-boundary
       json/decode+kw))
 
 (defn- orders-query
@@ -341,7 +344,7 @@
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
    arguments the schema is meant to reject."
   [args]
-  (error-text (registry/call-tool nil "test-session" "document_write" args)))
+  (error-text (registry/call-tool v2.tu/all-scopes "test-session" "document_write" args)))
 
 (deftest markdown-tables-are-rejected-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -428,6 +431,39 @@
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"dashboard\" %%}"
                                                        hidden-id)))))))))))
+
+(defn- read-with-layout
+  "The `get_content` result for document `doc-id` with the `layout` include, as the decoded result row."
+  [doc-id]
+  (-> (registry/call-tool v2.tu/all-scopes "test-session" "get_content"
+                          {:items [{:type "document" :id doc-id}] :include ["layout"]})
+      (get-in [:result :content 0 :text])
+      v2.tu/strip-data-boundary
+      json/decode+kw
+      :results
+      first))
+
+(deftest smart-link-to-a-transform-folder-resolves-like-a-missing-id-test
+  (testing "GHY-4746: MCP v2 has no transforms, so an entity token naming a transform folder resolves as one
+            naming a missing collection does: the link stays unlabelled, and the folder's name is neither
+            stored nor read back"
+    (mt/with-temp [:model/Collection {folder-id :id} {:name "Rollups folder" :namespace "transforms"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (with-tool-documents
+          (fn [created!]
+            (let [token (fn [id] (format "{%% entity id=\"%d\" model=\"collection\" %%}" id))]
+              (testing "a missing collection id"
+                (is (= [{"entityId" 999999999 "model" "collection" "label" nil "href" "/"}]
+                       (written-smart-link-attrs created! (token 999999999)))))
+              (testing "a transform folder"
+                (is (= [{"entityId" folder-id "model" "collection" "label" nil "href" "/"}]
+                       (written-smart-link-attrs created! (token folder-id)))))
+              (testing "get_content does not name the folder"
+                (let [doc-id (:id (created! (call {:method           "create"
+                                                   :name             "Folder link"
+                                                   :content_markdown (str "See " (token folder-id) " here.")})))
+                      read   (json/encode (read-with-layout doc-id))]
+                  (is (not (str/includes? read "Rollups folder")) read))))))))))
 
 (deftest edit-keeps-the-label-of-a-smart-link-the-editor-cannot-read-test
   (testing "editing other text in a block must not wipe the label of a smart link pointing at
