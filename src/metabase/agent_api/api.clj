@@ -727,7 +727,7 @@
   that did read. Each request accepts up to five URIs; oversized batches return 400 before any reads."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
-           :description (:description (tools.core/validate-tool! metabot-resources/read-resource-tool))}}
+           :description metabot-resources/agent-api-description}}
   [_route-params
    _query-params
    body :- ::read-resource-request]

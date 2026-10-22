@@ -10,6 +10,8 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -2024,6 +2026,16 @@
       (is (= uri (:uri resource)))
       (is (<= (count attribute) 200))
       (is (str/ends-with? attribute "...[truncated]")))))
+
+(deftest ^:parallel read-resource-tool-description-test
+  (let [endpoint    (some (fn [[_ endpoint]]
+                            (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
+                              endpoint))
+                          (api.macros/ns-routes 'metabase.agent-api.api))
+        description (:description (tools-manifest/endpoint->tool-definition "/api/agent" endpoint))]
+    (is (str/includes? description "metabase://collection/root/items"))
+    (doseq [text ["metabase://chart/" "metabase://query/" "conversation" "save_entity"]]
+      (is (not (str/includes? description text)) text))))
 
 (deftest read-resource-test
   (testing "Dispatches a top-level URI through the shared resolver"

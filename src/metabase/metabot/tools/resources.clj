@@ -1284,26 +1284,40 @@
             :description "A metabase:// resource URI"
             :error/message (str "must be a non-empty URI string of at most " max-uri-length " characters")}])
 
-(def ^:private tool-description
-  "What the model is told `read_resource` is.
+(def ^:private conversation-kinds
+  "URI kinds that read charts and queries from the conversation's state."
+  #{"chart" "query"})
 
-  A value rather than a docstring: the batched form has to add its own per-call limits to it, and a
-  docstring cannot be computed."
+(defn- description
+  "What a caller is told `read_resource` is. Without `agent-loop?`, the chart and query URIs and the
+  `save_entity` note are left out, since they need the agent loop's conversation state and tools."
+  [agent-loop?]
   (str "Read detailed information about Metabase resources. Copy URIs from `search` or navigation results.\n"
-       "Entity IDs are numeric. Use `collection/root` for the root collection; chart and query IDs come\n"
-       "from this conversation's state. Schema names are case-sensitive and URI path segments must be URL-encoded.\n\n"
+       "Entity IDs are numeric. Use `collection/root` for the root collection. Schema names are case-sensitive\n"
+       "and URI path segments must be URL-encoded.\n\n"
        "Shortened URI echoes and error text end with ...[truncated]. Reuse the original URI for another read.\n\n"
        "SUPPORTED URI FORMS:\n"
-       (str/join "\n" (for [[_ templates] (sort-by key uri-templates)
+       (str/join "\n" (for [[kind templates] (sort-by key uri-templates)
+                            :when (or agent-loop? (not (conversation-kinds kind)))
                             uri templates]
                         (str "- " uri)))
        "\n\nALIASES (the same trailing segments are accepted):\n"
        (str/join "\n" (for [[kind aliases] (sort-by key uri-aspect-aliases)
                             [alias canonical] (sort-by key aliases)]
                         (str "- metabase://" kind "/{id}/" alias " is an alias for /" canonical)))
-       "\n\nDocuments return a name and an indexed outline of top-level blocks. The indices are valid\n"
-       "`position` values for `save_entity` document destinations. Chart URIs return the chart type\n"
-       "and its query; query URIs return a query from this conversation."))
+       "\n\nDocuments return a name and an indexed outline of top-level blocks."
+       (when agent-loop?
+         (str " The indices are valid\n"
+              "`position` values for `save_entity` document destinations.\n\n"
+              "Chart and query IDs come from this conversation's state. Chart URIs return the chart type\n"
+              "and its query; query URIs return a query from this conversation."))))
+
+(def ^:private tool-description
+  "What the model is told `read_resource` is.
+
+  A value rather than a docstring: the batched form has to add its own per-call limits to it, and a
+  docstring cannot be computed."
+  (description true))
 
 (def ^:private batch-note
   "What the batched form adds to [[tool-description]]: the limits that exist only because one call
@@ -1314,6 +1328,10 @@
        "at " page-size " items per page; when a list is truncated its structured output carries a\n"
        "ready-to-fetch `next-page-uri` — request that rather than building a `page=N` query param\n"
        "by hand. The response also includes `page` (current, 1-indexed) and `pages` (total)."))
+
+(def agent-api-description
+  "The batched description for callers outside the agent loop, such as the Agent API."
+  (str (description false) batch-note))
 
 (defrecord ReadResourceTool []
   tools/Tool
