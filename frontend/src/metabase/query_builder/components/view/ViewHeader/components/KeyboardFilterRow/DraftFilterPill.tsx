@@ -16,19 +16,22 @@ import {
 } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker/utils";
 import { HistogramSlider } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/HistogramSlider";
 import { useNumberColumnStats } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
-import { Icon, Popover } from "metabase/ui";
+import { Icon, Popover, Stack } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
 import S from "./KeyboardFilterRow.module.css";
 import { SuggestionInput } from "./SuggestionInput";
+import {
+  type ColumnPickerMode,
+  ColumnPickerModeControl,
+  useColumnSuggestions,
+} from "./column-picker";
 import type { DraftOperator, DraftState } from "./types";
 import {
   changeDraftColumn,
   formatDraftValue,
   getColumnGroups,
-  getColumnKey,
-  getColumnSuggestionGroups,
   getDraftFilterClause,
   getMaxValueCount,
   getPillOperatorLabel,
@@ -37,6 +40,7 @@ import {
 import { type ValueAndLabel, useValueWidget } from "./value-widgets";
 
 const SEARCH_LIMIT = 20;
+const COLUMN_DROPDOWN_WIDTH = 340;
 
 export type DraftChangeSource = "selection" | "typing";
 
@@ -55,7 +59,7 @@ interface DraftFilterPillProps {
     source: DraftChangeSource,
   ) => void;
   /** The user finished the filter. */
-  onSubmit: (filter: Lib.ExpressionClause) => void;
+  onSubmit: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
   /** The user closed the pill and keeps what is applied. */
   onDone: () => void;
   /** The user discarded the changes in the pill. */
@@ -340,11 +344,12 @@ export function DraftFilterPill({
           query={query}
           stageIndex={stageIndex}
           text={text}
-          placeholder={column?.label ?? t`Column`}
+          placeholder={column?.label ?? t`Search filters`}
           onTextChange={handleTextChange}
           onSelect={(newColumn) =>
             updateDraft(changeDraftColumn(draft, newColumn))
           }
+          onSelectSegment={onSubmit}
           onKeyDown={handleKeyDown}
         />
       ) : (
@@ -443,6 +448,7 @@ interface ColumnInputProps {
   placeholder: string;
   onTextChange: (text: string) => void;
   onSelect: (column: NonNullable<DraftState["column"]>) => void;
+  onSelectSegment: (segment: Lib.SegmentMetadata) => void;
   onKeyDown: (
     event: KeyboardEvent<HTMLInputElement>,
     hasSelectedOption: boolean,
@@ -457,32 +463,69 @@ function ColumnInput({
   placeholder,
   onTextChange,
   onSelect,
+  onSelectSegment,
   onKeyDown,
 }: ColumnInputProps) {
+  const [mode, setMode] = useState<ColumnPickerMode>("auto");
+  const columnInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const focusedInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleModeChange = (newMode: ColumnPickerMode) => {
+    setMode(newMode);
+    // The mode control takes the focus, but typing goes to the input that
+    // had the focus before.
+    requestAnimationFrame(() =>
+      (focusedInputRef.current ?? columnInputRef.current)?.focus(),
+    );
+  };
+
   const columnGroups = useMemo(
     () => getColumnGroups(query, stageIndex),
     [query, stageIndex],
   );
-  const suggestionGroups = useMemo(
-    () => getColumnSuggestionGroups(columnGroups),
-    [columnGroups],
+  const { groups, getItem } = useColumnSuggestions(
+    query,
+    stageIndex,
+    columnGroups,
+    mode,
+    text.trim().length > 0,
   );
 
   const handleSelect = (key: string) => {
-    columnGroups.forEach((group, groupIndex) =>
-      group.columns.forEach((column, columnIndex) => {
-        if (getColumnKey(groupIndex, columnIndex) === key) {
-          onSelect(column);
-        }
-      }),
-    );
+    const item = getItem(key);
+    if (item?.type === "column") {
+      onSelect(item.column);
+    } else if (item?.type === "segment") {
+      onSelectSegment(item.segment);
+    }
   };
 
   return (
     <SuggestionInput
-      groups={suggestionGroups}
+      groups={groups}
+      inputRef={columnInputRef}
+      searchInputRef={searchInputRef}
+      withSearchBox
+      header={
+        <Stack
+          gap="sm"
+          onMouseDownCapture={() => {
+            focusedInputRef.current =
+              document.activeElement === searchInputRef.current
+                ? searchInputRef.current
+                : columnInputRef.current;
+          }}
+        >
+          <ColumnPickerModeControl value={mode} onChange={handleModeChange} />
+        </Stack>
+      }
+      dropdownWidth={COLUMN_DROPDOWN_WIDTH}
       text={text}
       placeholder={placeholder}
+      emptyMessage={
+        mode === "popular" ? t`No popular columns yet` : t`No results`
+      }
       onTextChange={onTextChange}
       onOptionSubmit={handleSelect}
       onKeyDown={onKeyDown}

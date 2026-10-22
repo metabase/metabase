@@ -101,7 +101,10 @@ export function KeyboardFilterRow({
     }
   };
 
-  const applyDraft = (draft: ActiveDraft, filter: Lib.ExpressionClause) => {
+  const applyDraft = (
+    draft: ActiveDraft,
+    filter: Lib.ExpressionClause | Lib.SegmentMetadata,
+  ) => {
     setQuery(
       getPreviewQuery(draft.query, draft.stageIndex, draft.filter, filter),
     );
@@ -132,7 +135,7 @@ export function KeyboardFilterRow({
     }
   };
 
-  const handleSubmit = (filter: Lib.ExpressionClause) => {
+  const handleSubmit = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
     if (activeDraft != null) {
       applyDraft(activeDraft, filter);
     }

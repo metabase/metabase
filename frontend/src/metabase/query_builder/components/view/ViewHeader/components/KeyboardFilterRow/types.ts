@@ -15,6 +15,8 @@ export type SuggestionOption = {
 };
 
 export type SuggestionGroup = {
+  /** A header above this group and the next groups with the same section. */
+  section?: string;
   label?: string;
   options: SuggestionOption[];
 };

@@ -15,13 +15,14 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.prototype.db :as prototype.db]
+   [metabase.prototype.field-categories-seed :as field-categories-seed]
    [metabase.prototype.settings :as prototype.settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
 (def ^:private min-field-count
   "Tables with fewer Fields do not get categories."
-  15)
+  10)
 
 (def ^:private full-recategorize-ratio
   "When more than this part of the Fields was added or removed, categorize all the Fields again."
@@ -247,6 +248,23 @@ Rules:
                 (incremental-categories
                  kept new-ids
                  (call-llm (incremental-categories-message table fields-by-id kept new-fields)))))))))
+
+(defn seed-categories!
+  "Store the categories from [[field-categories-seed/categories]] for the Tables of `table-ids-by-name` that have no
+  categories yet, so that the prototype has categories without an LLM."
+  [table-ids-by-name]
+  (doseq [[table-name table-id] table-ids-by-name
+          :let  [seed (get field-categories-seed/categories table-name)]
+          :when (and seed (nil? (stored-entry table-id)))
+          :let  [fields (prototype.db/fields-for-categories table-id)]
+          :when (>= (count fields) min-field-count)]
+    (let [field-ids  (mapv :id fields)
+          id-by-name (into {} (map (juxt :name :id)) fields)
+          response   (for [[category field-names] seed]
+                       {:name category :field_ids (vec (keep id-by-name field-names))})]
+      (store-entry! table-id {:field_ids  field-ids
+                              :categories (order-by-table (full-categories field-ids response) field-ids)})
+      (log/infof "Prototype field categories: Table %d: seeded" table-id))))
 
 (defn categorize-database!
   "Update the categories of all the active Tables of the Database with `database-id`. Errors of one Table are logged,

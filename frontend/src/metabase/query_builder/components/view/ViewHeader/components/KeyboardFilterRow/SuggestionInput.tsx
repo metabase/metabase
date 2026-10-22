@@ -1,9 +1,16 @@
 import cx from "classnames";
 import type { KeyboardEvent, ReactNode, Ref } from "react";
-import { useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { Checkbox, Combobox, Flex, Icon, useCombobox } from "metabase/ui";
+import {
+  Checkbox,
+  Combobox,
+  Flex,
+  Icon,
+  TextInput,
+  useCombobox,
+} from "metabase/ui";
 
 import S from "./KeyboardFilterRow.module.css";
 import type { SuggestionGroup, SuggestionOption } from "./types";
@@ -12,6 +19,9 @@ const DEFAULT_DROPDOWN_WIDTH = 280;
 
 interface SuggestionInputProps {
   inputRef?: Ref<HTMLInputElement>;
+  /** A search box at the top of the dropdown that mirrors the input. */
+  withSearchBox?: boolean;
+  searchInputRef?: Ref<HTMLInputElement>;
   groups: SuggestionGroup[];
   text: string;
   placeholder: string;
@@ -45,6 +55,8 @@ interface SuggestionInputProps {
  */
 export function SuggestionInput({
   inputRef,
+  withSearchBox = false,
+  searchInputRef,
   groups,
   text,
   placeholder,
@@ -106,6 +118,30 @@ export function SuggestionInput({
       event.stopPropagation();
     } else if (event.key === "Tab" && hasSelectedOption) {
       // Tab accepts the highlighted suggestion, like Enter.
+      event.preventDefault();
+      combobox.clickSelectedOption();
+    }
+  };
+
+  // The search box handles the same keys as the input, and moves in the list
+  // like the input does.
+  const handleSearchBoxKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (event.key === "ArrowDown") {
+        combobox.selectNextOption();
+      } else {
+        combobox.selectPreviousOption();
+      }
+      return;
+    }
+    const hasSelectedOption = combobox.getSelectedOptionIndex() !== -1;
+    handleKeyDown(event);
+    if (
+      event.key === "Enter" &&
+      hasSelectedOption &&
+      !event.isPropagationStopped()
+    ) {
       event.preventDefault();
       combobox.clickSelectedOption();
     }
@@ -183,27 +219,59 @@ export function SuggestionInput({
       {hasSuggestions && (
         <Combobox.Dropdown>
           {header != null && (
-            // Clicks in the header keep the focus in the input.
+            // Clicks in the header keep the focus in the input, except
+            // clicks in a text input of the header.
             <div
               className={S.dropdownHeader}
-              onMouseDown={(event) => event.preventDefault()}
+              onMouseDown={(event) => {
+                if (!isTextInput(event.target)) {
+                  event.preventDefault();
+                }
+              }}
             >
+              {withSearchBox && (
+                <TextInput
+                  ref={searchInputRef}
+                  mb="sm"
+                  value={text}
+                  placeholder={t`Search`}
+                  leftSection={<Icon name="search" />}
+                  onChange={(event) => {
+                    onTextChange(event.currentTarget.value);
+                    combobox.openDropdown();
+                  }}
+                  onKeyDown={handleSearchBoxKeyDown}
+                />
+              )}
               {header}
             </div>
           )}
           <Combobox.Options className={S.options}>
             {hasOptions ? (
               filteredGroups.map((group, groupIndex) => (
-                <Combobox.Group key={groupIndex} label={group.label}>
-                  <div
-                    className={cx({ [S.optionGrid]: isTiles || columns > 1 })}
-                    style={{
-                      gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
-                    }}
-                  >
-                    {group.options.map(renderOption)}
-                  </div>
-                </Combobox.Group>
+                <Fragment key={groupIndex}>
+                  {group.section != null &&
+                    group.section !==
+                      filteredGroups[groupIndex - 1]?.section && (
+                      <div
+                        className={cx(S.sectionHeader, {
+                          [S.sectionDivider]: groupIndex > 0,
+                        })}
+                      >
+                        {group.section}
+                      </div>
+                    )}
+                  <Combobox.Group label={group.label}>
+                    <div
+                      className={cx({ [S.optionGrid]: isTiles || columns > 1 })}
+                      style={{
+                        gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {group.options.map(renderOption)}
+                    </div>
+                  </Combobox.Group>
+                </Fragment>
               ))
             ) : (
               <Combobox.Empty>{emptyMessage}</Combobox.Empty>
@@ -213,6 +281,10 @@ export function SuggestionInput({
       )}
     </Combobox>
   );
+}
+
+function isTextInput(target: EventTarget) {
+  return target instanceof HTMLInputElement && target.type === "text";
 }
 
 function OptionLabel({ option }: { option: SuggestionOption }) {

@@ -844,7 +844,7 @@ export function getPreviewQuery(
   query: Lib.Query,
   stageIndex: number,
   filter: Lib.Filterable | undefined,
-  draftFilter: Lib.ExpressionClause | undefined,
+  draftFilter: Lib.ExpressionClause | Lib.SegmentMetadata | undefined,
 ): Lib.Query {
   if (draftFilter == null) {
     return Lib.dropEmptyStages(query);

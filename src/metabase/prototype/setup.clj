@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.prototype.dataset :as dataset]
    [metabase.prototype.db :as prototype.db]
+   [metabase.prototype.field-categories :as field-categories]
    [metabase.prototype.filter-usage-seed :as filter-usage-seed]
    [metabase.prototype.seed :as seed]
    [metabase.prototype.semantic-layer :as semantic-layer]
@@ -101,4 +102,6 @@
           (sync-and-apply-metadata! database))
         (apply-table-display-names! (:id database))
         (semantic-layer/ensure-semantic-layer!)
-        (filter-usage-seed/ensure-questions!)))))
+        (filter-usage-seed/ensure-questions!)
+        (field-categories/seed-categories!
+         (prototype.db/table-ids-by-name (:id database) dataset/schema-name))))))

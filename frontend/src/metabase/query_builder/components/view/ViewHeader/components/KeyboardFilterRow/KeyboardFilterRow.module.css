@@ -145,11 +145,23 @@
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-sm)
     var(--mantine-spacing-xs);
   color: var(--mb-color-text-secondary);
-  font-weight: bold;
+  font-weight: normal;
 }
 
 .option {
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.sectionHeader {
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-sm)
+    var(--mantine-spacing-xs);
+  color: var(--mb-color-text-primary);
+  font-weight: bold;
+}
+
+.sectionDivider {
+  margin-top: var(--mantine-spacing-sm);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
 .dropdownHeader {

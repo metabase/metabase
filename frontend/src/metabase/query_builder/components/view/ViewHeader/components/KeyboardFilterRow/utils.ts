@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { getCountryName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/countries";
 import { getStateName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/states";
 import { getFilterClause as getBooleanFilterClause } from "metabase/querying/filters/components/FilterPicker/BooleanFilterPicker/utils";
@@ -23,7 +22,6 @@ import type {
   DraftColumn,
   DraftOperator,
   DraftState,
-  SuggestionGroup,
   ValueKind,
 } from "./types";
 
@@ -32,6 +30,7 @@ export const STAGE_INDEX = -1;
 export type ColumnGroup = {
   label: string;
   columns: DraftColumn[];
+  segments: Lib.SegmentMetadata[];
 };
 
 export function getColumnGroups(
@@ -39,29 +38,18 @@ export function getColumnGroups(
   stageIndex: number,
 ): ColumnGroup[] {
   const columns = Lib.filterableColumns(query, stageIndex);
-  return Lib.groupColumns(columns).map((group) => ({
-    label: Lib.displayInfo(query, stageIndex, group).displayName,
-    columns: Lib.getColumnsFromColumnGroup(group).map((column) =>
-      getDraftColumn(query, stageIndex, column),
-    ),
-  }));
-}
-
-export function getColumnSuggestionGroups(
-  groups: ColumnGroup[],
-): SuggestionGroup[] {
-  return groups.map((group, groupIndex) => ({
-    label: group.label,
-    options: group.columns.map((column, columnIndex) => ({
-      value: getColumnKey(groupIndex, columnIndex),
-      label: column.label,
-      icon: getColumnIcon(column.column),
-    })),
-  }));
-}
-
-export function getColumnKey(groupIndex: number, columnIndex: number) {
-  return `${groupIndex}:${columnIndex}`;
+  return Lib.groupColumns(columns).map((group) => {
+    const groupInfo = Lib.displayInfo(query, stageIndex, group);
+    return {
+      label: groupInfo.displayName,
+      columns: Lib.getColumnsFromColumnGroup(group).map((column) =>
+        getDraftColumn(query, stageIndex, column),
+      ),
+      segments: groupInfo.isSourceTable
+        ? Lib.availableSegments(query, stageIndex)
+        : [],
+    };
+  });
 }
 
 function getDraftColumn(
