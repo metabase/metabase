@@ -142,6 +142,21 @@ describe("AccountHeader", () => {
       ).toBeInTheDocument();
     });
 
+    it.each(["ldap", "google", "jwt", "saml"] as const)(
+      "should show the email and hide the tab for a %s user (metabase#23298)",
+      (ssoSource) => {
+        setup({
+          user: getUser({ sso_source: ssoSource, slack_account_status: null }),
+          isMfaEnabled: false,
+        });
+
+        expect(screen.getByText("john@metabase.test")).toBeInTheDocument();
+        expect(
+          screen.queryByRole("tab", { name: "Authentication" }),
+        ).not.toBeInTheDocument();
+      },
+    );
+
     it("should hide the tab for an LDAP user when two-factor authentication is disabled for the instance", () => {
       setup({ user: getUser({ sso_source: "ldap" }), isMfaEnabled: false });
 
