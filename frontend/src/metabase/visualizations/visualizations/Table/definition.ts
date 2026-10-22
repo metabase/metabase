@@ -8,23 +8,19 @@ import {
 } from "metabase/visualizations/analytics";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
+  type ColumnSettingDefinition,
+  type ComputedVisualizationSettings,
+  type FormattableColumn,
+  type VisualizationDefinition,
   columnSettings,
-  isPivoted,
-  tableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
-import {
+  getDefaultPivotColumn,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ColumnSettingDefinition,
-  ComputedVisualizationSettings,
-  FormattableColumn,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+  getOptionFromColumn,
+  isPivoted,
+  makeCellBackgroundGetter,
+  tableColumnSettings,
+} from "metabase/viz-core";
 import {
   isAvatarURL,
   isCoordinate,
@@ -77,6 +73,15 @@ export const TABLE_DEFINITION = {
       getSection: () => t`Display`,
       get title() {
         return t`Show row index`;
+      },
+      inline: true,
+      widget: "toggle",
+      getDefault: () => false,
+    },
+    "table.striped": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Striped rows`;
       },
       inline: true,
       widget: "toggle",
@@ -264,7 +269,7 @@ export const TABLE_DEFINITION = {
           rows,
           cols,
           settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
-          settings["table.pivot"],
+          settings["table.pivot"] ?? false,
         );
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],

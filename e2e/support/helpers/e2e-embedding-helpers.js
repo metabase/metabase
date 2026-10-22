@@ -88,7 +88,13 @@ export function getEmbeddedPageUrl(
   payload,
   {
     setFilters = {},
-    additionalHashOptions: { hideFilters = [], locale, font, theme } = {},
+    additionalHashOptions: {
+      hideFilters = [],
+      locale,
+      font,
+      theme,
+      background,
+    } = {},
     pageStyle = {},
     onBeforeLoad,
     qs,
@@ -114,6 +120,7 @@ export function getEmbeddedPageUrl(
         ...(locale && { locale }),
         ...(font && { font }),
         ...(theme && { theme }),
+        ...(background !== undefined && { background }),
       },
       hiddenFilters,
     );

@@ -1,9 +1,10 @@
 import { match } from "ts-pattern";
 
-import { ChartSettingsSidebar } from "metabase/query_builder/components/view/sidebars/ChartSettingsSidebar";
-import { ChartTypeSidebar } from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
+
+import { ChartSettingsSidebar } from "../../sidebars/ChartSettingsSidebar";
+import { ChartTypeSidebar } from "../../sidebars/ChartTypeSidebar";
 
 interface ViewLeftSidebarContainerProps {
   question: Question;

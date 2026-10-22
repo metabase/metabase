@@ -42,24 +42,25 @@ import type {
   PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
-import { withMantineTheme } from "metabase/hoc/MantineTheme";
+import { getDefaultCellBackgroundColor } from "metabase/data-grid/utils/striped-background-color";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
+import { normalizeNewLines } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
+import type {
+  ClickActionsMode,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import {
+  getColumnExtent,
   getTableCellClickedObject,
   getTableClickedObjectRowData,
   getTableHeaderClickedObject,
-} from "metabase/visualizations/lib/table";
-import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import type {
-  QueryClickActionsMode,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -77,6 +78,7 @@ import {
   getHighlightedTableCells,
 } from "../../visualizations/Table/get-highlighted-table-cells";
 
+import { withMantineTheme } from "./MantineTheme";
 import S from "./TableInteractive.module.css";
 import { TableInteractiveContextProvider } from "./TableInteractiveContext";
 import {
@@ -122,8 +124,9 @@ interface TableProps extends VisualizationProps {
   rowIndexToPkMap?: Record<number, string>;
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
+  hasColumnReordering?: boolean;
   question: Question;
-  mode: QueryClickActionsMode;
+  mode?: ClickActionsMode;
   scrollToColumn?: number;
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
@@ -174,6 +177,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     question,
     clicked,
     hasMetadataPopovers = true,
+    hasColumnReordering = false,
     mode,
     theme,
     scrollToColumn,
@@ -289,7 +293,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
           const value = tc(untranslatedValue);
 
-          return formatValue(value, {
+          const formattedValue = formatValue(value, {
             ...columnSettings,
             type: "cell",
             jsx: true,
@@ -297,6 +301,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             clicked,
             collapseNewlines: !wrap,
           });
+
+          return wrap ? normalizeNewLines(formattedValue) : formattedValue;
         },
       );
 
@@ -470,33 +476,38 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const handleAddColumnButtonClick = useMemo(() => {
     if (
       !question ||
-      !mode?.clickActions ||
+      !mode?.hasColumnShortcutActions ||
       !onVisualizationClick ||
       isPivoted
     ) {
       return undefined;
     }
 
-    for (const action of mode.clickActions) {
-      const res = action({
-        question,
-        clicked: {
-          columnShortcuts: true,
-          extraData: {
-            isRawTable,
-          },
+    const hasActions = mode.hasColumnShortcutActions({
+      question,
+      clicked: {
+        columnShortcuts: true,
+        extraData: {
+          isRawTable,
         },
-      });
-      if (res?.length > 0) {
-        return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-          onVisualizationClick({
-            columnShortcuts: true,
-            element: e.currentTarget,
-          });
-        };
-      }
+      },
+    });
+    if (!hasActions) {
+      return undefined;
     }
+
+    return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      onVisualizationClick({
+        columnShortcuts: true,
+        element: e.currentTarget,
+      });
+    };
   }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
+
+  const dataGridTheme: DataGridTheme = useMemo(
+    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
+    [tableTheme, theme?.other?.fontSize],
+  );
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, columnIndex) => {
@@ -506,14 +517,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
-      const headerVariant = mode != null || isDashboard ? "light" : "outline";
-      const getBackgroundColor = memoize(
-        (value: RowValue, rowIndex: number) =>
-          settings["table._cell_background_getter"]?.(
-            value,
-            rowIndex,
-            col.name,
-          ) ?? tableTheme?.cell?.backgroundColor,
+      const headerVariant =
+        hasColumnReordering || isDashboard ? "light" : "outline";
+      const getBackgroundColor = memoize((value: RowValue, rowIndex: number) =>
+        settings["table._cell_background_getter"]?.(value, rowIndex, col.name),
       );
 
       const formatter = columnFormatters[columnIndex];
@@ -597,9 +604,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         options.cell = ({
           getValue,
           row,
-        }: CellContext<RowValues, RowValue>) => {
+          isStriped,
+        }: CellContext<RowValues, RowValue> & { isStriped?: boolean }) => {
           const value = getValue();
-          const backgroundColor = getBackgroundColor(value, row?.index);
+          const backgroundColor =
+            getBackgroundColor(value, row?.index) ??
+            getDefaultCellBackgroundColor(dataGridTheme, isStriped);
           const columnExtent = getColumnExtent(cols, rows, columnIndex);
           const isHighlighted = highlightedCellKeys.has(
             getHighlightedTableCellKey({ rowIndex: row.index, columnIndex }),
@@ -630,7 +640,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     theme,
     data,
     question,
-    mode,
+    hasColumnReordering,
     renderTableHeader,
     cols,
     getColumnSortDirection,
@@ -639,7 +649,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isPivoted,
     rows,
     settings,
-    tableTheme,
+    dataGridTheme,
     isDashboard,
     tc,
     highlightedCellKeys,
@@ -719,11 +729,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isDocument,
     zoomedRowIndex,
   ]);
-
-  const dataGridTheme: DataGridTheme = useMemo(
-    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
-    [tableTheme, theme?.other?.fontSize],
-  );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
     return {
@@ -878,7 +883,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }
 
   const isColumnReorderingDisabled =
-    (isDashboard || mode == null || isRawTable) && !isSettings;
+    (isDashboard || !hasColumnReordering || isRawTable) && !isSettings;
 
   return (
     <TableInteractiveContextProvider value={tableInteractiveContextValue}>
@@ -888,6 +893,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       >
         <DataGrid
           {...tableProps}
+          striped={settings["table.striped"]}
           styles={dataGridStyles}
           showRowsCount={isDashboard}
           formatRowsCountMessage={formatRowsCountMessage}

@@ -17,13 +17,13 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {
   getIsLoading,
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
+import { isCartesianChart } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
@@ -122,6 +122,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
         >
           <Tooltip withinPortal={false} label={t`View as table`}>
             <ActionIcon
+              variant="subtle"
               data-testid="visualizer-view-as-table-button"
               onClick={() => {
                 trackVisualizerViewAsTableClicked();
@@ -146,7 +147,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           className={`${S.SwapAffordance} ${isSwapAffordanceVisible ? S.visible : ""}`}
         >
           <Center className={S.SwapAffordanceIcon}>
-            <Stack align="center" gap="xs" p="xs">
+            <Stack align="center" gap="xxs" p="xxs">
               <Icon name="sync" />
               <Text c="core-white" size="sm">
                 {t`Replace`}

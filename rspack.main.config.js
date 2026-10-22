@@ -28,12 +28,19 @@ const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const {
-  RESOLVE_ALIASES,
-} = require("./frontend/build/shared/rspack/resolve-aliases");
+  DropStylesEntryScriptPlugin,
+} = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
+const {
+  LocaleCatalogManifest,
+} = require("./frontend/build/shared/rspack/plugins/LocaleCatalogManifest/locale-catalog-manifest");
+const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
-const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
+const {
+  SVGO_CONFIG,
+  SVGO_ASSET_CONFIG,
+} = require("./frontend/build/shared/rspack/svgo-config");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
@@ -49,6 +56,10 @@ const isEEBuild = process.env.MB_EDITION === "ee";
 const SDK_DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
+// Bind to loopback by default so the hot-reload server is not reachable from the
+// local network. Set MB_FRONTEND_DEV_HOST=0.0.0.0 to serve it to other devices
+// (or from inside a container, where the published port is the boundary).
+const HOST = process.env.MB_FRONTEND_DEV_HOST || "127.0.0.1";
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
@@ -91,9 +102,7 @@ const SWC_LOADER = {
 
     sourceMaps: true,
     minify: false, // produces same bundle size, but cuts 1s locally
-    env: {
-      targets: ["defaults"],
-    },
+    env: {},
   },
 };
 
@@ -192,9 +201,7 @@ const config = {
   // we override it for dev mode below
   devtool: "source-map",
 
-  externals: {
-    canvg: "canvg",
-  },
+  ...resolveConfig,
 
   // output to "dist"
   output: {
@@ -234,9 +241,21 @@ const config = {
         type: "javascript/auto",
       },
       {
-        test: /\.(svg|png)$/,
+        test: /\.svg$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
+        use: [{ loader: "svgo-loader", options: SVGO_ASSET_CONFIG }],
+      },
+      {
+        test: /\.png$/,
+        type: "asset/resource",
+        resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
       },
       {
         test: /\.css$/,
@@ -281,29 +300,25 @@ const config = {
       },
     ],
   },
-  resolve: {
-    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
-    alias: RESOLVE_ALIASES,
-    fallback: {
-      buffer: require.resolve("buffer/"),
-      url: require.resolve("url/"),
-      events: require.resolve("events/"),
-      querystring: require.resolve("querystring-es3"),
-    },
-  },
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
-          // The data-app iframe is isolated from main-app CSS/JS by design;
-          // sharing the vendor chunk would re-link them. Keep its
-          // node_modules in its own chunks.
+          // The data-app and MCP iframes are isolated from main-app CSS/JS by
+          // design; sharing the vendor chunk would re-link them. Keep their
+          // node_modules in their own chunks.
+          //
+          // For MCP that also cuts both pages. `@modelcontextprotocol/ext-apps`
+          // reaches no entry but `app-embed-mcp`, so the shared chunk was
+          // charging `app-main` for it, while the MCP page pulled down a vendor
+          // chunk built for an app it never runs.
           chunks: (chunk) =>
             chunk.canBeInitial() &&
             chunk.name !== "data-app-vendors" &&
-            chunk.name !== "app-data-app",
+            chunk.name !== "app-data-app" &&
+            chunk.name !== "app-embed-mcp",
           name: "vendor",
           priority: -10,
         },
@@ -352,7 +367,9 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
+    new LocaleCatalogManifest(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
@@ -393,7 +410,9 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "../../embed-mcp.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed-mcp"],
+      // No "vendor": the cache group above leaves this entry out of it, so a
+      // tag for it would fetch a chunk the page does not use.
+      chunks: ["styles", "app-embed-mcp"],
       template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
 
       // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
@@ -457,7 +476,7 @@ if (shouldEnableHotRefresh) {
       // if you want to reduce stats noise
       // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     },
-    host: "0.0.0.0",
+    host: HOST,
   };
 
   config.watchOptions = {

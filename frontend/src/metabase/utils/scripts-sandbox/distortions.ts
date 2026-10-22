@@ -179,10 +179,12 @@ export function makeSandboxDistortionCallback(
     return value;
   };
 
-  return function distortionCallback(value: object): object {
+  return function distortionCallback<T extends object>(value: T): T {
     if (typeof value !== "function") {
       if (isHostStorageInstance(value)) {
-        return makeBlockedStorageDecoy(errorPrefix);
+        // The decoy impersonates the host storage instance it replaces, so
+        // assert it as `T` for the caller.
+        return makeBlockedStorageDecoy(errorPrefix) as T;
       }
 
       return value;
@@ -191,7 +193,9 @@ export function makeSandboxDistortionCallback(
     const distorted = resolveDistortion(value);
 
     // Only wrap when we actually distorted `value`; pass-through values are
-    // returned untouched so we never log on a non-blocked call.
-    return distorted === value ? value : reportThrows(distorted);
+    // returned untouched so we never log on a non-blocked call. `resolveDistortion`
+    // erases the type to `object`, but the distortion has `value`'s call
+    // signature, so restore `T` for the caller.
+    return (distorted === value ? value : reportThrows(distorted)) as T;
   };
 }

@@ -28,5 +28,10 @@ export const dateInputOverrides = {
       input: Styles.input,
       error: Styles.error,
     },
+    styles: {
+      levelsGroup: {
+        gap: "var(--mantine-spacing-lg)",
+      },
+    },
   }),
 };

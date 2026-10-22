@@ -44,11 +44,13 @@ export type CartesianVisualizationSettings = Pick<
   | "graph.x_axis.scale"
   | "graph.x_axis.axis_enabled"
   | "graph.y_axis.title_text"
+  | "graph.y_axis.right.title_text"
   | "graph.y_axis.scale"
   | "graph.y_axis.auto_range"
   | "graph.y_axis.min"
   | "graph.y_axis.max"
   | "stackable.stack_type"
+  | "legend.position"
   | "series_settings"
   | "column_settings"
 >;
@@ -65,6 +67,7 @@ export type ScatterVisualizationSettings = Pick<
   | "graph.x_axis.scale"
   | "graph.y_axis.scale"
   | "scatter.bubble"
+  | "legend.position"
   | "series_settings"
   | "column_settings"
 >;
@@ -98,6 +101,7 @@ export type TableVisualizationSettings = Pick<
   | "pivot_table.column_split"
   | "pivot_table.collapsed_rows"
   | "column_settings"
+  | "table.pivot"
 >;
 
 /**
@@ -110,6 +114,7 @@ export type PieVisualizationSettings = Pick<
   | "pie.dimension"
   | "pie.metric"
   | "pie.sort_rows"
+  | "legend.position"
   | "pie.show_legend"
   | "pie.show_total"
   | "pie.show_labels"
@@ -123,13 +128,15 @@ export type PieVisualizationSettings = Pick<
 /**
  * Settings for scalar, smart scalar, gauge, and progress displays. Use these to
  * select the main value column, compact the number, reverse comparison meaning,
- * configure smart-scalar comparisons, or format columns.
+ * configure smart-scalar comparisons and whether their absolute values are
+ * shown, or format columns.
  */
 export type ScalarVisualizationSettings = Pick<
   VisualizationSettings,
   | "scalar.field"
   | "scalar.switch_positive_negative"
   | "scalar.compact_primary_number"
+  | "scalar.show_comparison_value"
   | "scalar.comparisons"
   | "column_settings"
 >;
@@ -140,7 +147,7 @@ export type ScalarVisualizationSettings = Pick<
  */
 export type FunnelVisualizationSettings = Pick<
   VisualizationSettings,
-  "funnel.rows" | "column_settings"
+  "funnel.rows" | "legend.position" | "column_settings"
 >;
 
 /**
@@ -168,16 +175,17 @@ export type BoxplotVisualizationSettings = Pick<
   | "boxplot.points_mode"
   | "boxplot.show_mean"
   | "boxplot.show_values_mode"
+  | "legend.position"
   | "column_settings"
 >;
 
 /**
- * Settings for pin and region maps. No map-specific settings are surfaced yet;
- * use `column_settings` for stable column formatting only.
+ * Settings for pin and region maps. Use `legend.position` to place or hide a
+ * region map's legend and `column_settings` for stable column formatting.
  */
 export type MapVisualizationSettings = Pick<
   VisualizationSettings,
-  "column_settings"
+  "legend.position" | "column_settings"
 >;
 
 /**

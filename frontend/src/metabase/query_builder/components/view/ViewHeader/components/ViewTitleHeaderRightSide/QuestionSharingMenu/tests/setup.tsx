@@ -9,9 +9,9 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/redux";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Notification, User } from "metabase-types/api";
@@ -69,7 +69,7 @@ const setupState = ({
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
     "enable-public-sharing": isPublicSharingEnabled,
-    "enable-embedding-static": isEmbeddingEnabled,
+    "enable-embedding-modular": isEmbeddingEnabled,
     "email-configured?": isEmailSetup,
     "slack-token-valid?": isSlackSetup,
   });

@@ -1,6 +1,7 @@
 (ns metabase.channel.render.body
   (:require
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [hiccup.core :refer [h]]
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
@@ -13,12 +14,18 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.dashboards.schema]
    [metabase.formatter.core :as formatter]
    [metabase.geojson.api :as geojson.api]
    [metabase.geojson.settings :as geojson.settings]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.tiles.settings :as tiles.settings]
@@ -71,11 +78,15 @@
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (mu/defn- format-scalar-value
-  [timezone-id :- [:maybe :string] value col visualization-settings]
+  "Formats a scalar card's value for rendering, whether a single value or an array-typed column's sequence of them."
+  [timezone-id            :- [:maybe :string]
+   value                  :- [:or ms/FieldValue [:sequential ms/FieldValue]]
+   col                    :- [:maybe :metabase.legacy-mbql.schema/legacy-column-metadata]
+   visualization-settings :- [:maybe ms/VisualizationSettings]]
   (cond
     ;; legacy usage -- do not use going forward
     #_{:clj-kondo/ignore [:deprecated-var]}
-    (types/temporal-field? col)
+    (types/temporal-field? (select-keys col [:base_type :effective_type]))
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
@@ -108,52 +119,117 @@
     (name (or (when-let [[_ id] (:field_ref col)]
                 (get-in col-settings [{::mb.viz/field-id id} ::mb.viz/column-title]))
               (get-in col-settings [{::mb.viz/column-name (:name col)} ::mb.viz/column-title])
-              (:display_name col)
+              (table-data/remapped-display-name col)
               (:name col)))))
 
 (defn- query-results->header-row
-  "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [remapping-lookup card cols]
+  "Returns a row structure with header info from `visible-cols`. These values are strings that are ready to be
+  rendered as HTML"
+  [card visible-cols]
   {:row
-   (for [maybe-remapped-col cols
-         :when              (table-data/show-in-table? maybe-remapped-col)
-         :let               [col (if (:remapped_to maybe-remapped-col)
-                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                   maybe-remapped-col)
-                             col-name (column-name card col)]
-         ;; If this column is remapped from another, it's already
-         ;; in the output and should be skipped
-         :when              (not (:remapped_from maybe-remapped-col))]
-     (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+   (for [col      visible-cols
+         ;; a remapped column is aligned by its target's type
+         :let     [col-name  (column-name card col)
+                   value-col (or (:remapped_to_column col) col)]]
+     (if (isa? ((some-fn :effective_type :base_type) value-col) :type/Number)
        (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
        col-name))})
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string] remapping-lookup cols rows viz-settings]
-  (let [formatters (into [] (map #(formatter/create-formatter timezone-id % viz-settings)) cols)]
+  [timezone-id  :- [:maybe :string]
+   visible-cols :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
+   rows         :- [:sequential [:sequential ms/FieldValue]]
+   viz-settings :- [:maybe ms/VisualizationSettings]]
+  (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
-      {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
-                  :when (and (not (:remapped_from maybe-remapped-col))
-                             (table-data/show-in-table? maybe-remapped-col))
-                  :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
-                                                (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
-                                                  [(nth formatters remapped-index)
-                                                   (nth row remapped-index)])
-                                                [fmt-fn maybe-remapped-row-cell])]]
-              (fmt-fn row-cell))})))
+      {:row (mapv (fn [value fmt-fn]
+                    (fmt-fn value))
+                  row
+                  formatters)})))
+
+(def ^:private TrendlineFormula
+  "One of the fixed curve shapes [[metabase.analyze.fingerprint.insights/trendline-function-families]] can fit."
+  [:or
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:= :x]]]
+   [:tuple [:= :*] number? [:tuple [:= :exp] [:tuple [:= :*] number? [:= :x]]]]
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:tuple [:= :log] [:= :x]]]]
+   [:tuple [:= :*] number? [:tuple [:= :pow] [:= :x] number?]]])
+
+(def ^:private Insight
+  "One entry of the `:insights` computed by `metabase.analyze.fingerprint.insights/insights`."
+  [:map {:closed true}
+   [:last-value     {:optional true} [:maybe number?]]
+   [:previous-value {:optional true} [:maybe number?]]
+   [:last-change    {:optional true} [:maybe number?]]
+   [:slope          {:optional true} [:maybe number?]]
+   [:offset         {:optional true} [:maybe number?]]
+   [:best-fit       {:optional true} [:maybe TrendlineFormula]]
+   [:col            {:optional true} [:maybe :string]]
+   [:unit           {:optional true} [:maybe :keyword]]])
+
+(mr/def ::QPResultData
+  "The `:data` of a QP result, as the render pipeline reads it: the query processor's result metadata plus the rows."
+  [:merge
+   ::qp.schema/metadata
+   [:map {:closed true}
+    [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+    [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
+    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
+    [:results_metadata {:optional true} [:maybe [:map {:closed true}
+                                                 [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
+    [:results_timezone {:optional true} [:maybe :string]]
+    [:format-rows?     {:optional true} [:maybe :boolean]]
+    [:native_form      {:optional true} [:maybe ::qp.compile/compiled]]
+    [:insights         {:optional true} [:maybe [:sequential Insight]]]
+    [:rows_truncated   {:optional true} [:maybe :int]]
+    [:csv-include-bom? {:optional true} [:maybe :boolean]]
+    [:rows-file-size   {:optional true} [:maybe :int]]
+    [:model            {:optional true} [:maybe :boolean]]
+    [:dataset          {:optional true} [:maybe :boolean]]
+    [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
+                                                     [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
+                                                     [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
+                                                     [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
+                                                     [:show-row-totals    {:optional true} :boolean]
+                                                     [:show-column-totals {:optional true} :boolean]
+                                                     [:column-sort-order  {:optional true} [:maybe :metabase.query-processor.pivot/column-sort-order]]]]]]])
+
+(mr/def ::QPResult
+  "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."
+  [:map {:closed true}
+   [:data                    {:optional true} [:maybe ::QPResultData]]
+   [:error                   {:optional true} [:maybe :string]]
+   [:row_count               {:optional true} [:maybe :int]]
+   [:data.rows-file-size     {:optional true} [:maybe :int]]
+   [:notification/truncated? {:optional true} [:maybe :boolean]]
+   [:status                  {:optional true} [:maybe [:enum :completed :failed]]]
+   [:database_id             {:optional true} [:maybe ::lib.schema.id/database]]
+   [:started_at              {:optional true} [:maybe [:or :string (ms/InstanceOfClass java.time.temporal.Temporal)]]]
+   [:running_time            {:optional true} [:maybe :int]]
+   [:json_query              {:optional true} [:maybe [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query]]]
+   [:average_execution_time  {:optional true} [:maybe :int]]
+   [:context                 {:optional true} [:maybe :keyword]]
+   [:card_id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   [:card-error              {:optional true} [:maybe :boolean]]
+   [:cached                  {:optional true} [:maybe :string]]
+   [:tenant_id               {:optional true} [:maybe :int]]])
 
 (mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- [:maybe :string]
-    card
-    {:keys [cols rows viz-settings], :as _data}]
-   (let [remapping-lookup (table-data/create-remapping-lookup cols)
-         row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
+    card        :- [:maybe ::card]
+    {:keys [cols rows viz-settings], :as _data} :- ::QPResultData]
+   (let [visible-cols (table-data/visible-columns cols)
+         row-limit    (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
-      (query-results->header-row remapping-lookup card cols)
-      (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
+      (query-results->header-row card visible-cols)
+      (query-results->row-seq timezone-id
+                              (mapv #(dissoc % :source-idx :remapped_to_column) visible-cols)
+                              (for [row (take row-limit rows)]
+                                (mapv #(nth row (:source-idx %) nil) visible-cols))
+                              viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
@@ -182,11 +258,65 @@
 ;;; |                                                     render                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mr/def ::hiccup
+  "A node of a Hiccup form: a scalar, a `[tag attrs? & children]` vector (left unstructured -- HTML attribute keys
+  are open-ended), or a seq of such nodes."
+  [:or :string number? :boolean nil? vector? [:sequential [:ref ::hiccup]]])
+
+(mr/def ::adhoc-card
+  "Schema for an ad-hoc (unsaved) card."
+  [:map {:closed true}
+   [:display :keyword]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:name {:optional true} [:maybe :string]]])
+
+(mr/def ::card
+  "A card as `render`ed for a Pulse/Dashboard Subscription: either a real Card, or an ad-hoc (unsaved) card."
+  [:or
+   [:merge
+    :metabase.queries.schema/card
+    [:map {:closed true}
+     [:include_csv   {:optional true} [:maybe :boolean]]
+     [:include_xls   {:optional true} [:maybe :boolean]]
+     [:format_rows   {:optional true} [:maybe :boolean]]
+     [:pivot_results {:optional true} [:maybe :boolean]]]]
+   ::adhoc-card])
+
+(mr/def ::dashcard
+  "A DashboardCard as `render`ed for a Dashboard Subscription, plus the `:series-results` key
+  `notification.payload.execute` attaches for multi-series cards."
+  [:merge
+   :metabase.dashboards.schema/dashboard-card
+   [:map {:closed true}
+    [:series-results {:optional true} [:maybe [:sequential
+                                               [:map {:closed true}
+                                                [:type     {:optional true} [:= :card]]
+                                                [:card     {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
+                                                [:dashcard {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
+                                                [:result   {:optional true} [:maybe ::QPResult]]]]]]]])
+
+(mr/def ::render-type
+  [:enum :inline :attachment])
+
+;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
+;;; we can keep this as an internal namespace you don't need to know about outside of the module.
+(mr/def ::options
+  "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
+  [:map {:closed true}
+   [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
+   [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]
+   [:channel.render/padding-x                  {:description "default: 0, horizontal pixels around image", :optional true} [:maybe :int]]
+   [:channel.render/padding-y                  {:description "default: 0, vertical pixels around image", :optional true} [:maybe :int]]
+   [:channel.render/scale                      {:description "default: 1.0, a factor, or a fn of the laid-out content's logical width/height returning one", :optional true} [:maybe [:or number? ifn?]]]])
+
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
-  [:map
+  [:map {:closed true}
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
-   [:content                      [:sequential :any]]
+   [:content                      ::hiccup]
    [:render/text {:optional true} [:maybe :string]]])
 
 (defmulti render
@@ -194,6 +324,184 @@
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
   (fn [chart-type _render-type _timezone-id _card _dashcard _data]
     chart-type))
+
+;;; --------------------------------------------------- pivot grids ---------------------------------------------------
+
+(defn- setting-value
+  "Look up `k` in a viz-settings map that may be keyed by either keywords or strings."
+  [settings k]
+  (or (get settings k) (get settings (name k))))
+
+(defn- pivot-cell->str
+  "Display string for an assembled pivot cell (a formatter wrapper, a plain string, or nil)."
+  [x]
+  (cond
+    (nil? x)    ""
+    (string? x) x
+    :else       (or (:num-str x) (:text-str x) (str x))))
+
+(defn- pivot->hiccup
+  "Render the assembled 2D pivot `rows` (header row first, then data rows) as an HTML table. Cells are
+  `white-space: nowrap` so the table takes whatever width it needs (the surrounding pulse body provides
+  horizontal scrolling). `opts` may include `:color-data`/`:color-settings` (the query results and viz-settings the
+  conditional-formatting rules evaluate against, see [[js.color/cell-background-colors]]), `:left-width` (number of
+  leading row-label columns), and `:measure-names` (ordered measure column names) to apply the card's conditional
+  formatting to the measure value cells."
+  [rows {:keys [color-data color-settings left-width measure-names]}]
+  (let [measure-count (max 1 (count measure-names))
+        colorable-cell (fn [cell ^long c]
+                         ;; value cells are NumericWrapper; map each value column back to its measure column
+                         ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
+                         ;; for pivots (:table.pivot in pivot-table-content and simple-pivot-content), so the
+                         ;; row index is unused.
+                         (when (and color-data (formatter/NumericWrapper? cell))
+                           (let [vpos (- c (long left-width))]
+                             (when (nat-int? vpos)
+                               [cell 0 (nth measure-names (mod vpos measure-count))]))))
+        ;; all value-cell colors are fetched in one batched JS call up front, keyed by [row col] position
+        keyed-cells (for [[r row]  (map-indexed vector rows)
+                          [c cell] (map-indexed vector row)
+                          :let     [colorable (colorable-cell cell c)]
+                          :when    colorable]
+                      [[r c] colorable])
+        cell-colors (zipmap (map first keyed-cells)
+                            (js.color/cell-background-colors (or color-data {:cols [] :rows []})
+                                                             color-settings
+                                                             (mapv second keyed-cells)))]
+    [:table {:style (style/style (style/pivot-table-style))}
+     [:tbody
+      (map-indexed
+       (fn [r row]
+         [:tr
+          (map-indexed
+           (fn [c cell]
+             (let [header?    (zero? r)
+                   first-col? (zero? c)
+                   label?     (and (pos? r) first-col?)
+                   bg         (get cell-colors [r c])]
+               [(if (or header? label?) :th :td)
+                {:style (style/style (style/pivot-cell-style header? label? first-col? bg))}
+                (h (pivot-cell->str cell))]))
+           row)])
+       rows)]]))
+
+;;; --------------------------------------------------- simple pivot ---------------------------------------------------
+
+(defn- simple-pivot-indexes
+  "Column indexes `{:normal i, :pivot j, :cell k}` when the Table viz's \"Pivot table\" toggle applies to `cols`, else
+  nil. Mirrors the browser's `isPivoted` and `isValid` (viz-core/lib/settings/column.ts, Table/definition.ts):
+  `:table.pivot` is set, there are exactly three columns, and `:table.pivot_column` and `:table.cell_column` name two
+  different columns. The remaining column is the normal one; its values become the row labels."
+  [cols viz-settings]
+  (when (and (setting-value viz-settings :table.pivot)
+             (= 3 (count cols)))
+    (let [index-of  (fn [k]
+                      (let [col-name (setting-value viz-settings k)]
+                        (u/index-of #(= (:name %) col-name) cols)))
+          pivot-idx (index-of :table.pivot_column)
+          cell-idx  (index-of :table.cell_column)]
+      (when (and pivot-idx cell-idx (not= pivot-idx cell-idx))
+        {:normal (first (remove #{pivot-idx cell-idx} (range 3)))
+         :pivot  pivot-idx
+         :cell   cell-idx}))))
+
+(defn- compare-pivot-values
+  "Like the browser's `DEFAULT_COMPARE` (visualizations/lib/data_grid.ts), but nil sorts first."
+  [a b]
+  (if (or (nil? a)
+          (nil? b)
+          (and (number? a) (number? b))
+          (and (instance? Comparable a) (= (class a) (class b))))
+    (compare a b)
+    0))
+
+(def ^:private unsorted-state
+  {:asc true, :desc true, :group-asc true, :group-desc true, :grouped? false})
+
+(defn- track-order
+  "One step of the browser's `SortState.update` (visualizations/lib/data_grid.ts): fold `value` into `state`, noting
+  whether the values seen so far are monotonic overall, and monotonic within runs of one `group-key`."
+  [{:keys [last-value last-group] :as state} value group-key]
+  (let [state (if (contains? state :last-value)
+                (let [result (compare-pivot-values value last-value)
+                      state  (-> state
+                                 (update :asc #(and % (>= result 0)))
+                                 (update :desc #(and % (<= result 0))))]
+                  (if (and (not (zero? result)) (= last-group group-key))
+                    (-> state
+                        (update :group-asc #(and % (>= result 0)))
+                        (update :group-desc #(and % (<= result 0)))
+                        (assoc :grouped? true))
+                    state))
+                state)]
+    (assoc state :last-value value :last-group group-key)))
+
+(defn- order-distinct-values
+  "The browser's `SortState.sort`: keep `values` in first-seen order, and re-sort them only when the source rows were
+  sorted within groups of the other column but not overall. A two-breakout query therefore gets both axes sorted,
+  while a native query's deliberate row order is kept."
+  [{:keys [grouped? asc desc group-asc group-desc]} values]
+  (cond
+    (not grouped?)              values
+    (and group-asc (not asc))   (sort compare-pivot-values values)
+    (and group-desc (not desc)) (sort #(compare-pivot-values %2 %1) values)
+    :else                       values))
+
+(defn- distinct-values-sorted
+  "Distinct values of column `value-idx` across `rows`, in the order the browser's `distinctValuesSorted` gives them,
+  with column `group-idx` as the grouping column."
+  [rows value-idx group-idx]
+  (let [state (reduce (fn [state row]
+                        (track-order state (nth row value-idx) (nth row group-idx)))
+                      unsorted-state
+                      rows)]
+    (order-distinct-values state (distinct (map #(nth % value-idx) rows)))))
+
+(defn- simple-pivot-grid
+  "Port of the browser's `pivot` (visualizations/lib/data_grid.ts): fold a three-column result into a 2D grid, header
+  row first. Column 0 holds the normal column's title and its values; the other columns are the distinct pivot values.
+  Each cell is the cell column's value for that (normal, pivot) pair, or nil when no row has the pair."
+  [timezone-id {:keys [cols rows viz-settings] :as data} {:keys [normal pivot cell]}]
+  (let [format-rows?  (get data :format-rows? true)
+        formatter-for (fn [idx]
+                        (formatter/create-formatter timezone-id (nth cols idx) viz-settings format-rows?))
+        format-normal (formatter-for normal)
+        format-pivot  (formatter-for pivot)
+        format-cell   (formatter-for cell)
+        pivot-values  (distinct-values-sorted rows pivot normal)
+        normal-values (distinct-values-sorted rows normal pivot)
+        ;; the last row wins for a repeated (normal, pivot) pair, as the browser's `lastIndexOf` does
+        cells         (into {} (map (fn [row] [[(nth row normal) (nth row pivot)] (nth row cell)])) rows)]
+    ;; the browser's `getTitleForColumn` skips the column title override when the table is pivoted
+    (into [(into [(table-data/remapped-display-name (nth cols normal))]
+                 ;; headers are plain strings so that pivot->hiccup does not color a numeric pivot value
+                 (map (comp pivot-cell->str format-pivot))
+                 pivot-values)]
+          (map (fn [normal-value]
+                 (into [(format-normal normal-value)]
+                       (map (fn [pivot-value]
+                              (let [k [normal-value pivot-value]]
+                                (when (contains? cells k)
+                                  (format-cell (get cells k))))))
+                       pivot-values)))
+          normal-values)))
+
+(defn simple-pivot?
+  "Does the Table viz's \"Pivot table\" toggle apply to this query result? See [[simple-pivot-indexes]]."
+  [{:keys [cols viz-settings]}]
+  (some? (simple-pivot-indexes cols viz-settings)))
+
+(defn- simple-pivot-content
+  "Hiccup for a Table card whose \"Pivot table\" toggle applies (see [[simple-pivot-indexes]]). The grid is built from
+  every row and, like `render :pivot`, is not cut at the attachment row limit."
+  [timezone-id {:keys [cols viz-settings] :as data} {:keys [cell] :as indexes}]
+  (pivot->hiccup (simple-pivot-grid timezone-id data indexes)
+                 {:color-data     {:cols (mapv #(select-keys % [:name]) cols)
+                                   :rows (:rows data)}
+                  ;; viz-settings carries :table.pivot, which tells the shared color JS to skip row-highlight rules
+                  :color-settings viz-settings
+                  :left-width     1
+                  :measure-names  [(:name (nth cols cell))]}))
 
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
@@ -221,22 +529,24 @@
                                    ::mb.viz/show-mini-bar]))
    cols))
 
-(mu/defmethod render :table :- ::RenderedPartCard
-  [_chart-type
-   _render-type
-   timezone-id :- [:maybe :string]
-   card
-   _dashcard
-   {:keys [rows viz-settings format-rows?] :as unordered-data}]
+(mu/defn- flat-table-content
+  "Hiccup for a Table card as a flat table: the columns in `table.columns` order, the rows cut at the attachment row
+  limit with a \"Showing N of M rows\" line when some are cut."
+  [timezone-id :- [:maybe :string]
+   card        :- [:maybe ::card]
+   {:keys [rows viz-settings format-rows?] :as unordered-data} :- ::QPResultData]
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
-        filtered-cols               (filter table-data/show-in-table? ordered-cols)
+        ;; the same columns as the header row, so `render-table` can index the two positionally (#71069)
+        filtered-cols               (mapv #(assoc % :display_name (table-data/remapped-display-name %))
+                                          (table-data/visible-columns ordered-cols))
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
-                                      (select-keys unordered-data [:cols :rows])
+                                      {:cols (mapv #(select-keys % [:name]) (:cols unordered-data))
+                                       :rows (:rows unordered-data)}
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)
@@ -244,8 +554,19 @@
                                       viz-settings
                                       minibar-cols)
                                      (render-truncation-warning (channel.settings/attachment-table-row-limit) (count rows))]]
-    {:content     table-body
-     :attachments nil}))
+    table-body))
+
+(mu/defmethod render :table :- ::RenderedPartCard
+  [_chart-type
+   _render-type
+   timezone-id :- [:maybe :string]
+   card
+   _dashcard
+   {:keys [cols viz-settings] :as data}]
+  {:content     (if-let [indexes (simple-pivot-indexes cols viz-settings)]
+                  (simple-pivot-content timezone-id data indexes)
+                  (flat-table-content timezone-id card data))
+   :attachments nil})
 
 (defn- blank-cell-value?
   "True when a raw cell value should render as an empty placeholder (nil, or a blank string)."
@@ -583,6 +904,30 @@
                  seq
                  (apply min)))))
 
+(defn- sum-metrics
+  "Sum two cell metrics, skipping nils; nil only when both are nil. Mirrors the frontend's `sumMetric`."
+  [a b]
+  (if (and a b)
+    (+ a b)
+    (or a b)))
+
+(defn- fold-cells-by-bin
+  "Fold `cells` sharing a lat/long bin into one cell whose `:metric` is the sum, in first-occurrence order.
+  Mirrors the frontend's `aggregatePointsByCoordinates`."
+  [cells]
+  (->> cells
+       ;; a query can break out by more than the two coordinate columns (e.g. also by ID), so one bin can
+       ;; arrive on several rows; key on doubles so equal coordinates of different numeric types still fold
+       (reduce (fn [folded {:keys [lat lon] :as cell}]
+                 (update folded
+                         [(double lat) (double lon)]
+                         (fn [existing]
+                           (if existing
+                             (update existing :metric sum-metrics (:metric cell))
+                             cell))))
+               (ordered-map/ordered-map))
+       vals))
+
 (mu/defmethod render :pin_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
   (let [viz-settings      (render.util/merged-viz-settings card dashcard)
@@ -611,15 +956,16 @@
         lat-bin           (when lat-idx (column-bin-width (nth cols lat-idx) lat-idx rows))
         lon-bin           (when lon-idx (column-bin-width (nth cols lon-idx) lon-idx rows))
         cells             (when (and lat-idx lon-idx lat-bin lon-bin)
-                            (for [row   rows
-                                  :let  [lat (number-at row lat-idx)
-                                         lon (number-at row lon-idx)]
-                                  :when (and lat lon)]
-                              {:lat     lat
-                               :lon     lon
-                               :lat-bin lat-bin
-                               :lon-bin lon-bin
-                               :metric  (when metric-idx (number-at row metric-idx))}))]
+                            (fold-cells-by-bin
+                             (for [row   rows
+                                   :let  [lat (number-at row lat-idx)
+                                          lon (number-at row lon-idx)]
+                                   :when (and lat lon)]
+                               {:lat     lat
+                                :lon     lon
+                                :lat-bin lat-bin
+                                :lon-bin lon-bin
+                                :metric  (when metric-idx (number-at row metric-idx))})))]
     (if-let [png (when (seq cells)
                    (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)}))]
       (png->rendered-part render-type png)
@@ -627,63 +973,6 @@
       (render :table render-type timezone-id card dashcard data))))
 
 ;;; ------------------------------------------------ pivot tables ------------------------------------------------
-
-(defn- setting-value
-  "Look up `k` in a viz-settings map that may be keyed by either keywords or strings."
-  [settings k]
-  (or (get settings k) (get settings (name k))))
-
-(defn- pivot-cell->str
-  "Display string for an assembled pivot cell (a formatter wrapper, a plain string, or nil)."
-  [x]
-  (cond
-    (nil? x)    ""
-    (string? x) x
-    :else       (or (:num-str x) (:text-str x) (str x))))
-
-(defn- pivot->hiccup
-  "Render the assembled 2D pivot `rows` (header row first, then data rows) as an HTML table. Cells are
-  `white-space: nowrap` so the table takes whatever width it needs (the surrounding pulse body provides
-  horizontal scrolling). `opts` may include `:color-data`/`:color-settings` (the query results and viz-settings the
-  conditional-formatting rules evaluate against, see [[js.color/cell-background-colors]]), `:left-width` (number of
-  leading row-label columns), and `:measure-names` (ordered measure column names) to apply the card's conditional
-  formatting to the measure value cells."
-  [rows {:keys [color-data color-settings left-width measure-names]}]
-  (let [measure-count (max 1 (count measure-names))
-        colorable-cell (fn [cell ^long c]
-                         ;; value cells are NumericWrapper; map each value column back to its measure column
-                         ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
-                         ;; for pivots (:table.pivot in pivot-table-content), so the row index is unused.
-                         (when (and color-data (formatter/NumericWrapper? cell))
-                           (let [vpos (- c (long left-width))]
-                             (when (nat-int? vpos)
-                               [cell 0 (nth measure-names (mod vpos measure-count))]))))
-        ;; all value-cell colors are fetched in one batched JS call up front, keyed by [row col] position
-        keyed-cells (for [[r row]  (map-indexed vector rows)
-                          [c cell] (map-indexed vector row)
-                          :let     [colorable (colorable-cell cell c)]
-                          :when    colorable]
-                      [[r c] colorable])
-        cell-colors (zipmap (map first keyed-cells)
-                            (js.color/cell-background-colors (or color-data {:cols [] :rows []})
-                                                             color-settings
-                                                             (mapv second keyed-cells)))]
-    [:table {:style (style/style (style/pivot-table-style))}
-     [:tbody
-      (map-indexed
-       (fn [r row]
-         [:tr
-          (map-indexed
-           (fn [c cell]
-             (let [header?    (zero? r)
-                   first-col? (zero? c)
-                   label?     (and (pos? r) first-col?)
-                   bg         (get cell-colors [r c])]
-               [(if (or header? label?) :th :td)
-                {:style (style/style (style/pivot-cell-style header? label? first-col? bg))}
-                (h (pivot-cell->str cell))]))
-           row)])
-       rows)]]))
 
 (defn- pivot-table-content
   "Assemble a `:pivot` card's flat (pivot-grouping) result into a Hiccup pivot table, or nil if it can't be
@@ -724,7 +1013,7 @@
                              (let [base-rows (into [] (comp (filter #(zero? (nth % pg-idx)))
                                                             (map #(vec (m/remove-nth pg-idx %))))
                                                    (:rows data))]
-                               {:cols columns :rows base-rows}))]
+                               {:cols (mapv #(select-keys % [:name]) columns) :rows base-rows}))]
             ;; Unlike the flat :table path, a pivot aggregates all rows into a bounded grid rather than
             ;; truncating displayed rows, so the flat-table row-count truncation warning doesn't apply.
             (pivot->hiccup output {:color-data     color-data
@@ -889,7 +1178,7 @@
   "Swap the first two columns in data, reordering both :cols and :rows."
   [data]
   (-> data
-      (update :cols (fn [cs] (vec (cons (second cs) (cons (first cs) (drop 2 cs))))))
+      (update :cols (fn [cs] (into [(second cs) (first cs)] (drop 2 cs))))
       (update :rows (fn [rs] (mapv (fn [r] (let [v (vec r)] (into [(v 1) (v 0)] (subvec v 2)))) rs)))))
 
 (defn- normalize-funnel-data

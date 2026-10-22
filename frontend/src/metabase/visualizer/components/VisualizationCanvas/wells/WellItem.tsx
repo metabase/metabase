@@ -51,9 +51,10 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
         {children}
         {!!onRemove && (
           <ActionIcon
+            variant="subtle"
             aria-label={t`Remove`}
             size="sm"
-            ml="xs"
+            ml="xxs"
             onClick={onRemove}
           >
             <Icon name="close" size="0.8rem" />

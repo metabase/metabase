@@ -7,10 +7,10 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   Database,
   DatabaseData,
@@ -102,7 +102,7 @@ export function AdminDatabaseTableEditingSection({
       description={t`Allow the data within tables of this database to be edited by Admin users.`}
       data-testid="database-table-editing-section"
     >
-      <Flex align="center" justify="space-between" mb="xs">
+      <Flex align="center" justify="space-between" mb="xxs">
         <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
         <Switch
           id="table-editing-toggle"
@@ -124,7 +124,7 @@ export function AdminDatabaseTableEditingSection({
           size="compact"
           variant="light"
           icon={<Icon name="info" />}
-          mb="md"
+          mb="lg"
         >
           {t`Table editing can't be enabled when database routing is enabled.`}
         </Alert>
@@ -146,5 +146,5 @@ function getResponseErrorMessageReason(error: unknown): string | undefined {
     return error.data.reasons[0]?.message ?? undefined;
   }
 
-  return getResponseErrorMessage(error);
+  return findErrorMessage(error);
 }

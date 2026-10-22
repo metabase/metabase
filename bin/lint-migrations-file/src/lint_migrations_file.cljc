@@ -1,5 +1,6 @@
 (ns lint-migrations-file
   "This is cljc because it is used from both Clojure (:clj) and Babashka (:bb). Not cljs!"
+  ;; kondo also lints cljc as cljs, where the :bb/:clj conditional below hides the only io usage
   #_{:clj-kondo/ignore [:unused-alias :unused-namespace]}
   (:require
    [change-set.strict]
@@ -13,7 +14,8 @@
    (clojure.lang ExceptionInfo)
    (java.lang Integer)))
 
-#_:clj-kondo/ignore
+;; kondo also lints a :cljs branch where this doesn't resolve; the file is :clj + :bb only
+#_{:clj-kondo/ignore [:unresolved-symbol]}
 (set! *warn-on-reflection* true)
 
 (comment change-set.strict/keep-me)
@@ -151,7 +153,8 @@
                                 (map #(get-in % [:changeSet :id]))
                                 seq)]
      (throw (validation-error
-             #_:clj-kondo/ignore
+             ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
+             #_{:clj-kondo/ignore [:unresolved-symbol]}
              (format "Migration(s) [%s] uses invalid types (in %s)"
                      (str/join "," (map #(str "'" % "'") using-types?))
                      (str/join "," (map #(str "'" % "'") target-types)))
@@ -176,6 +179,35 @@
   (require-no-types-in-change-log!
    #{"datetime" "timestamp" "timestamp without time zone"}
    change-log file 49 "00-000"))
+
+(defn- bare-entity-id-type-changes
+  "The changes of `change-set` that give an `entity_id` column the bare `char(21)` type instead of `${entity_id.type}`."
+  [change-set]
+  (let [bare?     #(= "char(21)" (some-> % str/lower-case str/trim))
+        bare-col? (fn [col] (and (= "entity_id" (get-in col [:column :name])) (bare? (get-in col [:column :type]))))]
+    (filter (fn [change]
+              (or (some bare-col? (get-in change [:createTable :columns]))
+                  (some bare-col? (get-in change [:addColumn :columns]))
+                  (and (= "entity_id" (get-in change [:addNotNullConstraint :columnName]))
+                       (bare? (get-in change [:addNotNullConstraint :columnDataType])))
+                  (and (= "entity_id" (get-in change [:modifyDataType :columnName]))
+                       (bare? (get-in change [:modifyDataType :newDataType])))))
+            (get-in change-set [:changeSet :changes]))))
+
+(defn require-entity-id-type
+  "Ensures that directory-based migration files from `20261019_` on give `entity_id` columns the `${entity_id.type}`
+  type, which carries the byte-wise collation serialization relies on to order entities alike on every app DB."
+  [change-log ^java.io.File file]
+  (when-let [bad-ids (when (and (directory-based-migration-file? file)
+                                (not (neg? (compare (subs (.getName file) 0 8) "20261019"))))
+                       (->> change-log
+                            (filter (comp seq bare-entity-id-type-changes))
+                            (map #(get-in % [:changeSet :id]))
+                            seq))]
+    (throw (validation-error
+            (str "Migration(s) [" (str/join "," (map #(str "'" % "'") bad-ids))
+                 "] give entity_id the bare char(21) type; use ${entity_id.type}")
+            {:invalid-ids (vec bad-ids)}))))
 
 (def ^:private directory-based-id-format-re
   "For directory-based migration files (v60+), IDs must be prefixed with the correct version.
@@ -318,6 +350,7 @@
   (require-no-bare-blob-or-text-types change-log)
   (require-no-bare-boolean-types change-log file)
   (require-no-datetime-type change-log file)
+  (require-entity-id-type change-log file)
   (require-table-scoped-existence-preconditions change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
@@ -337,6 +370,7 @@
   :ok)
 
 (defn- migration-files []
+  ;; kondo can't parse the :bb reader-conditional branch and mangles the surrounding let
   #_{:clj-kondo/ignore [:unresolved-symbol :unused-binding :syntax]}
   (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
         dir (io/file dir-str)]
@@ -358,7 +392,8 @@
                   (sequential? x) (mapv fix-vals x)
                   :else x))]
     (fix-vals (yaml/parse-string
-               #_:clj-kondo/ignore (slurp file)))))
+               ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
+               #_{:clj-kondo/ignore [:unresolved-symbol]} (slurp file)))))
 
 (defn- display-name
   "Returns a human-readable name for a migration file.
@@ -386,13 +421,15 @@
   (try
     (validate-all)
     (println "Ok.")
-    #_:clj-kondo/ignore
+    ;; false unresolved warning from kondo's :cljs pass; this cljc is :clj+:bb only
+    #_{:clj-kondo/ignore [:unresolved-namespace]}
     (System/exit 0)
     (catch ExceptionInfo e
       (if (validation-error? e)
         (do
           (println)
-          #_:clj-kondo/ignore
+          ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
+          #_{:clj-kondo/ignore [:unresolved-symbol]}
           (printf "Error in %s:\t%s\n" (:file (ex-data e)) (.getMessage e))
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
           (println))
@@ -400,7 +437,8 @@
           (pprint/pprint (Throwable->map e))
           (println (.getMessage e))))
       (System/exit 1))
-    (catch #_:clj-kondo/ignore
+    ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
+    (catch #_{:clj-kondo/ignore [:unresolved-symbol]}
      Throwable e
            (pprint/pprint (Throwable->map e))
            (println (.getMessage e))

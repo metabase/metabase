@@ -3,18 +3,16 @@ import { useCallback, useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import hiddenFieldImage from "assets/img/hidden-field.png?url";
+import hiddenFieldImage2x from "assets/img/hidden-field@2x.png?url";
 import CS from "metabase/css/core/index.css";
-import { getSubpathSafeUrl } from "metabase/urls";
-import {
-  isPivoted as _isPivoted,
-  getTitleForColumn,
-} from "metabase/visualizations/lib/settings/column";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import {
   type VisibleTableData,
   getVisibleTableData,
 } from "metabase/visualizations/lib/visible-table-data";
+import { isPivoted as _isPivoted, getTitleForColumn } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 
 import { TableInteractive } from "../../components/TableInteractive";
 import type { VisualizationProps } from "../../types";
@@ -26,15 +24,9 @@ interface TableProps extends VisualizationProps {
 }
 
 function TableComponent(props: TableProps) {
-  const {
-    series,
-    settings,
-    metadata,
-    isShowingDetailsOnlyColumns,
-    isDashboard,
-  } = props;
+  const { series, settings, isShowingDetailsOnlyColumns, isDashboard } = props;
 
-  const question = useSyncedQuestion(series, metadata);
+  const question = useSyncedQuestion(series);
 
   const data = useMemo<VisibleTableData>(
     () =>
@@ -97,25 +89,15 @@ function TableComponent(props: TableProps) {
  * question (and rebuild every column) mid-interaction; series changes on every
  * query run, which is when fresh metadata actually needs to be picked up.
  */
-function useSyncedQuestion(
-  series: VisualizationProps["series"],
-  metadata: VisualizationProps["metadata"],
-) {
-  const metadataRef = useLatest(metadata);
+function useSyncedQuestion(series: VisualizationProps["series"]) {
+  const buildQuestionRef = useLatest(useQuestionFromCardBuilder());
   return useMemo(() => {
     const [{ card }] = series;
-    return new Question(card, metadataRef.current);
-  }, [series, metadataRef]);
+    return buildQuestionRef.current(card);
+  }, [series, buildQuestionRef]);
 }
 
 function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
-  const allFieldsHiddenImageUrl = getSubpathSafeUrl(
-    "app/assets/img/hidden-field.png",
-  );
-  const allFieldsHiddenImage2xUrl = getSubpathSafeUrl(
-    "app/assets/img/hidden-field@2x.png",
-  );
-
   return (
     <div
       className={cx(
@@ -132,10 +114,10 @@ function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
       <img
         data-testid="Table-all-fields-hidden-image"
         width={99}
-        src={allFieldsHiddenImageUrl}
+        src={hiddenFieldImage}
         srcSet={`
-          ${allFieldsHiddenImageUrl}   1x,
-          ${allFieldsHiddenImage2xUrl} 2x
+          ${hiddenFieldImage}   1x,
+          ${hiddenFieldImage2x} 2x
         `}
         className={CS.mb2}
       />

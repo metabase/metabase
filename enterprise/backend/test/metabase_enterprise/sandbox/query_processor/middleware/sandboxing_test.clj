@@ -23,12 +23,15 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.test :as qp]
@@ -62,7 +65,8 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        [:field {::add/source-table (mt/id table-key)
+        [:field {:lib/uuid          (str (random-uuid))
+                 ::add/source-table (mt/id table-key)
                  ::add/source-alias field-name
                  ::add/desired-alias field-name}
          field-id])))))
@@ -136,7 +140,7 @@
                         [:raw "{{user}}"]]
                 :order-by [[(identifier :checkins :id) :asc]]})
 
-              :template_tags
+              :template-tags
               {"user" {:name "user"
                        :display-name "User ID"
                        :type :number
@@ -295,6 +299,30 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest native-sandbox-metadata-query-keeps-outer-query-cancelable-test
+  (testing "The query that fetches a native sandbox's metadata leaves the outer query cancelable"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (let [canceled-chan (a/promise-chan)
+            execute       qp.pipeline/*execute*
+            calls         (atom 0)
+            driver-saw    (atom nil)]
+        (binding [qp.pipeline/*canceled-chan* canceled-chan
+                  qp.pipeline/*execute*       (fn [driver query respond]
+                                                (if (= 1 (swap! calls inc))
+                                                  (execute driver query respond)
+                                                  ;; The outer query: cancel the request, and see whether its driver hears it.
+                                                  (do
+                                                    (a/>!! canceled-chan ::canceled)
+                                                    (reset! driver-saw (a/poll! qp.pipeline/*canceled-chan*))
+                                                    nil)))]
+          ;; The canceled outer query returns no rows, which the row helpers reject.
+          (try
+            (run-venues-count-query)
+            (catch Exception _)))
+        (testing "the metadata query runs first, then the outer query, which hears the cancel"
+          (is (= 2 @calls))
+          (is (= ::canceled @driver-saw)))))))
+
 (deftest metric-on-natively-sandboxed-table-test
   (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
     (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
@@ -321,6 +349,34 @@
         (is (= [[10]]
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
+
+(deftest sandbox-on-sensitive-field-test
+  (testing "a sandbox can filter on a :sensitive column even though the sandboxed user can't reference it"
+    (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (met/with-gtaps! {:gtaps {:venues (venues-price-mbql-gtap-def)}, :attributes {"price" 1}}
+        (is (= [[22]]
+               (run-venues-count-query)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"not available for querying"
+             (qp/process-query (mt/mbql-query venues {:fields [$price]}))))))))
+
+(deftest e2e-api-key-user-attributes-ignored-test
+  (testing (str "login_attributes stored on an API-key pseudo-user are not used for sandboxing (UXW-4240); the "
+                "query should fail with a missing-attribute error rather than using the stored attributes")
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+      ;; `:attributes` writes `login_attributes` straight to the app DB; attributes on API-key users can't be set
+      ;; via the API but may exist in the wild
+      (met/with-gtaps-for-user! api-key-user-id {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                                 :attributes {"cat" 50}}
+        (is (= {"cat" "50"}
+               (t2/select-one-fn :login_attributes :model/User :id api-key-user-id))
+            "sanity check: the attributes really are stored on the API-key user's row")
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Query requires user attribute `cat`"
+             (run-venues-count-query)))))))
 
 (deftest e2e-test-3
   (mt/test-drivers (e2e-test-drivers)
@@ -351,6 +407,24 @@
         (is (= [[10]]
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
+
+(deftest e2e-uncoerceable-attribute-fails-closed-test
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "uncoerceable user attribute does not silently drop the sandbox filter (#81821)"
+      (testing "integer column"
+        (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (run-venues-count-query)))))
+      (testing "float column"
+        (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)
+                                           :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
+                          :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (run-venues-count-query))))))))
 
 (deftest e2e-test-6
   (mt/test-drivers (e2e-test-drivers)
@@ -1117,7 +1191,8 @@
                       qp/process-query))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
-    (t2/update! :model/Card card-id {:result_metadata metadata})))
+    (mt/with-test-user :crowberto
+      (t2/update! :model/Card card-id {:result_metadata metadata}))))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1306,9 +1381,13 @@
                              :source-table (str "card__" (:id model))})
                     regular-result (mt/with-test-user :crowberto
                                      (qp/process-query query))
-                    sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
+                    [sandboxed-result
+                     sandboxed-sql]  (met/with-user-attributes! :rasta {"category" "Gizmo"}
                                        (mt/with-test-user :rasta
-                                         (qp/process-query query)))]
+                                         ;; results don't include `:native_form` for a sandboxed user, so compile
+                                         ;; the query separately to see which table it uses
+                                         [(qp/process-query query)
+                                          (:query (qp.compile/compile query))]))]
                 (testing "Unsandboxed"
                   (testing "Sees full result set"
                     (is (= 200 (-> regular-result mt/rows ffirst))
@@ -1322,9 +1401,63 @@
                     (is (= 51 (-> sandboxed-result mt/rows ffirst))
                         "Sandboxed user got whole results instead of filtered"))
                   (testing "Does not use the cache table"
-                    (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
-                                            (:table_name persisted-info)))
+                    (is (not (str/includes? sandboxed-sql (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
+
+(deftest persistence-disabled-for-native-card-template-tag-when-sandboxed-test
+  (testing "A native query referencing a persisted Model via a {{#N}} template tag must not use the persisted cache for a sandboxed user"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        ;; with-gtaps! creates a new copy of the database. So make sure to do that before anything else.
+        (met/with-gtaps! {:gtaps {:products
+                                  {:remappings {:category
+                                                ["dimension"
+                                                 [:field (mt/id :products :category)
+                                                  nil]]}}}}
+          (mt/with-persistence-enabled! [persist-models!]
+            ;; with temp ok here since `persist-models!` doesn't use Metadata Providers
+            #_{:clj-kondo/ignore [:discouraged-var]}
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :dataset_query (mt/mbql-query
+                                                               products
+                                                               {:fields [$id $price]})}]
+              ;; persist model (as admin, so sandboxing is not applied to the persisted query)
+              (mt/with-test-user :crowberto
+                (persist-models!))
+              (let [persisted-info (t2/select-one :model/PersistedInfo
+                                                  :database_id (mt/id)
+                                                  :card_id (:id model))]
+                (is (= "persisted" (:state persisted-info))
+                    "Model failed to persist")
+                ;; a sandboxed user has no native-query permissions, but only needs to be able to *read* a saved
+                ;; native Card that references the persisted Model to hit this code path.
+                (mt/with-temp [:model/Card card {:dataset_query
+                                                 (lib/native-query (mt/metadata-provider)
+                                                                   (format "SELECT count(*) FROM {{#%d}} AS m"
+                                                                           (:id model)))}]
+                  (let [run-card         #(mt/user-http-request % :post 202 (format "card/%d/query" (:id card)))
+                        regular-result   (run-card :crowberto)
+                        [sandboxed-result
+                         sandboxed-sql]  (met/with-user-attributes! :rasta {"category" "Gizmo"}
+                                           ;; results don't include `:native_form` for a sandboxed user, so compile
+                                           ;; the Card's query separately to see which table it uses
+                                           [(run-card :rasta)
+                                            (mt/with-test-user :rasta
+                                              (:query (qp.compile/compile (:dataset_query card))))])]
+                    (testing "Unsandboxed"
+                      (testing "Sees full result set"
+                        (is (= 200 (-> regular-result mt/rows ffirst))))
+                      (testing "Uses the cache table"
+                        (is (str/includes? (-> regular-result :data :native_form :query)
+                                           (:table_name persisted-info))
+                            "Did not use the persisted model cache")))
+                    (testing "Sandboxed"
+                      (testing "sees partial result"
+                        (is (= 51 (-> sandboxed-result mt/rows ffirst))
+                            "Sandboxed user got whole results instead of filtered"))
+                      (testing "Does not use the cache table"
+                        (is (not (str/includes? sandboxed-sql (:table_name persisted-info)))
+                            "Erroneously used the persisted model cache")))))))))))))
 
 (deftest model-metadata-overrides-preserved-for-sandboxed-users-test
   (testing (str "Column metadata overrides on a Model (custom display_name, semantic_type set in the Edit Metadata "
@@ -1370,6 +1503,37 @@
           (qp/process-query (qp/userland-query query))
           (is (=? {:is_sandboxed true}
                   (qe))))))))
+
+(deftest sandbox-details-success-test
+  (testing "The sandboxes applied to a query are recorded in query_execution.sandbox_details (#71604)"
+    (met/with-gtaps! (mt/$ids orders
+                       {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id]}}}
+                        :attributes {"user_id" 1}})
+      (let [query (mt/mbql-query orders {:aggregation [[:count]]})]
+        (testing "the sandbox structure is always recorded, but attribute values are omitted by default"
+          (process-userland-query-test/with-query-execution! [qe query]
+            (let [result (qp/process-query (qp/userland-query query))]
+              (testing "the details are stripped back out of the query results returned to the client"
+                (is (not (contains? (:data result) :sandbox_details)))))
+            (let [saved-qe (qe)]
+              (is (=? {:is_sandboxed    true
+                       :sandbox_details [{:table_id   (mt/id :orders)
+                                          :sandbox_id pos-int?
+                                          :group_id   pos-int?
+                                          :card_id    nil
+                                          :attributes {"user_id" {:field_id (mt/id :orders :user_id)}}}]}
+                      saved-qe))
+              (is (not (contains? (get-in saved-qe [:sandbox_details 0 :attributes "user_id"]) :value))))))
+        (testing "the user's attribute values are included when analytics-pii-retention-enabled is set"
+          (mt/with-additional-premium-features #{:audit-app}
+            (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+              (process-userland-query-test/with-query-execution! [qe query]
+                (qp/process-query (qp/userland-query query))
+                ;; login attribute values are stored (and therefore recorded) as strings
+                (is (=? {:sandbox_details [{:table_id   (mt/id :orders)
+                                            :attributes {"user_id" {:field_id (mt/id :orders :user_id)
+                                                                    :value    "1"}}}]}
+                        (qe)))))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query fails when sandboxed table is joined to a table that the current user doesn't have access to"
@@ -1772,6 +1936,27 @@
                                    (<= 1 day-int 31))))
                           (next result))))))))))
 
+(deftest temporal-bucketing-and-binning-breakouts-test
+  (testing "A sandboxed user can break out by a temporal bucket and a binned column, and gets the unsandboxed column metadata"
+    (mt/test-drivers (into #{} (filter (mt/normal-drivers-with-feature :binning)) (e2e-test-drivers))
+      (met/with-gtaps! {:gtaps      {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}}
+                        :attributes {"user_id" 1}}
+        (let [mp       (mt/metadata-provider)
+              query    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :year))
+                           (lib/breakout (lib/with-binning (lib.metadata/field mp (mt/id :orders :total))
+                                                           {:strategy :num-bins, :num-bins 10})))
+              expected (mt/with-test-user :crowberto
+                         (qp/process-query (lib/filter query (lib/= (lib.metadata/field mp (mt/id :orders :user_id)) 1))))
+              result   (qp/process-query query)]
+          (is (true? (-> result :data :is_sandboxed)))
+          (is (seq (mt/rows expected)))
+          (is (= (mt/rows expected)
+                 (mt/rows result)))
+          (is (= (map (juxt :display_name :unit (comp :num_bins :binning_info)) (mt/cols expected))
+                 (map (juxt :display_name :unit (comp :num_bins :binning_info)) (mt/cols result)))))))))
+
 (deftest sandboxed-join-excludes-hidden-columns-test
   (testing "When joining to a sandboxed table, hidden columns should not be added to join fields (#64317)"
     (mt/dataset test-data
@@ -1846,7 +2031,7 @@
     ;; To guard against a fix that simply disables the filter, the sandbox query below also joins in a column from
     ;; another table (`orders.total`) — that one *must* still be filtered out.
     (let [mp            (lib.tu/mock-metadata-provider
-                         {:database {:id 1 :name "db" :dialect :h2 :engine :h2}
+                         {:database {:id 1 :name "db" :engine :h2}
                           :tables   [{:id 100 :name "customers" :db-id 1}
                                      {:id 200 :name "orders" :db-id 1}]
                           :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100
@@ -1991,7 +2176,18 @@
                (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
       (testing "text field → :string/="
         (is (= :string/=
-               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]]))))))))
+               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
+      (testing "uncoerceable attribute against numeric field throws instead of dropping the filter (#81821)"
+        (testing "integer column"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
+        (testing "float column"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
 
 (deftest unix-timestamp-coercion-with-mbql-sandbox-test
   (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"

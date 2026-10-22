@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type JSX } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
@@ -42,8 +42,8 @@ export const SavedEntityList = ({
       ? {
           id: collection.id,
           models: [CARD_INFO[type].model],
-          sort_column: "name",
-          sort_direction: "asc",
+          "sort-column": "name",
+          "sort-direction": "asc",
         }
       : skipToken,
   );

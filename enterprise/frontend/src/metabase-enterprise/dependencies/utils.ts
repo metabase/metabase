@@ -1,12 +1,19 @@
 import { c, msgid, ngettext, t } from "ttag";
 
+import {
+  getCollectionPathAsArray,
+  isRootCollection,
+} from "metabase/common/collections/utils";
 import * as Urls from "metabase/urls";
 import type { NamedUser } from "metabase/utils/user";
-import { visualizations } from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
+import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  ActionDependencyNodeData,
   AnalysisFindingError,
   AnalysisFindingErrorType,
   CardType,
+  Collection,
   DependencyEntry,
   DependencyGroupType,
   DependencyId,
@@ -14,6 +21,7 @@ import type {
   DependencyType,
   Field,
   IconName,
+  Parameter,
   SourceReplacementEntry,
   Transform,
   VisualizationDisplay,
@@ -114,6 +122,8 @@ export function getNodeIconWithType(
       return "segment";
     case "measure":
       return "ruler";
+    case "action":
+      return "bolt";
   }
 }
 
@@ -203,9 +213,13 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
       return null;
     case "snippet":
       return {
-        label: t`View this snippet`,
+        label: t`View this SQL snippet`,
         url: Urls.dataStudioSnippet(node.id),
       };
+    case "action":
+      return node.data.model_id == null
+        ? { label: t`View this action`, url: Urls.dataStudioAction(node.id) }
+        : null;
   }
 }
 
@@ -325,16 +339,54 @@ export function getNodeLocationInfo(
           links: [
             {
               label: node.data.collection.name,
-              url: Urls.dataStudioLibrary(),
+              url: Urls.dataStudioSnippets(),
             },
           ],
         };
       }
       return null;
+    case "action":
+      return isDataStudioAction(node.data)
+        ? getDataActionLocationInfo(node.data.collection)
+        : null;
     case "transform":
     case "sandbox":
       return null;
   }
+}
+
+export function isDataStudioAction({
+  model_id,
+  collection,
+}: Pick<ActionDependencyNodeData, "model_id" | "collection">): boolean {
+  return (
+    model_id == null &&
+    (collection == null ||
+      isRootCollection(collection) ||
+      collection.namespace === "data-actions")
+  );
+}
+
+function getDataActionLocationInfo(
+  collection: Collection | null | undefined,
+): NodeLocationInfo {
+  if (collection != null && !isRootCollection(collection)) {
+    return {
+      icon: "collection",
+      links: [
+        {
+          label: collection.name,
+          url: Urls.dataStudioActions({
+            expandedIds: getCollectionPathAsArray(collection),
+          }),
+        },
+      ],
+    };
+  }
+  return {
+    icon: "collection",
+    links: [{ label: t`Data actions`, url: Urls.dataStudioActions() }],
+  };
 }
 
 export function getNodeOwner(node: DependencyNode): NamedUser | null {
@@ -366,6 +418,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "measure":
     case "snippet":
     case "transform":
+    case "action":
       return node.data.created_at;
     default:
       return null;
@@ -381,6 +434,7 @@ export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
     case "measure":
     case "snippet":
     case "transform":
+    case "action":
       return node.data.creator ?? null;
     default:
       return null;
@@ -454,9 +508,34 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
     case "document":
     case "segment":
     case "measure":
+    case "action":
       return null;
     default:
       return null;
+  }
+}
+
+export function getNodeParameters(node: DependencyNode): Parameter[] | null {
+  return node.type === "action" && node.data.model_id == null
+    ? (node.data.parameters ?? [])
+    : null;
+}
+
+export function getParameterIcon(parameter: Parameter): IconName {
+  switch (getParameterType(parameter)) {
+    case "id":
+      return "label";
+    case "number":
+      return "int";
+    case "date":
+    case "temporal-unit":
+      return "calendar";
+    case "boolean":
+      return "io";
+    case "location":
+      return "location";
+    default:
+      return "string";
   }
 }
 
@@ -534,6 +613,8 @@ export function getDependencyGroupType(
       return "measure";
     case "snippet":
       return "snippet";
+    case "action":
+      return "action";
   }
 }
 
@@ -552,7 +633,7 @@ export function getDependencyGroupTypeInfo(
     case "transform":
       return { label: t`Transform`, color: "feedback-warning" };
     case "snippet":
-      return { label: t`Snippet`, color: "text-secondary" };
+      return { label: t`SQL snippet`, color: "text-secondary" };
     case "dashboard":
       return { label: t`Dashboard`, color: "core-filter" };
     case "document":
@@ -566,6 +647,8 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Segment`, color: "accent2" };
     case "measure":
       return { label: t`Measure`, color: "core-summarize" };
+    case "action":
+      return { label: t`Data action`, color: "text-secondary" };
   }
 }
 
@@ -617,6 +700,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     sandbox = 0,
     segment = 0,
     measure = 0,
+    action = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -631,6 +715,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "sandbox", count: sandbox },
     { type: "segment", count: segment },
     { type: "measure", count: measure },
+    { type: "action", count: action },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -678,7 +763,11 @@ export function getDependentGroupLabel({
     case "transform":
       return ngettext(msgid`${count} transform`, `${count} transforms`, count);
     case "snippet":
-      return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
+      return ngettext(
+        msgid`${count} SQL snippet`,
+        `${count} SQL snippets`,
+        count,
+      );
     case "dashboard":
       return ngettext(msgid`${count} dashboard`, `${count} dashboards`, count);
     case "document":
@@ -699,6 +788,12 @@ export function getDependentGroupLabel({
       return c("{0} is the number of measures").ngettext(
         msgid`${count} measure`,
         `${count} measures`,
+        count,
+      );
+    case "action":
+      return c("{0} is the number of data actions").ngettext(
+        msgid`${count} data action`,
+        `${count} data actions`,
         count,
       );
     default:

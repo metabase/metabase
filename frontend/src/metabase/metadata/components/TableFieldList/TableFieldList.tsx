@@ -3,8 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { FieldList } from "metabase/metadata/components/FieldList";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -83,6 +83,7 @@ export const TableFieldList = ({
       activeFieldKey={activeFieldId}
       getFieldKey={getRawTableFieldId}
       getFieldHref={handleGetFieldHref}
+      readOnly={!table.can_write}
       onNameChange={handleNameChange}
       onDescriptionChange={handleDescriptionChange}
     />

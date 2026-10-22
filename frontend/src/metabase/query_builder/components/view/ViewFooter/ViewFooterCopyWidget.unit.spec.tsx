@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { queryErrored } from "metabase/query_builder/actions/querying";
 import * as SaveChartImage from "metabase/visualizations/lib/save-chart-image";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
+
+import { queryErrored } from "../../../actions/querying";
 
 import { ViewFooterCopyWidget } from "./ViewFooterCopyWidget";
 import {
@@ -98,7 +99,7 @@ describe("ViewFooterCopyWidget", () => {
     setup({ card: TABLE_CARD, result: TABLE_RESULT });
 
     await userEvent.click(
-      screen.getByLabelText("Copy these results to clipboard"),
+      await screen.findByLabelText("Copy these results to clipboard"),
     );
 
     await waitFor(() => expect(write).toHaveBeenCalledTimes(1));

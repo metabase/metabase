@@ -4,12 +4,12 @@ import {
   createMockSeriesModel,
 } from "__support__/echarts";
 import {
+  type CartesianChartColumns,
+  type Datum,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type { Datum } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+  getDatasetKey,
+} from "metabase/viz-core";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -67,6 +67,7 @@ describe("getHoveredFromHighlighted", () => {
           [CARD_ID]: categoryColumn,
           [OTHER_CARD_ID]: categoryColumn,
         },
+        columns: [categoryColumn, categoryColumn],
       },
       cardsColumns,
     });
@@ -348,6 +349,7 @@ describe("getHoveredFromHighlighted", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       cardsColumns: [
         {

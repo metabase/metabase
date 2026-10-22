@@ -1,14 +1,13 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
-import { useState } from "react";
+import { type ComponentType, useState } from "react";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Stack, Text } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -32,7 +31,7 @@ const storeInitialState = createMockState({
 // Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />

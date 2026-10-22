@@ -24,10 +24,6 @@ export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
     [dirtyData?.changedCollections],
   );
   const isDirty = dirty.length > 0;
-  const hasRemovedItems = useMemo(
-    () => dirty.some((entity) => entity.sync_status === "removed"),
-    [dirty],
-  );
 
   const isCollectionDirty = useCallback(
     (collectionId: number | string | undefined) => {
@@ -76,7 +72,6 @@ export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
     dirty,
     changedCollections,
     isDirty,
-    hasRemovedItems,
     isLoading,
     isCollectionDirty,
     hasAnyCollectionDirty,

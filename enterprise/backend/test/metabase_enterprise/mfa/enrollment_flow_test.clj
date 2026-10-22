@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.core :as sso]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -25,7 +26,8 @@
   "Temp password user + a real session from a normal (not-yet-enrolled) login."
   [[session-binding email-binding password-binding] & body]
   `(let [~password-binding (str "Pw-" (random-uuid))]
-     (mt/with-temp [:model/User {~'_user-id :id, ~email-binding :email} {:password ~password-binding}]
+     (mt/with-temp [:model/User {user-id# :id, ~email-binding :email} {}]
+       (auth-identity/set-password! user-id# ~password-binding)
        (let [~session-binding (:id (mt/client :post 200 "session" {:username ~email-binding
                                                                    :password ~password-binding}))]
          ~@body))))

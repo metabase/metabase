@@ -3,13 +3,14 @@ import { t } from "ttag";
 
 import { skipToken, useGetCardDashboardsQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { updateQuestion } from "metabase/query_builder/actions";
-import { getQuestion } from "metabase/query_builder/selectors";
 import { NotebookNativePreview as ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
+
+import { updateQuestion } from "../../../../actions";
+import { getQuestion } from "../../../../store/selectors";
 
 export const NotebookNativePreview = () => {
   const dispatch = useDispatch();
@@ -75,7 +76,7 @@ export const NotebookNativePreview = () => {
           title={t`Converting this question to SQL will break any dashboard filters connected to its columns`}
           message={t`This question is part of an embedded dashboard. Converting the query to SQL will break any dashboard filters that map to its columns, since the conversion won't include SQL variables for the filters to connect to. You can, however, manually add those variables to the converted SQL, then connect the dashboard filters to those variables.`}
           confirmButtonText={t`Convert to SQL`}
-          confirmButtonProps={{ color: "core-brand", variant: "filled" }}
+          confirmButtonProps={{ color: "brand", variant: "filled" }}
           onConfirm={handleConfirm}
           onClose={handleClose}
         />

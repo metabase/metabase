@@ -1,22 +1,29 @@
-import { type MouseEvent, useState } from "react";
+import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { useUpdateTransformJobMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
 import { DeleteJobModal } from "./DeleteJobModal";
-import type { JobMoreMenuModalType } from "./types";
 
-type JobMoreMenuProps = {
+type DeleteJobModalState = {
+  type: "delete";
   job: TransformJob;
 };
 
-export function JobMoreMenu({ job }: JobMoreMenuProps) {
-  const [modalType, setModalType] = useState<JobMoreMenuModalType>();
+export type JobModalState = DeleteJobModalState;
+
+type JobMoreMenuProps = {
+  job: TransformJob;
+  onOpenModal: (modal: JobModalState) => void;
+};
+
+export function JobMoreMenu({ job, onOpenModal }: JobMoreMenuProps) {
   const [updateJob] = useUpdateTransformJobMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
@@ -33,30 +40,25 @@ export function JobMoreMenu({ job }: JobMoreMenuProps) {
   };
 
   return (
-    <>
-      <JobMenu
-        isDisabled={!job.active}
-        onOpenModal={setModalType}
-        onToggleDisabled={handleToggleDisabled}
-      />
-      {modalType != null && (
-        <JobModal
-          job={job}
-          modalType={modalType}
-          onClose={() => setModalType(undefined)}
-        />
-      )}
-    </>
+    <JobMenu
+      isDisabled={!job.active}
+      onDeleteClick={() => onOpenModal({ type: "delete", job })}
+      onToggleDisabled={handleToggleDisabled}
+    />
   );
 }
 
 type JobMenuProps = {
   isDisabled: boolean;
-  onOpenModal: (modalType: JobMoreMenuModalType) => void;
+  onDeleteClick: () => void;
   onToggleDisabled: () => void;
 };
 
-function JobMenu({ isDisabled, onOpenModal, onToggleDisabled }: JobMenuProps) {
+function JobMenu({
+  isDisabled,
+  onDeleteClick,
+  onToggleDisabled,
+}: JobMenuProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -65,9 +67,7 @@ function JobMenu({ isDisabled, onOpenModal, onToggleDisabled }: JobMenuProps) {
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon onClick={handleIconClick}>
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <MoreMenuButton aria-label={t`Job options`} onClick={handleIconClick} />
       </Menu.Target>
       <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
         <Menu.Item
@@ -76,10 +76,7 @@ function JobMenu({ isDisabled, onOpenModal, onToggleDisabled }: JobMenuProps) {
         >
           {isDisabled ? t`Re-enable` : t`Disable`}
         </Menu.Item>
-        <Menu.Item
-          leftSection={<Icon name="trash" />}
-          onClick={() => onOpenModal("delete")}
-        >
+        <Menu.Item leftSection={<Icon name="trash" />} onClick={onDeleteClick}>
           {t`Delete`}
         </Menu.Item>
       </Menu.Dropdown>
@@ -88,14 +85,17 @@ function JobMenu({ isDisabled, onOpenModal, onToggleDisabled }: JobMenuProps) {
 }
 
 type JobModalProps = {
-  job: TransformJob;
-  modalType: JobMoreMenuModalType;
+  modal: JobModalState | undefined;
   onClose: () => void;
 };
 
-function JobModal({ job, modalType, onClose }: JobModalProps) {
+export function JobModal({ modal, onClose }: JobModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
   const navigate = useNavigate();
+
+  if (modal === undefined) {
+    return null;
+  }
 
   const handleDelete = () => {
     sendSuccessToast(t`Job deleted`);
@@ -103,12 +103,7 @@ function JobModal({ job, modalType, onClose }: JobModalProps) {
     onClose();
   };
 
-  switch (modalType) {
-    case "delete":
-      return (
-        <DeleteJobModal job={job} onDelete={handleDelete} onClose={onClose} />
-      );
-    default:
-      return null;
-  }
+  return (
+    <DeleteJobModal job={modal.job} onDelete={handleDelete} onClose={onClose} />
+  );
 }

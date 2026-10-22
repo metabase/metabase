@@ -2,6 +2,7 @@ import type { Store } from "@reduxjs/toolkit";
 
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { getNotificationRoutes } from "./notifications/routes";
 
@@ -10,22 +11,30 @@ import { getNotificationRoutes } from "./notifications/routes";
  * to decide before there is anything to show.
  */
 const accountApp = () =>
-  import("./app/containers/AccountApp").then(({ AccountApp }) => ({
-    Component: AccountApp,
-  }));
+  import(/* webpackChunkName: "account" */ "./app/containers/AccountApp").then(
+    ({ AccountApp }) => ({
+      Component: AccountApp,
+    }),
+  );
 
 const userProfileApp = () =>
-  import("./profile/containers/UserProfileApp").then((module) => ({
+  import(
+    /* webpackChunkName: "account" */ "./profile/containers/UserProfileApp"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const userPasswordApp = () =>
-  import("./password/containers/UserPasswordApp").then((module) => ({
+  import(
+    /* webpackChunkName: "account" */ "./password/containers/UserPasswordApp"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const loginHistoryApp = () =>
-  import("./login-history/containers/LoginHistoryApp").then((module) => ({
+  import(
+    /* webpackChunkName: "account" */ "./login-history/containers/LoginHistoryApp"
+  ).then((module) => ({
     Component: module.default,
   }));
 
@@ -41,8 +50,14 @@ export const getAccountRoutes = (
         <Route path="authentication" lazy={userPasswordApp} />
         <Route path="login-history" lazy={loginHistoryApp} />
         {/* Legacy path redirects */}
-        <Route path="security" element={redirect("/account/authentication")} />
-        <Route path="password" element={redirect("/account/authentication")} />
+        <Route
+          path="security"
+          element={redirect(Urls.accountAuthentication())}
+        />
+        <Route
+          path="password"
+          element={redirect(Urls.accountAuthentication())}
+        />
         {getNotificationRoutes()}
       </Route>
     </Route>

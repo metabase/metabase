@@ -67,7 +67,7 @@ If you're writing a native MongoDB query, your query would look more like this, 
 
 ![Basic variable with multiple values](../images/multiple-values.png)
 
-To let people plug multiple values into your variable, you'll need to write the code in such a way that multiple values will make sense when interpolated into your code. The most common way to do this would be to use an `WHERE` clause with `IN`:
+To let people plug multiple values into your variable, you'll need to write the code in such a way that multiple values will make sense when interpolated into your code. The most common way to do this would be to use a `WHERE` clause with `IN`:
 
 ```sql
 {% raw %}

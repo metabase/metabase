@@ -5,8 +5,11 @@
    [buddy.core.mac :as mac]
    [clojure.test :refer :all]
    [metabase.server.middleware.auth :as mw.auth]
+   [metabase.server.middleware.body-limit-test :as body-limit-test]
    [metabase.test :as mt]
-   [ring.mock.request :as ring.mock]))
+   [ring.mock.request :as ring.mock])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,10 +35,12 @@
    identity
    (fn [e] (throw e))))
 
+(def ^:private slack-events-uri "/api/metabot/slack/events")
+
 (defn- slack-request
-  "Create a mock request with Slack signature headers and a body"
+  "Create a mock request to the Slack events route with Slack signature headers and a body"
   ^java.util.Map [^String body ^String timestamp ^String signature]
-  (-> (ring.mock/request :post "/anyurl")
+  (-> (ring.mock/request :post slack-events-uri)
       (ring.mock/header "x-slack-signature" signature)
       (ring.mock/header "x-slack-request-timestamp" timestamp)
       (assoc :body (java.io.ByteArrayInputStream. (.getBytes body "UTF-8")))))
@@ -69,6 +74,32 @@
               signature "v0=some-signature"
               result    (wrapped-slack-handler (slack-request body timestamp signature))]
           (is (nil? (:slack/validated? result))))))))
+
+(defn- slack-request-with-counted-body
+  "A signed-looking request whose `size`-byte body counts the bytes read from it into `counter`."
+  [size counter]
+  (assoc (slack-request "" (str test-timestamp) "v0=whatever")
+         :body (body-limit-test/counting-stream (ByteArrayInputStream. (byte-array size)) counter)))
+
+(deftest verify-slack-request-body-bound-test
+  (testing "No signing secret configured: the body is not read at all"
+    (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret nil]
+      (let [counter (atom 0)
+            result  (wrapped-slack-handler (slack-request-with-counted-body 4096 counter))]
+        (is (not (contains? result :slack/validated?)))
+        (is (= 0 @counter)))))
+  (testing "Signing secret configured but the request is not for a Slack route: the body is not read at all"
+    (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
+      (let [counter (atom 0)
+            result  (wrapped-slack-handler (assoc (slack-request-with-counted-body 4096 counter) :uri "/api/card"))]
+        (is (not (contains? result :slack/validated?)))
+        (is (= 0 @counter)))))
+  (testing "Signing secret configured and a Slack route: the body is read, bounded by the global request body limit"
+    (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
+      (let [counter (atom 0)
+            result  (wrapped-slack-handler (slack-request-with-counted-body 4096 counter))]
+        (is (false? (:slack/validated? result)))
+        (is (= 4096 @counter))))))
 
 (defn- validate-request-with-timestamp
   "Helper to test timestamp validation. Returns :slack/validated? result."

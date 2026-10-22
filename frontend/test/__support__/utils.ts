@@ -1,4 +1,4 @@
-import type { CallLog } from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import { act, waitFor } from "./ui";
 
@@ -89,4 +89,15 @@ export const waitForRequest = async (requestFn: () => CallLog | undefined) => {
     }
     throw error;
   }
+};
+
+/**
+ * Resolves every mocked request that has started and lets the state updates
+ * they cause reach the DOM. Use it before asserting that something did not
+ * render, where there is nothing to wait for.
+ */
+export const waitForRequestsToSettle = async () => {
+  await act(() => fetchMock.callHistory.flush(true));
+  // RTK Query commits the results on the next task.
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 };

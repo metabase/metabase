@@ -5,6 +5,7 @@ import {
   setupFieldSearchValuesEndpoint,
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -13,7 +14,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -32,6 +32,18 @@ import {
 } from "../test-utils";
 
 import { StringFilterPicker } from "./StringFilterPicker";
+
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock(
+  "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+  () => ({
+    ...jest.requireActual(
+      "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+    ),
+    SEARCH_DEBOUNCE: 0,
+  }),
+);
 
 const EXPECTED_OPERATORS = [
   "Is",

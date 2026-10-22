@@ -8,6 +8,8 @@ jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
   trackSdkSimpleEvent: jest.fn(),
   getSdkAuthMethod: jest.fn(),
   getSdkLocaleUsed: jest.fn(),
+  getHostReactVersion: jest.fn(() => "18.3.1"),
+  getSdkClient: jest.fn(() => "embedding-sdk-react"),
 }));
 
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({

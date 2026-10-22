@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { JSX, MouseEvent, ReactNode } from "react";
 
 import { Button } from "metabase/ui";
 
@@ -18,8 +18,7 @@ const FormArchiveButton = ({
       className={S.archiveButton}
       type="button"
       variant="subtle"
-      color="feedback-negative"
-      px={0}
+      color="negative"
       onClick={onClick}
     >
       {children}

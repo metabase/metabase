@@ -167,7 +167,7 @@
                          (tar-file-types f)))))
               (testing "On exception API returns tar.gz with error in export.log"
                 (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                                  (mt/dynamic-value serdes/extract-one))]
+                                                                                  (mt/original-fn #'serdes/extract-one))]
                   (let [res (binding [api.serialization/*additive-logging* false]
                               (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
@@ -184,9 +184,17 @@
                   res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
                                                  :collection fake-eid :data_model false :settings false)]
               (is (re-find #"Could not find Collection with entity ID"
-                           (str (:message res))))
+                           (str res)))
               (is (re-find #"abcdefghijklmnopqrstu"
-                           (str (:message res))))))))
+                           (str res)))))
+          (testing "Nonexistent collection ID names the collection the user asked for"
+            (let [missing-id Integer/MAX_VALUE
+                  res        (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                                   :collection missing-id :data_model false :settings false)]
+              (is (re-find #"Could not find Collection with ID"
+                           (str res)))
+              (is (re-find (re-pattern (str missing-id))
+                           (str res)))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
@@ -200,6 +208,7 @@
       :is-superuser?         true
       :is-impersonated-user? false
       :is-sandboxed-user?    false
+      :is-routed-user?       false
       :models                #{model}
       :current-user-perms    #{"/"}
       :search-string         search-string}))))
@@ -384,7 +393,7 @@
   (testing "Export with error still returns tar.gz with export.log containing error details"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/dynamic-value serdes/extract-one))]
+                                                                        (mt/original-fn #'serdes/extract-one))]
         (testing "Error details are in export.log inside the archive"
           (binding [api.serialization/*additive-logging* false]
             (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
@@ -426,7 +435,7 @@
   (testing "Export with continue_on_error=true succeeds partially despite errors"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/dynamic-value serdes/extract-one))]
+                                                                        (mt/original-fn #'serdes/extract-one))]
         (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                         :collection (:id coll) :data_model false :settings false
                                         :continue_on_error true)]
@@ -479,6 +488,9 @@
         ;; parse-target throws an ex-info carrying a :status-code, so it surfaces as a 4xx
         (mt/user-http-request :crowberto :post 400 "ee/serialization/export"
                               :collection "0123456789abcdef01234" :data_model false :settings false)
+        ;; same for a well-formed but non-existent numeric id
+        (mt/user-http-request :crowberto :post 400 "ee/serialization/export"
+                              :collection Integer/MAX_VALUE :data_model false :settings false)
         (is (empty? (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
                             (messages)))
             "client input errors are not logged as server errors")))))

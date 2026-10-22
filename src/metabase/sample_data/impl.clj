@@ -3,8 +3,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.plugins.core :as plugins]
+   [metabase.sample-data.db :as sample-data.db]
    [metabase.sync.core :as sync]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
@@ -58,8 +60,12 @@
   [engine dest-path]
   (case engine
     ;; SQLite `:details` only need a filesystem path. URL-decode in case it got URL-encoded from a JAR `URL`.
-    ;; The bundled file is read-only.
-    :sqlite {:db (codec/url-decode dest-path), :read-only? true}
+    ;; The bundled file is read-only. Register the path so the driver's checks (the hosted-instance guard and the
+    ;; readable/writable path allowlists) will permit opening this one file -- see
+    ;; [[metabase.driver.settings/register-sqlite-sample-database-path!]].
+    :sqlite (let [db (codec/url-decode dest-path)]
+              (driver.settings/register-sqlite-sample-database-path! db)
+              {:db db, :read-only? true})
     ;; H2 connects to the file by path (sans the `.mv.db` suffix).
     :h2     {:db (-> (str "file:" dest-path)
                      (str/replace #"\.mv\.db$" "")
@@ -97,13 +103,9 @@
     (log/info "Loading sample database")
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
-          db (if (t2/exists? :model/Database :is_sample true)
-               (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
-               (first (t2/insert-returning-instances! :model/Database
-                                                      :name      sample-database-name
-                                                      :details   details
-                                                      :engine    engine
-                                                      :is_sample true)))]
+          db (if (sample-data.db/sample-database-exists?)
+               (sample-data.db/database (first (sample-data.db/set-sample-database-details! details)))
+               (sample-data.db/insert-sample-database! sample-database-name details engine))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
@@ -113,7 +115,7 @@
 (defn sample-database-id
   "ID of the Sample Database if it exists, otherwise nil."
   []
-  (t2/select-one-pk :model/Database :is_sample true))
+  (sample-data.db/sample-database-id))
 
 (defn- table-schema-for-engine
   "The schema value the sync process assigns to the sample database's tables for a given engine: H2 puts
@@ -152,20 +154,15 @@
   (let [details  (try-to-extract-sample-database! engine)
         settings (settings-sans-unsupported-features engine old-sample-db)]
     (t2/with-transaction [_conn]
-      (t2/update! :model/Database (:id old-sample-db)
-                  (cond-> {:engine engine, :details details}
-                    settings (assoc :settings settings)))
-      (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)})
+      (sample-data.db/update-database! (:id old-sample-db)
+                                       (cond-> {:engine engine, :details details}
+                                         settings (assoc :settings settings)))
+      (sample-data.db/set-database-tables-schema! (:id old-sample-db) (table-schema-for-engine engine))
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
-      ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Raw table update:
-      ;; the model's before-update rejects all updates, and delete+reinsert would churn ids for a rename that
-      ;; doesn't change any permission value.
-      (t2/query {:update (t2/table-name :model/DataPermissions)
-                 :set    {:schema_name (table-schema-for-engine engine)}
-                 :where  [:and
-                          [:= :db_id (:id old-sample-db)]
-                          [:not= :table_id nil]]}))
-    (sync/sync-database! (t2/select-one :model/Database :id (:id old-sample-db)))))
+      ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
+      ;; ids for a rename that doesn't change any permission value.
+      (sample-data.db/set-database-table-permissions-schema-name! (:id old-sample-db) (table-schema-for-engine engine)))
+    (sync/sync-database! (sample-data.db/database (:id old-sample-db)))))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed
@@ -173,7 +170,7 @@
   [[migrate-sample-database-engine-in-place!]]); otherwise we just refresh its connection details in case
   the JAR has moved."
   ([]
-   (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
+   (update-sample-database-if-needed! (sample-data.db/sample-database)))
 
   ([sample-db]
    (when sample-db
@@ -182,4 +179,4 @@
          (migrate-sample-database-engine-in-place! engine sample-db)
          (let [intended (try-to-extract-sample-database! engine)]
            (when (not= (:details sample-db) intended)
-             (t2/update! :model/Database (:id sample-db) {:details intended}))))))))
+             (sample-data.db/update-database! (:id sample-db) {:details intended}))))))))

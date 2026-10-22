@@ -7,7 +7,7 @@ import {
 } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 
-import StatusLarge from "../StatusLarge";
+import { StatusLarge } from "../StatusLarge";
 
 export type DatabaseStatusLargeProps = {
   databases: Database[];
@@ -56,7 +56,9 @@ const getDescription = (database: Database): string => {
   const isError = isSyncAborted(database);
 
   if (isError) {
-    return t`Sync failed`;
+    return database.initial_sync_error
+      ? t`Sync failed: ${database.initial_sync_error}`
+      : t`Sync failed`;
   } else if (isDone) {
     return t`Syncing completed`;
   } else {

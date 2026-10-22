@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import EmptyFolder from "assets/img/empty-states/collection.svg";
@@ -11,7 +12,7 @@ const SearchEmptyState = ({
   isTimeline,
 }: SearchEmptyStateProps): JSX.Element => {
   return (
-    <Stack align="center" gap="md">
+    <Stack align="center" gap="lg">
       <Box maw="6rem">
         <img src={EmptyFolder} alt={t`Empty folder illustration`} />
       </Box>

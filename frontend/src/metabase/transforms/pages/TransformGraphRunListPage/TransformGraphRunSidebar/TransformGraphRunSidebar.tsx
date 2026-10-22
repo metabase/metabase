@@ -15,7 +15,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
@@ -147,17 +147,17 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
         bg="background_page-primary"
         data-testid="transform-graph-run-sidebar"
       >
-        <Box className={S.header} p="lg">
+        <Box className={S.header} p="xl">
           <TransformGraphRunSidebarHeader run={run} onClose={onClose} />
         </Box>
-        <Box className={S.scrollArea} flex={1} mih={0} p="lg">
-          <Stack gap="xl">
-            <Stack gap="md">
+        <Box className={S.scrollArea} flex={1} mih={0} p="xl">
+          <Stack gap="xxl">
+            <Stack gap="lg">
               <TransformGraphRunInfoSection run={run} />
               {canCancelRun(run) && <CancelationSection run={run} />}
             </Stack>
             {!areMembersUnavailable && (
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Group gap="sm" wrap="nowrap">
                   <Badge variant="filled" bg="core-brand">
                     {transformRuns.length}
@@ -213,7 +213,7 @@ function CancelationSection({ run }: CancelationSectionProps) {
       <Group justify="flex-end">
         <Button
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           disabled={isCanceling}
           onClick={openModal}
         >
@@ -281,9 +281,9 @@ function TransformGraphRunSidebarHeader({
       <Title order={3}>
         <RunName run={run} gap="sm" />
       </Title>
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         <HeaderEntityActions run={run} />
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
@@ -301,6 +301,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
     return (
       <Tooltip label={t`View this job`}>
         <ActionIcon
+          variant="subtle"
           component={ForwardRefLink}
           to={Urls.transformJob(entity_id)}
           target="_blank"
@@ -316,6 +317,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
     <>
       <Tooltip label={t`View this transform`}>
         <ActionIcon
+          variant="subtle"
           component={ForwardRefLink}
           to={Urls.transform(entity_id)}
           target="_blank"
@@ -327,6 +329,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Tooltip label={t`View in dependency graph`}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={Urls.dependencyGraph({
               entry: { id: entity_id, type: "transform" },

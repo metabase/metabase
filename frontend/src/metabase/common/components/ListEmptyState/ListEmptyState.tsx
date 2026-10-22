@@ -1,16 +1,23 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { Box } from "metabase/ui";
+import { Box, Stack, Text } from "metabase/ui";
 
 type ListEmptyStateProps = {
   label: string;
+  description?: string;
+  action?: ReactNode;
 };
 
-export function ListEmptyState({ label }: ListEmptyStateProps) {
+export function ListEmptyState({
+  label,
+  description,
+  action,
+}: ListEmptyStateProps) {
   return (
-    <Box p="xl">
+    <Box p="xxl">
       <EmptyState
         message={label}
         spacing="sm"
@@ -23,6 +30,16 @@ export function ListEmptyState({ label }: ListEmptyStateProps) {
           />
         }
       />
+      {(description != null || action != null) && (
+        <Stack align="center" gap="md" mt="xs">
+          {description != null && (
+            <Text c="text-secondary" ta="center">
+              {description}
+            </Text>
+          )}
+          {action}
+        </Stack>
+      )}
     </Box>
   );
 }

@@ -56,7 +56,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 ## MySQL or MariaDB
 
-We recommend [PostgreSQL](#postgresql), but you can also use [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/).
+We recommend [PostgreSQL](#postgresql), but you can also use [MySQL](https://www.mysql.com/) or [MariaDB](https://mariadb.org/).
 
 The minimum recommended version is MySQL 8.4.0 or MariaDB 10.6.0. The `utf8mb4` character set is required.
 

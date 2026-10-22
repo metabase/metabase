@@ -6,6 +6,7 @@ import {
   setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -14,10 +15,6 @@ import {
   within,
 } from "__support__/ui";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
@@ -26,6 +23,13 @@ import {
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",

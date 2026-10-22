@@ -85,7 +85,7 @@ export const ImpersonationModalView = ({
       t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
   return (
-    <Stack gap="sm" p="xl">
+    <Stack gap="sm" p="xxl">
       <h2>{modalTitle}</h2>
       <Text my="sm" lh="lg">
         {modalMessage}{" "}
@@ -104,7 +104,7 @@ export const ImpersonationModalView = ({
             >{t`Edit connection`}</Link>
           </Alert>
 
-          <FormFooter hasTopBorder>
+          <FormFooter>
             <Button type="button" onClick={onCancel}>{t`Close`}</Button>
           </FormFooter>
         </>
@@ -128,7 +128,7 @@ export const ImpersonationModalView = ({
 
               <ImpersonationWarning database={database} />
 
-              <FormFooter hasTopBorder>
+              <FormFooter>
                 <FormErrorMessage />
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
                 <FormSubmitButton
@@ -150,7 +150,7 @@ export const ImpersonationModalView = ({
             >{t`Edit user settings`}</Link>
           </Alert>
 
-          <FormFooter hasTopBorder>
+          <FormFooter>
             <Button type="button" onClick={onCancel}>{t`Close`}</Button>
           </FormFooter>
         </>

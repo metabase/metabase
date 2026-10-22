@@ -15,7 +15,7 @@ import {
 import { delay } from "__support__/utils";
 import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { createMockGroup } from "metabase-types/api/mocks/group";
@@ -121,7 +121,7 @@ describe("GroupsPermissionsPage", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toBe(getBeforeUnloadUnsavedMessage());
     });
 
     it("should not have beforeunload event when permissions are unedited", async function () {

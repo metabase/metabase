@@ -8,6 +8,7 @@ import type {
   Database,
   DatabaseId,
   DatabaseUsageInfo,
+  Engine,
   SchemaName,
 } from "metabase-types/api";
 
@@ -40,6 +41,18 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
+export function setupDatabaseMetadataEndpoint(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}/metadata`, db, {
+    name: `database-${db.id}-metadata`,
+  });
+}
+
+export function setupDatabaseMetadataErrorEndpoint(databaseId: DatabaseId) {
+  fetchMock.get(`path:/api/database/${databaseId}/metadata`, 500, {
+    name: `database-${databaseId}-metadata`,
+  });
+}
+
 export function setupUpdateDatabaseEndpoint(db: Database) {
   fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
     const body = await call?.request?.json();
@@ -62,6 +75,10 @@ export function setupDatabaseUsageInfoEndpoint(
   usageInfo: DatabaseUsageInfo,
 ) {
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
+}
+
+export function setupEnginesEndpoint(engines: Record<string, Engine>) {
+  fetchMock.get("path:/api/setting/engines", engines);
 }
 
 export function setupDatabaseListEndpoint(databases: Database[]) {

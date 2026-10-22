@@ -4,7 +4,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib-be.core]
    [metabase.lib.core :as lib]
@@ -90,19 +89,15 @@
   ensure survives."
   {:deprecated "0.57.0"}
   [new-metadata old-metadata]
+  ;; deprecated fn using its own deprecated helper; both leave together
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [old-cols-by-desired-col-alias (m/index-by :lib/desired-column-alias (filter :lib/desired-column-alias old-metadata))
-        old-cols-by-name (m/index-by :name old-metadata)]
-    (for [new-col new-metadata]
-      (if-let [old-col (or (get old-cols-by-desired-col-alias (:lib/desired-column-alias new-col))
-                           ;; Only match by name if a desired column alias is missing,
-                           ;; otherwise we could match different columns with the same name
-                           (let [old-col (get old-cols-by-name (:name new-col))]
-                             (when (not-every? :lib/desired-column-alias [new-col old-col])
-                               old-col)))]
-        (merge new-col (select-keys old-col preserved-keys))
-        new-col))))
+  (map (fn [new-col old-col]
+         (cond-> new-col
+           old-col (merge (select-keys old-col preserved-keys))))
+       new-metadata
+       (lib/match-returned-columns old-metadata new-metadata)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *execute-async?*
   "Whether to save QueryExecutions (and other post-execution side effects) asynchronously via the batch-processing
   queue. Bind (or redef, when the query runs on another thread) to `false` in tests to save synchronously on the
@@ -116,5 +111,5 @@
 
 (mu/defn internal-query? :- :boolean
   "Returns `true` if query is an internal query."
-  [{query-type :type} :- :map]
+  [{query-type :type} :- ::qp.schema/any-query]
   (= :internal (keyword query-type)))

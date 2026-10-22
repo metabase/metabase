@@ -6,6 +6,10 @@ import {
   setupDatabasesEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import {
@@ -15,11 +19,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
@@ -31,6 +30,8 @@ import {
   createProductsTable,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
+
+import { ObjectDetailSidesheet } from "./ObjectDetailSidesheet";
 
 registerVisualizations();
 

@@ -43,7 +43,6 @@
   ;; do we really use this in dev?
   ([direction & [version]]
    (mdb/migrate! (mdb/data-source) direction version)
-   #_{:clj-kondo/ignore [:discouraged-var]}
    (println (format "Migrated %s. Latest migration: %s" (name direction) (latest-migration)))))
 
 (defn- rollback-n-migrations!
@@ -117,22 +116,19 @@
    (let [n (case (keyword k)
              :last-deployment (last-deployment))]
      (rollback-n-migrations! n)
-     #_{:clj-kondo/ignore [:discouraged-var]}
      (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
 
-  ([k :- [:enum :id :count "id" "count"]
-    target]
+  ([k      :- [:enum :id :count "id" "count"]
+    target :- [:or :int :string]]
    (let [n (case (keyword k)
              :id               (migration-since target)
              :count            (maybe-parse-long target))]
      (rollback-n-migrations! n)
-     #_{:clj-kondo/ignore [:discouraged-var]}
      (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration))))))
 
 (defn migration-status
   "Print the latest migration ID."
   []
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Current migration:" (latest-migration)))
 
 (defn -main
@@ -191,9 +187,10 @@
     ;; =>
       {:forward \"DROP INDEX public.idx_user_id_device_id;\",
        :rollback \"CREATE INDEX idx_user_id_device_id ON public.login_history(session_id, device_id);\"}"
-  ([id]
+  ([id :- :string]
    (migration-sql-by-id id (mdb/db-type)))
-  ([id db-type :- [:enum :postgres :mysql :mariadb :h2]]
+  ([id      :- :string
+    db-type :- [:enum :postgres :mysql :mariadb :h2]]
    (t2/with-connection [conn]
      (liquibase/with-liquibase [^Liquibase liquibase conn]
        (let [database              (liquibase-database db-type)

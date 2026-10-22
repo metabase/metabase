@@ -1,32 +1,42 @@
 (ns metabase.metabot.tools-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
-   [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.notification.models :as models.notification]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (deftest all-tools-test
-  (testing "profile tools are vars with required metadata"
+  (testing "every tool in every profile declares itself validly, converted or not"
     (let [tool-vars (mapcat :tools (vals @@#'profiles/*profiles))]
       (is (seq tool-vars))
       (doseq [tool-var tool-vars]
-        (is (var? tool-var))
-        (let [m (meta tool-var)]
-          (is (string? (:tool-name m)))
-          (is (some? (:schema m))))))))
+        (is (var? tool-var) "a profile names every tool as a var, whichever kind it is")
+        (testing (str tool-var)
+          (let [{:keys [name description args]} (tools.legacy/declaration-of tool-var)]
+            (is (string? name))
+            (is (string? description))
+            (is (some? args))))))))
 
-(deftest wrap-tools-with-state-carries-title-fn-test
-  (testing "a tool var's :title-fn metadata reaches the tool-def map"
-    (let [wrapped (agent-tools/wrap-tools-with-state
-                   {"search" #'agent-tools/search-tool}
-                   (atom {}) nil nil)]
-      (is (fn? (get-in wrapped ["search" :title-fn]))))))
+(deftest entries-carry-title-fn-test
+  (testing "a tool's title function reaches the entry the adapters read"
+    (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil nil)]
+      (is (fn? (get-in entries ["search" :title-fn]))))))
 
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
@@ -38,7 +48,7 @@
                      #'agent-tools/create-sql-query-tool]
           capabilities #{}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= ["search"] (mapv #(:tool-name (meta %)) result)))))
+      (is (= ["search"] (mapv #(:name (tools.legacy/declaration-of %)) result)))))
   (testing "includes tools when capabilities are provided"
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/create-sql-query-tool #'agent-tools/create-chart-tool]
           capabilities #{:permission-write-sql-queries}
@@ -60,13 +70,19 @@
     (is (contains? tools "create_chart"))
     (is (contains? tools "create_dashboard_subscription"))))
 
-(deftest ^:parallel get-tools-for-transforms-codegen-profile-test
-  (let [tools (tools-for-profile :transforms_codegen)]
-    (is (map? tools))
-    (is (contains? tools "search"))
-    (is (contains? tools "list_available_fields"))
-    (is (contains? tools "todo_write"))
-    (is (contains? tools "todo_read"))))
+(deftest run-query-needs-query-execution-enabled-test
+  (testing "run_query is offered only once an admin enables query execution"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+      (is (not (contains? (tools-for-profile :internal) "run_query"))))
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (contains? (tools-for-profile :internal) "run_query")))))
+
+(deftest slackbot-profile-has-no-run-query-test
+  ;; Everyone in a Slack thread can read its stored tool output, so one person's rows would reach the others.
+  ;; Filter that output per reader before offering run_query there.
+  (testing "run_query is not offered in Slack even with query execution enabled"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (not (contains? (tools-for-profile :slackbot) "run_query"))))))
 
 (deftest ^:parallel get-tools-for-sql-profile-test
   (let [tools (tools-for-profile :sql)]
@@ -94,14 +110,23 @@
         (is (not (contains? tools "search")))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
-  (let [tools (tools-for-profile :document-generate-content)]
+  (let [tools     (tools-for-profile :document-generate-content)
+        sql-tools (binding [scope/*current-user-scope* api-scope/unrestricted]
+                    (profiles/get-tools-for-profile :document-generate-content
+                                                    #{:permission-write-sql-queries}))]
     (is (map? tools))
-    (is (contains? tools "document_schema_collect"))
     (is (contains? tools "list_available_data_sources"))
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
-    (is (contains? tools "document_construct_sql_chart"))))
+    (is (contains? tools "load_skill")
+        "the model chart tool's query skills make load_skill available")
+    (testing "both SQL tools need the SQL capability, like the tools they delegate to"
+      (is (not (contains? tools "document_construct_sql_chart")))
+      (is (contains? sql-tools "document_construct_sql_chart")))
+    (testing "document_schema_collect is gated too -- it only feeds document_construct_sql_chart"
+      (is (not (contains? tools "document_schema_collect")))
+      (is (contains? sql-tools "document_schema_collect")))))
 
 (deftest ^:parallel get-tools-for-slackbot-profile-test
   (let [tools (tools-for-profile :slackbot)]
@@ -119,25 +144,31 @@
     (is (empty? tools))))
 
 (deftest ^:parallel get-tools-for-profile-metadata-test
-  (let [tools (tools-for-profile :embedding_next)]
-    (doseq [[tool-name tool-var] tools]
-      (is (var? tool-var))
-      (is (string? tool-name))
-      (is (= tool-name (:tool-name (meta tool-var))))
-      (is (some? (:schema (meta tool-var)))))))
+  (testing "a profile's registry is keyed by the name each tool declares, whether that tool is a
+           record or still an `mu/defn` var. The declaration is the source of truth either way —
+           reading `:tool-name` off the var only worked while every tool was the second kind."
+    (let [tools (tools-for-profile :embedding_next)]
+      (is (seq tools))
+      (doseq [[tool-name tool-var] tools]
+        (is (var? tool-var))
+        (is (string? tool-name))
+        (let [{declared-name :name :keys [description args]} (tools.legacy/declaration-of tool-var)]
+          (is (= tool-name declared-name))
+          (is (string? description))
+          (is (some? args)))))))
 
 (deftest search-tool-test
-  (testing "search-tool var has valid metadata"
-    (let [m (meta #'agent-tools/search-tool)]
-      (is (= "search" (:tool-name m)))
-      (is (some? (:schema m))))))
+  (testing "search declares its name and argument schema"
+    (let [declared (tools.legacy/declaration-of #'agent-tools/search-tool)]
+      (is (= "search" (:name declared)))
+      (is (some? (:args declared))))))
 
 (deftest construct-notebook-query-tool-test
   (testing "construct_notebook_query evaluates a representations query and creates a chart"
     (let [query-captured (atom nil)
           chart-called  (atom nil)]
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                  (fn [external-query]
+                                  (fn [external-query & _opts]
                                     (reset! query-captured external-query)
                                     {:structured-output {:query-id "q-1"
                                                          :query {:database 1}
@@ -157,12 +188,12 @@
                                        :source-table ["Sample" "PUBLIC" "ORDERS"]
                                        :aggregation  [["count" {}]]}]}
               result (binding [shared/*profile-id* :nlq]
-                       (agent-tools/construct-notebook-query-tool
-                        {:reasoning     "check seats"
-                         :query         query-input
-                         :title         "Seat check"
-                         :description   "Total order count."
-                         :visualization {:chart_type "table"}}))]
+                       (test-util/call-tool agent-tools/construct-notebook-query-tool
+                                            {:reasoning     "check seats"
+                                             :query         query-input
+                                             :title         "Seat check"
+                                             :description   "Total order count."
+                                             :visualization {:chart_type "table"}}))]
           (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
@@ -171,88 +202,161 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
-(defn- construct-tool-output-for-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
-  the `:output` the LLM would see."
+(deftest construct-notebook-query-keeps-mbql5-temporal-filter-test
+  (testing "the generated_entity part carries a between filter of absolute-datetime bounds through JSON intact (BOT-1972)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                             (lib/absolute-datetime "2026-07-01" :day)
+                                             (lib/absolute-datetime "2026-07-31" :day))))]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [_ & _]
+                                    {:structured-output {:query-id       "q-1"
+                                                         :query          query
+                                                         :result-columns []}})]
+        (let [result (binding [shared/*profile-id* :nlq]
+                       (test-util/call-tool agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages []}
+                                             :title       "Check-ins in July"
+                                             :description "Check-ins during July 2026."}))
+              sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+          (is (= "mbql/query" (:lib/type sent)))
+          (is (= (lib/filters query)
+                 (-> sent lib/normalize :stages first :filters))))))))
+
+(deftest construct-notebook-query-tool-show-chart-test
+  (let [construct! (fn [tool-names show-chart-arg]
+                     (let [chart-created? (atom false)]
+                       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                                   (fn [_ & _]
+                                                     {:structured-output {:query-id       "q-1"
+                                                                          :query          {:database 1}
+                                                                          :result-columns []}})
+                                                   create-chart-tools/create-chart
+                                                   (fn [_]
+                                                     (reset! chart-created? true)
+                                                     {:chart-id "c-1", :chart-type :table})]
+                         (let [result (binding [shared/*profile-id*  :nlq
+                                                shared/*memory-atom* (atom {:tool-names tool-names})]
+                                        (test-util/call-tool
+                                         agent-tools/construct-notebook-query-tool
+                                         (merge {:query       {:lib/type "mbql/query", :stages []}
+                                                 :title       "Seat check"
+                                                 :description "Total order count."}
+                                                show-chart-arg)))]
+                           {:chart?   @chart-created?
+                            :shown?   (boolean (seq (:data-parts result)))
+                            :query-id (get-in result [:structured-output :query-id])
+                            :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
+                                                        (:output result)))}))))]
+    (testing "with run_query offered, the query is built and the user is shown nothing"
+      (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true}
+             (construct! #{"construct_notebook_query" "run_query"} {:show_chart false}))))
+    (testing "with run_query offered and the argument left out, the chart is shown"
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
+             (construct! #{"construct_notebook_query" "run_query"} {}))))
+    (testing "without run_query the chart is shown whatever the argument says"
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
+             (construct! #{"construct_notebook_query"} {:show_chart false}))))))
+
+(defn- construct-tool-failure-for-thrown
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the
+  failure the model would see."
   [e]
-  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_] (throw e))]
-    (:output (binding [shared/*profile-id* :nlq]
-               (agent-tools/construct-notebook-query-tool
-                {:query       {:lib/type "mbql/query" :stages []}
-                 :title       "Seat check"
-                 :description "Total order count."})))))
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ & _] (throw e))]
+    (binding [shared/*profile-id* :nlq]
+      (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                              {:query       {:lib/type "mbql/query" :stages []}
+                               :title       "Seat check"
+                               :description "Total order count."}
+                              #{"read_resource" "search"}))))
 
 (deftest construct-notebook-query-tool-permission-error-test
-  (testing (str "a 403 reaches the LLM as the permission message itself: `api/read-check` throws "
-                "a bare one with no `:agent-error?`, and the user not being allowed the card they "
-                "named is not a failure to report as one")
-    (is (= "You don't have permissions to do that."
-           (construct-tool-output-for-thrown
-            (ex-info "You don't have permissions to do that." {:status-code 403})))))
-  (testing "anything else without `:agent-error?` still gets the generic wrapper"
-    (is (= "Failed to construct notebook query: something went sideways"
-           (construct-tool-output-for-thrown
-            (ex-info "something went sideways" {:status-code 400}))))))
+  (testing (str "a 403 from inside the pipeline becomes the shared not-found error. Before, "
+                "`api/read-check`'s own sentence went to the model as the tool's output, which "
+                "named no entity and offered no next step — and told the model that something it "
+                "could not see exists.")
+    (let [{:keys [class code text]}
+          (construct-tool-failure-for-thrown
+           (ex-info "You don't have permissions to do that." {:status-code 403}))]
+      (is (= :recoverable class))
+      (is (= :metabase.metabot.tools.recoverable.common/not-found code))
+      (is (str/includes? text "was not found"))
+      (is (not (str/includes? text "permission")))))
+  (testing (str "a declared pipeline code keeps the pipeline's sentence and gains its "
+                "declaration's recovery step")
+    (let [{:keys [class code text]}
+          (construct-tool-failure-for-thrown
+           (ex-info "No table found matching portable FK [\"Sample\" nil \"ORDRS\"]."
+                    {:agent-error? true :status-code 400 :error :unknown-table}))]
+      (is (= :recoverable class))
+      (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
+      (is (str/includes? text "No table found matching portable FK"))
+      (is (str/includes? text "metabase://database/<numeric id>/tables"))))
+  (testing "An exception without a declared `:error` code ends the turn, even if `:agent-error?` is true."
+    (doseq [[what e] {"stamped by the pipeline, no :error code"
+                      (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})
 
-(deftest state-dependent-tools-test
-  (testing "state-dependent-tools set contains expected tools"
-    (is (contains? @#'agent-tools/state-dependent-tools "create_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "edit_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_sql_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "edit_sql_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "replace_sql_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "construct_notebook_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "todo_write"))
-    (is (contains? @#'agent-tools/state-dependent-tools "todo_read"))
-    (is (contains? @#'agent-tools/state-dependent-tools "write_transform_sql"))
-    (is (contains? @#'agent-tools/state-dependent-tools "write_transform_python"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_autogenerated_dashboard"))
-    (is (contains? @#'agent-tools/state-dependent-tools "document_schema_collect"))
-    (is (contains? @#'agent-tools/state-dependent-tools "document_construct_sql_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "document_construct_model_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
-    (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
-    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
+                      "an ordinary bug"
+                      (ex-info "something went sideways" {})}]
+      (testing what
+        (is (= {:class :unrecoverable :code :internal}
+               (construct-tool-failure-for-thrown e)))))))
 
-(deftest wrap-tools-with-state-test
-  (testing "wraps state-dependent tools with state injection"
-    (let [memory-atom (atom {:state {:queries {"q1" {:database 1}}
-                                     :charts {"c1" {:query-id "q1"}}}})
-          base-tools {"create_sql_query" #'agent-tools/create-sql-query-tool
-                      "search" #'agent-tools/search-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)]
-      ;; State-dependent tool should be wrapped into a tool-def map
-      (is (map? (get wrapped-tools "create_sql_query")))
-      (is (contains? (get wrapped-tools "create_sql_query") :fn))
-      (is (contains? (get wrapped-tools "create_sql_query") :doc))
-      (is (contains? (get wrapped-tools "create_sql_query") :schema))
-      ;; Non-state-dependent tool should also be a tool-def map
-      (is (map? (get wrapped-tools "search")))))
-  (testing "wrapped tools preserve original metadata"
-    (let [memory-atom (atom {:state {:queries {} :charts {}}})
-          base-tools {"create_chart" #'agent-tools/create-chart-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)
-          wrapped-tool (get wrapped-tools "create_chart")]
-      (is (= (:doc (meta #'agent-tools/create-chart-tool)) (:doc wrapped-tool)))
-      (is (= (:schema (meta #'agent-tools/create-chart-tool)) (:schema wrapped-tool)))))
-  (testing "wrapped function receives augmented args with state"
-    (let [memory-atom (atom {:state {:queries {"test-query" {:db 1}}
-                                     :charts {"test-chart" {:type :bar}}}})
-          wrapped (agent-tools/wrap-tools-with-state {"create_sql_query" #'agent-tools/create-sql-query-tool} memory-atom nil :nlq)
-          wrapped-fn (get-in wrapped ["create_sql_query" :fn])]
-      ;; Just verify the wrapped function is callable
-      (is (fn? wrapped-fn))))
-  (testing "non-state-dependent tools are also wrapped into tool-def maps"
-    (let [memory-atom (atom {:state {:queries {"q1" {:db 1}} :charts {}}})
-          base-tools {"search" #'agent-tools/search-tool
-                      "construct_notebook_query" #'agent-tools/construct-notebook-query-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)]
-      ;; All tools are converted to tool-def maps
-      (is (map? (get wrapped-tools "search")))
-      (is (fn? (:fn (get wrapped-tools "search"))))
-      (is (map? (get wrapped-tools "construct_notebook_query")))
-      (is (fn? (:fn (get wrapped-tools "construct_notebook_query")))))))
+(deftest construct-notebook-query-tool-malformed-clauses-test
+  (testing "the model can retry after a malformed stage or clause"
+    (let [orders   {:lib/type     "mbql.stage/mbql"
+                    :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[label stages] {"a number as `aggregation`"
+                                [(assoc orders :aggregation 42)]
+                                "an empty aggregation clause used in `order-by`"
+                                [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]
+                                "a number as `joins`"
+                                [(assoc orders :joins 42)]
+                                "a post-aggregation filter with a number as `order-by`"
+                                [(assoc post-agg :order-by 42)]
+                                "a post-aggregation filter with a number as `fields`"
+                                [(assoc post-agg :fields 42)]
+                                "a number as a later stage"            [orders 42]
+                                "an aggregation list as a later stage" [orders [["count" {}]]]}]
+          (testing label
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                     :text  #"^Representations query has an invalid structure\."}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages stages}
+                                             :title       "Orders"
+                                             :description "Orders by count."})))))))))
+
+(deftest ->entries-test
+  (testing "an entry carries what the adapters and the system message read"
+    (let [entries (agent-tools/->entries [#'agent-tools/create-sql-query-tool
+                                          #'agent-tools/search-tool]
+                                         (atom {:state {:queries {} :charts {}}}) nil :nlq)]
+      (doseq [tool-name ["create_sql_query" "search"]]
+        (testing tool-name
+          (let [entry (get entries tool-name)]
+            (is (map? entry))
+            (is (= tool-name (:tool-name entry)))
+            (is (string? (:doc entry)))
+            (is (some? (:schema entry)))
+            (is (fn? (:fn entry))))))))
+  (testing "an unconverted tool's schema comes from its var metadata"
+    (let [entries (agent-tools/->entries [#'agent-tools/create-chart-tool] (atom {}) nil :nlq)
+          [_:=> [_:cat declared] _out] (:schema (get entries "create_chart"))
+          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/create-chart-tool))]
+      (is (= original declared))))
+  (testing "a converted tool and an unconverted one sit side by side"
+    (let [entries (agent-tools/->entries [#'agent-tools/list-timelines-tool       ; mu/defn var
+                                          #'agent-tools/get-timeline-details-tool] ; record
+                                         (atom {}) nil :nlq)]
+      (is (= #{"list_timelines" "get_timeline_details"} (set (keys entries))))
+      (is (every? fn? (map :fn (vals entries))))))
+  (testing "the entry's :fn goes through the runtime, so it reports rather than throws"
+    (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil :nlq)
+          outcome ((get-in entries ["search" :fn]) {:not_an_argument true})]
+      (is (=? {:error {:class :validation :code :invalid-arguments}} outcome)))))
 
 (deftest tool-schemas-exclude-state-keys-test
   (testing "create_chart schema does not expose state keys"
@@ -263,19 +367,51 @@
     (let [{:keys [schema]} (meta #'agent-tools/edit-chart-tool)
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))))
-  (testing "create_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/create-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params)))
-      (is (not-any? #(= :memory_atom (first %)) (rest params)))))
-  (testing "edit_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/edit-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params)))))
-  (testing "replace_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/replace-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params))))))
+  (doseq [tool [agent-tools/create-sql-query-tool agent-tools/create-sql-query-code-edit-tool
+                agent-tools/edit-sql-query-tool agent-tools/replace-sql-query-tool]]
+    (testing (str (:name (tools.core/declaration tool)) " schema does not expose state keys")
+      (let [params (:args (tools.core/declaration tool))]
+        (is (not-any? #(contains? #{:queries_state :charts_state :memory_atom} (first %)) (drop 2 params)))))))
+
+(deftest notification-tools-store-requested-schedules-test
+  (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                              channel.settings/slack-cached-channels-and-usernames
+                              (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
+    (mt/with-temp [:model/Card          {card-id :id}       {}
+                   :model/Dashboard     {slack-dash-id :id} {}
+                   :model/DashboardCard _                   {:dashboard_id slack-dash-id :card_id card-id}
+                   :model/Dashboard     {inapp-dash-id :id} {}
+                   :model/DashboardCard _                   {:dashboard_id inapp-dash-id :card_id card-id}]
+      (let [alert-schedules        #(->> (models.notification/notifications-for-card card-id)
+                                         (mapcat :subscriptions)
+                                         (mapv :cron_schedule))
+            subscription-schedules (fn [dash-id]
+                                     (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
+                                          (mapcat :channels)
+                                          (mapv (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame))))]
+        (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (doseq [[schedule expected-cron expected-subscription]
+                    [[{:frequency "hourly"}
+                      "0 0 * * * ? *" [:hourly nil nil nil]]
+                     [{:frequency "daily" :hour 9}
+                      "0 0 9 * * ? *" [:daily 9 nil nil]]
+                     [{:frequency "weekly" :day_of_week "monday" :hour 9}
+                      "0 0 9 ? * 2 *" [:weekly 9 "mon" nil]]
+                     [{:frequency "monthly" :day_of_month "first-monday" :hour 9}
+                      "0 0 9 ? * 2#1 *" [:monthly 9 "mon" :first]]]]
+              (testing (:frequency schedule)
+                (mt/with-model-cleanup [:model/Notification :model/Pulse]
+                  (doseq [[tool args stored-schedules expected]
+                          [[#'agent-tools/create-alert-tool
+                            {:card_id card-id :send_condition "has_result"}
+                            alert-schedules expected-cron]
+                           [#'agent-tools/slackbot-create-dashboard-subscription-tool
+                            {:dashboard_id slack-dash-id}
+                            #(subscription-schedules slack-dash-id) expected-subscription]
+                           [#'agent-tools/create-dashboard-subscription-tool
+                            {:dashboard_id inapp-dash-id :slack_channel "data-team"}
+                            #(subscription-schedules inapp-dash-id) expected-subscription]]]
+                    (testing (str tool)
+                      (is (= {:output "success"} (tool (assoc args :schedule schedule))))
+                      (is (= [expected] (stored-schedules))))))))))))))

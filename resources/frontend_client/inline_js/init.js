@@ -15,7 +15,7 @@ const fadeTimeInMilliseconds = 500;
 let counter = 0;
 
 function switcher() {
-  setInterval(function() {
+  setInterval(function () {
     counter++;
     switchHeading(counter);
     switchAnimation(counter);
@@ -26,7 +26,7 @@ function switchHeading(counter) {
   heading.className = "transparent";
 
   // Wait for fade out of current heading
-  setTimeout(function() {
+  setTimeout(function () {
     updateHeading(counter);
   }, fadeTimeInMilliseconds);
 }
@@ -36,7 +36,7 @@ function switchAnimation(counter) {
   heading.className = "heading transparent";
 
   // Wait for fade out of current animation
-  setTimeout(function() {
+  setTimeout(function () {
     fadeInNewAnimation(counter);
   }, fadeTimeInMilliseconds);
 }
@@ -56,7 +56,7 @@ function updateHeading(counter) {
 function poll() {
   const req = new XMLHttpRequest();
   req.open("GET", "api/health", true);
-  req.onreadystatechange = function() {
+  req.onreadystatechange = function () {
     if (req.readyState === 4) {
       if (req.status === 200) {
         window.location.reload();

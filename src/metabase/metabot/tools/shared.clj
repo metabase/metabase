@@ -5,15 +5,26 @@
 
 (set! *warn-on-reflection* true)
 
+(def chart-types
+  "Display types the chart tools can produce, as model-facing strings. The main
+  and document chart tool enums derive from this list; the Slackbot query tool
+  has its own smaller enum."
+  ["table" "bar" "line" "pie" "sunburst" "treemap" "boxplot" "area" "combo"
+   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
+   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memory-atom*
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
 
-(def ^:dynamic *metabot-id*
-  "The resolved metabot ID for the current agent session. Bound during the agent loop
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *metabot*
+  "The resolved Metabot row for the current agent session. Bound during the agent loop
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *profile-id*
   "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
    agent loop so that tools can adapt their output to the active profile."
@@ -32,6 +43,11 @@
   []
   (:conversation-id (current-memory)))
 
+(defn request-canceled-chan
+  "The channel that receives a value when the current turn's request is canceled, or nil when the turn has none."
+  []
+  (:request-canceled-chan (current-memory)))
+
 (defn current-queries-state
   "Returns the current queries state map from agent memory."
   []
@@ -42,11 +58,27 @@
   []
   (get-in (current-memory) [:state :charts] {}))
 
+(defn current-client-ids
+  "Ids of the queries and charts the client supplied, as opposed to ones the agent's tools wrote.
+  They come from this request's viewing context, plus the ones earlier turns stored. A refusal to
+  present one of these is a real access attempt and gets the audited treatment; see
+  `metabase.metabot.tools.shared.content-store`."
+  []
+  (let [memory (current-memory)]
+    (into (set (get-in memory [:state :client-ids])) (:client-ids memory))))
+
 (defn current-chart-configs-state
   "Returns the current chart-configs state map from agent memory.
   Chart configs contain pre-materialized series data from the frontend viewing context."
   []
   (get-in (current-memory) [:state :chart-configs] {}))
+
+(defn tool-offered?
+  "Whether the current agent session recorded its tools and offers the one named `tool-name`.
+  A session that did not record its tools does not count as offering it, so text that promises the model a tool is
+  never shown on a guess."
+  [tool-name]
+  (contains? (:tool-names (current-memory)) tool-name))
 
 (defn current-context
   "Returns the current agent context from memory."

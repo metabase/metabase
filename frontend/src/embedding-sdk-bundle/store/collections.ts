@@ -4,9 +4,12 @@ import { P, match } from "ts-pattern";
 import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
-import type { SdkCollectionId } from "../types/collection";
+import type {
+  SdkBrowserCollectionId,
+  SdkCollectionId,
+} from "../types/collection";
 
-const getUserTenantCollectionId = createSelector(
+export const getUserTenantCollectionId = createSelector(
   [getUser],
   (user) => user?.tenant_collection_id,
 );
@@ -58,12 +61,16 @@ export const getCollectionIdValueFromReference = createSelector(
  * `null` for a user the backend gives no personal collection — an API-key user, which is how
  * the data-app dev server authenticates. Callers must handle both (e.g. with `skipToken`);
  * `/api/collection/undefined` and `/api/collection/null` are each a 404.
+ *
+ * `"all"` is the virtual top level and resolves to `undefined`: there is no
+ * collection to fetch. Its branch has to stay above the string one, which would
+ * otherwise match it as an entity id.
  */
 export const getCollectionIdSlugFromReference = createSelector(
   [
     getUserPersonalCollectionId,
     getUserTenantCollectionId,
-    (_, collectionReference: SdkCollectionId) => collectionReference,
+    (_, collectionReference: SdkBrowserCollectionId) => collectionReference,
   ],
   (
     personalCollectionId,
@@ -82,10 +89,11 @@ export const getCollectionIdSlugFromReference = createSelector(
         return tenantCollectionId;
       })
       .with("root", () => "root" as const)
+      .with("all", () => undefined)
       .with(P.union(P.number, P.string), (id) => id)
       .otherwise(() => {
         throw new Error(
-          "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
+          "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant' | 'all'`",
         );
       });
   },

@@ -1,9 +1,12 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,8 +15,20 @@
 (derive :model/AnalysisFinding :metabase/model)
 
 (t2/deftransforms :model/AnalysisFinding
-  {:analyzed_entity_type mi/transform-keyword})
+  {:entity_type mi/transform-keyword})
 
+(t2/define-before-insert :model/AnalysisFinding
+  [finding]
+  (merge {:analyzed_at (mi/now)} finding))
+
+(t2/define-before-update :model/AnalysisFinding
+  [finding]
+  (let [changes (t2/changes finding)]
+    (cond-> finding
+      (and (contains? changes :result) (not (contains? changes :analyzed_at)))
+      (assoc :analyzed_at (mi/now)))))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-analysis-finding-version*
   "Current version of the query validation logic.
   This should be incremented when the analysis logic changes.
@@ -30,86 +45,30 @@
   - 8: Flag MBQL queries whose source-table is missing/inactive (e.g. dropped during sync)"
   8)
 
-(defn- error->finding-error-row
+(mu/defn- error->finding-error-row :- ::deps.analysis-finding-error/error-input
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
    We use `:message` for the error detail if there was an `validation-exception-error`."
-  [error]
+  [error :- ::lib.schema.validate/error-with-source]
   {:error-type          (:type error)
    ;; error-detail cannot be longer than 254
    :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
    :source-entity-type  (:source-entity-type error)
    :source-entity-id    (:source-entity-id error)})
 
-(defn upsert-analysis!
+(def ^:private FindingDetails
+  "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."
+  [:maybe [:set ::lib.schema.validate/error-with-source]])
+
+(mu/defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
    Also writes individual errors to the analysis_finding_error table with source information."
-  [type instance-id result finding-details]
+  [entity-type     :- :keyword
+   entity-id       :- ms/PositiveInt
+   result          :- :boolean
+   finding-details :- FindingDetails]
   (t2/with-transaction [_conn]
-    (let [update {:analyzed_at (mi/now)
-                  :analysis_version *current-analysis-finding-version*
-                  :result result
-                  :stale false}
-          existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
-                                        :analyzed_entity_type type
-                                        :analyzed_entity_id instance-id)]
-      (if existing-id
-        (t2/update! :model/AnalysisFinding existing-id update)
-        (t2/insert! :model/AnalysisFinding
-                    (assoc update
-                           :analyzed_entity_type type
-                           :analyzed_entity_id instance-id)))
-      (deps.analysis-finding-error/replace-errors-for-entity!
-       type
-       instance-id
-       (map error->finding-error-row finding-details)))))
-
-(def ^:private mark-stale-batch-size
-  "Maximum number of entity IDs to process in a single query to avoid parameter limits."
-  1000)
-
-(defn mark-stale!
-  "Mark entities of `entity-type` with ids in `entity-ids` and existing findings as stale for re-analysis.
-  Entities without existing findings are ignored - they'll be picked up by the normal job flow."
-  [entity-type entity-ids]
-  (doseq [batch (partition-all mark-stale-batch-size entity-ids)]
-    (t2/update! :model/AnalysisFinding
-                :analyzed_entity_type entity-type
-                :analyzed_entity_id [:in batch]
-                {:stale true})))
-
-(defn has-stale-entities?
-  "Check if there are any stale analysis records."
-  []
-  (t2/exists? :model/AnalysisFinding :stale true))
-
-(defn stale-entity-count
-  "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
-  detect whether it is still making progress."
-  []
-  (t2/count :model/AnalysisFinding :stale true))
-
-(defn instances-for-analysis
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,
-  or stale AnalysisFindings.
-  Prioritizes stale entities (stale=true) over outdated version entities."
-  [entity-type batch-size]
-  (let [model (deps.dependency-types/dependency-type->model entity-type)
-        table-name (t2/table-name model)
-        id-field (keyword (name table-name) "id")
-        table-wildcard (keyword (name table-name) "*")]
-    (t2/select model
-               {:select [table-wildcard]
-                :from table-name
-                :left-join [:analysis_finding [:and
-                                               [:= :analysis_finding.analyzed_entity_id id-field]
-                                               [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-                :where [:or
-                        [:= :analysis_finding.stale true] ; stale analysis
-                        [:<                               ; missing or outdated analysis
-                         [:coalesce :analysis_finding.analysis_version 0]
-                         *current-analysis-finding-version*]]
-                ;; stale first, then oldest-analyzed first so a sub-backlog batch round-robins through
-                ;; the stale set instead of starving a DB-arbitrary subset.
-                :order-by [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]
-                           [:analysis_finding.analyzed_at :asc]]
-                :limit batch-size})))
+    (dependencies.db/upsert-finding! entity-type entity-id result)
+    (deps.analysis-finding-error/replace-errors-for-entity!
+     entity-type
+     entity-id
+     (map error->finding-error-row finding-details))))

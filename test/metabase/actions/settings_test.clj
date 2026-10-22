@@ -16,6 +16,7 @@
       (or (some->> (:setting/disabled-reasons (ex-data e)) (map :key))
           (throw e)))))
 
+;; validate-settable-for-db! only validates and throws despite the bang; nothing is mutated
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- can-configure-data-editing-for-db? [db]
   (try

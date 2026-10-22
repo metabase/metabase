@@ -1,3 +1,4 @@
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 
 import type { VisualizationProps } from "../../types";
@@ -8,7 +9,7 @@ function ScatterPlotComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
 
-export const ScatterPlot = Object.assign(
+export const ScatterPlot = assignLazily(
   ScatterPlotComponent,
   SCATTER_PLOT_DEFINITION,
 );

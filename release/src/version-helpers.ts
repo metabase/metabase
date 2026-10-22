@@ -107,11 +107,16 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+// rolling tags like v0.56.x or v0.51.2.x aren't valid version strings,
+// but we can still read a major version off of them
+const isDotXTag = (tagName: string) =>
+  /^(v0|v1)\.\d+(\.\d+)*\.x$/.test(tagName);
+
 export const getMajorVersionFromRef = (ref: string) => {
   if (ref.startsWith("refs/tags/")) {
     const tagName = ref.replace("refs/tags/", "");
-    const versionParts = getVersionParts(tagName);
-    return versionParts.major;
+    if (!isValidVersionString(tagName) && !isDotXTag(tagName)) return "";
+    return getMajorVersion(tagName);
   }
 
   return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
@@ -121,7 +126,7 @@ export const getMajorVersionFromRef = (ref: string) => {
 const getLtsTag = (version: string) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
   return pieces.slice(0, 2).join(".") + "-lts";
-}
+};
 
 export const getDotXs = (version: string, number: number) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
@@ -172,7 +177,9 @@ export const getExtraTagsForVersion = async ({
     ...baseTags,
     ...minorTags,
     ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
-    ...(await isLtsVersion({ version }) ? [getLtsTag(ossVersion), getLtsTag(eeVersion)] : [])
+    ...((await isLtsVersion({ version }))
+      ? [getLtsTag(ossVersion), getLtsTag(eeVersion)]
+      : []),
   ];
 };
 
@@ -212,6 +219,7 @@ export const versionRequirements: Record<
   62: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
   63: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
   64: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  65: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -287,7 +295,7 @@ export function isPatchVersion(version: string) {
 }
 
 const normalizeVersionForSorting = (version: string) =>
-  version.replace(/^(v?)(0|1)\./, "");
+  version.replace(/^(v?)(0|1)\./, "").replace(/-.*$/, "");
 
 export function versionSort(a: string, b: string) {
   const [aMajor, aMinor, aPatch] = normalizeVersionForSorting(a)
@@ -323,6 +331,7 @@ export function getLastReleaseFromTags({
 }) {
   return tags
     .map((tag) => tag.ref.replace("refs/tags/", ""))
+    .filter((tag) => !tag.endsWith("lts"))
     .filter((tag) => !tag.includes(".x"))
     .filter(ignorePreReleases ? (tag) => !isPreReleaseVersion(tag) : () => true)
     .filter(ignorePatches ? (v) => !isPatchVersion(v) : () => true)

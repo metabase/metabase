@@ -66,10 +66,59 @@ describe("DataAppView", () => {
     expect(screen.getByText("Data app not found")).toBeInTheDocument();
   });
 
-  it("shows a generic error screen for an unexpected failure", () => {
+  it("shows a generic error screen for an unexpected failure", async () => {
     setup({ error: { status: 500 } });
 
-    expect(screen.getByText("Couldn’t load this data app")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn’t load this data app"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a permission error when the user cannot access the data app", () => {
+    setup({ error: { status: 403 } });
+
+    expect(
+      screen.getByText("You don’t have access to this data app"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Ask an administrator for access to this data app."),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByText("Show error details")).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Gather diagnostic information"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the API's outdated message when the app 409s with the outdated error code", () => {
+    setup({
+      error: {
+        status: 409,
+        data: {
+          "error-code": "data-app-outdated",
+          message: "This app was built for version 1 of data apps.",
+        },
+      },
+    });
+
+    expect(screen.getByText("This data app is outdated")).toBeInTheDocument();
+    expect(
+      screen.getByText("This app was built for version 1 of data apps."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the outdated screen to an admin, who still receives the app's metadata", () => {
+    setup({ data: createMockDataApp({ version: 1, outdated: true }) });
+
+    expect(screen.getByText("This data app is outdated")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This app was built for version 1 of data apps. Migrate it to the current version, then rebuild and sync it again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
   });
 
   it("renders the app inside an iframe once metadata resolves", () => {
@@ -199,7 +248,7 @@ describe("DataAppView", () => {
       });
     }
 
-    it("shows an error instead of spinning when framing is blocked by CSP", () => {
+    it("shows an error instead of spinning when framing is blocked by CSP", async () => {
       setupIframe();
       expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
 
@@ -208,9 +257,10 @@ describe("DataAppView", () => {
       expect(
         screen.getByText("Couldn’t load this data app"),
       ).toBeInTheDocument();
+      await screen.findByText("Show error details");
     });
 
-    it("shows an error when the iframe never signals it loaded", () => {
+    it("shows an error when the iframe never signals it loaded", async () => {
       jest.useFakeTimers();
       try {
         setupIframe();
@@ -226,6 +276,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
+      await screen.findByText("Show error details");
     });
 
     it("does not error once the app reports ready before the timeout", () => {
@@ -250,7 +301,7 @@ describe("DataAppView", () => {
       }
     });
 
-    it("keeps the first error's reason — the timeout can't overwrite the CSP one", () => {
+    it("keeps the first error's reason — the timeout can't overwrite the CSP one", async () => {
       jest.useFakeTimers();
       try {
         setupIframe();
@@ -271,6 +322,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
+      await screen.findByText("Show error details");
     });
   });
 });

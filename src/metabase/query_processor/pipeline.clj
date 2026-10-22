@@ -7,12 +7,14 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *pivot?*
   "True while [[metabase.query-processor.pivot]] is re-running its generated sub-queries through the query processor.
   These sub-queries carry internal `:qp.pivot/*` keys and already-derived annotations, so preprocessing must not strip
   internal keys from them."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^clojure.core.async.impl.channels.ManyToManyChannel *canceled-chan*
   "If this channel is bound, you can send it a message to cancel the query. You can check if it has received a message
   to see if the query has been canceled.
@@ -34,6 +36,38 @@
   []
   (canceled?* *canceled-chan*))
 
+(defn do-with-own-canceled-chan
+  "Call `thunk` so that the query it runs cannot close a cancellation channel another query still needs.
+
+  Use this for a query that runs while another is in progress, or for each of several queries one channel cancels.
+
+  The outer channel is `outer-chan`, or the current [[*canceled-chan*]] when none is passed.
+  - If there is one, `thunk` runs with [[*canceled-chan*]] bound to a new channel, canceled whenever the outer one is.
+  - If there is none, there is nothing to protect, and `thunk` runs with the binding unchanged.
+
+  The outer channel must keep its value for every reader, as a promise channel does."
+  ([thunk]
+   (do-with-own-canceled-chan *canceled-chan* thunk))
+  ([outer-chan thunk]
+   ;; A query closes [[*canceled-chan*]] when it finishes.
+   ;; On a shared channel, a query still running, or a later one, would never hear it was canceled or timed out.
+   (if-not outer-chan
+     (thunk)
+     (let [own-chan  (a/promise-chan)
+           done-chan (a/promise-chan)]
+       ;; A cancel that has already arrived is copied now, so the query sees it before it starts.
+       (some->> (a/poll! outer-chan) (a/offer! own-chan))
+       (a/go
+         ;; Waits for a cancel on `outer-chan` until the `finally` below closes `done-chan`, which gives nil.
+         (when-some [value (first (a/alts! [outer-chan done-chan]))]
+           (a/>! own-chan value)))
+       (try
+         (binding [*canceled-chan* own-chan]
+           (thunk))
+         (finally
+           (a/close! own-chan)
+           (a/close! done-chan)))))))
+
 (defn default-result-handler
   "Default implementation for *result*."
   [result]
@@ -41,12 +75,14 @@
     (throw result)
     result))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *result*
   "Called exactly once with the final result, which is the result of either [[*reduce*]] (if query completed
   successfully), or an Exception (if it did not)."
   [result]
   (default-result-handler result))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *execute*
   "Called by [[*run*]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
   callback with the signature:
@@ -64,6 +100,7 @@
     (let [context {:canceled-chan *canceled-chan*}]
       (driver/execute-reducible-query driver query context respond))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *reduce*
   "Called by [[*run*]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
   calls [[*result*]] with the reduced results."
@@ -111,6 +148,7 @@
   (or (instance? InterruptedException e)
       (some-> (ex-cause e) interrupted-exception?)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *run*
   "Function for running the query. Calls [[*execute*]], then [[*reduce*]] on the results."
   [query rff]

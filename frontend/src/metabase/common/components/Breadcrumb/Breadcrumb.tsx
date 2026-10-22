@@ -42,7 +42,7 @@ export const Breadcrumb = ({
       className={cx(S.content, {
         [S.clickable]: isLink || onClick,
       })}
-      gap="xs"
+      gap="xxs"
       style={{
         "--color": color ? getColor(color) : undefined,
         "--active-color": iconColor ? getColor(iconColor) : undefined,

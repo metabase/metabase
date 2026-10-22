@@ -55,8 +55,10 @@ The dictionary must be a CSV with these columns:
 
 To add a translation dictionary:
 
-1. Go to **Admin > Embedding**.
-2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
+1. Go to **Embedding hub > Localization**.
+2. Under **Translate embedded dashboards and questions**, click **Upload edited translation dictionary**.
+
+For a starting point, click **Get translation dictionary template**. You'll get a CSV with the right columns, filled with your current dictionary if you've uploaded one, or a few sample rows if you haven't.
 
 Uploading a new dictionary will replace the existing dictionary.
 
@@ -85,7 +87,7 @@ Currently, Metabase doesn't tokenize strings for translations, so you should inc
 
 For example, if you have a dashboard called "Monthly Sales", it's not sufficient to have translations of "Monthly" and "Sales" - you also need to include "Monthly Sales" as a full string.
 
-Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") into the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
+Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") in the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
 
 ## Translations are case-insensitive
 
@@ -109,7 +111,7 @@ If the strings you want to translate include markdown formatting, you'll need to
 
 ## The AI chat component isn't translated
 
-One exception is that Metabase won't translate the text in the [AI chat component](./sdk/ai-chat.md). While Metabot can understand other languages, it works best in English.
+One exception is that Metabase won't translate the text in the [AI chat component](./ai-chat.md). While Metabot can understand other languages, it works best in English.
 
 ## Further reading
 

@@ -21,6 +21,7 @@ import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 import type { PluginRoute } from "../types";
 
 export type CreatedTenantData = {
@@ -45,9 +46,15 @@ export type UseListActiveTenantsResult = {
   error: unknown;
 };
 
+type UseListActiveTenantsOptions = {
+  skip?: boolean;
+};
+
 const getDefaultPluginTenants = () => ({
   isEnabled: false,
-  useListActiveTenants: (): UseListActiveTenantsResult => ({
+  useListActiveTenants: (
+    _options?: UseListActiveTenantsOptions,
+  ): UseListActiveTenantsResult => ({
     data: undefined,
     isLoading: false,
     error: undefined,
@@ -135,7 +142,9 @@ const getDefaultPluginTenants = () => ({
 
 export const PLUGIN_TENANTS: {
   isEnabled: boolean;
-  useListActiveTenants: () => UseListActiveTenantsResult;
+  useListActiveTenants: (
+    options?: UseListActiveTenantsOptions,
+  ) => UseListActiveTenantsResult;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
     canAccessTenantSpecificCollections: boolean;
@@ -214,11 +223,4 @@ export const PLUGIN_TENANTS: {
     sharedTenantCollections: Collection[] | undefined;
     regularCollections: CollectionTreeItem[];
   }) => CollectionTreeItem[];
-} = getDefaultPluginTenants();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_TENANTS, getDefaultPluginTenants());
-}
+} = definePluginSlot(getDefaultPluginTenants);

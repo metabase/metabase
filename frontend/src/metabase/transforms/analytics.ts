@@ -11,6 +11,38 @@ import type {
 /** Lens ID concatenated with params */
 type LensKey = string;
 
+export type TransformDeletedTriggeredFrom =
+  | "transform_page"
+  | "content_diagnostics";
+
+export async function deleteTransformAndTrack({
+  deleteTransform,
+  transformId,
+  triggeredFrom,
+}: {
+  deleteTransform: () => Promise<unknown>;
+  transformId: TransformId;
+  triggeredFrom: TransformDeletedTriggeredFrom;
+}): Promise<void> {
+  const startTime = performance.now();
+  const track = (result: "success" | "failure") =>
+    trackSimpleEvent({
+      event: "transform_deleted",
+      target_id: transformId,
+      triggered_from: triggeredFrom,
+      duration_ms: Math.trunc(performance.now() - startTime),
+      result,
+    });
+
+  try {
+    await deleteTransform();
+    track("success");
+  } catch (error) {
+    track("failure");
+    throw error;
+  }
+}
+
 export function trackTransformTriggerManualRun({
   transformId,
 }: {
@@ -61,7 +93,7 @@ export function trackTransformRunsViewToggled({
 export function trackTransformCreate({
   creationType,
 }: {
-  creationType: "query" | "native" | "python" | "saved-question" | "metabot";
+  creationType: "query" | "native" | "python" | "saved-question";
 }) {
   trackSimpleEvent({
     event: "transform_create",

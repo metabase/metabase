@@ -4,11 +4,12 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTimezonesEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -22,17 +23,16 @@ const setup = async () => {
     "site-locale": "En",
     "report-timezone": "",
     "start-of-week": "monday",
-    // Unjustified type cast. FIXME
-    "available-timezones": [
-      "Europe/Paris",
-      "Pacific/Auckland",
-      "US/Mountain",
-      "UTC",
-    ] as string[],
   } as const;
 
   const settings = createMockSettings(localizationSettings);
   setupPropertiesEndpoints(settings);
+  setupTimezonesEndpoint([
+    "Europe/Paris",
+    "Pacific/Auckland",
+    "US/Mountain",
+    "UTC",
+  ]);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
@@ -79,17 +79,17 @@ describe("LocalizationSettingsPage", () => {
     await userEvent.clear(timezoneInput);
     await userEvent.type(timezoneInput, "Mount");
     await userEvent.click(await screen.findByText("US/Mountain"));
-    blur();
+    await blur();
 
     const startOfWeekInput = screen.getByLabelText("First day of the week");
     await userEvent.click(startOfWeekInput);
     await userEvent.click(await screen.findByText("Tuesday"));
-    blur();
+    await blur();
 
     const currencyInput = screen.getByLabelText("Unit of currency");
     await userEvent.click(currencyInput);
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
-    blur();
+    await blur();
 
     await waitFor(async () => {
       const puts = await findRequests("PUT");

@@ -1,13 +1,14 @@
 import { useCallback } from "react";
 
-import { resetRowZoom, zoomInRow } from "metabase/query_builder/actions";
+import { useDispatch, useSelector } from "metabase/redux";
+
+import { resetRowZoom, zoomInRow } from "../actions";
 import {
   getIsShowingRawTable,
   getRowIndexToPKMap,
   getUiControls,
   getZoomedObjectId,
-} from "metabase/query_builder/selectors";
-import { useDispatch, useSelector } from "metabase/redux";
+} from "../store/selectors";
 
 /**
  * Supplies the query-builder-specific props consumed by the shared

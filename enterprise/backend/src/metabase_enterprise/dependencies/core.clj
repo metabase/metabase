@@ -4,29 +4,42 @@
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase-enterprise.dependencies.schema :as deps.schema]
+   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::entity-type
   [:enum :card :transform :snippet :table])
 
 (mr/def ::updates-map
-  ;; TODO: Make this more specific.
-  [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
+  [:map {:closed true}
+   [:card      {:optional true} [:sequential ::lib.schema.metadata/card]]
+   [:transform {:optional true} [:sequential ::lib.schema.metadata/transform]]
+   [:snippet   {:optional true} [:sequential ::lib.schema.metadata/native-query-snippet]]
+   [:table     {:optional true} [:sequential ::lib.schema.metadata/table]]])
 
-(defn- transitive-dependents
-  [& {:keys [graph updated-entities include-native?]}]
+(mu/defn- transitive-dependents :- ::deps.schema/type->ids
+  "The transitive dependents of `updated-entities` in `graph` (the app DB by default), leaving out native entities and
+  their children unless `include-native?`."
+  [& {:keys [graph updated-entities include-native?]}
+   :- [:map {:closed true}
+       [:graph            {:optional true} [:maybe ::graph/graph]]
+       [:updated-entities ::updates-map]
+       [:include-native?  {:optional true} [:maybe :boolean]]]]
   (if include-native?
     (deps.graph/transitive-dependents graph updated-entities)
     (deps.graph/transitive-mbql-dependents graph updated-entities)))
@@ -46,7 +59,12 @@
   `include-native` will determine whether native dependents are included in the metadata provider."
   ([base-provider    :- ::lib.schema.metadata/metadata-provider
     updated-entities :- ::updates-map
-    & {:keys [graph dependents include-native?]}]
+    & {:keys [graph dependents include-native?]}
+    :- [:maybe
+        [:map {:closed true}
+         [:graph            {:optional true} [:maybe ::graph/graph]]
+         [:dependents       {:optional true} [:maybe [:map-of ::entity-type [:set :int]]]]
+         [:include-native?  {:optional true} [:maybe :boolean]]]]]
    ;; Reusing the cache with different overrides breaks the caching of [[lib.metadata/card]] calls.
    (lib.metadata.protocols/clear-cache! base-provider)
    (let [dependents (or dependents (transitive-dependents :graph            graph
@@ -57,7 +75,7 @@
        :updated-entities updated-entities
        :dependent-ids dependents}))))
 
-(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
+(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error-with-source]]]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
 
@@ -83,18 +101,21 @@
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
 
-(defn- group-by-db [deps]
+(mu/defn- group-by-db :- [:map-of ::lib.schema.id/database [:map-of ::entity-type [:set ms/PositiveInt]]]
+  "The card, table, transform, and snippet ids of `deps` grouped by the id of the Database each belongs to, with the
+  snippets copied to every Database."
+  [deps :- ::deps.schema/type->ids]
   (let [by-db (volatile! {})]
     (when (seq (:card deps))
-      (doseq [[db-id card-ids] (->> (t2/select [:model/Card :id :database_id :card_schema] :id [:in (:card deps)])
+      (doseq [[db-id card-ids] (->> (dependencies.db/card-database-ids (:card deps))
                                     (u/group-by :database_id :id conj #{}))]
         (vswap! by-db assoc-in [db-id :card] card-ids)))
     (when (seq (:table deps))
-      (doseq [[db-id table-ids] (->> (t2/select [:model/Table :id :db_id] :id [:in (:table deps)])
+      (doseq [[db-id table-ids] (->> (dependencies.db/table-database-ids (:table deps))
                                      (u/group-by :db_id :id conj #{}))]
         (vswap! by-db assoc-in [db-id :table] table-ids)))
     (when (seq (:transform deps))
-      (doseq [[db-id transform-ids] (->> (t2/select [:model/Transform :id :source] :id [:in (:transform deps)])
+      (doseq [[db-id transform-ids] (->> (dependencies.db/transform-sources (:transform deps))
                                          (u/group-by #(get-in % [:source :query :database]) :id conj #{}))]
         (if db-id
           (vswap! by-db assoc-in [db-id :transform] transform-ids)
@@ -104,7 +125,7 @@
       (vswap! by-db update-vals #(assoc % :snippet (:snippet deps))))
     @by-db))
 
-(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
+(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error-with-source]]]]
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
@@ -115,13 +136,18 @@
 
   When `include-native?` is false, this function will ignore any entities using native sql and their children."
   ([edits :- ::updates-map
-    & {:keys [base-provider graph include-native?]}]
+    & {:keys [base-provider graph include-native?]}
+    :- [:maybe
+        [:map {:closed true}
+         [:base-provider   {:optional true} [:maybe ::lib.schema.metadata/metadata-provider]]
+         [:graph           {:optional true} [:maybe ::graph/graph]]
+         [:include-native? {:optional true} [:maybe :boolean]]]]]
    (let [valid-edits (if include-native?
                        edits
                        (into {}
-                             (map (fn [[entity-type instances]]
+                             (map (fn [[entity-type entities]]
                                     [entity-type (remove #(deps.graph/is-native-entity? entity-type %)
-                                                         instances)]))
+                                                         entities)]))
                              edits))]
      (cond
        (not (some seq (vals valid-edits)))
@@ -142,8 +168,8 @@
                        (merge errors)))
                  {} by-db))))))
 
-#_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
+  (require '[metabase.premium-features.core])
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [base-mp (lib-be/application-database-metadata-provider 39)
         transform (lib.metadata/transform base-mp 1)
@@ -157,19 +183,11 @@
     #_(deps.provider/all-overrides mp)
     (check-query-soundness mp))
 
-  ;; Checking that we can properly group everything by database. Surprisingly fast even fetching everything.
-  (let [deps {:card      (t2/select-fn-set :id :model/Card)
-              :transform (t2/select-fn-set :id :model/Transform)
-              :table     (t2/select-fn-set :id :model/Table)}]
-    (group-by-db deps))
-
-  (t2/select-fn-vec (juxt :id :name :active :table_id) :model/Field :id [:in [1065 1066 1067 1068 1069]])
-
-  (t2/select-one :model/Card :id 124)
+  (dependencies.db/card 124)
   (deps.graph/transitive-dependents {:transform [{:id 1}]})
   (deps.graph/transitive-dependents {:table [{:id 155}]})
   (metabase.premium-features.core/token-features)
 
-  (let [card (t2/select-one :model/Card :id 121)
+  (let [card (dependencies.db/card 121)
         mp   (lib-be/application-database-metadata-provider (:database_id card))]
     (upstream-deps:card mp card)))

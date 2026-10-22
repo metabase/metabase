@@ -37,8 +37,8 @@ function mockCollectionItemsEndpoint() {
   fetchMock.get({
     url: "path:/api/collection/root/items",
     query: {
-      sort_column: "name",
-      sort_direction: "asc",
+      "sort-column": "name",
+      "sort-direction": "asc",
     },
     response: {
       total: 3,

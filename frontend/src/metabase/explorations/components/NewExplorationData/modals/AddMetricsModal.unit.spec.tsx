@@ -10,7 +10,7 @@ import {
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
   makeMockSelection,
-  mockMetricBlock,
+  mockExplorationBlock,
 } from "metabase/explorations/test-utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { ExplorationMetric } from "metabase-types/api";
@@ -115,7 +115,7 @@ describe("AddMetricsModal", () => {
   it("switches to the All tab when every library metric is already in the plan", async () => {
     setup({
       metrics: [libraryMetric, otherMetric],
-      blocks: [mockMetricBlock(libraryMetric)],
+      blocks: [mockExplorationBlock(libraryMetric)],
     });
 
     expect(await screen.findByText("Churn")).toBeInTheDocument();
@@ -153,7 +153,7 @@ describe("AddMetricsModal", () => {
     await userEvent.click(libraryTab());
 
     const planWithLibraryMetric = makeMockSelection({
-      blocks: [mockMetricBlock(libraryMetric)],
+      blocks: [mockExplorationBlock(libraryMetric)],
     });
     rerender(
       <AddMetricsModal

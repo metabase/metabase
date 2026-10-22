@@ -54,7 +54,7 @@ body:
       description: |
         Please include relevant JavaScript console logs from the "console" tab in the browser dev tools.
         Additionally, include Metabase server logs (`Settings -> Admin -> Troubleshooting -> Logs`) around the time this bug occurred.
-        For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
+        For information about how to get these, consult our [bug troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/bugs)
     validations:
       required: false
 
@@ -63,7 +63,8 @@ body:
     attributes:
       label: Information about your Metabase installation
       description: |
-        For versions >= 56, copy and paste the Diagnostic info from `Admin -> Tools -> Help`.
+        For versions >= 64, copy and paste the Diagnostic info from `Admin -> Help`.
+        For versions 56 to 63, copy and paste the Diagnostic info from `Admin -> Tools -> Help`.
         For versions < 56, copy and paste the Diagnostic info from `Admin -> Troubleshooting`.
         _This will be automatically formatted into code, so no need for backticks._
       placeholder: |

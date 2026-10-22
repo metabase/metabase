@@ -122,7 +122,7 @@
     (mt/with-temporary-setting-values [config-from-file-sync-databases true]
       (try
         (let [submit-calls (atom 0)]
-          (with-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
             (testing "config entry with :is_stub true and empty :details is accepted"
               (is (= :ok
                      (advanced-config.file/initialize!
@@ -139,7 +139,7 @@
           (t2/delete! :model/Database :name test-db-name))))))
 
 (deftest init-from-config-file-stub-does-not-clobber-existing-test
-  (testing "Stub config entries with the same name+engine as an existing real DB must not overwrite it.
+  (testing "Stub config entries with the same name as an existing real DB must not overwrite it, whatever their engine.
             This protects round-trip workflows where /config emits stubs for the same instance's other DBs."
     (mt/with-temporary-setting-values [config-from-file-sync-databases false]
       (mt/with-temp [:model/Database existing {:name    test-db-name
@@ -149,7 +149,7 @@
                (advanced-config.file/initialize!
                 {:version 1
                  :config  {:databases [{:name    test-db-name
-                                        :engine  "h2"
+                                        :engine  "postgres"
                                         :details {}
                                         :is_stub true}]}})))
         (let [reloaded (t2/select-one :model/Database :id (:id existing))]
@@ -157,6 +157,31 @@
             (is (= {:db "real-details"} (:details reloaded))))
           (testing "existing :is_stub flag is preserved (still false)"
             (is (false? (:is_stub reloaded)))))))))
+
+(deftest init-from-config-file-connects-existing-stub-test
+  (testing "A real config entry named like an existing stub connects that stub in place, whatever its engine"
+    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (let [db-type      (mdb/db-type)
+            details      (:details (mt/with-driver db-type (mt/db)))
+            submit-calls (atom 0)]
+        (mt/with-temp [:model/Database stub {:name                test-db-name
+                                             :engine              (if (= db-type :postgres) "mysql" "postgres")
+                                             :details             {}
+                                             :is_stub             true
+                                             :initial_sync_status "complete"}]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
+            (is (= :ok
+                   (advanced-config.file/initialize!
+                    {:version 1
+                     :config  {:databases [{:name    test-db-name
+                                            :engine  (name db-type)
+                                            :details details}]}}))))
+          (is (= 1 (t2/count :model/Database :name test-db-name)))
+          (is (=? {:engine              db-type
+                   :is_stub             false
+                   :initial_sync_status "incomplete"}
+                  (t2/select-one :model/Database :id (:id stub))))
+          (is (= 1 @submit-calls)))))))
 
 (deftest init-from-config-file-sample-recreates-missing-test
   (testing "An is_sample entry triggers recreation of the Sample Database when one is not present."
@@ -166,12 +191,12 @@
           extract-calls    (atom 0)]
       (delete-existing!)
       (try
-        (with-redefs [sample-data/extract-and-sync-sample-database!
-                      (fn []
-                        (swap! extract-calls inc)
-                        ;; simulate extract by inserting a sample row
-                        (t2/insert! :model/Database
-                                    {:name "Sample Database" :engine :h2 :details {} :is_sample true}))]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
+                                    (fn []
+                                      (swap! extract-calls inc)
+                                      ;; simulate extract by inserting a sample row
+                                      (t2/insert! :model/Database
+                                                  {:name "Sample Database" :engine :h2 :details {} :is_sample true}))]
           (is (= :ok
                  (advanced-config.file/initialize!
                   {:version 1
@@ -193,8 +218,8 @@
                                                 :engine    :h2
                                                 :details   {:db "preexisting"}
                                                 :is_sample true}]
-        (with-redefs [sample-data/extract-and-sync-sample-database!
-                      (fn [] (swap! extract-calls inc))]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
+                                    (fn [] (swap! extract-calls inc))]
           (is (= :ok
                  (advanced-config.file/initialize!
                   {:version 1
@@ -241,7 +266,8 @@
                                                                                      :engine  "h2"
                                                                                      :details (:details (mt/db))})]
           (is (future? sync-future))
-          (deref sync-future 5000 :timeout)
+          ;; wait for the sync to finish or crash out after 30 seconds
+          (u/deref-with-timeout sync-future (u/seconds->ms 30))
           (is (= 1 (t2/count :model/Database :name test-db-name))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
@@ -255,8 +281,8 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-tables crufted-table-setting}})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
@@ -279,8 +305,8 @@
                           :engine  "h2"
                           :details (:details (mt/db))})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
@@ -304,8 +330,8 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-columns crufted-field-setting}})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)

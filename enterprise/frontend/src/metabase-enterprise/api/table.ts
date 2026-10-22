@@ -1,13 +1,23 @@
 import type {
   BulkTableRequest,
   PublishTablesResponse,
+  TableId,
+  TablePublishingInfo,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, tag } from "./tags";
+import { idTag, invalidateTags, tag } from "./tags";
 
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getTablePublishingInfo: builder.query<TablePublishingInfo | null, TableId>({
+      query: (tableId) => ({
+        method: "GET",
+        url: `/api/ee/data-studio/table/${tableId}/publishing-info`,
+      }),
+      providesTags: (_, error, tableId) =>
+        error ? [] : [idTag("table", tableId)],
+    }),
     publishTables: builder.mutation<PublishTablesResponse, BulkTableRequest>({
       query: (body) => ({
         method: "POST",
@@ -29,5 +39,8 @@ export const tableApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { usePublishTablesMutation, useUnpublishTablesMutation } =
-  tableApi;
+export const {
+  useGetTablePublishingInfoQuery,
+  usePublishTablesMutation,
+  useUnpublishTablesMutation,
+} = tableApi;

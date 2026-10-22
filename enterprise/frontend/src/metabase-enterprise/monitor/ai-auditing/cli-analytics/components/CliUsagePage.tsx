@@ -16,7 +16,7 @@ export function CliUsagePage() {
   } = useCliAnalyticsContext();
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <CliCallsTimelineChart
         provider={provider}
         table={table}
@@ -27,7 +27,7 @@ export function CliUsagePage() {
         tenantId={tenantId}
         title={t`Calls by client over time`}
       />
-      <SimpleGrid cols={2} spacing="lg">
+      <SimpleGrid cols={2} spacing="xl">
         <CliBreakoutChart
           provider={provider}
           table={table}
@@ -55,7 +55,7 @@ export function CliUsagePage() {
           h={500}
         />
       </SimpleGrid>
-      <SimpleGrid cols={2} spacing="lg">
+      <SimpleGrid cols={2} spacing="xl">
         <CliBreakoutChart
           provider={provider}
           table={table}
@@ -84,7 +84,7 @@ export function CliUsagePage() {
 
       {hasErrors && (
         <>
-          <Title order={3} mt="md">{t`Errors`}</Title>
+          <Title order={3} mt="lg">{t`Errors`}</Title>
           <CliCallsTimelineChart
             provider={provider}
             table={table}

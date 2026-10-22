@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -24,10 +25,12 @@ describe("DataAppsNavbarSection", () => {
       { name: "gadget", display_name: "Gadget" },
     ]);
 
+    const onItemSelect = jest.fn();
+
     renderWithProviders(
       <Route
         path="/"
-        element={<DataAppsNavbarSection onItemSelect={jest.fn()} />}
+        element={<DataAppsNavbarSection onItemSelect={onItemSelect} />}
       />,
       { withRouter: true },
     );
@@ -48,5 +51,15 @@ describe("DataAppsNavbarSection", () => {
       "href",
       "/apps/gadget",
     );
+
+    await userEvent.click(gizmoLink);
+
+    expect(onItemSelect).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("button", { name: /Gizmo|Gadget/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Contents/ }),
+    ).not.toBeInTheDocument();
   });
 });

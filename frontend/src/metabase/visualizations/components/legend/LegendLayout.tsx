@@ -1,22 +1,33 @@
-import type { ReactNode } from "react";
+import cx from "classnames";
+import {
+  type ReactNode,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
-import type { HoveredObject } from "metabase/visualizations/types";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex } from "metabase/ui";
+import type { TextWidthMeasurer } from "metabase/utils/measure-text";
+import type { HoveredObject } from "metabase/viz-core";
+import type { LegendPosition } from "metabase-types/api";
 
 import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
+import S from "./LegendLayout.module.css";
+import { LEGEND_COLUMN_GAP, LEGEND_COLUMN_MARGIN_TOP } from "./constants";
+import { HIDDEN_LEGEND_LAYOUT, getLegendLayout } from "./layout";
+import { measureLegend } from "./measure";
 import {
-  ChartContainer,
-  LegendContainer,
-  LegendLayoutRoot,
-  MainContainer,
-} from "./LegendLayout.styled";
-
-const MIN_ITEM_WIDTH = 100;
-const MIN_ITEM_HEIGHT = 25;
-const MIN_ITEM_HEIGHT_LARGE = 31;
-const MIN_LEGEND_WIDTH = 400;
+  type ChartSize,
+  type LegendChart,
+  getLegendPlots,
+  getPlotsWithoutAxes,
+} from "./plots";
+import { LEGEND_SIZES, getLegendSize } from "./sizes";
 
 interface LegendLayoutProps {
   className?: string;
@@ -24,10 +35,15 @@ interface LegendLayoutProps {
   hovered?: HoveredObject | null;
   width?: number;
   height?: number;
-  hasLegend?: boolean;
+  chart?: LegendChart;
+  hasLegend: boolean;
+  legendPosition?: LegendPosition;
+  alwaysVisible?: boolean;
   actionButtons?: ReactNode;
   isFullscreen?: boolean;
   isQueryBuilder?: boolean;
+  fontFamily: string;
+  measureText: TextWidthMeasurer;
   children?: ReactNode;
   onHoverChange?: (data?: HoveredObject | null) => void;
   onSelectSeries?: (
@@ -35,6 +51,13 @@ interface LegendLayoutProps {
     index: number,
     isReversed?: boolean,
   ) => void;
+  /**
+   * With `onSelectSeries` also set, series titles render as links to the
+   * returned URL. It's called when a title is hovered or focused, not on render.
+   * Clicks still go to `onSelectSeries`; the URL serves middle-click and the
+   * browser's link menu, such as "Open in new tab".
+   */
+  getSeriesHref?: (index: number) => string | undefined;
   onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
   isReversed?: boolean;
 }
@@ -45,64 +68,165 @@ export const LegendLayout = ({
   hovered,
   width = 0,
   height = 0,
+  chart,
   hasLegend,
+  legendPosition = "auto",
+  alwaysVisible,
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  fontFamily,
+  measureText,
   children,
   onHoverChange,
   onSelectSeries,
+  getSeriesHref,
   onToggleSeriesVisibility,
   isReversed,
 }: LegendLayoutProps) => {
-  const hasDimensions =
-    isNotNull(width) && isNotNull(height) && width > 0 && height > 0;
-  const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
-  const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
-  const maxYItems = Math.floor(height / itemHeight);
-  const maxYLabels = Math.max(maxYItems - 1, 0);
-  const minYLabels = items.length > maxYItems ? maxYLabels : items.length;
+  const hasDimensions = width > 0 && height > 0;
+  const canShowLegend = hasDimensions && hasLegend && legendPosition !== "off";
+  const size = getLegendSize({ width, height, isQueryBuilder, isFullscreen });
+  const { rootRef, chartAreaRef, chartRoom } = useChartRoom(width, height);
 
-  const isNarrow = width < MIN_LEGEND_WIDTH;
+  const metrics = useMemo(
+    () =>
+      canShowLegend
+        ? measureLegend({
+            items,
+            width,
+            height,
+            chartRoom,
+            size,
+            fontFamily,
+            measureText,
+            isReversed,
+          })
+        : null,
+    [
+      canShowLegend,
+      items,
+      width,
+      height,
+      chartRoom,
+      size,
+      fontFamily,
+      measureText,
+      isReversed,
+    ],
+  );
 
-  const isVertical = maxXItems < items.length;
-  const isHorizontal = !isVertical;
+  const plots = useMemo(() => {
+    if (metrics == null) {
+      return null;
+    }
+    return chart
+      ? getLegendPlots(chart, metrics.chartSizes)
+      : getPlotsWithoutAxes(metrics.chartSizes);
+  }, [metrics, chart]);
 
-  const isVisible = hasDimensions && hasLegend && !(isVertical && isNarrow);
-  const visibleLength = isVertical ? minYLabels : items.length;
+  const layout = useMemo(
+    () =>
+      metrics && plots
+        ? getLegendLayout(metrics, {
+            position: legendPosition,
+            plots,
+            alwaysVisible,
+          })
+        : HIDDEN_LEGEND_LAYOUT,
+    [metrics, plots, legendPosition, alwaysVisible],
+  );
 
-  const legend = (
-    <LegendContainer
-      isVertical={!!isVertical}
-      isQueryBuilder={!!isQueryBuilder}
+  const isLegendBeforeChart = layout.type !== "hidden" && layout.isBeforeChart;
+  const { rowChartGap } = LEGEND_SIZES[size];
+
+  const legendProps = {
+    items,
+    hovered,
+    size,
+    onHoverChange,
+    onSelectSeries,
+    getSeriesHref,
+    onToggleSeriesVisibility,
+    isReversed,
+  };
+
+  const horizontalLegend = layout.type === "horizontal" && (
+    <Flex
+      justify="center"
+      flex="0 0 auto"
+      miw={0}
+      mt={isLegendBeforeChart ? 0 : rowChartGap}
+      mb={isLegendBeforeChart ? rowChartGap : 0}
+      ml={Math.max(layout.indent, 0)}
+      mr={Math.max(-layout.indent, 0)}
+      data-testid="legend-horizontal"
     >
-      <Legend
-        items={items}
-        hovered={hovered}
-        visibleLength={visibleLength}
-        isVertical={isVertical}
-        onHoverChange={onHoverChange}
-        onSelectSeries={onSelectSeries}
-        onToggleSeriesVisibility={onToggleSeriesVisibility}
-        isQueryBuilder={isQueryBuilder}
-        isReversed={isReversed}
-      />
-      {!isVertical && actionButtons && (
-        <LegendActions>{actionButtons}</LegendActions>
-      )}
-    </LegendContainer>
+      <Legend {...legendProps} visibleLength={layout.visibleCount} />
+    </Flex>
+  );
+
+  const verticalLegend = layout.type === "vertical" && (
+    <Box
+      className={cx(S.verticalLegend, CS.overflowHidden)}
+      flex="0 0 auto"
+      miw={0}
+      mt={LEGEND_COLUMN_MARGIN_TOP}
+      ml={isLegendBeforeChart ? 0 : LEGEND_COLUMN_GAP}
+      mr={isLegendBeforeChart ? LEGEND_COLUMN_GAP : 0}
+      style={{ width: layout.width }}
+      data-testid="legend-vertical"
+    >
+      <Legend {...legendProps} visibleLength={layout.visibleCount} isVertical />
+    </Box>
   );
 
   return (
-    <LegendLayoutRoot className={className} isVertical={isVertical}>
-      {isVisible && isHorizontal && legend}
-      <MainContainer>
-        {isVertical && actionButtons && (
-          <LegendActions>{actionButtons}</LegendActions>
-        )}
-        {hasDimensions && <ChartContainer>{children}</ChartContainer>}
-      </MainContainer>
-      {isVisible && isVertical && legend}
-    </LegendLayoutRoot>
+    <Flex ref={rootRef} className={className} flex="1 1 auto" miw={0} mih={0}>
+      {isLegendBeforeChart && verticalLegend}
+      <Flex direction="column" flex="1 1 auto" miw={0} mih={0}>
+        {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
+        <Flex
+          ref={chartAreaRef}
+          direction="column"
+          flex="1 1 auto"
+          miw={0}
+          mih={0}
+        >
+          {isLegendBeforeChart && horizontalLegend}
+          {hasDimensions && (
+            <Flex direction="column" flex="1 0 auto" mih={0}>
+              {children}
+            </Flex>
+          )}
+          {!isLegendBeforeChart && horizontalLegend}
+        </Flex>
+      </Flex>
+      {!isLegendBeforeChart && verticalLegend}
+    </Flex>
   );
 };
+
+// The legend root keeps its width and the chart area its height whichever
+// legend shows, so the layout can depend on them without feeding back. They
+// are measured when the card size props change, so a render the chart's own
+// resize triggers before those props catch up keeps the room that matches them.
+function useChartRoom(width: number, height: number) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+  const [chartRoom, setChartRoom] = useState<ChartSize>();
+
+  useLayoutEffect(() => {
+    const roomWidth = rootRef.current?.clientWidth ?? 0;
+    const roomHeight = chartAreaRef.current?.clientHeight ?? 0;
+    const measuredRoom =
+      roomWidth > 0 && roomHeight > 0
+        ? { width: roomWidth, height: roomHeight }
+        : undefined;
+    setChartRoom((room) =>
+      _.isEqual(room, measuredRoom) ? room : measuredRoom,
+    );
+  }, [width, height]);
+
+  return { rootRef, chartAreaRef, chartRoom };
+}

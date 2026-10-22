@@ -5,6 +5,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]))
 
@@ -14,7 +15,7 @@
   "Default implementation of [[metabase.driver/query-result-metadata]] for JDBC-based drivers. Gets metadata without
   actually running a query."
   ([driver :- :keyword
-    query  :- :map]
+    query  :- ::qp.schema/any-query]
    (driver-api/with-qp-setup [query query]
      (let [database               (driver-api/database (driver-api/metadata-provider))
            {:keys [query params]} (driver-api/compile query)]
@@ -23,7 +24,7 @@
   ([driver      :- :keyword
     database    :- driver-api/schema.metadata.database
     ^String sql :- :string
-    params      :- [:maybe [:sequential :any]]]
+    params      :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]]
    (sql-jdbc.execute/do-with-connection-with-options
     driver
     database

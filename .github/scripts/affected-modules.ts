@@ -105,6 +105,28 @@ export function getAffectedFiles(
   return affected;
 }
 
+/** The file plus every file it transitively imports. */
+export function getTransitiveDependencies(
+  fileDependencies: FileDependency[],
+  file: string,
+): Set<string> {
+  const dependenciesOf = new Map(
+    fileDependencies.map(({ source, dependencies }) => [source, dependencies]),
+  );
+  const reached = new Set([file]);
+  const queue = [file];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const dependency of dependenciesOf.get(current) ?? []) {
+      if (!reached.has(dependency)) {
+        reached.add(dependency);
+        queue.push(dependency);
+      }
+    }
+  }
+  return reached;
+}
+
 export type ModuleGraph = {
   nodes: ModuleNode[];
   /**

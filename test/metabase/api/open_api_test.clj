@@ -13,15 +13,15 @@
 
 (api.macros/defendpoint :get "/:id"
   "docstring"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   {:id (str id)})
 
 (api.macros/defendpoint :post "/:id"
   "docstring"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [value]} :- [:map
+   {:keys [value]} :- [:map {:closed true}
                        [:value ::lib.schema.common/non-blank-string]]]
   {:id    (str id)
    :value value})
@@ -29,7 +29,7 @@
 (api.macros/defendpoint :post "/export"
   "docstring"
   [_route-params
-   {:keys [collection settings]} :- [:map
+   {:keys [collection settings]} :- [:map {:closed true}
                                      [:collection [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
                                      [:settings   [:maybe ms/BooleanValue]]
                                      [:data-model ms/MaybeBooleanValue]]]
@@ -38,34 +38,34 @@
 (api.macros/defendpoint :get "/rename"
   "this one renames query parameter trying to trick us (actually doesn't really trick us much anymore with defendpoint 2)"
   [_route-params
-   {c :count} :- [:map
+   {c :count} :- [:map {:closed true}
                   [:count {:optional true} ms/PositiveInt]]]
   {:count c})
 
 (api.macros/defendpoint :put "/complex/:id"
   "More complex body schema"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [data]} :- [:map
-                      [:data [:map
+   {:keys [data]} :- [:map {:closed true}
+                      [:data [:map {:closed true}
                               [:name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
                               [:dashcards (ms/maps-with-unique-key
-                                           [:sequential [:map
+                                           [:sequential [:map {:closed true}
                                                          [:id int?]
-                                                         [:params {:optional true} [:maybe [:sequential [:map
+                                                         [:params {:optional true} [:maybe [:sequential [:map {:closed true}
                                                                                                          [:param_id ::lib.schema.common/non-blank-string]
-                                                                                                         [:target  :any]]]]]]]
+                                                                                                         [:target  :string]]]]]]]
                                            :id)]]]]]
   {:id id :data data})
 
 (api.macros/defendpoint :post "/:id/upload"
   "docstring"
   {:multipart true}
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [file]} :- [:map
+   {:keys [file]} :- [:map {:closed true}
                       [:file (mu/with ms/File {:description "File to upload"})]]]
   {:id id :data file})
 
@@ -197,10 +197,10 @@
          (->
           (api.macros/defendpoint :get "add/:a"
             "Adds id, qp-one, qp-two, and body."
-            [{:keys [a]} :- [:map [:a :int]]
-             {:keys [b c]} :- [:map [:b :int] [:c :int]]
-             {:keys [d]} :- [:map [:d :int]]
-             {{e :e} :headers} :- [:map [:headers [:map [:e :int]]]]]
+            [{:keys [a]} :- [:map {:closed true} [:a :int]]
+             {:keys [b c]} :- [:map {:closed true} [:b :int] [:c :int]]
+             {:keys [d]} :- [:map {:closed true} [:d :int]]
+             {{e :e} :headers} :- [:map {:closed true} [:headers [:map {:closed true} [:e :int]]]]]
             (+ a b c d e))
           (api.macros/call-core-fn
            {:a 5}                   ;; route params

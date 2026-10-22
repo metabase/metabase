@@ -1,6 +1,6 @@
 import { getUserIsAdmin } from "metabase/current-user";
+import type { MetabotSlashCommandHandler } from "metabase/metabot";
 import { getIsConversationEmpty } from "metabase/metabot/state";
-import type { MetabotSlashCommandHandler } from "metabase/plugins/oss/audit";
 import { addUndo } from "metabase/redux/undo";
 import { navigate } from "metabase/router";
 import * as Urls from "metabase/urls";

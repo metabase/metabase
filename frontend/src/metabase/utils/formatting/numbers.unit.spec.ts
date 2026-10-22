@@ -415,3 +415,41 @@ describe("formatPercent", () => {
     expect(formatPercent(0)).toBe("0.00 %");
   });
 });
+
+describe("numberFormatterForOptions caching", () => {
+  it("should reuse the formatter for equivalent options", () => {
+    const options = { number_style: "currency" as const, currency: "EUR" };
+
+    expect(numberFormatterForOptions(options)).toBe(
+      numberFormatterForOptions({ ...options }),
+    );
+  });
+
+  it("should build a separate formatter for different options", () => {
+    const usd = numberFormatterForOptions({
+      number_style: "currency",
+      currency: "USD",
+    });
+    const eur = numberFormatterForOptions({
+      number_style: "currency",
+      currency: "EUR",
+    });
+
+    expect(eur).not.toBe(usd);
+    expect(usd.format(1)).not.toBe(eur.format(1));
+  });
+
+  it("should evict the oldest formatter once the cache is full", async () => {
+    jest.resetModules();
+    const { numberFormatterForOptions: freshCache } = await import("./numbers");
+    const oldest = freshCache({ minimumIntegerDigits: 7 });
+    expect(freshCache({ minimumIntegerDigits: 7 })).toBe(oldest);
+
+    // NUMBER_FORMATTER_CACHE_SIZE is 100, so this pushes the first entry out
+    for (let digits = 0; digits <= 100; digits++) {
+      freshCache({ maximumFractionDigits: digits });
+    }
+
+    expect(freshCache({ minimumIntegerDigits: 7 })).not.toBe(oldest);
+  });
+});

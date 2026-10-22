@@ -7,14 +7,16 @@ import {
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
 import {
-  getIsEditingInDashboard,
-  getNotebookNativePreviewSidebarWidth,
-} from "metabase/query_builder/selectors";
+  getShallowTables,
+  paramFieldsFetched,
+  selectQuestionFromCard,
+  selectQuestionFromOpts,
+} from "metabase/metadata-store";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { updateMetadata } from "metabase/redux/metadata";
-import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
+import { INITIALIZE_QB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
@@ -23,29 +25,34 @@ import type {
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
 import { navigate } from "metabase/router";
-import { FieldSchema } from "metabase/schema";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, SegmentId, UnsavedCard } from "metabase-types/api";
+import type {
+  Card,
+  SegmentId,
+  SeriesCard,
+  UnsavedCard,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 
+import { resetQB } from "../../store/actions";
+import {
+  getIsEditingInDashboard,
+  getNotebookNativePreviewSidebarWidth,
+} from "../../store/selectors";
+import type { QueryBuilderStoreState } from "../../store/state";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { cancelQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 
 import { loadCard } from "./card";
-import {
-  getParameterValuesForQuestion,
-  propagateDashboardParameters,
-} from "./parameterUtils";
+import { propagateDashboardParameters } from "./parameterUtils";
 
 type BlankQueryOptions = {
   db?: string;
@@ -75,17 +82,16 @@ const NOT_FOUND_ERROR = {
 };
 
 function getCardForBlankQuestion(
-  metadata: Metadata,
+  state: QueryBuilderStoreState,
   options: BlankQueryOptions,
 ) {
   const databaseId = options.db ? parseInt(options.db) : undefined;
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
-  let question = Question.create({
+  let question = selectQuestionFromOpts(state, {
     DEPRECATED_RAW_MBQL_databaseId: databaseId,
     DEPRECATED_RAW_MBQL_tableId: tableId,
-    metadata,
   });
 
   if (databaseId && tableId) {
@@ -98,7 +104,7 @@ function getCardForBlankQuestion(
 }
 
 function getCardForBlankNativeQuestion(
-  metadata: Metadata,
+  state: QueryBuilderStoreState,
   options: BlankQueryOptions,
 ) {
   const databaseId = options.db ? parseInt(options.db) : undefined;
@@ -107,10 +113,9 @@ function getCardForBlankNativeQuestion(
   // 1° load the db first
   // 2° use the lib to create a provider
   // 3° then create a native query
-  const question = Question.create({
+  const question = selectQuestionFromOpts(state, {
     DEPRECATED_RAW_MBQL_type: "native",
     DEPRECATED_RAW_MBQL_databaseId: databaseId,
-    metadata,
   });
 
   return question.card();
@@ -149,7 +154,7 @@ async function fetchAndPrepareSavedQuestionCards(
 }
 
 async function fetchAndPrepareAdHocQuestionCards(
-  deserializedCard: Card,
+  deserializedCard: SeriesCard,
   dispatch: Dispatch,
   getState: GetState,
 ) {
@@ -182,7 +187,7 @@ async function fetchAndPrepareAdHocQuestionCards(
 }
 
 type ResolveCardsResult = {
-  card: Card;
+  card: SeriesCard;
   originalCard?: Card | null;
 };
 
@@ -204,23 +209,18 @@ export async function resolveCards({
   questionType?: "native" | "gui";
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
-    const metadata = getMetadata(getState());
+    const state = getState();
 
     const card =
       questionType === "native"
-        ? getCardForBlankNativeQuestion(metadata, options)
-        : getCardForBlankQuestion(metadata, options);
+        ? getCardForBlankNativeQuestion(state, options)
+        : getCardForBlankQuestion(state, options);
 
     return { card };
   }
   return cardId
     ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
-    : fetchAndPrepareAdHocQuestionCards(
-        // Unjustified type cast. FIXME
-        deserializedCard as Card,
-        dispatch,
-        getState,
-      );
+    : fetchAndPrepareAdHocQuestionCards(deserializedCard!, dispatch, getState);
 }
 
 /**
@@ -318,7 +318,7 @@ async function handleQBInit(
     if (isStale()) {
       return;
     }
-    const table = getMetadata(getState()).table(slugEntityId);
+    const table = getShallowTables(getState())[slugEntityId];
     if (!table) {
       dispatch(setErrorPage(NOT_FOUND_ERROR));
       return;
@@ -403,14 +403,10 @@ async function handleQBInit(
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
   if (card.param_fields) {
-    await dispatch(
-      updateMetadata(Object.values(card.param_fields).flat(), [FieldSchema]),
-    );
+    await dispatch(paramFieldsFetched(card.param_fields));
   }
 
-  const metadata = getMetadata(getState());
-
-  let question = new Question(card, metadata);
+  let question = selectQuestionFromCard(getState(), card);
   const query = question.query();
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
@@ -455,11 +451,12 @@ async function handleQBInit(
 
   const finalCard = question.card();
 
-  const parameterValues = getParameterValuesForQuestion({
-    card: finalCard,
-    queryParams,
-    metadata,
-  });
+  // `question.parameters()` is `getCardUiParameters` over this same card, so
+  // it saves reading the metadata store a second time.
+  const parameterValues = getParameterValuesByIdFromQueryParams(
+    question.parameters(),
+    queryParams ?? {},
+  );
 
   const objectId =
     params?.objectId || (searchParams.get("objectId") ?? undefined);

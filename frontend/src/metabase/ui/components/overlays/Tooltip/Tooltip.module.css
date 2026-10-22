@@ -12,6 +12,11 @@
   overflow-wrap: anywhere;
 }
 
+.tooltip[data-hoverable] {
+  /* Let the pointer move onto an open tooltip without closing it (WCAG 1.4.13). */
+  pointer-events: auto;
+}
+
 .arrow {
   /*
   * Disabling the clip-path property to prevent the arrow from being cut off
