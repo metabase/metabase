@@ -269,12 +269,17 @@
 
 (deftest load-refuses-an-identifier-differing-only-in-case-test
   (let [bundle (cv.tu/valid-bundle-bytes "Thumbs")]
-    (mt/with-temp [:model/CustomVizPlugin _ (active-plugin-row "Thumbs" bundle)]
+    (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "Thumbs" bundle)]
       (testing "a new plugin whose identifier is an existing one in another case is refused, naming both"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"thumbs\" differs only in case from .*\"Thumbs\""
                               (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")) nil))))
+      (testing "when the app DB found the existing plugin case-insensitively, it is refused rather than renamed"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"thumbs\" differs only in case from .*\"Thumbs\""
+                              (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs"))
+                                                (t2/select-one :model/CustomVizPlugin :id id))))
+        (is (= "Thumbs" (t2/select-one-fn :identifier :model/CustomVizPlugin :id id))))
       (testing "the same plugin updates in place"
-        (serdes/load-one! (ingested-plugin "Thumbs" bundle) (t2/select-one :model/CustomVizPlugin :identifier "Thumbs"))
+        (serdes/load-one! (ingested-plugin "Thumbs" bundle) (t2/select-one :model/CustomVizPlugin :id id))
         (is (= 1 (t2/count :model/CustomVizPlugin :identifier "Thumbs")))))))
 
 (deftest load-update-validates-bundle-test
