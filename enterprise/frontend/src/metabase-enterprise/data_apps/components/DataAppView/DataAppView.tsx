@@ -299,7 +299,7 @@ export function DataAppView() {
       return (
         <NotFound
           title={t`This data app isn’t ready yet`}
-          message={t`Its bundle hasn’t finished syncing from the connected repository. Try again in a moment.`}
+          message={t`This app has no bundle yet. Build it and push it, or wait for the connected repository to sync, then try again.`}
         />
       );
     }

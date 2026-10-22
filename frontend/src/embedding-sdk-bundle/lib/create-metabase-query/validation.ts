@@ -192,7 +192,7 @@ function validateQuestionResultColumn(
 
   if (!source.columns.some(({ name }) => name === columnName)) {
     throw new Error(
-      `${context} must reference a result column of saved question ${source.id}, but received ${columnName}.`,
+      `${context} must reference a result column of saved question ${source.id ?? source.entityId}, but received ${columnName}.`,
     );
   }
 }

@@ -1,9 +1,7 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
 
 const { H } = cy;
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const DATA_APPS_ANALYTICS_PATH = "/monitor/ai-auditing/data-apps";
 
@@ -62,13 +60,18 @@ function writeQuestionAppResources(root: string) {
 function publishQuestionApp() {
   const root = appRoot(QUESTION_APP.slug);
 
-  H.declareDataAppQueries(root, [
-    {
-      name: "OrdersCount",
-      tableId: ORDERS_ID,
-      savedQuestionEntityId: QUESTION_APP.question,
+  cy.task("writeDataAppFiles", {
+    files: {
+      [`${root}/queries/orders.query.ts`]: [
+        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+        "",
+        "export const OrdersCount = defineQuery({",
+        `  source: { type: "card", entityId: "${QUESTION_APP.question}" },`,
+        "});",
+        "",
+      ].join("\n"),
     },
-  ]);
+  });
   writeQuestionAppResources(root);
   return H.publishDataApp(root, QUESTION_APP.slug);
 }
@@ -78,35 +81,25 @@ function publishQuestionApp() {
 function publishActionsApp() {
   const root = appRoot(ACTIONS_APP.slug);
 
-  return H.createDataAppScoreboardAction().then((source) => {
-    const actionCopy = H.newEntityId();
-
-    H.declareDataAppActions(root, [
-      {
-        exportName: "CreateScore",
-        sourceActionId: source.id,
-        copiedActionEntityId: actionCopy,
-      },
-    ]);
-
-    return H.serializeDataAppActionCopies(
-      [{ sourceActionId: source.id, entityId: actionCopy }],
+  H.writeDataAppResources(root, {
+    collection: H.dataAppRepresentations.collection(
       ACTIONS_APP.collection,
-    )
-      .then((actions) =>
-        H.writeDataAppResources(root, {
-          collection: H.dataAppRepresentations.collection(
-            ACTIONS_APP.collection,
-            `Data App: ${ACTIONS_APP.displayName}`,
-          ),
-          actions,
-        }),
-      )
-      .then(() => writeQuestionAppResources(root))
-      .then(() =>
-        H.publishDataApp(root, ACTIONS_APP.slug, { initializeRepo: false }),
-      );
+      `Data App: ${ACTIONS_APP.displayName}`,
+    ),
   });
+  writeQuestionAppResources(root);
+
+  return H.publishDataApp(root, ACTIONS_APP.slug, {
+    initializeRepo: false,
+  }).then((app) =>
+    H.createDataAppScoreboardAction({
+      collectionId: app.resource_collection_id,
+    }).then((action) =>
+      H.declareDataAppActions(root, [
+        { exportName: "CreateScore", actionEntityId: action.entity_id },
+      ]),
+    ),
+  );
 }
 
 // The first query against the audit view can take a while to settle, and the page's other
@@ -180,7 +173,7 @@ describe(
       cy.log(
         "The page names the apps from the installed list, which the app mocks replaced",
       );
-      cy.intercept("GET", "/api/apps", (req) => {
+      cy.intercept("GET", "/api/ee/apps", (req) => {
         req.continue();
       });
 

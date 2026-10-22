@@ -145,7 +145,7 @@ describe("DataAppView", () => {
     return screen.getByTitle<HTMLIFrameElement>("Sales");
   }
 
-  it("shows the not-ready screen when the iframe reports its bundle hasn't synced", () => {
+  it("shows the not-ready screen when the iframe reports it has no bundle yet", () => {
     const iframe = setupIframe();
 
     postMessage(iframe.contentWindow, {
@@ -155,6 +155,9 @@ describe("DataAppView", () => {
 
     expect(
       screen.getByText("This data app isn’t ready yet"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/This app has no bundle yet\. Build it and push it/),
     ).toBeInTheDocument();
   });
 
