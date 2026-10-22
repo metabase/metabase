@@ -200,19 +200,26 @@
 
 (defn do-with-published-tables!
   "Call `f` with the Tables with `table-ids` published to the Library's Data collection, as a card in a data app's
-  collection needs the tables it reads, unpublishing afterwards only the ones this call published and creating the
-  Library for the call when the instance has none."
+  collection needs the tables it reads, putting back afterwards the published state of only the ones this call
+  published, which drops a user settings row left empty, and creating the Library for the call when the instance has
+  none."
   [table-ids f]
   (do-with-library!
    (fn [{:keys [data-id]}]
-     (let [to-publish (set/difference (set table-ids) (data-studio.db/published-table-ids (set table-ids)))]
+     (let [to-publish (set/difference (set table-ids) (data-studio.db/published-table-ids (set table-ids)))
+           previous   (when (seq to-publish)
+                        (into {}
+                              (map (juxt :table_id #(select-keys % [:collection_id :is_published])))
+                              (t2/select [:model/TableUserSettings :table_id :collection_id :is_published]
+                                         :table_id [:in to-publish])))]
        (when (seq to-publish)
          (data-studio.db/publish-tables! to-publish data-id))
        (try
          (f)
          (finally
-           (when (seq to-publish)
-             (data-studio.db/unpublish-tables! to-publish))))))))
+           (doseq [table-id to-publish]
+             (t2/update! :model/TableUserSettings :table_id table-id
+                         (get previous table-id {:collection_id nil, :is_published nil})))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."
