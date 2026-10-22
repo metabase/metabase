@@ -142,6 +142,21 @@
                :display_name  "thumbs"}
               (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))))
 
+(deftest import-with-missing-files-replaces-an-active-plugins-bundle-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
+      (let [healthy (cache/files->bundle (plugin-files "thumbs"))
+            {id :id} (insert-plugin! "thumbs" healthy)]
+        (testing "the repository owns the files: a directory holding only the YAML imports as an error plugin"
+          (write-plugin-files! dump-dir "thumbs" (plugin-yaml "thumbs") {})
+          (import! dump-dir)
+          (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
+            (is (=? {:status        :error
+                     :error_message #(re-find #"metabase-plugin.json not found" %)}
+                    plugin))
+            (is (not= (cv.tu/bundle-hash healthy) (:bundle_hash plugin))
+                "the healthy bundle is replaced, not kept")))))))
+
 (deftest import-fails-naming-a-directory-not-named-by-its-identifier-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]

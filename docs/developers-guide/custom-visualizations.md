@@ -410,6 +410,8 @@ npm run build
 
 This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and the whitelisted icon under `dist/assets/`, and has to come in under 5 MiB. The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
 
+That applies to the plugin's source project. A [serialization](../installation-and-operation/serialization.md) export is different: it writes the installed plugin to `custom_viz_plugins/<identifier>/` with its `custom_viz_plugin.yaml` and the archive's files beside it, and an import packs those files back into the bundle. Keep `metabase-plugin.json` and `dist/index.js` committed there, because a file that is missing at import time is left out of the bundle and the plugin lands in an error state until it is imported again or re-uploaded.
+
 Packaging runs through the `@metabase/custom-viz` CLI, so you can also run it on its own:
 
 ```
