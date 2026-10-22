@@ -151,6 +151,22 @@ describe("ExpressionWidget", () => {
     });
   });
 
+  it("debounces the first validation of a new expression", async () => {
+    await setup({ expressionMode: "aggregation" });
+
+    await userEvent.paste("[Imaginary]");
+
+    // Validation is debounced, so the error must not appear synchronously with
+    // the first change to a new expression.
+    expect(
+      screen.queryByText("Unknown Aggregation, Measure or Metric: Imaginary"),
+    ).not.toBeInTheDocument();
+
+    await screen.findByText(
+      "Unknown Aggregation, Measure or Metric: Imaginary",
+    );
+  });
+
   describe("expressionMode = 'expression'", () => {
     it("should show a detailed error when comma is missing (metabase#15892)", async () => {
       await setup({ expressionMode: "expression" });

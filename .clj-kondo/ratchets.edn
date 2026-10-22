@@ -17,7 +17,6 @@
 ;; Test code's inline ignores have their own budgets in .clj-kondo/ratchets-test.edn.
 ;; :config-counts stays here either way -- config.edn's scoping doesn't cleanly split.
 {:ignore-counts                {:aliased-namespace-symbol                                  3
-                                :clojure-lsp/unused-public-var                             7
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
                                 :deprecated-namespace                                      29
@@ -46,7 +45,7 @@
                                 :unused-binding                                            3
                                 :unused-excluded-var                                       2
                                 :unused-namespace                                          2
-                                :unused-private-var                                        5
+                                :unused-private-var                                        2
                                 :unused-value                                              1}
  :discouraged-namespace-counts {:cheshire.core         4
                                 :clojure.tools.logging 3
