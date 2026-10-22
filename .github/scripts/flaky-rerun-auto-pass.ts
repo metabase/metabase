@@ -109,11 +109,31 @@ export function failedJobNames(jobs: Job[]): string[] {
 }
 
 /**
+ * Every job of an attempt that neither passed nor failed, such as a cancelled or
+ * timed-out one. It has no test results, so no flake verdict covers it.
+ */
+export function unfinishedJobNames(jobs: Job[]): string[] {
+  return [
+    ...new Set(
+      jobs
+        .filter(
+          (job) =>
+            job.conclusion !== "failure" &&
+            !PASSING_CONCLUSIONS.has(job.conclusion ?? ""),
+        )
+        .map((job) => job.name),
+    ),
+  ];
+}
+
+/**
  * The names to post passing checks for, once the re-run is cancelled: every job
  * that failed on the previous attempt, plus every job of the cancelled attempt
  * that isn't passing. The cancel also hits jobs that passed or were skipped
  * before ("Re-run all jobs" runs them again, and "Re-run failed jobs" runs their
- * dependents), and their newest check is now a cancelled one.
+ * dependents), and their newest check is now a cancelled one. The previous
+ * attempt has no unfinished jobs (main checks), so each of these either failed
+ * as a flake or passed before.
  */
 export function jobNamesToPass(previous: Job[], cancelled: Job[]): string[] {
   return [
@@ -360,6 +380,14 @@ async function main(): Promise<void> {
   if (failedJobNames(previous).length === 0) {
     console.log(
       "The previous attempt has no failed jobs. Re-running as usual.",
+    );
+    return;
+  }
+  const unfinished = unfinishedJobNames(previous);
+  if (unfinished.length > 0) {
+    console.log(
+      `The previous attempt has jobs that didn't finish (${unfinished.join(", ")}), ` +
+        "so no flake verdict covers them. Re-running as usual.",
     );
     return;
   }

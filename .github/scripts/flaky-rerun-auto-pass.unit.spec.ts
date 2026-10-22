@@ -6,6 +6,7 @@ import {
   formatPercent,
   jobNamesToPass,
   readContext,
+  unfinishedJobNames,
 } from "./flaky-rerun-auto-pass";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
@@ -110,6 +111,30 @@ describe("failedJobNames", () => {
       "backend-tests / be-tests (1)",
       "backend-tests / be-tests-result",
     ]);
+  });
+});
+
+describe("unfinishedJobNames", () => {
+  it("names each job that neither passed nor failed", () => {
+    expect(
+      unfinishedJobNames([
+        { name: "backend-tests / be-tests (1)", conclusion: "failure" },
+        { name: "frontend-tests / fe-tests-result", conclusion: "success" },
+        { name: "driver-tests / be-tests-oracle", conclusion: "skipped" },
+        { name: "e2e-tests / e2e-tests (3)", conclusion: "cancelled" },
+        { name: "e2e-tests / e2e-tests (3)", conclusion: "cancelled" },
+        { name: "app-db-tests / app-db-tests (2)", conclusion: "timed_out" },
+      ]),
+    ).toEqual(["e2e-tests / e2e-tests (3)", "app-db-tests / app-db-tests (2)"]);
+  });
+
+  it("is empty when every job passed or failed", () => {
+    expect(
+      unfinishedJobNames([
+        { name: "backend-tests / be-tests (1)", conclusion: "failure" },
+        { name: "frontend-tests / fe-tests-result", conclusion: "success" },
+      ]),
+    ).toEqual([]);
   });
 });
 
