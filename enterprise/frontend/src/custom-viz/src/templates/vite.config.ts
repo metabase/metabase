@@ -168,6 +168,8 @@ function metabaseDevServer() {
         watch(assetsDirSrc, { recursive: true }, () => {
           clearTimeout(syncTimer);
           syncTimer = setTimeout(syncAssets, ASSETS_SYNC_DEBOUNCE_MS);
+        }).on("error", (error) => {
+          console.error("[custom-viz] Assets watcher error", error);
         });
       }
     },
