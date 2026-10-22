@@ -12,53 +12,46 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
-   [dev.dbt-import.schemas.ir :as ir]
-   [dev.dbt-import.schemas.resolved :as resolved]
+   [dev.dbt-import.schemas.ir :as schemas.ir]
+   [dev.dbt-import.schemas.resolved :as schemas.resolved]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(set! *warn-on-reflection* true)
-
-;;; ---------------------------------------------------------- entity ids ----------------------------------------------------------
-
-(mu/defn entity-id :- ::resolved/entity-id
+(mu/defn entity-id :- ::schemas.resolved/entity-id
   "A deterministic `entity_id` for the string `s`. Re-running the converter on the same input produces the same IDs,
   so a re-import updates the existing metrics instead of duplicating them."
   [s :- :string]
   ;; generate-nano-id seeds a RNG from a hex string parsed as a long, so hand it 15 hex chars (60 bits) of the hash
   (u/generate-nano-id (subs (codecs/bytes->hex (buddy-hash/sha256 s)) 0 15)))
 
-(mu/defn- metric-entity-id :- ::resolved/entity-id
-  [{:keys [unique-id]} :- ::ir/metric]
+(mu/defn- metric-entity-id :- ::schemas.resolved/entity-id
+  [{:keys [unique-id]} :- ::schemas.ir/metric]
   (entity-id (str "dbt-import/metric/" unique-id)))
 
-(mu/defn- collection-entity-id :- ::resolved/entity-id
+(mu/defn- collection-entity-id :- ::schemas.resolved/entity-id
   [project :- [:maybe :string]]
   (entity-id (str "dbt-import/collection/" project)))
 
-;;; ---------------------------------------------------------- base types ----------------------------------------------------------
-
-(mu/defn- normalize-type-name :- :keyword
+(mu/defn- normalize-type-name :- :string
   "`VARCHAR(255)` → `:varchar`, `numeric(10, 2)` → `:numeric`, the form the driver's type map is keyed by."
   [s :- :string]
-  (-> s u/lower-case-en (str/replace #"\s*\(.*\)\s*$" "") str/trim keyword))
+  (-> s u/lower-case-en (str/replace #"\s*\(.*\)\s*$" "") str/trim))
 
-(mu/defn base-type :- [:maybe :keyword]
+(mu/defn base-type :- [:maybe ::lib.schema.common/base-type]
   "The Metabase base type for a warehouse `data-type` string, as the `driver` maps it during sync, or nil when it is
   unknown or missing. `overrides` (the config's `:base-types`) wins over the driver."
   [driver    :- :keyword
-   overrides :- [:maybe [:map-of :string :keyword]]
+   overrides :- [:maybe ::schemas.resolved/config.base-types]
    data-type :- [:maybe :string]]
   (when data-type
-    (let [k (normalize-type-name data-type)]
-      (or (get overrides (name k))
-          (do
+    (let [type-name (normalize-type-name data-type)]
+      (or (get overrides type-name)
+          (let [k (keyword type-name)]
             (driver/the-initialized-driver driver)
             (sql-jdbc.sync/database-type->base-type driver k))))))
-
-;;; ----------------------------------------------------------- metrics -----------------------------------------------------------
 
 (def ^:private identifier-re #"^[A-Za-z_][A-Za-z0-9_]*$")
 (def ^:private integer-literal-re #"^\d+$")
@@ -71,9 +64,9 @@
     (re-matches integer-literal-re expr) :literal
     :else                                :sql))
 
-(mu/defn- find-column :- [:maybe ::ir/column]
+(mu/defn- find-column :- [:maybe ::schemas.ir/column]
   "`columns` entry named `expr`, exactly or ignoring case."
-  [columns :- [:map-of :string ::ir/column]
+  [columns :- [:map-of :string ::schemas.ir/column]
    expr    :- :string]
   (or (get columns expr)
       (some (fn [[column-name column]]
@@ -81,12 +74,12 @@
                 column))
             columns)))
 
-(mu/defn resolve-metric :- [:or ::resolved/metric ::ir/unsupported]
+(mu/defn resolve-metric :- [:or ::schemas.resolved/metric ::schemas.ir/unsupported]
   "Resolve one IR metric against the IR `semantic-models` (keyed by name) and `config`, or explain why it cannot be a
   Metabase metric yet."
-  [config          :- ::resolved/config
-   semantic-models :- [:map-of :string ::ir/semantic-model]
-   {:keys [agg expr agg-params non-additive-dimension filters semantic-model] :as metric} :- ::ir/metric]
+  [config          :- ::schemas.resolved/config
+   semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
+   {:keys [agg expr agg-params non-additive-dimension filters semantic-model] :as metric} :- ::schemas.ir/metric]
   (let [unsupported (fn [reason]
                       {:name      (:name metric)
                        :unique-id (:unique-id metric)
@@ -145,11 +138,11 @@
       (assoc resolved :field {:ref       (conj source-table (:name column))
                               :base-type base-type}))))
 
-(mu/defn resolve-manifest :- ::resolved/manifest
+(mu/defn resolve-manifest :- ::schemas.resolved/manifest
   "Resolve every metric in the IR. Unsupported metrics from the parse stage are carried over, so the result's
   `:unsupported` is the complete list for the run."
-  [config :- ::resolved/config
-   {:keys [semantic-models metrics unsupported source]} :- ::ir/manifest]
+  [config                                               :- ::schemas.resolved/config
+   {:keys [semantic-models metrics unsupported source]} :- ::schemas.ir/manifest]
   (let [{resolved false, failed true} (->> metrics
                                            (map #(resolve-metric config semantic-models %))
                                            (group-by #(contains? % :reason)))]

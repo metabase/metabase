@@ -21,8 +21,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(set! *warn-on-reflection* true)
-
 (mr/def ::entity
   "A serdes entity: a map carrying `:serdes/meta`, as [[serdes/storable]] writes it."
   [:map

@@ -28,8 +28,6 @@
         (json/decode r))
       dbt-manifest/decode-manifest))
 
-;;; ------------------------------------------------------ semantic models ------------------------------------------------------
-
 (mu/defn- parse-relation :- ::ir/relation
   [{:keys [database schema_name alias]} :- ::dbt-manifest/node-relation]
   {:database database
@@ -96,8 +94,6 @@
      :entities                   (mapv parse-entity entities)
      :dimensions                 (mapv parse-dimension dimensions)
      :measures                   (u/index-by :name (map #(parse-measure default-agg-time-dimension %) measures))}))
-
-;;; ----------------------------------------------------------- metrics -----------------------------------------------------------
 
 (mu/defn- filter-templates :- [:sequential :string]
   [filter-intersection :- ::dbt-manifest/filter]
@@ -169,8 +165,6 @@
             :fill-nulls-with   (or (:fill_nulls_with type_params) (:fill_nulls_with input-measure))
             :join-to-timespine (boolean (or (:join_to_timespine type_params) (:join_to_timespine input-measure)))
             :meta              metric-meta})))
-
-;;; ----------------------------------------------------------- manifest -----------------------------------------------------------
 
 (mu/defn parse-manifest :- ::ir/manifest
   "Parse a decoded manifest (see [[read-manifest]]) into the IR. Metrics that cannot be parsed land in `:unsupported`

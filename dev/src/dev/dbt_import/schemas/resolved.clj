@@ -6,6 +6,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
+(mr/def ::config.base-types
+  [:map-of :string ::lib.schema.common/base-type])
+
 (mr/def ::config
   [:map
    ;; `:databases` maps the warehouse database name as dbt knows it (`node_relation.database`) to the name of the
@@ -22,7 +25,7 @@
    ;;
    ;; TODO (Cam 2026-10-22) -- I don't think we need or WANT this, drivers should have complete mappings of all
    ;; database types and if we're missing any we should add them there.
-   [:base-types      {:optional true} [:map-of :string ::lib.schema.common/base-type]]
+   [:base-types      {:optional true} ::config.base-types]
    ;; `:collection-name` names the collection the metrics are written to.
    [:collection-name {:optional true} :string]])
 
