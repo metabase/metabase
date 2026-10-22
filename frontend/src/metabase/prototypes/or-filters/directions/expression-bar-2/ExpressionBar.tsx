@@ -282,7 +282,7 @@ export function ExpressionBar({
           ref={inputRef}
           className={cx(S.input, {
             [S.inputInline]: caret < tokens.length,
-            [S.inputInlineEmpty]: caret < tokens.length && text.length === 0,
+            [S.inputEmpty]: text.length === 0,
           })}
           // Between tokens the input hugs its text and takes no space while empty, so
           // moving the caret never shifts the tokens. The active Gap shows where it sits.
@@ -513,7 +513,7 @@ function FilterTokenView({
       onChange={setIsOpened}
     >
       <Popover.Target>
-        <Box component="span" className={className}>
+        <Box component="span" className={cx(S.filterToken, className)}>
           <TokenPill
             onClick={() => setIsOpened((opened) => !opened)}
             onRemove={onRemove}
