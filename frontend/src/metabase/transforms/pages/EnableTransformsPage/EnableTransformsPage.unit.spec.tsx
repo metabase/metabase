@@ -49,8 +49,8 @@ const ANALYSTS_AND_ADMINS_COPY =
 
 describe("EnableTransformsPage", () => {
   describe("Permissioned card copy", () => {
-    it("shows admins-only copy on OSS", () => {
-      setup({ tokenFeatures: {} });
+    it("shows admins-only copy without advanced permissions", () => {
+      setup({ tokenFeatures: { advanced_permissions: false } });
 
       expect(screen.getByText(ADMINS_ONLY_COPY)).toBeInTheDocument();
       expect(
@@ -58,7 +58,7 @@ describe("EnableTransformsPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows analysts-and-admins copy on Pro self-hosted", () => {
+    it("shows analysts-and-admins copy with advanced permissions", () => {
       setup({ tokenFeatures: { advanced_permissions: true } });
 
       expect(screen.getByText(ANALYSTS_AND_ADMINS_COPY)).toBeInTheDocument();

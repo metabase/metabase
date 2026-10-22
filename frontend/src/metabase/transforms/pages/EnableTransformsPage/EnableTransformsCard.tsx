@@ -2,8 +2,7 @@ import { jt, t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
-import { useSelector } from "metabase/redux";
-import { getPlan, getSetting, isProPlan } from "metabase/settings";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -33,10 +32,8 @@ export function EnableTransformsCard({
   const { data: databases } = useListDatabasesQuery();
   const hasDbThatSupportsTransforms =
     databases?.data.some(doesDatabaseSupportTransforms) ?? false;
-  const plan = useSelector((state) =>
-    getPlan(getSetting(state, "token-features")),
-  );
-  const permissionsDescription = isProPlan(plan)
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
+  const permissionsDescription = hasAdvancedPermissions
     ? t`Only Analysts and Admins can create and run transforms`
     : t`Only Admins can create and run transforms`;
 

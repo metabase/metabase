@@ -2,9 +2,8 @@ import { c, t } from "ttag";
 
 import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { getPlan, getSetting } from "metabase/settings";
 
 export const UpsellUploads = ({ location }: { location: string }) => {
   const campaign = "manage-uploads";
@@ -12,13 +11,9 @@ export const UpsellUploads = ({ location }: { location: string }) => {
     campaign,
     location,
   });
-  const plan = useSelector((state) =>
-    getPlan(getSetting(state, "token-features")),
-  );
+  const hasUploadManagement = useHasTokenFeature("upload_management");
 
-  const showUpsell = plan === "oss" || plan === "starter";
-
-  if (!showUpsell) {
+  if (hasUploadManagement) {
     return null;
   }
 

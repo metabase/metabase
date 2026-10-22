@@ -258,6 +258,8 @@ export type GdrivePayload = {
   error?: string;
 };
 
+// Values of the `features` array in the admin-only `token-status` setting: raw strings from the store.
+// Not exhaustive: the store can send values that aren't listed here.
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -334,18 +336,22 @@ export type DayOfWeekId =
   | "friday"
   | "saturday";
 
+// Keys of the public `token-features` setting, mirroring `-token-features` in premium_features/settings.clj.
+// If Starter tokens carry a new feature, also add it to STARTER_FEATURES in metabase/settings/plan.ts.
 export const tokenFeatures = [
   "attached_dwh",
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
   "cloud_custom_smtp",
+  "config_text_file",
   "content_diagnostics",
   "content_translation",
   "content_verification",
   "custom-viz",
   "custom-viz-available",
   "data-complexity-score",
+  "database_auth_providers",
   "disable_password_login",
   "embedding",
   "embedding_sdk",
@@ -356,6 +362,7 @@ export const tokenFeatures = [
   "metabot-v3",
   "multi-factor-auth",
   "official_collections",
+  "query_reference_validation",
   "sandboxes",
   "scim",
   "sso_google",
@@ -363,7 +370,6 @@ export const tokenFeatures = [
   "sso_ldap",
   "sso_oidc",
   "sso_saml",
-  "sso_slack",
   "session_timeout_config",
   "whitelabel",
   "serialization",

@@ -10,7 +10,7 @@ import {
 import { RemoteSyncSettingsPage } from "./RemoteSyncSettingsPage";
 
 describe("RemoteSyncSettingsPage", () => {
-  it("should show the remote sync upsell when the feature is off and plan is not Pro", () => {
+  it("should show the remote sync upsell when remote sync is not enabled", () => {
     const settings = createMockSettings({
       "token-features": createMockTokenFeatures({}),
     });

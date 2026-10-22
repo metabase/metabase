@@ -562,6 +562,21 @@ describe("scenarios > admin > license and billing", () => {
         .should("have.prop", "tagName", "A");
     });
   });
+
+  describe("on a Starter instance", () => {
+    beforeEach(() => {
+      H.activateToken("starter");
+    });
+
+    it("should tag the upgrade link with the Starter plan", () => {
+      cy.visit("/admin/settings/license");
+
+      cy.findByTestId("license-and-billing-content")
+        .findByRole("link", { name: /our other paid plans/ })
+        .should("have.attr", "href")
+        .and("include", "source_plan=starter");
+    });
+  });
 });
 
 describe("scenarios > admin > localization", () => {
