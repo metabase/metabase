@@ -148,36 +148,39 @@
               (testing "instructions mention edit_sql_query as alternative"
                 (is (str/includes? output "this tool or edit_sql_query again"))))))))))
 
-(deftest edit-sql-query-viz-part-test
-  (testing "edit_sql_query emits a generated_entity card unless an open code-editor buffer wins"
+(deftest edit-and-replace-sql-query-viz-part-test
+  (testing "edit_sql_query and replace_sql_query emit a generated_entity card unless a code-editor buffer is open"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {:as db} {:engine :h2}]
           (mt/with-db db
             (let [mp       (mt/metadata-provider)
                   query-id "test-inline-q"
-                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)
-                  run      (fn [context]
-                             (let [memory (atom {:state   {:queries {query-id query}}
-                                                 :context context})]
-                               (binding [shared/*memory-atom* memory]
-                                 (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "edit_sql_query"
-                                                  {:query_id  query-id
-                                                   :checklist "- [x] checked"
-                                                   :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
-                                                   :title     "Results"}))))]
-              (testing "no code-editor buffer -> a single generated_entity (native) part"
-                (let [parts  (:data-parts (run {}))
-                      entity (:data (first parts))]
-                  (is (= 1 (count parts)))
-                  (is (= "generated_entity" (:data-type (first parts))))
-                  (is (= "card" (:type entity)))
-                  (is (= :native (get-in entity [:query :query :type])))))
-              (testing "an open code-editor buffer wins"
-                (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                  :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
-                  (is (= 1 (count parts)))
-                  (is (= "code_edit" (:data-type (first parts)))))))))))))
+                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)]
+              (doseq [[tool-name args] [["edit_sql_query" {:edits [{:old_string "SELECT *" :new_string "SELECT id"}]}]
+                                        ["replace_sql_query" {:new_query "SELECT id FROM t"}]]
+                      :let [run (fn [context]
+                                  (let [memory (atom {:state   {:queries {query-id query}}
+                                                      :context context})]
+                                    (binding [shared/*memory-atom* memory]
+                                      (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
+                                                       (assoc args
+                                                              :query_id  query-id
+                                                              :checklist "- [x] checked"
+                                                              :title     "Results")))))]]
+                (testing tool-name
+                  (testing "a single generated_entity part carries a legacy native query when no code-editor buffer is open"
+                    (let [parts  (:data-parts (run {}))
+                          entity (:data (first parts))]
+                      (is (= 1 (count parts)))
+                      (is (= "generated_entity" (:data-type (first parts))))
+                      (is (= "card" (:type entity)))
+                      (is (= :native (get-in entity [:query :query :type])))))
+                  (testing "an open code-editor buffer receives a code_edit part"
+                    (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
+                                                                      :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
+                      (is (= 1 (count parts)))
+                      (is (= "code_edit" (:data-type (first parts)))))))))))))))
 
 (deftest edit-and-replace-sql-query-unexpected-error-test
   (mt/with-dynamic-fn-redefs [sql.edit/edit-sql-query (fn [_] (throw (ex-info "boom" {})))

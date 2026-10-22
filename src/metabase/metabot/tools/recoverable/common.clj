@@ -15,7 +15,7 @@
   "The entity kinds [[not-found!]] can report on. A closed set because the kind reaches the model as
   a noun in English — an unexpected keyword would read as gibberish, and the payload check turns
   that into an `:internal` error instead."
-  [:enum :card :chart :collection :dashboard :database :document :field :metric :model :question
+  [:enum :card :chart :collection :dashboard :database :document :field :metric :model :query :question
    :segment :measure :snippet :table :timeline :transform])
 
 (defrecoverable not-found!
