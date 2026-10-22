@@ -105,7 +105,7 @@ describe("buildSql", () => {
 
     it("places people by their attribute value as of their start", () => {
       const sql = getCohortsSql({
-        breakout: "plan",
+        breakout: { type: "property", column: "plan" },
         granularity: "month",
       });
 

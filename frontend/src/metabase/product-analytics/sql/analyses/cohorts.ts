@@ -1,4 +1,10 @@
-import type { AnalysisSpec, Granularity, Period } from "../../spec/types";
+import type {
+  AnalysisSpec,
+  CohortGroup,
+  Granularity,
+  Period,
+} from "../../spec/types";
+import { lit } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
 import type { Cte, QueryPlan } from "../compose";
 
@@ -27,6 +33,16 @@ const ADD_PERIODS: Record<Period, string> = {
   month: "addMonths",
 };
 
+/** The labels of the groups an event's person is in, in the groups' order. */
+const groupLabelsSql = (groups: readonly CohortGroup[]): string => {
+  const labels = groups.map(({ label, segment }) =>
+    segment === undefined
+      ? lit(label)
+      : `if(${flagSql(segment.flag)} = ${segment.isMember ? 1 : 0}, ${lit(label)}, '')`,
+  );
+  return `arrayFilter(label -> label != '', [${labels.join(", ")}])`;
+};
+
 export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   const cohorts = spec.cohorts;
   if (!cohorts) {
@@ -35,6 +51,9 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
 
   const period = periodOf(spec);
   const isByAttribute = cohorts.by === "attribute";
+  const isBySegments = cohorts.by === "segments";
+  const isGrouped = isByAttribute || isBySegments;
+  const groups = cohorts.groups ?? [];
   const warnings: string[] = [];
 
   const base = scopedEvents(spec, undefined, [
@@ -54,6 +73,9 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
           },
         ]
       : []),
+    ...(isBySegments
+      ? [{ as: "segment_cohorts", sql: groupLabelsSql(groups) }]
+      : []),
   ]);
   warnings.push(...base.warnings);
 
@@ -66,6 +88,8 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
     body: [
       "SELECT",
       "  actor,",
+      // A person's segments are the same on every event.
+      ...(isBySegments ? ["  any(segment_cohorts) AS segment_cohorts,"] : []),
       "  minIf(ts, is_start) AS start_ts",
       "FROM scoped_events",
       "GROUP BY actor",
@@ -76,33 +100,47 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   // An attribute that changes, like a plan, is read as of the start: its
   // latest value then would favor the people who stayed long enough to change it.
   ctes.push(
-    isByAttribute
+    isBySegments
       ? {
           name: "starts",
-          note: `each ${spec.grain} placed with their latest ${COHORT_ATTRIBUTE_COLUMN} as of their start`,
-          deps: ["scoped_events", "first_starts"],
-          body: [
-            "SELECT",
-            "  f.actor AS actor,",
-            "  argMaxIf(e.attribute_value, e.ts, e.ts <= f.start_ts AND e.attribute_value != '') AS cohort,",
-            `  ${startOf(period, "f.start_ts")} AS started`,
-            "FROM first_starts AS f",
-            "INNER JOIN scoped_events AS e ON e.actor = f.actor",
-            "GROUP BY f.actor, f.start_ts",
-          ].join("\n"),
-        }
-      : {
-          name: "starts",
-          note: `each ${spec.grain} placed in the ${period} they started in`,
+          note: `each ${spec.grain} placed in every cohort they're in, from their start`,
           deps: ["first_starts"],
           body: [
             "SELECT",
             "  actor,",
-            `  ${startOf(period, "start_ts")} AS cohort,`,
-            "  cohort AS started",
+            "  cohort,",
+            `  ${startOf(period, "start_ts")} AS started`,
             "FROM first_starts",
+            "ARRAY JOIN segment_cohorts AS cohort",
           ].join("\n"),
-        },
+        }
+      : isByAttribute
+        ? {
+            name: "starts",
+            note: `each ${spec.grain} placed with their latest ${COHORT_ATTRIBUTE_COLUMN} as of their start`,
+            deps: ["scoped_events", "first_starts"],
+            body: [
+              "SELECT",
+              "  f.actor AS actor,",
+              "  argMaxIf(e.attribute_value, e.ts, e.ts <= f.start_ts AND e.attribute_value != '') AS cohort,",
+              `  ${startOf(period, "f.start_ts")} AS started`,
+              "FROM first_starts AS f",
+              "INNER JOIN scoped_events AS e ON e.actor = f.actor",
+              "GROUP BY f.actor, f.start_ts",
+            ].join("\n"),
+          }
+        : {
+            name: "starts",
+            note: `each ${spec.grain} placed in the ${period} they started in`,
+            deps: ["first_starts"],
+            body: [
+              "SELECT",
+              "  actor,",
+              `  ${startOf(period, "start_ts")} AS cohort,`,
+              "  cohort AS started",
+              "FROM first_starts",
+            ].join("\n"),
+          },
   );
 
   // Returns only count inside the date range, so an actor's offsets stop at
@@ -133,12 +171,19 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       : "furthest >= offset";
 
   const percent = spec.output.cohortsDisplay !== "counts";
-  const isAverage = !isByAttribute && spec.output.cohortsLines === "average";
+  const isAverage = !isGrouped && spec.output.cohortsLines === "average";
   const groupColumns = isAverage ? [] : ["cohort"];
   const dateColumn =
-    !isByAttribute && !isAverage
+    !isGrouped && !isAverage
       ? [`  ${ADD_PERIODS[period]}(cohort, offset) AS date,`]
       : [];
+  // Segment cohorts keep their groups' order rather than sorting by name.
+  const orderColumns = isBySegments
+    ? [
+        `indexOf([${groups.map(({ label }) => lit(label)).join(", ")}], cohort)`,
+        "offset",
+      ]
+    : [...groupColumns, "offset"];
 
   return {
     ctes,
@@ -157,11 +202,11 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       "FROM offsets",
       "ARRAY JOIN range(toUInt32(greatest(observable + 1, 0))) AS offset",
       `GROUP BY ${[...groupColumns, "offset"].join(", ")}`,
-      `ORDER BY ${[...groupColumns, "offset"].join(", ")}`,
+      `ORDER BY ${orderColumns.join(", ")}`,
     ].join("\n"),
     warnings: [
       ...warnings,
-      isByAttribute || isAverage
+      isGrouped || isAverage
         ? "Each person's clock starts at their first starting event in the date range. A period only counts the people who have reached it."
         : "Later cohorts have had less time to come back, so the far columns thin out — that is the triangle, not missing data.",
     ],

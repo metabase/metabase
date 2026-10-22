@@ -14,6 +14,7 @@ import type { SettingDefinition } from "../settings/types";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Grain, Granularity } from "../spec/types";
 
+import { isBreakout } from "./breakout";
 import {
   getColumnOptions,
   getDefaultColumn,
@@ -94,12 +95,20 @@ const breakoutSetting = (
     widget: BreakoutMenu,
     getDefault: () => null,
     isValid: (value, context) =>
-      value === null || (isEnabled && isUserPropertyColumn(context, value)),
+      value === null || (isEnabled && isBreakoutValid(context, value)),
     getHidden: () => !isEnabled,
     getProps: (context, settings) => ({
       columns: getUserPropertyOptions(context, getColumnRoles(settings)),
+      usersTableId: context.usersTable?.table.id,
     }),
   });
+
+/** People segments live on the users table, so cohorts need one linked. */
+const isBreakoutValid = (context: AnalysisContext, value: unknown) =>
+  isBreakout(value) &&
+  (value.type === "property"
+    ? isUserPropertyColumn(context, value.column)
+    : context.usersTable !== undefined);
 
 /**
  * Settings every analysis has: the toolbar controls and the column roles.

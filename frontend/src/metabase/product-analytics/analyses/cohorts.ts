@@ -9,12 +9,16 @@ import {
   getRetentionCurvesSettings,
 } from "../cohorts/retention-curves";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import type { EventFlags } from "../events/types";
+import type { PeopleSegmentRef } from "../segments/types";
 import { withWidgetProps } from "../settings/with-widget-props";
+import type { CohortGroup, CohortsSpec } from "../spec/types";
 import {
   COHORT_ATTRIBUTE_COLUMN,
   toCohortPeriod,
 } from "../sql/analyses/cohorts";
 
+import type { Breakout } from "./breakout";
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
@@ -44,7 +48,10 @@ const X_AXES: readonly CohortsSettings["cohorts.x_axis"][] = [
   "date",
 ];
 
-/** Broken out, cohorts are a property's values rather than start periods. */
+/**
+ * Broken out, cohorts are a property's values or people segments rather
+ * than start periods.
+ */
 const isGrouped = (settings: Partial<CohortsSettings>) =>
   (settings.breakout ?? null) !== null;
 
@@ -78,6 +85,36 @@ const getView = (settings: CohortsSettings): RetentionCurvesView => {
     xAxis: canShowDates(settings) ? settings["cohorts.x_axis"] : "sinceStart",
   };
 };
+
+const getCohortsBy = (breakout: Breakout | null): CohortsSpec["by"] => {
+  switch (breakout?.type) {
+    case undefined:
+      return "startDate";
+    case "property":
+      return "attribute";
+    case "cohorts":
+      return "segments";
+  }
+};
+
+/** Everyone first, then each segment beside the people outside it. */
+const getSegmentGroups = (
+  segments: readonly PeopleSegmentRef[],
+  events: EventFlags,
+): CohortGroup[] => [
+  { label: t`Everyone` },
+  ...segments.flatMap((segment): CohortGroup[] => {
+    const flag = events.segmentFlagFor(segment);
+    return [
+      { label: segment.label, segment: { flag, isMember: true } },
+      {
+        label: c("{0} is the name of a group of people")
+          .t`Not in ${segment.label}`,
+        segment: { flag, isMember: false },
+      },
+    ];
+  }),
+];
 
 const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   ...commonSettings({
@@ -222,12 +259,17 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
   toSpec: (settings, events) => {
     const start = settings["cohorts.start"];
     const returning = settings["cohorts.return"];
+    const { breakout } = settings;
     return ready({
       ...getCommonSpec("cohorts", settings),
       cohorts: {
         // Empty means any event starts the clock, or counts as coming back.
         start: start === null ? undefined : { flag: events.flagFor(start) },
-        by: isGrouped(settings) ? "attribute" : "startDate",
+        by: getCohortsBy(breakout),
+        groups:
+          breakout?.type === "cohorts"
+            ? getSegmentGroups(breakout.segments, events)
+            : undefined,
         return:
           returning === null ? undefined : { flag: events.flagFor(returning) },
         returnRule: settings["cohorts.return_rule"],
@@ -238,18 +280,16 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
       },
     });
   },
-  getExtraColumns: (settings, context) => {
-    const column = settings.breakout;
-    return column === null
-      ? []
-      : [
+  getExtraColumns: ({ breakout }, context) =>
+    breakout?.type === "property"
+      ? [
           {
             as: COHORT_ATTRIBUTE_COLUMN,
-            column,
+            column: breakout.column,
             from: context.usersTable !== undefined ? "users" : "events",
           },
-        ];
-  },
+        ]
+      : [],
   getDisplay: (settings) => {
     if (isTable(settings)) {
       return "cohort";

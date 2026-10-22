@@ -126,6 +126,13 @@ export interface LifecycleSpec {
   hasFirstSeen: boolean;
 }
 
+/** A cohort of people segment members, or of everyone. */
+export interface CohortGroup {
+  label: string;
+  /** Undefined: everyone. */
+  segment?: { flag: string; isMember: boolean };
+}
+
 export interface CohortsSpec {
   /**
    * What starts an actor's clock: their first time doing it in the date
@@ -133,11 +140,13 @@ export interface CohortsSpec {
    */
   start?: FlagRef;
   /**
-   * What places an actor in a cohort: the period they started in, or an
-   * attribute's value as of their start. Either way, period 0 is the period
-   * their clock started; see `planCohorts`.
+   * What places an actor in a cohort: the period they started in, an
+   * attribute's value as of their start, or the people segments they're in.
+   * Either way, period 0 is the period their clock started; see `planCohorts`.
    */
-  by: "startDate" | "attribute";
+  by: "startDate" | "attribute" | "segments";
+  /** When `by` is "segments", the cohorts in order. Actors can be in several. */
+  groups?: CohortGroup[];
   /** What counts as coming back. Undefined: any event does. */
   return?: FlagRef;
   returnRule: "exactly" | "onOrAfter";

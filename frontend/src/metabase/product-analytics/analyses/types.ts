@@ -23,6 +23,8 @@ import type {
 } from "../spec/types";
 import type { DrillPoint } from "../sql/compose";
 
+import type { Breakout } from "./breakout";
+
 /** The table the person column links to, with its metadata loaded. */
 export type UsersTable = {
   link: UsersTableLink;
@@ -49,11 +51,8 @@ export type CommonSettings = ColumnRoleSettings & {
   /** A serialized date filter, e.g. "past90days". See `date-range.ts`. */
   date_range: string;
   granularity: Granularity;
-  /**
-   * A users table column when there is a users table, else an event table
-   * column. Null: no breakout. Only analyses that opt in read it.
-   */
-  breakout: string | null;
+  /** Null: no breakout. Only analyses that opt in read it. */
+  breakout: Breakout | null;
   filters: AnalysisFilters;
 };
 

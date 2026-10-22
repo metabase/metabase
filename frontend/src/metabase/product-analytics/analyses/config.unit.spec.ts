@@ -320,13 +320,16 @@ describe("analysis settings", () => {
         kind: "cohorts",
         table: EVENT_TABLE,
         usersTable: USERS_TABLE_CONTEXT,
-        stored: { breakout: "country" },
+        stored: { breakout: { type: "property", column: "country" } },
       });
 
       expect(getProps("breakout")).toMatchObject({
         columns: [{ value: "country" }, { value: "plan" }],
       });
-      expect(computed["breakout"]).toBe("country");
+      expect(computed["breakout"]).toEqual({
+        type: "property",
+        column: "country",
+      });
       expect(extraColumns).toEqual([
         { as: "cohort_attribute", column: "country", from: "users" },
       ]);
@@ -337,7 +340,7 @@ describe("analysis settings", () => {
         kind: "cohorts",
         table: EVENT_TABLE,
         usersTable: USERS_TABLE_CONTEXT,
-        stored: { breakout: "event_name" },
+        stored: { breakout: { type: "property", column: "event_name" } },
       });
 
       expect(computed["breakout"]).toBeNull();
@@ -347,7 +350,7 @@ describe("analysis settings", () => {
       const { specResult } = setup({
         kind: "cohorts",
         table: EVENT_TABLE,
-        stored: { breakout: "plan" },
+        stored: { breakout: { type: "property", column: "plan" } },
       });
 
       expect(getReadySpec(specResult).cohorts).toMatchObject({
@@ -427,7 +430,7 @@ describe("analysis settings", () => {
         table: EVENT_TABLE,
         stored: {
           "cohorts.view": "curves",
-          breakout: "plan",
+          breakout: { type: "property", column: "plan" },
           "cohorts.lines": "average",
         },
       });
@@ -453,7 +456,9 @@ describe("analysis settings", () => {
         true,
       );
       expect(isDateAxisHidden({ "cohorts.lines": "average" })).toBe(true);
-      expect(isDateAxisHidden({ breakout: "plan" })).toBe(true);
+      expect(
+        isDateAxisHidden({ breakout: { type: "property", column: "plan" } }),
+      ).toBe(true);
     });
 
     it("plots each cohort by date, and stacks counts", () => {
