@@ -641,7 +641,7 @@
 (defn- fetch-collection-items [id-str query-params]
   (documents/with-content-gate-cache
     (let [coll-id        (parse-long id-str)
-          coll           (readable-collection id-str)
+          coll           (when-not (= id-str "root") (readable-collection id-str))
           cards          (->> (metabot.db/cards-in-collection coll-id)
                               (filter mi/can-read?))
           dashboards     (->> (metabot.db/dashboards-in-collection coll-id)
@@ -660,7 +660,7 @@
       (list-result :collection-items items query-params))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
-  (let [coll    (readable-collection id-str)
+  (let [coll    (when-not (= id-str "root") (readable-collection id-str))
         subs    (->> (if (= id-str "root")
                        (metabot.db/navigable-collections false)
                        (metabot.db/unarchived-collections-at-location (collection/children-location coll)))

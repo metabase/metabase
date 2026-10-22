@@ -2100,8 +2100,14 @@
           (is (set/subset? ids (set (map (juxt :type :id) (if (= suffix "") [structured] (:items structured)))))))))
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-current-user (mt/user->id :rasta)
-        (doseq [suffix ["" "/items" "/subcollections"]]
-          (is (error? (read-uris {:uris [(str "metabase://collection/root" suffix)]}))))))))
+        (is (error? (read-uris {:uris ["metabase://collection/root"]})))
+        (doseq [suffix ["/items" "/subcollections"]]
+          (let [ids (->> (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+                         :resources first :content :structured-output :items
+                         (map (juxt :type :id))
+                         set)]
+            (is (contains? ids ["collection" coll-id]))
+            (is (empty? (set/intersection ids #{["question" card-id] ["dashboard" dash-id] ["document" doc-id]})))))))))
 
 (deftest root-navigation-excludes-other-namespaces-and-trash-test
   (mt/with-temp [:model/Collection {root-id :id} {:name "Default root" :location "/"}
