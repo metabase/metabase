@@ -173,12 +173,22 @@
               (assoc :embedding/auth-method "api-key")))))))
 
 (mr/def ::oauth-bearer
-  "Fns that authenticate a request by its OAuth bearer token, and the scope that grants full access."
+  "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, and the request
+  paths where a bearer token is the only credential accepted."
   [:map
    {:closed true}
    [:extract-token     ifn?]
    [:resolve-token     ifn?]
-   [:full-access-scope ms/NonBlankString]])
+   [:full-access-scope ms/NonBlankString]
+   [:bearer-only-paths [:set [:re #"^/"]]]])
+
+(defn- bearer-only-path?
+  "Whether request `path` is one of `bearer-only-paths` or below one. Compares paths, never a host, and follows segment
+  boundaries, so `/api/mcpfoo` is not below `/api/mcp`."
+  [bearer-only-paths path]
+  (boolean (and path
+                (some #(or (= path %) (str/starts-with? path (str % "/")))
+                      bearer-only-paths))))
 
 (mr/def ::mcp-ui-credentials
   "Fns that authenticate a request by the credential an MCP App UI carries."
@@ -266,17 +276,24 @@
                      :mcp-ui-credential claims
                      :embedding/auth-method "mcp-ui")))))
 
-(defn- merge-current-user-info
+(defn- credentials
+  "The user info from the first credential on `request` that authenticates: session, then API key, then OAuth bearer
+  token, then MCP UI credential."
   [{:keys [oauth-bearer mcp-ui-credentials]}
-   {:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
+   {:keys [metabase-session-key anti-csrf-token], {:strs [x-api-key]} :headers, :as request}]
+  (or (current-user-info-for-session metabase-session-key anti-csrf-token)
+      (current-user-info-for-api-key x-api-key)
+      ;; bearer tokens below also carry `:token-scopes`
+      (current-user-info-for-oauth-token oauth-bearer request)
+      (current-user-info-for-mcp-ui-credential mcp-ui-credentials request)))
+
+(defn- merge-current-user-info
+  [{:keys [oauth-bearer] :as options} {:keys [uri], {:strs [x-metabase-locale]} :headers, :as request}]
   (merge
    request
-   ;; order of authentication sources is important, bearer and mcp ui credentials last
-   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-       (current-user-info-for-api-key x-api-key)
-       ;; bearer tokens below also carry `:token-scopes`
-       (current-user-info-for-oauth-token oauth-bearer request)
-       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
+   (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
+     (current-user-info-for-oauth-token oauth-bearer request)
+     (credentials options request))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
@@ -286,7 +303,7 @@
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
   `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
   Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
-  `:mcp-ui-credentials` fns.
+  `:mcp-ui-credentials` fns. On a path in `:bearer-only-paths`, or below one, only a bearer token authenticates.
 
   `:metabase/authed-session-key-hash` is set only when it was the session that authenticated the request, and carries
   the `key_hashed` value of the one that did."

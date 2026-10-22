@@ -16,6 +16,20 @@ import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, Table } from "./table";
 import type { Transform } from "./transform";
 
+export type GetDependencyCountsRequest = {
+  "breaking-types"?: DependencyType[];
+  "breaking-card-types"?: CardType[];
+  "breaking-include-personal-collections"?: boolean;
+  "unreferenced-types"?: DependencyType[];
+  "unreferenced-card-types"?: CardType[];
+  "unreferenced-include-personal-collections"?: boolean;
+};
+
+export type DependencyCountsResponse = {
+  breaking: number;
+  unreferenced: number;
+};
+
 export type DependencyId = number;
 
 export const DEPENDENCY_TYPES = [

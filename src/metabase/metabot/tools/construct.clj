@@ -10,9 +10,11 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.util :as lib.util]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
@@ -26,13 +28,17 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -719,19 +725,30 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
-(defn- as-agent-input-error
-  "Wrap `e` as an agent-input error.
+(defn database-error?
+  "Returns true for database failures that must not be relayed as input errors."
+  [e]
+  (let [{:keys [status-code agent-error? error]} (ex-data e)
+        causes (u/full-exception-chain e)]
+    (boolean
+     (and (not (and status-code (<= 400 status-code 499)))
+          (or (some #(instance? SQLException %) causes)
+              (and (not (and (nil? status-code)
+                             (or agent-error? (tools/pipeline-error-code error))))
+                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
 
-  Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
-  HTTP callers additionally need a status code; default representation/repair failures to
-  400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
-  Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+(defn- as-agent-input-error
+  "Return database failures unchanged; wrap other exceptions as agent-input errors.
+
+  The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
+  callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
-  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-        data   (cond-> base
-                 (nil? (:status-code base)) (assoc :status-code 400))]
-    (ex-info (ex-message e) data e)))
+  (if (database-error? e)
+    e
+    (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+          data   (cond-> base
+                   (nil? (:status-code base)) (assoc :status-code 400))]
+      (ex-info (ex-message e) data e))))
 
 (defn- not-runnable-problem
   "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add
@@ -772,6 +789,97 @@
                     (tru "the query does not match the query builder''s schema"))
           (not-any? not-runnable-problem errors)
           (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
+
+(defn- incompatible-metrics
+  "Return the required sources of incompatible metrics in the first stage, sorted by metric ID.
+
+  Return nil when all referenced metrics are compatible. A metric with an unreadable definition has a nil
+  requirement and is reported on every source. Classification follows
+  [[metabase.metabot.tools.util/metric-required-source]].
+
+  Only source mismatches in the first stage's aggregations are checked. Metrics in later stages, joins, or other
+  clauses still reach the query processor, as do other errors such as archived metrics."
+  [mp query]
+  (let [referenced (into #{}
+                         (match/match-many (lib/aggregations query 0)
+                           [:metric _ (id :guard pos-int?)]
+                           id))]
+    (when (seq referenced)
+      (let [stage-card-id (lib.util/source-card-id query)
+            _             (lib.metadata/bulk-metadata mp :metadata/card (cond-> referenced
+                                                                          stage-card-id (conj stage-card-id)))
+            ;; Use `::unresolved` so a missing source card cannot match a metric whose table ID is nil.
+            stage-table-id (if stage-card-id
+                             (or (:table-id (lib.metadata/card mp stage-card-id)) ::unresolved)
+                             (lib.util/source-table-id query))]
+        (not-empty
+         (into (sorted-map)
+               (keep (fn [metric-id]
+                       (let [required    (tools.u/metric-required-source (lib.metadata/card mp metric-id))
+                             compatible? (and required
+                                              (tools.u/metric-compatible-with-stage?
+                                               required
+                                               {:stage-card-id  stage-card-id
+                                                :stage-table-id stage-table-id}))]
+                         (when-not compatible?
+                           [metric-id required]))))
+               referenced))))))
+
+(defn- incompatible-metric-explanation
+  "Describe each incompatible metric and the source it requires.
+
+  Return `{:message ... :usable-sources {metric-id {:source-table id} | {:source-card id}}}`.
+  `required-by-metric-id` comes from [[incompatible-metrics]]; `mp` supplies the database name for portable FKs.
+  Include names and sources only when the current user may access them. `:usable-sources` identifies those same
+  sources by numeric ID."
+  [mp required-by-metric-id]
+  (let [metric-ids   (keys required-by-metric-id)
+        required     (vals required-by-metric-id)
+        source-cards (into #{} (keep #(when (= :card (:kind %)) (:card-id %))) required)
+        source-table-ids (into #{} (keep #(when (= :table (:kind %)) (:table-id %))) required)
+        ;; The metadata provider is not permission-aware; names and entity IDs need separate read checks.
+        readable     (tools.u/readable-source-cards (into (set metric-ids) source-cards))
+        db-name      (:name (lib.metadata/database mp))
+        table-id->fk (when (seq source-table-ids)
+                       (into {}
+                             (comp (filter mi/can-query?)
+                                   (map (fn [{:keys [id schema name]}] [id [db-name schema name]])))
+                             (metabot.db/table-schema-rows (vec source-table-ids))))
+        describe     (fn [metric-id]
+                       (let [r        (get required-by-metric-id metric-id)
+                             eid      (when (= :card (:kind r))
+                                        (:entity_id (get readable (:card-id r))))
+                             table-fk (when (= :table (:kind r))
+                                        (get table-id->fk (:table-id r)))]
+                         (str (pr-str (or (:name (get readable metric-id)) metric-id))
+                              (cond
+                                ;; An unreadable definition, or a multi-stage metric over a native source card.
+                                (or (nil? r)
+                                    (and (= :table (:kind r)) (nil? (:table-id r))))
+                                " (has no usable source)"
+
+                                table-fk
+                                (str " (needs source-table: " (json/encode table-fk) ")")
+
+                                eid
+                                (str " (needs source-card: " (pr-str eid) ")")
+
+                                :else
+                                " (defined on a source you do not have access to)"))))]
+    {:message        (str "These metrics cannot be used on this stage's source: "
+                          (str/join ", " (map describe metric-ids))
+                          ". "
+                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                          "or drop the metric and express the aggregation directly.")
+     :usable-sources (into {}
+                           (keep (fn [[metric-id r]]
+                                   (cond
+                                     (and (= :table (:kind r)) (contains? table-id->fk (:table-id r)))
+                                     [metric-id {:source-table (:table-id r)}]
+
+                                     (and (= :card (:kind r)) (contains? readable (:card-id r)))
+                                     [metric-id {:source-card (:card-id r)}])))
+                           required-by-metric-id)}))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -842,10 +950,7 @@
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
         checked     (check-source-table-query-permissions! mp parsed)]
-    ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
-    ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
-    ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
-    ;; them reach the tool wrapper with the flag set.
+    ;; Relay query-input errors while preserving database and permission failures.
     (try
       (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the
             ;; clause left alone - and `resolve-query` below resolves the query for real. A refusal
@@ -869,6 +974,15 @@
             ;; argument against the same schema.
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
+            ;; Check sources after schema validation so an incompatible metric produces a retryable error before execution.
+            _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
+                            (let [{:keys [message usable-sources]} (incompatible-metric-explanation mp bad)]
+                              (throw (ex-info message
+                                              {:agent-error?   true
+                                               :error          :incompatible-metric
+                                               :metric-ids     (vec (keys bad))
+                                               :usable-sources usable-sources
+                                               :status-code    400}))))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]
@@ -1002,14 +1116,7 @@
                              :chart-type
                              chart-type->keyword)
                          :table)
-          ;; The one place a representations-pipeline error is allowed to become something the
-          ;; model reads. A `:error` code the pipeline declares becomes that recoverable error with
-          ;; its recovery steps; anything else — a lib, toucan2 or JDBC failure that the pipeline's
-          ;; `as-agent-input-error` stamped `:agent-error?` onto without authoring a sentence for
-          ;; it — stays unrecoverable and ends the turn.
-          ;;
-          ;; `execute-representations-query` either throws or returns a structured output carrying
-          ;; both `:query-id` and `:query`, so there is nothing to branch on after it.
+          ;; Declared pipeline errors and refusals are recoverable; anything else ends the turn.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query)))
           ;; A query built only to be read needs run_query, so without it the chart is the one way
@@ -1040,7 +1147,7 @@
            :data-parts        [(streaming/viz-part
                                 {:entity-id   (:chart-id chart)
                                  :query-id    (:query-id structured)
-                                 :query       (links/->legacy-mbql (:query structured))
+                                 :query       (links/->frontend-query (:query structured))
                                  :display     chart-type
                                  :title       title
                                  :description description})]})))))
