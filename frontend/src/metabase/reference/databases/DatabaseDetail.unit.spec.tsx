@@ -62,7 +62,7 @@ describe("DatabaseDetail", () => {
     });
   });
 
-  it("leaves edit mode on cancel without saving and shows the original value on the next edit", async () => {
+  it("should let an admin start to edit and cancel without saving", async () => {
     setup({
       testDatabase: createMockDatabase({
         id: 1,
