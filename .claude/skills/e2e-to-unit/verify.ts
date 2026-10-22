@@ -18,8 +18,8 @@
  *   bun .claude/skills/e2e-to-unit/verify.ts [--base master]
  *     [--test "<spec>::<it title>"]... [--unit-spec <path>]...
  *     [--run <nightly run id>] [--boot-threshold 0.2] [--per-function 4]
- *     [--max-mutants 300] [--wrappers 4] [--exclude <path prefix>]...
- *     [--no-siblings]
+ *     [--mutate-ceiling 0.1] [--max-mutants 300] [--wrappers 4] [--exclude <path prefix>]...
+ *     [--pass-timeout 40] [--no-siblings]
  *     [--scope-only] [--no-confirm] [--out <report.md>] [--json <open-rows.json>]
  */
 import { execFileSync } from "node:child_process";
@@ -33,6 +33,7 @@ import {
   parseKey,
 } from "./verify/coverage";
 import {
+  DEFAULT_PASS_TIMEOUT_MS,
   chunk,
   colocatedSpecs,
   removeWrappers,
@@ -58,9 +59,12 @@ import {
 import {
   type FunctionNode,
   type Mutant,
+  type MutantPlan,
+  dealMutants,
   functionAtLine,
   mutantsForFunction,
   parseSource,
+  splitByShare,
   writeSchemata,
 } from "./verify/mutants";
 import {
@@ -78,10 +82,12 @@ interface Options {
   unitSpecs: string[];
   runId?: string;
   bootThreshold: number;
+  mutateCeiling: number;
   perFunction: number;
   maxMutants: number;
   wrappers: number;
   testTimeoutMs: number;
+  passTimeoutMs: number;
   exclude: string[];
   siblings: boolean;
   scopeOnly: boolean;
@@ -96,10 +102,12 @@ function parseArgs(argv: string[]): Options {
     tests: [],
     unitSpecs: [],
     bootThreshold: 0.2,
+    mutateCeiling: 0.1,
     perFunction: 4,
     maxMutants: 300,
     wrappers: 8,
     testTimeoutMs: 25000,
+    passTimeoutMs: DEFAULT_PASS_TIMEOUT_MS,
     exclude: ["frontend/src/metabase/ui/"],
     siblings: true,
     scopeOnly: false,
@@ -149,6 +157,12 @@ function parseArgs(argv: string[]): Options {
         break;
       case "--scope-only":
         options.scopeOnly = true;
+        break;
+      case "--mutate-ceiling":
+        options.mutateCeiling = Number(next(index++, flag));
+        break;
+      case "--pass-timeout":
+        options.passTimeoutMs = Number(next(index++, flag)) * 60 * 1000;
         break;
       case "--no-siblings":
         options.siblings = false;
@@ -305,8 +319,6 @@ function planMutants(
   functions: ScopedFunction[],
   options: Options,
 ) {
-  let nextId = 1;
-  const byFile = new Map<string, Mutant[]>();
   const sources = new Map<string, ReturnType<typeof parseSource>>();
   const rarestFirst = [...functions].sort(
     (a, b) =>
@@ -314,13 +326,21 @@ function planMutants(
       a.file.localeCompare(b.file) ||
       a.nightlyLine - b.nightlyLine,
   );
-  for (const scoped of rarestFirst) {
-    if (scoped.status !== "pending" || !scoped.node) {
-      continue;
-    }
-    if (nextId > options.maxMutants) {
-      scoped.status = "unmeasured";
-      scoped.detail = "over --max-mutants";
+
+  const { mutate, shared } = splitByShare(
+    rarestFirst.filter(
+      (scoped) => scoped.status === "pending" && scoped.node !== null,
+    ),
+    options.mutateCeiling,
+  );
+  for (const scoped of shared) {
+    scoped.status = "shared with other tests";
+    scoped.detail = `${(scoped.e2eShare * 100).toFixed(1)}% of e2e tests fire it, at or above --mutate-ceiling`;
+  }
+
+  const planned: [ScopedFunction, MutantPlan[]][] = [];
+  for (const scoped of mutate) {
+    if (!scoped.node) {
       continue;
     }
     let source = sources.get(scoped.file);
@@ -331,20 +351,36 @@ function planMutants(
       );
       sources.set(scoped.file, source);
     }
-    const mutants = mutantsForFunction(
-      source,
-      scoped.file,
-      scoped.node,
-      scoped.name,
-      options.perFunction,
-      () => nextId++,
-    );
-    if (mutants.length === 0) {
+    const plans = source
+      ? mutantsForFunction(
+          source,
+          scoped.file,
+          scoped.node,
+          scoped.name,
+          options.perFunction,
+        )
+      : [];
+    if (plans.length === 0) {
       scoped.status = "no mutant";
       continue;
     }
+    planned.push([scoped, plans]);
+  }
+
+  const byFile = new Map<string, Mutant[]>();
+  for (const [scoped, mutants] of dealMutants(
+    planned,
+    options.perFunction,
+    options.maxMutants,
+  )) {
     scoped.mutants = mutants;
     byFile.set(scoped.file, [...(byFile.get(scoped.file) ?? []), ...mutants]);
+  }
+  for (const [scoped] of planned) {
+    if (scoped.mutants.length === 0) {
+      scoped.status = "unmeasured";
+      scoped.detail = "over --max-mutants";
+    }
   }
   return byFile;
 }
@@ -397,7 +433,8 @@ function runMutants(
     );
     const fast = timed("fast pass", () =>
       collectPass(
-        runJest(repoRoot, [...wrappers, timeout], log).results,
+        runJest(repoRoot, [...wrappers, timeout], log, options.passTimeoutMs)
+          .results,
         wrapperSpecs,
       ),
     );
@@ -418,11 +455,16 @@ function runMutants(
     );
     const pattern = `(${failing.titles.map(escapeRegex).join("|")})$`;
     log(
-      `confirm pass: ${wrappers.length} mutants in their own files across ${failing.pairs.size} specs, ${failing.titles.length} tests`,
+      `confirm pass: ${wrappers.length} spec and mutant pairs in their own files across ${failing.pairs.size} specs, ${failing.titles.length} tests`,
     );
     const confirm = timed("confirm pass", () =>
       collectPass(
-        runJest(repoRoot, [...wrappers, timeout, "-t", pattern], log).results,
+        runJest(
+          repoRoot,
+          [...wrappers, timeout, "-t", pattern],
+          log,
+          options.passTimeoutMs,
+        ).results,
         wrapperSpecs,
       ),
     );
@@ -578,7 +620,13 @@ async function main() {
   if (pending.length > 0 && options.unitSpecs.length > 0) {
     const files = [...new Set(pending.map((scoped) => scoped.file))];
     const executed = timed("coverage pass", () =>
-      runJestCoverage(repoRoot, options.unitSpecs, files, log),
+      runJestCoverage(
+        repoRoot,
+        options.unitSpecs,
+        files,
+        log,
+        options.passTimeoutMs,
+      ),
     );
     markExecution(functions, executed);
     const executedCount = functions.filter(

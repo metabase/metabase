@@ -8,7 +8,8 @@ export type FunctionStatus =
   | "changed since nightly"
   | "unmapped"
   | "deleted by this branch"
-  | "not on this branch";
+  | "not on this branch"
+  | "shared with other tests";
 
 export interface FunctionRow {
   file: string;
@@ -53,6 +54,7 @@ const STATUS_ORDER: FunctionStatus[] = [
   "no mutant",
   "caught",
   "not executed",
+  "shared with other tests",
   "not on this branch",
   "excluded",
 ];
@@ -60,6 +62,7 @@ const STATUS_ORDER: FunctionStatus[] = [
 /** Statuses with no per-function detail, shown as one row per file. */
 const COLLAPSED: FunctionStatus[] = [
   "not executed",
+  "shared with other tests",
   "not on this branch",
   "excluded",
 ];

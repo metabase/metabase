@@ -27,6 +27,9 @@ export interface JestRun {
 
 const JEST_BIN = path.join("node_modules", ".bin", "jest");
 
+/** Wall clock for one jest pass, so a wedged mutant costs minutes, not a night. */
+export const DEFAULT_PASS_TIMEOUT_MS = 40 * 60 * 1000;
+
 function parseJestJson(file: string): JestRun {
   const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"));
   const results: TestResult[] = [];
@@ -78,27 +81,44 @@ export function runJest(
   repoRoot: string,
   args: string[],
   log: (line: string) => void,
+  timeoutMs = DEFAULT_PASS_TIMEOUT_MS,
 ): JestRun {
-  const outputFile = path.join(
-    fs.mkdtempSync(path.join(os.tmpdir(), "e2e-verify-")),
-    "jest.json",
-  );
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-verify-"));
+  const outputFile = path.join(workDir, "jest.json");
+  const logFile = path.join(workDir, "jest.log");
   log(`jest ${args.join(" ")}`);
-  const result = spawnSync(
-    JEST_BIN,
-    [...args, "--silent", "--json", `--outputFile=${outputFile}`],
-    {
-      cwd: repoRoot,
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-    },
-  );
+  // A failing mutant prints the rendered DOM, so a pass over a few hundred
+  // mutants writes far more than a pipe will hold. Send it to a file and read
+  // the tail only when something went wrong.
+  const logFd = fs.openSync(logFile, "w");
+  let result;
+  try {
+    result = spawnSync(
+      JEST_BIN,
+      [...args, "--silent", "--json", `--outputFile=${outputFile}`],
+      {
+        cwd: repoRoot,
+        stdio: ["ignore", logFd, logFd],
+        timeout: timeoutMs,
+        killSignal: "SIGKILL",
+      },
+    );
+  } finally {
+    fs.closeSync(logFd);
+  }
   if (!fs.existsSync(outputFile)) {
-    // spawnSync leaves stderr null when the process never started, which is
-    // what a command line over the system argument limit looks like.
-    const detail = result.error
-      ? result.error.message
-      : (result.stderr ?? "").slice(-2000);
+    const tail = fs.existsSync(logFile)
+      ? fs.readFileSync(logFile, "utf8").slice(-2000)
+      : "";
+    // spawnSync reports a kill through signal, and leaves error set when the
+    // process never started, which is what a command line over the system
+    // argument limit looks like.
+    if (result.signal === "SIGKILL") {
+      throw new Error(
+        `jest was killed after ${Math.round(timeoutMs / 60000)} minutes, so a mutant probably wedged a spec. Raise --pass-timeout, or narrow the run.\n${tail}`,
+      );
+    }
+    const detail = result.error ? result.error.message : tail;
     throw new Error(`jest produced no JSON output\n${detail}`);
   }
   return parseJestJson(outputFile);
@@ -112,6 +132,7 @@ export function runJestCoverage(
   specs: string[],
   files: string[],
   log: (line: string) => void,
+  timeoutMs = DEFAULT_PASS_TIMEOUT_MS,
 ): Map<string, Set<number>> {
   const coverageDir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-verify-cov-"));
   runJest(
@@ -125,6 +146,7 @@ export function runJestCoverage(
       ...files.map((file) => `--collectCoverageFrom=${file}`),
     ],
     log,
+    timeoutMs,
   );
   const executed = new Map<string, Set<number>>();
   const parsed: unknown = JSON.parse(

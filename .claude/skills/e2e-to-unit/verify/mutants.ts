@@ -43,6 +43,9 @@ export interface Mutant {
   replacement: string;
 }
 
+/** A mutant before the planner decides to keep it and gives it an id. */
+export type MutantPlan = Omit<Mutant, "id">;
+
 export interface FunctionNode {
   node: ts.Node;
   startLine: number;
@@ -291,20 +294,18 @@ export function mutantsForFunction(
   fn: FunctionNode,
   functionName: string,
   perFunction: number,
-  nextId: () => number,
-): Mutant[] {
+): MutantPlan[] {
   const candidates = candidatesIn(sourceFile, fn).sort(
     (a, b) =>
       KIND_PRIORITY.indexOf(a.kind) - KIND_PRIORITY.indexOf(b.kind) ||
       a.start - b.start,
   );
-  const chosen: Mutant[] = [];
+  const chosen: MutantPlan[] = [];
   for (const candidate of candidates) {
     if (chosen.length >= perFunction) {
       break;
     }
     chosen.push({
-      id: nextId(),
       file,
       functionLine: fn.startLine,
       functionName,
@@ -366,4 +367,54 @@ export function writeSchemata(
   const absolute = path.join(repoRoot, file);
   const text = fs.readFileSync(absolute, "utf8");
   fs.writeFileSync(absolute, applySchemata(text, mutants));
+}
+
+/**
+ * Deals planned mutants one round at a time, so every function gets its first
+ * mutant before any function gets a second, and assigns the ids of the ones
+ * that fit the budget. Spending the budget four at a time measures fewer
+ * functions than one each: with 209 functions and 300 mutants it leaves two
+ * thirds of them unmeasured.
+ *
+ * The entries arrive rarest first, so within a round the functions that are
+ * most specific to the deleted test are served first.
+ */
+export function dealMutants<T>(
+  planned: [T, MutantPlan[]][],
+  perFunction: number,
+  maxMutants: number,
+): [T, Mutant[]][] {
+  const dealt = new Map<T, Mutant[]>(planned.map(([key]) => [key, []]));
+  let nextId = 1;
+  for (let round = 0; round < perFunction; round++) {
+    for (const [key, plans] of planned) {
+      const plan = plans[round];
+      if (!plan || nextId > maxMutants) {
+        continue;
+      }
+      dealt.get(key)?.push({ ...plan, id: nextId++ });
+    }
+  }
+  return [...dealt].filter(([, mutants]) => mutants.length > 0);
+}
+
+/**
+ * Splits the functions worth mutating from the ones other test suites own.
+ *
+ * The boot threshold drops what nearly every e2e test fires. What is left
+ * still holds shared screen furniture, such as the admin navbar at about 18%
+ * of the suite, which the deleted test only booted through. Mutating that
+ * spends the budget on code this branch is not responsible for, and breaking
+ * it makes its own spec fail for reasons the report then has to explain.
+ */
+export function splitByShare<T extends { e2eShare: number }>(
+  functions: T[],
+  ceiling: number,
+): { mutate: T[]; shared: T[] } {
+  const mutate: T[] = [];
+  const shared: T[] = [];
+  for (const fn of functions) {
+    (fn.e2eShare < ceiling ? mutate : shared).push(fn);
+  }
+  return { mutate, shared };
 }

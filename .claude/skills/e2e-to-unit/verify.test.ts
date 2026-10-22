@@ -26,10 +26,13 @@ import {
 } from "./verify/judge";
 import { mapLine, parseDeletedTests, parseHunks } from "./verify/lines";
 import {
+  type MutantPlan,
   applySchemata,
+  dealMutants,
   functionAtLine,
   mutantsForFunction,
   parseSource,
+  splitByShare,
 } from "./verify/mutants";
 
 describe("deleted tests from a diff", () => {
@@ -90,6 +93,9 @@ export function Panel({ enabled, onSave }: { enabled: boolean; onSave: () => voi
 const helper = (value: string) => value.toUpperCase();
 `;
 
+const withIds = (plans: MutantPlan[]) =>
+  plans.map((plan, index) => ({ ...plan, id: index + 1 }));
+
 describe("mutants", () => {
   const sourceFile = parseSource("Panel.tsx", SOURCE);
 
@@ -104,14 +110,12 @@ describe("mutants", () => {
     if (!fn) {
       throw new Error("function not found");
     }
-    let id = 1;
     const mutants = mutantsForFunction(
       sourceFile,
       "Panel.tsx",
       fn,
       "Panel",
       10,
-      () => id++,
     );
     expect(mutants.map((mutant) => mutant.kind)).toEqual([
       "return-undefined",
@@ -134,7 +138,7 @@ describe("mutants", () => {
       throw new Error("function not found");
     }
     expect(
-      mutantsForFunction(sourceFile, "Panel.tsx", fn, "Panel", 2, () => 1),
+      mutantsForFunction(sourceFile, "Panel.tsx", fn, "Panel", 2),
     ).toHaveLength(2);
   });
 
@@ -143,17 +147,11 @@ describe("mutants", () => {
     if (!fn) {
       throw new Error("function not found");
     }
-    const mutants = mutantsForFunction(
-      sourceFile,
-      "Panel.tsx",
-      fn,
-      "helper",
-      4,
-      () => 7,
-    );
-    expect(mutants[0].kind).toBe("return-undefined");
+    const plans = mutantsForFunction(sourceFile, "Panel.tsx", fn, "helper", 4);
+    expect(plans[0].kind).toBe("return-undefined");
+    const mutants = withIds(plans);
     expect(applySchemata(SOURCE, mutants)).toContain(
-      "(globalThis.__E2E_MUTANT__ === 7 ? undefined : (value.toUpperCase()))",
+      "(globalThis.__E2E_MUTANT__ === 1 ? undefined : (value.toUpperCase()))",
     );
   });
 
@@ -162,14 +160,8 @@ describe("mutants", () => {
     if (!fn) {
       throw new Error("function not found");
     }
-    let id = 1;
-    const mutants = mutantsForFunction(
-      sourceFile,
-      "Panel.tsx",
-      fn,
-      "Panel",
-      10,
-      () => id++,
+    const mutants = withIds(
+      mutantsForFunction(sourceFile, "Panel.tsx", fn, "Panel", 10),
     );
     const output = applySchemata(SOURCE, mutants);
     const compiled = ts.transpileModule(output, {
@@ -186,6 +178,101 @@ describe("mutants", () => {
     expect(output).toContain(
       "(globalThis.__E2E_MUTANT__ === 4 ? false : (enabled))",
     );
+  });
+});
+
+describe("the mutation ceiling", () => {
+  it("keeps what is specific to the deleted test and sets aside shared code", () => {
+    const { mutate, shared } = splitByShare(
+      [
+        { name: "advisory", e2eShare: 0.002 },
+        { name: "navItem", e2eShare: 0.063 },
+        { name: "navbar", e2eShare: 0.182 },
+      ],
+      0.1,
+    );
+    expect(mutate.map((fn) => fn.name)).toEqual(["advisory", "navItem"]);
+    expect(shared.map((fn) => fn.name)).toEqual(["navbar"]);
+  });
+
+  it("sets aside a function exactly at the ceiling", () => {
+    const { mutate, shared } = splitByShare([{ e2eShare: 0.1 }], 0.1);
+    expect(mutate).toEqual([]);
+    expect(shared).toHaveLength(1);
+  });
+});
+
+describe("dealing mutants within the budget", () => {
+  const plansFor = (count: number): MutantPlan[] =>
+    Array.from({ length: count }, (_, index) => ({
+      file: "a.ts",
+      functionLine: 1,
+      functionName: "fn",
+      kind: "return-undefined" as const,
+      line: index + 1,
+      start: index,
+      end: index + 1,
+      description: `plan ${index}`,
+      statement: false,
+      replacement: "undefined",
+    }));
+
+  it("gives every function one mutant before any function gets a second", () => {
+    const dealt = dealMutants(
+      [
+        ["a", plansFor(4)],
+        ["b", plansFor(4)],
+        ["c", plansFor(4)],
+      ],
+      4,
+      5,
+    );
+    expect(dealt.map(([key, mutants]) => [key, mutants.length])).toEqual([
+      ["a", 2],
+      ["b", 2],
+      ["c", 1],
+    ]);
+  });
+
+  it("numbers the mutants it keeps from one", () => {
+    const dealt = dealMutants(
+      [
+        ["a", plansFor(2)],
+        ["b", plansFor(2)],
+      ],
+      2,
+      3,
+    );
+    expect(dealt.flatMap(([, mutants]) => mutants.map((m) => m.id))).toEqual([
+      1, 3, 2,
+    ]);
+  });
+
+  it("leaves out a function once the budget is gone", () => {
+    const dealt = dealMutants(
+      [
+        ["a", plansFor(1)],
+        ["b", plansFor(1)],
+      ],
+      4,
+      1,
+    );
+    expect(dealt.map(([key]) => key)).toEqual(["a"]);
+  });
+
+  it("stops at the plans a function has", () => {
+    const dealt = dealMutants(
+      [
+        ["a", plansFor(1)],
+        ["b", plansFor(3)],
+      ],
+      4,
+      100,
+    );
+    expect(dealt.map(([key, mutants]) => [key, mutants.length])).toEqual([
+      ["a", 1],
+      ["b", 3],
+    ]);
   });
 });
 
