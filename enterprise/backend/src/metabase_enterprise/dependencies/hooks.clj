@@ -219,17 +219,20 @@
              (changed? row (disj columns :result_metadata))
              (not (deps.result-metadata/same-output? (:result_metadata (t2/original row)) (:result_metadata row)))))))
 
-(mu/defn- mark-owning-data-apps! :- :boolean
-  "Mark the dependencies of the data apps whose resource collection is among `collection-ids` stale, when `model` is
-  one that data apps depend on (Card or Action), returning whether it marked any."
-  [model          :- :keyword
-   collection-ids :- [:sequential [:maybe ms/PositiveInt]]]
-  (boolean
-   (when (#{:model/Action :model/Card} model)
-     (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
-       (when-let [app-ids (not-empty (dependencies.db/resource-collection-data-app-ids collection-ids))]
-         (dependencies.db/mark-dependency-statuses-stale! {:data-app app-ids})
-         true)))))
+(mu/defn- data-apps-changed? :- :boolean
+  "Whether the update of `row` of `model` moves a Card or an Action to another collection, which changes what the data
+  apps whose resource collection it leaves or enters depend on."
+  [model :- :keyword
+   row   :- Row]
+  (and (contains? #{:model/Action :model/Card} model)
+       (changed? row #{:collection_id})))
+
+(mu/defn- mark-data-apps!
+  "Mark the dependencies of the data apps whose resource collection is one of `collection-ids` stale, querying nothing
+  when every one is nil."
+  [collection-ids :- [:sequential [:maybe ms/PositiveInt]]]
+  (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (dependencies.db/mark-data-app-dependency-statuses-stale! collection-ids)))
 
 (mu/defn- mark-update! :- :boolean
   "Mark the statuses an update of `row` of `model` makes stale: the entity's own, by the columns each job
@@ -242,8 +245,7 @@
         analysis?   (changed? row (analysis-columns model))
         output?     (output-changed? model row)
         part?       (changed? row (part-columns model))
-        data-apps?  (and (changed? row #{:collection_id})
-                         (mark-owning-data-apps! model [(:collection_id (t2/original row)) (:collection_id row)]))]
+        data-apps?  (data-apps-changed? model row)]
     (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
     (when analysis?
@@ -257,6 +259,8 @@
         :model/Field             (mark-remap-targets! #{(:id row)})
         :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
         nil))
+    (when data-apps?
+      (mark-data-apps! [(:collection_id (t2/original row)) (:collection_id row)]))
     (or dependency? analysis? output? part? data-apps?
         (case model
           :model/Dimension   (do (run! mark-dimension! (distinct [(t2/original row) row])) true)
@@ -291,11 +295,11 @@
   [model row]
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
-  (mark-owning-data-apps! model [(:collection_id row)])
   (case model
-    :model/Dimension         (mark-dimension! row)
-    :model/FieldValues       (mark-field-values! nil row)
-    :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+    (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
+    :model/Dimension            (mark-dimension! row)
+    :model/FieldValues          (mark-field-values! nil row)
+    :model/FieldUserSettings    (mark-remap-targets! #{(:field_id row)})
     nil)
   (trigger-jobs!))
 
@@ -313,12 +317,12 @@
   [model row]
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
-  (mark-owning-data-apps! model [(:collection_id row)])
   (case model
-    :model/Dimension         (mark-dimension! row)
-    :model/FieldValues       (mark-field-values! row nil)
-    :model/Field             (mark-remap-targets! #{(:id row)})
-    :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+    (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
+    :model/Dimension            (mark-dimension! row)
+    :model/FieldValues          (mark-field-values! row nil)
+    :model/Field                (mark-remap-targets! #{(:id row)})
+    :model/FieldUserSettings    (mark-remap-targets! #{(:field_id row)})
     nil)
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
     (mark-output-changed! entity-type row))

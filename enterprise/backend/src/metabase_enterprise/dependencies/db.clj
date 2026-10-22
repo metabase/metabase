@@ -674,11 +674,6 @@
    collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
 
-(mu/defn resource-collection-data-app-ids
-  "The IDs of the DataApps whose resource collection is one of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-set [:model/DataApp :id] :resource_collection_id [:in collection-ids]))
-
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -880,6 +875,18 @@
   again."
   [type->ids :- ::dependencies.schema/type->ids]
   (mark-stale! :model/DependencyStatus type->ids))
+
+(mu/defn mark-data-app-dependency-statuses-stale!
+  "Mark the DependencyStatuses of the DataApps whose resource collection is one of the Collections with
+  `collection-ids` stale, in one UPDATE."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/query {:update (t2/table-name :model/DependencyStatus)
+             :set    (assoc fresh-attempts :stale one-more-write)
+             :where  [:and
+                      [:= :entity_type (name :data-app)]
+                      [:in :entity_id ^:allow-subquery {:select [:id]
+                                                        :from   [(t2/table-name :model/DataApp)]
+                                                        :where  [:in :resource_collection_id collection-ids]}]]}))
 
 (mu/defn mark-result-metadata-statuses-stale!
   "Mark the ResultMetadataStatuses of the entities `type->ids` stale, so the result metadata job re-derives them."

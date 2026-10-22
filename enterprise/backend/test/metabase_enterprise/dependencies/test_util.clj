@@ -118,9 +118,8 @@
   (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [f] (f))]
     (thunk)))
 
-(defn data-app-bundle-reads
-  "The SQL statements that `thunk` sends to the app DB and that read the `bundle` column of `data_app`: a `SELECT *`,
-  or a select that names the column."
+(defn app-db-statements
+  "The SQL statements that `thunk` sends to the app DB, in order."
   [thunk]
   (let [sqls      (atom [])
         run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
@@ -128,9 +127,15 @@
                                                                   (swap! sqls conj sql)
                                                                   (run-query rf init conn model sql-args opts))]
       (thunk))
-    ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
-    (filterv #(re-find #"(?i)^SELECT\s+(?:(?:[\"`]?data_app[\"`]?\.)?\*|.*\bbundle\b.*)\s+FROM\s+[\"`]?data_app[\"`]?(?:\s|$)" %)
-             @sqls)))
+    @sqls))
+
+(defn data-app-bundle-reads
+  "The SQL statements that `thunk` sends to the app DB and that read the `bundle` column of `data_app`: a `SELECT *`,
+  or a select that names the column."
+  [thunk]
+  ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
+  (filterv #(re-find #"(?i)^SELECT\s+(?:(?:[\"`]?data_app[\"`]?\.)?\*|.*\bbundle\b.*)\s+FROM\s+[\"`]?data_app[\"`]?(?:\s|$)" %)
+           (app-db-statements thunk)))
 
 (defn mock-card [metadata-provider {:keys [id query details]}]
   (merge {:lib/type        :metadata/card
