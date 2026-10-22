@@ -268,7 +268,7 @@
   500)
 
 (defn humanized->paths
-  "Flatten humanized validation errors into readable paths, capped at 500 characters with an ellipsis."
+  "Flatten humanized validation errors into readable paths, capped at [[max-humanized-paths-length]] with an ellipsis."
   [humanized]
   (let [locations (humanized-locations [] humanized)
         by-path   (group-by first locations)
