@@ -24,6 +24,11 @@ const questionsPage = () =>
     /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppQuestionsPage"
   ).then(({ DataAppQuestionsPage }) => ({ Component: DataAppQuestionsPage }));
 
+const actionsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppActionsPage"
+  ).then(({ DataAppActionsPage }) => ({ Component: DataAppActionsPage }));
+
 const questionPage = () =>
   import(
     /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppQuestionPage"
@@ -36,6 +41,34 @@ const questionDependenciesPage = () =>
     Component: DataAppQuestionDependenciesPage,
   }));
 
+const permissionsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppPermissionsPage"
+  ).then(({ DataAppPermissionsPage }) => ({
+    Component: DataAppPermissionsPage,
+  }));
+
+const actionDefinitionPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppActionDefinitionPage"
+  ).then(({ DataAppActionDefinitionPage }) => ({
+    Component: DataAppActionDefinitionPage,
+  }));
+
+const actionFieldsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppActionFieldsPage"
+  ).then(({ DataAppActionFieldsPage }) => ({
+    Component: DataAppActionFieldsPage,
+  }));
+
+const actionDependenciesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-data-apps" */ "./pages/DataAppActionDependenciesPage"
+  ).then(({ DataAppActionDependenciesPage }) => ({
+    Component: DataAppActionDependenciesPage,
+  }));
+
 export function getDataStudioDataAppRoutes(IsAdmin: ComponentType) {
   return (
     <Route path={Urls.DATA_APP_URL_SEGMENT} element={<IsAdmin />}>
@@ -43,11 +76,30 @@ export function getDataStudioDataAppRoutes(IsAdmin: ComponentType) {
         <Route index lazy={listPage} />
         <Route path=":name" lazy={overviewPage} />
         <Route path=":name/questions" lazy={questionsPage} />
+        <Route path=":name/actions" lazy={actionsPage} />
+        <Route path=":name/permissions" lazy={permissionsPage} />
         <Route path=":name/questions/:cardId" lazy={questionPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":name/questions/:cardId/dependencies"
             lazy={questionDependenciesPage}
+          >
+            <Route
+              index
+              element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />}
+            />
+          </Route>
+        )}
+        <Route path=":name/actions/:actionId" lazy={actionDefinitionPage} />
+        <Route path=":name/actions/:actionId/fields" lazy={actionFieldsPage} />
+        <Route
+          path=":name/actions/:actionId/fields/:fieldId"
+          lazy={actionFieldsPage}
+        />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route
+            path=":name/actions/:actionId/dependencies"
+            lazy={actionDependenciesPage}
           >
             <Route
               index

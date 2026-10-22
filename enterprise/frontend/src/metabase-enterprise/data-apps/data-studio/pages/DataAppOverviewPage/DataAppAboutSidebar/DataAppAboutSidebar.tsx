@@ -54,7 +54,11 @@ export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
           {groups.length > 0 ? (
             groups.map((group) => (
               <MetadataRow key={group.id} icon="group">
-                {group.name}
+                <MetadataRowLink
+                  to={Urls.dataStudioDataAppPermissions(app.name)}
+                >
+                  {group.name}
+                </MetadataRowLink>
               </MetadataRow>
             ))
           ) : (
