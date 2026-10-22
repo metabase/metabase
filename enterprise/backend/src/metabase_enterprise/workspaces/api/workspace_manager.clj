@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.metadata :as ws.metadata]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -134,6 +135,42 @@
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
   nil)
+
+;;; ------------------------------------------- Metadata download ------------------------------------------------
+
+(def ^:private MetadataResponse
+  [:map {:closed true}
+   [:databases [:sequential [:map {:closed true}
+                             [:id     ::lib.schema.id/database]
+                             [:name   :string]
+                             [:engine :string]]]]
+   [:tables    [:sequential [:map {:closed true}
+                             [:id          ::lib.schema.id/table]
+                             [:db_id       ::lib.schema.id/database]
+                             [:name        :string]
+                             [:schema      {:optional true} :string]
+                             [:description {:optional true} :string]]]]
+   [:fields    [:sequential [:map {:closed true}
+                             [:id                 ::lib.schema.id/field]
+                             [:table_id           ::lib.schema.id/table]
+                             [:name               :string]
+                             [:base_type          :string]
+                             [:description        {:optional true} :string]
+                             [:database_type      {:optional true} :string]
+                             [:effective_type     {:optional true} :string]
+                             [:semantic_type      {:optional true} :string]
+                             [:coercion_strategy  {:optional true} :string]
+                             [:nfc_path           {:optional true} [:sequential :string]]
+                             [:parent_id          {:optional true} ::lib.schema.id/field]
+                             [:fk_target_field_id {:optional true} ::lib.schema.id/field]]]]])
+
+(api.macros/defendpoint :get "/:id/metadata" :- MetadataResponse
+  "The workspace databases' metadata as `table_metadata.json` (the input of the `@metabase/database-metadata`
+  extractor): their tables in the workspace's input schemas and those tables' fields, with this instance's curated
+  descriptions and semantic types, referencing each other by this instance's ids."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/write-check :model/Workspace id)
+  (api/check-404 (ws.metadata/build-workspace-metadata id)))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

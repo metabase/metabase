@@ -84,6 +84,35 @@
                         [:not-in :id excluded-ids]
                         true)]}))
 
+;;; ------------------------------------------------- Metadata -------------------------------------------------
+
+(mu/defn metadata-tables
+  "The active, visible Tables of the Database with `database-id`, as users see them (user-set values merged in),
+  restricted to `schemas` unless it is nil."
+  [database-id :- ::lib.schema.id/database
+   schemas     :- [:maybe [:sequential :string]]]
+  (t2/select [:model/Table :id :db_id :name :schema :description]
+             {:from     [(warehouse-schema-overlay/table-query)]
+              :where    [:and
+                         [:= :db_id database-id]
+                         [:= :active true]
+                         [:= :visibility_type nil]
+                         (if schemas [:in :schema schemas] true)]
+              :order-by [:id]}))
+
+(mu/defn metadata-fields
+  "The active, non-sensitive Fields of the Tables with ids in `table-ids`, as users see them (user-set values merged
+  in)."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Field :id :table_id :name :description :base_type :database_type :effective_type
+              :semantic_type :coercion_strategy :nfc_path :parent_id :fk_target_field_id]
+             {:from     [(warehouse-schema-overlay/field-query)]
+              :where    [:and
+                         [:in :table_id table-ids]
+                         [:= :active true]
+                         [:not= :visibility_type "sensitive"]]
+              :order-by [:id]}))
+
 ;;; ------------------------------------------------- Workspace ------------------------------------------------
 
 (mu/defn workspace-exists?

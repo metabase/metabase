@@ -161,6 +161,49 @@
       (testing "404 for a missing workspace"
         (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
 
+(deftest download-metadata-endpoint-test
+  (testing "GET /:id/metadata returns table_metadata.json for the workspace's input schemas"
+    (mt/with-temp [:model/Database {db-id :id} {:name "Meta DW" :engine :postgres :details {}}
+                   :model/Database {other-db-id :id} {:engine :postgres :details {}}
+                   :model/Table {orders-id :id} {:db_id db-id :schema "shop" :name "orders" :description "One row per order"}
+                   :model/Table {people-id :id} {:db_id db-id :schema "shop" :name "people"}
+                   :model/Table _ {:db_id db-id :schema "shop" :name "retired" :active false}
+                   :model/Table _ {:db_id db-id :schema "shop" :name "hidden" :visibility_type :hidden}
+                   :model/Table _ {:db_id db-id :schema "staging" :name "orders_raw"}
+                   :model/Table _ {:db_id other-db-id :schema "shop" :name "elsewhere"}
+                   :model/Field {people-pk :id} {:table_id people-id :name "id" :base_type :type/BigInteger
+                                                 :database_type "int8" :semantic_type :type/PK}
+                   :model/Field {fk-id :id} {:table_id orders-id :name "person_id" :base_type :type/BigInteger
+                                             :database_type "int8" :semantic_type :type/FK
+                                             :fk_target_field_id people-pk}
+                   :model/Field {created-id :id} {:table_id orders-id :name "created_at" :base_type :type/Text
+                                                  :database_type "text" :effective_type :type/DateTime
+                                                  :coercion_strategy :Coercion/ISO8601->DateTime}
+                   :model/Field _ {:table_id orders-id :name "card_number" :base_type :type/Text
+                                   :visibility_type :sensitive}
+                   :model/Field _ {:table_id orders-id :name "dropped" :base_type :type/Text :active false}
+                   :model/Workspace {ws-id :id} {:name "Meta WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["shop"]
+                                               :status           :provisioned}]
+      (t2/update! :model/Field fk-id {:description "Who placed the order"})
+      (is (= {:databases [{:id db-id :name "Meta DW" :engine "postgres"}]
+              :tables    [{:id orders-id :db_id db-id :schema "shop" :name "orders" :description "One row per order"}
+                          {:id people-id :db_id db-id :schema "shop" :name "people"}]
+              :fields    [{:id people-pk :table_id people-id :name "id" :base_type "type/BigInteger"
+                           :database_type "int8" :semantic_type "type/PK"}
+                          {:id fk-id :table_id orders-id :name "person_id" :base_type "type/BigInteger"
+                           :database_type "int8" :semantic_type "type/FK" :fk_target_field_id people-pk
+                           :description "Who placed the order"}
+                          {:id created-id :table_id orders-id :name "created_at" :base_type "type/Text" :database_type "text"
+                           :effective_type "type/DateTime" :coercion_strategy "Coercion/ISO8601->DateTime"}]}
+             (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/metadata"))))
+      (testing "404 for a missing workspace"
+        (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/metadata")))))
+
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))
 
@@ -174,4 +217,5 @@
                               {:name "Nope" :database_ids [(mt/id)]})
         (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/" ws-id) {:name "Nope"})
         (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/config"))
+        (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/metadata"))
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))))))
