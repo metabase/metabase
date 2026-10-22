@@ -63,7 +63,7 @@ describe("AccountHeader", () => {
   });
 
   it.each(["ldap", "google"] as const)(
-    "should show the login history tab for a user with sso_source %s (metabase#15558)",
+    "login history tab should be available with sso_source %s (metabase#15558)",
     (ssoSource) => {
       setup({ user: getUser({ sso_source: ssoSource }) });
 
