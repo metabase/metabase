@@ -496,11 +496,10 @@
   nil)
 
 (defn- shared-status-differs?
-  "Whether the shared hash row for the held status records a different status, as it does once another instance has
-  refreshed. False when there is no row."
+  "Whether the shared hash row for the held status is missing or records a different status, as it does once another
+  instance has refreshed."
   [{:keys [token-hash status-hash]}]
-  (when-let [shared (:token_status_hash (premium-features.db/token-status-cache token-hash))]
-    (not= shared status-hash)))
+  (not= (:token_status_hash (premium-features.db/token-status-cache token-hash)) status-hash))
 
 (defn- refresh-reason
   [token requested?]
@@ -516,7 +515,7 @@
       "the held status is due for its periodic refresh"
 
       (shared-status-differs? held)
-      "another instance holds a different status")))
+      "the shared hash row is missing or records a different status")))
 
 (defn tick!
   "Refresh the token status if one is due. Never throws, so a scheduler keeps calling it. A requested refresh that
@@ -536,8 +535,8 @@
         nil))))
 
 (defn clear-local-cache!
-  "Refresh the token status now if no status is held for the configured token, or if the shared hash row records a
-  different status than the one held; otherwise do nothing. Before [[start-refresher!]], only request the refresh,
+  "Refresh the token status now if no status is held for the configured token, or if the shared hash row is missing
+  or records a different status than the one held; otherwise do nothing. Before [[start-refresher!]], only request the refresh,
   since initialization makes its own. A failure is logged, not thrown."
   []
   (try

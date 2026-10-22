@@ -401,6 +401,20 @@
           (token-check/tick!)
           (is (= 2 @calls)))))))
 
+(deftest tick-with-a-missing-hash-row-fetches-and-writes-it-back-test
+  (let [token (tu/random-token)]
+    (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+      (with-store [calls (constantly good-status)]
+        (token-check/refresh-now!)
+        (t2/delete! :model/PremiumFeaturesCache :token_hash (#'token-check/hash-token token))
+        (token-check/tick!)
+        (is (= 2 @calls) "a missing row triggers one fetch")
+        (is (= (:status-hash @@#'token-check/entry) (:token_status_hash (hash-row token))))
+        (is (premium-features/has-feature? :sandboxes))
+        (testing "the row is back, so the next tick does nothing"
+          (token-check/tick!)
+          (is (= 2 @calls)))))))
+
 (deftest tick-after-the-refresh-interval-fetches-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
     (with-store [calls (constantly good-status)]
