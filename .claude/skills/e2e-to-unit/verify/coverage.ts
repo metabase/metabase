@@ -90,6 +90,17 @@ export function latestSuccessfulRun(): { runId: string; sha: string } {
   return { runId: String(first.databaseId), sha: String(first.headSha) };
 }
 
+function runSha(runId: string): string {
+  const raw = execFileSync("gh", ["run", "view", runId, "--json", "headSha"], {
+    encoding: "utf8",
+  });
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed !== "object" || parsed === null || !("headSha" in parsed)) {
+    throw new Error(`unexpected gh run view output for run ${runId}`);
+  }
+  return String(parsed.headSha);
+}
+
 function listShardArtifacts(runId: string): string[] {
   const names: string[] = [];
   for (let page = 1; page <= 3; page++) {
@@ -294,12 +305,12 @@ export async function loadIndex(
   },
 ): Promise<CoverageIndex> {
   const run = options.runId
-    ? { runId: options.runId, sha: "" }
+    ? { runId: options.runId, sha: runSha(options.runId) }
     : latestSuccessfulRun();
   const cached = indexPath(repoRoot, run.runId, options.bootThreshold);
   if (fs.existsSync(cached)) {
     const parsed: unknown = readJson(cached);
-    if (isCoverageIndex(parsed)) {
+    if (isCoverageIndex(parsed) && parsed.sha === run.sha) {
       return parsed;
     }
     fs.rmSync(cached);
