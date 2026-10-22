@@ -30,6 +30,7 @@
    [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
+   [metabase.transforms-base.workspace-hooks :as transforms-base.workspace-hooks]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n]
@@ -518,6 +519,15 @@
   (let [db-id (transforms-base.i/target-db-id transform)
         {driver :engine :as database} (transforms-base.db/database db-id)]
     (driver/table-exists? driver database target)))
+
+(defn planned-target-table-exists?
+  "Test if the table `transform` would write to already exists. For a transform that hasn't
+   been resolved for execution yet: on a workspaced database it writes to the workspace's
+   remapped copy of its target, so that is the table checked, not the canonical one."
+  [transform]
+  (if-let [db-id (transforms-base.i/target-db-id transform)]
+    (target-table-exists? (update transform :target #(transforms-base.workspace-hooks/workspace-transform-target db-id %)))
+    (target-table-exists? transform)))
 
 (defn- canonicalize-target
   "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the

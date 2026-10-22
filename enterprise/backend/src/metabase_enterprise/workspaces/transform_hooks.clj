@@ -50,6 +50,19 @@
       (assoc target :db to-db :schema to-schema :name to-name))
     target))
 
+(defenterprise workspace-transform-target
+  "Enterprise impl of the read-only transform-target hook: the target
+   [[resolve-transform-target]] would return, computed via
+   [[ws.table-remapping/transform-target-remapping]] so no `TableRemapping` is recorded.
+   Ungated on premium features for the same reason as [[resolve-transform-target]]."
+  :feature :none
+  [db-id target]
+  (if (some? (ws/db-workspace-namespace db-id))
+    (let [{to-db :db to-schema :schema to-name :name}
+          (ws.table-remapping/transform-target-remapping db-id target)]
+      (assoc target :db to-db :schema to-schema :name to-name))
+    target))
+
 (defenterprise rewrite-native-sql-for-workspace
   "Workspace-isolation SQL rewrite for the native-transform exec path. Reuses the same
    `rewrite-sql` primitive as the QP's Phase 2 middleware, so canonical refs in a native

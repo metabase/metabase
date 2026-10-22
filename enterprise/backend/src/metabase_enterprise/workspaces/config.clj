@@ -78,6 +78,16 @@
    :ad-client-key-password-source :ad-client-key-password-kind
    :ad-client-key-password-creator-id :ad-client-key-password-created-at])
 
+(defn- drop-unused-tunnel-secrets
+  "Remove the SSH-tunnel credentials when `:tunnel-enabled` is falsey: the child's driver
+   only opens the tunnel when it is set, so leftover credentials from a tunnel that was
+   switched off would otherwise ship to the child's config.yml for nothing. They are plain
+   `:password`/`:string` connection properties, so unlike `:secret` properties (stored in
+   the Secret table, only their `-id` in `:details`) they sit in `:details` verbatim."
+  [details]
+  (cond-> details
+    (not (:tunnel-enabled details)) (dissoc :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase)))
+
 (defn- database-entry [wsd db]
   {:name    (:name db)
    :engine  (:engine db)
@@ -85,10 +95,11 @@
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (merge (apply dissoc (:details db) parent-login-keys)
-                   (:database_details wsd)
-                   (schema-filter-entries db wsd)
-                   {:let-user-control-scheduling false})})
+   :details (drop-unused-tunnel-secrets
+             (merge (apply dissoc (:details db) parent-login-keys)
+                    (:database_details wsd)
+                    (schema-filter-entries db wsd)
+                    {:let-user-control-scheduling false}))})
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`

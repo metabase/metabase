@@ -55,6 +55,31 @@
                    :output        {:schema "mb_isolation_github"}}}
                  (-> cfg :config :workspace :databases))))))))
 
+(deftest build-workspace-config-drops-tunnel-secrets-of-a-disabled-tunnel-test
+  (let [tunnel-secrets {:tunnel-pass                   "tunnel-pass"
+                        :tunnel-private-key            "tunnel-key"
+                        :tunnel-private-key-passphrase "tunnel-key-pass"}
+        ssl-secrets    {:ssl-key-value          "client-key"
+                        :ssl-key-password-value "client-key-pass"}
+        details-for    (fn [details]
+                         (mt/with-temp [:model/Database {db-id :id}
+                                        {:name    "Secret DW" :engine :postgres
+                                         :details (merge {:host "h" :port 5432 :user "admin" :ssl true}
+                                                         tunnel-secrets ssl-secrets details)}
+                                        :model/Workspace {ws-id :id} {:name "secrets" :creator_id (mt/user->id :crowberto)}
+                                        :model/WorkspaceDatabase _
+                                        {:workspace_id     ws-id :database_id db-id
+                                         :database_details {:user "iso" :password "iso-pass"}
+                                         :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+                           (->> (config/build-workspace-config ws-id) :config :databases
+                                (some #(when (= "Secret DW" (:name %)) (:details %))))))]
+    (testing "tunnel off: the tunnel credentials are not emitted"
+      (is (= {} (select-keys (details-for {:tunnel-enabled false}) (keys tunnel-secrets)))))
+    (testing "tunnel on: the child gets the credentials it needs to open the tunnel"
+      (is (= tunnel-secrets (select-keys (details-for {:tunnel-enabled true}) (keys tunnel-secrets)))))
+    (testing ":secret properties never reach the config as values; the Secret table keeps them"
+      (is (= {} (select-keys (details-for {:tunnel-enabled true}) (keys ssl-secrets)))))))
+
 (deftest build-workspace-config-three-slot-engine-test
   (when (workspaces.tu/driver-loadable? :sqlserver)
     (testing "SQL Server (3-slot, qualified-name-components=[:db :schema]) gets the :db slot populated from connection details"
