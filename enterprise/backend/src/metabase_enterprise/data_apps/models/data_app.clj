@@ -131,8 +131,8 @@
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
-  [data-app json-generator]
-  (next-method (dissoc data-app :bundle) json-generator))
+  [data-app]
+  (next-method (dissoc data-app :bundle)))
 
 (defn- bundle->file
   "The `bundle` bytes as the text of its file."

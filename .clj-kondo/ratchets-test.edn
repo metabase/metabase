@@ -15,7 +15,7 @@
 ;; exemptions must be explained in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts                {:case-symbol-test                                                    1
-                                :clojure-lsp/unused-public-var                                       1
+                                :clojure-lsp/unused-public-var                                       3
                                 :deprecated-namespace                                                66
                                 :deprecated-var                                                      33
                                 :equals-true                                                         1
@@ -31,7 +31,8 @@
                                 :unresolved-symbol                                                   2
                                 :unused-binding                                                      6
                                 :unused-private-var                                                  2}
- :discouraged-namespace-counts {:clojure.tools.logging 2
+ :discouraged-namespace-counts {:cheshire.core         1
+                                :clojure.tools.logging 2
                                 :toucan2.core          1}
  :discouraged-var-counts       {:clojure.core/pr                                   1
                                 :clojure.core/print                                1

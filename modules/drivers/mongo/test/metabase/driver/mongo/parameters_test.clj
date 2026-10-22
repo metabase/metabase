@@ -14,7 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
+   [metabase.test.data.mongo :as tdm]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -367,8 +367,8 @@
                 (qp/process-query
                  (mt/query checkins
                    {:type       :native
-                    :native     {:query         (json/encode
-                                                 [{:$match (json/raw-json-generator "{{date}}")}
+                    :native     {:query         (tdm/encode-json
+                                                 [{:$match (tdm/raw-json "{{date}}")}
                                                   {:$sort {:_id 1}}])
                                  :collection    "checkins"
                                  :template-tags {"date" {:name         "date"
@@ -390,8 +390,8 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/encode [{:$match (json/raw-json-generator "{{id}}")}
-                                                            {:$sort {:_id 1}}])
+                  :native     {:query         (tdm/encode-json [{:$match (tdm/raw-json "{{id}}")}
+                                                                {:$sort {:_id 1}}])
                                :collection    "categories"
                                :template-tags {"id" {:name         "id"
                                                      :display-name "ID"
@@ -411,8 +411,8 @@
                 (qp/process-query
                  (mt/query checkins
                    {:type   :native
-                    :native {:query         (json/encode
-                                             [{:$match (json/raw-json-generator "{{date}}")}
+                    :native {:query         (tdm/encode-json
+                                             [{:$match (tdm/raw-json "{{date}}")}
                                               {:$sort {:_id 1}}
                                               {:$limit 1}])
                              :collection    "checkins"
@@ -432,8 +432,8 @@
                   (qp/process-query
                    (mt/query tips
                      {:type       :native
-                      :native     {:query         (json/encode
-                                                   [{:$match (json/raw-json-generator "{{username}}")}
+                      :native     {:query         (tdm/encode-json
+                                                   [{:$match (tdm/raw-json "{{username}}")}
                                                     {:$sort {:_id 1}}
                                                     {:$project {"username" "$source.username"
                                                                 "_id" 1}}
@@ -463,8 +463,8 @@
                       (qp/process-query
                        (mt/query tips
                          {:type       :native
-                          :native     {:query         (json/encode
-                                                       [{:$match (json/raw-json-generator "{{username}}")}
+                          :native     {:query         (tdm/encode-json
+                                                       [{:$match (tdm/raw-json "{{username}}")}
                                                         {:$sort {:_id 1}}
                                                         {:$project {"username" "$source.username"}}
                                                         {:$limit 1}])
@@ -493,8 +493,8 @@
                          (qp/process-query
                           (mt/query venues
                             {:type       :native
-                             :native     {:query         (json/encode
-                                                          [{:$match (json/raw-json-generator "{{price}}")}
+                             :native     {:query         (tdm/encode-json
+                                                          [{:$match (tdm/raw-json "{{price}}")}
                                                            {:$project {"price" "$price"}}
                                                            {:$sort {:_id 1}}
                                                            {:$limit 10}])
@@ -519,8 +519,8 @@
                                (qp/process-query
                                 (mt/query tips
                                   {:type       :native
-                                   :native     {:query         (json/encode
-                                                                [{:$match (json/raw-json-generator "{{username}}")}
+                                   :native     {:query         (tdm/encode-json
+                                                                [{:$match (tdm/raw-json "{{username}}")}
                                                                  {:$sort {:_id 1}}
                                                                  {:$project {"username" "$source.username"}}
                                                                  {:$limit 20}])
@@ -555,7 +555,7 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/encode [{:$match (json/raw-json-generator "{{snippet: first 3 checkins}}")}])
+                  :native     {:query         (tdm/encode-json [{:$match (tdm/raw-json "{{snippet: first 3 checkins}}")}])
                                :collection    "categories"
                                :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
                                                                             :display-name "Snippet: First 3 checkins"
@@ -569,13 +569,13 @@
     (mt/test-driver :mongo
       (let [query (mt/native-query
                    {:collection "orders"
-                    :query (json/encode
+                    :query (tdm/encode-json
                             [{"$lookup" {"from" "products"
                                          "localField" "product_id"
                                          "foreignField" "_id"
                                          "as" "join_alias_Products"}}
                              {"$unwind" "$join_alias_Products"}
-                             {"$match" (json/raw-json-generator "{{category_filter}}")}
+                             {"$match" (tdm/raw-json "{{category_filter}}")}
                              {"$count" "count"}])
                     :template-tags {"category_filter" {:id "category_filter_id"
                                                        :name "category_filter"
@@ -592,13 +592,13 @@
     (mt/test-driver :mongo
       (let [query (mt/native-query
                    {:collection "orders"
-                    :query (json/encode
+                    :query (tdm/encode-json
                             [{"$lookup" {"from" "products"
                                          "localField" "product_id"
                                          "foreignField" "_id"
                                          "as" "join_alias_Products"}}
                              {"$unwind" "$join_alias_Products"}
-                             {"$match" (json/raw-json-generator "{{date_filter}}")}
+                             {"$match" (tdm/raw-json "{{date_filter}}")}
                              {"$count" "count"}])
                     :template-tags {"date_filter" {:id "date_filter_id"
                                                    :name "date_filter"
@@ -615,13 +615,13 @@
     (mt/test-driver :mongo
       (let [query (mt/native-query
                    {:collection "orders"
-                    :query (json/encode
+                    :query (tdm/encode-json
                             [{"$lookup" {"from" "products"
                                          "localField" "product_id"
                                          "foreignField" "_id"
                                          "as" "join_alias_Products"}}
                              {"$unwind" "$join_alias_Products"}
-                             {"$match" (json/raw-json-generator "{{date_filter}}")}
+                             {"$match" (tdm/raw-json "{{date_filter}}")}
                              {"$count" "count"}])
                     :template-tags {"date_filter" {:id "date_filter_id"
                                                    :name "date_filter"

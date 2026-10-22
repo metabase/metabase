@@ -1,6 +1,7 @@
 (ns metabase.test.data.mongo
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
@@ -96,16 +97,26 @@
     (str "_" table-or-field-name)
     table-or-field-name))
 
+(defn raw-json
+  "Marks `s` to be spliced as-is into the JSON written by [[encode-json]], e.g. a `{{tag}}` standing for a value."
+  [s]
+  (str "__RAW__" s "__RAW__"))
+
+(defn encode-json
+  "[[json/encode]], splicing the strings marked with [[raw-json]] as-is."
+  [x]
+  (str/replace (json/encode x) #"\"__RAW__(.*?)__RAW__\"" "$1"))
+
 (deftest json-raw-test
-  (testing "Make sure the `raw-json-generator` util fn actually works the way we expect it to"
+  (testing "Make sure the `raw-json` util fn actually works the way we expect it to"
     (is (= "{\"x\":{{param}}}"
-           (json/encode {:x (json/raw-json-generator "{{param}}")})))))
+           (encode-json {:x (raw-json "{{param}}")})))))
 
 (defmethod tx/count-with-template-tag-query :mongo
   [_driver table-name field-name _param-type]
   {:projections ["count"]
-   :query       (json/encode
-                 [{:$match {(name field-name) (json/raw-json-generator (format "{{%s}}" (name field-name)))}}
+   :query       (encode-json
+                 [{:$match {(name field-name) (raw-json (format "{{%s}}" (name field-name)))}}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
@@ -114,8 +125,8 @@
 (defmethod tx/count-with-field-filter-query :mongo
   [_driver table-name field-name]
   {:projections ["count"]
-   :query       (json/encode
-                 [{:$match (json/raw-json-generator (format "{{%s}}" (name field-name)))}
+   :query       (encode-json
+                 [{:$match (raw-json (format "{{%s}}" (name field-name)))}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])

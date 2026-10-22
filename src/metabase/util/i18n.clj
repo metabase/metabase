@@ -132,15 +132,9 @@
   (toString [_]
     (translate-site-locale format-string args pluralization-opts)))
 
-(defn- localized-to-json
-  "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
-  `json/add-encoder`. Ideally we'd implement those protocols directly as it's faster, but currently that doesn't
-  work with Cheshire"
-  [localized-string json-generator]
-  (json/write-string json-generator (str localized-string)))
-
-(json/add-encoder UserLocalizedString localized-to-json)
-(json/add-encoder SiteLocalizedString localized-to-json)
+;; Encode localized strings as their translation, not as records
+(json/add-encoder UserLocalizedString str)
+(json/add-encoder SiteLocalizedString str)
 
 (def LocalizedString
   "Schema for user and system localized string instances"
