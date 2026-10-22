@@ -10,9 +10,7 @@
    Keep every sentence inside v1's own vocabulary — `read_resource`, `metabase://` URIs,
    portable FKs and `portable_entity_id`. An error key with no entry here yields no sentence,
    which is the intended failure mode: a missing hint reads as terse, a wrong one sends the
-   agent at a tool it does not have."
-  (:require
-   [metabase.util.i18n :refer [tru]]))
+   agent at a tool it does not have.")
 
 (set! *warn-on-reflection* true)
 
@@ -28,13 +26,13 @@
          "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
 
     ("question" "model" "card")
-    (tru "To reference a saved question or model as a query source, put its `portable_entity_id` (the 21-char string from its search result or `read_resource`) into `source-card:` — not a URI.")
+    "To reference a saved question or model as a query source, put its `portable_entity_id` (the 21-char string from its search result or `read_resource`) into `source-card:` — not a URI."
 
     "table"
-    (tru "Use the portable FK `[<db-name>, <schema>, <table-name>]` in `source-table:` — not a URI. `read_resource metabase://table/{0}` reports the exact names."
-         (str entity-id))
+    (format "Use the portable FK `[<db-name>, <schema>, <table-name>]` in `source-table:` — not a URI. `read_resource metabase://table/%s` reports the exact names."
+            (str entity-id))
 
-    (tru "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`.")))
+    "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`."))
 
 (defn- card-fields-hint
   "Return guidance for listing `what` from the source card, or nil when `data` names no card."
@@ -51,43 +49,43 @@
     (uri-hint entity-type entity-id)
 
     :unknown-table
-    (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response.")
+    "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
 
     :unknown-table-id
     ;; A numeric-id miss, not a portable-FK miss: pointing the agent at a portable FK (as
     ;; `:unknown-table` does) would be wrong advice. v1 authors portable FKs, so the right move
     ;; is to find the table by name and use its portable FK.
-    (tru "That numeric table id does not resolve. Call `read_resource` with `metabase://database/<numeric id>/tables` to find the table, then use its portable FK `[<db-name>, <schema>, <table-name>]` in `source-table:`.")
+    "That numeric table id does not resolve. Call `read_resource` with `metabase://database/<numeric id>/tables` to find the table, then use its portable FK `[<db-name>, <schema>, <table-name>]` in `source-table:`."
 
     :ambiguous-table
-    (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK.")
+    "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
 
     (:unknown-field :unknown-field-id)
-    (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
+    "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table's columns."
 
     :ambiguous-fk
     (or (card-fields-hint data "foreign-key columns")
-        (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."))
+        "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
 
     (:column-not-returned :unexportable-fk)
     (card-fields-hint data "columns")
 
     :no-fk-path
-    (tru "If a metric relates to that table, read its dimensions resource `metabase://metric/<metric_id>/dimensions`, which lists the exact `joins:` clause to paste and the columns it unlocks.")
+    "If a metric relates to that table, read its dimensions resource `metabase://metric/<metric_id>/dimensions`, which lists the exact `joins:` clause to paste and the columns it unlocks."
 
     (:unknown-card :unknown-card-id)
-    (tru "Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`.")
+    "Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
 
     (:unknown-measure :unknown-measure-id)
-    (tru "Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag.")
+    "Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
 
     (:unknown-segment :unknown-segment-id)
-    (tru "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag.")
+    "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
 
     :unknown-database
-    (tru "Use the exact database name as reported by search / `read_resource` (it appears as the first element of every portable FK, e.g. `source-table: [<db-name>, <schema>, <table>]`).")
+    "Use the exact database name as reported by search / `read_resource` (it appears as the first element of every portable FK, e.g. `source-table: [<db-name>, <schema>, <table>]`)."
 
     :missing-source-in-first-stage
-    (tru "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string.")
+    "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string."
 
     nil))

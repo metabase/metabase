@@ -9,9 +9,8 @@
   `metabase://` URIs, portable FKs, `portable_entity_id` — and `tools.core/with-pipeline-errors`
   converts a pipeline exception into the matching declaration.
 
-  The pipeline's own message is authored text (it is built with `tru` and already reaches the model
-  today), so it is the one foreign message a payload here may carry. Everything else about the
-  exception stays in the logs.
+  The pipeline's own message is authored text (it already reaches the model today), so it is the one
+  foreign message a payload here may carry. Everything else about the exception stays in the logs.
 
   A code with no declaration is not converted and becomes unrecoverable, which is why
   `metabase.metabot.tools.recoverable.pipeline-test` scans the pipeline sources and fails when a
