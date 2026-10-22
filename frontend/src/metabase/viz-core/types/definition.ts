@@ -253,6 +253,7 @@ export type VisualizationSettingsDefinitions = {
     ChartSettingSeriesOrderProps
   >;
   "graph.series_order_dimension"?: SeriesSettingDefinition<Value, Props>;
+  "graph.bar_overlap"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_goal"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_stack_values"?: SeriesSettingDefinition<Value, Props>;

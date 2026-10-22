@@ -11,6 +11,7 @@ import * as Lib from "metabase-lib";
 
 import { FilterSubmitButton } from "../FilterSubmitButton";
 import type { FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { useDateFilter } from "./hooks";
 
@@ -23,6 +24,7 @@ export function DateFilterPicker({
   withAddButton,
   withSubmitButton,
   onChange,
+  onDraftChange,
   onBack,
   readOnly,
 }: FilterPickerWidgetProps) {
@@ -53,20 +55,23 @@ export function DateFilterPicker({
       <DatePicker
         value={value}
         availableUnits={availableUnits}
-        renderSubmitButton={({ value, isDisabled }) => {
-          if (!withSubmitButton) {
-            return null;
-          }
-
-          return (
-            <FilterSubmitButton
-              isNew={isNew}
-              isDisabled={isDisabled}
-              withAddButton={withAddButton}
-              onAddButtonClick={() => handleAddButtonClick(value)}
+        renderSubmitButton={({ value, isDisabled }) => (
+          <>
+            <DateDraftReporter
+              value={isDisabled ? undefined : value}
+              getFilterClause={getFilterClause}
+              onDraftChange={onDraftChange}
             />
-          );
-        }}
+            {withSubmitButton && (
+              <FilterSubmitButton
+                isNew={isNew}
+                isDisabled={isDisabled}
+                withAddButton={withAddButton}
+                onAddButtonClick={() => handleAddButtonClick(value)}
+              />
+            )}
+          </>
+        )}
         renderBackButton={() =>
           onBack ? (
             <PopoverBackButton
@@ -90,6 +95,25 @@ export function DateFilterPicker({
       />
     </div>
   );
+}
+
+interface DateDraftReporterProps {
+  value: DatePickerValue | undefined;
+  getFilterClause: (value: DatePickerValue) => Lib.ExpressionClause;
+  onDraftChange: FilterPickerWidgetProps["onDraftChange"];
+}
+
+// DatePicker keeps its draft value inside, and only passes it to the submit
+// button. This component reports that value as a draft filter.
+function DateDraftReporter({
+  value,
+  getFilterClause,
+  onDraftChange,
+}: DateDraftReporterProps) {
+  useReportDraftFilter(onDraftChange, value, () =>
+    value ? getFilterClause(value) : undefined,
+  );
+  return null;
 }
 
 interface SimpleDateFilterPickerProps {

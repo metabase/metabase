@@ -108,6 +108,11 @@ const graphDataSettings: VisualizationSettingsDefinitions = {
     ]) => cols,
     getHidden: () => true,
   }),
+  // Prototype: set only in code, for the onion skin of the live filter preview.
+  "graph.bar_overlap": {
+    getHidden: () => true,
+    getDefault: () => 0,
+  },
   "graph.dimensions": {
     getSection: () => t`Data`,
     get title() {

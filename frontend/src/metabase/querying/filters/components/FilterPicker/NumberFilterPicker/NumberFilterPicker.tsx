@@ -13,6 +13,7 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { NumberFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { type NumberOrEmptyValue, useNumberFilter } from "./hooks";
 
@@ -26,6 +27,7 @@ export function NumberFilterPicker({
   withAddButton,
   withSubmitButton,
   onChange,
+  onDraftChange,
   onBack,
   readOnly,
 }: FilterPickerWidgetProps) {
@@ -51,6 +53,10 @@ export function NumberFilterPicker({
     column,
     filter,
   });
+
+  useReportDraftFilter(onDraftChange, { operator, values }, () =>
+    isValid ? getFilterClause(operator, values) : undefined,
+  );
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);

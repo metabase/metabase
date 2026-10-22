@@ -9,6 +9,7 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { useBooleanFilter } from "./hooks";
 
@@ -23,6 +24,7 @@ export function BooleanFilterPicker({
   withSubmitButton,
   onBack,
   onChange,
+  onDraftChange,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -35,6 +37,8 @@ export function BooleanFilterPicker({
     column,
     filter,
   });
+
+  useReportDraftFilter(onDraftChange, { value }, () => getFilterClause());
 
   const handleFilterChange = (opts: FilterChangeOpts) => {
     onChange(getFilterClause(), opts);
