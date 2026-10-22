@@ -42,7 +42,7 @@ const CARTESIAN_AXIS_TITLE: Record<
   small: { fontSize: 11, fontWeight: 700, marginX: 12, marginY: 16 },
   medium: { fontSize: 12, fontWeight: 700, marginX: 16, marginY: 16 },
   large: { fontSize: 12, fontWeight: 700, marginX: 20, marginY: 24 },
-  fullscreen: { fontSize: 14, fontWeight: 700, marginX: 20, marginY: 40 },
+  fullscreen: { fontSize: 14, fontWeight: 700, marginX: 30, marginY: 40 },
 };
 
 export function getCartesianChartSize(size?: {

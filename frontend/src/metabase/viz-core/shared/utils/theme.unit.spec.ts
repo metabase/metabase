@@ -22,7 +22,7 @@ describe("Cartesian tick and axis title styling", () => {
     {
       cartesianSize: "fullscreen",
       ticks: { fontSize: 14, marginX: 14, marginY: 24 },
-      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 20, marginY: 40 },
+      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 30, marginY: 40 },
     },
   ] as const)(
     "uses the specified values for $cartesianSize charts",
@@ -75,7 +75,7 @@ describe("Cartesian tick and axis title styling", () => {
     expect(DEFAULT_VISUALIZATION_THEME.cartesian.axisTitle).toEqual({
       fontSize: 14,
       fontWeight: 700,
-      marginX: 20,
+      marginX: 30,
       marginY: 40,
     });
     expect(

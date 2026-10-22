@@ -100,7 +100,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 14,
       marginX: 14,
       marginY: 24,
-      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 20, marginY: 40 },
+      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 30, marginY: 40 },
     },
     {
       width: 1270,
@@ -109,7 +109,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 14,
       marginX: 14,
       marginY: 24,
-      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 20, marginY: 40 },
+      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 30, marginY: 40 },
     },
   ])(
     "uses $size styling for a $width by $height container",
