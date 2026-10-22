@@ -14,7 +14,8 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +43,9 @@
       (if (= 404 (:status-code (ex-data e)))
         (log/debugf "Omitting unresolvable metadata entry: %s %s" id (ex-message e))
         (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)}))
-      {:error (or (ex-message e) (str "Failed to fetch metadata for ID " id))})))
+      {:error (if-let [message (ex-message e)]
+                (quoting/quoted message)
+                (str "Failed to fetch metadata for ID " id))})))
 
 (defn get-metadata
   "Fetch metadata for tables, models, and metrics.

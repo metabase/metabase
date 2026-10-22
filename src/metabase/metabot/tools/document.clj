@@ -10,6 +10,7 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.query-processor.core :as qp]
    [metabase.util.malli :as mu]
+   [metabase.util.quoting :as quoting]
    [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
@@ -66,7 +67,7 @@
   (let [instruction-text (str "The SQL query could not be processed by Metabase.\n"
                               "\n"
                               "Error details:\n"
-                              error-message "\n"
+                              (quoting/quoted error-message) "\n"
                               "\n"
                               "Please fix the query and call `document_construct_sql_chart` again with corrected SQL.\n")]
     {:output       (sql-chart-error-output instruction-text)
