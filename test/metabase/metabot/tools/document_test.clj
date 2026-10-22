@@ -288,3 +288,20 @@
           (let [result (invoke-document-tool tool-name args (mentions {"database:1" "Test Database"}))]
             (is (= {:class :unrecoverable :code :internal} (:error result)))
             (is (not (str/includes? (:output result) "boom")))))))))
+
+(deftest document-construct-sql-chart-validation-row-limit-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [database-id       (mt/id)
+          validation-result (atom nil)
+          process-query     (mt/original-fn #'qp/process-query)]
+      (mt/with-dynamic-fn-redefs [qp/process-query (fn [query & args]
+                                                  (let [result (apply process-query query args)]
+                                                    (reset! validation-result result)
+                                                    result))]
+        (let [result (invoke-document-tool "document_construct_sql_chart"
+                                           (assoc sql-chart-args :database_id database-id
+                                                  :sql "SELECT ID, NAME FROM VENUES"))]
+          (is (nil? (:error result)))
+          (is (= 1 (count (get-in @validation-result [:data :rows]))))
+          (is (= 100 (count (get-in (process-query (get-in result [:structured-output :dataset_query]))
+                                   [:data :rows])))))))))

@@ -128,10 +128,10 @@
                    [:chart_type chart-type-enum]]]])
 
 (defn- check-query!
-  "Run `query`, and throw [[sql.common/query-failed!]] with its error message when it fails."
+  "Validate one row of `query`, throwing [[sql.common/query-failed!]] if it fails."
   [query]
   (try
-    (qp/process-query query)
+    (qp/process-query (assoc query :constraints {:max-results 1 :max-results-bare-rows 1}))
     (catch Exception e
       (sql.common/query-failed! {:error-message (ex-message e)}))))
 
