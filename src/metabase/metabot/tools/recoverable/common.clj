@@ -7,7 +7,8 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.tools.error :refer [defrecoverable]]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,7 +16,7 @@
   "The entity kinds [[not-found!]] can report on. A closed set because the kind reaches the model as
   a noun in English — an unexpected keyword would read as gibberish, and the payload check turns
   that into an `:internal` error instead."
-  [:enum :card :chart :collection :dashboard :database :document :field :metric :model :question
+  [:enum :card :chart :collection :dashboard :database :document :field :metric :model :query :question
    :segment :measure :snippet :table :timeline :transform])
 
 (defrecoverable not-found!
@@ -38,6 +39,28 @@
                   " was not found. It may not exist, or you may not have access to it.")
    :recovery [{:uses #{"search"}
                :text "Call `search` to find the entity you want and use an id from the results."}]})
+
+(defrecoverable unknown-query-id!
+  "The requested query is absent from the conversation."
+  {:payload [:map {:closed true}
+             [:query-id :string]
+             [:available [:sequential :string]]]}
+  [{:keys [query-id available]}]
+  {:message (str "Query " (quoting/quoted query-id) " was not found. Available query IDs: "
+                 (if (seq available) (str/join ", " (map quoting/quoted available)) "none") ".")
+   :recovery [(if (seq available)
+                {:uses #{} :text "Use an available query ID from this conversation."}
+                {:uses #{"create_sql_query"}
+                 :text "Use `create_sql_query` to create a SQL query, then use the returned query ID."})]})
+
+(defrecoverable unknown-database!
+  "The requested database does not exist."
+  {:payload [:map {:closed true} [:database-id :int]]
+   :status-code 404}
+  [{:keys [database-id]}]
+  {:message (str "Database " database-id " was not found.")
+   :recovery [{:uses #{"read_resource"}
+               :text "Read `metabase://databases` with `read_resource` to choose an available database ID, then retry."}]})
 
 (def ^:private max-listed-chart-ids
   "The most chart IDs that [[unknown-chart-id!]] lists.

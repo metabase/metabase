@@ -19,7 +19,6 @@
    [metabase.metabot.tools.charts.fit :as fit]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
-   [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
@@ -161,8 +160,9 @@
 
 (deftest create-chart-unknown-query-id-test
   (testing "a query ID that the conversation doesn't hold fails, and the model reads the query IDs that it does hold"
-    (is (= {:output "No query with ID q-9. Known query IDs: [q-1]."
-            :error  {:class :recoverable :code ::run-query/unknown-query-id}}
+    (is (= {:output (str "Query \"q-9\" was not found. Available query IDs: \"q-1\".\n"
+                         "Use an available query ID from this conversation.")
+            :error  {:class :recoverable :code ::recoverable.common/unknown-query-id}}
            (invoke "create_chart"
                    (assoc chart-args :data_source {:query_id "q-9"} :viz_settings {:chart_type "bar"})
                    {:queries {"q-1" count-by-category}})))))
@@ -213,18 +213,20 @@
                           (str " and 90 more.\n" steps))))))
 
 (deftest construct-notebook-query-unknown-chart-type-test
-  (testing "construct_notebook_query takes any chart type, and one that Metabot can't create fails with the ones it can"
-    (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                (fn [_ & _]
-                                  {:structured-output {:query-id "q-1" :query count-by-category :result-columns []}})]
-      (is (= {:output (str "Chart type \"histogram\" is not supported. Supported chart types: "
-                           (str/join ", " shared/chart-types) ".")
-              :error  {:class :recoverable :code ::create-chart-tools/unknown-chart-type}}
-             (invoke "construct_notebook_query"
-                     (assoc chart-args
-                            :query         {:lib/type "mbql/query" :stages []}
-                            :visualization {:chart_type "histogram"})
-                     {}))))))
+  (testing "construct_notebook_query refuses a chart type that Metabot can't create before it runs the query"
+    (let [ran? (atom false)]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [& _] (reset! ran? true))]
+        (is (= {:output (str "Invalid tool arguments: `visualization` should be either \"table\", \"bar\", \"line\", "
+                             "\"pie\", \"sunburst\", \"treemap\", \"boxplot\", \"area\", \"combo\", \"row\", \"pivot\", "
+                             "\"scatter\", \"waterfall\", \"sankey\", \"scalar\", \"smartscalar\", \"gauge\", \"progress\", "
+                             "\"funnel\", \"object\" or \"map\".")
+                :error  {:class :validation :code :invalid-arguments}}
+               (invoke "construct_notebook_query"
+                       (assoc chart-args
+                              :query         {:lib/type "mbql/query" :stages []}
+                              :visualization {:chart_type "histogram"})
+                       {}))))
+      (is (false? @ran?)))))
 
 (deftest chart-tools-incompatible-chart-type-test
   (let [orders-count (lib/aggregate (lib/query meta/metadata-provider (meta/table-metadata :orders)) (lib/count))

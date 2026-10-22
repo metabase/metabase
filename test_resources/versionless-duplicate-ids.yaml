@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: duplicate_identity/2026/versionless_duplicate_a.yaml
+  - include:
+      file: duplicate_identity/2027/versionless_duplicate_b.yaml
