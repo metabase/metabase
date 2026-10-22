@@ -715,11 +715,9 @@
   shape and concentrates on the LLM-friendly repair passes.
 
   Pipeline:
-    1. Boundary-validate the keyword-keyed input against `::lib.schema/external-query`
-       ([[repr/validate-external-query]]). Catches structural issues — missing `stages`,
-       typo'd stage keys (e.g. `aggreagation` vs `aggregation`), wrong top-level `lib/type`,
-       etc. — that the loose `:map` wire schema doesn't catch.
-    2. Convert to the string-keyed portable form the repair pipeline operates on.
+    1. Convert to the string-keyed portable form the repair pipeline operates on.
+    2. Reject unknown stage keys, such as `aggreagation` for `aggregation`
+       ([[repr/assert-known-stage-keys!]]).
     3. Resolve the database id from the first stage's `source-table:` / `source-card:`
        ([[resolve-database-id-from-first-stage]]) and build an application-DB-backed
        `MetadataProvider`.
