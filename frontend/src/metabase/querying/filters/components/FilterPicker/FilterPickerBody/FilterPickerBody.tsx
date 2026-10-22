@@ -1,17 +1,12 @@
 import cx from "classnames";
-import { useCallback, useContext, useState } from "react";
 
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BooleanFilterPicker } from "../BooleanFilterPicker";
 import { CoordinateFilterPicker } from "../CoordinateFilterPicker";
 import { DateFilterPicker } from "../DateFilterPicker";
 import { DefaultFilterPicker } from "../DefaultFilterPicker";
-import {
-  FilterFooterLabelContext,
-  FilterPreviewContext,
-} from "../FilterPreviewContext";
 import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
@@ -50,8 +45,6 @@ export function FilterPickerBody({
   onClose,
   readOnly,
 }: FilterPickerBodyProps) {
-  const livePreview = useContext(FilterPreviewContext);
-  const [draftFilter, setDraftFilter] = useState<Lib.ExpressionClause>();
   const autoApply = useFilterAutoApply({
     query,
     stageIndex,
@@ -60,29 +53,16 @@ export function FilterPickerBody({
     onClose,
   });
   const isAutoApply = autoApply.isActive && !readOnly;
-  // With auto-apply, the question itself shows the filter, so there is no preview.
-  const preview = isAutoApply ? null : livePreview;
-  const { onDraftChange: onAutoApplyDraftChange } = autoApply;
-  const handleDraftChange = useCallback(
-    (filter: Lib.ExpressionClause | undefined) => {
-      setDraftFilter(filter);
-      onAutoApplyDraftChange(filter);
-    },
-    [onAutoApplyDraftChange],
-  );
 
   const FilterWidget = getFilterWidget(column);
   if (!FilterWidget) {
     return null;
   }
 
-  const body = (
+  return (
     <Box
       {...(isAutoApply ? autoApply.containerProps : undefined)}
-      className={cx({
-        [S.readOnly]: readOnly,
-        [S.withPreview]: preview != null && !readOnly,
-      })}
+      className={cx({ [S.readOnly]: readOnly })}
     >
       <FilterWidget
         autoFocus={autoFocus}
@@ -94,29 +74,11 @@ export function FilterPickerBody({
         withAddButton={withAddButton}
         withSubmitButton={withSubmitButton && !readOnly && !isAutoApply}
         onChange={isAutoApply ? autoApply.onChange : onChange}
-        onDraftChange={
-          isAutoApply ? handleDraftChange : preview ? setDraftFilter : undefined
-        }
+        onDraftChange={isAutoApply ? autoApply.onDraftChange : undefined}
         onBack={onBack}
         readOnly={readOnly}
       />
     </Box>
-  );
-
-  if (!preview || readOnly) {
-    return body;
-  }
-
-  const previewProps = { query, stageIndex, filter, draftFilter };
-  return (
-    <FilterFooterLabelContext.Provider
-      value={preview.renderFooterLabel?.(previewProps)}
-    >
-      <Flex align="stretch">
-        {body}
-        {preview.renderPreview(previewProps)}
-      </Flex>
-    </FilterFooterLabelContext.Provider>
   );
 }
 

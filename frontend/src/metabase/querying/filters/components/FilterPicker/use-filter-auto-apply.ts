@@ -11,7 +11,7 @@ import { useLatest } from "react-use";
 
 import type * as Lib from "metabase-lib";
 
-import { FilterAutoApplyContext } from "./FilterPreviewContext";
+import { FilterAutoApplyContext } from "./FilterAutoApplyContext";
 import type { FilterChangeOpts } from "./types";
 
 const NON_TEXT_INPUT_TYPES = new Set([

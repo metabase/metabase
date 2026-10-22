@@ -214,15 +214,6 @@ export function seriesSetting({
       },
       readDependencies: ["display"],
     },
-    // Prototype: set only in code, for the onion skin of the live filter preview.
-    "line.hidden": {
-      getHidden: () => true,
-      getDefault: () => false,
-    },
-    "bar.behind": {
-      getHidden: () => true,
-      getDefault: () => false,
-    },
     "line.missing": {
       get title() {
         return t`Replace missing values with`;

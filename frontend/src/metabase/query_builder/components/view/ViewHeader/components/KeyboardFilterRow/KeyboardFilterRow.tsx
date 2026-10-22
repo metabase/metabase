@@ -2,13 +2,8 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import {
-  INLINE_PILL_CLICK_OUTSIDE,
-  INLINE_PILL_EDITING,
-  usePrototypeSetting,
-} from "metabase/prototype";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { FilterAutoApplyContext } from "metabase/querying/filters/components/FilterPicker/FilterPreviewContext";
+import { FilterAutoApplyContext } from "metabase/querying/filters/components/FilterPicker/FilterAutoApplyContext";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -16,8 +11,8 @@ import type Question from "metabase-lib/v1/Question";
 
 import {
   areQueriesEqual,
-  getPreviewQuery,
-} from "../../../FilterLivePreview/FilterLivePreview";
+  getQueryWithFilter,
+} from "../../../FilterAutoApply/utils";
 
 import { type DraftChangeSource, DraftFilterPill } from "./DraftFilterPill";
 import { type FilterPillPart, FilterPillParts } from "./FilterPillParts";
@@ -66,8 +61,6 @@ export function KeyboardFilterRow({
   const items = useMemo(() => getFilterItems(query), [query]);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const [activeDraft, setActiveDraft] = useState<ActiveDraft | null>(null);
-  const [editingMode] = usePrototypeSetting(INLINE_PILL_EDITING);
-  const [clickOutsideMode] = usePrototypeSetting(INLINE_PILL_CLICK_OUTSIDE);
   const autoApply = useContext(FilterAutoApplyContext);
   const latestQuestion = useLatest(question);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -106,7 +99,7 @@ export function KeyboardFilterRow({
     filter: Lib.ExpressionClause | Lib.SegmentMetadata,
   ) => {
     setQuery(
-      getPreviewQuery(draft.query, draft.stageIndex, draft.filter, filter),
+      getQueryWithFilter(draft.query, draft.stageIndex, draft.filter, filter),
     );
   };
 
@@ -194,7 +187,6 @@ export function KeyboardFilterRow({
       filter={activeDraft.filter}
       initialState={activeDraft.initialState}
       initialEditedPart={activeDraft.initialEditedPart}
-      isClickOutsideApply={clickOutsideMode === "apply"}
       onDraftChange={handleDraftChange}
       onSubmit={handleSubmit}
       onSubmitFilters={handleSubmitFilters}
@@ -233,10 +225,7 @@ export function KeyboardFilterRow({
         ) {
           return null;
         }
-        const initialState =
-          editingMode === "inline"
-            ? getDraftStateFromFilter(query, stageIndex, filter)
-            : undefined;
+        const initialState = getDraftStateFromFilter(query, stageIndex, filter);
         const { column, operator } = initialState ?? {};
         if (initialState == null || column == null || operator == null) {
           return (

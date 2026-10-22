@@ -12,8 +12,7 @@ import { QueryVisualization } from "metabase/querying/components/QueryVisualizat
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
-import { Box, Loader } from "metabase/ui";
-import { ChartAnimationContext } from "metabase/visualizations/components/EChartsRenderer/ChartAnimationContext";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -27,7 +26,6 @@ import type {
 
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
-import { useMainChartFilterPreview } from "../../FilterLivePreview/FilterLivePreview";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
@@ -108,7 +106,6 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   } = props;
 
   const visualizationResultProps = useVisualizationResultQBProps();
-  const filterPreview = useMainChartFilterPreview();
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
@@ -149,33 +146,19 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         enabled={!isLiveResizable}
         resetKey={props.isRunning}
       >
-        <ChartAnimationContext.Provider value={filterPreview.chartAnimation}>
-          <QueryVisualization
-            {...props}
-            {...visualizationResultProps}
-            {...(filterPreview.rawSeries
-              ? { rawSeries: filterPreview.rawSeries }
-              : {})}
-            noHeader
-            className={CS.spread}
-            mode={clickActionMode}
-            hasColumnReordering
-            noResultsAction={
-              !isDirty && <HasResultsAlertPrompt question={question} />
-            }
-            errorAction={<FixSqlQueryButton />}
-            onUpdateQuestion={updateQuestion}
-          />
-        </ChartAnimationContext.Provider>
-        {filterPreview.isUpdating && (
-          <Loader
-            size="xs"
-            pos="absolute"
-            top="0.75rem"
-            right="1rem"
-            style={{ zIndex: 2 }}
-          />
-        )}
+        <QueryVisualization
+          {...props}
+          {...visualizationResultProps}
+          noHeader
+          className={CS.spread}
+          mode={clickActionMode}
+          hasColumnReordering
+          noResultsAction={
+            !isDirty && <HasResultsAlertPrompt question={question} />
+          }
+          errorAction={<FixSqlQueryButton />}
+          onUpdateQuestion={updateQuestion}
+        />
       </DebouncedFrame>
       <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>

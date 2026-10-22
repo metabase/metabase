@@ -1,8 +1,8 @@
-import { type ReactNode, createContext } from "react";
+import { createContext } from "react";
 
 import type * as Lib from "metabase-lib";
 
-export interface FilterPreviewProps {
+export interface DraftFilterProps {
   query: Lib.Query;
   stageIndex: number;
   /** The filter that the picker updates, or undefined for a new filter. */
@@ -10,22 +10,6 @@ export interface FilterPreviewProps {
   /** The filter that the picker would apply now, or undefined when its state is not valid yet. */
   draftFilter?: Lib.ExpressionClause;
 }
-
-export interface FilterPreviewContextValue {
-  renderPreview: (props: FilterPreviewProps) => ReactNode;
-  /** Shown at the left of the picker footer, next to the submit button. */
-  renderFooterLabel?: (props: FilterPreviewProps) => ReactNode;
-}
-
-/**
- * Prototype: when a provider is present, filter pickers show a live preview of
- * the filter next to their controls.
- */
-export const FilterPreviewContext =
-  createContext<FilterPreviewContextValue | null>(null);
-
-/** The footer label from [[FilterPreviewContextValue]] for the current picker. */
-export const FilterFooterLabelContext = createContext<ReactNode>(null);
 
 export type TypedValuesApplyMode = "pause" | "blur";
 
@@ -36,7 +20,7 @@ export interface FilterAutoApplyContextValue {
    * Puts the draft filter into the query of the question and runs it. Does
    * nothing when the question already has this query.
    */
-  apply: (props: FilterPreviewProps) => void;
+  apply: (props: DraftFilterProps) => void;
   typedValuesApplyMode: TypedValuesApplyMode;
   typingPauseMs: number;
 }

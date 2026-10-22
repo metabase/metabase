@@ -10,10 +10,6 @@ import {
   useSearchFieldValuesQuery,
 } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  SEMANTIC_COLUMN_SEARCH,
-  usePrototypeSetting,
-} from "metabase/prototype";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   canListFieldValues,
@@ -74,7 +70,6 @@ interface DraftFilterPillProps {
   initialState?: DraftState;
   /** The part of the filter to edit first, or undefined for the values. */
   initialEditedPart?: "column" | "operator";
-  isClickOutsideApply: boolean;
   /** Called with the filter in the pill each time the user changes it. */
   onDraftChange: (
     filter: Lib.ExpressionClause | undefined,
@@ -100,7 +95,6 @@ export function DraftFilterPill({
   filter,
   initialState,
   initialEditedPart,
-  isClickOutsideApply,
   onDraftChange,
   onSubmit,
   onSubmitFilters,
@@ -198,14 +192,15 @@ export function DraftFilterPill({
     step === "value" &&
     (isAiPrompt(text) || values.some((value) => isAiPrompt(value)));
 
-  const latestState = useLatest({ step, isClickOutsideApply, submit });
+  const latestState = useLatest({ step, submit });
+  // A click outside applies the filter in the pill, when it is complete.
   const pillRef = useClickOutside(() => {
-    const { step, isClickOutsideApply, submit } = latestState.current;
+    const { step, submit } = latestState.current;
     // The fallback picker is in a portal and closes on its own.
     if (step === "fallback") {
       return;
     }
-    if (!isClickOutsideApply || !submit()) {
+    if (!submit()) {
       onCancel();
     }
   });
@@ -728,7 +723,6 @@ function useRelatedColumnGroup(
   columnGroups: ColumnGroup[],
   text: string,
 ): SuggestionGroup | null {
-  const [isEnabled] = usePrototypeSetting(SEMANTIC_COLUMN_SEARCH);
   const entries = useMemo(
     () =>
       columnGroups.flatMap((group, groupIndex) =>
@@ -749,7 +743,7 @@ function useRelatedColumnGroup(
       ),
     [entries, columnGroups.length],
   );
-  const matches = useSemanticColumnMatches(labels, text, isEnabled);
+  const matches = useSemanticColumnMatches(labels, text);
 
   return useMemo(() => {
     const searchText = text.trim().toLowerCase();

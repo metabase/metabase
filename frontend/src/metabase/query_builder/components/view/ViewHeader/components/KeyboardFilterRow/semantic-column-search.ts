@@ -215,7 +215,6 @@ function destroySharedMatcher(reason: string) {
 export function useSemanticColumnMatches(
   columnLabels: string[],
   query: string,
-  isEnabled: boolean,
 ): number[] {
   const labelsKey = columnLabels.join("\n");
   const stableLabels = useMemo(() => labelsKey.split("\n"), [labelsKey]);
@@ -228,7 +227,7 @@ export function useSemanticColumnMatches(
   const trimmedQuery = query.trim().toLowerCase();
 
   useEffect(() => {
-    if (!isEnabled || stableLabels.length === 0) {
+    if (stableLabels.length === 0) {
       return;
     }
     let isCancelled = false;
@@ -244,7 +243,7 @@ export function useSemanticColumnMatches(
       releaseSharedMatcher(entry);
       setMatcher(null);
     };
-  }, [isEnabled, stableLabels]);
+  }, [stableLabels]);
 
   useEffect(() => {
     if (matcher == null || trimmedQuery.length < MIN_QUERY_LENGTH) {
