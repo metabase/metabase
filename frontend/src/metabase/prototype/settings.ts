@@ -37,9 +37,35 @@ export const AUTO_APPLY_DELAY_MS: NumberPrototypeSetting = {
   key: "auto-apply-delay-ms",
   label: "Typing pause, ms",
   description: "How long to wait after the last key press",
-  defaultValue: 600,
+  defaultValue: 250,
   min: 0,
   max: 5000,
+};
+
+export const INLINE_PILL_EDITING: SegmentedPrototypeSetting = {
+  type: "segmented",
+  key: "inline-pill-editing",
+  label: "Edit filter pills",
+  description:
+    "Click a filter pill to edit it in the pill, or in a popover. Date, time and coordinate filters always use the popover.",
+  options: [
+    { value: "inline", label: "In the pill" },
+    { value: "popover", label: "Popover" },
+  ],
+  defaultValue: "inline",
+};
+
+export const INLINE_PILL_CLICK_OUTSIDE: SegmentedPrototypeSetting = {
+  type: "segmented",
+  key: "inline-pill-click-outside",
+  label: "Click outside a pill you edit",
+  description:
+    "Apply the filter in the pill, if it is complete, or discard the changes",
+  options: [
+    { value: "apply", label: "Apply" },
+    { value: "discard", label: "Discard" },
+  ],
+  defaultValue: "apply",
 };
 
 export const LOADING_SPINNER_DELAY_MS: NumberPrototypeSetting = {
@@ -127,6 +153,8 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   AUTO_APPLY_FILTERS,
   AUTO_APPLY_TYPED_VALUES,
   AUTO_APPLY_DELAY_MS,
+  INLINE_PILL_EDITING,
+  INLINE_PILL_CLICK_OUTSIDE,
   LOADING_SPINNER_DELAY_MS,
   LIVE_FILTER_PREVIEW_MODE,
   LIVE_FILTER_PREVIEW_DELAY_MS,
