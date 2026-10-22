@@ -13,6 +13,7 @@ import { replaceLocation } from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
+  CanAccessOnboarding,
   CanAccessSettings,
   IsAdmin,
   IsAuthenticated,
@@ -165,6 +166,45 @@ describe("route-guards", () => {
       await waitFor(() => {
         expect(router?.location.pathname).toBe("/unauthorized");
       });
+    });
+  });
+
+  describe("CanAccessOnboarding", () => {
+    afterEach(() => {
+      delete window.overrideIsWithinIframe;
+    });
+
+    const setup = () =>
+      renderWithProviders(
+        <>
+          <Route element={<CanAccessOnboarding />}>
+            <Route path="/getting-started" element={<Protected />} />
+          </Route>
+          <Route path="/" element={<Home />} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: false }),
+            settings: createMockSettingsState({ "has-user-setup": true }),
+          }),
+          withRouter: true,
+          initialRoute: "/getting-started",
+        },
+      );
+
+    it("lets a non-admin open /getting-started", async () => {
+      const { router } = setup();
+
+      expect(await screen.findByText("protected")).toBeInTheDocument();
+      expect(router?.location.pathname).toBe("/getting-started");
+    });
+
+    it("redirects a non-admin to / when Metabase is embedded in an iframe", async () => {
+      window.overrideIsWithinIframe = true;
+      const { router } = setup();
+
+      expect(await screen.findByText("home")).toBeInTheDocument();
+      expect(router?.location.pathname).toBe("/");
     });
   });
 

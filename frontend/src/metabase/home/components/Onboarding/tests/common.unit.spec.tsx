@@ -104,6 +104,27 @@ describe("Onboarding", () => {
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 
+  it("should let a non-admin open the 'dashboard' item, which hides the 'query' item", async () => {
+    setup({ isAdmin: false });
+
+    expect(
+      screen.getByRole("heading", { name: "Explore your data" }),
+    ).toBeVisible();
+    const queryText = within(getItem("query")).getByText(
+      /to create a question in natural language/,
+    );
+    expect(queryText).toBeVisible();
+
+    await userEvent.click(getItemControl("Create a dashboard"));
+
+    const dashboardText = within(getItem("dashboard")).getByText(
+      /You can present questions, text, and links on a dashboard/,
+    );
+    // The panel shows once the expand animation starts on the next frame
+    await waitFor(() => expect(dashboardText).toBeVisible());
+    expect(queryText).not.toBeVisible();
+  });
+
   it("should fall back to the default item when the remembered item is hidden", () => {
     setup({ openItem: "ai", aiFeaturesEnabled: false });
 
