@@ -23,6 +23,8 @@ Rows per function: `caught`, `survived` (executed but no test noticed any mutant
 
 The tool edits product files in the working tree while jest runs. It refuses to start when any of those files has uncommitted changes, restores them with `git checkout --` when it finishes or is interrupted, and deletes its wrapper specs (`__e2e_verify_*.unit.spec.*`). If a run is killed outright, `git status` shows the leftovers.
 
+Run nothing else in that working tree until it finishes. A jest run of your own there picks up the wrapper specs and the mutated sources, and reports a test count and failures that mean nothing. Use a separate worktree for other work.
+
 ## Limits
 
 - The function manifest describes the nightly's own commit. Functions inside a hunk of `git diff <nightly sha>` are reported as `changed since nightly` rather than mapped, so run it against a recent nightly.
