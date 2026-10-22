@@ -951,35 +951,17 @@ AlertsButton: () => Element;
 
 <!-- [<endsnippet returns>] -->
 
-### NavigationBackButton()
+### NavigationBackButton
 
-<!-- [<snippet navigationbackbutton()>] -->
+<!-- [<snippet navigationbackbutton>] -->
 
 ```ts
-NavigationBackButton: (props: { className?: string; style?: CSSProperties }) =>
-  ReactNode;
+NavigationBackButton: FC<{
+  className?: string;
+  style?: CSSProperties;
+}>;
 ```
 
 Back button to navigate back after drills and internal navigation. It will render null if there's nothing to go back to
 
-<!-- [<endsnippet navigationbackbutton()>] -->
-
-#### Parameters
-
-<!-- [<snippet parameters>] -->
-
-| Parameter          | Type                                                                                                                                                                                      |
-| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `props`            | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579); \} |
-| `props.className?` | `string`                                                                                                                                                                                  |
-| `props.style?`     | [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579)                                          |
-
-<!-- [<endsnippet parameters>] -->
-
-#### Returns
-
-<!-- [<snippet returns>] -->
-
-[`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L478)
-
-<!-- [<endsnippet returns>] -->
+<!-- [<endsnippet navigationbackbutton>] -->
