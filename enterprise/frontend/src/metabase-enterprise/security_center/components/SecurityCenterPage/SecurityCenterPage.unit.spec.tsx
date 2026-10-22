@@ -351,6 +351,46 @@ describe("SecurityCenterPage", () => {
     expect(screen.getByTestId("advisory-filter-bar")).toBeInTheDocument();
   });
 
+  it("filters advisory cards by severity", async () => {
+    setup([
+      createAdvisory({
+        advisory_id: "1",
+        title: "Critical RCE vulnerability",
+        severity: "critical",
+        match_status: "active",
+      }),
+      createAdvisory({
+        advisory_id: "2",
+        title: "SQL injection in query builder",
+        severity: "high",
+        match_status: "resolved",
+      }),
+      createAdvisory({
+        advisory_id: "3",
+        title: "SSRF in GeoJSON endpoint",
+        severity: "medium",
+        match_status: "not_affected",
+      }),
+    ]);
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Critical" }),
+    );
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(1);
+    expect(screen.getByText("Critical RCE vulnerability")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "All severities" }),
+    );
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+  });
+
   describe("upgrade banner", () => {
     it("shows the upgrade banner when there are active advisories", async () => {
       const advisories = [
@@ -431,6 +471,16 @@ describe("SecurityCenterPage", () => {
   describe("notification settings modal", () => {
     it("opens the modal when the 'open=notifications' query param is set", async () => {
       setup([], { initialRoute: "/?open=notifications" });
+
+      expect(
+        await screen.findByRole("dialog", { name: "Notification settings" }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens the modal when the notification settings button is clicked", async () => {
+      setup();
+
+      await userEvent.click(screen.getByTestId("notification-config-toggle"));
 
       expect(
         await screen.findByRole("dialog", { name: "Notification settings" }),
