@@ -1,34 +1,11 @@
 (ns metabase.metabot.tools.charts.create
   "Tool for creating charts from queries."
   (:require
-   [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
-   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
-   [metabase.metabot.tools.shared :as shared]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
-   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private valid-chart-types
-  "Valid chart types supported by Metabase."
-  (into #{} (map keyword) shared/chart-types))
-
-(def ^:private max-echoed-chart-type-chars
-  "The error repeats at most this many characters of an unsupported chart type, which the model supplies."
-  100)
-
-(tools/defrecoverable unknown-chart-type!
-  "The chart type is not one that Metabot can create.
-  `create_chart`'s arguments allow only supported chart types, so only `construct_notebook_query`, which accepts any
-  string, gets this error."
-  {:payload [:map {:closed true} [:chart-type :string]]}
-  [{:keys [chart-type]}]
-  {:message  (str "Chart type " (pr-str (llm-shape/truncate chart-type max-echoed-chart-type-chars))
-                  " is not supported. Supported chart types: " (str/join ", " shared/chart-types) ".")
-   :recovery []})
 
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
@@ -59,16 +36,11 @@
   - :query-id - ID of the source query
   - :reactions - Navigation action to show the chart
 
-  Throws [[unknown-chart-type!]] for a chart type that Metabot can't create, and
-  [[recoverable.common/unknown-query-id!]] for a query ID that `queries-state` doesn't hold."
+  Throws [[recoverable.common/unknown-query-id!]] for a query ID that `queries-state` doesn't hold."
   [{:keys [query-id chart-type queries-state]}]
   (log/info "Creating chart" {:query-id query-id
                               :chart-type chart-type
                               :available-queries (keys queries-state)})
-
-  ;; Validate chart type
-  (when-not (contains? valid-chart-types chart-type)
-    (unknown-chart-type! {:chart-type (u/qualified-name chart-type)}))
 
   ;; Look up query from state - try both string and original key
   (let [query (or (get queries-state query-id)

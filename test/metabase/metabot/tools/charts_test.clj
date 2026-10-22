@@ -210,18 +210,20 @@
                           (str " and 90 more.\n" steps))))))
 
 (deftest construct-notebook-query-unknown-chart-type-test
-  (testing "construct_notebook_query takes any chart type, and one that Metabot can't create fails with the ones it can"
-    (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                (fn [_ & _]
-                                  {:structured-output {:query-id "q-1" :query stub-query :result-columns []}})]
-      (is (= {:output (str "Chart type \"histogram\" is not supported. Supported chart types: "
-                           (str/join ", " shared/chart-types) ".")
-              :error  {:class :recoverable :code ::create-chart-tools/unknown-chart-type}}
-             (invoke "construct_notebook_query"
-                     (assoc chart-args
-                            :query         {:lib/type "mbql/query" :stages []}
-                            :visualization {:chart_type "histogram"})
-                     {}))))))
+  (testing "construct_notebook_query refuses a chart type that Metabot can't create before it runs the query"
+    (let [ran? (atom false)]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [& _] (reset! ran? true))]
+        (is (= {:output (str "Invalid tool arguments: `visualization` should be either \"table\", \"bar\", \"line\", "
+                             "\"pie\", \"sunburst\", \"treemap\", \"boxplot\", \"area\", \"combo\", \"row\", \"pivot\", "
+                             "\"scatter\", \"waterfall\", \"sankey\", \"scalar\", \"smartscalar\", \"gauge\", \"progress\", "
+                             "\"funnel\", \"object\" or \"map\".")
+                :error  {:class :validation :code :invalid-arguments}}
+               (invoke "construct_notebook_query"
+                       (assoc chart-args
+                              :query         {:lib/type "mbql/query" :stages []}
+                              :visualization {:chart_type "histogram"})
+                       {}))))
+      (is (false? @ran?)))))
 
 (deftest chart-tools-undeclared-failure-test
   (testing "a failure that no error declares ends the turn instead of reaching the model"
