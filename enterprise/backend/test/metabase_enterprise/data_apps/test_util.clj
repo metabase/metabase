@@ -1,6 +1,8 @@
 (ns metabase-enterprise.data-apps.test-util
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.actions.core :as actions]
@@ -9,7 +11,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.resolve :as resolve]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
@@ -113,16 +114,6 @@
    :authority_level nil :archived false :archived_directly false :archive_operation_id nil
    :is_remote_synced false :is_sample false :personal_owner_id nil :created_at nil})
 
-(defn- copy-overriding-resolver [base card-id->copy-entity-id]
-  (reify resolve/SerdesExportResolver
-    (export-fk [_ id model]
-      (or (when (= "Card" (name model)) (card-id->copy-entity-id id))
-          (resolve/export-fk base id model)))
-    (export-fk-keyed [_ id model field] (resolve/export-fk-keyed base id model field))
-    (export-user [_ id] (resolve/export-user base id))
-    (export-table-fk [_ id] (resolve/export-table-fk base id))
-    (export-field-fk [_ id] (resolve/export-field-fk base id))))
-
 (defn- file-path
   "The repo path of an entity of the collection named `collection-name`: the collection's own file, or a file in the
   collection's directory named after the entity, with its entity ID so a test can find it."
@@ -135,58 +126,28 @@
 (defn build-resources
   "The files an author commits for the collection named `collection-name` with `collection-entity-id`, keyed by their
   repo path under `collections/data_apps/`: the collection, a saved question per `{:entity_id :name :query}` in
-  `queries`, and copies of the metrics those use and of the actions with `action-ids`, which belong to no model.
-  Copies get [[copy-entity-id]]s."
+  `queries`, which names the Library metrics it uses by their own entity IDs, and copies of the actions with
+  `action-ids`, which belong to no model. Copies get [[copy-entity-id]]s."
   [collection-name collection-entity-id queries action-ids]
   (let [resolved  (for [{:keys [query] :as spec} queries
                         :let [table-id (get-in query [:stages 0 :source :id])
                               mp       (lib-be/application-database-metadata-provider
                                         (t2/select-one-fn :db_id :model/Table :id table-id))]]
                     {:spec spec :query (lib/test-query mp query)})
-        metrics   (t2/select :model/Card :id [:in (into #{-1} (mapcat (comp lib/all-source-card-ids :query)) resolved)])
         actions   (map #(t2/select-one :model/Action :id %) action-ids)
-        copy-id   (fn [kind source] (copy-entity-id kind collection-entity-id (:entity_id source)))
-        copy-ids  (into {} (map (juxt :id (partial copy-id "metric"))) metrics)
+        copy-id   (fn [action] (copy-entity-id "action" collection-entity-id (:entity_id action)))
         extract   (fn [model-name instance]
                     (cond-> (serdes/extract-one model-name {} instance)
                       (not= "Collection" model-name) (assoc :collection_id collection-entity-id)))
         entities  (serdes/with-cache
-                    (binding [resolve/*export-resolver* (copy-overriding-resolver resolve/*export-resolver* copy-ids)]
-                      (doall
-                       (concat
-                        [(extract "Collection" (collection collection-entity-id collection-name))]
-                        (for [{:keys [spec query]} resolved]
-                          (extract "Card" (question spec query)))
-                        (for [card metrics]
-                          (extract "Card" (merge card instance-fields {:entity_id  (copy-ids (:id card))
-                                                                       :creator_id (mt/user->id :crowberto)})))
-                        (for [action actions]
-                          (extract "Action" (action-copy action (copy-id "action" action))))))))]
+                    (doall
+                     (concat
+                      [(extract "Collection" (collection collection-entity-id collection-name))]
+                      (for [{:keys [spec query]} resolved]
+                        (extract "Card" (question spec query)))
+                      (for [action actions]
+                        (extract "Action" (action-copy action (copy-id action)))))))]
     (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
-
-(defn do-with-sources!
-  "Call `f` with the sources a data app copies, a venues metric and a query action that belongs to no model, and with
-  what it can't copy, a venues model and an action on it, as `{:metric-id :action-id :model-id :model-action-id}`."
-  [f]
-  (let [mp    (mt/metadata-provider)
-        query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-    (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue count"
-                                                :type          :metric
-                                                :database_id   (mt/id)
-                                                :dataset_query (lib/aggregate query (lib/count))}
-                   :model/Card {model-id :id} {:name          "Venues model"
-                                               :type          :model
-                                               :database_id   (mt/id)
-                                               :dataset_query query}]
-      (f {:metric-id       metric-id
-          :action-id       (actions/insert! {:name          "Rename venue"
-                                             :type          :query
-                                             :database_id   (mt/id)
-                                             :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}}")
-                                             :parameters    [{:id "name" :slug "name" :type :string/=}]})
-          :model-id        model-id
-          :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
-                                             :model_id model-id})}))))
 
 (defn do-with-library!
   "Call `f` with the IDs of the root data library (`:data-id`) and metrics library (`:metrics-id`) collections, creating the
@@ -202,3 +163,58 @@
       (finally
         (when-not existing
           (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
+
+(defn do-with-sources!
+  "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and a query action
+  that belongs to no model, and with what it can't, a venues model and an action on it, as
+  `{:metric-id :action-id :model-id :model-action-id}`."
+  [f]
+  (do-with-library!
+   (fn [{:keys [metrics-id]}]
+     (let [mp    (mt/metadata-provider)
+           query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+       (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue count"
+                                                   :type          :metric
+                                                   :collection_id metrics-id
+                                                   :database_id   (mt/id)
+                                                   :dataset_query (lib/aggregate query (lib/count))}
+                      :model/Card {model-id :id} {:name          "Venues model"
+                                                  :type          :model
+                                                  :database_id   (mt/id)
+                                                  :dataset_query query}]
+         (f {:metric-id       metric-id
+             :action-id       (actions/insert! {:name          "Rename venue"
+                                                :type          :query
+                                                :database_id   (mt/id)
+                                                :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}}")
+                                                :parameters    [{:id "name" :slug "name" :type :string/=}]})
+             :model-id        model-id
+             :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
+                                                :model_id model-id})}))))))
+
+(defn venues-query
+  "A query of the VENUES table, which a card in a data app's collection may read once it is published."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(defn do-with-published-tables!
+  "Call `f` with the Tables with `table-ids` published to the Library's Data collection, as a card in a data app's
+  collection needs the tables it reads, unpublishing afterwards only the ones this call published and creating the
+  Library for the call when the instance has none."
+  [table-ids f]
+  (do-with-library!
+   (fn [{:keys [data-id]}]
+     (let [to-publish (set/difference (set table-ids) (data-studio.db/published-table-ids (set table-ids)))]
+       (when (seq to-publish)
+         (data-studio.db/publish-tables! to-publish data-id))
+       (try
+         (f)
+         (finally
+           (when (seq to-publish)
+             (data-studio.db/unpublish-tables! to-publish))))))))
+
+(defmacro with-published-tables!
+  "Run `body` with the Tables with `table-ids` published to the Library."
+  [table-ids & body]
+  `(do-with-published-tables! ~table-ids (fn [] ~@body)))
