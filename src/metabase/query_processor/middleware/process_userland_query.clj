@@ -13,6 +13,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
@@ -46,6 +47,26 @@
 
 (def ^:private save-execution-metadata-queue-capacity 500)
 
+(defn- insert-query-executions-resiliently!
+  "Insert a batch of QueryExecutions in one statement. The batch is one transaction, so a single row the app DB
+  rejects (e.g. an overlong value in a narrow column) would discard every row in it: on failure, retry the rows one
+  at a time so only the bad row is lost. Any other failure (e.g. the app DB is down) would fail every retry too, each
+  possibly waiting for a connection, so then the batch is dropped."
+  [query-executions]
+  (try
+    (query-processor.db/insert-query-executions! query-executions)
+    (catch Throwable e
+      (if (sql-errors/row-rejected? e)
+        (do
+          (log/warnf "Error saving %d QueryExecution(s) as a batch, retrying individually: %s"
+                     (count query-executions) (ex-message e))
+          (doseq [query-execution query-executions]
+            (try
+              (query-processor.db/insert-query-executions! [query-execution])
+              (catch Throwable e
+                (log/errorf "Error saving query execution info: %s" (ex-message e))))))
+        (log/errorf "Error saving %d QueryExecution(s): %s" (count query-executions) (ex-message e))))))
+
 (defn- save-execution-metadata!*
   "Save a batch of `QueryExecution`s and update the average execution times for the corresponding `Query`s."
   [query-executions]
@@ -59,14 +80,11 @@
         (query/save-queries-and-update-average-execution-times! entries)
         (catch Throwable e
           (log/errorf "Error updating query average execution times: %s" (ex-message e)))))
-    (try
-      (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
-        (when (seq no-context)
-          (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
-        (when (seq with-context)
-          (query-processor.db/insert-query-executions! (map #(dissoc % :json_query) with-context))))
-      (catch Throwable e
-        (log/errorf "Error saving query execution info: %s" (ex-message e))))))
+    (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
+      (when (seq no-context)
+        (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
+      (when (seq with-context)
+        (insert-query-executions-resiliently! (map #(dissoc % :json_query) with-context))))))
 
 (defonce ^:private save-execution-metadata-queue
   (delay (grouper/start!
@@ -289,7 +307,8 @@
       ;; catch below. Reading the EE dynamic vars directly from the catch block does NOT work — Clojure pops the
       ;; EE `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
       (binding [*execution-context-ref* (atom nil)]
-        (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+        (let [query          (assoc-in query [:info :query-hash] (or (get-in query [:info :pivot/query-hash])
+                                                                     (qp.util/query-hash query)))
               execution-info (query-execution-info query)]
           (letfn [(rff* [metadata]
                     (let [result         (rff metadata)

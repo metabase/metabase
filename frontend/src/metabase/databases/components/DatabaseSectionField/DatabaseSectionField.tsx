@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Icon } from "metabase/ui";

@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
@@ -15,6 +17,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest all-tools-test
@@ -198,6 +201,27 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
+(deftest construct-notebook-query-keeps-mbql5-temporal-filter-test
+  (testing "the generated_entity part carries a between filter of absolute-datetime bounds through JSON intact (BOT-1972)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                             (lib/absolute-datetime "2026-07-01" :day)
+                                             (lib/absolute-datetime "2026-07-31" :day))))]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [_ & _]
+                                    {:structured-output {:query-id       "q-1"
+                                                         :query          query
+                                                         :result-columns []}})]
+        (let [result (binding [shared/*profile-id* :nlq]
+                       (test-util/call-tool agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages []}
+                                             :title       "Check-ins in July"
+                                             :description "Check-ins during July 2026."}))
+              sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+          (is (= "mbql/query" (:lib/type sent)))
+          (is (= (lib/filters query)
+                 (-> sent lib/normalize :stages first :filters))))))))
+
 (deftest construct-notebook-query-tool-show-chart-test
   (let [construct! (fn [tool-names show-chart-arg]
                      (let [chart-created? (atom false)]
@@ -276,6 +300,33 @@
       (testing what
         (is (= {:class :unrecoverable :code :internal}
                (construct-tool-failure-for-thrown e)))))))
+
+(deftest construct-notebook-query-tool-malformed-clauses-test
+  (testing "the model can retry after a malformed stage or clause"
+    (let [orders   {:lib/type     "mbql.stage/mbql"
+                    :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[label stages] {"a number as `aggregation`"
+                                [(assoc orders :aggregation 42)]
+                                "an empty aggregation clause used in `order-by`"
+                                [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]
+                                "a number as `joins`"
+                                [(assoc orders :joins 42)]
+                                "a post-aggregation filter with a number as `order-by`"
+                                [(assoc post-agg :order-by 42)]
+                                "a post-aggregation filter with a number as `fields`"
+                                [(assoc post-agg :fields 42)]
+                                "a number as a later stage"            [orders 42]
+                                "an aggregation list as a later stage" [orders [["count" {}]]]}]
+          (testing label
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                     :text  #"^Representations query has an invalid structure\."}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages stages}
+                                             :title       "Orders"
+                                             :description "Orders by count."})))))))))
 
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"
