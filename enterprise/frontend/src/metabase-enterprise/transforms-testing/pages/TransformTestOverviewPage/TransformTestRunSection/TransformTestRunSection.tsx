@@ -1,14 +1,13 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { useMetadataToasts } from "metabase/common/hooks";
-import { RunButton } from "metabase/transforms/components/RunButton";
 import { RunStatus } from "metabase/transforms/components/RunStatus";
-import { Group } from "metabase/ui";
-import { useRunTransformTestMutation } from "metabase-enterprise/api";
+import { Anchor, Group } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { TransformTest } from "metabase-types/api";
 
+import { TransformTestRunButton } from "../../../components/TransformTestRunButton";
 import { getRunStatusInfo } from "../../../utils";
 
 type TransformTestRunSectionProps = {
@@ -20,8 +19,6 @@ export function TransformTestRunSection({
   test,
   readOnly,
 }: TransformTestRunSectionProps) {
-  const run = getRunStatusInfo(test.last_run);
-
   return (
     <TitleSection
       label={t`Run this test`}
@@ -29,42 +26,20 @@ export function TransformTestRunSection({
     >
       <Group p="xl" justify="space-between">
         <RunStatus
-          run={run}
+          run={getRunStatusInfo(test.last_run)}
           neverRunMessage={t`This test hasn't been run before.`}
+          runInfo={
+            <Anchor
+              component={Link}
+              to={Urls.transformTestRuns(test.transform_id, test.id)}
+              lh="inherit"
+            >
+              {t`See all runs`}
+            </Anchor>
+          }
         />
         <TransformTestRunButton test={test} readOnly={readOnly} />
       </Group>
     </TitleSection>
-  );
-}
-
-type TransformTestRunButtonProps = {
-  test: TransformTest;
-  readOnly: boolean;
-};
-
-function TransformTestRunButton({
-  test,
-  readOnly,
-}: TransformTestRunButtonProps) {
-  const [runTest, { isLoading }] = useRunTransformTestMutation();
-  const run = useMemo(() => getRunStatusInfo(test.last_run), [test.last_run]);
-  const { sendErrorToast } = useMetadataToasts();
-
-  const handleRun = async () => {
-    const { error } = await runTest(test.id);
-    if (error) {
-      sendErrorToast(t`Failed to run the test`);
-    }
-  };
-
-  return (
-    <RunButton
-      id={test.id}
-      run={run}
-      isLoading={isLoading}
-      isDisabled={readOnly}
-      onRun={handleRun}
-    />
   );
 }

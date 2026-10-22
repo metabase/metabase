@@ -28,10 +28,16 @@ export function TransformTestHeader({
     namespace: "transforms",
   });
 
+  const runsUrl = Urls.transformTestRuns(transform.id, test.id);
   const tabs: PillTab[] = [
     {
       label: t`Overview`,
       to: Urls.transformTest(transform.id, test.id),
+    },
+    {
+      label: t`Runs`,
+      to: runsUrl,
+      isSelected: (pathname: string) => pathname.startsWith(runsUrl),
     },
   ];
 
