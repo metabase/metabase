@@ -3,6 +3,7 @@ import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -24,6 +25,7 @@ import { useRunTransformTestMutation } from "metabase-enterprise/api";
 import type { TransformTest, TransformTestRun } from "metabase-types/api";
 
 import { MB_CLI_NAME } from "../../../constants";
+import { isFailedTestRunStatus } from "../../../utils";
 
 type TransformTestListProps = {
   tests: TransformTest[];
@@ -127,14 +129,10 @@ function getColumns(readOnly: boolean): TreeTableColumnDef<TransformTest>[] {
 }
 
 function LastRunCell({ run }: { run: TransformTestRun }) {
-  const isFailed =
-    run.status === "failed" ||
-    run.status === "error" ||
-    run.status === "timeout";
-
   return (
     <Ellipsified>
-      {isFailed ? t`Failed` : t`Last run`} <DateTime value={run.start_time} />
+      {isFailedTestRunStatus(run.status) ? t`Failed` : t`Last run`}{" "}
+      <DateTime value={run.start_time} />
     </Ellipsified>
   );
 }
@@ -169,6 +167,13 @@ function TransformTestMenu({ test }: { test: TransformTest }) {
       <Menu.Dropdown onClick={stopPropagation}>
         <Menu.Item leftSection={<Icon name="play" />} onClick={handleRun}>
           {t`Run test`}
+        </Menu.Item>
+        <Menu.Item
+          component={ForwardRefLink}
+          to={Urls.transformTestRuns(test.transform_id, test.id)}
+          leftSection={<Icon name="clock" />}
+        >
+          {t`View runs`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

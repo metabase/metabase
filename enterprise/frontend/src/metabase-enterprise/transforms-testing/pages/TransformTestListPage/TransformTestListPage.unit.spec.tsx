@@ -198,6 +198,21 @@ describe("TransformTestListPage", () => {
     expect(router?.location.pathname).toBe(Urls.transformTest(1, 5));
   });
 
+  it("links to the runs of a test from the row menu", async () => {
+    setup({
+      tests: [
+        createMockTransformTest({ id: 5, transform_id: 1, name: "Refunds" }),
+      ],
+    });
+
+    const row = await findRow("Refunds");
+    await userEvent.click(within(row).getByLabelText("Test options"));
+
+    expect(
+      await screen.findByRole("menuitem", { name: /View runs/ }),
+    ).toHaveAttribute("href", Urls.transformTestRuns(1, 5));
+  });
+
   it("hides the row menu from users who can't edit the transform", async () => {
     setup({
       tests: [createMockTransformTest({ id: 1, name: "Refunds" })],
