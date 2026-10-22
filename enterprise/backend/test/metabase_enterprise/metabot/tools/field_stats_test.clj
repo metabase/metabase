@@ -245,6 +245,28 @@
        :attributes {"impersonation_attr" "impersonation_role"}}
       (check-count-fingerprint (count-query) true))))
 
+(deftest virtual-column-fingerprint-withheld-for-routed-user-test
+  (let [fingerprint {:global {:distinct-count 1 :nil% 0.0}
+                     :type {:type/Number {:min 75.0 :max 75.0 :avg 75.0 :q1 75.0 :q3 75.0 :sd nil}}}]
+    (mt/with-temp [:model/Database router-db {}
+                   :model/Database dest-db {:router_database_id (:id router-db)}
+                   :model/Table table {:db_id (:id router-db)}
+                   :model/DatabaseRouter _ {:database_id (:id router-db) :user_attribute "db_name"}
+                   :model/Card {card-id :id}
+                   {:type :question
+                    :database_id (:id router-db)
+                    :dataset_query (let [mp (mt/application-database-metadata-provider (:id router-db))]
+                                     (lib/aggregate (lib/query mp (lib.metadata/table mp (:id table))) (lib/count)))
+                    :result_metadata [{:name "count" :display_name "Count" :base_type :type/BigInteger
+                                       :field_ref [:aggregation 0] :fingerprint fingerprint}]}]
+      (met/with-user-attributes! :rasta {"db_name" (:name dest-db)}
+        (doseq [profile [:document-generate-content :slackbot]]
+          (is (= (merge {:distinct-count 1 :percent-null 0.0} (get-in fingerprint [:type :type/Number]))
+                 (get-in (mt/with-test-user :crowberto (card-field-metadata profile card-id "count"))
+                         [:structured-output :value_metadata :statistics])))
+          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                 (:structured-output (mt/with-test-user :rasta (card-field-metadata profile card-id "count"))))))))))
+
 (deftest virtual-column-fingerprint-returned-for-unrestricted-user-test
   (mt/with-test-user :rasta
     (check-count-fingerprint (count-query) false)))
