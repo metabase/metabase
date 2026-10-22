@@ -157,6 +157,21 @@
             (is (not= (cv.tu/bundle-hash healthy) (:bundle_hash plugin))
                 "the healthy bundle is replaced, not kept")))))))
 
+(deftest import-refuses-a-bundle-over-the-upload-limit-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
+      (let [incompressible (doto (byte-array (inc cache/max-bundle-bytes))
+                             (->> (.nextBytes (java.util.Random. 1))))]
+        (write-plugin-files! dump-dir "big" (plugin-yaml "big")
+                             (assoc (plugin-files "big") "dist/index.js" incompressible))
+        (import! dump-dir)
+        (testing "the plugin is an error row that says why, and the oversized bytes are not stored"
+          (is (=? {:status        :error
+                   :error_message #(re-find #"Bundle must be less than 5MB" %)
+                   :bundle        nil
+                   :bundle_hash   nil}
+                  (t2/select-one :model/CustomVizPlugin :identifier "big"))))))))
+
 (deftest import-fails-naming-a-directory-not-named-by-its-identifier-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]

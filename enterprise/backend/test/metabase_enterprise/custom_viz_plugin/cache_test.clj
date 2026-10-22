@@ -95,6 +95,17 @@
       (is (thrown-with-msg? Exception #"not valid JSON"
                             (cache/validate-bundle! bytes))))))
 
+(deftest validate-bundle-rejects-oversized-archive-test
+  (testing "an archive over the upload limit is refused however it arrived, an import packs one from files"
+    (let [incompressible (doto (byte-array (inc cache/max-bundle-bytes))
+                           (->> (.nextBytes (java.util.Random. 1))))
+          bytes          (cvp.tu/make-tgz-bytes
+                          [["metabase-plugin.json" (json/encode {:name "big"})]
+                           ["dist/index.js" incompressible]])]
+      (is (> (alength bytes) cache/max-bundle-bytes))
+      (is (thrown-with-msg? Exception #"Bundle must be less than 5MB"
+                            (cache/validate-bundle! bytes))))))
+
 (deftest validate-bundle-rejects-tar-bomb-test
   (testing "SECURITY: validate-bundle! rejects archives that expand beyond the uncompressed cap"
     ;; A megabyte of NUL compresses to a few hundred bytes. With a tight cap on

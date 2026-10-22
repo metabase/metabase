@@ -101,6 +101,9 @@
   [^bytes bundle-bytes]
   (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
     (throw (ex-info "Bundle is empty" {:status-code 400})))
+  ;; an upload is refused by size before it is read; a bundle packed from imported files is measured here
+  (when (> (alength bundle-bytes) max-bundle-bytes)
+    (throw (ex-info (format "Bundle must be less than %dMB." max-bundle-mib) {:status-code 413})))
   (let [scratch (Files/createTempDirectory "custom-viz-validate-"
                                            (into-array FileAttribute []))]
     (try

@@ -116,18 +116,20 @@
   "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
   plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
   reason when it is not. The bytes and their hash are stored either way, so an error row is consistent, and an error
-  row is named by its identifier. The same checks guard a bundle upload."
+  row is named by its identifier; a bundle over the upload limit is the exception, it is not stored at all. The same
+  checks guard a bundle upload."
   [{:keys [identifier ^bytes bundle]}]
   (try
     (->> (cache/validate-bundle! bundle)
          (cache/check-bundle-identifier! identifier)
          cache/derived-columns)
     (catch Exception e
-      {:status        :error
-       :error_message (ex-message e)
-       :display_name  identifier
-       :bundle        bundle
-       :bundle_hash   (some-> bundle cache/bytes-hash)})))
+      (let [storable (when (and bundle (<= (alength bundle) cache/max-bundle-bytes)) bundle)]
+        {:status        :error
+         :error_message (ex-message e)
+         :display_name  identifier
+         :bundle        storable
+         :bundle_hash   (some-> storable cache/bytes-hash)}))))
 
 (defn- check-directory!
   "Throws unless the directory an ingested plugin was read from, when known, is named by its identifier."
