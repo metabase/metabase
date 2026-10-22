@@ -50,7 +50,7 @@
 (doseq [[feature supported?] {:connection/multiple-databases    true
                               :database-routing                 true
                               :datetime-diff                    true
-                              :describe-fields                  true
+                              :describe-fields                  false
                               :expression-literals              true
                               :identifiers-with-spaces          false
                               :metadata/key-constraints         false
@@ -157,8 +157,29 @@
   ;; gets returned by JDBC calls. Therefore, lower-case the incoming `database-type` and then look up its `base-type`.
   (-> database-type name u/lower-case-en keyword db-type->base-type))
 
+(comment
+
+  (let [driver :athena
+        dbname "mydb"
+        table-names nil
+        schema-names (if dbname [dbname] (remove nil? []))]
+    (sql/format {:select   [[(if dbname nil :table_schema) :table-schema]
+                            [:table_name :table-name]
+                            [:column_name :name]
+                            [[:- :ordinal_position [:inline 1]] :database-position]
+                            [:data_type :database-type]
+                            [:comment :field-comment]]
+                 :from     [:information_schema.columns]
+                 :where    [:and
+                            (when (seq schema-names) [:in :table_schema schema-names])
+                            (when (seq table-names) [:in :table_name table-names])]
+                 :order-by [:table_schema :table_name :ordinal_position]}
+                :dialect (sql.qp/quote-style driver)
+                :inline  true)))
+
 (defmethod sql-jdbc.sync/describe-fields-sql :athena
   [driver & {:keys [schema-names table-names details]}]
+  (tap> {:athena-sync :information_schema, :schemas schema-names, :tables table-names})
   ;; when `dbname` is set, tables have no schema, and `dbname` is the only Glue database to read
   (let [dbname       (not-empty (:dbname details))
         schema-names (if dbname [dbname] (remove nil? schema-names))]
@@ -474,7 +495,8 @@
               (map-indexed (fn [i column-metadata]
                              (assoc column-metadata :database-position i)))
               (map athena.schema-parser/parse-schema))
-        (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
+        (do (tap> {:athena-sync :DESCRIBE, :schema schema, :table table-name})
+            (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name)))))
 
 (defn- describe-table-fields-without-nested-fields [driver schema table-name columns]
   (set
@@ -510,6 +532,7 @@
 (defn- get-columns
   [^DatabaseMetaData metadata catalog schema table-name]
   (try
+    (tap> {:athena-sync :getColumns, :catalog catalog, :schema schema, :table table-name})
     (with-open [rs (.getColumns metadata catalog
                                 (escape-metadata-pattern metadata schema)
                                 (escape-metadata-pattern metadata table-name)
@@ -570,6 +593,7 @@
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
+  (tap> {:athena-sync :getTables, :catalog db-name-or-nil, :schema schema-or-nil})
   (with-open [rs (.getTables metadata db-name-or-nil
                              (escape-metadata-pattern metadata schema-or-nil) "%"
                              (into-array String ["TABLE"
@@ -600,6 +624,54 @@
                  (assoc field :table-schema (:schema table), :table-name (:name table)))))
      (sort-by (juxt :schema :name) tables))))
 
+(defn- describe-fields-with-get-columns
+  "Returns the fields of the tables in `schema-names` with one JDBC `getColumns` call for each schema, and no Athena
+  query. Debug alternative to the `information_schema` query. A table with no columns in the `getColumns` result gets
+  its fields from `DESCRIBE`."
+  [driver database {:keys [schema-names table-names]}]
+  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)
+        table-names              (set table-names)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [metadata      (.getMetaData conn)
+             catalog       (if (str/blank? catalog) (.getCatalog conn) catalog)
+             ;; with one table, ask only for that table
+             table-pattern (if (= 1 (count table-names))
+                             (escape-metadata-pattern metadata (first table-names))
+                             "%")]
+         (into []
+               (mapcat (fn [schema]
+                         (tap> {:athena-sync :getColumns-schema, :catalog catalog, :schema schema, :table table-pattern})
+                         (let [table-schema (when-not (seq dbname) schema)
+                               rows         (with-open [rs (.getColumns metadata catalog (escape-metadata-pattern metadata schema) table-pattern nil)]
+                                              (->> (jdbc/metadata-result rs)
+                                                   (filter #(or (empty? table-names) (contains? table-names (:table_name %))))
+                                                   (map (fn [{:keys [table_name column_name type_name ordinal_position remarks]}]
+                                                          {:table-schema      table-schema
+                                                           :table-name        table_name
+                                                           :name              column_name
+                                                           :database-type     type_name
+                                                           :database-position (dec ordinal_position)
+                                                           :field-comment     remarks}))
+                                                   (sort-by (juxt :table-name :database-position))
+                                                   (into [] (sql-jdbc.sync/describe-fields-pre-process-xf driver database))))
+                               found        (into #{} (map :table-name) rows)
+                               ;; `getColumns` can return no columns for a table (#43980). Use `DESCRIBE` for those.
+                               missing      (remove found (if (seq table-names)
+                                                            table-names
+                                                            (map :table_name (get-tables metadata schema (not-empty catalog)))))
+                               described    (for [table-name missing
+                                                  field      (do (tap> {:athena-sync :getColumns-missing, :schema schema, :table table-name})
+                                                                 (describe-table-fields-with-nested-fields database schema table-name))]
+                                              (-> field
+                                                  (dissoc :nested-fields)
+                                                  (assoc :table-schema table-schema, :table-name table-name)))]
+                           (sort-by (juxt :table-name :database-position) (concat rows described)))))
+               (if (seq dbname) [dbname] (remove nil? schema-names))))))))
+
 (defmethod driver/describe-fields :athena
   [driver database & {:keys [schema-names table-names] :as args}]
   ;; the `information_schema` query fails for all tables when Athena cannot read the metadata of one table (for
@@ -612,10 +684,14 @@
                     (vreset! started? true)
                     (rf acc row))
                   init
-                  (sql-jdbc.sync/describe-fields driver database args))
+                  ;; toggle: comment out one of these two lines
+                  #_(sql-jdbc.sync/describe-fields driver database args)
+                  (describe-fields-with-get-columns driver database args))
           (catch Exception e
             (when @started?
               (throw e))
+            (tap> (format "Cannot read fields from information_schema for schemas %s, describing each table instead: %s"
+                          (pr-str schema-names) (.getMessage e)))
             (log/warnf e "Cannot read fields from information_schema for schemas %s, describing each table instead"
                        (pr-str schema-names))
             (reduce rf init (describe-fields-per-table driver database schema-names table-names))))))))

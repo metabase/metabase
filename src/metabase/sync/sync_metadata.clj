@@ -55,7 +55,12 @@
    (sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
    (sync-util/create-sync-step "sync-default-schema" sync-default-schema/sync-default-schema! sync-default-schema-summary)
    ;; Make sure the relevant table models are up-to-date
-   (sync-util/create-sync-step "sync-tables" #(sync-tables/sync-tables-and-database! % db-metadata) sync-tables-summary true)
+   (sync-util/create-sync-step "sync-tables"
+                               (fn [database]
+                                 (let [result (sync-tables/sync-tables-and-database! database db-metadata)]
+                                   (tap> "===== TABLE SYNC END =====")
+                                   result))
+                               sync-tables-summary true)
    ;; Now for each table, sync the fields
    (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary true)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
@@ -69,6 +74,7 @@
   "Shared core of [[sync-db-metadata!]] and [[sync-db-metadata-explicit!]]: the metadata sync work,
   without the surrounding `*-sync-operation` wrapper (which is what applies the eligibility gating)."
   [database :- i/DatabaseInstance]
+  (tap> "===== TABLE SYNC START =====")
   (let [db-metadata     (try
                           (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
                             (fetch-metadata/db-metadata database))

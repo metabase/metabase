@@ -123,56 +123,64 @@
   set of tables (e.g. BigQuery with thousands of ephemeral tables) would otherwise materialize every column at once
   and OOM."
   [database :- i/DatabaseInstance]
-  (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
-    (let [driver          (driver.u/database->driver database)
-          schemas?        (driver.u/supports? driver :schemas database)
-          sync-table-id?  (set (sync.db/sync-table-ids (:id database)))]
-      (letfn [(sync! [fields-metadata]
+  (tap> "===== FIELD SYNC START =====")
+  (let [start  (System/nanoTime)
+        result
+        (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
+          (let [driver          (driver.u/database->driver database)
+                schemas?        (driver.u/supports? driver :schemas database)
+                sync-table-id?  (set (sync.db/sync-table-ids (:id database)))]
+            (letfn [(sync! [fields-metadata]
+                      (transduce (comp
+                                  (partition-by (juxt :table-name :table-schema))
+                                  (map (fn [table-metadata]
+                                         (let [{:keys [table-name table-schema]} (first table-metadata)
+                                               ;; match over hidden Tables too, so a hidden Table's columns are never
+                                               ;; given to a visible Table whose name differs only in case
+                                               table   (let [best (->> (sync.db/active-tables-by-lower-name-and-schema
+                                                                        (:id database)
+                                                                        (t2.util/lower-case-en table-name)
+                                                                        (some-> table-schema t2.util/lower-case-en))
+                                                                       (sort-by (select-best-matching-name table-schema table-name))
+                                                                       first)]
+                                                         (when (sync-table-id? (:id best))
+                                                           best))
+                                               updated (if table
+                                                         (try
+                                                           ;; TODO: decouple nested field columns sync from field sync. This will allow
+                                                           ;; describe-fields to be used for field sync for databases with nested field columns
+                                                           ;; Also this should be a driver method, not a sql-jdbc.sync method
+                                                           (let [all-metadata (fetch-metadata/include-nested-fields-for-table
+                                                                               (set table-metadata)
+                                                                               database
+                                                                               table)]
+                                                             (sync-and-update! database table all-metadata))
+                                                           (catch Exception e
+                                                             (log/error (ex-message e))
+                                                             0))
+                                                         0)]
+                                           {:total-fields   (count table-metadata)
+                                            :updated-fields updated}))))
+                                 (partial merge-with +)
+                                 {:total-fields   0
+                                  :updated-fields 0}
+                                 fields-metadata))]
+              (if schemas?
                 (transduce (comp
-                            (partition-by (juxt :table-name :table-schema))
-                            (map (fn [table-metadata]
-                                   (let [{:keys [table-name table-schema]} (first table-metadata)
-                                         ;; match over hidden Tables too, so a hidden Table's columns are never
-                                         ;; given to a visible Table whose name differs only in case
-                                         table   (let [best (->> (sync.db/active-tables-by-lower-name-and-schema
-                                                                  (:id database)
-                                                                  (t2.util/lower-case-en table-name)
-                                                                  (some-> table-schema t2.util/lower-case-en))
-                                                                 (sort-by (select-best-matching-name table-schema table-name))
-                                                                 first)]
-                                                   (when (sync-table-id? (:id best))
-                                                     best))
-                                         updated (if table
-                                                   (try
-                                                     ;; TODO: decouple nested field columns sync from field sync. This will allow
-                                                     ;; describe-fields to be used for field sync for databases with nested field columns
-                                                     ;; Also this should be a driver method, not a sql-jdbc.sync method
-                                                     (let [all-metadata (fetch-metadata/include-nested-fields-for-table
-                                                                         (set table-metadata)
-                                                                         database
-                                                                         table)]
-                                                       (sync-and-update! database table all-metadata))
-                                                     (catch Exception e
-                                                       (log/error (ex-message e))
-                                                       0))
-                                                   0)]
-                                     {:total-fields   (count table-metadata)
-                                      :updated-fields updated}))))
-                           (partial merge-with +)
+                            (map (fn [schema]
+                                   (log/infof "Fetching field metadata for %s.%s" (:name database) schema)
+                                   (fetch-metadata/fields-metadata database :schema-names [schema])))
+                            (map sync!))
+                           (completing (partial merge-with +))
                            {:total-fields   0
                             :updated-fields 0}
-                           fields-metadata))]
-        (if schemas?
-          (transduce (comp
-                      (map (fn [schema]
-                             (log/infof "Fetching field metadata for %s.%s" (:name database) schema)
-                             (fetch-metadata/fields-metadata database :schema-names [schema])))
-                      (map sync!))
-                     (completing (partial merge-with +))
-                     {:total-fields   0
-                      :updated-fields 0}
-                     (sync-util/sync-schemas database))
-          (sync! (fetch-metadata/fields-metadata database)))))))
+                           (sync-util/sync-schemas database))
+                (sync! (fetch-metadata/fields-metadata database))))))]
+    (tap> {:athena-sync :field-sync-seconds
+           :database    (:name database)
+           :seconds     (/ (- (System/nanoTime) start) 1e9)})
+    (tap> "===== FIELD SYNC END =====")
+    result))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
