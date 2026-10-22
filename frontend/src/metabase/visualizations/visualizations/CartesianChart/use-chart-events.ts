@@ -74,7 +74,7 @@ function clearBrush(
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   chartModel: BaseCartesianChartModel,
   option: EChartsOption,
   renderingContext: RenderingContext,
@@ -102,7 +102,7 @@ export const useChartEvents = (
 ) => {
   // Read at call time so the handler list does not rebuild on metadata change.
   const store = useStore();
-  const isBrushing = useRef<boolean>();
+  const isBrushing = useRef<boolean>(undefined);
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const getQuestionCard = useCallback(
