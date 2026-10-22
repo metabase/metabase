@@ -62,9 +62,9 @@ describe("HomeLayout", () => {
     it("should show a custom landing page illustration", () => {
       setup({ landingPageIllustration: "custom" });
 
-      expect(
-        screen.getByTestId("landing-page-illustration").style.backgroundImage,
-      ).toBe(`url("${ILLUSTRATION_URL}")`);
+      expect(screen.getByTestId("landing-page-illustration")).toHaveStyle({
+        backgroundImage: `url("${ILLUSTRATION_URL}")`,
+      });
     });
 
     it("should not show an illustration when it is turned off", () => {
