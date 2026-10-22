@@ -67,7 +67,7 @@ describe("HomePage", () => {
     expect(await screen.findByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
   });
 
-  it("should show a loader instead of the homepage until the homepage dashboard loads (metabase#37089)", async () => {
+  it("should not flash the homescreen before redirecting (#37089)", async () => {
     const dashboardRequest = defer<Dashboard>();
     setup({
       dashboardId: 10,
