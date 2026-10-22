@@ -224,6 +224,19 @@
   max-width: 100%;
 }
 
+/* Between tokens it stays zero-wide while empty, so moving the caret never shifts anything. */
+.segment .inputInline {
+  min-width: 0;
+}
+
+/* Holds the end input's slot while the caret is elsewhere, so the band keeps its length. */
+.endSpacer {
+  flex: 0 0 auto;
+  width: 1rem;
+  align-self: stretch;
+  cursor: text;
+}
+
 /*
  * Each stage segment sits on its own faintly coloured band. A segment has no
  * box, so every item paints its own slice: stretched to the line, so the band
@@ -234,7 +247,25 @@
   align-self: stretch;
   display: inline-flex;
   align-items: center;
+  /* Vertical room so the band shows above and below the pills. */
+  padding-block: 0.25rem;
+  /* Items keep square corners so the slices join seamlessly; only the stage ends are rounded below. */
+  border-radius: 0;
   background-color: var(--stage-band);
+  transition: background-image 120ms ease-out;
+}
+
+/*
+ * Hovering anywhere on a stage deepens its whole band, background only: a
+ * translucent hover layer over the band colour, so the pills stay as they
+ * are. The segment has no box, but `:hover` still matches it through its
+ * descendants.
+ */
+.stageSegment:hover > * {
+  background-image: linear-gradient(
+    var(--mb-color-background_surface-hover),
+    var(--mb-color-background_surface-hover)
+  );
 }
 
 /* The band opens with the stage badge, grouped with the first token. */

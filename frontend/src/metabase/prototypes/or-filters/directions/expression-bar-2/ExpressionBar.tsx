@@ -447,7 +447,21 @@ export function ExpressionBar({
         }}
       />,
     ]),
-    caret === tokens.length && <Fragment key="input">{input}</Fragment>,
+    caret === tokens.length ? (
+      <Fragment key="input">{input}</Fragment>
+    ) : (
+      layout === "segment" && (
+        <Box
+          key="end-spacer"
+          component="span"
+          className={S.endSpacer}
+          onClick={() => {
+            setCaret(tokens.length);
+            focusInput();
+          }}
+        />
+      )
+    ),
   ];
 
   const statusMessage = !parsed.ok
