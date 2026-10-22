@@ -594,9 +594,7 @@
       (when (contains? changes :archived)
         (if (:archived changes)
           (queries.db/archive-actions-of-model! id)
-          (when-let [action-ids (seq (keep #(when (:can_write %) (:id %))
-                                           (t2/hydrate (queries.db/actions-archived-with-model id) :can_write)))]
-            (queries.db/unarchive-actions! action-ids))))
+          (collection/unarchive-writable-actions! (queries.db/actions-archived-with-model id))))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection

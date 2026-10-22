@@ -376,11 +376,6 @@
   [model-id :- ms/PositiveInt]
   (t2/select :model/Action :model_id model-id :archived true :archived_directly false))
 
-(mu/defn unarchive-actions!
-  "Unarchive the Actions with `action-ids`, returning the number updated."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/update! :model/Action :id [:in action-ids] {:archived false}))
-
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]

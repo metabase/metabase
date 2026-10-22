@@ -1795,6 +1795,12 @@
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))
 
+(defn unarchive-writable-actions!
+  "Unarchive the `actions` the current user can write, leaving the others archived for an admin to restore."
+  [actions]
+  (when-let [action-ids (seq (keep #(when (:can_write %) (:id %)) (t2/hydrate actions :can_write)))]
+    (collections.db/unarchive-actions! action-ids)))
+
 (mu/defn unarchive-collection!
   "Mark a collection as unarchived, along with any children that were archived along with the collection."
   [collection :- CollectionWithLocationAndIDOrRoot
@@ -1849,10 +1855,7 @@
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
-      (when-let [action-ids (seq (keep #(when (:can_write %) (:id %))
-                                       (t2/hydrate (collections.db/actions-archived-with-collections affected-collection-ids)
-                                                   :can_write)))]
-        (collections.db/unarchive-actions! action-ids))
+      (unarchive-writable-actions! (collections.db/actions-archived-with-collections affected-collection-ids))
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 
