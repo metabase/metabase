@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
@@ -789,15 +789,20 @@ describe("issue 74500", () => {
     const filterTrigger = () =>
       H.getNotebookStep("filter").findByText("Total is greater than 20");
 
-    H.createQuestion({
-      query: {
-        "source-table": ORDERS_ID,
-        filter: [">", ["field", ORDERS.TOTAL, null], 20],
+    // Visiting the notebook directly skips the slide-in, which would throw off measurements
+    H.visitQuestionAdhoc(
+      {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.TOTAL, null], 20],
+          },
+        },
       },
-    }).then(({ body: question }) => {
-      // Visiting the notebook directly skips the slide-in, which would throw off measurements
-      H.visitQuestionAdhoc(question, { mode: "notebook" });
-    });
+      { mode: "notebook" },
+    );
 
     cy.log("the filter editor fits below, so it opens below");
     setSpaceBelow(filterTrigger, 300);
