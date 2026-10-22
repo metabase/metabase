@@ -1260,7 +1260,20 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count"
-         (repair-in-stage {"aggregation" [["count-where" {} ["!=" {} created-at (abs-dt "2025-01-31" "day")]]]})))))
+         (repair-in-stage {"aggregation" [["count-where" {} ["!=" {} created-at (abs-dt "2025-01-31" "day")]]]}))))
+  (testing "a date exclusion in a join goes in the join's own stages, since its conditions cannot hold an `or`"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Join `conditions:` cannot hold an `or`, so exclude dates of the joined table with a filter in the `stages` of the join"
+         (repair-in-stage
+          {"joins" [{"lib/type" "mbql/join" "alias" "O2"
+                     "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                     "conditions" [["!=" {} created-at (abs-dt "2025-01-31" "day")]]}]}))))
+  (testing "a bucketed column is ruled out where the query engine does not turn it into a range"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Do not put the unit on the column in `aggregation:` or join `conditions:`"
+         (repair-in-stage {"aggregation" [["count-where" {} [">" {} created-at (abs-dt "2025-01-01" "month")]]]})))))
 
 ;;; ============================================================
 ;;; Pass 1.867 - rewrite temporal-extract to its get-* equivalent
