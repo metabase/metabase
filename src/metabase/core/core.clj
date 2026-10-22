@@ -108,6 +108,7 @@
   []
   (log/info "Metabase Shutting Down ...")
   (queue/stop-listeners!)
+  (premium-features/stop-refresher!)
   (startup/run-shutdown-logic!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
@@ -206,7 +207,8 @@
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
   (mdb/encrypt-plaintext-columns!)
   ;; fetch the premium token status now, so that everything below sees this instance's features
-  (premium-features/clear-cache!)
+  (premium-features/refresh-at-startup!)
+  (premium-features/start-refresher!)
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
