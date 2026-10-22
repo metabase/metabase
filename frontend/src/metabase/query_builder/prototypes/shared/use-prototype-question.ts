@@ -100,6 +100,8 @@ export function usePrototypeQuestion(sourceCard: Card) {
   latestRef.current = { question, card, run, rawSeries };
   const abortControllerRef = useRef<AbortController | null>(null);
   const sourceSnapshotRef = useRef<SourceSnapshot | null>(null);
+  // bumped by every update, so one that waited on metadata doesn't run after a newer one
+  const updateCountRef = useRef(0);
 
   const runQuestion = useCallback(
     async (questionToRun: Question) => {
@@ -115,6 +117,17 @@ export function usePrototypeQuestion(sourceCard: Card) {
           isDirty: true,
         });
         if (abortController.signal.aborted) {
+          return;
+        }
+        // a newer update that didn't run its query (e.g. it was waiting on metadata) owns the
+        // question now: settling this older one would hand the sidebar a question it didn't make
+        if (
+          !Lib.areLegacyQueriesEqual(
+            questionToRun.datasetQuery(),
+            latestRef.current.card.dataset_query,
+          )
+        ) {
+          setRun((currentRun) => ({ ...currentRun, isRunning: false }));
           return;
         }
         const completedCard = getCompletedQuestion(
@@ -159,6 +172,7 @@ export function usePrototypeQuestion(sourceCard: Card) {
   /** Mirrors the query builder's `updateQuestion` thunk for an ad-hoc structured question. */
   const updateQuestion = useCallback(
     async (newQuestion: Question, { run = false }: { run?: boolean } = {}) => {
+      const updateCount = ++updateCountRef.current;
       const { question: currentQuestion, rawSeries: currentRawSeries } =
         latestRef.current;
 
@@ -200,7 +214,7 @@ export function usePrototypeQuestion(sourceCard: Card) {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(nextQuestion.card()));
       }
-      if (shouldRun) {
+      if (shouldRun && updateCount === updateCountRef.current) {
         runQuestion(nextQuestion);
       }
     },

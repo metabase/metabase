@@ -1,0 +1,669 @@
+.sidebar {
+  background-color: var(--mb-color-background_page-tertiary);
+}
+
+/* wells on the left, fields on the right, each half the panel and each scrolling on its own */
+.columns {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* the tray's 16px margins around it, and a 12px gap from the wells */
+.fieldListCard {
+  --field-list-gutter: var(--mantine-spacing-xs);
+
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  margin: var(--mantine-spacing-lg) var(--mantine-spacing-lg)
+    var(--mantine-spacing-lg) 0;
+}
+
+.fieldList {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* always-on search above the sections, borderless so it reads as part of the list */
+.searchField {
+  flex-shrink: 0;
+  margin-bottom: var(--mantine-spacing-xs);
+}
+
+/* the design system's TextInput keeps a border even when unstyled, so drop it here. The xs input is
+   32px tall, but its 11px text is smaller than the 14px results */
+.searchField .fieldListSearchInput {
+  padding-inline: 1.5rem 0;
+  border-width: 0;
+  font-size: var(--mantine-font-size-md);
+  background-color: transparent;
+}
+
+/* the icon sits where the row icons do: flush left, not centered and inset past a border */
+.searchField .searchFieldIcon {
+  inset-inline-start: 0;
+  justify-content: flex-start;
+  color: var(--mb-color-text-secondary);
+  transition: color 120ms ease-out;
+}
+
+/* no border to light up, so the icon carries the focus cue alongside the caret */
+.searchField:focus-within .searchFieldIcon {
+  color: var(--mb-color-text-primary);
+}
+
+/* bleeds into the card's padding so the section chevrons line up with the search icon,
+   while the hover fill keeps a small inset from the card edge */
+.fieldListScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--field-list-gutter));
+}
+
+/* padding rather than margin, so the whole 32px band toggles the section */
+.fieldGroupName {
+  padding: 0.75rem var(--field-list-gutter) 0.25rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+}
+
+/* the section name is its own collapse toggle, with a chevron where item icons sit */
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  transition: color 120ms ease-out;
+
+  &:hover:not(:disabled) {
+    color: var(--mb-color-text-primary);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+/* one chevron that turns to point down, rather than swapping between two icons */
+.sectionChevron {
+  flex-shrink: 0;
+  transition: rotate 150ms ease-out;
+}
+
+.sectionToggle[aria-expanded="true"] .sectionChevron {
+  rotate: 90deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionChevron {
+    transition: none;
+  }
+}
+
+/* a section's rows start where its name does, past the 12px chevron and the toggle's gap, so
+   they read as its contents. The hover fill still spans the full row */
+.section .fieldItem {
+  padding-inline-start: calc(var(--field-list-gutter) + 12px + 0.375rem);
+}
+
+.fieldListEmpty {
+  padding: var(--mantine-spacing-sm) var(--field-list-gutter);
+  text-wrap: pretty;
+}
+
+/* pinned under the list, with a divider so it doesn't read as one more field. Scoped under
+   .fieldList to win over the Text component's own border reset */
+.fieldList .fieldListHint {
+  flex-shrink: 0;
+  padding-top: var(--mantine-spacing-sm);
+  border-top: 1px solid var(--mb-color-border-neutral);
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mb-color-text-secondary);
+  text-wrap: pretty;
+}
+
+.fieldItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem var(--field-list-gutter);
+  /* concentric with the card: its 16px corner minus the 6px gutter */
+  border-radius: 10px;
+  /* a click is the main way in; the grabber on hover says it drags too */
+  cursor: pointer;
+  color: var(--mb-color-text-primary);
+  touch-action: none;
+  user-select: none;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &:hover .grabber,
+  &:focus-visible .grabber {
+    opacity: 1;
+  }
+}
+
+/* the global role="button" ring would be clipped by the scroll container at the panel edges */
+.fieldItem:focus-visible {
+  outline-offset: -2px;
+}
+
+.grabber {
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0;
+  color: var(--mb-color-text-secondary);
+  transition: opacity 100ms ease-out;
+}
+
+.isDragging {
+  opacity: 0.4;
+}
+
+/* as tall as the panel, scrolling once the cards outgrow it */
+.wells {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
+    var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+}
+
+/* the whole card is the well's input: it takes the hover and focus rings an input border would */
+.well {
+  flex-shrink: 0;
+  gap: var(--mantine-spacing-sm);
+  overflow: visible;
+  cursor: text;
+  transition-property: background-color, box-shadow, opacity;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+}
+
+.well:hover {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-border-neutral-strong);
+}
+
+.well:has(.wellFieldInput:focus) {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-core-brand);
+}
+
+.well.wellAcceptsDrop {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-core-summarize);
+}
+
+.well.wellIsOver {
+  box-shadow:
+    var(--mantine-shadow-sm_outline),
+    0 0 0 2px var(--mb-color-core-summarize);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-summarize) 10%,
+    var(--mb-color-background_surface-primary)
+  );
+}
+
+.wellRejectsDrop {
+  opacity: 0.5;
+}
+
+/* the rest of the column below the wells, at least tall enough to aim a drag at */
+.pivotDropZone {
+  flex: 1 0 6rem;
+}
+
+/* a ghost of the Rows well it adds: same corners, dashed in the drop color. Mounted for the whole
+   drag and faded with a transition, so moving in and out of the zone never restarts it */
+.pivotDropTarget {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-md);
+  border: 2px dashed var(--mb-color-core-summarize);
+  border-radius: var(--mantine-radius-lg);
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-summarize) 10%,
+    var(--mb-color-background_surface-primary)
+  );
+  opacity: 0;
+  translate: 0 -4px;
+  transition-property: opacity, translate;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+
+  &[data-over="true"] {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pivotDropTarget {
+    translate: none;
+    transition-property: opacity;
+  }
+}
+
+.wellHeader {
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+}
+
+.wellTitle {
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+}
+
+/* tucked into the title row without making it taller than the other wells' titles; the hit area
+   grows to 40px into the card's 12px padding, clear of the field below */
+.pivotToggle {
+  flex-shrink: 0;
+  margin-block: -0.25rem;
+  overflow: visible;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
+}
+
+/* every item is the chips' height, so the row stays top-aligned when a formula grows a name row */
+.wellField {
+  --well-field-height: 1.875rem;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-xs);
+  min-height: var(--well-field-height);
+}
+
+/* beats the design system's extra inset for a field with no pills beside it */
+.wellField .wellFieldInput,
+.wellField .wellFieldInput:only-child {
+  flex: 1 1 8rem;
+  min-width: 8rem;
+  height: var(--well-field-height);
+  margin: 0;
+  cursor: text;
+}
+
+/* the typeahead: a 6px list inset around 6px-radius options makes the 12px dropdown corners concentric.
+   scoped under .searchDropdown so these win over the design system's Combobox classes */
+.searchDropdown .searchOptions {
+  padding: var(--mantine-spacing-xs);
+}
+
+.searchDropdown .searchGroupLabel {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-sm)
+    var(--mantine-spacing-xxs);
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+
+  &::after {
+    display: none;
+  }
+}
+
+.searchDropdown .searchOption {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+  line-height: 1.25rem;
+}
+
+.searchOptionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.searchOption:hover .searchOptionIcon,
+.searchOption[data-combobox-selected] .searchOptionIcon {
+  color: inherit;
+}
+
+.searchOptionText {
+  flex: 1;
+  min-width: 0;
+}
+
+/* min-width lets it shrink as a field row's flex child, so long names ellipsize */
+.matchedLabel {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.matchedLabelMatch {
+  font-weight: bold;
+}
+
+.searchOptionDescription {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.searchDropdown .searchEmpty {
+  padding: var(--mantine-spacing-sm);
+  font-size: var(--mantine-font-size-sm);
+  text-align: left;
+  color: var(--mb-color-text-secondary);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.25rem 0.25rem 0.25rem 0.5rem;
+  /* concentric with the well card: its 16px corner minus the 12px padding */
+  border-radius: var(--mantine-radius-xxs);
+  font-weight: bold;
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-core-summarize);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.chipLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chipButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.dragPreview {
+  composes: chip;
+  cursor: grabbing;
+  box-shadow: var(--mantine-shadow-sm_outline);
+}
+
+/* widen the 22px remove target to the chip's edge and half the gap to the next chip,
+   never into the neighbouring label button */
+.chipRemove {
+  overflow: visible;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -4px -7px -4px -2px;
+  }
+}
+
+.chipIsEditing {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 1px;
+}
+
+/* a new formula's chip before it's committed: an outline of the chip it'll become. The dashed
+   border comes out of the padding, so the chip is exactly as big as the one that replaces it */
+.chip.chipPlaceholder {
+  padding: calc(0.25rem - 1px) calc(0.25rem - 1px) calc(0.25rem - 1px)
+    calc(0.5rem - 1px);
+  border: 1px dashed var(--mb-color-core-summarize);
+  color: var(--mb-color-core-summarize);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-summarize) 8%,
+    var(--mb-color-background_surface-primary)
+  );
+  cursor: default;
+}
+
+/* opens to the bar's height when a formula is selected; the workspace below eases down with it */
+.formulaBarSlot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 150ms ease-out;
+
+  &[data-open] {
+    grid-template-rows: 1fr;
+  }
+
+  /* a closing bar is only on screen while it collapses */
+  &:not([data-open]) .formulaBarSlotContent {
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.formulaBarSlotContent {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* a spreadsheet formula bar across the workspace: fx, the formula, any error, then cancel/commit */
+.formulaBar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 2.5rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-primary);
+  transition: box-shadow 120ms ease-out;
+}
+
+.formulaBarActive:focus-within {
+  box-shadow: inset 0 -2px 0 var(--mb-color-core-brand);
+}
+
+.formulaBar.formulaBarInvalid {
+  box-shadow: inset 0 -2px 0 var(--mb-color-feedback-negative);
+}
+
+/* the 1rem right inset puts the ✓ glyph, 8px inside its button, on the toolbar's 1.5rem edge */
+.formulaBarActions {
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding-inline: 0.5rem 1rem;
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+/* 32px buttons in a 40px bar: each target grows to 40px, meeting its neighbour 8px away
+   without overlapping it */
+.formulaBarAction {
+  overflow: visible;
+  transition-property: scale, color, background-color;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+
+  &:active:not(:disabled) {
+    scale: 0.96;
+  }
+}
+
+/* commit reads as the summary's green once there's something to commit */
+.formulaBarCommit:not(:disabled) {
+  color: var(--mb-color-core-summarize);
+}
+
+/* lines up with the toolbar's 1.5rem inset above */
+.formulaBarFx {
+  flex-shrink: 0;
+  margin-inline: 1.5rem 0.5rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.formulaBarActive:focus-within .formulaBarFx {
+  color: var(--mb-color-core-brand);
+}
+
+.formulaBarError {
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 40%;
+  padding-inline: 0.75rem;
+  color: var(--mb-color-feedback-negative);
+}
+
+.formulaBar .formulaBarErrorText {
+  min-width: 0;
+  font-size: var(--mantine-font-size-sm);
+  color: inherit;
+}
+
+.formulaEditor {
+  flex: 1;
+  min-width: 0;
+  padding: 0.125rem 0.75rem 0.125rem 0;
+
+  :global(.cm-editor) {
+    background-color: transparent;
+  }
+
+  :global(.cm-editor.cm-focused) {
+    outline: none;
+  }
+
+  /* the CodeMirror theme pads the content with the same specificity, and is injected later */
+  :global(.cm-editor .cm-content) {
+    padding: 0;
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+  }
+
+  :global(.cm-line) {
+    padding: 0;
+  }
+
+  :global(.cm-gutters) {
+    display: none;
+  }
+
+  /* one line, so opening a formula never changes the card's height */
+  :global(.cm-placeholder) {
+    max-width: 100%;
+    overflow: hidden;
+    vertical-align: top;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* base syntax highlighting renders nested spans; let the token colors win */
+.tokenFunction *,
+.tokenLiteral *,
+.tokenOperator *,
+.tokenColumn * {
+  color: inherit;
+}
+
+.tokenFunction {
+  font-weight: bold;
+  color: var(--mb-color-core-brand);
+}
+
+.tokenLiteral {
+  color: var(--mb-color-accent2);
+}
+
+.tokenOperator {
+  padding: 0 0.125rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.tokenColumn {
+  --token-color: var(--mb-color-accent0);
+
+  padding: 0.0625rem 0.25rem;
+  border-radius: 4px;
+  color: var(--token-color);
+  background-color: color-mix(in srgb, var(--token-color) 14%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--token-color) 40%, transparent);
+}
+
+.tokenColumn0 {
+  composes: tokenColumn;
+}
+
+.tokenColumn1 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent1);
+}
+
+.tokenColumn2 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent3);
+}
+
+.tokenColumn3 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent4);
+}
+
+.tokenColumn4 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent5);
+}
+
+.tokenColumn5 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent7);
+}
+
+.generateOptionLabel {
+  font-weight: bold;
+}
+
+.searchDropdown .generateOption[data-combobox-disabled] {
+  opacity: 1;
+  cursor: progress;
+}

@@ -220,6 +220,9 @@ function PrototypeWorkspace({
   const [seededValues, setSeededValues] = useState<
     readonly SummaryExpression[] | null
   >(null);
+  const [workspaceTopSlot, setWorkspaceTopSlot] = useState<HTMLElement | null>(
+    null,
+  );
   const variant = variants[variantIndex];
   const { Sidebar } = variant;
   const pickerItems = variants.map(({ slug, name }) => ({
@@ -262,6 +265,8 @@ function PrototypeWorkspace({
           onSeed={setSeededValues}
         />
       )}
+      {/* empty unless a variant portals into it, e.g. a spreadsheet-style formula bar */}
+      <Box ref={setWorkspaceTopSlot} className={S.workspaceTopSlot} />
       <Box ref={contentRef} className={S.content}>
         <Box component="main" className={S.main}>
           <DebouncedFrame className={S.frame} resetKey={isRunning}>
@@ -293,6 +298,7 @@ function PrototypeWorkspace({
             key={variant.slug}
             question={question}
             seededValues={seededValues}
+            workspaceTopSlot={workspaceTopSlot}
             onQuestionChange={(nextQuestion) =>
               updateQuestion(nextQuestion, { run: true })
             }
