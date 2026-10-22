@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.config-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
@@ -298,3 +299,43 @@
         (is (= {:host "h" :port 5432 :user "u" :password "p"}
                (select-keys details [:host :port :user :password :use-auth-provider :auth-provider
                                      :oauth-token-url :oauth-token-headers :azure-managed-identity-client-id])))))))
+
+(deftest build-workspace-config-drops-parent-sqlserver-ad-login-test
+  (when (workspaces.tu/driver-loadable? :sqlserver)
+    (testing "A SQL Server parent on Azure AD auth: `:auth-mode` picks the login, so leaving it in the config would
+              make the child connect as the parent's AD identity and ignore the workspace :user/:password. The
+              config drops `:auth-mode` and every `ad-*` property, so the child falls back to SQL login."
+      (doseq [[auth-mode ad-details]
+              {"ad-service-principal"             {:ad-client-id     "parent-client-id"
+                                                   :ad-client-secret "parent-client-secret"}
+               "ad-service-principal-certificate" {:ad-client-id                        "parent-client-id"
+                                                   :ad-client-certificate-options       "uploaded"
+                                                   :ad-client-certificate-value         "parent-cert"
+                                                   :ad-client-certificate-password-value "parent-cert-password"
+                                                   :ad-client-key-options               "uploaded"
+                                                   :ad-client-key-value                 "parent-key"
+                                                   :ad-client-key-password-value        "parent-key-password"}
+               "ad-managed-identity"              {:ad-managed-identity-client-id "parent-identity"}}]
+        (testing auth-mode
+          (mt/with-temp [:model/Database {db-id :id}
+                         {:name    (str "MSSQL " auth-mode)
+                          :engine  :sqlserver
+                          :details (merge {:host "h" :db "AnalyticsDB" :auth-mode auth-mode} ad-details)}
+                         :model/Workspace {ws-id :id} {:name       (str "mssql-" auth-mode)
+                                                       :creator_id (mt/user->id :crowberto)}
+                         :model/WorkspaceDatabase _
+                         {:workspace_id     ws-id
+                          :database_id      db-id
+                          :database_details {:user "ws_user" :password "ws_password"}
+                          :output_namespace "ws_alice"
+                          :input_schemas    ["dbo"]
+                          :status           :provisioned}]
+            (let [details (->> (config/build-workspace-config ws-id)
+                               :config
+                               :databases
+                               (u/seek #(= :sqlserver (:engine %)))
+                               :details)]
+              (is (= {:user "ws_user" :password "ws_password"}
+                     (select-keys details [:user :password])))
+              (is (not (contains? details :auth-mode)))
+              (is (= [] (filterv #(str/starts-with? (name %) "ad-") (keys details)))))))))))
