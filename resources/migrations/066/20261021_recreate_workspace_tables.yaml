@@ -17,6 +17,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -24,32 +25,48 @@ databaseChangeLog:
               - column:
                   name: name
                   type: varchar(254)
+                  remarks: Display name of the workspace
                   constraints:
                     nullable: false
               - column:
                   name: creator_id
                   type: int
+                  remarks: User who created this workspace
                   constraints:
                     nullable: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: When this workspace was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: When this workspace was last updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-        ## The explicit creator_id index precedes the FK, as in v63.2026-07-14T00:00:18.
+
+  ## The explicit creator_id index precedes the FK, as in v63.2026-07-14T00:00:18.
+  - changeSet:
+      id: v66.2026-10-21T00:00:01
+      author: escherize
+      comment: Index workspace.creator_id
+      changes:
         - createIndex:
             tableName: workspace
             indexName: idx_workspace_creator_id
             columns:
               - column:
                   name: creator_id
+
+  - changeSet:
+      id: v66.2026-10-21T00:00:02
+      author: escherize
+      comment: FK workspace.creator_id -> core_user.id (set null on delete so deleting a user doesn't cascade)
+      changes:
         - addForeignKeyConstraint:
             baseTableName: workspace
             baseColumnNames: creator_id
@@ -57,13 +74,9 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_creator_id
             onDelete: SET NULL
-      rollback:
-        - dropTable:
-            tableName: workspace
-            cascadeConstraints: true
 
   - changeSet:
-      id: v66.2026-10-21T00:00:01
+      id: v66.2026-10-21T00:00:03
       author: escherize
       comment: Recreate workspace_database table
       changes:
@@ -74,6 +87,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -81,50 +95,70 @@ databaseChangeLog:
               - column:
                   name: workspace_id
                   type: int
+                  remarks: The workspace this row belongs to
                   constraints:
                     nullable: false
               - column:
                   name: database_id
                   type: int
+                  remarks: The underlying database this row configures
                   constraints:
                     nullable: false
               - column:
                   name: database_details
                   type: ${text.type}
+                  remarks: JSON-encoded override connection details
                   constraints:
                     nullable: false
               - column:
                   name: output_namespace
                   type: varchar(254)
+                  remarks: Driver-opaque namespace string where workspace output tables are written (schema on Postgres-shaped drivers, database name on MySQL)
                   constraints:
                     nullable: false
               - column:
                   name: input_schemas
                   type: ${text.type}
+                  remarks: JSON array of input schema names
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(254)
                   defaultValue: unprovisioned
+                  remarks: Provisioning state
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: When this row was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: When this row was last updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v66.2026-10-21T00:00:04
+      author: escherize
+      comment: Unique constraint on workspace_database (workspace_id, database_id)
+      changes:
         - addUniqueConstraint:
             tableName: workspace_database
             constraintName: idx_unique_workspace_database
             columnNames: workspace_id, database_id
+
+  - changeSet:
+      id: v66.2026-10-21T00:00:05
+      author: escherize
+      comment: FK workspace_database.workspace_id -> workspace.id (cascade on delete)
+      changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_database
             baseColumnNames: workspace_id
@@ -132,6 +166,12 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_database_workspace_id
             deleteCascade: true
+
+  - changeSet:
+      id: v66.2026-10-21T00:00:06
+      author: escherize
+      comment: FK workspace_database.database_id -> metabase_database.id (restrict on delete)
+      changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_database
             baseColumnNames: database_id
@@ -139,19 +179,25 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_database_database_id
             onDelete: RESTRICT
+
+  - changeSet:
+      id: v66.2026-10-21T00:00:07
+      author: escherize
+      comment: Index workspace_database.workspace_id for hydration lookups
+      changes:
         - createIndex:
             tableName: workspace_database
             indexName: idx_workspace_database_workspace_id
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropTable:
-            tableName: workspace_database
-            cascadeConstraints: true
+      ## No-op rollback: H2 re-binds fk_workspace_database_workspace_id to this index, so the
+      ## auto-generated DROP INDEX fails and aborts the whole downgrade. Any rollback that crosses
+      ## this changeset also rolls back the createTable above, which removes the index with the table.
+      rollback: []
 
   - changeSet:
-      id: v66.2026-10-21T00:00:02
+      id: v66.2026-10-21T00:00:08
       author: escherize
       comment: Recreate table_remapping table
       changes:
@@ -162,6 +208,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -169,56 +216,84 @@ databaseChangeLog:
               - column:
                   name: database_id
                   type: int
+                  remarks: Database this remapping applies to
                   constraints:
                     nullable: false
               - column:
                   name: from_db
                   type: varchar(254)
+                  remarks: Source database/project (top-level identifier; e.g. BigQuery project, ClickHouse db). Empty string when driver does not emit this level.
                   defaultValue: ""
                   constraints:
                     nullable: false
               - column:
                   name: from_schema
                   type: varchar(254)
+                  remarks: Source schema name. Empty string for schema-less drivers.
                   defaultValue: ""
                   constraints:
                     nullable: false
               - column:
                   name: from_table_name
                   type: varchar(254)
+                  remarks: Source table name
                   constraints:
                     nullable: false
               - column:
                   name: to_db
                   type: varchar(254)
+                  remarks: Target database/project (top-level identifier). Empty string when driver does not emit this level.
                   defaultValue: ""
                   constraints:
                     nullable: false
               - column:
                   name: to_schema
                   type: varchar(254)
+                  remarks: Target schema name. Empty string for schema-less drivers.
                   defaultValue: ""
                   constraints:
                     nullable: false
               - column:
                   name: to_table_name
                   type: varchar(254)
+                  remarks: Target table name
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: When this remapping was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  ## This constraint's leading column is `database_id`, so MySQL reuses its index to satisfy the FK
+  ## added below; no separate `idx_..._database_id` is needed.
+  - changeSet:
+      id: v66.2026-10-21T00:00:09
+      author: escherize
+      comment: Unique constraint on table_remapping (database_id, from_db, from_schema, from_table_name)
+      changes:
         - addUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_source
             columnNames: database_id, from_db, from_schema, from_table_name
+
+  - changeSet:
+      id: v66.2026-10-21T00:00:10
+      author: escherize
+      comment: Unique constraint on table_remapping (database_id, to_db, to_schema, to_table_name) so two source tables can't map to the same target
+      changes:
         - addUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_target
             columnNames: database_id, to_db, to_schema, to_table_name
+
+  - changeSet:
+      id: v66.2026-10-21T00:00:11
+      author: escherize
+      comment: FK table_remapping.database_id -> metabase_database.id (cascade on delete)
+      changes:
         - addForeignKeyConstraint:
             baseTableName: table_remapping
             baseColumnNames: database_id
@@ -226,7 +301,3 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_table_remapping_database_id
             deleteCascade: true
-      rollback:
-        - dropTable:
-            tableName: table_remapping
-            cascadeConstraints: true
