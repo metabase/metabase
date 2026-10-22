@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.db :as queries.db]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -80,14 +81,26 @@
                   (:card_id values_source_config))))
         parameters))
 
+(defn- check-source-card-permissions
+  "Read-check the Card with `card-id`, then check the current user could run it. The run check is skipped without a
+  current user (system writes) and for superusers."
+  [card-id]
+  (api/read-check :model/Card card-id)
+  (when (and api/*current-user-id* (not api/*is-superuser?*))
+    (query-perms/check-saved-card-run-permissions
+     card-id
+     (queries.db/card-dataset-query card-id)
+     (tru "You do not have permissions to run the query for this card, so it can''t be a parameter''s values source."))))
+
 (mu/defn check-parameter-source-card-permissions
-  "Read-check the Cards `parameters` draw their values from."
+  "Check the current user can read and run the Cards `parameters` draw their values from."
   [parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (doseq [card-id (values-source-card-ids parameters)]
-    (api/read-check :model/Card card-id)))
+    (check-source-card-permissions card-id)))
 
 (mu/defn check-new-parameter-source-card-permissions
-  "Read-check the source Cards newly referenced by `parameters` that are not already stored for this object."
+  "Check the current user can read and run the source Cards newly referenced by `parameters` that are not already
+  stored for this object."
   [parameterized-object-type :- ::parameterized-object-type
    parameterized-object-id   :- pos-int?
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
@@ -96,7 +109,7 @@
       (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
         (doseq [card-id wanted
                 :when   (not (contains? existing card-id))]
-          (api/read-check :model/Card card-id))))))
+          (check-source-card-permissions card-id))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,

@@ -62,14 +62,17 @@
                                           (assoc :series (mapv :id (:series dashcard)))))))
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
-    (check-reverted-dashcards-timeline-permissions! dashboard-id current-cards (concat to-create to-update))
-    (when (seq to-delete)
-      (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
-    (when (seq to-create)
-      (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create)))
-    (when (seq to-update)
-      (doseq [update-card to-update]
-        (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
+    ;; one write: a Card whose dashcard is deleted below can come back on a recreated one
+    (dashboard-card/do-with-run-check-cache
+     (fn []
+       (check-reverted-dashcards-timeline-permissions! dashboard-id current-cards (concat to-create to-update))
+       (when (seq to-delete)
+         (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
+       (when (seq to-create)
+         (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create)))
+       (when (seq to-update)
+         (doseq [update-card to-update]
+           (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))))
 
 (defn- remove-invalid-dashcards
   "Given a list of dashcards, remove any dashcard that references cards that are archived, do not exist, or now belong
