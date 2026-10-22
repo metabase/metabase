@@ -76,7 +76,11 @@ export function ActionCreator({
     >
       <ActionCreatorContent
         modelId={modelId}
-        canWriteModelActions={isAdmin && canWriteActions(model, modelDatabase)}
+        canWriteModelActions={canWriteActions({
+          model,
+          database: modelDatabase,
+          isAdmin,
+        })}
         isRouted={isRouted}
         dataReference={DATA_REFERENCE}
         onSubmit={onSubmit}
@@ -86,11 +90,19 @@ export function ActionCreator({
   );
 }
 
-function canWriteActions(
-  model: Card | undefined,
-  database: Database | undefined,
-): boolean {
+type CanWriteActionsOpts = {
+  model: Card | undefined;
+  database: Database | undefined;
+  isAdmin: boolean;
+};
+
+function canWriteActions({
+  model,
+  database,
+  isAdmin,
+}: CanWriteActionsOpts): boolean {
   return (
+    isAdmin &&
     model?.can_write === true &&
     database?.native_permissions === "write" &&
     Boolean(database.settings?.["database-enable-actions"])
