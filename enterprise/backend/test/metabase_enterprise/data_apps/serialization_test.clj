@@ -87,7 +87,7 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-round-trip-"]
-        (let [app                  (insert-app!)
+        (let [app                  (insert-app! :enabled false)
               collection-entity-id (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))]
           (export! dump-dir :with-collections? true)
           (testing "the app's collection is exported with it, like any collection"
@@ -105,6 +105,8 @@
                      :allowed_hosts ["https://api.example.com"]}
                     imported))
             (is (= "console.log(1)" (bundle-text imported)))
+            (testing "new app starts enabled, like one created through the API"
+              (is (true? (:enabled imported))))
             (testing "the import links the collection the manifest names without importing group assignments"
               (is (=? {:entity_id collection-entity-id :namespace :data-apps}
                       (t2/select-one :model/Collection :id (:resource_collection_id imported))))
