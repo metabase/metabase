@@ -5,10 +5,12 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
+   [metabase.queries.db :as queries.db]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -17,21 +19,22 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::future
   [:fn {:error/message "A future"} future?])
 
 (mu/defn- legacy-result-metadata-future :- ::future
-  [query :- :map]
+  [query :- ::lib-be.schema/maybe-legacy-or-empty-query]
   (future
     (try
+      ;; card result_metadata is persisted in legacy shape; Lib-shape migration pending
       #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e
         (log/errorf "Error calculating result metadata for Card: %s" (ex-message e))
-        []))))
+        ;; sentinel: callers distinguish this from "the query produced no columns"
+        ::recompute-failed))))
 
 (def ^:private metadata-sync-wait-ms
   "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
@@ -45,9 +48,19 @@ saved later when it is ready."
    [:map
     [:metadata-future ::future]]])
 
+(def ^:private ModelResultMetadataOptions
+  "Options accepted by [[maybe-async-model-result-metadata]]."
+  [:map {:closed true}
+   [:original-query    {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:query             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:metadata          {:optional true} analyze/ResultsMetadata]
+   [:original-metadata {:optional true} analyze/ResultsMetadata]
+   [:model?            {:optional true} [:maybe :boolean]]
+   [:entity-id         {:optional true} [:maybe :string]]
+   [:valid-metadata?   {:optional true} [:maybe :boolean]]])
+
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
-  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
-                                                                  [:valid-metadata? :any]]]
+  [{:keys [query metadata original-metadata valid-metadata?]} :- ModelResultMetadataOptions]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (-> query
                       legacy-result-metadata-future)
@@ -60,24 +73,35 @@ saved later when it is ready."
                         ;; existing usage, don't use this going forward
                         #_{:clj-kondo/ignore [:deprecated-var]}
                         (qp.util/combine-metadata metadata')))]
-    (if (= result ::timed-out)
+    (cond
+      (= result ::timed-out)
       {:metadata-future (future
                           (try
-                            (combiner @futur)
+                            (let [awaited @futur]
+                              (if (= awaited ::recompute-failed)
+                                metadata'
+                                (combiner awaited)))
                             (catch Throwable e
                               (future-cancel futur)
                               (log/errorf "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
+
+      (= result ::recompute-failed)
+      {:metadata metadata'}
+
+      :else
       {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query]
+  [query             :- ::lib-be.schema/maybe-legacy-or-empty-query
+   original-metadata :- [:maybe analyze/ResultsMetadata]]
   (log/debug "Querying for metadata")
-  (let [futur (legacy-result-metadata-future query)
+  (let [futur  (legacy-result-metadata-future query)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
-    (if (= result ::timed-out)
-      {:metadata-future futur}
-      {:metadata result})))
+    (cond
+      (= result ::timed-out)      {:metadata-future futur}
+      (= result ::recompute-failed) {:metadata original-metadata}
+      :else                       {:metadata result})))
 
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
@@ -99,7 +123,14 @@ saved later when it is ready."
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata model?], :as options}]
+  [{:keys [original-query query metadata original-metadata model?], :as options}
+   :- [:map {:closed true}
+       [:original-query    {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+       [:query             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+       [:metadata          {:optional true} analyze/ResultsMetadata]
+       [:original-metadata {:optional true} analyze/ResultsMetadata]
+       [:model?            {:optional true} [:maybe :boolean]]
+       [:entity-id         {:optional true} [:maybe :string]]]]
   (let [valid-metadata? (and metadata
                              (mr/validate analyze/ResultsMetadata metadata))]
     (cond
@@ -132,7 +163,7 @@ saved later when it is ready."
       (maybe-async-model-result-metadata (assoc options :valid-metadata? valid-metadata?))
 
       :else
-      (maybe-async-recomputed-metadata query))))
+      (maybe-async-recomputed-metadata query original-metadata))))
 
 (def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
@@ -143,9 +174,7 @@ saved later when it is ready."
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
   [result-metadata-future :- ::future
-   card                   :- [:map
-                              [:id            ::lib.schema.id/card]
-                              [:dataset_query :map]]]
+   card                   :- ::queries.schema/card]
   (let [id (u/the-id card)]
     (future
       (try
@@ -156,31 +185,28 @@ saved later when it is ready."
               (log/infof "Metadata not ready in %s, abandoning" (u/format-milliseconds metadata-async-timeout-ms))
               (future-cancel result-metadata-future))
 
+            (= metadata ::recompute-failed)
+            (log/infof "Not updating metadata asynchronously for card %s because the recompute failed" id)
+
             (not (seq metadata))
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))
 
             :else
-            (let [current-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id id)]
+            (let [current-query (queries.db/card-dataset-query id)]
               (if (= (:dataset_query card) current-query)
                 (do
-                  (t2/update! :model/Card id {:result_metadata metadata})
+                  (queries.db/update-card! id {:result_metadata metadata})
                   (log/infof "Metadata updated asynchronously for card %s" id))
                 (log/infof "Not updating metadata asynchronously for card %s because query has changed" id)))))
         (catch Throwable e
           (log/errorf "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
-  "Infer the default result_metadata to store for MBQL cards.
-
-  Ignores any that might be present already."
+  "Infer the default result_metadata to store for MBQL cards, as no user, ignoring any already present."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols
-                  ;; 1. This function is called when storing metadata.
-                  ;; 2. The metadata for storage shouldn't have remaps.
-                  ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
-                  (assoc-in query [:middleware :disable-remaps?] true))))))
+                 (qp.preprocess/query->expected-cols query)))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.
@@ -196,6 +222,24 @@ saved later when it is ready."
                          model-metadata (update :info merge {:metadata/model-metadata   model-metadata
                                                              :metadata/own-model-query? true}))]
     (infer-metadata query)))
+
+(defn untyped-metadata?
+  "Whether `metadata` has columns and none of them has a known base type."
+  [metadata]
+  (boolean (and (seq metadata)
+                (every? #(contains? #{nil :type/*} (:base_type %)) metadata))))
+
+(defn backfill-untyped-model-metadata!
+  "Re-infer the result metadata of each MBQL model on the Database with `database-id` whose stored metadata is
+  [[untyped-metadata?]], keeping the model overrides. A model whose metadata still cannot be inferred stays as it is."
+  [database-id]
+  ;; A model deserialized before its fields were synced stores only its overrides, because inference failed then.
+  (doseq [card  (queries.db/mbql-model-cards database-id)
+          :when (untyped-metadata? (:result_metadata card))
+          :let  [metadata (infer-metadata-with-model-overrides (:dataset_query card) card)]
+          :when (and metadata (not (untyped-metadata? metadata)))]
+    (queries.db/update-card! (:id card) {:result_metadata metadata})
+    (log/infof "Inferred the untyped result metadata of model Card %d" (:id card))))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
@@ -213,10 +257,11 @@ saved later when it is ready."
                                       [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
-  ([card]
+  ([card :- ::queries.schema/card]
    (populate-result-metadata card nil))
 
-  ([{query :dataset_query metadata :result_metadata :as card} changes]
+  ([{query :dataset_query metadata :result_metadata :as card} :- ::queries.schema/card
+    changes :- [:maybe ::queries.schema/card]]
    (-> (cond
          ;; not updating the query => no-op
          (and (not-empty changes)
