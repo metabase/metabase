@@ -1149,6 +1149,18 @@
     (is (= [["count-where" {} expected]]
            (get (repair-in-stage {"aggregation" [["count-where" {} input]]}) "aggregation")))))
 
+(deftest ^:parallel between-a-whole-day-and-now-or-a-timestamp-test
+  (doseq [unit ["day" "default"]
+          [end end'] [[["now" {}] ["now" {}]]
+                      ["now" ["now" {}]]
+                      [(abs-dt "2026-01-31T12:30:00" "default") "2026-01-31T12:30:00"]
+                      ["2026-01-31T12:30:00" "2026-01-31T12:30:00"]]]
+    (testing (pr-str [unit end])
+      (let [stage (repair-in-stage
+                   {"aggregation" [["count-where" {} ["between" {} created-at (abs-dt "2026-01-01" unit) end]]]})]
+        (is (= [["count-where" {} ["between" {} created-at "2026-01-01" end']]] (get stage "aggregation")))
+        (is (= stage (repair-in-stage stage)))))))
+
 (deftest ^:parallel conditional-aggregations-with-refused-temporal-clauses-test
   (doseq [predicate (concat
                      (for [[literal units] [["2026-01-01" ["week" "month" "quarter" "year"]]
@@ -1160,7 +1172,9 @@
                       [">" {} created-at (abs-dt "2026-01-01T12:30:00" "day")]
                       ["during" {} created-at "2026-01-01" "day"]
                       ["between" {} created-at (abs-dt "2026-01-01" "day") (abs-dt "2026-01-31" "month")]
-                      ["between" {} created-at (abs-dt "2026-01-01" "default") (abs-dt "2026-01-31T23:59:59" "default")]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") "2026-01-31"]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") ["relative-datetime" {} -1 "day"]]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") ["today" {}]]
                       ["between" {} created-at (abs-dt "2026-01-01T12:30:00" "default") (abs-dt "2026-01-31" "default")]
                       ["=" {} (created-at-bucketed "day") (abs-dt "2026-01-01" "day")]
                       ["=" {} (abs-dt "2026-01-01" "day") created-at]])]
@@ -1173,7 +1187,8 @@
     (doseq [unit ["day" "default"]
             [start end] [["2026-01" "2026-03"] ["2025" "2026"]]
             predicate [["=" {} created-at (abs-dt start unit)]
-                       ["between" {} created-at (abs-dt start unit) (abs-dt end unit)]]
+                       ["between" {} created-at (abs-dt start unit) (abs-dt end unit)]
+                       ["between" {} created-at (abs-dt start unit) ["now" {}]]]
             aggregation [["count-where" {} predicate]
                          ["sum-where" {} user-id predicate]
                          ["distinct-where" {} user-id predicate]

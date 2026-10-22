@@ -1299,7 +1299,8 @@
 ;;; Date-only bounds with the `day` or `default` unit become ranges on the unbucketed column,
 ;;; with an exclusive upper bound on the next day. The expression editor can save these ranges;
 ;;; it cannot save a bucketed column, and dropping the unit would leave out times after midnight
-;;; on the last day. Timestamps with the `default` unit only lose their wrapper. E7 rejects date
+;;; on the last day. Timestamps with the `default` unit only lose their wrapper, and so does the
+;;; whole-day start of a `between` that ends at `now` or at a timestamp. E7 rejects date
 ;;; negations because `!=` filters keep rows with no date for Date columns and drop them for
 ;;; DateTime columns, and this pass does not know the column's type.
 ;;; ============================================================
@@ -1334,6 +1335,20 @@
   (and (redundant-bucket-literal v)
        (re-matches date-only-pattern (str/trim (nth v 2)))))
 
+(defn- now-or-timestamp? [v]
+  (or (and (vector? v) (= "now" (nth v 0 nil)))
+      (and (iso-date-string? v) (not (re-matches date-only-pattern (str/trim v))))))
+
+(defn- unwrap-whole-day-start
+  "Unwrap the whole-day start of a `between` that ends at `now` or at a timestamp.
+
+  SQL `BETWEEN` then counts from midnight, as the same clause does in a filter. Any other end leaves the
+  clause to E7, since `BETWEEN` stops at the start of a plain date or of a `relative-datetime` period."
+  [[_ _ _ start end :as node]]
+  (if (and (between-clause? node) (whole-day-bound? start) (now-or-timestamp? end))
+    (assoc node 3 (redundant-bucket-literal start))
+    node))
+
 (defn- repair-day-and-default-comparison [node]
   (if (hoistable-comparison-node? node)
     (let [literals (mapv redundant-bucket-literal (subvec node 3))]
@@ -1341,10 +1356,11 @@
         (if (contains? #{"!=" "not-in"} (first node))
           node
           (expand-day-comparison (into (subvec node 0 3) literals)))
-        (into (subvec node 0 3)
-              (map (fn [operand literal]
-                     (if (and literal (not (re-matches date-only-pattern literal))) literal operand))
-                   (subvec node 3) literals))))
+        (unwrap-whole-day-start
+         (into (subvec node 0 3)
+               (map (fn [operand literal]
+                      (if (and literal (not (re-matches date-only-pattern literal))) literal operand))
+                    (subvec node 3) literals)))))
     node))
 
 (defn- repair-day-and-default-comparisons*
@@ -3217,7 +3233,8 @@
        fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
        form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     2.96. expand date-only `day` / `default` comparisons into whole-day ranges on the unbucketed column outside of
-       `filters`, `expressions` and join `conditions`; leave date negations for E7; unwrap `default` timestamps;
+       `filters`, `expressions` and join `conditions`; leave date negations for E7; unwrap `default` timestamps
+       and the whole-day start of a `between` that ends at `now` or at a timestamp;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
