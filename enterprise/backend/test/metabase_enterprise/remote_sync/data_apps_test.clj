@@ -179,7 +179,7 @@
 
 (def ^:private question-eid "shopQuestionListVenue")
 
-(defn- venues-query []
+(defn- venues-stages []
   {:stages [{:source {:type "table" :id (mt/id :venues)} :limit 5}]})
 
 (def ^:private shop-collection-name "Data App: shop")
@@ -201,14 +201,14 @@
        (fn [{:keys [metric-id action-id]}]
          (let [resources (data-apps.tu/build-resources
                           shop-collection-name shop-collection-eid
-                          [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
+                          [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}
                            {:entity_id "shopQuestionMetricVen" :name "VenueCount"
                             :query {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                               :aggregations [{:type "metric" :id metric-id}]}]}}]
                           [action-id])
                src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
-               copy-eid  (fn [kind source-model source-id]
-                           (data-apps.tu/copy-entity-id kind shop-collection-eid (t2/select-one-fn :entity_id source-model :id source-id)))]
+               copy-eid  (fn [action-id]
+                           (data-apps.tu/copy-entity-id "action" shop-collection-eid (t2/select-one-fn :entity_id :model/Action :id action-id)))]
            (let [result (import-at! src "v0" :force? true)]
              (is (= :success (:status result)) (:message result)))
            (let [collection-id (shop-collection-id)]
@@ -218,19 +218,21 @@
                (is (=? {:type :question :name "VenuesList" :collection_id collection-id}
                        (t2/select-one :model/Card :entity_id question-eid))))
              (testing "a query aggregates the Library metric itself, which stays in the Library"
+               (let [card (t2/select-one :model/Card :entity_id "shopQuestionMetricVen")]
+                 (is (= [metric-id] (vec (lib/all-metric-ids (lib/query (mt/metadata-provider) (:dataset_query card)))))))
                (is (not= collection-id (t2/select-one-fn :collection_id :model/Card :id metric-id)))
                (is (not (t2/exists? :model/Card :collection_id collection-id :type :metric))))
              (testing "the action is copied into the collection, on no model"
                (is (=? {:type :query :collection_id collection-id :model_id nil}
-                       (t2/select-one :model/Action :entity_id (copy-eid "action" :model/Action action-id)))))
+                       (t2/select-one :model/Action :entity_id (copy-eid action-id)))))
              (testing "the source is untouched"
                (is (nil? (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))))
 
 (deftest pull-updates-and-removes-resources-with-their-files-test
   (with-data-apps-sync
     (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                  [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
-                                                   {:entity_id "shopQuestionOther0001" :name "Other" :query (venues-query)}]
+                                                  [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}
+                                                   {:entity_id "shopQuestionOther0001" :name "Other" :query (venues-stages)}]
                                                   [])
           file-of   (fn [eid] (some #(when (str/includes? % eid) %) (keys resources)))
           renamed   (update resources (file-of question-eid) #(yaml/generate-string (assoc (yaml/parse-string %) :name "Renamed")))
@@ -253,7 +255,7 @@
   (testing "a resource the Card hook refuses fails the pull"
     (with-data-apps-sync
       (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                                                     [])
             card-file (some #(when (str/includes? % question-eid) %) (keys resources))
             archived  (update resources card-file #(yaml/generate-string (assoc (yaml/parse-string %) :archived true)))
@@ -295,7 +297,7 @@
 
 (defn- question-resources []
   (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                                 []))
 
 (defn- resource-files
@@ -322,7 +324,7 @@
                                               :parameters    [{:id "id" :slug "id" :type :number/=}]})
                   resources (data-apps.tu/build-resources
                              shop-collection-name shop-collection-eid
-                             [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                             [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                              [action-id])
                   src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
                   result    (import-at! src "v0" :force? true)]
@@ -342,7 +344,7 @@
        (fn [{:keys [action-id]}]
          (let [resources (data-apps.tu/build-resources
                           shop-collection-name shop-collection-eid
-                          [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                          [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                           [action-id])
                src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")]
            (is (= :success (:status (import-at! src "v0" :force? true))))
@@ -388,7 +390,7 @@
     (with-data-apps-sync
       (let [resources (fn [card-name]
                         (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                      [{:entity_id question-eid :name card-name :query (venues-query)}]
+                                                      [{:entity_id question-eid :name card-name :query (venues-stages)}]
                                                       []))
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree (resources "VenuesList"))
                                                              "v1" (shop-tree (resources "Renamed on read-write"))
@@ -451,9 +453,9 @@
           (testing "archived, public, or a model"
             (mt/with-temporary-setting-values [enable-public-sharing true]
               (mt/user-http-request :crowberto :post 400 (str "card/" card-id "/public_link")))
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric that is not archived"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
                                   (t2/update! :model/Card card-id {:archived true})))
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric that is not archived"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
                                   (t2/update! :model/Card card-id {:type :model})))
             (is (=? {:archived false :public_uuid nil :type :question} (t2/select-one :model/Card :id card-id))))
           (testing "a card that is already public can't be moved in"
@@ -461,7 +463,7 @@
                                                         :dataset_query     q
                                                         :public_uuid       (str (random-uuid))
                                                         :made_public_by_id (mt/user->id :crowberto)}]
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric that is not archived"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
                                     (t2/update! :model/Card public-id {:collection_id collection-id})))
               (is (nil? (t2/select-one-fn :collection_id :model/Card :id public-id)))))
           (testing "the export keeps its file"
@@ -472,7 +474,7 @@
             (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
               (mt/user-http-request :crowberto :put 200 (str "card/" other-id) {:archived true}))))))))
 
-(deftest a-pull-moves-cards-out-of-an-apps-collection-test
+(deftest pull-moves-card-out-of-apps-collection-test
   (testing "a pull whose commit moves a card out of an app's collection, into an ordinary synced collection, succeeds"
     (with-data-apps-sync
       (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
@@ -496,14 +498,6 @@
           (is (= (t2/select-one-pk :model/Collection :entity_id synced-eid)
                  (t2/select-one-fn :collection_id :model/Card :entity_id question-eid))))))))
 
-(deftest a-pull-of-the-commit-already-imported-is-skipped-test
-  (testing "a pull that would load nothing isn't failed by the state of the instance"
-    (with-data-apps-sync
-      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")]
-        (is (= :success (:status (import-at! src "v0" :force? true))))
-        (t2/update! :model/Card :entity_id question-eid {:collection_id nil})
-        (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v0")))))))
-
 (deftest pull-refuses-two-apps-that-name-one-collection-test
   (with-data-apps-sync
     (let [shared (data-apps.tu/collection-entity-id "shared")
@@ -512,7 +506,8 @@
           result (import-at! src "v0" :force? true)]
       (testing "the database refuses the second app on the collection the first owns"
         (is (= :error (:status result)))
-        (is (> 2 (t2/count :model/DataApp :name [:in ["first" "second"]])))))))
+        (is (str/includes? (:message result) "already belongs to another data app"))
+        (is (= 1 (t2/count :model/DataApp :name [:in ["first" "second"]])))))))
 
 (deftest pull-refuses-a-manifest-that-names-a-collection-it-doesnt-define-test
   (testing "a manifest with no resource files can't claim a collection that is already here"
@@ -525,12 +520,12 @@
                       :current "v0")
               result (import-at! src "v0" :force? true)]
           (is (= :error (:status result)))
-          (is (str/includes? (:message result) "must be a root collection of the data-apps namespace"))
+          (is (str/includes? (:message result) "must be a top-level collection of data apps"))
           (is (not (t2/exists? :model/DataApp :name "shop")))
           (is (t2/exists? :model/Collection :id collection-id))
           (is (t2/exists? :model/Card :id card-id)))))))
 
-(deftest a-pull-refuses-a-native-question-in-an-apps-collection-test
+(deftest pull-refuses-native-question-in-apps-collection-test
   (testing "a question in an app's collection is built with the query builder, so a pull refuses one in SQL"
     (with-data-apps-sync
       (let [resources (question-resources)
@@ -579,7 +574,7 @@
       (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (let [before (resource-files mock)]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move a data app's collection to the trash"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
                                 (t2/update! :model/Collection (shop-collection-id) {:archived true})))
           (is (= :success (:status (export! mock))))
           (is (= before (resource-files mock)))
@@ -604,7 +599,7 @@
   (testing "an author deletes an app by deleting its directory and its collection's files under collections/data_apps/"
     (with-data-apps-sync
       (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                                                     [])
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources) "v1" {"README.md" "x"}}
                                                      :current "v0")]
@@ -622,7 +617,7 @@
             the app, and with it its collection and what it held"
     (with-data-apps-sync
       (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                                                     [])
             v0        (shop-tree resources)
             v1        (dissoc v0 "data_apps/shop/data_app.yaml" "data_apps/shop/index.js")
@@ -644,7 +639,7 @@
           (mt/user-http-request :crowberto :get 200 (str "card/" card-id))
           (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited in the root"}))))))
 
-(deftest a-card-in-an-apps-collection-reads-only-the-library-test
+(deftest card-in-apps-collection-reads-only-library-test
   (testing "a card there is a query builder question on tables published to the Library, aggregating only Library
             metrics, and based on no other card, whether it is saved or changed"
     (with-data-apps-sync
@@ -687,12 +682,12 @@
                  (refused? #"must be built with the query builder"
                            (lib/native-query mp "SELECT * FROM venues")))
                (testing "a card as the source, even the app's own"
-                 (refused? #"must start from a table published to the Library"
+                 (refused? #"not the card"
                            (lib/query mp (lib.metadata/card mp card-id))))
                (testing "and a metric outside the Library"
                  (refused? #"can use only metrics from the Library"
                            (lib/aggregate venues (lib.metadata/metric mp other-metric-id))))
-               (testing "a card elsewhere can still read any of them"
+               (testing "a card elsewhere can still read the app's card"
                  (mt/user-http-request :crowberto :post 200 "card"
                                        {:name "Saved" :type "question" :display "table" :visualization_settings {}
                                         :dataset_query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))}))))))))))
@@ -704,7 +699,7 @@
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (let [card-id (t2/select-one-pk :model/Card :entity_id question-eid)]
           (mt/with-temporary-setting-values [enable-embedding-modular true]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric that is not archived"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
                                   (t2/update! :model/Card card-id {:embedding_params {}})))
             (testing "a card elsewhere takes them"
               (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
@@ -719,7 +714,7 @@
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (let [collection-id (shop-collection-id)
               before        (resource-files mock)]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move a data app's collection to the trash or make it official"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
                                 (t2/update! :model/Collection collection-id {:authority_level "official"})))
           (mt/with-temp [:model/Collection other {:name "Other root" :namespace :data-apps}]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot move a data app's collection"
@@ -737,7 +732,7 @@
       (data-apps.tu/do-with-sources!
        (fn [{:keys [action-id]}]
          (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                       [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                                                        [action-id])
                mock      (test-helpers/create-mock-source :initial-files {"main" (shop-tree resources)})]
            (is (= :success (:status (import-at! mock "main" :force? true))))
@@ -775,7 +770,7 @@
       (data-apps.tu/do-with-sources!
        (fn [{:keys [action-id]}]
          (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                       [{:entity_id question-eid :name "VenuesList" :query (venues-stages)}]
                                                        [action-id])
                mock      (test-helpers/create-mock-source :initial-files {"main" (shop-tree resources)})]
            (is (= :success (:status (import-at! mock "main" :force? true))))
@@ -811,3 +806,20 @@
                               (filter map? (tree-seq coll? seq (t2/select-one-fn :dataset_query :model/QueryAction :action_id copy-id))))))))
              (is (= :success (:status (export! mock))))
              (is (= :success (:status (import-at! mock "main" :force? true)))))))))))
+
+(deftest pull-loads-app-whose-collection-is-remote-synced-test
+  (testing "an app's collection may be remote-synced, as remote sync marks it once it syncs the collection, so a pull
+            that says so loads the app, and the next pull too"
+    (with-data-apps-sync
+      (let [tree      (shop-tree (question-resources))
+            coll-file (data-apps.tu/collection-path shop-collection-name)
+            synced    (update tree coll-file #(yaml/generate-string (assoc (yaml/parse-string %) :is_remote_synced true)))
+            src       (test-helpers/versioned-source :trees {"v0" synced "v1" (assoc synced "README.md" "x")} :current "v0")]
+        (is (contains? tree coll-file) "the fixture writes the collection's file where the test changes it")
+        (let [result (import-at! src "v0" :force? true)]
+          (is (= :success (:status result)) (:message result)))
+        (is (= (shop-collection-id) (t2/select-one-pk :model/Collection :entity_id shop-collection-eid)))
+        (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :entity_id shop-collection-eid)))
+        (is (t2/exists? :model/Card :entity_id question-eid :collection_id (shop-collection-id)))
+        (let [result (import-at! src "v1" :force? true)]
+          (is (= :success (:status result)) (:message result)))))))

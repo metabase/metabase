@@ -1,7 +1,6 @@
 import yaml from "js-yaml";
 
 import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as Urls from "metabase/urls/data-apps";
 import type {
   Collection,
@@ -14,12 +13,7 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import {
-  createLibrary,
-  createTestNativeQuery,
-  publishTables,
-  updateSetting,
-} from "./api";
+import { createTestNativeQuery, updateSetting } from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
@@ -476,11 +470,6 @@ export const copySyncedDataAppsFixture = () =>
  * Both `good` and `second-app` are served. `goodAppCards` replaces the
  * `good` app's saved questions, so a spec decides which tables it reads.
  */
-function publishDataAppTables() {
-  createLibrary();
-  publishTables({ table_ids: [SAMPLE_DATABASE.ORDERS_ID] });
-}
-
 export function pullExampleDataApps({
   goodAppCards,
 }: { goodAppCards?: ResourceEntity[] } = {}) {
@@ -498,7 +487,6 @@ export function pullExampleDataApps({
     });
   }
   commitToRepo("Add data apps");
-  publishDataAppTables();
   configureGitAndPullChanges("read-write");
 }
 
@@ -529,7 +517,6 @@ function commitDataApp(
     setupGitSync();
     copySyncedCollectionFixture();
     updateSetting("remote-sync-custom-collections-enabled", true);
-    publishDataAppTables();
   }
   // A copy only adds, so a file the author deleted would stay in the repository.
   cy.task("removeDataAppPaths", { paths: [collectionsDir] });

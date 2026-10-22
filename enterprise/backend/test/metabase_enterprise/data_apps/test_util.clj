@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.test-util
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as serialization]
@@ -134,7 +135,7 @@
                                         (t2/select-one-fn :db_id :model/Table :id table-id))]]
                     {:spec spec :query (lib/test-query mp query)})
         actions   (map #(t2/select-one :model/Action :id %) action-ids)
-        copy-id   (fn [kind source] (copy-entity-id kind collection-entity-id (:entity_id source)))
+        copy-id   (fn [action] (copy-entity-id "action" collection-entity-id (:entity_id action)))
         extract   (fn [model-name instance]
                     (cond-> (serdes/extract-one model-name {} instance)
                       (not= "Collection" model-name) (assoc :collection_id collection-entity-id)))
@@ -145,7 +146,7 @@
                       (for [{:keys [spec query]} resolved]
                         (extract "Card" (question spec query)))
                       (for [action actions]
-                        (extract "Action" (action-copy action (copy-id "action" action)))))))]
+                        (extract "Action" (action-copy action (copy-id action)))))))]
     (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
 
 (defn do-with-library!
@@ -198,17 +199,20 @@
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
 (defn do-with-published-tables!
-  "Call `f` with the Tables with `table-ids` published to the Library's Data collection, which a card in a data app's
-  collection must read, creating the Library for the call when the instance has none."
+  "Call `f` with the Tables with `table-ids` published to the Library's Data collection, as a card in a data app's
+  collection needs the tables it reads, unpublishing afterwards only the ones this call published and creating the
+  Library for the call when the instance has none."
   [table-ids f]
   (do-with-library!
    (fn [{:keys [data-id]}]
-     (let [table-ids (set table-ids)]
-       (data-studio.db/publish-tables! table-ids data-id)
+     (let [to-publish (set/difference (set table-ids) (data-studio.db/published-table-ids (set table-ids)))]
+       (when (seq to-publish)
+         (data-studio.db/publish-tables! to-publish data-id))
        (try
          (f)
          (finally
-           (data-studio.db/unpublish-tables! table-ids)))))))
+           (when (seq to-publish)
+             (data-studio.db/unpublish-tables! to-publish))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."

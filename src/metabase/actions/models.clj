@@ -155,6 +155,11 @@
                   (when (= "Card" model) id))))
         (serdes/mbql-deps true query)))
 
+(defn- data-app-action-error
+  "A 400 error for an action in a data app's collection, with `message`."
+  [message]
+  (ex-info message {:status-code 400}))
+
 (defn- check-data-app-action-query
   "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
   while the collection is a data app's."
@@ -165,24 +170,23 @@
           outside  (when (seq card-ids)
                      (actions.db/card-ids-outside-collection card-ids collection-id))]
       (when (seq outside)
-        (throw (ex-info (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
-                             (str/join ", " (sort outside)))
-                        {:status-code 400}))))))
+        (throw (data-app-action-error
+                (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
+                     (str/join ", " (sort outside)))))))))
 
 (defn- check-data-app-action
-  "Throws unless `action`, when it is in a data app's collection, is a query action that is neither archived nor public
-  and whose parameters take no values from a card."
+  "Throws unless `action`, when it is in a data app's collection, is a query action of no model that is neither
+  archived nor public and whose parameters take no values from a card."
   [{collection-id :collection_id, :as action}]
   (when (and (some? collection-id) (perms/data-app-collection? collection-id))
-    (when-not (= :query (keyword (:type action)))
-      (throw (ex-info (tru "An action in a data app''s collection must be a query action.") {:status-code 400})))
+    (when (or (not= :query (keyword (:type action))) (:model_id action))
+      (throw (data-app-action-error (tru "An action in a data app''s collection must be a query action of no model."))))
     (when (:archived action)
-      (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
+      (throw (data-app-action-error (tru "An action in a data app''s collection can''t be archived."))))
     (when (:public_uuid action)
-      (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))
+      (throw (data-app-action-error (tru "An action in a data app''s collection can''t be made public."))))
     (when (some #(= "card" (some-> (:values_source_type %) name)) (:parameters action))
-      (throw (ex-info (tru "An action in a data app''s collection can''t take a parameter''s values from a card.")
-                      {:status-code 400})))))
+      (throw (data-app-action-error (tru "An action in a data app''s collection can''t take a parameter''s values from a card."))))))
 
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
@@ -232,7 +236,7 @@
   (u/prog1 implicit-action
     (when-let [collection-id (actions.db/action-collection-id (:action_id implicit-action))]
       (when (perms/data-app-collection? collection-id)
-        (throw (ex-info (tru "An action in a data app''s collection must be a query action.") {:status-code 400}))))))
+        (throw (data-app-action-error (tru "An action in a data app''s collection is a query action, so it can''t have an implicit action.")))))))
 
 (defn- action-database-ids
   "The ids of the Databases `action` runs against: its query's, or its model's for an implicit action."
@@ -332,14 +336,7 @@
   (let [updates (cond-> (assoc updates :type (or (:type updates) (:type existing-action)))
                   (get updates :model_id (:model_id existing-action)) (dissoc :collection_id))]
     (t2/with-transaction [_conn]
-      (when-let [action-row (not-empty (select-keys updates action-columns))]
-        (actions.db/update-action! id action-row))
-      (when (and (:archived updates) (not (:archived existing-action)))
-        (actions.db/delete-dashcards-for-action! id))
-      (when-let [collection-id (and (contains? updates :collection_id)
-                                    (not= (:collection_id updates) (:collection_id existing-action))
-                                    (:collection_id updates))]
-        (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
+      ;; the query row first: a move into a data app's collection checks the query the action then holds
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
@@ -356,6 +353,14 @@
             (case (:type existing-action)
               :query    (actions.db/update-query-action! id type-row)
               :implicit (actions.db/update-implicit-action! id type-row)))))
+      (when-let [action-row (not-empty (select-keys updates action-columns))]
+        (actions.db/update-action! id action-row))
+      (when (and (:archived updates) (not (:archived existing-action)))
+        (actions.db/delete-dashcards-for-action! id))
+      (when-let [collection-id (and (contains? updates :collection_id)
+                                    (not= (:collection_id updates) (:collection_id existing-action))
+                                    (:collection_id updates))]
+        (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
       (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
 
 (mu/defn update!

@@ -43,7 +43,8 @@
     (f)))
 
 (deftest group-permission-warnings-walk-the-dependency-graph-test
-  (testing "the warnings list the tables a question reads, a Library metric it aggregates reads, and a query action writes"
+  (testing "the warnings list the tables a question reads, the tables only a Library metric it aggregates reads, and the
+            tables a query action writes"
     (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
       (mt/with-no-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
@@ -51,11 +52,13 @@
             (data-apps.tu/do-with-library!
              (fn [{:keys [metrics-id]}]
                (let [mp (mt/metadata-provider)]
-                 (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue count"
+                 (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue categories"
                                                              :type          :metric
                                                              :collection_id metrics-id
-                                                             :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                                (lib/aggregate (lib/count)))}
+                                                             :dataset_query (let [venues (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+                                                                              ;; CATEGORIES is reached only through this metric
+                                                                              (lib/aggregate venues (lib/distinct (some #(when (= (mt/id :categories :name) (:id %)) %)
+                                                                                                                        (lib/visible-columns venues)))))}
                                 :model/DataApp {collection-id :resource_collection_id :as app}
                                 {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                                 :model/Card _ {:collection_id collection-id
@@ -72,7 +75,8 @@
                           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
                           (group-access/add-groups! app [(:id group)])
                           (is (=? [{:group_id       (:id group)
-                                    :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :orders)} {:id (mt/id :venues)}]}]
+                                    :missing_tables [{:id (mt/id :categories)} {:id (mt/id :checkins)}
+                                                     {:id (mt/id :orders)} {:id (mt/id :venues)}]}]
                                   (group-access/permission-warnings app)))))))))))))))))
 
 (deftest group-permission-warnings-include-tables-in-optional-clauses-test
@@ -81,7 +85,7 @@
       (mt/with-no-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
           (doseq [sql ["UPDATE VENUES SET NAME = 'x' [[WHERE ID IN (SELECT VENUE_ID FROM CHECKINS WHERE ID = {{id}})]]"
-                       "DELETE FROM VENUES [[WHERE ID IN (SELECT VENUE_ID FROM CHECKINS WHERE ID = {{id}})]]"]]
+                       "UPDATE VENUES v SET NAME = 'x' WHERE v.ID IN (SELECT v2.ID FROM VENUES v2 [[JOIN CHECKINS c ON c.VENUE_ID = v2.ID AND c.ID = {{id}}]])"]]
             (testing sql
               (mt/with-temp [:model/DataApp {collection-id :resource_collection_id :as app}
                              {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
