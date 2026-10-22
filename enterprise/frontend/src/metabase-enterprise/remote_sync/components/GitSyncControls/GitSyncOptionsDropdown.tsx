@@ -40,7 +40,6 @@ export const GitSyncOptionsDropdown = ({
           <Combobox.Option
             disabled={isPushDisabled}
             onClick={onPushClick}
-            py="sm"
             value="push"
           >
             <Group gap="lg" wrap="nowrap">
@@ -56,7 +55,6 @@ export const GitSyncOptionsDropdown = ({
           <Combobox.Option
             disabled={isPullDisabled || isLoadingPull}
             onClick={onPullClick}
-            py="sm"
             value="pull"
           >
             <Group gap="lg" wrap="nowrap">

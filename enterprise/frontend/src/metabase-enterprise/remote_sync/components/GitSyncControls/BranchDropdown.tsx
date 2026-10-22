@@ -160,7 +160,6 @@ export const BranchDropdown = ({
                           value={branch}
                           onClick={() => handleBranchSelect(branch)}
                           data-testid={`branch-item-${branch}`}
-                          py="sm"
                         >
                           <Group gap="xxs" wrap="nowrap">
                             <Text c="inherit">{branch}</Text>
@@ -175,7 +174,6 @@ export const BranchDropdown = ({
                 {showCreateOption && (
                   <Box p="sm">
                     <Combobox.Option
-                      py="sm"
                       value="__create__"
                       onClick={handleCreateBranch}
                       data-testid="create-branch-button"

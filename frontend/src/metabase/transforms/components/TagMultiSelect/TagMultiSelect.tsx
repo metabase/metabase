@@ -172,7 +172,7 @@ function NewTagSelectItem({
   };
 
   return (
-    <SelectItem selected={selected} mih="2.25rem" onClick={handleClick}>
+    <SelectItem selected={selected} onClick={handleClick}>
       <Text c="inherit" lh="inherit">
         {jt`Create ${<strong key="value">{trimmedSearchValue}</strong>}`}
       </Text>
@@ -212,7 +212,6 @@ function ExistingTagSelectItem({
     <SelectItem
       className={cx(S.selectItem, { [S.editable]: tag.can_run })}
       selected={selected}
-      py="xxs"
     >
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
