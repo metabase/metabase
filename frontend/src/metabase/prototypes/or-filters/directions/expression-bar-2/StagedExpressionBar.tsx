@@ -16,8 +16,9 @@ type StagedExpressionBarProps = {
 /**
  * The expression bar with its trailing segment. Stage `stageIndex` is the
  * expression over the rows; once the stage has a summary, a second segment
- * follows for the filters on that summary (the next stage). Those can only
- * be AND-ed, since an OR across a summary is not one query.
+ * follows for the filters on that summary (the next stage). Each segment is a
+ * full boolean expression; the boundary between them is an AND that cannot
+ * be changed, since an OR across a summary is not one query.
  */
 export function StagedExpressionBar({
   query,
@@ -66,7 +67,6 @@ export function StagedExpressionBar({
           stageIndex={summaryStageIndex}
           onChange={handleSummaryChange}
           className={S.summarySegmentBar}
-          allowOr={false}
           placeholder={t`Filter the summary…`}
           hasInlineActions
         />
