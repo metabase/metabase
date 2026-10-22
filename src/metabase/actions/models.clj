@@ -166,10 +166,8 @@
       (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
         (check-collection-content <>))
       (let [in-data-app? (and (some? (:collection_id <>)) (perms/data-app-collection? (:collection_id <>)))]
-        ;; an export leaves out an archived action, and the next pull would then delete it from every instance
         (when (and in-data-app? (changed? :archived) (:archived <>))
           (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
-        ;; an export writes the link into the action's file, which every pull then refuses
         (when (and in-data-app? (changed? :public_uuid) (:public_uuid <>))
           (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))))))
 
@@ -275,7 +273,6 @@
   "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
   while the collection is a data app's."
   [collection-id query]
-  ;; the next export writes the action into the app's files, and a pull refuses one that reads a card outside
   (when (and (some? collection-id)
              (perms/data-app-collection? collection-id))
     (let [card-ids (query-card-ids query)

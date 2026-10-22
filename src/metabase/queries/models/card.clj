@@ -996,9 +996,8 @@
     (:type card)))
 
 (defn- check-data-app-card
-  "Throws unless `card`, when it is in a data app's collection, is what a pull of the app accepts: a question or
-  metric that is not archived, public or embedded, reading no card outside the collection. The next export writes
-  the card into the app's files, and every pull refuses a file that says otherwise."
+  "Throws unless `card`, when it is in a data app's collection, is a question or metric that is not archived, public
+  or embedded, reading no card outside the collection, which is what a remote-sync pull of the app accepts."
   [{:keys [collection_id] :as card}]
   (when (and (some? collection_id)
              (perms/data-app-collection? collection_id))

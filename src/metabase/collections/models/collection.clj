@@ -376,8 +376,6 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
-        ;; not even an administrator edits a data app's collection: only a pull of its app changes it
-        (not= (keyword (:namespace instance)) data-apps-ns)
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
@@ -624,11 +622,8 @@
 
 (defn check-allowed-content
   "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
-  content of `model-type`."
+  content of `model-type`; a data app's collection holds only what a remote-sync pull of the app accepts."
   [model-type collection-id]
-  ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content.
-  ;; A load checks every question as a possible dashboard question before its dashboard is known, so that is a
-  ;; question here.
   (when (and collection-id
              (some? model-type)
              (not= :model/CollectionBookmark model-type)
@@ -1882,7 +1877,6 @@
                        :new-location new-location})))
     (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
-    ;; an export writes a data app's collection under another as a file every pull refuses
     (when (perms/data-app-collection? (:id collection))
       (throw (ex-info "You cannot move a data app's collection." {:status-code 400})))
     ;; first move this Collection
@@ -2109,8 +2103,6 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
-    ;; an export leaves out a trashed collection, which would delete the app's resource files, and writes an
-    ;; official one into a file every pull refuses
     (api/check
      (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
                (perms/data-app-collection? (:id collection-before-updates))))
