@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { JSX } from "react";
 import { c, t } from "ttag";
 
 import { EmbeddingLegaleseModal } from "metabase/embedding/settings/EmbeddingLegaleseModal";
