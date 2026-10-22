@@ -297,7 +297,13 @@ function planMutants(
   let nextId = 1;
   const byFile = new Map<string, Mutant[]>();
   const sources = new Map<string, ReturnType<typeof parseSource>>();
-  for (const scoped of functions) {
+  const rarestFirst = [...functions].sort(
+    (a, b) =>
+      a.e2eShare - b.e2eShare ||
+      a.file.localeCompare(b.file) ||
+      a.nightlyLine - b.nightlyLine,
+  );
+  for (const scoped of rarestFirst) {
     if (scoped.status !== "pending" || !scoped.node) {
       continue;
     }
