@@ -8,7 +8,7 @@ import type {
 
 import EventForm from "../../containers/EventForm";
 
-export interface EditEventModalProps {
+export interface EditEventFormProps {
   event: TimelineEvent;
   timeline?: Timeline;
   onSubmit: (event: TimelineEvent, timeline?: Timeline) => void;
@@ -18,7 +18,7 @@ export interface EditEventModalProps {
   onCancel: () => void;
 }
 
-const EditEventModal = ({
+const EditEventForm = ({
   event,
   timeline,
   onSubmit,
@@ -26,7 +26,7 @@ const EditEventModal = ({
   onArchive,
   onArchiveSuccess,
   onCancel,
-}: EditEventModalProps): JSX.Element => {
+}: EditEventFormProps): JSX.Element => {
   const handleSubmit = useCallback(
     async (values: TimelineEventData) => {
       await onSubmit({ ...event, ...values }, timeline);
@@ -51,4 +51,4 @@ const EditEventModal = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EditEventModal;
+export default EditEventForm;

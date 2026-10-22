@@ -6,7 +6,7 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { useNavigate } from "metabase/router";
-import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
+import NewTimelineForm from "metabase/timelines/common/components/NewTimelineForm";
 import {
   TimelineModal,
   TimelineModalLoadingState,
@@ -55,7 +55,7 @@ function NewTimelineModalContainer({
       {isLoading || error || !collection ? (
         <TimelineModalLoadingState loading={isLoading} error={error} />
       ) : (
-        <NewTimelineModal
+        <NewTimelineForm
           collection={collection}
           onSubmit={onSubmit}
           onCancel={onClose}

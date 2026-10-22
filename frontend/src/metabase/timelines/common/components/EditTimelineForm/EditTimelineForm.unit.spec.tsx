@@ -3,15 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, waitFor } from "__support__/ui";
 import { createMockTimeline } from "metabase-types/api/mocks";
 
-import type { EditTimelineModalProps } from "./EditTimelineModal";
-import EditTimelineModal from "./EditTimelineModal";
+import type { EditTimelineFormProps } from "./EditTimelineForm";
+import EditTimelineForm from "./EditTimelineForm";
 
-describe("EditTimelineModal", () => {
+describe("EditTimelineForm", () => {
   it("should submit modal", async () => {
     const props = getProps();
     const name = "Another timeline";
 
-    render(<EditTimelineModal {...props} />);
+    render(<EditTimelineForm {...props} />);
     await userEvent.clear(screen.getByLabelText("Name"));
     await userEvent.type(screen.getByLabelText("Name"), name);
     await userEvent.click(screen.getByText("Update"));
@@ -23,8 +23,8 @@ describe("EditTimelineModal", () => {
 });
 
 const getProps = (
-  opts?: Partial<EditTimelineModalProps>,
-): EditTimelineModalProps => ({
+  opts?: Partial<EditTimelineFormProps>,
+): EditTimelineFormProps => ({
   timeline: createMockTimeline(),
   onSubmit: jest.fn(),
   onArchive: jest.fn(),

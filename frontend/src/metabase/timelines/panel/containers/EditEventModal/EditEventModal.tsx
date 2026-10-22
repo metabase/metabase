@@ -7,7 +7,11 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import EditEventForm from "metabase/timelines/common/components/EditEventForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import type { TimelineEvent } from "metabase-types/api";
 
 interface EditEventModalContainerProps {
@@ -21,12 +25,8 @@ function EditEventModalContainer({
 }: EditEventModalContainerProps) {
   const dispatch = useDispatch();
   const archive = useSetArchive();
-  const { data: event } = useGetTimelineEventQuery(eventId);
+  const { data: event, isLoading, error } = useGetTimelineEventQuery(eventId);
   const [updateTimelineEvent] = useUpdateTimelineEventMutation();
-
-  if (!event) {
-    return null;
-  }
 
   const onSubmit = async (event: TimelineEvent) => {
     await updateTimelineEvent(event).unwrap();
@@ -37,14 +37,25 @@ function EditEventModalContainer({
     archive({ id: event.id, model: "timeline-event" }, true);
 
   return (
-    <EditEventModal
-      event={event}
-      onSubmit={onSubmit}
-      onSubmitSuccess={onClose}
-      onArchive={onArchive}
-      onArchiveSuccess={onClose}
-      onCancel={onClose}
-    />
+    <TimelineModal
+      title={t`Edit event`}
+      density="relaxed"
+      tall={isLoading || !!error || !event}
+      onClose={onClose}
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <EditEventForm
+          event={event}
+          onSubmit={onSubmit}
+          onSubmitSuccess={onClose}
+          onArchive={onArchive}
+          onArchiveSuccess={onClose}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

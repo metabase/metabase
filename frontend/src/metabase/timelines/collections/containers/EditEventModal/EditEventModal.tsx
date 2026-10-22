@@ -9,7 +9,7 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import EditEventForm from "metabase/timelines/common/components/EditEventForm";
 import {
   TimelineModal,
   TimelineModalLoadingState,
@@ -64,7 +64,7 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
       {isLoading || error || !event ? (
         <TimelineModalLoadingState loading={isLoading} error={error} />
       ) : (
-        <EditEventModal
+        <EditEventForm
           event={event}
           timeline={timeline}
           onSubmit={onSubmit}

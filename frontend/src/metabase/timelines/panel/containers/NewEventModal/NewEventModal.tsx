@@ -10,7 +10,8 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import NewEventModal from "metabase/timelines/common/components/NewEventModal";
+import NewEventForm from "metabase/timelines/common/components/NewEventForm";
+import { TimelineModal } from "metabase/timelines/common/components/TimelineModal";
 import type {
   Collection,
   CollectionId,
@@ -64,14 +65,16 @@ function NewEventModalContainer({
   };
 
   return (
-    <NewEventModal
-      source={source}
-      timelines={timelines}
-      collection={collection}
-      onSubmit={onSubmit}
-      onSubmitSuccess={onClose}
-      onCancel={onClose}
-    />
+    <TimelineModal title={t`New event`} density="relaxed" onClose={onClose}>
+      <NewEventForm
+        source={source}
+        timelines={timelines}
+        collection={collection}
+        onSubmit={onSubmit}
+        onSubmitSuccess={onClose}
+        onCancel={onClose}
+      />
+    </TimelineModal>
   );
 }
 

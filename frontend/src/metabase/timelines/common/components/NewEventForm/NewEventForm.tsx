@@ -11,7 +11,7 @@ import type {
 
 import EventForm from "../../containers/EventForm";
 
-export interface NewEventModalProps {
+export interface NewEventFormProps {
   timelines?: Timeline[];
   collection?: Collection;
   source: TimelineEventSource;
@@ -25,7 +25,7 @@ export interface NewEventModalProps {
   onCancel: () => void;
 }
 
-const NewEventModal = ({
+const NewEventForm = ({
   timelines = [],
   collection,
   source,
@@ -33,7 +33,7 @@ const NewEventModal = ({
   onSubmit,
   onSubmitSuccess,
   onCancel,
-}: NewEventModalProps): JSX.Element => {
+}: NewEventFormProps): JSX.Element => {
   const availableTimelines = useMemo(() => {
     return timelines.filter((t) => t.collection?.can_write);
   }, [timelines]);
@@ -84,4 +84,4 @@ const getInitialValues = (
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NewEventModal;
+export default NewEventForm;

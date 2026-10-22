@@ -6,10 +6,10 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import type { MoveEventModalProps } from "./MoveEventModal";
-import { MoveEventModal } from "./MoveEventModal";
+import type { MoveEventFormProps } from "./MoveEventForm";
+import { MoveEventForm } from "./MoveEventForm";
 
-describe("MoveEventModal", () => {
+describe("MoveEventForm", () => {
   it("should move an event to a different timeline", async () => {
     const event = createMockTimelineEvent({ timeline_id: 1 });
     const oldTimeline = createMockTimeline({ id: 1, name: "Builds" });
@@ -20,7 +20,7 @@ describe("MoveEventModal", () => {
       timelines: [oldTimeline, newTimeline],
     });
 
-    render(<MoveEventModal {...props} />);
+    render(<MoveEventForm {...props} />);
     expect(screen.getByRole("button", { name: "Move" })).toBeDisabled();
 
     await userEvent.click(screen.getByText(newTimeline.name));
@@ -33,9 +33,7 @@ describe("MoveEventModal", () => {
   });
 });
 
-const getProps = (
-  opts?: Partial<MoveEventModalProps>,
-): MoveEventModalProps => ({
+const getProps = (opts?: Partial<MoveEventFormProps>): MoveEventFormProps => ({
   event: createMockTimelineEvent(),
   timelines: [],
   onSubmit: jest.fn(),
