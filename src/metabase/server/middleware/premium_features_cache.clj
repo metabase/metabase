@@ -2,8 +2,8 @@
   "Ring middleware to propagate premium-features cache invalidation across instances via a cookie.
   When one instance refreshes features (via POST /api/premium-features/token/refresh), it sets a cookie
   with the current timestamp. Other instances see this cookie and compare the status they hold with the shared hash
-  row in the app DB, refreshing their own token status from the MetaStore only when no status is held or the hash
-  differs. A cookie therefore costs at most an app DB read unless another instance really has a newer status.
+  row in the app DB, refreshing their own token status from the MetaStore only when no status is held or the row
+  is missing or differs. A cookie therefore costs at most an app DB read unless another instance really has a newer status.
 
   The cookie is client-controlled and arrives on unauthenticated requests, so it is a hint, never an
   authority: it must parse as a timestamp, must not be in the future, must be newer than the last
