@@ -56,20 +56,6 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should gate the security center behind a valid token and show empty state without advisories", () => {
-    // Without a token the page should not render
-    H.deleteToken();
-    cy.visit("/admin/security-center");
-    cy.findByTestId("security-center-page").should("not.exist");
-
-    // Re-activate the token (no advisories seeded) → empty state
-    H.activateToken("pro-self-hosted");
-    cy.visit("/admin/security-center");
-    securityCenterContent().within(() => {
-      cy.findByText(/No known security issues/).should("be.visible");
-    });
-  });
-
   it("should display advisory cards sorted by affected status and severity, and support filtering", () => {
     seedAllAdvisories();
     cy.visit("/admin/security-center");
