@@ -1,3 +1,5 @@
+import type { CardId, WritebackActionId } from "metabase-types/api";
+
 /**
  * Canonical data-app URLs. `DATA_APP_URL_SEGMENT` is the single source of
  * truth for the `apps` path segment; the page, admin, and iframe-embed URLs
@@ -33,4 +35,56 @@ export function dataAppsSettings() {
 
 export function dataStudioDataApps() {
   return `/data-studio/${DATA_APP_URL_SEGMENT}`;
+}
+
+export function dataStudioDataApp(name: string) {
+  return `${dataStudioDataApps()}/${encodeURIComponent(name)}`;
+}
+
+export function dataStudioDataAppQuestions(name: string) {
+  return `${dataStudioDataApp(name)}/questions`;
+}
+
+export function dataStudioDataAppActions(name: string) {
+  return `${dataStudioDataApp(name)}/actions`;
+}
+
+export function dataStudioDataAppQuestion(name: string, cardId: CardId) {
+  return `${dataStudioDataAppQuestions(name)}/${cardId}`;
+}
+
+export function dataStudioDataAppQuestionDependencies(
+  name: string,
+  cardId: CardId,
+) {
+  return `${dataStudioDataAppQuestion(name, cardId)}/dependencies`;
+}
+
+export function dataStudioDataAppPermissions(name: string) {
+  return `${dataStudioDataApp(name)}/permissions`;
+}
+
+export function dataStudioDataAppAction(
+  name: string,
+  actionId: WritebackActionId,
+) {
+  return `${dataStudioDataAppActions(name)}/${actionId}`;
+}
+
+export function dataStudioDataAppActionFields(
+  name: string,
+  actionId: WritebackActionId,
+  fieldId?: string,
+) {
+  const fieldsUrl = `${dataStudioDataAppAction(name, actionId)}/fields`;
+  return fieldId != null
+    ? `${fieldsUrl}/${encodeURIComponent(fieldId)}`
+    : fieldsUrl;
+}
+
+export function dataStudioDataAppActionDependencies(
+  name: string,
+  actionId: WritebackActionId,
+) {
+  return `${dataStudioDataAppAction(name, actionId)}/dependencies`;
 }

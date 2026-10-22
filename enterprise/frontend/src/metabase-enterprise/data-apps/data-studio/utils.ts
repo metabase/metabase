@@ -10,3 +10,7 @@ export function getDataAppStatusLabel({ enabled, outdated }: DataAppState) {
   }
   return outdated ? t`Draft, outdated` : t`Draft`;
 }
+
+export function isDataAppOpenable({ enabled, outdated }: DataAppState) {
+  return enabled && !outdated;
+}

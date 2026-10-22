@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -7,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useNavigate } from "metabase/router";
 import {
   Card,
   Ellipsified,
@@ -23,13 +24,22 @@ import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { DataAppMoreMenu } from "../../components/DataAppMoreMenu";
 import { getDataAppStatusLabel } from "../../utils";
 
 import { DataAppListEmptyState } from "./DataAppListEmptyState";
 
 export function DataAppListPage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const { data: apps = [], isLoading, error } = useListDataAppsQuery();
+
+  const handleRowActivate = useCallback(
+    (row: { original: DataApp }) => {
+      navigate(Urls.dataStudioDataApp(row.original.name));
+    },
+    [navigate],
+  );
 
   const columns = useMemo<TreeTableColumnDef<DataApp>[]>(
     () => [
@@ -65,6 +75,12 @@ export function DataAppListPage() {
         minWidth: 160,
         cell: ({ row }) => <DateTime value={row.original.updated_at} />,
       },
+      {
+        id: "actions",
+        header: "",
+        width: 48,
+        cell: ({ row }) => <DataAppMoreMenu app={row.original} />,
+      },
     ],
     [],
   );
@@ -75,6 +91,7 @@ export function DataAppListPage() {
     getNodeId: (app) => app.name,
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
+    onRowActivate: handleRowActivate,
   });
 
   if (error) {
@@ -104,7 +121,7 @@ export function DataAppListPage() {
           <Flex direction="column" flex={1} mih={0}>
             <Card withBorder p={0}>
               {isLoading ? (
-                <TreeTableSkeleton columnWidths={[0.3, 0.3, 0.2, 0.2]} />
+                <TreeTableSkeleton columnWidths={[0.3, 0.3, 0.15, 0.2, 0.05]} />
               ) : (
                 <TreeTable
                   instance={treeTableInstance}
@@ -113,6 +130,7 @@ export function DataAppListPage() {
                       <ListEmptyState label={t`No data apps found`} />
                     ) : null
                   }
+                  onRowClick={handleRowActivate}
                 />
               )}
             </Card>
