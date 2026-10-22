@@ -28,8 +28,8 @@
 
 (defn- remark-field
   [field-name value]
-  (when (some? value)
-    (str " " field-name ": " (if (keyword? value) (name value) value))))
+  (when-let [value (cond-> value (keyword? value) name)]
+    (format " %s: %s" field-name value)))
 
 (mu/defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
