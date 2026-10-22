@@ -609,10 +609,16 @@
                              (sort-by (juxt :table-name :database-position))
                              (into [] (column-rows->fields-xf))))
         found         (into #{} (map :table-name) rows)
-        ;; `getColumns` can return no columns for a table (#43980)
+        ;; `getColumns` can return no columns for a table (#43980). Compare with the tables that table sync saved.
         missing       (remove found (if (seq table-names)
                                       table-names
-                                      (map :table_name (get-tables metadata schema (not-empty catalog)))))
+                                      (into []
+                                            (comp (filter #(= table-schema (:schema %)))
+                                                  (map :name))
+                                            ;; a nil schema matches no table in SQL, so filter it here
+                                            (driver-api/reducible-sync-tables
+                                             database
+                                             :schema-names (when table-schema [table-schema])))))
         described     (for [table-name missing
                             field      (describe-table-fields-with-nested-fields database schema table-name)]
                         (-> field
