@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import { Fragment, useEffect, useRef } from "react";
+import { type ComponentType, Fragment, useEffect, useRef } from "react";
 
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import {
@@ -99,7 +99,7 @@ export const LongLabels = {
   name: "Long labels",
   args: { data: LONG_LABEL_DATA, defaultValue: "on" },
   decorators: [
-    (Story: StoryFn) => (
+    (Story: ComponentType) => (
       <Box w="20rem">
         <Story />
       </Box>
