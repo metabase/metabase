@@ -1,4 +1,5 @@
 import { type JSX, useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -74,13 +75,17 @@ const TimelineListModal = ({
       onGoBack={isArchive ? handleGoBack : undefined}
     >
       <TimelineModalScrollArea justify={hasTimelines ? undefined : "center"}>
-        {hasTimelines ? (
-          <TimelineList timelines={sortedTimelines} onUnarchive={onUnarchive} />
-        ) : isArchive ? (
-          <SearchEmptyState isTimeline={isArchive} />
-        ) : (
-          <TimelineEmptyState collection={collection} />
-        )}
+        {match({ hasTimelines, isArchive })
+          .with({ hasTimelines: true }, () => (
+            <TimelineList
+              timelines={sortedTimelines}
+              onUnarchive={onUnarchive}
+            />
+          ))
+          .with({ isArchive: true }, () => <SearchEmptyState isTimeline />)
+          .otherwise(() => (
+            <TimelineEmptyState collection={collection} />
+          ))}
       </TimelineModalScrollArea>
     </TimelineModal>
   );

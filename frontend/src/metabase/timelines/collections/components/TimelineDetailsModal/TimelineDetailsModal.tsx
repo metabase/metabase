@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -117,18 +118,19 @@ const TimelineDetailsModal = ({
         </Flex>
       )}
       <TimelineModalScrollArea justify={isNotEmpty ? undefined : "center"}>
-        {isNotEmpty ? (
-          <EventList
-            events={events}
-            timeline={timeline}
-            onArchive={onArchive}
-            onUnarchive={onUnarchive}
-          />
-        ) : isArchive || isSearching ? (
-          <SearchEmptyState />
-        ) : (
-          <TimelineEmptyState timeline={timeline} />
-        )}
+        {match({ isNotEmpty, isFiltered: isArchive || isSearching })
+          .with({ isNotEmpty: true }, () => (
+            <EventList
+              events={events}
+              timeline={timeline}
+              onArchive={onArchive}
+              onUnarchive={onUnarchive}
+            />
+          ))
+          .with({ isFiltered: true }, () => <SearchEmptyState />)
+          .otherwise(() => (
+            <TimelineEmptyState timeline={timeline} />
+          ))}
       </TimelineModalScrollArea>
     </TimelineModal>
   );
