@@ -928,6 +928,7 @@
    :character     :type/Text
    :date          :type/Date
    :decimal       :type/Decimal
+   :float         :type/Float ; DDL alias for float8; the catalog never reports it, but user-written schemas (e.g. dbt) do
    :float4        :type/Float
    :float8        :type/Float
    :geometry      :type/*
