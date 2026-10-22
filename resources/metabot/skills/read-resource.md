@@ -54,13 +54,13 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - `metabase://database/{id}/schemas/{schemaName}/tables` — tables in a specific schema
 
 **Examples:**
-- Want to see warehouse layout before writing SQL? → `metabase://database/2/schemas` then `metabase://database/2/schemas/public/tables`
+- Want to see warehouse layout before building a query? → `metabase://database/2/schemas` then `metabase://database/2/schemas/public/tables`
 - Database without schemas, like the Sample Database (its `/schemas` list is empty)? → `metabase://database/1/tables`
 - Want curated models in a specific warehouse? → `metabase://database/1/models`
 
 **Best Practices:**
 - For a high-cardinality database, prefer schema → tables drill-down over fetching every table at once.
-- In the SQL editor, `search` already scopes to the current database via its own `database_id` argument — no need to filter further. Elsewhere, `search` has no per-database filter; narrow with `entity_types` and topic terms instead.
+- When `search` takes a `database_id` argument, it already scopes to the current database — no need to filter further. Elsewhere, `search` has no per-database filter; narrow with `entity_types` and topic terms instead.
 
 ## Collection resources
 
@@ -88,7 +88,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - "What's already built on this table?" before suggesting a new query → `metabase://table/123/derived`
 
 **Best Practices:**
-- Before recommending raw-table SQL, check `/derived` — there may be a curated model or saved question that already answers the user's need.
+- Before building on a raw table, check `/derived` — there may be a curated model or saved question that already answers the user's need.
 
 ## Model resources
 

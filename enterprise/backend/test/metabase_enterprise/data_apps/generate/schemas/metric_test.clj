@@ -51,7 +51,10 @@
       (is (= 42 (#'schemas.metric/source-card-id card)))))
   (testing "stage source-card emits sourceCardId"
     (is (= 42 (#'schemas.metric/source-card-id
-               {:dataset_query {:stages [{:source-card 42}]}})))))
+               {:dataset_query {:stages [{:source-card 42}]}}))))
+  (testing "The first stage identifies the source card even when a multi-stage metric requires its base table"
+    (is (= 42 (#'schemas.metric/source-card-id
+               {:dataset_query {:stages [{:source-card 42} {:aggregation [[:count]]}]}})))))
 
 (defn- orders-metric-query
   [filters]

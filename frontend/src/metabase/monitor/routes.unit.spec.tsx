@@ -1,8 +1,13 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { lazyLoaders } from "__support__/lazy-routes";
+import {
+  setupContentDiagnosticsCountsEndpoint,
+  setupDependencyCountsEndpoint,
+  setupTaskCountsEndpoint,
+} from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
+import { PLUGIN_AUDIT, PLUGIN_DATA_APPS, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -174,6 +179,9 @@ const setup = ({
   deny = [],
   tokenFeatures,
 }: SetupOpts) => {
+  setupContentDiagnosticsCountsEndpoint();
+  setupDependencyCountsEndpoint();
+  setupTaskCountsEndpoint();
   deny.forEach((guard) => mockDeniedGuards.add(guard));
 
   return renderWithProviders(
@@ -388,6 +396,22 @@ describe("monitor routes", () => {
         expect(
           screen.queryByTestId("ai-auditing-page"),
         ).not.toBeInTheDocument();
+      });
+
+      it("blocks Data app analytics when the AI Auditing guard denies", async () => {
+        // The real AI Auditing routes, so it's their data-apps route the guard has to block.
+        setupEnterpriseOnlyPlugin("audit_app");
+        PLUGIN_DATA_APPS.isEnabled = true;
+
+        setup({
+          initialRoute: Urls.monitorAiAuditingDataApps(),
+          deny: ["CanAccessAiAuditing"],
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
       });
 
       it("renders NotFound for unknown paths even when every section guard denies (catch-all sits outside the guards)", async () => {

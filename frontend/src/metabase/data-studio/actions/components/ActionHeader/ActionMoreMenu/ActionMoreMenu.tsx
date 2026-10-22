@@ -2,10 +2,11 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useNavigate } from "metabase/router";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
@@ -47,9 +48,7 @@ export function ActionMoreMenu({ action }: ActionMoreMenuProps) {
     <>
       <Menu>
         <Menu.Target>
-          <ActionIcon variant="subtle" size="sm" aria-label={t`Action options`}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
+          <MoreMenuButton aria-label={t`Action options`} />
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item

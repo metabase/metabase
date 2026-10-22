@@ -1,7 +1,6 @@
 name: Schemaless Query
 description: Query on schema-less SQLite database
 entity_id: schemaless-query
-created_at: '2026-01-01T00:00:00.000000Z'
 creator_id: test@metabase.com
 display: table
 archived: false
@@ -55,7 +54,5 @@ result_metadata:
   name: name
   semantic_type: type/Name
 serdes/meta:
-- id: schemaless-query
-  label: schemaless_query
-  model: Card
+- model: Card
 type: question

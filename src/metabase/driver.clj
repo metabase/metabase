@@ -280,6 +280,28 @@
 
 (defmethod validate-db-details! :default [_driver _details] nil)
 
+(defmulti disallowed-connection-parameters
+  "The names of client connection parameters a user may never set for this driver, whether written into
+  `:additional-options` or sent as a detail key -- several drivers hand detail keys they do not recognize to the client
+  as connection properties. Typically parameters whose value the client loads and instantiates as a Java class. Defaults
+  to none.
+
+  Matched case-insensitively, and as substrings, so a name here also catches its longer spellings (`socketFactory`
+  covers `socketFactoryClass`). Enforced by [[metabase.driver.util/validate-connection-parameters!]], which runs when a
+  connection is tested, a connection pool is created, and a Database is saved. Extend a parent's list rather than
+  replacing it:
+
+    (defmethod driver/disallowed-connection-parameters :mysql
+      [driver]
+      (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) [\"autoDeserialize\"]))"
+  {:added "0.65.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod disallowed-connection-parameters :default
+  [_driver]
+  [])
+
 (def default-host-detail-keys
   "Detail keys that hold a warehouse host across the drivers we ship. `:host` is the near-universal one;
   `:hostname` is Athena's."
@@ -1035,9 +1057,10 @@
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference
     ;;
-    ;; Does this driver natively support pivot queries via a single `GROUP BY GROUPING SETS (...)` query, instead of
-    ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql` (which provides the
-    ;; `:pivot` clause compiler).
+    ;; Does this driver have a native single-scan pivot compiler — one that runs the shared upstream
+    ;; (filters/joins/expressions) once and emits every breakout combination in a single query, rather
+    ;; than a query per combination? Drivers that opt in must supply a `:pivot` clause compiler that
+    ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
     :native-pivot-tables})
 
 (defmulti database-supports?
@@ -1590,7 +1613,7 @@
   to get the raw native query as needed.
 
   A table the query names that matches no synced table or transform target can be returned as
-  `{:unresolved-table {:schema ... :table ...}}`, so dependency tracking can recompute the query once sync finds it.
+  `{:unresolved-table {:schema ... :table ...}}`, which dependency tracking does not record as an upstream.
 
   The return value should match the `:metabase.driver/native-query-deps` schema."
   {:added "0.57.0" :arglists '([driver query])}

@@ -1,0 +1,65 @@
+## OSI ai_context rows get an entity_id, like every other serialized model, so serialization orders them, and names
+## their files, the same way on every instance. Their serdes identity stays the entity they describe. Backfill mirrors
+## 064/20260911_glossary_entity_id: all three dialect variants in one changeset so every database records it, then
+## NOT NULL and UNIQUE. `${entity_id.type}` gives the column the byte-wise collation of
+## 20261016_entity_id_binary_collation, and the NOT NULL change re-states it.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-19T00:00:00
+      author: ranquild
+      comment: Add entity_id column to osi_ai_context table
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: entity_id
+                  type: ${entity_id.type}
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: entity_id
+
+  - changeSet:
+      id: v65.2026-10-19T00:00:01
+      author: ranquild
+      comment: Backfill NULL osi_ai_context.entity_id values
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: UPDATE osi_ai_context SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: UPDATE osi_ai_context SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: h2
+            sql: UPDATE osi_ai_context SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+      rollback: []
+
+  - changeSet:
+      id: v65.2026-10-19T00:00:02
+      author: ranquild
+      comment: entity_id is NOT NULL on osi_ai_context
+      changes:
+        - addNotNullConstraint:
+            tableName: osi_ai_context
+            columnName: entity_id
+            columnDataType: ${entity_id.type}
+
+  - changeSet:
+      id: v65.2026-10-19T00:00:03
+      author: ranquild
+      comment: entity_id is unique on osi_ai_context
+      changes:
+        - addUniqueConstraint:
+            tableName: osi_ai_context
+            columnNames: entity_id
+            constraintName: uq_osi_ai_context_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: osi_ai_context
+            constraintName: uq_osi_ai_context_entity_id
