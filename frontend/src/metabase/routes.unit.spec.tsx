@@ -7,6 +7,7 @@ import {
   setupDashboardQuestionCandidatesEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
+import { setupEntityIdEndpoint } from "__support__/server-mocks/entity-id";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { setup as setupAccountPassword } from "metabase/account/password/containers/UserPasswordApp/tests/setup";
 import { getUser } from "metabase/current-user";
@@ -15,6 +16,7 @@ import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { LegacyBrowseRedirect, getRoutes } from "./routes";
 import {
@@ -322,9 +324,9 @@ describe("collection modal routes", () => {
 });
 
 describe("dashboard entity-id deep links", () => {
-  const DASHBOARD_EID = "xBLdW9FsgRuB2HGhWiBa_";
-  const TAB_EID = "N-o1tJ9swdO4YJycqMA8P";
-  const DASHCARD_EID = "19JbScZRjz5mSQ7chtjuY";
+  const DASHBOARD_EID = createMockEntityId("xBLdW9FsgRuB2HGhWiBa_");
+  const TAB_EID = createMockEntityId("N-o1tJ9swdO4YJycqMA8P");
+  const DASHCARD_EID = createMockEntityId("19JbScZRjz5mSQ7chtjuY");
   const UNKNOWN_DASHCARD_EID = "unknownDashcardEid___";
   const DASHBOARD_ID = 1;
   const TAB_ID = 2;
@@ -344,22 +346,11 @@ describe("dashboard entity-id deep links", () => {
 
   function setup({ initialRoute }: SetupOpts) {
     setupCurrentUserEndpoint(createMockUser());
-    fetchMock.post("path:/api/eid-translation/translate", () => ({
-      entity_ids: {
-        [DASHBOARD_EID]: { status: "ok", id: DASHBOARD_ID, type: "dashboard" },
-        [TAB_EID]: { status: "ok", id: TAB_ID, type: "dashboard-tab" },
-        [DASHCARD_EID]: {
-          status: "ok",
-          id: DASHCARD_ID,
-          type: "dashboard-card",
-        },
-        [UNKNOWN_DASHCARD_EID]: {
-          status: "not-found",
-          id: null,
-          type: "dashboard-card",
-        },
-      },
-    }));
+    setupEntityIdEndpoint({
+      dashboard: { [DASHBOARD_EID]: DASHBOARD_ID },
+      "dashboard-tab": { [TAB_EID]: TAB_ID },
+      "dashboard-card": { [DASHCARD_EID]: DASHCARD_ID },
+    });
 
     const { router } = renderWithProviders(
       <>
