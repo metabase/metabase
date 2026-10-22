@@ -6,7 +6,7 @@ import {
   useGetTimelineQuery,
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import DeleteTimelineFooter from "metabase/timelines/common/components/DeleteTimelineFooter";
+import { DeleteConfirmationFooter } from "metabase/timelines/common/components/DeleteConfirmationFooter";
 import {
   TimelineModal,
   TimelineModalLoadingState,
@@ -41,9 +41,8 @@ function DeleteTimelineModalContainer({
       {isLoading || error || !timeline ? (
         <TimelineModalLoadingState loading={isLoading} error={error} />
       ) : (
-        <DeleteTimelineFooter
-          timeline={timeline}
-          onSubmit={handleSubmit}
+        <DeleteConfirmationFooter
+          onDelete={() => handleSubmit(timeline)}
           onCancel={onClose}
         />
       )}
