@@ -252,6 +252,22 @@ describe("getNodeLink", () => {
     });
     expect(getNodeLink(node)).toBeNull();
   });
+
+  it.each<DependencyNode>([
+    createMockCardDependencyNode({
+      data: createMockCardDependencyNodeData({
+        collection: createMockCollection({ namespace: "data-apps" }),
+      }),
+    }),
+    createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({
+        model_id: null,
+        collection: createMockCollection({ namespace: "data-apps" }),
+      }),
+    }),
+  ])("should not link the $type node in a data app's collection", (node) => {
+    expect(getNodeLink(node)).toBeNull();
+  });
 });
 
 describe("getNodeTypeInfo", () => {

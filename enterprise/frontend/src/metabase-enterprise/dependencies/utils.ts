@@ -2,6 +2,7 @@ import { c, msgid, ngettext, t } from "ttag";
 
 import {
   getCollectionPathAsArray,
+  isDataAppCollection,
   isRootCollection,
 } from "metabase/common/collections/utils";
 import * as Urls from "metabase/urls";
@@ -141,9 +142,20 @@ function getCardLinkLabel(cardType: CardType): string {
   }
 }
 
+function isInDataAppCollection(collection: Collection | null | undefined) {
+  return (
+    collection !== null &&
+    collection !== undefined &&
+    isDataAppCollection(collection)
+  );
+}
+
 export function getNodeLink(node: DependencyNode): NodeLink | null {
   switch (node.type) {
     case "card":
+      if (isInDataAppCollection(node.data.collection)) {
+        return null;
+      }
       return {
         label: getCardLinkLabel(node.data.type),
         url: Urls.card({
@@ -220,7 +232,8 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         url: Urls.dataStudioSnippet(node.id),
       };
     case "action":
-      return node.data.model_id == null
+      return node.data.model_id == null &&
+        !isInDataAppCollection(node.data.collection)
         ? { label: t`View this action`, url: Urls.dataStudioAction(node.id) }
         : null;
     case "data-app":
