@@ -254,3 +254,8 @@
   color: var(--mb-color-text-primary);
   cursor: pointer;
 }
+
+.aiModeIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-brand);
+}

@@ -9,9 +9,14 @@ import { getPillOperatorLabel, isValidValue } from "./utils";
 
 const AI_PROMPT_PREFIX = "@";
 
-/** True when the text of a value input is a request to the AI, like "@EU". */
+/** True when the text of an input is a request to the AI, like "@EU". */
 export function isAiPrompt(text: string) {
   return text.trimStart().startsWith(AI_PROMPT_PREFIX);
+}
+
+/** The request to the AI without the "@" prefix. */
+export function getAiPromptText(text: string) {
+  return text.trimStart().slice(AI_PROMPT_PREFIX.length).trim();
 }
 
 export type AiValuesState =
@@ -45,7 +50,7 @@ export function useAiFilterValues({
   const [state, setState] = useState<AiValuesState>({ status: "idle" });
 
   const ask = async (text: string) => {
-    const prompt = text.trimStart().slice(AI_PROMPT_PREFIX.length).trim();
+    const prompt = getAiPromptText(text);
     if (
       prompt.length === 0 ||
       column == null ||

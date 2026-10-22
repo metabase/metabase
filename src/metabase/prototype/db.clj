@@ -179,3 +179,16 @@
   "The full list of values of the Field with `field-id`, or nil when sync did not list them."
   [field-id :- ::lib.schema.id/field]
   (:values (t2/select-one [:model/FieldValues :values] :field_id field-id :type :full)))
+
+(mu/defn fields-for-filters :- [:sequential :map]
+  "The Fields with `field-ids`, with their fingerprints and full lists of values, for the AI filters."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (if (empty? field-ids)
+    []
+    (let [values-by-field-id (t2/select-fn->fn :field_id :values [:model/FieldValues :field_id :values]
+                                               :field_id [:in field-ids]
+                                               :type :full)]
+      (for [field (t2/select [:model/Field :id :description :semantic_type :fingerprint]
+                             :id [:in field-ids]
+                             {:from [(warehouse-schema-overlay/field-query)]})]
+        (assoc field :values (get values-by-field-id (:id field)))))))

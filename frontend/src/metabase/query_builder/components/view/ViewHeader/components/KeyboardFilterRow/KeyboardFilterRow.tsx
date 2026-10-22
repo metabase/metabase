@@ -142,6 +142,21 @@ export function KeyboardFilterRow({
     closeDraft();
   };
 
+  const handleSubmitFilters = (filters: Lib.ExpressionClause[]) => {
+    if (activeDraft != null) {
+      const { query, stageIndex } = activeDraft;
+      setQuery(
+        Lib.dropEmptyStages(
+          filters.reduce(
+            (newQuery, filter) => Lib.filter(newQuery, stageIndex, filter),
+            query,
+          ),
+        ),
+      );
+    }
+    closeDraft();
+  };
+
   const handleCancel = () => {
     if (isAutoApply && activeDraft != null) {
       setQuery(activeDraft.query);
@@ -182,6 +197,7 @@ export function KeyboardFilterRow({
       isClickOutsideApply={clickOutsideMode === "apply"}
       onDraftChange={handleDraftChange}
       onSubmit={handleSubmit}
+      onSubmitFilters={handleSubmitFilters}
       onDone={closeDraft}
       onCancel={handleCancel}
     />

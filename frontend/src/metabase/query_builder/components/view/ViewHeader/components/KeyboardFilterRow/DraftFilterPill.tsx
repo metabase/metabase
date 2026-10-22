@@ -29,9 +29,16 @@ import S from "./KeyboardFilterRow.module.css";
 import { SuggestionInput } from "./SuggestionInput";
 import {
   type AiValuesState,
+  getAiPromptText,
   isAiPrompt,
   useAiFilterValues,
 } from "./ai-filter-values";
+import {
+  AI_FILTERS_OPTION,
+  type AiFiltersState,
+  isAiFiltersPrompt,
+  useAiFilters,
+} from "./ai-filters";
 import {
   type ColumnPickerMode,
   ColumnPickerModeControl,
@@ -75,6 +82,8 @@ interface DraftFilterPillProps {
   ) => void;
   /** The user finished the filter. */
   onSubmit: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
+  /** The AI created new filters from the text of the pill. */
+  onSubmitFilters: (filters: Lib.ExpressionClause[]) => void;
   /** The user closed the pill and keeps what is applied. */
   onDone: () => void;
   /** The user discarded the changes in the pill. */
@@ -94,6 +103,7 @@ export function DraftFilterPill({
   isClickOutsideApply,
   onDraftChange,
   onSubmit,
+  onSubmitFilters,
   onDone,
   onCancel,
 }: DraftFilterPillProps) {
@@ -141,6 +151,7 @@ export function DraftFilterPill({
 
   const handleTextChange = (newText: string) => {
     aiValues.reset();
+    aiFilters.reset();
     if (isAiPrompt(newText)) {
       // A request to the AI can have commas, and it is not a value.
       setText(newText);
@@ -174,6 +185,15 @@ export function DraftFilterPill({
       inputRef.current?.focus();
     },
   });
+  const aiFilters = useAiFilters({
+    query,
+    stageIndex,
+    onFilters: onSubmitFilters,
+  });
+  // Prototype: "@" at the start of the column search switches the pill to a
+  // request to the AI for new filters.
+  const isAiFiltersMode =
+    step === "column" && filter == null && isAiPrompt(text);
   const isAiPromptActive =
     step === "value" &&
     (isAiPrompt(text) || values.some((value) => isAiPrompt(value)));
@@ -263,6 +283,15 @@ export function DraftFilterPill({
     hasSelectedOption: boolean,
     firstOptionValue: string | undefined,
   ) => {
+    if (isAiFiltersMode) {
+      if (event.key === "Enter") {
+        aiFilters.ask(getAiPromptText(text));
+        return true;
+      }
+      if (event.key !== "Escape" && event.key !== "Backspace") {
+        return false;
+      }
+    }
     if (step === "value" && isAiPrompt(text)) {
       if (event.key === "Enter") {
         aiValues.ask(text);
@@ -391,10 +420,14 @@ export function DraftFilterPill({
     );
   }
 
+  const aiTooltip =
+    getAiFiltersTooltip(aiFilters.state, isAiFiltersMode) ??
+    getAiTooltip(aiValues.state, isAiPromptActive);
+
   return (
     <Tooltip
-      label={getAiTooltip(aiValues.state, isAiPromptActive)}
-      opened={getAiTooltip(aiValues.state, isAiPromptActive) != null}
+      label={aiTooltip}
+      opened={aiTooltip != null}
       position="top-start"
       multiline
       maw={320}
@@ -404,6 +437,9 @@ export function DraftFilterPill({
         className={S.draftPill}
         data-testid="draft-filter-pill"
       >
+        {isAiFiltersMode && (
+          <Icon className={S.aiModeIcon} name="ai" size={14} />
+        )}
         {step === "column" ? (
           <ColumnInput
             query={query}
@@ -415,6 +451,10 @@ export function DraftFilterPill({
               updateDraft(changeDraftColumn(draft, newColumn))
             }
             onSelectSegment={onSubmit}
+            isAiMode={isAiFiltersMode}
+            // A filter that the user edits keeps its place, so the AI only
+            // creates new filters.
+            onAskAi={filter == null ? () => aiFilters.ask(text) : undefined}
             onKeyDown={handleKeyDown}
           />
         ) : (
@@ -492,7 +532,8 @@ export function DraftFilterPill({
         {step !== "value" && operator != null && (
           <ValueTokens values={values} operator={operator} />
         )}
-        {aiValues.state.status === "loading" && <Loader size="xs" />}
+        {(aiValues.state.status === "loading" ||
+          aiFilters.state.status === "loading") && <Loader size="xs" />}
         <RemoveIcon onClick={onCancel} />
       </div>
     </Tooltip>
@@ -512,6 +553,21 @@ function getAiTooltip(state: AiValuesState, isAiPromptActive: boolean) {
     );
   }
   return isAiPromptActive ? t`Press Enter to ask AI for the values` : null;
+}
+
+function getAiFiltersTooltip(state: AiFiltersState, isAiMode: boolean) {
+  if (state.status === "loading") {
+    return t`Creating filters with AI…`;
+  }
+  if (state.status === "error") {
+    return (
+      <>
+        {state.message}
+        {state.reason && <div className={S.aiReason}>{state.reason}</div>}
+      </>
+    );
+  }
+  return isAiMode ? t`Describe the filters, then press Enter` : null;
 }
 
 function RemoveIcon({ onClick }: { onClick: () => void }) {
@@ -535,6 +591,10 @@ interface ColumnInputProps {
   onTextChange: (text: string) => void;
   onSelect: (column: NonNullable<DraftState["column"]>) => void;
   onSelectSegment: (segment: Lib.SegmentMetadata) => void;
+  /** The text is a request to the AI, so the pill shows no column list. */
+  isAiMode: boolean;
+  /** Asks the AI for filters from the text. Undefined when not available. */
+  onAskAi?: () => void;
   onKeyDown: (
     event: KeyboardEvent<HTMLInputElement>,
     hasSelectedOption: boolean,
@@ -550,6 +610,8 @@ function ColumnInput({
   onTextChange,
   onSelect,
   onSelectSegment,
+  isAiMode,
+  onAskAi,
   onKeyDown,
 }: ColumnInputProps) {
   const [mode, setMode] = useState<ColumnPickerMode>("auto");
@@ -577,13 +639,42 @@ function ColumnInput({
     mode,
     text.trim().length > 0,
   );
-  const relatedGroup = useRelatedColumnGroup(columnGroups, text);
-  const groups = useMemo(
-    () => (relatedGroup != null ? [...modeGroups, relatedGroup] : modeGroups),
-    [modeGroups, relatedGroup],
+  const relatedGroup = useRelatedColumnGroup(
+    columnGroups,
+    isAiMode ? "" : text,
   );
+  const isAiAvailable = onAskAi != null;
+  const groups = useMemo(() => {
+    const searchGroups =
+      relatedGroup != null ? [...modeGroups, relatedGroup] : modeGroups;
+    const trimmedText = text.trim();
+    if (!isAiAvailable || trimmedText.length === 0) {
+      return searchGroups;
+    }
+    const aiGroup: SuggestionGroup = {
+      section: t`AI`,
+      isUnfiltered: true,
+      options: [
+        {
+          value: AI_FILTERS_OPTION,
+          label: t`Create filters for “${trimmedText}”`,
+          icon: "ai",
+        },
+      ],
+    };
+    // A sentence is likely a request, not a column name, so the AI comes
+    // first. Otherwise it comes after the columns, or alone when no column
+    // matches.
+    return isAiFiltersPrompt(trimmedText)
+      ? [aiGroup, ...searchGroups]
+      : [...searchGroups, aiGroup];
+  }, [modeGroups, relatedGroup, text, isAiAvailable]);
 
   const handleSelect = (key: string) => {
+    if (key === AI_FILTERS_OPTION) {
+      onAskAi?.();
+      return;
+    }
     const item = getItem(key);
     if (item?.type === "column") {
       onSelect(item.column);
@@ -594,22 +685,24 @@ function ColumnInput({
 
   return (
     <SuggestionInput
-      groups={groups}
+      groups={isAiMode ? NO_GROUPS : groups}
       inputRef={columnInputRef}
       searchInputRef={searchInputRef}
-      withSearchBox
+      withSearchBox={!isAiMode}
       header={
-        <Stack
-          gap="sm"
-          onMouseDownCapture={() => {
-            focusedInputRef.current =
-              document.activeElement === searchInputRef.current
-                ? searchInputRef.current
-                : columnInputRef.current;
-          }}
-        >
-          <ColumnPickerModeControl value={mode} onChange={handleModeChange} />
-        </Stack>
+        isAiMode ? undefined : (
+          <Stack
+            gap="sm"
+            onMouseDownCapture={() => {
+              focusedInputRef.current =
+                document.activeElement === searchInputRef.current
+                  ? searchInputRef.current
+                  : columnInputRef.current;
+            }}
+          >
+            <ColumnPickerModeControl value={mode} onChange={handleModeChange} />
+          </Stack>
+        )
       }
       dropdownWidth={COLUMN_DROPDOWN_WIDTH}
       optionsMaxHeight={COLUMN_OPTIONS_MAX_HEIGHT}

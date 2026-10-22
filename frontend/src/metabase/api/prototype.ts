@@ -33,6 +33,40 @@ export type PrototypeFilterValuesResponse =
   | { status: "ok"; values: string[] }
   | { status: "rejected"; reason: string };
 
+// Prototype: the request and the response of POST /api/prototype/filters.
+export type PrototypeAiValueKind =
+  | "none"
+  | "single"
+  | "range"
+  | "multi"
+  | "amount-unit"
+  | "unit";
+
+export type PrototypeFiltersRequest = {
+  prompt: string;
+  today: string;
+  columns: {
+    id: number;
+    table: string;
+    name: string;
+    kind: "string" | "number" | "boolean" | "date";
+    field_id: FieldId | null;
+    operators: {
+      key: string;
+      label: string;
+      value_kind: PrototypeAiValueKind;
+      options?: string[];
+    }[];
+  }[];
+};
+
+export type PrototypeFiltersResponse =
+  | {
+      status: "ok";
+      filters: { column: number; operator: string; values: string[] }[];
+    }
+  | { status: "rejected"; reason: string };
+
 export const prototypeApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     suggestPrototypeFilterValues: builder.mutation<
@@ -42,6 +76,16 @@ export const prototypeApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/prototype/filter-values",
+        body,
+      }),
+    }),
+    suggestPrototypeFilters: builder.mutation<
+      PrototypeFiltersResponse,
+      PrototypeFiltersRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/prototype/filters",
         body,
       }),
     }),
@@ -65,6 +109,7 @@ export const prototypeApi = Api.injectEndpoints({
 
 export const {
   useSuggestPrototypeFilterValuesMutation,
+  useSuggestPrototypeFiltersMutation,
   useListPrototypeFilterUsageQuery,
   useListPrototypeFieldCategoriesQuery,
 } = prototypeApi;

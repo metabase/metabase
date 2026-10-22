@@ -212,7 +212,11 @@
    [:description {:optional true} [:maybe :string]]
    [:items       {:optional true} [:map {:closed true}
                                    [:type        {:optional true} [:maybe :string]]
-                                   [:description {:optional true} [:maybe :string]]]]
+                                   [:description {:optional true} [:maybe :string]]
+                                   ;; Prototype: arrays of objects, for the AI filters of the filters prototype.
+                                   [:properties  {:optional true}
+                                    [:map-of {::mr/deliberately-open true} [:or :string :keyword] :map]]
+                                   [:required    {:optional true} [:vector :string]]]]
    [:minimum     {:optional true} number?]
    [:maximum     {:optional true} number?]])
 

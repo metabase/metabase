@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.prototype.ai-filters :as ai-filters]
    [metabase.prototype.field-categories :as field-categories]
    [metabase.prototype.filter-usage :as filter-usage]
    [metabase.prototype.filter-values :as filter-values]
@@ -62,3 +63,35 @@
             [:values      {:default []} [:sequential :string]]
             [:options     {:optional true} [:maybe [:sequential :string]]]]]
   (filter-values/suggest-filter-values body))
+
+(def ^:private value-kind
+  [:enum "none" "single" "range" "multi" "amount-unit" "unit"])
+
+(api.macros/defendpoint :post "/filters"
+  :- [:map
+      [:status [:enum "ok" "rejected"]]
+      [:filters {:optional true} [:sequential [:map
+                                               [:column :int]
+                                               [:operator :string]
+                                               [:values [:sequential :string]]]]]
+      [:reason {:optional true} :string]]
+  "Prototype: turn a natural language `prompt`, like \"pro customers in the EU\", into one or more filters on the
+  `columns` that the client sends. The `id` of a column is the client's key for it."
+  [_route-params
+   _query-params
+   body :- [:map {:closed true}
+            [:prompt  ms/NonBlankString]
+            [:today   :string]
+            [:columns [:sequential [:map {:closed true}
+                                    [:id        :int]
+                                    [:table     :string]
+                                    [:name      :string]
+                                    [:kind      [:enum "string" "number" "boolean" "date"]]
+                                    [:field_id  {:optional true} [:maybe ms/PositiveInt]]
+                                    [:operators [:sequential [:map {:closed true}
+                                                              [:key        :string]
+                                                              [:label      :string]
+                                                              [:value_kind value-kind]
+                                                              [:options    {:optional true}
+                                                               [:maybe [:sequential :string]]]]]]]]]]]
+  (ai-filters/suggest-filters body))
