@@ -98,6 +98,19 @@
             (is (= (assoc (update-vals files seq) "custom_viz_plugin.yaml" (seq (file-bytes yaml-file)))
                    (files-in plugin-dir)))))))))
 
+(deftest export-writes-only-the-files-an-import-reads-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
+      (let [files (plugin-files "thumbs")]
+        (insert-plugin! "thumbs" (cv.tu/make-tgz-bytes (assoc files
+                                                              "dist/index.js.map"     "{}"
+                                                              "dist/assets/other.png" icon-bytes
+                                                              "README.md"             "hand-built")))
+        (export! dump-dir)
+        (testing "an archive entry the instance never serves is left out, so it can't go stale in the repository"
+          (is (= (set (keys files))
+                 (disj (set (keys (files-in (io/file dump-dir "custom_viz_plugins" "thumbs")))) "custom_viz_plugin.yaml"))))))))
+
 (deftest export-skips-plugins-that-cannot-be-represented-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]

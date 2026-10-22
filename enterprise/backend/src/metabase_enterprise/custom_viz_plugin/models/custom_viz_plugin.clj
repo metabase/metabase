@@ -77,6 +77,20 @@
   [asset-name]
   (str "dist/assets/" asset-name))
 
+(defn- served-paths
+  "The archive paths an instance serves from a bundle, which are the files a repository holds: the manifest, the
+  JavaScript, and the icon the manifest names. `read-text` reads an archive path as a string, or nil."
+  [read-text]
+  (into [(manifest/manifest-path) index-file]
+        (map asset-file)
+        (manifest/asset-paths (some-> (read-text (manifest/manifest-path)) manifest/parse-manifest))))
+
+(defn- served-files
+  "The entries of `files`, a map of archive path to bytes, at the [[served-paths]]. An uploaded archive may hold
+  more, such as a source map; an import reads back only these, so an export writes only these."
+  [files]
+  (select-keys files (served-paths (fn [path] (some-> ^bytes (get files path) (String. "UTF-8"))))))
+
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
   {:copy      [:identifier :enabled]
@@ -90,7 +104,7 @@
                             :export (fn [bundle]
                                       (if bundle
                                         (try
-                                          (cache/bundle->files bundle)
+                                          (served-files (cache/bundle->files bundle))
                                           (catch Exception e
                                             ;; a stored archive that can't be read exports as the YAML alone, so one
                                             ;; broken plugin doesn't fail the export; it imports as an error plugin
@@ -186,10 +200,7 @@
    {:label "custom_viz_plugin"}])
 
 (defmethod serdes/resource-paths "CustomVizPlugin" [_ingested read-text]
-  ;; the files an instance serves: the manifest, the JavaScript, and the icon the manifest names
-  (into [(manifest/manifest-path) index-file]
-        (map asset-file)
-        (manifest/asset-paths (some-> (read-text (manifest/manifest-path)) manifest/parse-manifest))))
+  (served-paths read-text))
 
 (defmethod serdes/binary-resources? "CustomVizPlugin" [_ingested]
   true)
