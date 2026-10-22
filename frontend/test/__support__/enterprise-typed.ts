@@ -30,6 +30,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   shared: "metabase-enterprise/shared",
   transforms: "metabase-enterprise/transforms",
   "transforms-python": "metabase-enterprise/transforms-python",
+  "transforms-testing": "metabase-enterprise/transforms-testing",
   remote_sync: "metabase-enterprise/remote_sync",
   public: "metabase-enterprise/public",
   support: "metabase-enterprise/support",
