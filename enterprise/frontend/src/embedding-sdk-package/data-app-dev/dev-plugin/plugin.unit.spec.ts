@@ -71,6 +71,7 @@ class FakeDevServer {
   readonly config = {
     root: "/app",
     mode: "development",
+    env: {},
     logger: { error: jest.fn() },
     server: { headers: { "Content-Security-Policy": DEV_CSP } },
   };

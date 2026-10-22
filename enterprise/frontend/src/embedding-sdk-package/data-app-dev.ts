@@ -2,11 +2,16 @@
 // The Node Vite config preset lives at `/data-app-dev/config` (data-app-dev.config.ts).
 export { DataAppDevProvider } from "./data-app-dev/components/DataAppDevProvider/DataAppDevProvider";
 export {
+  CommentDock,
+  type CommentDockProps,
+} from "./data-app-dev/components/CommentDock/CommentDock";
+export {
   DevToolbar,
   type DevToolbarProps,
 } from "./data-app-dev/components/DevToolbar/DevToolbar";
 export { devDiagnostics } from "./data-app-dev/components/DevToolbar/diagnostics";
 export { DEV_SESSION_ID } from "./data-app-dev/lib/dev-session";
+export { DEV_CHROME_ATTRIBUTE } from "./data-app-dev/lib/pick-element";
 export { instanceConnectionCheck } from "./data-app-dev/lib/instance-connection-check";
 export { installDiagnosticsReporter } from "./data-app-dev/lib/diagnostics-reporter";
 export { sdkCallCapture } from "./data-app-dev/lib/sdk-call-capture";
@@ -14,4 +19,9 @@ export type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
 } from "./data-app-dev/types/diagnostics-channel";
+export type {
+  DataAppComment,
+  DataAppCommentTarget,
+  DataAppCommentsReport,
+} from "./data-app-dev/types/comments";
 export { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";

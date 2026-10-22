@@ -19,5 +19,8 @@ declare module "virtual:metabase-data-app-dev-config" {
   export const buildIdHeader: string;
   export const rebuiltEvent: string;
   export const diagnosticsChangedEvent: string;
+  export const commentsChangedEvent: string;
+  export const devToken: string;
+  export const appRoot: string;
   export const sdkVersion: string | null;
 }

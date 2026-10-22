@@ -12,6 +12,7 @@ import {
   DATA_APP_BUNDLE_URL,
   DATA_APP_REBUILT_EVENT,
 } from "../constants/bundle";
+import { DATA_APP_COMMENTS_CHANGED_EVENT } from "../constants/comments-channel";
 import { DATA_APP_DIAGNOSTICS_CHANGED_EVENT } from "../constants/diagnostics-channel";
 import {
   DATA_APP_DEV_ENTRY_FILE_NAME,
@@ -57,11 +58,13 @@ export const resolveDataAppVirtualId = (id: string): string | undefined =>
 export interface DataAppVirtualConfig {
   appSlug: string;
   allowedHosts: string[];
+  /** Authorizes the page's own requests to the dev server; see `plugin.ts`. */
+  devToken: string;
 }
 
 export const loadDataAppVirtualModule = (
   id: string,
-  { appSlug, allowedHosts }: DataAppVirtualConfig,
+  { appSlug, allowedHosts, devToken }: DataAppVirtualConfig,
 ): string | undefined => {
   if (id === RESOLVED_PREFIX + DATA_APP_DEV_ENTRY_VIRTUAL_ID) {
     return fs.readFileSync(DEV_ENTRY_SOURCE_PATH, "utf8");
@@ -75,6 +78,11 @@ export const loadDataAppVirtualModule = (
       `export const buildIdHeader = ${JSON.stringify(DATA_APP_BUILD_ID_HEADER)};`,
       `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
       `export const diagnosticsChangedEvent = ${JSON.stringify(DATA_APP_DIAGNOSTICS_CHANGED_EVENT)};`,
+      `export const commentsChangedEvent = ${JSON.stringify(DATA_APP_COMMENTS_CHANGED_EVENT)};`,
+      `export const devToken = ${JSON.stringify(devToken)};`,
+      // The comment dock reports source locations relative to the app, so the
+      // page needs to know where the app it is previewing lives.
+      `export const appRoot = ${JSON.stringify(process.cwd())};`,
       `export const sdkVersion = ${JSON.stringify(readInstalledSdkVersion(process.cwd()))};`,
     ].join("\n");
   }
