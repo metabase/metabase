@@ -9,8 +9,10 @@
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.data-apps.core :as data-apps]
+   [metabase.embedding.settings :as embedding]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -146,7 +148,7 @@
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
 (def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
 (def ^:private data-app-shell
-  "Raw `/embed/apps/:name` iframe HTML entrypoint, before feature gating."
+  "Shared data app iframe HTML entrypoint, before feature gating."
   (partial entrypoint "data-app" :embeddable))
 
 (defn- login-redirect
@@ -161,15 +163,18 @@
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
 (defn data-app
-  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
+  "`/embed/apps/:name` and `/embed/embedded-apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
-   data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
-   the login page: the document's CSP carries the app's `allowed_hosts`, which only signed-in
-   users may see."
+   data-app entrypoint rather than in the top-level route table. Internal views require a signed-in
+   user. Modular embeds first receive a generic SSO shell, then fetch their authorized bundle
+   and policy. App-specific allowed hosts stay behind that access check."
   [request respond raise]
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
+    (and (request/embedded-data-app? request)
+         (not (embedding/enable-embedding-modular))) (respond {:status 403 :body "Modular embedding is disabled."})
+    (request/embedded-data-app? request)    (data-app-shell request respond raise)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
     :else (if-let [error (try
                            (data-apps/check-data-app-access! request)

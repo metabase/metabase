@@ -1,13 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 
-import { fetchDataAppBundleCode, instantiateDataAppBundle } from "../loader";
+import {
+  DataAppBundleError,
+  fetchDataAppBundleCode,
+  instantiateDataAppBundle,
+} from "../loader";
 
-import { reportErrorToParent } from "./report-error-to-parent";
 import { useDataAppBundle } from "./use-data-app-bundle";
-
-jest.mock("./report-error-to-parent", () => ({
-  reportErrorToParent: jest.fn(),
-}));
 
 jest.mock("../loader", () => ({
   ...jest.requireActual("../loader"),
@@ -66,7 +65,9 @@ describe("loading embedded data app bundle", () => {
 
     await waitFor(() => expect(result.current.data?.component).toBe(component));
     expect(fetchDataAppBundleCode).toHaveBeenCalledTimes(1);
-    expect(fetchDataAppBundleCode).toHaveBeenCalledWith("sales");
+    expect(fetchDataAppBundleCode).toHaveBeenCalledWith("sales", {
+      embedded: true,
+    });
 
     expect(instantiateDataAppBundle).toHaveBeenCalledWith(
       "BUNDLE",
@@ -89,13 +90,28 @@ describe("loading embedded data app bundle", () => {
 
       await waitFor(() => expect(result.current.failed).toBe(true));
       expect(instantiateDataAppBundle).not.toHaveBeenCalled();
-      expect(reportErrorToParent).toHaveBeenCalledWith(
-        false,
-        expect.objectContaining({
-          message:
-            "Something went wrong while loading this app. Try refreshing the page.",
-        }),
+      expect(result.current.error).toBe(
+        "Something went wrong while loading this app. Try refreshing the page.",
       );
+    },
+  );
+
+  it.each([403, 404, 409])(
+    "reports error for a missing bundle: %s",
+    async (status) => {
+      jest
+        .mocked(fetchDataAppBundleCode)
+        .mockRejectedValue(
+          new DataAppBundleError("Bundle unavailable", status),
+        );
+
+      const { result } = renderHook(() =>
+        useDataAppBundle("sales", { embedded: true }),
+      );
+
+      await waitFor(() => expect(result.current.failed).toBe(true));
+      expect(instantiateDataAppBundle).not.toHaveBeenCalled();
+      expect(result.current.error).toBe("Bundle unavailable");
     },
   );
 
