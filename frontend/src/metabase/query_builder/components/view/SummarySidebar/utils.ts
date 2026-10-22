@@ -245,6 +245,25 @@ function findExpressionColumn(
   );
 }
 
+/** The breakoutable column `column` stands for, keeping a temporal bucket picked for it rather than the default. */
+function findDimensionColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  breakoutableColumns: Lib.ColumnMetadata[],
+): Lib.ColumnMetadata | null {
+  const matchingColumn = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    breakoutableColumns,
+  );
+  const bucket = Lib.temporalBucket(column);
+  return matchingColumn != null && bucket != null
+    ? Lib.withTemporalBucket(matchingColumn, bucket)
+    : matchingColumn;
+}
+
 /**
  * Builds the summary query: rows then columns as breakouts, values as aggregations, in well order.
  * Custom-column dimensions are added to the stage as expressions first, so they can be grouped by.
@@ -282,7 +301,7 @@ export function buildSummaryQuery(
             breakoutableColumns,
             expressionName ?? dimension.expression.name,
           )
-        : Lib.findMatchingColumn(
+        : findDimensionColumn(
             query,
             stageIndex,
             dimension.column,

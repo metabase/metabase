@@ -462,24 +462,47 @@
   (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
 
+(def ^:private SummaryColumns
+  "The columns a summary formula or plan can reference, by their names in expression syntax."
+  [:sequential [:map {:closed true}
+                [:name ms/NonBlankString]
+                [:type {:optional true} [:maybe :string]]]])
+
 (api.macros/defendpoint :post "/summary-formula" :- [:map
                                                      [:expression [:maybe :string]]
                                                      [:name       [:maybe :string]]
                                                      [:error      [:maybe :string]]]
   "Prototype (DSN-754): draft a custom expression for `prompt`, a natural-language phrase typed into a summarize
   sidebar well. `mode` is `aggregation` for Values and `expression` for Rows and Columns. `expression` is nil, with
-  an `error`, when no LLM is available or nothing in `columns` fits; the client compiles and validates the formula."
+  an `error`, when no LLM is available or nothing in `columns` fits; the client compiles and validates the formula.
+  With `current_expression`, `prompt` is a change to that formula instead."
+  [_route-params
+   _query-params
+   body :- [:map {:closed true}
+            [:prompt             ms/NonBlankString]
+            [:mode               [:enum "aggregation" "expression"]]
+            [:columns            SummaryColumns]
+            [:metrics            {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+            [:table_name         {:optional true} [:maybe :string]]
+            [:current_expression {:optional true} [:maybe :string]]
+            [:current_name       {:optional true} [:maybe :string]]]]
+  (metabot.summary-formula/suggest-formula body))
+
+(api.macros/defendpoint :post "/summary-plan" :- [:map
+                                                  [:values    [:sequential :map]]
+                                                  [:breakouts [:sequential :map]]
+                                                  [:error     [:maybe :string]]]
+  "Prototype (DSN-754): plan a whole summary for `prompt`, e.g. `revenue by category per month`: the metrics, counts,
+  column aggregations, or formulas for its Values, and the columns (with a temporal unit) or formulas it breaks out
+  by. Both lists are empty, with an `error`, when no LLM is available or nothing in `columns` fits."
   [_route-params
    _query-params
    body :- [:map {:closed true}
             [:prompt     ms/NonBlankString]
-            [:mode       [:enum "aggregation" "expression"]]
-            [:columns    [:sequential [:map {:closed true}
-                                       [:name ms/NonBlankString]
-                                       [:type {:optional true} [:maybe :string]]]]]
+            [:columns    SummaryColumns]
             [:metrics    {:optional true} [:maybe [:sequential ms/NonBlankString]]]
             [:table_name {:optional true} [:maybe :string]]]]
-  (metabot.summary-formula/suggest-formula body))
+  (metabot.summary-formula/suggest-summary body))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

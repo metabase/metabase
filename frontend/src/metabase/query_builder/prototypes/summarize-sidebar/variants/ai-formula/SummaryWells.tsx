@@ -34,6 +34,7 @@ import {
   removeItem,
 } from "../../../../components/view/SummarySidebar/utils";
 
+import { ChipAiEdit } from "./ChipAiEdit";
 import S from "./SummarySidebar.module.css";
 import { type SummaryFormulaEdit, SummaryWellInput } from "./SummaryWellInput";
 
@@ -105,6 +106,22 @@ export function SummaryWells({
     </SummaryWellInput>
   );
 
+  const renderAiEdit = (
+    wellId: SummaryWellId,
+    itemId: string,
+    label: string,
+  ) => (
+    <ChipAiEdit
+      base={base}
+      database={database}
+      definition={definition}
+      wellId={wellId}
+      itemId={itemId}
+      label={label}
+      onChange={onChange}
+    />
+  );
+
   const renderDimensions = (
     wellId: SummaryWellId,
     dimensions: SummaryDimension[],
@@ -118,6 +135,7 @@ export function SummaryWells({
           itemId={dimension.id}
           label={label}
           isEditing={dimension.id === editingItemId}
+          action={renderAiEdit(wellId, dimension.id, label)}
           onRemove={handleRemove}
         >
           {"expression" in dimension && (
@@ -147,6 +165,11 @@ export function SummaryWells({
               value={value}
               label={itemLabels.get(value.id) ?? ""}
               isEditing={value.id === editingItemId}
+              aiAction={renderAiEdit(
+                "values",
+                value.id,
+                itemLabels.get(value.id) ?? "",
+              )}
               onChangeOperator={(operatorShortName) =>
                 onChange(
                   changeValueOperator(definition, value.id, operatorShortName),
@@ -367,6 +390,8 @@ type WellChipProps = {
   itemId: string;
   label: string;
   isEditing?: boolean;
+  /** A control before the remove button, e.g. changing the item with AI. */
+  action?: ReactNode;
   children?: ReactNode;
   onRemove: (itemId: string) => void;
 };
@@ -376,6 +401,7 @@ function WellChip({
   itemId,
   label,
   isEditing = false,
+  action,
   children,
   onRemove,
 }: WellChipProps) {
@@ -396,6 +422,7 @@ function WellChip({
       {...listeners}
     >
       {children || <span className={S.chipLabel}>{label}</span>}
+      {action}
       <ActionIcon
         className={S.chipRemove}
         size="sm"
@@ -434,6 +461,7 @@ type ValueChipProps = {
   value: SummaryValue;
   label: string;
   isEditing: boolean;
+  aiAction: ReactNode;
   onChangeOperator: (operatorShortName: string) => void;
   /** Omitted when the database can't aggregate with a formula. */
   onEditFormula?: () => void;
@@ -445,6 +473,7 @@ function ValueChip({
   value,
   label,
   isEditing,
+  aiAction,
   onChangeOperator,
   onEditFormula,
   onRemove,
@@ -455,6 +484,7 @@ function ValueChip({
         wellId="values"
         itemId={value.id}
         label={label}
+        action={aiAction}
         isEditing={isEditing}
         onRemove={onRemove}
       >
@@ -469,6 +499,7 @@ function ValueChip({
         wellId="values"
         itemId={value.id}
         label={label}
+        action={aiAction}
         onRemove={onRemove}
       >
         <Icon name={value.type === "metric" ? "metric" : "sum"} size={12} />
@@ -485,6 +516,7 @@ function ValueChip({
       itemId={value.id}
       label={label}
       isEditing={isEditing}
+      action={aiAction}
       onRemove={onRemove}
     >
       <Menu position="bottom-start">

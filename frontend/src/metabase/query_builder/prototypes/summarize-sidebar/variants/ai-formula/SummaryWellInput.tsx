@@ -390,22 +390,22 @@ function SummaryWellSearch({
     }
 
     const name = data?.name ?? "";
-    const expression = compileFormula(base, database, expressionMode, {
+    const compiled = compileFormula(base, database, expressionMode, {
       source,
       name: name || getDefaultFormulaName(source),
     });
     setGenerateState({ status: "idle" });
     setSearchText("");
     combobox.closeDropdown();
-    if (expression == null) {
+    if ("error" in compiled) {
       // a draft that doesn't compile opens in the formula editor, where its error shows
       onStartFormula(source, name);
       return;
     }
     onChange(
       isValues
-        ? addExpressionValue(definition, expression)
-        : addExpressionDimension(definition, wellId, expression),
+        ? addExpressionValue(definition, compiled.expression)
+        : addExpressionDimension(definition, wellId, compiled.expression),
     );
   };
 

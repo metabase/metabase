@@ -256,12 +256,37 @@ export type SuggestSummaryFormulaRequest = {
   columns: { name: string; type?: string | null }[];
   metrics?: string[];
   table_name?: string | null;
+  /** The formula being changed, when `prompt` describes a change to it rather than a new formula. */
+  current_expression?: string | null;
+  current_name?: string | null;
 };
 
 export type SuggestSummaryFormulaResponse = {
   /** Custom expression source without the leading `=`; `null` when no LLM is available or nothing fits. */
   expression: string | null;
   name: string | null;
+  error: string | null;
+};
+
+export type SuggestSummaryPlanRequest = Omit<
+  SuggestSummaryFormulaRequest,
+  "mode" | "current_expression" | "current_name"
+>;
+
+export type SummaryPlanValue =
+  | { kind: "count" }
+  | { kind: "metric"; metric: string }
+  | { kind: "aggregation"; operator: string; column: string }
+  | { kind: "formula"; name?: string; expression: string };
+
+export type SummaryPlanBreakout =
+  | { kind: "column"; column: string; temporal_unit?: string }
+  | { kind: "formula"; name?: string; expression: string };
+
+export type SuggestSummaryPlanResponse = {
+  values: SummaryPlanValue[];
+  breakouts: SummaryPlanBreakout[];
+  /** Why nothing was planned, when both lists are empty. */
   error: string | null;
 };
 
