@@ -34,6 +34,7 @@ import {
 } from "./verify/coverage";
 import {
   chunk,
+  colocatedSpecs,
   removeWrappers,
   runJest,
   runJestCoverage,
@@ -82,6 +83,7 @@ interface Options {
   wrappers: number;
   testTimeoutMs: number;
   exclude: string[];
+  siblings: boolean;
   scopeOnly: boolean;
   confirm: boolean;
   out?: string;
@@ -99,6 +101,7 @@ function parseArgs(argv: string[]): Options {
     wrappers: 8,
     testTimeoutMs: 25000,
     exclude: ["frontend/src/metabase/ui/"],
+    siblings: true,
     scopeOnly: false,
     confirm: true,
   };
@@ -146,6 +149,9 @@ function parseArgs(argv: string[]): Options {
         break;
       case "--scope-only":
         options.scopeOnly = true;
+        break;
+      case "--no-siblings":
+        options.siblings = false;
         break;
       case "--no-confirm":
         options.confirm = false;
@@ -528,15 +534,6 @@ async function main() {
       `no deleted e2e tests found against ${options.base}; pass --test "<spec>::<title>"`,
     );
   }
-  if (options.unitSpecs.length === 0) {
-    options.unitSpecs = changedUnitSpecs(repoRoot, options.base);
-  }
-  if (options.unitSpecs.length === 0 && !options.scopeOnly) {
-    throw new Error(
-      `no changed unit specs against ${options.base}; pass --unit-spec <path>`,
-    );
-  }
-
   const index = await loadIndex(repoRoot, {
     runId: options.runId,
     bootThreshold: options.bootThreshold,
@@ -557,6 +554,25 @@ async function main() {
   log(
     `${functions.length} functions in scope, ${pending.length} mapped onto the working tree`,
   );
+
+  if (options.unitSpecs.length === 0) {
+    const changed = changedUnitSpecs(repoRoot, options.base);
+    const colocated = options.siblings
+      ? colocatedSpecs(
+          [...new Set(pending.map((scoped) => scoped.file))],
+          (file) => fs.existsSync(path.join(repoRoot, file)),
+        )
+      : [];
+    options.unitSpecs = [...new Set([...changed, ...colocated])];
+    log(
+      `unit specs: ${changed.length} changed by the branch, ${options.unitSpecs.length - changed.length} more colocated with a scoped file`,
+    );
+  }
+  if (options.unitSpecs.length === 0 && !options.scopeOnly) {
+    throw new Error(
+      `no unit specs found against ${options.base}; pass --unit-spec <path>`,
+    );
+  }
 
   let mutantCount = 0;
   if (pending.length > 0 && options.unitSpecs.length > 0) {

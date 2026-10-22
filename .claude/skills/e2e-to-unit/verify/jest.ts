@@ -193,6 +193,42 @@ function executedLines(fileCoverage: unknown): Set<number> {
   return lines;
 }
 
+const SPEC_EXTENSIONS = [
+  ".unit.spec.tsx",
+  ".unit.spec.ts",
+  ".unit.spec.jsx",
+  ".unit.spec.js",
+];
+
+const SPEC_FILE_RE = /\.spec\.[jt]sx?$/;
+
+/**
+ * The unit specs that sit next to the product files in scope, by this repo's
+ * colocation convention. A scoped function is protected by its own file's
+ * spec far more often than by whichever spec the branch happened to change,
+ * so a run that reads only the changed specs reports coverage that exists as
+ * a gap.
+ */
+export function colocatedSpecs(
+  files: string[],
+  exists: (file: string) => boolean,
+): string[] {
+  const specs = new Set<string>();
+  for (const file of files) {
+    if (SPEC_FILE_RE.test(file)) {
+      continue;
+    }
+    const base = file.replace(/\.[jt]sx?$/, "");
+    for (const extension of SPEC_EXTENSIONS) {
+      if (exists(base + extension)) {
+        specs.add(base + extension);
+        break;
+      }
+    }
+  }
+  return [...specs];
+}
+
 export const WRAPPER_PREFIX = "__e2e_verify_";
 
 /**

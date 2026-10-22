@@ -11,6 +11,7 @@ import {
 } from "./verify/coverage";
 import {
   chunk,
+  colocatedSpecs,
   mutantOf,
   stripMutant,
   wrapperPath,
@@ -449,6 +450,38 @@ describe("failing pairs for the confirmation pass", () => {
       ]),
     });
     expect(pairs.size).toBe(0);
+  });
+});
+
+describe("colocated unit specs", () => {
+  const onDisk = new Set([
+    "src/thing/Thing.unit.spec.tsx",
+    "src/thing/utils.unit.spec.ts",
+  ]);
+  const exists = (file: string) => onDisk.has(file);
+
+  it("pairs each product file with the spec beside it", () => {
+    expect(
+      colocatedSpecs(["src/thing/Thing.tsx", "src/thing/utils.ts"], exists),
+    ).toEqual([
+      "src/thing/Thing.unit.spec.tsx",
+      "src/thing/utils.unit.spec.ts",
+    ]);
+  });
+
+  it("skips a file with no spec beside it, and specs themselves", () => {
+    expect(
+      colocatedSpecs(
+        ["src/thing/Other.tsx", "src/thing/Thing.unit.spec.tsx"],
+        exists,
+      ),
+    ).toEqual([]);
+  });
+
+  it("returns each spec once", () => {
+    expect(
+      colocatedSpecs(["src/thing/Thing.tsx", "src/thing/Thing.tsx"], exists),
+    ).toEqual(["src/thing/Thing.unit.spec.tsx"]);
   });
 });
 
