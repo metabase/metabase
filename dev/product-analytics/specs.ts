@@ -114,7 +114,6 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
           by: "startDate",
           return: { flag: FLAG.active },
           returnRule: "onOrAfter",
-          horizon: 8,
         },
         output: { cohortsDisplay: "percent" },
       };

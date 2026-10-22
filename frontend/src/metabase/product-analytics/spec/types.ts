@@ -136,7 +136,6 @@ export interface CohortsSpec {
   /** What counts as coming back. Undefined: any event does. */
   return?: FlagRef;
   returnRule: "exactly" | "onOrAfter";
-  horizon: number;
 }
 
 export interface OutputSpec {

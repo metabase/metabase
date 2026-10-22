@@ -69,16 +69,21 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
   });
 
+  // Returns only count inside the date range, so an actor's offsets stop at
+  // the range's last period. Past it nothing is known, so those cells are
+  // left out rather than shown as nobody coming back.
+  const lastPeriod = `(SELECT max(${startOf(period, "ts")}) FROM scoped_events)`;
   ctes.push({
     name: "offsets",
-    note: `how many ${period}s after their start each actor came back`,
+    note: `how many ${period}s after their start each actor came back, and how many the date range can show`,
     deps: ["scoped_events", "starts"],
     body: [
       "SELECT",
       "  s.cohort AS cohort,",
       "  s.actor AS actor,",
       `  groupArray(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS came_back,`,
-      `  max(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS furthest`,
+      `  max(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS furthest,`,
+      `  dateDiff('${period}', any(s.started), ${lastPeriod}) AS observable`,
       "FROM starts AS s",
       "LEFT JOIN (SELECT actor, ts FROM scoped_events WHERE is_return) AS e",
       "  ON e.actor = s.actor",
@@ -99,12 +104,14 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       "SELECT",
       "  cohort,",
       "  offset,",
+      // Each actor only in the offsets the range can show, so the size at
+      // offset 0, the first row, is the whole cohort.
       "  uniqExact(actor) AS cohort_size,",
       percent
         ? `  round(uniqExactIf(actor, ${matched}) / nullIf(uniqExact(actor), 0), 4) AS value`
         : `  uniqExactIf(actor, ${matched}) AS value`,
       "FROM offsets",
-      `ARRAY JOIN range(${cohorts.horizon}) AS offset`,
+      "ARRAY JOIN range(toUInt32(greatest(observable + 1, 0))) AS offset",
       "GROUP BY cohort, offset",
       "ORDER BY cohort, offset",
     ].join("\n"),

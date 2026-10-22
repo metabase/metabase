@@ -284,35 +284,6 @@ describe("analysis settings", () => {
     expect(withoutColumn.extraColumns).toEqual([]);
   });
 
-  it("follows cohorts for as many periods as the date range spans", () => {
-    const horizon = (stored: StoredSettings) =>
-      setup({ kind: "cohorts", stored }).computed["cohorts.horizon"];
-
-    expect(horizon({})).toBe(13);
-    expect(horizon({ granularity: "month" })).toBe(3);
-    expect(horizon({ granularity: "day" })).toBe(90);
-    expect(horizon({ date_range: "past4weeks" })).toBe(4);
-    expect(horizon({ date_range: "2026-01-01~2026-03-31" })).toBe(13);
-  });
-
-  it("falls back to a fixed horizon for an open-ended date range", () => {
-    expect(
-      setup({ kind: "cohorts", stored: { date_range: "2026-01-01~" } })
-        .computed["cohorts.horizon"],
-    ).toBe(8);
-  });
-
-  it("names the granularity in the horizon title", () => {
-    const { widgets } = setup({
-      kind: "cohorts",
-      stored: { granularity: "month" },
-    });
-
-    expect(
-      widgets.find((widget) => widget.id === "cohorts.horizon")?.title,
-    ).toBe("Months to follow");
-  });
-
   describe("cohorts", () => {
     it("starts cohorts from the event time column by default", () => {
       const { computed, extraColumns, getProps } = setup({

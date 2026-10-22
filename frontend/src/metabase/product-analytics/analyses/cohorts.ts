@@ -5,10 +5,7 @@ import * as Lib from "metabase-lib";
 
 import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
-import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
-import { countPeriodsInDateRange } from "../date-range";
 import { withWidgetProps } from "../settings/with-widget-props";
-import type { Granularity } from "../spec/types";
 import { COHORT_COLUMN_NAMES } from "../sql/analyses/cohorts";
 
 import {
@@ -24,7 +21,6 @@ import {
   incomplete,
   isOneOf,
   isOptionalEventDefinition,
-  isPositiveInteger,
   missingIf,
   ready,
 } from "./setting-helpers";
@@ -46,14 +42,6 @@ const DISPLAYS: readonly CohortsSettings["cohorts.display"][] = [
   "percent",
   "counts",
 ];
-
-/** For open-ended date ranges, which have no period count of their own. */
-const DEFAULT_HORIZON: Record<Granularity, number> = {
-  hour: 24,
-  day: 14,
-  week: 8,
-  month: 6,
-};
 
 const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   ...commonSettings({
@@ -145,27 +133,6 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
       };
     },
   }),
-  "cohorts.horizon": {
-    getTitle: (_context, settings) => {
-      const units = Lib.describeTemporalUnit(settings.granularity, 2);
-      return c("{0} is a plural time unit, e.g. Weeks or Months")
-        .t`${units} to follow`;
-    },
-    getSection: () => "advanced",
-    secondary: true,
-    widget: NumberStepperWidget,
-    getDefault: (_context, settings) => {
-      const granularity = settings.granularity ?? "week";
-      return (
-        (settings.date_range === undefined
-          ? undefined
-          : countPeriodsInDateRange(settings.date_range, granularity)) ??
-        DEFAULT_HORIZON[granularity]
-      );
-    },
-    isValid: (value) => isPositiveInteger(value),
-    readDependencies: ["granularity", "date_range"],
-  },
 };
 
 export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
@@ -210,7 +177,6 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
         return:
           returning === null ? undefined : { flag: events.flagFor(returning) },
         returnRule: settings["cohorts.return_rule"],
-        horizon: settings["cohorts.horizon"],
       },
       output: { cohortsDisplay: settings["cohorts.display"] },
     });

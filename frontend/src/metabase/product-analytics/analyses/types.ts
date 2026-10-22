@@ -94,8 +94,6 @@ export type CohortsSettings = CommonSettings & {
   "cohorts.attribute": string | null;
   "cohorts.return": EventDefinition | null;
   "cohorts.return_rule": CohortsSpec["returnRule"];
-  /** How many periods after their start to follow each cohort: the columns. */
-  "cohorts.horizon": number;
   "cohorts.display": NonNullable<OutputSpec["cohortsDisplay"]>;
 };
 
