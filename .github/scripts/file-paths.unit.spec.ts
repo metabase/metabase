@@ -167,6 +167,20 @@ describe("file-paths.yaml", () => {
     ).toBe(false);
   });
 
+  it.each([
+    "docs/embedding/guest-embedding.md",
+    "frontend/src/metabase/home/components/EmbedHomepage/EmbedHomepage.tsx",
+    "bin/verify-doc-links/verify-doc-links.ts",
+  ])("checks the in-product docs links when %s changes", (path) => {
+    expect(matches("in_product_docs_links", path)).toBe(true);
+  });
+
+  it("does not check the in-product docs links for a docs image", () => {
+    expect(
+      matches("in_product_docs_links", "docs/embedding/images/guest.png"),
+    ).toBe(false);
+  });
+
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,

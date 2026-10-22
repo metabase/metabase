@@ -79,9 +79,16 @@ describe("global keyboard shortcuts", () => {
     ])("%s navigates to %s", async (_name, keys, pathname) => {
       const { router } = await setup();
 
-      await userEvent.keyboard(keys);
-
-      await waitFor(() => expect(router?.location.pathname).toBe(pathname));
+      // The shortcut handler registers in an effect that runs after setup
+      // resolves, so under load the first keystroke can land before it is
+      // listening and is dropped. Re-send until the navigation takes, but never
+      // after it has, so we don't fire the shortcut on the destination page.
+      await waitFor(async () => {
+        if (router?.location.pathname !== pathname) {
+          await userEvent.keyboard(keys);
+        }
+        expect(router?.location.pathname).toBe(pathname);
+      });
     });
 
     it("does not navigate to Data Studio for users without access", async () => {

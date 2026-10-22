@@ -68,9 +68,7 @@
 
 (mr/def ::id pos-int?)
 
-;; referenced only inside quoted defendpoint args that parse-args resolves at runtime
-#_{:clj-kondo/ignore [:unused-private-var]}
-(def ^:private RouteParams
+(def RouteParams
   [:map
    [:id [:string {:api/regex #"[abc]{4}"}]]])
 

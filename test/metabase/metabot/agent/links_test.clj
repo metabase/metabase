@@ -7,6 +7,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.charts :as charts]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -84,8 +86,88 @@
       (is (not (contains? stripped :lib/type)))
       (is (= stripped (links/->legacy-mbql stripped))))))
 
+(deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
+  (testing "temporal filters survive JSON serialization in the /question# hash (BOT-1972)"
+    (let [date  (meta/field-metadata :checkins :date)
+          query (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+          year  (fn [y] (lib/between date
+                                     (lib/absolute-datetime (str y "-01-01") :day)
+                                     (lib/absolute-datetime (str y "-12-31") :day)))]
+      (doseq [[desc filter-clause] {"between with absolute-datetime bounds"
+                                    (lib/between date
+                                                 (lib/absolute-datetime "2025-01-01" :day)
+                                                 (lib/absolute-datetime "2026-12-31" :day))
+                                    "during"
+                                    [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]
+                                    "or combines between filters for each year"
+                                    (lib/or (year 2025) (year 2026))
+                                    "and combines an equality with a during filter"
+                                    (lib/and (lib/= (meta/field-metadata :checkins :user-id) 5)
+                                             [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month])}
+              [query-desc ->sent strip] [["MBQL 5 query" identity identity]
+                                         ["MBQL 5 query stripped of its :lib/* keys" strip-lib-keys strip-lib-keys]]]
+        (testing (str desc ", " query-desc)
+          (let [query         (lib/filter query filter-clause)
+                dataset-query (:dataset_query (decode-question-url (links/pseudo-card->link {:dataset_query (->sent query)})))]
+            (is (= "mbql/query" (:lib/type dataset-query)))
+            (testing "the frontend keeps the filter when it normalizes the hash"
+              (is (= (strip (lib/filters query))
+                     (strip (-> dataset-query lib/normalize :stages first :filters)))))))))))
+
+(deftest ^:parallel ->frontend-query-stripped-query-with-aggregation-ref-goes-out-raw-test
+  (testing "a query without :lib/* keys goes out as the raw MBQL 5 query when normalization invalidates its aggregation ref"
+    ;; Normalization assigns a new UUID to the aggregation, so the aggregation ref no longer resolves,
+    ;; and ->legacy-mbql cannot convert the query either.
+    (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
+          stripped (strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))]
+      (is (= stripped (links/->frontend-query stripped))))))
+
+(deftest ^:parallel ->frontend-query-sends-native-queries-as-legacy-test
+  (let [native     (lib/native-query meta/metadata-provider "SELECT * FROM CHECKINS")
+        structured (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                       (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                                (lib/absolute-datetime "2025-01-01" :day)
+                                                (lib/absolute-datetime "2025-12-31" :day))))]
+    (testing "the SDK receives a native query as legacy MBQL and opens it in its SQL editor"
+      (doseq [[desc sent] {"MBQL 5"                             native
+                           "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
+                           "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
+        (testing desc
+          (is (= (lib/->legacy-MBQL native)
+                 (links/->frontend-query sent))))))
+    (testing "a structured query with a date filter stays MBQL 5"
+      (let [sent (links/->frontend-query structured)]
+        (is (= :mbql/query (:lib/type sent)))
+        (is (= (lib/filters structured) (-> sent :stages first :filters)))))))
+
+(deftest ^:parallel ->frontend-query-keeps-parameters-test
+  (testing "a structured query keeps its :parameters in the /question# link and in the chart data part"
+    (let [parameters [{:id     "checkins-month"
+                       :type   :date/month-year
+                       :target [:dimension [:field (meta/id :checkins :date) nil]]
+                       :value  "2014-07"}]
+          query      (assoc (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                            :parameters parameters)
+          expected   (json/decode+kw (json/encode parameters))]
+      (testing "in the link"
+        (is (= expected
+               (-> (links/pseudo-card->link {:dataset_query query})
+                   decode-question-url
+                   :dataset_query
+                   :parameters))))
+      (testing "in the chart data part"
+        (is (= expected
+               (-> (binding [shared/*memory-atom* (atom {:state {:queries {"q-1" query}}})]
+                     (charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                                :viz_settings {:chart_type "bar"}
+                                                :title        "Check-ins in July"
+                                                :description  "Check-ins during July 2014."}))
+                   (get-in [:data-parts 0 :data :query :query :parameters])
+                   json/encode
+                   json/decode+kw)))))))
+
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
-  (testing "chart link whose query lost :lib/type resolves to a renderable legacy /question# URL"
+  (testing "a chart link resolves to an MBQL 5 /question# URL even when the query has no :lib/type"
     (let [chart-id     "chart-fe-1"
           fe-query     (strip-lib-keys (lib.tu/venues-query))
           charts-state {chart-id {:chart_id               chart-id
@@ -94,10 +176,11 @@
           result       (links/resolve-metabase-uri (str "metabase://chart/" chart-id) {} charts-state)
           decoded      (decode-question-url result)]
       (is (str/starts-with? result "/question#"))
-      (testing "decoded dataset_query is legacy MBQL — raw pMBQL :stages would crash the FE"
-        (is (= "query" (get-in decoded [:dataset_query :type])))
-        (is (not (contains? (:dataset_query decoded) :stages)))
-        (is (map? (get-in decoded [:dataset_query :query])))))))
+      (testing "the decoded dataset_query is normalized MBQL 5"
+        (is (= "mbql/query" (get-in decoded [:dataset_query :lib/type])))
+        (is (some? (get-in decoded [:dataset_query :database])))
+        (is (= (:stages (strip-lib-keys fe-query))
+               (:stages (strip-lib-keys (:dataset_query decoded)))))))))
 
 ;;; resolve-metabase-uri tests
 

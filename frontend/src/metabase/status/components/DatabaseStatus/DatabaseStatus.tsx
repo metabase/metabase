@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { getUser } from "metabase/current-user";
