@@ -295,13 +295,13 @@
           validation-result (atom nil)
           process-query     (mt/original-fn #'qp/process-query)]
       (mt/with-dynamic-fn-redefs [qp/process-query (fn [query & args]
-                                                  (let [result (apply process-query query args)]
-                                                    (reset! validation-result result)
-                                                    result))]
+                                                     (let [result (apply process-query query args)]
+                                                       (reset! validation-result result)
+                                                       result))]
         (let [result (invoke-document-tool "document_construct_sql_chart"
                                            (assoc sql-chart-args :database_id database-id
                                                   :sql "SELECT ID, NAME FROM VENUES"))]
           (is (nil? (:error result)))
           (is (= 1 (count (get-in @validation-result [:data :rows]))))
           (is (= 100 (count (get-in (process-query (get-in result [:structured-output :dataset_query]))
-                                   [:data :rows])))))))))
+                                    [:data :rows])))))))))
