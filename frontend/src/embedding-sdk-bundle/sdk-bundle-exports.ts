@@ -8,6 +8,7 @@ import {
   formatDate,
   formatDateRange,
 } from "embedding-sdk-bundle/lib/format-date-range";
+import { getDataAppSession } from "embedding-sdk-bundle/lib/get-data-app-session";
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
@@ -57,6 +58,7 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   StaticDashboard,
   StaticQuestion,
   getSdkStore,
+  getDataAppSession,
   resolveDatasetQuery,
   createDashboard,
   getApplicationName,

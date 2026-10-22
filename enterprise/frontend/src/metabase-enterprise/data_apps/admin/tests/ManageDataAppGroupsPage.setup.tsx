@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
@@ -9,7 +10,11 @@ import type {
   DataAppGroup,
   DataAppGroupPermissionWarning,
 } from "metabase-types/api";
-import { createMockDataApp, createMockGroup } from "metabase-types/api/mocks";
+import {
+  createMockDataApp,
+  createMockGroup,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { ManageDataAppGroupsPage } from "../ManageDataAppGroupsPage";
 
@@ -42,6 +47,8 @@ const candidates = [
 export const setup = ({
   app = createMockDataApp(),
   groups = [],
+  tenancy = "internal",
+  tenantsEnabled = true,
 
   failFirstAdd = false,
 
@@ -51,6 +58,8 @@ export const setup = ({
 }: {
   app?: DataApp;
   groups?: DataAppGroup[];
+  tenancy?: "internal" | "external";
+  tenantsEnabled?: boolean;
 
   failFirstAdd?: boolean;
 
@@ -59,6 +68,7 @@ export const setup = ({
   warningsResponse?: Promise<DataAppGroupPermissionWarning[]>;
 } = {}) => {
   let assigned = [...groups];
+  const groupPath = tenancy === "external" ? "tenant-groups" : "groups";
 
   fetchMock.get("path:/api/apps", [app]);
   fetchMock.get("path:/api/permissions/group", candidates);
@@ -109,15 +119,25 @@ export const setup = ({
 
   renderWithProviders(
     <Route
-      path="admin/settings/apps/:slug/groups"
+      path={`admin/settings/apps/:slug/${groupPath}`}
       element={
         <>
-          <ManageDataAppGroupsPage />
+          <ManageDataAppGroupsPage tenancy={tenancy} />
           <UndoListing />
         </>
       }
     />,
-    { withRouter: true, initialRoute: "/admin/settings/apps/sales/groups" },
+    {
+      withRouter: true,
+      initialRoute: `/admin/settings/apps/sales/${groupPath}`,
+      storeInitialState: {
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures({
+            tenants: tenantsEnabled,
+          }),
+        }),
+      },
+    },
   );
 };
 

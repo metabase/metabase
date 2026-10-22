@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,9 +16,10 @@
   [{group-id :permission_group_id :as assignment}]
   (let [group-tenant-flags (perms/group-tenant-flags #{group-id})]
     (api/check-404 (contains? group-tenant-flags group-id))
-    (api/check-400 (and (not (get group-tenant-flags group-id))
-                        (not= group-id (:id (perms/admin-group))))
-                   (tru "Tenant groups and admins cannot be assigned to data apps.")))
+    (api/check-400 (not= group-id (:id (perms/admin-group)))
+                   (tru "Admins cannot be assigned to data apps."))
+    (when (get group-tenant-flags group-id)
+      (premium-features/assert-has-feature :tenants (tru "Tenants"))))
   assignment)
 
 (t2/define-before-insert :model/DataAppGroupAssignment

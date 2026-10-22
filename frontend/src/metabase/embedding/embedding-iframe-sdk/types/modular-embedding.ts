@@ -457,8 +457,14 @@ export interface MetabaseConfig {
  * @internal
  */
 export interface ComponentToAttributes {
+  "metabase-data-app": MetabaseDataAppAttributes;
   "metabase-question": MetabaseQuestionAttributes;
   "metabase-dashboard": MetabaseDashboardAttributes;
   "metabase-browser": MetabaseBrowserAttributes;
   "metabase-metabot": MetabaseMetabotAttributes;
+}
+
+/** Attributes for an SSO-authenticated data app embed. */
+export interface MetabaseDataAppAttributes {
+  path: string;
 }

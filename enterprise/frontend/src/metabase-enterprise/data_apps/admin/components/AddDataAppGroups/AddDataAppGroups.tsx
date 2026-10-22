@@ -13,23 +13,29 @@ import S from "./AddDataAppGroups.module.css";
 
 type Props = {
   groups: DataAppGroup[];
+  tenancy: "internal" | "external";
 
   onCancel: () => void;
   onAddGroups: (groupIds: number[]) => Promise<boolean>;
 };
 
-export const AddDataAppGroups = ({ groups, onAddGroups, onCancel }: Props) => {
+export const AddDataAppGroups = ({
+  groups,
+  tenancy,
+  onAddGroups,
+  onCancel,
+}: Props) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const groupsQuery = useListPermissionsGroupsQuery({ tenancy: "internal" });
+  const groupsQuery = useListPermissionsGroupsQuery({ tenancy });
 
   const selectableGroupOptions = useMemo(
     () =>
       groupsQuery.data
         ?.filter(
           (group) =>
-            !group.is_tenant_group &&
+            Boolean(group.is_tenant_group) === (tenancy === "external") &&
             !isAdminGroup(group) &&
             !groups.some((assigned) => assigned.id === group.id),
         )
@@ -37,7 +43,7 @@ export const AddDataAppGroups = ({ groups, onAddGroups, onCancel }: Props) => {
           value: String(group.id),
           label: getGroupNameLocalized(group),
         })),
-    [groupsQuery.data, groups],
+    [groupsQuery.data, groups, tenancy],
   );
 
   const handleSubmit = async () => {

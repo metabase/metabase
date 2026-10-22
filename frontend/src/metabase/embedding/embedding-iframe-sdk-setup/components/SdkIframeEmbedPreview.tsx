@@ -9,6 +9,7 @@ import {
 import { match } from "ts-pattern";
 
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import { getDataAppNameFromPath } from "embedding-sdk-shared/lib/data-app-embed";
 import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
@@ -20,8 +21,10 @@ import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-if
 import { useSetting } from "metabase/settings";
 import { Card } from "metabase/ui";
 import { colors as defaultMetabaseColors } from "metabase/ui/colors";
+import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import type { SdkIframeEmbedSetupSettings } from "../types";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { resolveSavedTheme } from "../utils/resolve-saved-theme";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
@@ -37,11 +40,17 @@ declare global {
   }
 }
 
-const SdkIframeEmbedPreviewInner = () => {
+const SdkIframeEmbedPreviewInner = ({
+  settings,
+}: {
+  settings: Exclude<
+    SdkIframeEmbedSetupSettings,
+    { componentName: "metabase-data-app" }
+  >;
+}) => {
   const {
     isSimpleEmbedFeatureAvailable,
     experience,
-    settings,
     guestEmbedSignedTokenForPreview,
   } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
@@ -215,6 +224,7 @@ const SdkIframeEmbedPreviewInner = () => {
 
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
+  const instanceUrl = useSetting("site-url");
 
   const remountKey = useMemo(
     () =>
@@ -226,5 +236,27 @@ export const SdkIframeEmbedPreview = () => {
     [settings.isGuest],
   );
 
-  return <SdkIframeEmbedPreviewInner key={remountKey} />;
+  if (settings.componentName === "metabase-data-app") {
+    const name = getDataAppNameFromPath(settings.path);
+
+    if (!name) {
+      return null;
+    }
+
+    // The same-origin preview uses the admin's session; the generated embed uses SSO.
+    const src = `${instanceUrl.replace(/\/$/, "")}${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}`;
+
+    return (
+      <Card className={S.EmbedPreviewIframe} h="100%" p={0}>
+        <iframe
+          title="Data app preview"
+          allow="clipboard-write"
+          src={src}
+          style={{ width: "100%", height: "100%", border: 0 }}
+        />
+      </Card>
+    );
+  }
+
+  return <SdkIframeEmbedPreviewInner key={remountKey} settings={settings} />;
 };

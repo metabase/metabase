@@ -1,3 +1,4 @@
+import { PLUGIN_API, reinitializeRequestHandlers } from "metabase/api/client";
 import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
 
 import {
@@ -23,7 +24,7 @@ describe("fetchDataAppBundleCode", () => {
       (_input: RequestInfo | URL, _init?: RequestInit) =>
         response instanceof Error
           ? Promise.reject(response)
-          : Promise.resolve(response),
+          : Promise.resolve(response.clone()),
     );
 
     global.fetch = fetchMock;
@@ -34,6 +35,7 @@ describe("fetchDataAppBundleCode", () => {
   afterEach(() => {
     global.fetch = originalFetch;
     jest.clearAllMocks();
+    reinitializeRequestHandlers();
   });
 
   it("requests the bundle endpoint with cache disabled and the name encoded", async () => {
@@ -45,6 +47,37 @@ describe("fetchDataAppBundleCode", () => {
 
     expect(url).toContain("/api/apps/my%20app/bundle");
     expect(init).toEqual({ cache: "no-store" });
+  });
+
+  it("uses the API session handler for embedded bundles, including refreshed sessions", async () => {
+    const { fetchMock } = setup(new Response("CODE"));
+    let session = "first-session";
+    PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler =
+      async () => ({
+        headers: { "X-Metabase-Session": session },
+      });
+
+    await fetchDataAppBundleCode("sales", { embedded: true });
+
+    const firstRequest = fetchMock.mock.calls[0][0];
+    expect(firstRequest).toBeInstanceOf(Request);
+    if (!(firstRequest instanceof Request)) {
+      throw new Error("Expected an API client Request");
+    }
+    expect(firstRequest.headers.get("X-Metabase-Session")).toBe(
+      "first-session",
+    );
+
+    session = "refreshed-session";
+    await fetchDataAppBundleCode("sales", { embedded: true });
+
+    const refreshedRequest = fetchMock.mock.calls[1][0];
+    if (!(refreshedRequest instanceof Request)) {
+      throw new Error("Expected an API client Request");
+    }
+    expect(refreshedRequest.headers.get("X-Metabase-Session")).toBe(
+      "refreshed-session",
+    );
   });
 
   it.each<[string, string | undefined, string[]]>([

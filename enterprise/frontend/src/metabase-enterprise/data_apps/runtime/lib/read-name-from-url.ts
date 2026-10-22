@@ -1,19 +1,20 @@
-import * as Urls from "metabase/urls";
+import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/lib/data-app-embed";
+import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
 
-/**
- * Reads the requested data-app name from the iframe URL.
- *
- * The BE serves this iframe at `/embed/apps/:name(/sub/route)`. Anything
- * after the `:name` segment is owned by the bundle's own router and mirrored
- * back to the parent by `attachIframeUrlMirror` in `AppView`.
- */
+/** Read the app name from either runtime route, before any app-owned subpath. */
 export function readNameFromUrl(): string | null {
-  const segments = window.location.pathname.split("/").filter(Boolean);
-  const index = segments.indexOf(Urls.DATA_APP_URL_SEGMENT);
+  const root = (window.MetabaseRoot ?? "/").replace(/\/+$/, "");
+  const pathname = window.location.pathname;
+  const prefix = [EMBEDDED_DATA_APP_PREFIX, DATA_APP_EMBED_PREFIX]
+    .map((prefix) => `${root}${prefix}/`)
+    .find((prefix) => pathname.startsWith(prefix));
 
-  if (index < 0 || index === segments.length - 1) {
+  if (!prefix) {
     return null;
   }
 
-  return decodeURIComponent(segments[index + 1] ?? "");
+  return (
+    decodeURIComponent(pathname.slice(prefix.length).split("/")[0] ?? "") ||
+    null
+  );
 }

@@ -384,7 +384,7 @@
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:
    `:any` (open embedding), `:self` (same-origin only, e.g. the internal data-app
-   iframe), or `:none` (no framing, unless interactive embedding is configured)."
+   iframe), or `:none` (interactive embedding policy)."
   [mode]
   (case mode
     :any  "*"
@@ -557,14 +557,14 @@
 
 (defn- data-app-iframe-request?
   [request]
-  (str/starts-with? (:uri request) (str request/data-app-embed-prefix "/")))
+  (boolean (request/data-app? request)))
 
 (def ^:private data-app-slug-regex
-  (re-pattern (str "/(?:embed/)?" request/data-app-url-segment "/([^/]+).*")))
+  (re-pattern (str "(?:/" request/data-app-url-segment "|" request/data-app-embed-prefix "|" request/embedded-data-app-prefix ")/([^/]+).*")))
 
 (defn- data-app-slug
   "Slug of the data-app document being served, parsed from the top-level
-   `/apps/<slug>` page or the internal `/embed/apps/<slug>` iframe (and
+   `/apps/<slug>` page, internal iframe, or SSO-embedded iframe (and
    any deeper sub-route), or nil. The top page needs it too: its `frame-src`
    governs what the iframe below it may navigate to."
   [request]
@@ -652,11 +652,10 @@
                  :cors                        cors
                  :nonce                       (:nonce request)
                  :script-nonce?               (boolean (get response script-nonce-response-key))
-                 ;; The internal data-app iframe is only ever framed by the
-                 ;; same-origin Metabase app, so restrict it to `'self'` rather
-                 ;; than the open embedding `*`. Check it before the broader
-                 ;; `embed?`, which `/embed/apps/...` also matches.
+                 ;; Data apps choose their ancestor policy before the generic embed routes:
+                 ;; Open framing for modular embeds, same-origin for internal views.
                  :frame-ancestors             (cond
+                                                (request/embedded-data-app? request)               :any
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
@@ -669,12 +668,15 @@
                  ;; hosts are looked up only for a signed-in user: the header would
                  ;; otherwise hand an app's `allowed_hosts` to anyone who can guess
                  ;; its slug, and let them probe which slugs exist. A signed-out
-                 ;; request still gets the data-app policy with an empty allowlist,
-                 ;; not the broader instance-wide one.
-                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (if (:metabase-user-id request)
-                                                  (drop-instance-origin (data-app-connect-src-hosts slug))
-                                                  []))
+                 ;; internal request keeps an empty allowlist. The modular SSO shell contains
+                 ;; trusted bootstrap code only. It installs the authenticated document's stricter
+                 ;; policy as a CSP meta element before evaluating any bundle.
+                 :data-app-connect-hosts      (if (request/data-app-bootstrap? request)
+                                                ["http:" "https:"]
+                                                (when-let [slug (data-app-slug request)]
+                                                  (if (:metabase-user-id request)
+                                                    (drop-instance-origin (data-app-connect-src-hosts slug))
+                                                    [])))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
                                                   (request/embed-sdk-eajs-entrypoint? request)))
@@ -682,7 +684,10 @@
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
                         "Access-Control-Allow-Methods" "*"})]
-    (update response :headers #(merge %2 %1 cors-headers) headers)))
+    (cond-> (update response :headers #(merge %2 %1 cors-headers) headers)
+      (request/embedded-data-app? request)
+      (assoc-in [:headers "X-Metabase-Data-App-Policy"]
+                (if (request/data-app-bootstrap? request) "bootstrap" "authenticated")))))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers. `cors` contains optional callbacks supplied by the

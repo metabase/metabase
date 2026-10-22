@@ -147,6 +147,13 @@ const dataAppGroupsManage = () =>
     Component: DataAppGroupsManagePage,
   }));
 
+const dataAppTenantGroupsManage = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
+  ).then(({ DataAppTenantGroupsManagePage }) => ({
+    Component: DataAppTenantGroupsManagePage,
+  }));
+
 const uploadSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UploadSettingsPage"
@@ -245,6 +252,7 @@ export const getSettingsRoutes = (store: Store<State>) => {
         <Route path={Urls.DATA_APP_URL_SEGMENT}>
           <Route index lazy={dataAppsManage} />
           <Route path=":slug/groups" lazy={dataAppGroupsManage} />
+          <Route path=":slug/tenant-groups" lazy={dataAppTenantGroupsManage} />
         </Route>
         <Route path="uploads" lazy={uploadSettings} />
         <Route

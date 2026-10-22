@@ -325,7 +325,8 @@
   [:map
    [:id ms/PositiveInt]
    [:name :string]
-   [:member_count ms/IntGreaterThanOrEqualToZero]])
+   [:member_count ms/IntGreaterThanOrEqualToZero]
+   [:is_tenant_group :boolean]])
 
 (api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
   "List the groups assigned to a data app."
@@ -334,7 +335,7 @@
   (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
 (api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "Assign a batch of internal groups atomically."
+  "Assign a batch of groups atomically."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]

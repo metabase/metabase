@@ -12,8 +12,10 @@ export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
 export const getEmbedExperiences = ({
   isMetabotAvailable,
+  isDataAppsAvailable,
 }: {
   isMetabotAvailable: boolean;
+  isDataAppsAvailable: boolean;
 }) =>
   [
     {
@@ -50,6 +52,17 @@ export const getEmbedExperiences = ({
             value: "metabot" as const,
             title: t`Metabot`,
             description: t`Embed a Metabot chat interface`,
+            supportsOss: false,
+            supportsGuestEmbed: false,
+          },
+        ]
+      : []),
+    ...(isDataAppsAvailable
+      ? [
+          {
+            value: "app" as const,
+            title: t`Data App`,
+            description: t`Embed an existing data app`,
             supportsOss: false,
             supportsGuestEmbed: false,
           },

@@ -1,3 +1,4 @@
+import { isIframeMessage } from "embedding-sdk-shared/lib/data-app-embed";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import type {
@@ -17,8 +18,8 @@ type ListenForEajsMessagesOptions<Source extends EajsMessageSource> = {
   messageSource: Source;
   handler: (message: EajsMessageBySource[Source]) => void;
 } & (Source extends "iframe-content"
-  ? { iframe: HTMLIFrameElement }
-  : { iframe?: never });
+  ? { iframe: HTMLIFrameElement; expectedOrigin?: string }
+  : { iframe?: never; expectedOrigin?: never });
 
 export function listenForEajsMessages<Source extends EajsMessageSource>(
   options: ListenForEajsMessagesOptions<Source>,
@@ -35,8 +36,7 @@ export function listenForEajsMessages<Source extends EajsMessageSource>(
         }
         break;
       case "iframe-content": {
-        const iframeWindow = options.iframe?.contentWindow;
-        if (!iframeWindow || event.source !== iframeWindow) {
+        if (!isIframeMessage(event, options.iframe, options.expectedOrigin)) {
           return;
         }
         break;

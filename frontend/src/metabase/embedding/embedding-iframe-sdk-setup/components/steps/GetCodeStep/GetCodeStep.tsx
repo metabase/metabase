@@ -51,7 +51,7 @@ export const GetCodeStep = () => {
 
   return (
     <Stack gap="lg" flex={1}>
-      {!isGuestEmbed && <MetabaseAccountCard />}
+      {!isGuestEmbed && experience !== "app" && <MetabaseAccountCard />}
 
       {showCode ? (
         <>

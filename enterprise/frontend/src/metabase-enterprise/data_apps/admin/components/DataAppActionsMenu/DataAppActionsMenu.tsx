@@ -1,8 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useConfirmation, useToast } from "metabase/common/hooks";
+import {
+  useConfirmation,
+  useHasTokenFeature,
+  useToast,
+} from "metabase/common/hooks";
+import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import { Link } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import {
   useDeleteDataAppMutation,
@@ -16,6 +22,17 @@ type Props = {
 };
 
 export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
+  const openEmbedWizard = useOpenEmbedJsWizard({
+    initialState: {
+      resourceType: "data-app",
+      resourceId: app.name,
+      isGuest: false,
+      useExistingUserSession: false,
+    },
+  });
+  const hasTenantsFeature = useHasTokenFeature("tenants");
+  const isTenantsEnabled = useSetting("use-tenants");
+
   const [setEnabled] = useSetDataAppEnabledMutation();
   const [deleteDataApp, { isLoading: isDeleting }] = useDeleteDataAppMutation();
   const [sendToast] = useToast();
@@ -76,6 +93,17 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
           >
             {t`Manage group access`}
           </Menu.Item>
+
+          {hasTenantsFeature && isTenantsEnabled && (
+            <Menu.Item
+              component={Link}
+              to={`/admin/settings/apps/${encodeURIComponent(app.name)}/tenant-groups`}
+            >
+              {t`Manage tenant access`}
+            </Menu.Item>
+          )}
+
+          <Menu.Item onClick={() => openEmbedWizard({})}>{t`Embed`}</Menu.Item>
 
           <Menu.Item onClick={handleToggleEnabled}>
             {app.enabled ? t`Disable` : t`Re-enable`}

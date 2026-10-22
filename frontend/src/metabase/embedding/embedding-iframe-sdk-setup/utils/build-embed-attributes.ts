@@ -87,9 +87,12 @@ export const buildEmbedAttributes = ({
 
   return transformEmbedSettingsToAttributes({
     settings: settingsWithOverrides,
-    keysToProcess: isGuestEmbed
-      ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP[experience]
-      : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
+    keysToProcess:
+      experience === "app"
+        ? ALLOWED_EMBED_SETTING_KEYS_MAP.app
+        : isGuestEmbed
+          ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP[experience]
+          : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
     wrapWithQuotes,
   });
 };

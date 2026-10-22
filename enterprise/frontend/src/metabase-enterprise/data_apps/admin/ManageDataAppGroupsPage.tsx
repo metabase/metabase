@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
+import { useHasTokenFeature, useToast } from "metabase/common/hooks";
 import { useParams } from "metabase/router";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import { Box, Button, Stack, Text } from "metabase/ui";
@@ -18,16 +18,25 @@ import type { DataAppGroup } from "metabase-types/api";
 
 import { DataAppGroupList } from "./components/DataAppGroupList/DataAppGroupList";
 
-export const ManageDataAppGroupsPage = () => {
+export const ManageDataAppGroupsPage = ({
+  tenancy = "internal",
+}: {
+  tenancy?: "internal" | "external";
+}) => {
+  const hasTenants = useHasTokenFeature("tenants");
+  const isUnavailable = tenancy === "external" && !hasTenants;
   const { slug = "" } = useParams<{ slug: string }>();
 
-  const listQuery = useListDataAppsQuery();
-  const listGroupsQuery = useGetDataAppGroupsQuery(slug);
+  const listQuery = useListDataAppsQuery(undefined, { skip: isUnavailable });
+  const listGroupsQuery = useGetDataAppGroupsQuery(slug, {
+    skip: isUnavailable,
+  });
 
   const app = listQuery.data?.find((app) => app.name === slug);
   const isAppMissing = listQuery.isSuccess && !app;
 
   const error =
+    (isUnavailable ? t`Tenant access is not available.` : undefined) ??
     listQuery.error ??
     listGroupsQuery.error ??
     (isAppMissing ? t`Data app not found.` : undefined);
@@ -41,7 +50,12 @@ export const ManageDataAppGroupsPage = () => {
           <DataAppGroups
             appName={slug}
             appTitle={app.display_name}
-            groups={listGroupsQuery.data}
+            key={tenancy}
+            tenancy={tenancy}
+            groups={listGroupsQuery.data.filter(
+              (group) =>
+                Boolean(group.is_tenant_group) === (tenancy === "external"),
+            )}
           />
         )}
       </LoadingAndErrorWrapper>
@@ -53,10 +67,12 @@ const DataAppGroups = ({
   appName,
   appTitle,
   groups,
+  tenancy,
 }: {
   appName: string;
   appTitle: string;
   groups: DataAppGroup[];
+  tenancy: "internal" | "external";
 }) => {
   const [sendToast] = useToast();
   const [isAdding, setIsAdding] = useState(false);
@@ -99,7 +115,9 @@ const DataAppGroups = ({
       <AdminPaneLayout
         title={
           <Text component="span" fz="2rem" lh="2rem">
-            {t`Manage access to ${appTitle}`}
+            {tenancy === "external"
+              ? t`Manage tenant access to ${appTitle}`
+              : t`Manage access to ${appTitle}`}
           </Text>
         }
         titleActions={
@@ -113,6 +131,7 @@ const DataAppGroups = ({
         }
       >
         <DataAppGroupList
+          tenancy={tenancy}
           appName={appName}
           isAdding={isAdding}
           groups={groups}

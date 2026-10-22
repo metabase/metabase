@@ -151,7 +151,40 @@
        (filter #(str/starts-with? % "frame-ancestors "))
        first))
 
+(deftest modular-data-app-policy-test
+  (mt/with-temporary-setting-values [enable-embedding-modular true
+                                     embedding-app-origins-sdk "https://customer.example"]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://private-api.example"])]
+      (let [request {:uri "/embed/embedded-apps/sales"}
+            bootstrap (headers-for-request request)
+            authenticated (headers-for-request (assoc request :metabase-user-id 1
+                                                      :headers {"x-metabase-session" "session"}))
+            policy (get authenticated "Content-Security-Policy")]
+        (testing "the bootstrap does not publish app-specific hosts"
+          (is (= "bootstrap" (get bootstrap "X-Metabase-Data-App-Policy")))
+          (is (not (str/includes? (get bootstrap "Content-Security-Policy") "private-api.example"))))
+        (testing "the authorized policy preserves app restrictions and allows framing from any origin"
+          (is (= "authenticated" (get authenticated "X-Metabase-Data-App-Policy")))
+          (is (= "frame-ancestors *" (header->directive policy "frame-ancestors")))
+          (is (= "form-action https://private-api.example" (header->directive policy "form-action")))
+          (is (= "frame-src 'self' https://private-api.example" (header->directive policy "frame-src")))
+          (is (nil? (get authenticated "X-Frame-Options"))))
+        (testing "only the evaluator receives unsafe-eval in production"
+          (with-redefs [config/is-dev? false]
+            (is (not (str/includes? (get (headers-for-request request) "Content-Security-Policy") "'unsafe-eval'")))))))))
+
 (deftest data-app-frame-ancestors-test
+  (testing "external data apps allow framing independently of the SDK origin list"
+    (doseq [origins ["" "https://customer.example"]]
+      (mt/with-temporary-setting-values [enable-embedding-modular true
+                                         embedding-app-origins-sdk origins]
+        (doseq [request [{:uri "/embed/embedded-apps/sales"}
+                         {:uri "/embed/embedded-apps/sales/orders"
+                          :metabase-user-id 1
+                          :headers {"x-metabase-session" "session"}}]]
+          (let [headers (headers-for-request request)]
+            (is (= "frame-ancestors *" (header->directive (get headers "Content-Security-Policy") "frame-ancestors")))
+            (is (nil? (get headers "X-Frame-Options"))))))))
   (testing "the internal data-app iframe is framable only by the same-origin host"
     (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales")))
     (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales/sub/route")))

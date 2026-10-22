@@ -1,13 +1,13 @@
+import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/lib/data-app-embed";
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as DataAppUrls from "metabase/urls/data-apps";
 
 const escapeRegExp = (str: string): string =>
   str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Captures the Metabase subpath install root (`/mb` in `/mb/embed/apps/sales/…`,
-// empty without one) and the data-app `:name` segment.
+// Captures the Metabase install root, runtime prefix, and app name for both iframe routes.
 const DATA_APP_IFRAME_PATH_RE = new RegExp(
-  `^(.*?)${escapeRegExp(DataAppUrls.DATA_APP_EMBED_PREFIX)}/([^/]+)`,
+  `^(.*?)(${escapeRegExp(DataAppUrls.DATA_APP_EMBED_PREFIX)}|${escapeRegExp(EMBEDDED_DATA_APP_PREFIX)})/([^/]+)`,
 );
 
 const matchIframePath = () =>
@@ -26,9 +26,7 @@ const matchIframePath = () =>
 export const getBasename = (): string => {
   const match = matchIframePath();
 
-  return match
-    ? `${match[1]}${DataAppUrls.DATA_APP_EMBED_PREFIX}/${match[2]}`
-    : "";
+  return match ? `${match[1]}${match[2]}/${match[3]}` : "";
 };
 
 /**
@@ -42,7 +40,7 @@ export const getBasename = (): string => {
 export const getPageBasename = (): string => {
   const match = matchIframePath();
 
-  return match ? `${match[1]}${DataAppUrls.DATA_APP_ROOT_URL}/${match[2]}` : "";
+  return match ? `${match[1]}${DataAppUrls.DATA_APP_ROOT_URL}/${match[3]}` : "";
 };
 
 const subscribers = new Set<() => void>();

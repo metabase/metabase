@@ -9,6 +9,7 @@ import {
 } from "../loader";
 
 import { describeError } from "./describe-error";
+import { prepareEmbeddedDataApp } from "./prepare-embedded-data-app";
 import { reportErrorToParent } from "./report-error-to-parent";
 
 export interface LoadedApp {
@@ -25,21 +26,35 @@ export interface LoadedApp {
  */
 export const useDataAppBundle = (
   name: string,
+  { embedded = false }: { embedded?: boolean } = {},
 ): {
   data: LoadedApp | null;
   failed: boolean;
+  error?: string | null;
 } => {
   const [data, setData] = useState<LoadedApp | null>(null);
   const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     setData(null);
     setFailed(false);
+    setError(null);
 
     const load = async () => {
-      const { code, allowedHosts } = await fetchDataAppBundleCode(name);
+      if (embedded) {
+        await prepareEmbeddedDataApp(name);
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      const { code, allowedHosts } = await fetchDataAppBundleCode(name, {
+        embedded,
+      });
 
       if (cancelled) {
         return;
@@ -50,6 +65,7 @@ export const useDataAppBundle = (
         name,
         window,
         allowedHosts,
+        { embedded },
       );
 
       if (cancelled) {
@@ -66,15 +82,25 @@ export const useDataAppBundle = (
         // A 404 (not-yet-synced) is expected, so we keep the friendly message;
         // any other failure carries the real error so it can be shown.
         const detail = notReady ? undefined : describeError(error);
+        if (embedded && detail) {
+          console.error(
+            "[data-app] embedded app initialization failed",
+            name,
+            detail,
+          );
+        }
         setFailed(true);
-        reportErrorToParent(notReady, detail);
+        setError(describeError(error).message);
+        if (!embedded) {
+          reportErrorToParent(notReady, detail);
+        }
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [name]);
+  }, [name, embedded]);
 
   useEffect(() => {
     // The bundle runs in a Near-Membrane sandbox that can throw errors which
@@ -93,14 +119,17 @@ export const useDataAppBundle = (
           detail.stack ?? "",
         );
         setFailed(true);
-        reportErrorToParent(false, detail);
+        setError(detail.message);
+        if (!embedded) {
+          reportErrorToParent(false, detail);
+        }
       }
     };
 
     window.addEventListener("error", onError);
 
     return () => window.removeEventListener("error", onError);
-  }, []);
+  }, [embedded]);
 
-  return { data, failed };
+  return { data, failed, error };
 };

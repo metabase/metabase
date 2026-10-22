@@ -67,7 +67,8 @@ export type SdkIframeEmbedSetSettingsMessage = {
 export type SdkIframeEmbedSubmitSessionTokenMessage = {
   type: "metabase.embed.submitSessionToken";
   data: {
-    authMethod: MetabaseAuthMethod;
+    /** Omitted when the React SDK provider owns session caching. */
+    authMethod?: MetabaseAuthMethod;
     sessionToken: MetabaseEmbeddingSessionToken;
   };
 };
@@ -248,6 +249,16 @@ export interface MetabotEmbedOptions {
   token?: never;
 }
 
+export interface DataAppEmbedOptions {
+  componentName: "metabase-data-app";
+  path: string;
+
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+  token?: never;
+}
+
 type CollectionBrowserEntityTypes =
   | "collection"
   | "dashboard"
@@ -310,7 +321,8 @@ export type SdkIframeEmbedTemplateSettings =
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  | DataAppEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = Omit<
@@ -328,6 +340,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
       })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
+    | DataAppEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -341,4 +354,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeQuestionEmbedSettings
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions
-  | keyof MetabotEmbedOptions;
+  | keyof MetabotEmbedOptions
+  | keyof DataAppEmbedOptions;

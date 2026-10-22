@@ -9,7 +9,8 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -106,10 +107,14 @@
   ([_model pk]
    (or api/*is-superuser?*
        (and api/*current-user-id*
-            (nil? (:tenant_id @api/*current-user*))
-            (let [group-ids (user/group-ids api/*current-user-id*)]
-              (boolean (some (comp group-ids :permission_group_id)
-                             (data-apps.db/app-assignments [pk]))))))))
+            (let [tenant-user? (some? (:tenant_id @api/*current-user*))
+                  group-ids    (user/group-ids api/*current-user-id*)
+                  tenant-flags (perms/group-tenant-flags group-ids)]
+              (and (or (not tenant-user?) (premium-features/has-feature? :tenants))
+                   (boolean (some (fn [{group-id :permission_group_id}]
+                                    (and (contains? tenant-flags group-id)
+                                         (= tenant-user? (boolean (get tenant-flags group-id)))))
+                                  (data-apps.db/app-assignments [pk])))))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)

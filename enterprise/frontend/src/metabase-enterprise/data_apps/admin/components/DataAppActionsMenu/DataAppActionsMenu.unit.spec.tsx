@@ -1,18 +1,27 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockDataApp } from "metabase-types/api/mocks";
+import { getEmbedSetupModal } from "metabase/embedding/store/embed-setup-modal";
+import {
+  createMockDataApp,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { DataAppActionsMenu } from "./DataAppActionsMenu";
 
 const setup = ({
   enabled = true,
+  hasTenantsFeature = false,
+  isTenantsEnabled = false,
   canRemove = false,
   resourceCollectionId = 9,
 }: {
   enabled?: boolean;
+  hasTenantsFeature?: boolean;
+  isTenantsEnabled?: boolean;
   canRemove?: boolean;
   resourceCollectionId?: number;
 } = {}) => {
@@ -22,13 +31,23 @@ const setup = ({
     enabled,
     resource_collection_id: resourceCollectionId,
   });
-  renderWithProviders(
+  return renderWithProviders(
     <>
       <DataAppActionsMenu app={app} canRemove={canRemove} />
       {/* Mounts the toaster so failure toasts are assertable in the DOM. */}
       <UndoListing />
     </>,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures({
+            tenants: hasTenantsFeature,
+          }),
+          "use-tenants": isTenantsEnabled,
+        }),
+      },
+    },
   );
 };
 
@@ -49,9 +68,9 @@ describe("DataAppActionsMenu", () => {
     await openMenu();
 
     const menuItems = await screen.findAllByRole("menuitem");
-    expect(menuItems).toHaveLength(3);
+    expect(menuItems).toHaveLength(4);
 
-    const [viewResource, manageAccess, disable] = menuItems;
+    const [viewResource, manageAccess, embed, disable] = menuItems;
 
     expect(viewResource).toHaveTextContent("View resources");
     expect(viewResource).toHaveAttribute("href", "/collection/9");
@@ -62,6 +81,7 @@ describe("DataAppActionsMenu", () => {
       "/admin/settings/apps/sales/groups",
     );
 
+    expect(embed).toHaveTextContent("Embed");
     expect(disable).toHaveTextContent("Disable");
   });
 
@@ -123,5 +143,52 @@ describe("DataAppActionsMenu", () => {
     await waitFor(() =>
       expect(trigger()).not.toHaveAttribute("data-loading", "true"),
     );
+  });
+});
+
+it("shows tenant access when tenants and the feature token are enabled", async () => {
+  setup({ hasTenantsFeature: true, isTenantsEnabled: true });
+
+  await openMenu();
+
+  expect(
+    screen.getByRole("menuitem", { name: "Manage tenant access" }),
+  ).toHaveAttribute("href", "/admin/settings/apps/sales/tenant-groups");
+  expect(
+    screen.getByRole("menuitem", { name: "Manage group access" }),
+  ).toHaveAttribute("href", "/admin/settings/apps/sales/groups");
+});
+
+it.each([
+  { hasTenantsFeature: true, isTenantsEnabled: false },
+  { hasTenantsFeature: false, isTenantsEnabled: true },
+  { hasTenantsFeature: false, isTenantsEnabled: false },
+])(
+  "hides tenant access with token=$hasTenantsFeature and tenants=$isTenantsEnabled",
+  async (options) => {
+    setup(options);
+
+    await openMenu();
+
+    expect(
+      screen.queryByRole("menuitem", { name: "Manage tenant access" }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+it("opens the embed modal with the selected data app", async () => {
+  const { store } = setup();
+
+  await openMenu();
+  await userEvent.click(await screen.findByRole("menuitem", { name: "Embed" }));
+
+  expect(getEmbedSetupModal(store.getState())).toEqual({
+    modal: "embed-js-wizard",
+    initialState: {
+      resourceType: "data-app",
+      resourceId: "sales",
+      isGuest: false,
+      useExistingUserSession: false,
+    },
   });
 });
