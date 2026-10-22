@@ -115,8 +115,8 @@
   [:map
    [:time_granularity ::time-granularity]
    [:validity_params {:optional true} [:maybe [:map
-                                             [:is_start :boolean]
-                                             [:is_end :boolean]]]]])
+                                               [:is_start :boolean]
+                                               [:is_end :boolean]]]]])
 
 (mr/def ::dimension
   "A categorical or time dimension. `expr` is a column or SQL; `nil` means the dimension name is the column."
