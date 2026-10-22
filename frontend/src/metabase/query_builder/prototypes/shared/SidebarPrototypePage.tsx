@@ -1,5 +1,5 @@
-import { useElementSize } from "@mantine/hooks";
-import { type ReactNode, useMemo, useState } from "react";
+import { useElementSize, useSessionStorage } from "@mantine/hooks";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListTablesQuery } from "metabase/api";
@@ -229,6 +229,7 @@ function PrototypeWorkspace({
     key: slug,
     label: name,
   }));
+  const isHarnessVisible = useHarnessVisibility();
 
   // every variant starts from the raw source: a summary built in one doesn't carry into another
   const handleSelectVariant = (index: number) => {
@@ -258,13 +259,6 @@ function PrototypeWorkspace({
           {t`Change data`}
         </Button>
       </Flex>
-      {seedFormulasByTable != null && (
-        <SeedControls
-          base={sourceBase}
-          formulas={seedFormulas}
-          onSeed={setSeededValues}
-        />
-      )}
       {/* empty unless a variant portals into it, e.g. a spreadsheet-style formula bar */}
       <Box ref={setWorkspaceTopSlot} className={S.workspaceTopSlot} />
       <Box ref={contentRef} className={S.content}>
@@ -305,11 +299,24 @@ function PrototypeWorkspace({
           />
         </ResizableSummaryPanel>
       </Box>
-      <PrototypePicker
-        items={pickerItems}
-        activeIndex={variantIndex}
-        onSelect={handleSelectVariant}
-      />
+      {/* the harness chrome shows and hides as one: ⌥⇧H (Alt+Shift+H off macOS) */}
+      {isHarnessVisible && (
+        <>
+          <PrototypePicker
+            items={pickerItems}
+            activeIndex={variantIndex}
+            onSelect={handleSelectVariant}
+          />
+          {seedFormulasByTable != null && (
+            <SeedControls
+              key={variant.slug}
+              base={sourceBase}
+              formulas={seedFormulas}
+              onSeed={setSeededValues}
+            />
+          )}
+        </>
+      )}
       {isPickingSource && (
         <DataPickerModal
           title={t`Pick the data to summarize`}
@@ -321,6 +328,39 @@ function PrototypeWorkspace({
       )}
     </Box>
   );
+}
+
+/**
+ * Whether the variant switcher and the examples show. ⌥⇧H (Alt+Shift+H off macOS) toggles them,
+ * even while typing a formula; the choice lasts for the tab's session, across reloads and data
+ * changes. Not ⌘⇧.: the main navbar takes any ⌘. and macOS reports ⌘⇧. as ".".
+ */
+function useHarnessVisibility(): boolean {
+  const [isVisible, setIsVisible] = useSessionStorage({
+    key: "metabase-prototype-harness-visible",
+    defaultValue: true,
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // `code`, since Option turns the key itself into "Ó" on macOS
+      if (
+        event.altKey &&
+        event.shiftKey &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        event.code === "KeyH"
+      ) {
+        // otherwise the "Ó" lands in whatever field has focus
+        event.preventDefault();
+        setIsVisible((wasVisible) => !wasVisible);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [setIsVisible]);
+
+  return isVisible;
 }
 
 function CenteredState({ children }: { children: ReactNode }) {
