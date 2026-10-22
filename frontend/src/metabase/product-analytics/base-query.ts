@@ -26,6 +26,7 @@ import {
   readFilterQuery,
 } from "./filters";
 import { findColumn, findJoinedColumn } from "./find-column";
+import type { AllocatedPeopleSegment } from "./segments/types";
 import { IN_RANGE_FLAG } from "./sql/analyses/lookback";
 
 const STAGE = -1;
@@ -60,6 +61,13 @@ export type BaseQueryInput = {
   /** Needed when an extra column comes from the users table. */
   usersTable: UsersTableLink | undefined;
   filters: AnalysisFilters;
+  /**
+   * The people segments in use, by flag. Who's in them comes from a query of
+   * their own; see `BasePeopleSegments`.
+   */
+  peopleSegments: readonly AllocatedPeopleSegment[];
+  /** Of the `peopleSegments` flags, the ones the people filters require. */
+  requiredPeopleSegments: readonly string[];
   /**
    * Days of history to read before the date range, from `getLookbackDays`.
    * When it's more than 0, an `IN_RANGE_FLAG` column marks the events inside

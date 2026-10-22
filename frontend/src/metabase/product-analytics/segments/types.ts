@@ -1,4 +1,8 @@
-import type { OpaqueDatasetQuery, Segment } from "metabase-types/api";
+import type {
+  OpaqueDatasetQuery,
+  Segment,
+  SegmentId,
+} from "metabase-types/api";
 
 /** Which table a palette segment filters: the events, or the people who did them. */
 export type SegmentSource = "event" | "people";
@@ -37,4 +41,24 @@ export type SegmentDraft = {
   id: string;
   name: string;
   query: OpaqueDatasetQuery;
+};
+
+/**
+ * A people segment as an analysis keeps it. A saved segment is kept by id, so
+ * later edits to it carry through; a draft keeps its own conditions, so it
+ * works wherever the analysis is opened.
+ */
+export type PeopleSegmentRef = {
+  /** The palette item it came from, so it can't be picked twice. */
+  key: string;
+  label: string;
+  definition:
+    | { type: "saved"; segmentId: SegmentId }
+    | { type: "draft"; query: OpaqueDatasetQuery };
+};
+
+/** A people segment in use, with its 0/1 membership column on `events_base`. */
+export type AllocatedPeopleSegment = {
+  flag: string;
+  segment: PeopleSegmentRef;
 };

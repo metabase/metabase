@@ -13,9 +13,9 @@ const STAGE_INDEX = -1;
 export const isEventSegment = (segment: PaletteSegment): boolean =>
   segment.source === "event" && segment.status !== "sample";
 
-/** Whether the people filter can take this segment. */
+/** Whether the people filter can take this segment. Samples have no conditions. */
 export const isPeopleSegment = (segment: PaletteSegment): boolean =>
-  segment.source === "people";
+  segment.source === "people" && segment.status !== "sample";
 
 /**
  * The event a segment defines. A saved segment becomes a segment clause on

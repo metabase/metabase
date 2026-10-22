@@ -12,10 +12,10 @@ import type { Table } from "metabase-types/api";
 import {
   type AnalysisFilters,
   type CohortFilter,
-  type PeopleFilter,
   readFilterQuery,
   withFilterQuery,
 } from "../filters";
+import type { PeopleSegmentRef } from "../segments/types";
 import type { Grain } from "../spec/types";
 
 import { ConditionPill } from "./events/ConditionsEditor";
@@ -87,7 +87,7 @@ export const FilterPills = ({
     return null;
   }
 
-  const removePeople = (people: PeopleFilter) =>
+  const removePeople = (people: PeopleSegmentRef) =>
     onChange?.({
       ...value,
       people: value.people.filter((other) => other.key !== people.key),

@@ -33,6 +33,22 @@ export type BaseCohort = {
   ids: readonly string[];
 };
 
+/**
+ * Who's in each people segment, from the users table. MBQL segment clauses
+ * only apply to a query's source table, so membership is its own query,
+ * joined onto the events by their person column.
+ */
+export type BasePeopleSegments = {
+  /** The compiled users table query: its key, and a 0/1 column per flag. */
+  sql: string;
+  /** The users table key, as the compiled query names it. */
+  primaryKey: string;
+  /** The segments' flags, also their column names in `sql`. */
+  flags: string[];
+  /** Of `flags`, the segments every event's person must be in. */
+  required: string[];
+};
+
 export type BaseColumns = {
   columns: ColumnRoles;
   flags: string[];
@@ -42,6 +58,7 @@ export type BaseColumns = {
    * slows down by ~50ms per literal, so thousands of ids take minutes.
    */
   cohorts?: readonly BaseCohort[];
+  peopleSegments?: BasePeopleSegments;
 };
 
 const planAnalysis = (spec: AnalysisSpec): QueryPlan => {
@@ -71,11 +88,40 @@ const MISSING_COLUMN_SQL: Record<keyof ColumnRoles, string> = {
   url_path: "''",
 };
 
+const PEOPLE_SEGMENTS_CTE = "people_segments";
+const SEGMENT_PERSON_COLUMN = "segment_person";
+
+/** The membership column a flag is read from in `people_segments`. */
+const memberColumn = (flag: string) => `in_${flagSql(flag)}`;
+
+const peopleSegmentsCte = ({
+  sql,
+  primaryKey,
+  flags,
+}: BasePeopleSegments): Cte => ({
+  name: PEOPLE_SEGMENTS_CTE,
+  note: "who's in each people segment, from the users table",
+  deps: [],
+  body: [
+    "SELECT",
+    [
+      `toString(${ident(primaryKey)}) AS ${SEGMENT_PERSON_COLUMN}`,
+      ...flags.map((flag) => `${ident(flag)} AS ${memberColumn(flag)}`),
+    ]
+      .map((column) => `  ${column}`)
+      .join(",\n"),
+    "FROM (",
+    stripTrailingSemicolon(sql),
+    ") AS people",
+  ].join("\n"),
+});
+
 /** Renames the mapped table columns to the names the planners read. */
 const projectBase = (
   baseSql: string,
-  { columns, flags, extraColumns, cohorts = [] }: BaseColumns,
+  { columns, flags, extraColumns, cohorts = [], peopleSegments }: BaseColumns,
 ) => {
+  const segmentFlags = peopleSegments?.flags ?? [];
   const projected = [
     ...COLUMN_ROLES.map((role) => {
       const source = columns[role];
@@ -84,6 +130,29 @@ const projectBase = (
     }),
     ...extraColumns.map(({ as, alias }) => `${ident(alias)} AS ${as}`),
     ...flags.map(flagSql),
+    // People without a users table row aren't in any segment.
+    ...segmentFlags.map(
+      (flag) => `ifNull(${memberColumn(flag)}, 0) AS ${flagSql(flag)}`,
+    ),
+  ];
+  if (peopleSegments !== undefined && columns.person === null) {
+    throw new Error("People segments need a person column to join on");
+  }
+  const joins =
+    peopleSegments !== undefined && columns.person !== null
+      ? [
+          `LEFT JOIN ${PEOPLE_SEGMENTS_CTE}`,
+          `  ON toString(${ident(columns.person)}) = ${PEOPLE_SEGMENTS_CTE}.${SEGMENT_PERSON_COLUMN}`,
+        ]
+      : [];
+  const conditions = [
+    ...cohorts.map(
+      ({ column, ids }) =>
+        `toString(${ident(column)}) IN (${ids.length > 0 ? ids.map(lit).join(", ") : "NULL"})`,
+    ),
+    ...(peopleSegments?.required ?? []).map(
+      (flag) => `${memberColumn(flag)} = 1`,
+    ),
   ];
   return [
     "SELECT",
@@ -91,19 +160,26 @@ const projectBase = (
     "FROM (",
     stripTrailingSemicolon(baseSql),
     ") AS base",
-    ...cohorts.map(
-      ({ column, ids }, index) =>
-        `${index === 0 ? "WHERE" : "  AND"} toString(${ident(column)}) IN (${ids.length > 0 ? ids.map(lit).join(", ") : "NULL"})`,
+    ...joins,
+    ...conditions.map(
+      (condition, index) => `${index === 0 ? "WHERE" : "  AND"} ${condition}`,
     ),
   ].join("\n");
 };
 
-const eventsBaseCte = (baseSql: string, baseColumns: BaseColumns): Cte => ({
-  name: "events_base",
-  note: "MBQL-compiled event stream, with columns renamed for the planners",
-  deps: [],
-  body: projectBase(baseSql, baseColumns),
-});
+/** `events_base`, and the CTEs it reads. */
+const baseCtes = (baseSql: string, baseColumns: BaseColumns): Cte[] => {
+  const { peopleSegments } = baseColumns;
+  const eventsBase: Cte = {
+    name: "events_base",
+    note: "MBQL-compiled event stream, with columns renamed for the planners",
+    deps: peopleSegments !== undefined ? [PEOPLE_SEGMENTS_CTE] : [],
+    body: projectBase(baseSql, baseColumns),
+  };
+  return peopleSegments !== undefined
+    ? [peopleSegmentsCte(peopleSegments), eventsBase]
+    : [eventsBase];
+};
 
 export const DRILL_MEMBERS_CTE = "drill_members";
 
@@ -124,7 +200,7 @@ export const buildMembersSql = (
   if (members === null) {
     return null;
   }
-  const ctes = [eventsBaseCte(baseSql, baseColumns), ...plan.ctes];
+  const ctes = [...baseCtes(baseSql, baseColumns), ...plan.ctes];
   return compose({
     ctes: [
       ...ctes,
@@ -147,10 +223,9 @@ export const buildSql = (
   baseColumns: BaseColumns,
   plan: QueryPlan = planAnalysis(spec),
 ): BuiltSql => {
-  const eventsBase = eventsBaseCte(baseSql, baseColumns);
   const merged: QueryPlan = {
     ...plan,
-    ctes: [eventsBase, ...plan.ctes],
+    ctes: [...baseCtes(baseSql, baseColumns), ...plan.ctes],
   };
 
   try {

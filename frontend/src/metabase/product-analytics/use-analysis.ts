@@ -103,6 +103,9 @@ export const useAnalysis = <K extends AnalysisKind>({
   const flags = createFlagAllocator();
   const specResult = config.toSpec(computed, flags);
   const spec = specResult.status === "ready" ? specResult.spec : undefined;
+  const requiredPeopleSegments = computed.filters.people.map(
+    flags.segmentFlagFor,
+  );
   // After `toSpec`, which gives a flag to each event it uses.
   const base = useStableValue<BaseQueryInput>({
     dateRange: computed.date_range,
@@ -111,6 +114,8 @@ export const useAnalysis = <K extends AnalysisKind>({
     extraColumns: config.getExtraColumns?.(computed, context) ?? [],
     usersTable: usersTable?.link,
     filters: computed.filters,
+    peopleSegments: flags.segments,
+    requiredPeopleSegments,
     lookbackDays: spec !== undefined ? getLookbackDays(spec) : 0,
   });
   const missing = specResult.status === "incomplete" ? specResult.missing : [];
