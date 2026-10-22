@@ -1,0 +1,1666 @@
+{
+ "metadata": {
+  "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+  "dbt_version": "1.12.6",
+  "project_name": "dbt_business_intelligence",
+  "adapter_type": "postgres",
+  "generated_at": "2026-10-22T20:03:55.111587Z"
+ },
+ "nodes": {
+  "model.dbt_business_intelligence.stg_customer": {
+   "unique_id": "model.dbt_business_intelligence.stg_customer",
+   "resource_type": "model",
+   "name": "stg_customer",
+   "database": "dbt_bi",
+   "schema": "public_staging",
+   "alias": "stg_customer",
+   "relation_name": "\"dbt_bi\".\"public_staging\".\"stg_customer\"",
+   "description": "",
+   "columns": {
+    "customer_code": {
+     "name": "customer_code",
+     "description": "",
+     "data_type": null
+    },
+    "customer_name": {
+     "name": "customer_name",
+     "description": "",
+     "data_type": null
+    },
+    "address": {
+     "name": "address",
+     "description": "",
+     "data_type": null
+    },
+    "postal_code": {
+     "name": "postal_code",
+     "description": "",
+     "data_type": null
+    },
+    "country": {
+     "name": "country",
+     "description": "",
+     "data_type": null
+    },
+    "latitude": {
+     "name": "latitude",
+     "description": "",
+     "data_type": null
+    },
+    "longitude": {
+     "name": "longitude",
+     "description": "",
+     "data_type": null
+    },
+    "contact_name": {
+     "name": "contact_name",
+     "description": "",
+     "data_type": null
+    },
+    "phone": {
+     "name": "phone",
+     "description": "",
+     "data_type": null
+    },
+    "email": {
+     "name": "email",
+     "description": "",
+     "data_type": null
+    }
+   }
+  },
+  "model.dbt_business_intelligence.stg_product": {
+   "unique_id": "model.dbt_business_intelligence.stg_product",
+   "resource_type": "model",
+   "name": "stg_product",
+   "database": "dbt_bi",
+   "schema": "public_staging",
+   "alias": "stg_product",
+   "relation_name": "\"dbt_bi\".\"public_staging\".\"stg_product\"",
+   "description": "",
+   "columns": {}
+  },
+  "model.dbt_business_intelligence.stg_sales_data": {
+   "unique_id": "model.dbt_business_intelligence.stg_sales_data",
+   "resource_type": "model",
+   "name": "stg_sales_data",
+   "database": "dbt_bi",
+   "schema": "public_staging",
+   "alias": "stg_sales_data",
+   "relation_name": "\"dbt_bi\".\"public_staging\".\"stg_sales_data\"",
+   "description": "",
+   "columns": {}
+  },
+  "model.dbt_business_intelligence.stg_order": {
+   "unique_id": "model.dbt_business_intelligence.stg_order",
+   "resource_type": "model",
+   "name": "stg_order",
+   "database": "dbt_bi",
+   "schema": "public_staging",
+   "alias": "stg_order",
+   "relation_name": "\"dbt_bi\".\"public_staging\".\"stg_order\"",
+   "description": "",
+   "columns": {}
+  },
+  "model.dbt_business_intelligence.stg_date_dimension": {
+   "unique_id": "model.dbt_business_intelligence.stg_date_dimension",
+   "resource_type": "model",
+   "name": "stg_date_dimension",
+   "database": "dbt_bi",
+   "schema": "public_staging",
+   "alias": "stg_date_dimension",
+   "relation_name": "\"dbt_bi\".\"public_staging\".\"stg_date_dimension\"",
+   "description": "",
+   "columns": {}
+  },
+  "model.dbt_business_intelligence.dim_product": {
+   "unique_id": "model.dbt_business_intelligence.dim_product",
+   "resource_type": "model",
+   "name": "dim_product",
+   "database": "dbt_bi",
+   "schema": "public",
+   "alias": "dim_product",
+   "relation_name": "\"dbt_bi\".\"public\".\"dim_product\"",
+   "description": "Detailed information about products in the following categories:\n* Classic Cars\n* Motorcycles\n* Planes\n* Ships\n* Trains\n* Trucks and Buses\n* Vintage Cars",
+   "columns": {
+    "product_key": {
+     "name": "product_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "product_code": {
+     "name": "product_code",
+     "description": "Unique code for the product, used for internal tracking. Examples include 'PC22449-5536', 'PC9744-8650'.",
+     "data_type": "text"
+    },
+    "product_name": {
+     "name": "product_name",
+     "description": "Full name of the product, used for display purposes. Examples include 'Maserati Quattroporte', 'Airbus A340-600', 'Oceanic', 'Bullet Train', 'Honda GL1000 Gold Wing'",
+     "data_type": "text"
+    },
+    "product_category": {
+     "name": "product_category",
+     "description": "Category of the product, used for grouping and analysis. Examples include 'Automobiles', 'Aviation', 'Marine', 'Mass Transit', 'Motorcycles'",
+     "data_type": "text"
+    },
+    "msrp": {
+     "name": "msrp",
+     "description": "Manufacturer's suggested retail price for the product, used for pricing analysis",
+     "data_type": "integer"
+    },
+    "recent_order_date": {
+     "name": "recent_order_date",
+     "description": "Date of the most recent order for the product, used for inventory management",
+     "data_type": "date"
+    },
+    "first_order_date": {
+     "name": "first_order_date",
+     "description": "Date of the first order for the product, used for historical analysis",
+     "data_type": "date"
+    }
+   }
+  },
+  "model.dbt_business_intelligence.fact_sales": {
+   "unique_id": "model.dbt_business_intelligence.fact_sales",
+   "resource_type": "model",
+   "name": "fact_sales",
+   "database": "dbt_bi",
+   "schema": "public",
+   "alias": "fact_sales",
+   "relation_name": "\"dbt_bi\".\"public\".\"fact_sales\"",
+   "description": "| Metric         | Definition                                       |\n|----------------|--------------------------------------------------|\n| quantity       | Sum of quantity sold                             |\n| price          | Average price for an ordered product             |\n| sales          | Sum of total sales revenue                       |\n| target         | Sum of target sales revenue                      |",
+   "columns": {
+    "fact_sales_key": {
+     "name": "fact_sales_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "customer_key": {
+     "name": "customer_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "order_key": {
+     "name": "order_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "product_key": {
+     "name": "product_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "date_key": {
+     "name": "date_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "date_day": {
+     "name": "date_day",
+     "description": "",
+     "data_type": "date"
+    },
+    "price": {
+     "name": "price",
+     "description": "Price of the product in USD at the time of sale, used for revenue calculations",
+     "data_type": "float"
+    },
+    "quantity": {
+     "name": "quantity",
+     "description": "Quantity of the product sold in the order, used for inventory and sales analysis",
+     "data_type": "integer"
+    },
+    "sales": {
+     "name": "sales",
+     "description": "Total sales revenue for the order, calculated as price multiplied by quantity",
+     "data_type": "float"
+    },
+    "target": {
+     "name": "target",
+     "description": "Target sales revenue for the order, used for performance analysis",
+     "data_type": "float"
+    }
+   }
+  },
+  "model.dbt_business_intelligence.dim_date": {
+   "unique_id": "model.dbt_business_intelligence.dim_date",
+   "resource_type": "model",
+   "name": "dim_date",
+   "database": "dbt_bi",
+   "schema": "public",
+   "alias": "dim_date",
+   "relation_name": "\"dbt_bi\".\"public\".\"dim_date\"",
+   "description": "The Order Date dimension allows you to analyze metrics across time periods at many levels of granularity (year, quarter, month, day).",
+   "columns": {
+    "date_key": {
+     "name": "date_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "date_day": {
+     "name": "date_day",
+     "description": "The calendar date in `YYYY-MM-DD` format.",
+     "data_type": "date"
+    },
+    "prior_date_day": {
+     "name": "prior_date_day",
+     "description": "The date preceding `date_day` by one day.",
+     "data_type": "date"
+    },
+    "next_date_day": {
+     "name": "next_date_day",
+     "description": "The date following `date_day` by one day.",
+     "data_type": "date"
+    },
+    "prior_year_date_day": {
+     "name": "prior_year_date_day",
+     "description": "The same calendar day in the previous year.",
+     "data_type": "date"
+    },
+    "prior_year_over_year_date_day": {
+     "name": "prior_year_over_year_date_day",
+     "description": "The date used to compare year-over-year performance, typically aligning weeks.",
+     "data_type": "date"
+    },
+    "day_of_week": {
+     "name": "day_of_week",
+     "description": "Numeric representation of the day of the week, where Monday = 1 and Sunday = 7.",
+     "data_type": "integer"
+    },
+    "day_of_week_name": {
+     "name": "day_of_week_name",
+     "description": "Full name of the day of the week (e.g., \"Monday\").",
+     "data_type": "text"
+    },
+    "day_of_week_name_short": {
+     "name": "day_of_week_name_short",
+     "description": "Abbreviated name of the day of the week (e.g., \"Mon\").",
+     "data_type": "text"
+    },
+    "day_of_month": {
+     "name": "day_of_month",
+     "description": "Day number within the month (1\u201331).",
+     "data_type": "float"
+    },
+    "day_of_year": {
+     "name": "day_of_year",
+     "description": "Day number within the year (1\u2013365).",
+     "data_type": "bigint"
+    },
+    "date_week": {
+     "name": "date_week",
+     "description": "Start date of the week (`YYYY-MM-DD`), typically a Sunday.",
+     "data_type": "date"
+    },
+    "week_end_date": {
+     "name": "week_end_date",
+     "description": "End date of the week (`YYYY-MM-DD`), typically a Saturday.",
+     "data_type": "date"
+    },
+    "prior_year_week_start_date": {
+     "name": "prior_year_week_start_date",
+     "description": "Week start date corresponding to the same week in the previous year.",
+     "data_type": "date"
+    },
+    "prior_year_week_end_date": {
+     "name": "prior_year_week_end_date",
+     "description": "Week end date corresponding to the same week in the previous year.",
+     "data_type": "date"
+    },
+    "week_of_year": {
+     "name": "week_of_year",
+     "description": "Calendar week number of the year (1\u201353).",
+     "data_type": "integer"
+    },
+    "iso_week_start_date": {
+     "name": "iso_week_start_date",
+     "description": "Start date of the ISO week, which begins on Monday.",
+     "data_type": "date"
+    },
+    "iso_week_end_date": {
+     "name": "iso_week_end_date",
+     "description": "End date of the ISO week, which ends on Sunday.",
+     "data_type": "date"
+    },
+    "prior_year_iso_week_start_date": {
+     "name": "prior_year_iso_week_start_date",
+     "description": "Start date of the corresponding ISO week in the prior year.",
+     "data_type": "date"
+    },
+    "prior_year_iso_week_end_date": {
+     "name": "prior_year_iso_week_end_date",
+     "description": "End date of the corresponding ISO week in the prior year.",
+     "data_type": "date"
+    },
+    "iso_week_of_year": {
+     "name": "iso_week_of_year",
+     "description": "ISO 8601 week number of the year (1\u201353).",
+     "data_type": "integer"
+    },
+    "prior_year_week_of_year": {
+     "name": "prior_year_week_of_year",
+     "description": "Calendar week number for the same week in the prior year.",
+     "data_type": "integer"
+    },
+    "prior_year_iso_week_of_year": {
+     "name": "prior_year_iso_week_of_year",
+     "description": "ISO week number for the same ISO week in the prior year.",
+     "data_type": "integer"
+    },
+    "month_of_year": {
+     "name": "month_of_year",
+     "description": "Month number (1 = January, 12 = December).",
+     "data_type": "integer"
+    },
+    "month_name": {
+     "name": "month_name",
+     "description": "Full name of the month (e.g., \"January\").",
+     "data_type": "text"
+    },
+    "month_name_short": {
+     "name": "month_name_short",
+     "description": "Abbreviated name of the month (e.g., \"Jan\").",
+     "data_type": "text"
+    },
+    "date_month": {
+     "name": "date_month",
+     "description": "First day of the month (`YYYY-MM-DD`).",
+     "data_type": "date"
+    },
+    "month_end_date": {
+     "name": "month_end_date",
+     "description": "Last day of the month (`YYYY-MM-DD`).",
+     "data_type": "date"
+    },
+    "prior_year_month_start_date": {
+     "name": "prior_year_month_start_date",
+     "description": "First day of the same month in the previous year.",
+     "data_type": "date"
+    },
+    "prior_year_month_end_date": {
+     "name": "prior_year_month_end_date",
+     "description": "Last day of the same month in the previous year.",
+     "data_type": "date"
+    },
+    "quarter_of_year": {
+     "name": "quarter_of_year",
+     "description": "Quarter number of the year (1\u20134).",
+     "data_type": "integer"
+    },
+    "date_quarter": {
+     "name": "date_quarter",
+     "description": "First day of the quarter (`YYYY-MM-DD`).",
+     "data_type": "date"
+    },
+    "quarter_end_date": {
+     "name": "quarter_end_date",
+     "description": "Last day of the quarter (`YYYY-MM-DD`).",
+     "data_type": "date"
+    },
+    "year_number": {
+     "name": "year_number",
+     "description": "Four-digit calendar year (e.g., 2025).",
+     "data_type": "integer"
+    },
+    "date_year": {
+     "name": "date_year",
+     "description": "First day of the year (`YYYY-MM-DD`).",
+     "data_type": "date"
+    },
+    "year_end_date": {
+     "name": "year_end_date",
+     "description": "Last day of the year (`YYYY-MM-DD`).",
+     "data_type": "date"
+    }
+   }
+  },
+  "model.dbt_business_intelligence.dim_order": {
+   "unique_id": "model.dbt_business_intelligence.dim_order",
+   "resource_type": "model",
+   "name": "dim_order",
+   "database": "dbt_bi",
+   "schema": "public",
+   "alias": "dim_order",
+   "relation_name": "\"dbt_bi\".\"public\".\"dim_order\"",
+   "description": "Detailed information about a customer purchase of product(s) such as order date and status",
+   "columns": {
+    "order_key": {
+     "name": "order_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "order_number": {
+     "name": "order_number",
+     "description": "Unique identifier for the order, used for tracking and reference. Examples include '939396', '951393'.",
+     "data_type": "integer"
+    },
+    "order_line_number": {
+     "name": "order_line_number",
+     "description": "Unique identifier for the order line, used for tracking and reference. Examples include '1', '2'.",
+     "data_type": "integer"
+    },
+    "order_date": {
+     "name": "order_date",
+     "description": "Date of the order after Bigstore Enterprises started on 2019-01-01. Examples include '2024-01-01', '2024-01-02'.",
+     "data_type": "date"
+    },
+    "status": {
+     "name": "status",
+     "description": "Status of the order, used for tracking and reporting. Can be one of the following values: 'Cancelled', 'Delivered', 'Shipped'",
+     "data_type": "text"
+    }
+   }
+  },
+  "model.dbt_business_intelligence.dim_customer": {
+   "unique_id": "model.dbt_business_intelligence.dim_customer",
+   "resource_type": "model",
+   "name": "dim_customer",
+   "database": "dbt_bi",
+   "schema": "public",
+   "alias": "dim_customer",
+   "relation_name": "\"dbt_bi\".\"public\".\"dim_customer\"",
+   "description": "Customer (sometimes known as a client, buyer, or purchaser) is the recipient of a good, service, product or an idea - obtained from a seller, vendor, or supplier via a financial transaction or exchange for money or some other valuable consideration. [Click here](https://en.wikipedia.org/wiki/Customer) for more information.",
+   "columns": {
+    "customer_key": {
+     "name": "customer_key",
+     "description": "",
+     "data_type": "text"
+    },
+    "customer_code": {
+     "name": "customer_code",
+     "description": "Unique code for the customer, used for internal tracking. Stored as hexadecimal string, examples include '00972BBE', '03AFC2C9', '343C1F1A'.",
+     "data_type": "text"
+    },
+    "customer_name": {
+     "name": "customer_name",
+     "description": "Full name of the corporate customer, used for display purposes. Examples include 'Enim Sit Corp.', 'Vivamus Rhoncus Corporation'.",
+     "data_type": "text"
+    },
+    "address": {
+     "name": "address",
+     "description": "Full corporate address of the customer, used for shipping and billing. Examples include 'P.O. Box 915, 7624 Mauris Rd.', '1105 Ullamcorper St.'.",
+     "data_type": "text"
+    },
+    "postal_code": {
+     "name": "postal_code",
+     "description": "Postal code of the customer's address, used for shipping and billing. Examples include 'L0X 2E1', '15341'.",
+     "data_type": "text"
+    },
+    "region": {
+     "name": "region",
+     "description": "Region or state of the customer's address, used for shipping and billing. Examples include 'North Holland', 'Leinster'.",
+     "data_type": "text"
+    },
+    "country": {
+     "name": "country",
+     "description": "Country Name of the customer, used for shipping and billing. Examples include 'Ulyanovsk Oblast', 'Connacht'.",
+     "data_type": "text"
+    },
+    "latitude": {
+     "name": "latitude",
+     "description": "Latitude of the customer's address, used for geolocation and mapping. Examples include '-38.1762574336', '68.3046142976'",
+     "data_type": "text"
+    },
+    "longitude": {
+     "name": "longitude",
+     "description": "Longitude of the customer's address, used for geolocation and mapping. Examples include '99.5885843456', '46.0953581568'",
+     "data_type": "text"
+    },
+    "contact_name": {
+     "name": "contact_name",
+     "description": "Name of the primary contact person for the customer, used for communication. Examples include 'Cora Gomez', 'Keiko Blair'.",
+     "data_type": "text"
+    },
+    "phone": {
+     "name": "phone",
+     "description": "Phone number of the customer, used for communication. Examples include '1-822-207-7116', '327-1582'.",
+     "data_type": "text"
+    },
+    "email": {
+     "name": "email",
+     "description": "Email address of the customer, used for communication and marketing. Examples include 'id@aol.ca', 'nulla.in@hotmail.edu'",
+     "data_type": "text"
+    },
+    "recent_order_date": {
+     "name": "recent_order_date",
+     "description": "Date of the most recent order placed by the customer, used for customer relationship management",
+     "data_type": "date"
+    },
+    "first_order_date": {
+     "name": "first_order_date",
+     "description": "Date of the first order placed by the customer, used for historical analysis",
+     "data_type": "date"
+    }
+   }
+  }
+ },
+ "semantic_models": {
+  "semantic_model.dbt_business_intelligence.fact_sales": {
+   "name": "fact_sales",
+   "resource_type": "semantic_model",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "semantic_model.dbt_business_intelligence.fact_sales",
+   "fqn": [
+    "dbt_business_intelligence",
+    "fact_sales"
+   ],
+   "model": "ref('fact_sales')",
+   "node_relation": {
+    "alias": "fact_sales",
+    "schema_name": "public",
+    "database": "dbt_bi",
+    "relation_name": "\"dbt_bi\".\"public\".\"fact_sales\""
+   },
+   "description": "| Metric         | Definition                                       |\n|----------------|--------------------------------------------------|\n| quantity       | Sum of quantity sold                             |\n| price          | Average price for an ordered product             |\n| sales          | Sum of total sales revenue                       |\n| target         | Sum of target sales revenue                      |",
+   "label": "Sales Fact",
+   "defaults": {
+    "agg_time_dimension": "date_day"
+   },
+   "entities": [
+    {
+     "name": "fact_sales_key",
+     "type": "primary",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": null,
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "customer",
+     "type": "foreign",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": "customer_key",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "order",
+     "type": "foreign",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": "order_key",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "product",
+     "type": "foreign",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": "product_key",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "date",
+     "type": "foreign",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": "date_key",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [
+    {
+     "name": "price",
+     "agg": "average",
+     "description": "Price paid on this order",
+     "label": "Price",
+     "create_metric": false,
+     "expr": "price",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "quantity",
+     "agg": "sum",
+     "description": null,
+     "label": "Quantity",
+     "create_metric": false,
+     "expr": "quantity",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "sales",
+     "agg": "sum",
+     "description": "The total revenue for each order.",
+     "label": "Sales",
+     "create_metric": false,
+     "expr": "sales",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "target",
+     "agg": "sum",
+     "description": "Distinct count of customers placing orders",
+     "label": "Target",
+     "create_metric": false,
+     "expr": "target",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "row_count",
+     "agg": "sum",
+     "description": null,
+     "label": "Rowcount",
+     "create_metric": false,
+     "expr": "1",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "customer_count",
+     "agg": "count_distinct",
+     "description": "Distinct count of customers",
+     "label": "Customer Count",
+     "create_metric": false,
+     "expr": "customer_key",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "product_count",
+     "agg": "count_distinct",
+     "description": "Distinct count of products",
+     "label": "Product Count",
+     "create_metric": false,
+     "expr": "product_key",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "order_count",
+     "agg": "count_distinct",
+     "description": "Distinct count of orders",
+     "label": "Order Count",
+     "create_metric": false,
+     "expr": "order_key",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "sales_to_target",
+     "agg": "average",
+     "description": "Percentage of actual sales to target sales",
+     "label": "Sales to Target %",
+     "create_metric": false,
+     "expr": "sales / target",
+     "agg_params": null,
+     "non_additive_dimension": null,
+     "agg_time_dimension": "date_day",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "dimensions": [
+    {
+     "name": "date_day",
+     "type": "time",
+     "description": null,
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    }
+   ],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [
+    {
+     "name": "fact_sales",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1792699437.1050887,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  },
+  "semantic_model.dbt_business_intelligence.dim_customer": {
+   "name": "dim_customer",
+   "resource_type": "semantic_model",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "semantic_model.dbt_business_intelligence.dim_customer",
+   "fqn": [
+    "dbt_business_intelligence",
+    "dim_customer"
+   ],
+   "model": "ref('dim_customer')",
+   "node_relation": {
+    "alias": "dim_customer",
+    "schema_name": "public",
+    "database": "dbt_bi",
+    "relation_name": "\"dbt_bi\".\"public\".\"dim_customer\""
+   },
+   "description": "Customer (sometimes known as a client, buyer, or purchaser) is the recipient of a good, service, product or an idea - obtained from a seller, vendor, or supplier via a financial transaction or exchange for money or some other valuable consideration. [Click here](https://en.wikipedia.org/wiki/Customer) for more information.",
+   "label": "Customer",
+   "defaults": null,
+   "entities": [
+    {
+     "name": "customer",
+     "type": "primary",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": "customer_key",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [],
+   "dimensions": [],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.dbt_business_intelligence.dim_customer"
+    ]
+   },
+   "refs": [
+    {
+     "name": "dim_customer",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1792699437.1082518,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  },
+  "semantic_model.dbt_business_intelligence.dim_product": {
+   "name": "dim_product",
+   "resource_type": "semantic_model",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "semantic_model.dbt_business_intelligence.dim_product",
+   "fqn": [
+    "dbt_business_intelligence",
+    "dim_product"
+   ],
+   "model": "ref('dim_product')",
+   "node_relation": {
+    "alias": "dim_product",
+    "schema_name": "public",
+    "database": "dbt_bi",
+    "relation_name": "\"dbt_bi\".\"public\".\"dim_product\""
+   },
+   "description": "Detailed information about products in the following categories:\n* Classic Cars\n* Motorcycles\n* Planes\n* Ships\n* Trains\n* Trucks and Buses\n* Vintage Cars",
+   "label": "Product",
+   "defaults": null,
+   "entities": [
+    {
+     "name": "product",
+     "type": "primary",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": "product_key",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [],
+   "dimensions": [
+    {
+     "name": "product_category_dim",
+     "type": "categorical",
+     "description": null,
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": "product_category",
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "is_aviation_order",
+     "type": "categorical",
+     "description": null,
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": "case when product_category = 'Aviaiton' then 1 else 0 end",
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    }
+   ],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.dbt_business_intelligence.dim_product"
+    ]
+   },
+   "refs": [
+    {
+     "name": "dim_product",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1792699437.1101224,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  },
+  "semantic_model.dbt_business_intelligence.dim_order": {
+   "name": "dim_order",
+   "resource_type": "semantic_model",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "semantic_model.dbt_business_intelligence.dim_order",
+   "fqn": [
+    "dbt_business_intelligence",
+    "dim_order"
+   ],
+   "model": "ref('dim_order')",
+   "node_relation": {
+    "alias": "dim_order",
+    "schema_name": "public",
+    "database": "dbt_bi",
+    "relation_name": "\"dbt_bi\".\"public\".\"dim_order\""
+   },
+   "description": "Detailed information about a customer purchase of product(s) such as order date and status",
+   "label": "Order",
+   "defaults": null,
+   "entities": [
+    {
+     "name": "order",
+     "type": "primary",
+     "description": null,
+     "label": null,
+     "role": null,
+     "expr": "order_key",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [],
+   "dimensions": [
+    {
+     "name": "order_status_dim",
+     "type": "categorical",
+     "description": null,
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": "status",
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "is_cancelled_order",
+     "type": "categorical",
+     "description": null,
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": "case when status = 'Cancelled' then 1 else 0 end",
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    }
+   ],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.dbt_business_intelligence.dim_order"
+    ]
+   },
+   "refs": [
+    {
+     "name": "dim_order",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1792699437.1118422,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  }
+ },
+ "metrics": {
+  "metric.dbt_business_intelligence.sales_to_target": {
+   "name": "sales_to_target",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales_to_target",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales_to_target"
+   ],
+   "description": "Percentage of actual sales to target sales",
+   "label": "Sales to Target Ratio",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "sales_to_target",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "sales_to_target",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.0610428,
+   "group": null,
+   "meta": {
+    "format": {
+     "type": "percent",
+     "decimalPlaces": 1,
+     "suffix": "%"
+    },
+    "synonyms": [
+     "Sales Coverage Ratio"
+    ]
+   },
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.price": {
+   "name": "price",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.price",
+   "fqn": [
+    "dbt_business_intelligence",
+    "price"
+   ],
+   "description": "Price paid on this order",
+   "label": "Price",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "price",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "price",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "price",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.1066873,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.quantity": {
+   "name": "quantity",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.quantity",
+   "fqn": [
+    "dbt_business_intelligence",
+    "quantity"
+   ],
+   "description": "Metric created from measure quantity",
+   "label": "Quantity",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "quantity",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "quantity",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "quantity",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.1068473,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.sales": {
+   "name": "sales",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales"
+   ],
+   "description": "The total revenue for each order.",
+   "label": "Sales",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "sales",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "sales",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.1069796,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.target": {
+   "name": "target",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.target",
+   "fqn": [
+    "dbt_business_intelligence",
+    "target"
+   ],
+   "description": "Distinct count of customers placing orders",
+   "label": "Target",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "target",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "target",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "target",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.1070983,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.row_count": {
+   "name": "row_count",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.row_count",
+   "fqn": [
+    "dbt_business_intelligence",
+    "row_count"
+   ],
+   "description": "Metric created from measure row_count",
+   "label": "Rowcount",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "row_count",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "row_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "1",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.1072166,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.customer_count": {
+   "name": "customer_count",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.customer_count",
+   "fqn": [
+    "dbt_business_intelligence",
+    "customer_count"
+   ],
+   "description": "Distinct count of customers",
+   "label": "Customer Count",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "customer_count",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "customer_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "customer_key",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.1073265,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.product_count": {
+   "name": "product_count",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.product_count",
+   "fqn": [
+    "dbt_business_intelligence",
+    "product_count"
+   ],
+   "description": "Distinct count of products",
+   "label": "Product Count",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "product_count",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "product_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "product_key",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.107434,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.order_count": {
+   "name": "order_count",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.order_count",
+   "fqn": [
+    "dbt_business_intelligence",
+    "order_count"
+   ],
+   "description": "Distinct count of orders",
+   "label": "Order Count",
+   "type": "simple",
+   "type_params": {
+    "measure": {
+     "name": "order_count",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "order_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "order_key",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {
+    "enabled": true,
+    "meta": {}
+   },
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1792699437.1075394,
+   "group": null,
+   "meta": {},
+   "tags": []
+  }
+ }
+}
