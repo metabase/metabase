@@ -1944,14 +1944,105 @@
   ;; assertion below could hold while proving nothing.
   (is (= "query" (:type wire))
       "->legacy-mbql fell back to MBQL 5 instead of converting")
-  ;; ... and `lib/query` does not throw on a wire whose clause `clean-stage-schema-errors` deleted,
-  ;; so "no throw" is not survival. Compare the clauses - by count, since uuids and idents are
-  ;; regenerated across the hop and deep equality is not available. A clause swapped for a different
-  ;; clause of the same arity would slip through; deletion, the failure mode here, would not.
-  (let [after (lib/query mp-temporal wire)]
+  ;; `lib/query` silently drops invalid clauses, so reopening alone does not prove survival.
+  (let [after (lib/query mp-temporal (lib.convert/js-legacy-query->mbql5 wire))]
     (is (map? after) "did not survive the JSON round-trip")
     (is (= (stage-clause-counts before) (stage-clause-counts after))
-        "a clause was silently dropped by the round-trip")))
+        "a clause was silently dropped by the round-trip")
+    after))
+
+(deftest conditional-aggregations-with-date-ranges-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (doseq [operator ["count-where" "sum-where" "distinct-where" "share"]
+              [start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]]
+        (testing (str operator " with " start-unit "/" end-unit)
+          (let [aggregations (mapv (fn [[label start end]]
+                                     (let [predicate ["between" {}
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                                      ["absolute-datetime" {} start start-unit]
+                                                      ["absolute-datetime" {} end end-unit]]]
+                                       (cond-> [operator {"display-name" label}]
+                                         (contains? #{"sum-where" "distinct-where"} operator)
+                                         (conj ["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]])
+                                         true (conj predicate))))
+                                   [["Jan 2026" "2026-01-01" "2026-01-31"]
+                                    ["Mar 2026" "2026-03-01" "2026-03-31"]])
+                [before :as hop] (legacy-json-wire
+                                  {"aggregation" aggregations
+                                   "breakout" [["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]]
+                                   "order-by" [["desc" {} ["aggregation" {} 0]]]})
+                after (assert-survives-json-hop! hop)]
+            (is (= ["Jan 2026" "Mar 2026"]
+                   (mapv :display-name (take-last 2 (lib/returned-columns before)))))
+            (is (= (lib/remove-lib-uuids (lib/aggregations before))
+                   (lib/remove-lib-uuids (lib/aggregations after))))))))))
+
+(deftest conditional-date-range-with-column-uuid-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [[before :as hop] (legacy-json-wire
+                              {"aggregation"
+                               [["count-where" {}
+                                 ["between" {}
+                                  ["field" {"lib/uuid" "8b1a3b2c-0000-4000-8000-000000000001"}
+                                   ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                  ["absolute-datetime" {} "2017-01-01" "day"]
+                                  ["absolute-datetime" {} "2017-01-31" "day"]]]]})
+            after (assert-survives-json-hop! hop)]
+        (is (= (lib/remove-lib-uuids (lib/aggregations before))
+               (lib/remove-lib-uuids (lib/aggregations after))))))))
+
+(deftest conditional-aggregations-count-whole-days-test
+  (mt/dataset test-data
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [construct/resolve-database-id-from-first-stage (fn [_] (mt/id))]
+        (let [db-name (:name (mt/db))
+              created-at ["field" {} [db-name "PUBLIC" "ORDERS" "CREATED_AT"]]
+              user-id ["field" {} [db-name "PUBLIC" "ORDERS" "USER_ID"]]
+              result (fn [stage-kvs]
+                       (-> (construct/execute-representations-query
+                            (query-data
+                             {"lib/type" "mbql/query"
+                              "stages" [(merge {"lib/type" "mbql.stage/mbql"
+                                                "source-table" [db-name "PUBLIC" "ORDERS"]}
+                                               stage-kvs)]}))
+                           (get-in [:structured-output :query])
+                           qp/process-query mt/rows first))
+              total (first (result {"aggregation" [["count" {}]]}))]
+          (doseq [[start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]
+                  :let [start (fn [literal] ["absolute-datetime" {} literal start-unit])
+                        end (fn [literal] ["absolute-datetime" {} literal end-unit])]
+                  [predicate expected-count]
+                  [[["between" {} created-at (start "2017-01-01") (end "2017-01-31")] 205]
+                   [["=" {} created-at (end "2017-01-31")] 8]
+                   [["=" {} created-at (start "2017-01-30") (end "2017-01-31")] 14]
+                   [["in" {} created-at (start "2017-01-30") (end "2017-01-31")] 14]
+                   [["<=" {} created-at (end "2017-01-31")] 949]
+                   [[">" {} created-at (start "2017-01-30")] 17819]
+                   [["<" {} created-at (end "2017-02-01")] 949]
+                   [[">=" {} created-at (start "2017-01-31")] 17819]
+                   [["between" {} created-at (start "2017-01-31") ["now" {}]] 17819]
+                   [["between" {} created-at (start "2017-01-01") ["absolute-datetime" {} "2017-01-31T12:30:00" "default"]] 203]
+                   [["between" {} created-at (start "2017-01-01") ["absolute-datetime" {} "2017-01-31 12:30:00" "default"]] 203]
+                   [["between" {} created-at (start "2017-01-01") "2017-01-31 12:30:00"] 203]]]
+            (testing (pr-str predicate)
+              (let [;; Separate filters let Pass 2.95 handle dates with different units.
+                    filter-predicate (if (and (contains? #{"=" "in"} (first predicate)) (> (count predicate) 4))
+                                       (into ["or" {}] (map (fn [date] ["=" {} created-at date]) (drop 3 predicate)))
+                                       predicate)
+                    [filtered-count filtered-sum filtered-distinct]
+                    (result {"aggregation" [["count" {}] ["sum" {} user-id] ["distinct" {} user-id]]
+                             "filters" [filter-predicate]})
+                    [conditional-count conditional-sum conditional-distinct conditional-share]
+                    (result {"aggregation" [["count-where" {} predicate]
+                                            ["sum-where" {} user-id predicate]
+                                            ["distinct-where" {} user-id predicate]
+                                            ["share" {} predicate]]})]
+                (is (== expected-count filtered-count conditional-count))
+                (is (== filtered-sum conditional-sum))
+                (is (== filtered-distinct conditional-distinct))
+                (is (< (abs (- (double (/ filtered-count total)) (double conditional-share))) 1e-9))))))))))
 
 ;; A Metabot-built question reaches the frontend as legacy MBQL inside a base64 `/question#` hash,
 ;; so it makes a JSON hop that turns every keyword into a string. Legacy normalization has no
