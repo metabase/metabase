@@ -12,6 +12,8 @@ import { MUTANT_GLOBAL } from "./mutants";
  */
 
 export interface TestResult {
+  /** Absolute path of the wrapper spec that ran it. */
+  file: string;
   fullName: string;
   title: string;
   status: string;
@@ -43,6 +45,8 @@ function parseJestJson(file: string): JestRun {
       ) {
         continue;
       }
+      const suiteFile =
+        "name" in suite ? String(Reflect.get(suite, "name")) : "";
       for (const assertion of suite.assertionResults) {
         if (typeof assertion !== "object" || assertion === null) {
           continue;
@@ -51,6 +55,7 @@ function parseJestJson(file: string): JestRun {
           name in assertion ? Reflect.get(assertion, name) : undefined;
         const failureMessages: unknown = field("failureMessages");
         results.push({
+          file: suiteFile,
           fullName: String(field("fullName") ?? ""),
           title: String(field("title") ?? ""),
           status: String(field("status") ?? ""),
@@ -89,9 +94,12 @@ export function runJest(
     },
   );
   if (!fs.existsSync(outputFile)) {
-    throw new Error(
-      `jest produced no JSON output\n${result.stderr.slice(-2000)}`,
-    );
+    // spawnSync leaves stderr null when the process never started, which is
+    // what a command line over the system argument limit looks like.
+    const detail = result.error
+      ? result.error.message
+      : (result.stderr ?? "").slice(-2000);
+    throw new Error(`jest produced no JSON output\n${detail}`);
   }
   return parseJestJson(outputFile);
 }

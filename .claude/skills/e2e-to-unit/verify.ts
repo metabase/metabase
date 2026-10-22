@@ -19,6 +19,7 @@
  *     [--test "<spec>::<it title>"]... [--unit-spec <path>]...
  *     [--run <nightly run id>] [--boot-threshold 0.2] [--per-function 4]
  *     [--max-mutants 300] [--wrappers 4] [--exclude <path prefix>]...
+ *     [--no-siblings]
  *     [--scope-only] [--no-confirm] [--out <report.md>] [--json <open-rows.json>]
  */
 import { execFileSync } from "node:child_process";
@@ -33,17 +34,15 @@ import {
 } from "./verify/coverage";
 import {
   chunk,
-  mutantOf,
   removeWrappers,
   runJest,
   runJestCoverage,
-  stripMutant,
   writeWrappers,
 } from "./verify/jest";
 import {
-  classifyFailure,
+  collectPass,
+  failingPairs,
   judgeMutant,
-  type Observation,
   type PassResults,
 } from "./verify/judge";
 import {
@@ -344,63 +343,6 @@ function planMutants(
   return byFile;
 }
 
-interface CollectedPass {
-  pass: PassResults;
-  /** Test name (without the mutant prefix) to its it() title, for jest's -t filter. */
-  titles: Map<string, string>;
-}
-
-function collectPass(
-  results: ReturnType<typeof runJest>["results"],
-): CollectedPass {
-  const pass: PassResults = new Map();
-  const titles = new Map<string, string>();
-  for (const result of results) {
-    const mutant = mutantOf(result.title);
-    if (mutant === null) {
-      continue;
-    }
-    const name = stripMutant(result.fullName);
-    titles.set(name, stripMutant(result.title));
-    let observation: Observation;
-    if (result.status === "passed") {
-      observation = { outcome: "passed", assertion: false };
-    } else if (result.status === "failed") {
-      observation = classifyFailure(result.failureMessages);
-    } else {
-      observation = { outcome: "other", assertion: false };
-    }
-    let byMutant = pass.get(name);
-    if (!byMutant) {
-      byMutant = new Map();
-      pass.set(name, byMutant);
-    }
-    byMutant.set(mutant, observation);
-  }
-  return { pass, titles };
-}
-
-function failingPairs({ pass, titles }: CollectedPass) {
-  const mutants = new Set<number>();
-  const failingTitles = new Set<string>();
-  for (const [name, byMutant] of pass) {
-    if (byMutant.get(0)?.outcome !== "passed") {
-      continue;
-    }
-    for (const [mutant, observation] of byMutant) {
-      if (
-        mutant !== 0 &&
-        observation.outcome === "failed" &&
-        observation.assertion
-      ) {
-        mutants.add(mutant);
-        failingTitles.add(titles.get(name) ?? name);
-      }
-    }
-  }
-  return { mutants: [...mutants], titles: [...failingTitles] };
-}
-
 const escapeRegex = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -418,6 +360,14 @@ function runMutants(
   }
   const allIds = [...byFile.values()].flat().map((mutant) => mutant.id);
   let wrappers: string[] = [];
+  const wrapperSpecs = new Map<string, string>();
+  const write = (spec: string, groups: number[][]) => {
+    const files = writeWrappers(repoRoot, spec, groups);
+    for (const file of files) {
+      wrapperSpecs.set(path.join(repoRoot, file), spec);
+    }
+    return files;
+  };
   const cleanup = () => {
     restoreFiles(repoRoot, files);
     removeWrappers(repoRoot, wrappers);
@@ -433,14 +383,17 @@ function runMutants(
       writeSchemata(repoRoot, file, mutants);
     }
     wrappers = options.unitSpecs.flatMap((spec) =>
-      writeWrappers(repoRoot, spec, chunk(allIds, options.wrappers)),
+      write(spec, chunk(allIds, options.wrappers)),
     );
     const timeout = `--testTimeout=${options.testTimeoutMs}`;
     log(
       `fast pass: ${allIds.length} mutants, ${wrappers.length} wrapper specs`,
     );
     const fast = timed("fast pass", () =>
-      collectPass(runJest(repoRoot, [...wrappers, timeout], log).results),
+      collectPass(
+        runJest(repoRoot, [...wrappers, timeout], log).results,
+        wrapperSpecs,
+      ),
     );
     removeWrappers(repoRoot, wrappers);
     wrappers = [];
@@ -448,23 +401,23 @@ function runMutants(
       return { fast: fast.pass, confirm: null };
     }
     const failing = failingPairs(fast);
-    if (failing.mutants.length === 0) {
+    if (failing.pairs.size === 0) {
       return { fast: fast.pass, confirm: new Map() };
     }
-    wrappers = options.unitSpecs.flatMap((spec) =>
-      writeWrappers(
-        repoRoot,
+    wrappers = [...failing.pairs].flatMap(([spec, mutants]) =>
+      write(
         spec,
-        failing.mutants.map((mutant) => [mutant]),
+        [...mutants].map((mutant) => [mutant]),
       ),
     );
     const pattern = `(${failing.titles.map(escapeRegex).join("|")})$`;
     log(
-      `confirm pass: ${failing.mutants.length} mutants in their own files, ${failing.titles.length} tests`,
+      `confirm pass: ${wrappers.length} mutants in their own files across ${failing.pairs.size} specs, ${failing.titles.length} tests`,
     );
     const confirm = timed("confirm pass", () =>
       collectPass(
         runJest(repoRoot, [...wrappers, timeout, "-t", pattern], log).results,
+        wrapperSpecs,
       ),
     );
     return { fast: fast.pass, confirm: confirm.pass };

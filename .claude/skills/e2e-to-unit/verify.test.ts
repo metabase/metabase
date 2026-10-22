@@ -16,7 +16,13 @@ import {
   wrapperPath,
   wrapperSource,
 } from "./verify/jest";
-import { type PassResults, classifyFailure, judgeMutant } from "./verify/judge";
+import {
+  type PassResults,
+  classifyFailure,
+  collectPass,
+  failingPairs,
+  judgeMutant,
+} from "./verify/judge";
 import { mapLine, parseDeletedTests, parseHunks } from "./verify/lines";
 import {
   applySchemata,
@@ -220,8 +226,8 @@ describe("wrapper spec", () => {
 describe("judge", () => {
   const observation = (
     outcome: "passed" | "failed" | "other",
-    assertion = false,
-  ) => ({ outcome, assertion });
+    observed = false,
+  ) => ({ outcome, observed });
   const pass = (
     rows: [string, Record<number, ReturnType<typeof observation>>][],
   ): PassResults =>
@@ -235,12 +241,44 @@ describe("judge", () => {
     );
 
   it("classifies assertion failures", () => {
-    expect(classifyFailure(["expect(received).toBe(expected)"]).assertion).toBe(
+    expect(classifyFailure(["expect(received).toBe(expected)"]).observed).toBe(
       true,
     );
-    expect(classifyFailure(["TypeError: x is not a function"]).assertion).toBe(
+    expect(classifyFailure(["TypeError: x is not a function"]).observed).toBe(
       false,
     );
+  });
+
+  it("counts a crash in the spec's own frame as an observation", () => {
+    const inSpec = classifyFailure([
+      [
+        "TypeError: Cannot read properties of undefined (reading 'data')",
+        "    at Object.<anonymous> (/repo/src/thing/use-thing.unit.spec.ts:21:28)",
+        "    at Promise.then.completed (/repo/node_modules/jest-circus/build/utils.js:298:28)",
+      ].join("\n"),
+    ]);
+    expect(inSpec.observed).toBe(true);
+
+    const inProduct = classifyFailure([
+      [
+        "TypeError: Cannot read properties of undefined (reading 'map')",
+        "    at AdvisoryList (/repo/src/thing/AdvisoryList.tsx:49:31)",
+        "    at Object.<anonymous> (/repo/src/thing/AdvisoryList.unit.spec.tsx:12:5)",
+      ].join("\n"),
+    ]);
+    expect(inProduct.observed).toBe(false);
+    expect(inProduct.note).toBe("error in product code, not an assertion");
+  });
+
+  it("never counts a jest timeout as an observation", () => {
+    const timedOut = classifyFailure([
+      [
+        "thrown: Exceeded timeout of 25000 ms for a test.",
+        "    at Object.<anonymous> (/repo/src/thing/use-thing.unit.spec.ts:21:28)",
+      ].join("\n"),
+    ]);
+    expect(timedOut.observed).toBe(false);
+    expect(timedOut.note).toBe("timed out");
   });
 
   it("needs a clean pass, an assertion failure, and a confirmed rerun", () => {
@@ -287,7 +325,7 @@ describe("judge", () => {
     expect(judgeMutant(2, fast, new Map()).status).toBe("unmeasured");
   });
 
-  it("treats a thrown error as unmeasured, not caught", () => {
+  it("treats an unobserved failure as unmeasured, not caught", () => {
     const fast = pass([
       [
         "Thing › renders",
@@ -295,6 +333,122 @@ describe("judge", () => {
       ],
     ]);
     expect(judgeMutant(1, fast, null).status).toBe("unmeasured");
+  });
+});
+
+describe("collecting a pass", () => {
+  const result = (
+    file: string,
+    title: string,
+    status: string,
+    failureMessages: string[] = [],
+  ) => ({
+    file,
+    fullName: `Thing \u203a ${title}`,
+    title,
+    status,
+    failureMessages,
+  });
+  const wrapper = "/repo/__e2e_verify_Thing_0.unit.spec.tsx";
+
+  it("keys each test by its name without the mutant, and records its spec", () => {
+    const { pass, titles, specs } = collectPass(
+      [
+        result(wrapper, "[m0] renders", "passed"),
+        result(wrapper, "[m7] renders", "failed", [
+          "expect(received).toBe(expected)",
+        ]),
+      ],
+      new Map([[wrapper, "src/Thing.unit.spec.tsx"]]),
+    );
+    expect(pass.get("Thing \u203a renders")).toEqual(
+      new Map([
+        [0, { outcome: "passed", observed: false }],
+        [7, { outcome: "failed", observed: true }],
+      ]),
+    );
+    expect(titles.get("Thing \u203a renders")).toBe("renders");
+    expect(specs.get("Thing \u203a renders")).toEqual(
+      new Set(["src/Thing.unit.spec.tsx"]),
+    );
+  });
+
+  it("ignores a test with no mutant prefix", () => {
+    const { pass } = collectPass(
+      [result(wrapper, "renders", "passed")],
+      new Map(),
+    );
+    expect(pass.size).toBe(0);
+  });
+});
+
+describe("failing pairs for the confirmation pass", () => {
+  const observed = { outcome: "failed" as const, observed: true };
+  const passed = { outcome: "passed" as const, observed: false };
+
+  it("reruns a mutant only under the spec whose test saw it fail", () => {
+    const pass: PassResults = new Map([
+      [
+        "Thing \u203a renders",
+        new Map([
+          [0, passed],
+          [1, observed],
+        ]),
+      ],
+      [
+        "Other \u203a renders",
+        new Map([
+          [0, passed],
+          [2, observed],
+        ]),
+      ],
+    ]);
+    const { pairs, titles } = failingPairs({
+      pass,
+      titles: new Map([
+        ["Thing \u203a renders", "renders"],
+        ["Other \u203a renders", "renders"],
+      ]),
+      specs: new Map([
+        ["Thing \u203a renders", new Set(["src/Thing.unit.spec.tsx"])],
+        ["Other \u203a renders", new Set(["src/Other.unit.spec.tsx"])],
+      ]),
+    });
+    expect(pairs).toEqual(
+      new Map([
+        ["src/Thing.unit.spec.tsx", new Set([1])],
+        ["src/Other.unit.spec.tsx", new Set([2])],
+      ]),
+    );
+    expect(titles).toEqual(["renders"]);
+  });
+
+  it("leaves out a mutant that no clean-passing test failed on", () => {
+    const pass: PassResults = new Map([
+      [
+        "Thing \u203a renders",
+        new Map([
+          [0, passed],
+          [1, passed],
+        ]),
+      ],
+      [
+        "Thing \u203a broken",
+        new Map([
+          [0, observed],
+          [2, observed],
+        ]),
+      ],
+    ]);
+    const { pairs } = failingPairs({
+      pass,
+      titles: new Map(),
+      specs: new Map([
+        ["Thing \u203a renders", new Set(["src/Thing.unit.spec.tsx"])],
+        ["Thing \u203a broken", new Set(["src/Thing.unit.spec.tsx"])],
+      ]),
+    });
+    expect(pairs.size).toBe(0);
   });
 });
 
