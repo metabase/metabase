@@ -5,6 +5,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
@@ -353,10 +354,13 @@
     (mt/with-current-user (mt/user->id :rasta)
       (testing "a source-field must be available in its own stage and join context"
         (doseq [stages [[(breakout {:source-field category-id} category)]
-                        [{:fields [["field" {} (fk "CHECKINS" "ID")]]}
+                        [(breakout {:source-field venue-id :source-field-name "BOGUS"} (fk "VENUES" "NAME"))]
+                        [{:aggregation [["count" {}]]}
                          (breakout {:source-field venue-id} (fk "VENUES" "NAME"))]
                         [(assoc (breakout {:source-field category-id :source-field-join-alias "Other"} category)
                                 :joins [venues-join])]
+                        [(assoc (breakout {:source-field category-id :source-field-name "CATEGORY_ID"
+                                           :source-field-join-alias "Other"} category) :joins [venues-join])]
                         [{:joins [(assoc venues-join :stages
                                          [{:lib/type     "mbql.stage/mbql"
                                            :source-table [db "PUBLIC" "VENUES"]
@@ -371,14 +375,18 @@
       (testing "available keys work in later stages and through an explicit join"
         (doseq [stages [[{:fields [["field" {} venue-id]]}
                          (breakout {:source-field venue-id} (fk "VENUES" "NAME"))]
+                        [{:fields [["field" {} (fk "CHECKINS" "ID")]]}
+                         (breakout {:source-field venue-id} (fk "VENUES" "NAME"))]
+                        [(assoc (breakout {:source-field venue-id} (fk "VENUES" "NAME"))
+                                :joins [venues-join])]
                         [(assoc (breakout {:source-field category-id :source-field-join-alias "Venues"} category)
                                 :joins [venues-join])]
                         [(assoc (breakout {:source-field category-id} category) :joins [venues-join])]
                         [(breakout {:source-field venue-id} (fk "VENUES" "NAME"))
                          {:fields [["field" {:source-field venue-id} (fk "VENUES" "NAME")]]}]]]
           (testing (pr-str stages)
-            (let [query (get-in (construct-checkins-query db stages) [:structured-output :query])]
-              (is (seq (mt/rows (qp/process-query query)))))))))))
+            (is (seq (mt/rows (qp/process-query
+                               (get-in (construct-checkins-query db stages) [:structured-output :query])))))))))))
 
 (deftest construct-notebook-query-direct-source-field-hint-test
   (let [db       (t2/select-one-fn :name :model/Database (mt/id))
@@ -396,6 +404,42 @@
         (is (str/includes? (or (ex-message e) "") (str "Use `source-field` " (pr-str user-id)))))
       (testing "the direct key suggested by the hint builds and runs"
         (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
+
+(deftest construct-notebook-query-joined-key-propagation-test
+  (let [db     (t2/select-one-fn :name :model/Database (mt/id))
+        stages [{:fields [["field" {} [db "PUBLIC" "CHECKINS" "ID"]]]
+                 :joins  [(assoc (checkins-venues-join db) :fields "none")]}
+                {:aggregation [["count" {}]]
+                 :breakout [["field" {:source-field [db "PUBLIC" "VENUES" "CATEGORY_ID"]
+                                      :source-field-name "Venues__CATEGORY_ID"}
+                             [db "PUBLIC" "CATEGORIES" "NAME"]]]}]
+        run!   (fn []
+                 (mt/rows (qp/process-query
+                           (get-in (construct-checkins-query db stages) [:structured-output :query]))))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (is (seq (run!))))))
+
+(deftest construct-notebook-query-source-card-key-propagation-test
+  (let [mp       (mt/metadata-provider)
+        db       (t2/select-one-fn :name :model/Database (mt/id))
+        base     (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+        raw      (lib/with-fields base [(lib.metadata/field mp (mt/id :checkins :id))])
+        run!     (fn [card-eid]
+                   (get-in (construct/execute-representations-query
+                            {:lib/type "mbql/query"
+                             :stages   [{:lib/type    "mbql.stage/mbql"
+                                         :source-card card-eid
+                                         :aggregation [["count" {}]]
+                                         :breakout    [["field" {:source-field [db "PUBLIC" "CHECKINS" "VENUE_ID"]}
+                                                        [db "PUBLIC" "VENUES" "NAME"]]]}]})
+                           [:structured-output :query]))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[summarized? query] [[false raw] [true (lib/aggregate base (lib/count))]]]
+        (mt/with-temp [:model/Card {card-eid :entity_id} {:name "Check-ins source" :dataset_query query}]
+          (if summarized?
+            (let [e (try (run! card-eid) (catch clojure.lang.ExceptionInfo e e))]
+              (is (= :wrong-source-field (:error (ex-data e)))))
+            (is (seq (mt/rows (qp/process-query (run! card-eid)))))))))))
 
 (defn- construct-tool-failure-for-thrown
   "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the

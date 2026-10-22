@@ -701,23 +701,62 @@
        (or (nil? source-field-name)
            (= source-field-name ((some-fn :fk-field-name :lib/original-fk-field-name) column)))))
 
+(defn- source-field-key-column
+  [query stage-number {:keys [source-field source-field-name source-field-join-alias]} columns]
+  (when-let [field (lib.metadata/field query source-field)]
+    (let [key-ref (lib/with-join-alias (lib/ref field) source-field-join-alias)]
+      (some (fn [column]
+              (when (and (= source-field (:id column))
+                         (lib/find-matching-column query stage-number key-ref [column]
+                                                   {:generous? (nil? source-field-join-alias)})
+                         (or (nil? source-field-name)
+                             (= source-field (:id (lib/metadata query stage-number
+                                                                (assoc key-ref 2 source-field-name))))))
+                column))
+            columns))))
+
+(defn- unsummarized-stage?
+  [query stage-number]
+  (not (or (seq (lib/aggregations query stage-number)) (seq (lib/breakouts query stage-number)))))
+
+(defn- available-source-field
+  ([query stage-number opts]
+   (available-source-field query stage-number opts #{}))
+  ([query stage-number opts visited-cards]
+   (or (source-field-key-column query stage-number opts
+                                (lib/visible-columns query stage-number {:include-implicitly-joinable? false}))
+       ;; The query processor can add a needed key to an earlier stage's projection.
+       (if-let [previous-stage (lib.util/previous-stage-number query stage-number)]
+         (when (unsummarized-stage? query previous-stage)
+           (recur query previous-stage opts visited-cards))
+         (when-let [card-id (lib.util/source-card-id query)]
+           (when-not (contains? visited-cards card-id)
+             (when-let [card (lib.metadata/card query card-id)]
+               (when (:dataset-query card)
+                 (let [card-query (lib/card->underlying-query query card)]
+                   (when (unsummarized-stage? card-query -1)
+                     (recur card-query -1 opts (conj visited-cards card-id))))))))))))
+
 (defn- assert-source-field-in-stage!
   [query stage-number [_ {:keys [source-field] :as opts} target :as field-ref]]
   (let [columns (lib/visible-columns query stage-number)]
     (when-not (lib/find-matching-column query stage-number field-ref
                                         (filter #(source-field-column? opts %) columns) {:generous? true})
       (let [mp          (lib.metadata/->metadata-provider query)
-            table-id    (when (pos-int? target) (:table-id (fetch-field mp target)))
+            table-id    (:table-id (if (pos-int? target)
+                                     (fetch-field mp target)
+                                     (lib/metadata query stage-number field-ref)))
             fk-field    (fetch-field mp source-field)
             fk-table-id (some->> (:fk-target-field-id fk-field) (fetch-field mp) :table-id)
             field-ref   (field-ref-for-error mp field-ref)]
-        (if (and table-id fk-field (not= table-id fk-table-id))
-          (throw (wrong-source-field-error mp field-ref table-id fk-table-id columns))
-          (throw (ex-info (format "Field %s cannot be reached through `source-field` %s in this stage. Use a foreign key available in this stage, or join the field's table explicitly and reference it with `join-alias`."
-                                  (pr-str (nth field-ref 2)) (pr-str (get-in field-ref [1 :source-field])))
-                          {:agent-error? true
-                           :status-code  400
-                           :error        :wrong-source-field})))))))
+        (when-not (and table-id (= table-id fk-table-id) (available-source-field query stage-number opts))
+          (if (and table-id fk-field (not= table-id fk-table-id))
+            (throw (wrong-source-field-error mp field-ref table-id fk-table-id columns))
+            (throw (ex-info (format "Field %s cannot be reached through `source-field` %s in this stage. Use a foreign key available in this stage, or join the field's table explicitly and reference it with `join-alias`."
+                                    (pr-str (nth field-ref 2)) (pr-str (get-in field-ref [1 :source-field])))
+                            {:agent-error? true
+                             :status-code  400
+                             :error        :wrong-source-field}))))))))
 
 (defn- assert-source-fields-reach-their-tables!
   "Reject implicit field references that cannot be reached through their stage's visible columns."
