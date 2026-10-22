@@ -951,7 +951,7 @@
                            (mt/run-mbql-query venues
                              {:joins [{:source-table $$categories
                                        :alias        "Cat"
-                                       :condition    [:= $id $id]
+                                       :condition    [:= $category_id &Cat.categories.id]
                                        :fields       [&Cat.categories.id]}]
                               :order-by [[:asc $id] [:asc &Cat.categories.id]]
                               :limit 1}))]
@@ -970,7 +970,7 @@
                                venues
                                {:joins [{:source-table $$categories
                                          :alias        evil-join-alias
-                                         :condition    [:= $id $id]
+                                         :condition    [:= $category_id [:field %categories.id {:join-alias evil-join-alias}]]
                                          :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
                                 :order-by [[:asc $id] [:asc [:field %categories.id {:join-alias evil-join-alias}]]]
                                 :limit 1})]
@@ -1218,6 +1218,16 @@
    [3 "The Apple Pan" nil]
    [4 "Wurstküche" nil]])
 
+(defmethod driver/database-supports? [::driver/driver ::arbitrary-join-conditions]
+  [_driver _feature _database]
+  true)
+
+;;; ClickHouse needs at least one equality of a left column and a right column in a join condition, and the two sides
+;;; of that equality must have types with a common supertype.
+(defmethod driver/database-supports? [:clickhouse ::arbitrary-join-conditions]
+  [_driver _feature _database]
+  false)
+
 (defn- check-venues+categories-on-condition
   [condition expected-rows]
   (let [query (mt/mbql-query venues
@@ -1245,7 +1255,7 @@
      venues+categories-expected-rows-for-fk=pk-join-condition)))
 
 (deftest ^:parallel join-expressions-lhs-and-rhs-both-expressions-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:=
       [:* 1 (mt/$ids venues $category_id)]
@@ -1320,7 +1330,7 @@
       [2 "Stout Burgers & Beers" "Dim Sum"]])))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-literal-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:=
       (mt/$ids venues $name)
@@ -1357,7 +1367,7 @@
       [2 "Stout Burgers & Beers" "Café Sweets"]])))
 
 (deftest ^:parallel join-expressions-lhs-expr-rhs-col-with-operator-<-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:<
       [:+ 1 (mt/$ids venues $price)]
@@ -1366,7 +1376,7 @@
       [1 "Red Medicine" "Bakery"]])))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-col-with-operator-!=-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:!=
       (mt/$ids venues $category_id)
@@ -1457,7 +1467,7 @@
      venues+categories-expected-rows-for-always-false-condition)))
 
 (deftest ^:parallel join-expressions-aggregations-and-breakouts-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations ::arbitrary-join-conditions)
     (doseq [{:keys [description condition]}
             [{:description "products + orders with lhs and rhs columns"
               :condition   [:=
