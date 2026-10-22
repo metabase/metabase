@@ -6,9 +6,14 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/ui";
-import { ActionIcon, Flex, type FlexProps, Icon } from "metabase/ui";
-import { displayNameForColumn } from "metabase/utils/formatting";
+import {
+  ActionIcon,
+  Ellipsified,
+  Flex,
+  type FlexProps,
+  Icon,
+} from "metabase/ui";
+import { displayNameForColumn } from "metabase/value-formatting";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type { DatasetColumn, IconName } from "metabase-types/api";
 
@@ -68,6 +73,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
             miw={16}
           />
           <Icon
+            // Unjustified type cast. FIXME
             name={getIconForField(column) as IconName}
             mr={4}
             size={16}
@@ -76,7 +82,11 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
           <Ellipsified>{displayNameForColumn(column)}</Ellipsified>
         </Flex>
         {!!onRemove && (
-          <ActionIcon aria-label={t`Remove`} onClick={handleRemoveClick}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Remove`}
+            onClick={handleRemoveClick}
+          >
             <Icon name="close" size={14} />
           </ActionIcon>
         )}

@@ -1,5 +1,5 @@
-import { isolateHistory } from "@codemirror/commands";
-import { EditorSelection } from "@codemirror/state";
+import { EditorSelection, Transaction } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,6 +37,7 @@ import {
   readMetricIdentities,
   setMetricIdentities,
 } from "./metricTokenHighlight";
+import { programmaticFormulaUpdate } from "./trustedDocChangesOnly";
 
 type UseFormulaEditorParams = {
   formulaEntities: MetricsViewerFormulaEntity[];
@@ -58,7 +59,6 @@ type UseFormulaEditorParams = {
 };
 
 export type UseFormulaEditorResult = {
-  editText: string;
   isFocused: boolean;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -68,6 +68,7 @@ export type UseFormulaEditorResult = {
   isExpressionDirty: boolean;
   pendingFocusRef: MutableRefObject<boolean>;
   handleInputFocus: () => void;
+  handleEditorCreate: (view: EditorView) => void;
   handleInputBlur: (event: React.FocusEvent) => void;
   handleEditExpression: (entityIndex: number) => void;
   handleChange: (newText: string) => void;
@@ -93,8 +94,6 @@ export function useFormulaEditor({
   containerRef,
   dropdownRef,
 }: UseFormulaEditorParams): UseFormulaEditorResult {
-  // editText is the full expression as plain text — only meaningful while focused
-  const [editText, setEditText] = useState("");
   // currentWord is the word under the cursor, used as the dropdown search query
   const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -114,8 +113,7 @@ export function useFormulaEditor({
   // caret lands at the end of that expression instead of the full formula.
   const pendingCaretPositionRef = useRef<number | null>(null);
   // Refs for reading latest values in callbacks without stale closures
-  const editTextRef = useRef(editText);
-  editTextRef.current = editText;
+  const editTextRef = useRef("");
   const formulaEntitiesRef = useRef(formulaEntities);
   formulaEntitiesRef.current = formulaEntities;
   const definitionsRef = useRef(definitions);
@@ -128,16 +126,10 @@ export function useFormulaEditor({
   const handleRunRef = useRef<() => void>(() => {});
   // Text captured at focus time — used to detect whether the user actually
   // changed the expression and therefore needs to click "Run" to commit.
-  const [textAtFocus, setTextAtFocus] = useState("");
-  const textAtFocusRef = useRef(textAtFocus);
-  textAtFocusRef.current = textAtFocus;
-  const pendingMetricIdentitiesRef = useRef<MetricIdentityEntry[] | null>(null);
-  const [editingSessionIdentities, setEditingSessionIdentities] = useState<
-    MetricIdentityEntry[]
-  >([]);
+  const textAtFocusRef = useRef("");
+  const isSyncingDocRef = useRef(false);
   // Explicitly tracks whether the expression was modified during this editing
-  // session (metric selected from dropdown, or text typed). Avoids timing
-  // issues with comparing editText vs textAtFocus across async state updates.
+  // session (metric selected from dropdown, or text typed).
   const [isExpressionDirty, setIsExpressionDirty] = useState(false);
 
   // Clean up parens per expression entry (only when not actively editing)
@@ -171,64 +163,134 @@ export function useFormulaEditor({
     }
   }, [isFocused, editorRef]);
 
-  const handleInputFocus = useCallback(() => {
-    if (isCollapsingRef.current) {
-      return;
-    }
-    // If an editing session is already active (e.g. focus returning from a
-    // dropdown item click via view.focus()), do not reset the text or the
-    // committed baseline.
-    if (isEditingSessionActiveRef.current) {
-      return;
-    }
-    isEditingSessionActiveRef.current = true;
-    const { text: fullText, identities: initialIdentities } =
-      buildFullTextWithIdentities(
-        formulaEntitiesRef.current,
-        metricNamesRef.current,
-      );
-    setEditingSessionIdentities(initialIdentities);
+  // Deferred via requestMeasure because coordsAtPos needs the freshly created
+  // editor to be laid out and measured first. A destroyed view (e.g. a
+  // StrictMode remount) cancels its pending measure, so no staleness guards
+  // are needed beyond the session-active check.
+  const scheduleDropdownAtCaret = useCallback(
+    (view: EditorView, caretPos: number, shouldOpenDropdown: boolean) => {
+      view.requestMeasure({
+        read: (measuredView) =>
+          measuredView.coordsAtPos(
+            Math.min(caretPos, measuredView.state.doc.length),
+          ),
+        write: (coords) => {
+          if (!isEditingSessionActiveRef.current) {
+            return;
+          }
+          if (coords) {
+            setAnchorRect({ left: coords.left, top: coords.bottom });
+          }
+          if (shouldOpenDropdown) {
+            setCurrentWord("");
+            setIsOpen(true);
+          }
+        },
+      });
+    },
+    [],
+  );
 
+  /** One transaction that fixes the doc (only if it diverges), sets the caret, and installs identities atomically. */
+  const syncViewWithSession = useCallback(
+    (
+      view: EditorView,
+      fullText: string,
+      identities: MetricIdentityEntry[],
+      caretPos: number,
+    ) => {
+      const currentDoc = view.state.doc.toString();
+      // Replacing the doc with identical text still wipes identities
+      // (TrackDel maps positions through the deletion), so only dispatch
+      // changes when the text actually diverges.
+      const changes =
+        currentDoc !== fullText
+          ? { from: 0, to: currentDoc.length, insert: fullText }
+          : undefined;
+      isSyncingDocRef.current = true;
+      view.dispatch({
+        changes,
+        selection: EditorSelection.cursor(caretPos),
+        effects: setMetricIdentities.of(identitiesFromEntries(identities)),
+        annotations: [
+          Transaction.addToHistory.of(false),
+          programmaticFormulaUpdate.of(true),
+        ],
+      });
+      isSyncingDocRef.current = false;
+    },
+    [],
+  );
+
+  /** Session text, identities and caret derived from the committed entities and the requested caret. */
+  const planEditingSession = useCallback(() => {
+    const { text: fullText, identities } = buildFullTextWithIdentities(
+      formulaEntitiesRef.current,
+      metricNamesRef.current,
+    );
     const requestedCaret = pendingCaretPositionRef.current;
-    const shouldOpenDropdown = requestedCaret == null;
+    return {
+      fullText,
+      identities,
+      caretPos: Math.min(requestedCaret ?? Infinity, fullText.length),
+      shouldOpenDropdown: requestedCaret === null,
+    };
+  }, [metricNamesRef]);
 
-    setTextAtFocus(fullText);
-    setIsFocused(true);
+  /** Resets the React side of a session: the committed baseline and the editing flags. */
+  const applySessionState = useCallback((fullText: string) => {
+    textAtFocusRef.current = fullText;
     editTextRef.current = fullText;
-    setEditText(fullText);
+    setIsFocused(true);
     setValidationError(null);
     setIsExpressionDirty(false);
-    // After CodeMirror renders the initial text, position the caret and
-    // create an undo boundary. The @uiw/react-codemirror value sync adds
-    // to the undo history, so without isolateHistory("before"), a quick
-    // Cmd+Z after deleting a metric token would undo both the deletion
-    // AND the initial text insertion (they'd be grouped together).
-    setTimeout(() => {
-      const view = editorRef.current?.view;
-      if (view) {
-        const docLen = view.state.doc.length;
-        pendingCaretPositionRef.current = null;
-        const caretPos =
-          requestedCaret != null
-            ? Math.min(Math.max(requestedCaret, 0), docLen)
-            : docLen;
-        const identities = identitiesFromEntries(initialIdentities);
-        view.dispatch({
-          selection: EditorSelection.cursor(caretPos),
-          effects: setMetricIdentities.of(identities),
-          annotations: isolateHistory.of("full"),
-        });
-        const coords = view.coordsAtPos(caretPos);
-        if (coords) {
-          setAnchorRect({ left: coords.left, top: coords.bottom });
-        }
-        if (shouldOpenDropdown) {
-          setCurrentWord("");
-          setIsOpen(true);
-        }
+  }, []);
+
+  const initializeEditingSession = useCallback(
+    (viewOverride?: EditorView) => {
+      if (isCollapsingRef.current) {
+        return;
       }
-    }, 0);
-  }, [editorRef, metricNamesRef]);
+      // If an editing session is already active (e.g. focus returning from a
+      // dropdown item click via view.focus()), do not reset the text or the
+      // committed baseline.
+      if (isEditingSessionActiveRef.current) {
+        return;
+      }
+      isEditingSessionActiveRef.current = true;
+
+      const { fullText, identities, caretPos, shouldOpenDropdown } =
+        planEditingSession();
+      applySessionState(fullText);
+
+      const view = viewOverride ?? editorRef.current?.view;
+      if (!view) {
+        return;
+      }
+
+      syncViewWithSession(view, fullText, identities, caretPos);
+      scheduleDropdownAtCaret(view, caretPos, shouldOpenDropdown);
+    },
+    [
+      editorRef,
+      planEditingSession,
+      applySessionState,
+      syncViewWithSession,
+      scheduleDropdownAtCaret,
+    ],
+  );
+
+  const handleInputFocus = useCallback(() => {
+    initializeEditingSession();
+  }, [initializeEditingSession]);
+
+  const handleEditorCreate = useCallback(
+    (view: EditorView) => {
+      isEditingSessionActiveRef.current = false;
+      initializeEditingSession(view);
+    },
+    [initializeEditingSession],
+  );
 
   /**
    * Transition into focused-formula mode and place the caret at the end of
@@ -254,8 +316,8 @@ export function useFormulaEditor({
 
   /** Commits the current text: parses formula entities, removes unreferenced metrics, and collapses. */
   const commitAndCollapse = useCallback(() => {
-    const newText = editTextRef.current;
     const view = editorRef.current?.view;
+    const newText = view ? view.state.doc.toString() : editTextRef.current;
     const trackedIdentities = view ? readMetricIdentities(view) : [];
 
     const parsedEntities = parseFullText(
@@ -304,16 +366,25 @@ export function useFormulaEditor({
     onFormulaEntitiesChange(reconciledEntities, slotMapping);
     isCollapsingRef.current = true;
     isEditingSessionActiveRef.current = false;
+    pendingCaretPositionRef.current = null;
     textAtFocusRef.current = newText;
-    setTextAtFocus(newText);
     setIsFocused(false);
     setIsOpen(false);
     setCurrentWord("");
     editTextRef.current = "";
-    setEditText("");
     setValidationError(null);
     setIsExpressionDirty(false);
-    setEditingSessionIdentities([]);
+    if (view && view.state.doc.length > 0) {
+      isSyncingDocRef.current = true;
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length },
+        annotations: [
+          Transaction.addToHistory.of(false),
+          programmaticFormulaUpdate.of(true),
+        ],
+      });
+      isSyncingDocRef.current = false;
+    }
   }, [
     editorRef,
     metricNamesRef,
@@ -324,28 +395,29 @@ export function useFormulaEditor({
 
   const handleInputBlur = useCallback(
     (event: React.FocusEvent) => {
+      const view = editorRef.current?.view;
+      const docText = view ? view.state.doc.toString() : editTextRef.current;
       // If the text hasn't changed since focus, collapse back to pills view
       // without requiring the user to click "Run".
       if (
-        editTextRef.current === textAtFocusRef.current &&
+        docText === textAtFocusRef.current &&
         !dropdownRef.current?.containerRef.current?.contains(
           event.relatedTarget,
         )
       ) {
         isEditingSessionActiveRef.current = false;
+        pendingCaretPositionRef.current = null;
         setIsFocused(false);
         setIsOpen(false);
         setCurrentWord("");
-        setEditText("");
         setValidationError(null);
         setIsExpressionDirty(false);
         return;
       }
 
-      const view = editorRef.current?.view;
       const identities = view ? readMetricIdentities(view) : [];
       const invalidRanges = findInvalidRanges(
-        editTextRef.current,
+        docText,
         metricNamesRef.current,
         identities,
       );
@@ -361,12 +433,11 @@ export function useFormulaEditor({
 
   const handleChange = useCallback(
     (newText: string) => {
-      const view = editorRef.current?.view;
-      if (view) {
-        pendingMetricIdentitiesRef.current = readMetricIdentities(view);
+      if (isSyncingDocRef.current) {
+        return;
       }
+      const view = editorRef.current?.view;
       editTextRef.current = newText;
-      setEditText(newText);
       setValidationError(null);
       if (isCollapsingRef.current) {
         return;
@@ -396,59 +467,6 @@ export function useFormulaEditor({
     },
     [editorRef, metricNamesRef],
   );
-
-  /**
-   * @uiw/react-codemirror can sync the controlled value with a full doc
-   * replacement, which drops our custom identity field. Restore identities that
-   * still point at the same metric text so validation does not reject them.
-   */
-  useEffect(() => {
-    const view = editorRef.current?.view;
-    const pendingIdentities = pendingMetricIdentitiesRef.current;
-
-    if (!view || pendingIdentities == null) {
-      return;
-    }
-
-    if (view.state.doc.toString() !== editText) {
-      return;
-    }
-
-    const currentIdentities = readMetricIdentities(view);
-    const identityByPosition = new Map<string, MetricIdentityEntry>(
-      currentIdentities.map((identity): [string, MetricIdentityEntry] => [
-        `${identity.from}:${identity.to}`,
-        identity,
-      ]),
-    );
-
-    const recoverableIdentities =
-      editText === textAtFocusRef.current
-        ? [...editingSessionIdentities, ...pendingIdentities]
-        : pendingIdentities;
-
-    for (const identity of recoverableIdentities) {
-      const positionKey = `${identity.from}:${identity.to}`;
-      const metricName = metricNamesRef.current[identity.sourceId];
-      if (
-        !identityByPosition.has(positionKey) &&
-        metricName != null &&
-        view.state.doc.sliceString(identity.from, identity.to) === metricName
-      ) {
-        identityByPosition.set(positionKey, identity);
-      }
-    }
-
-    const recoveredIdentities = Array.from(identityByPosition.values());
-    if (currentIdentities.length < recoveredIdentities.length) {
-      view.dispatch({
-        effects: setMetricIdentities.of(
-          identitiesFromEntries(recoveredIdentities),
-        ),
-      });
-    }
-    pendingMetricIdentitiesRef.current = null;
-  }, [editText, editingSessionIdentities, editorRef, metricNamesRef]);
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
@@ -491,9 +509,6 @@ export function useFormulaEditor({
           ? createMetricSourceId(metric.id)
           : createMeasureSourceId(metric.id);
 
-      // Dispatch through the view (not setEditText) — the value-prop sync
-      // in @uiw/react-codemirror does a full doc replacement that destroys
-      // all RangeSet-tracked identities.
       view.dispatch({
         changes: { from: replaceFrom, to: replaceTo, insert: insertText },
         selection: EditorSelection.cursor(newCursorPos),
@@ -503,6 +518,7 @@ export function useFormulaEditor({
           sourceId,
           definition: definitionsRef.current[sourceId]?.definition ?? null,
         }),
+        annotations: programmaticFormulaUpdate.of(true),
       });
       editTextRef.current = view.state.doc.toString();
 
@@ -661,9 +677,10 @@ export function useFormulaEditor({
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
     const view = editorRef.current?.view;
+    const docText = view ? view.state.doc.toString() : editTextRef.current;
     const identities = view ? readMetricIdentities(view) : [];
     const invalidRanges = findInvalidRanges(
-      editTextRef.current,
+      docText,
       metricNamesRef.current,
       identities,
     );
@@ -687,7 +704,7 @@ export function useFormulaEditor({
     const ranges =
       validationError !== null
         ? findInvalidRanges(
-            editTextRef.current,
+            view.state.doc.toString(),
             metricNamesRef.current,
             identities,
           )
@@ -696,7 +713,6 @@ export function useFormulaEditor({
   }, [validationError, editorRef, metricNamesRef]);
 
   return {
-    editText,
     isFocused,
     isOpen,
     setIsOpen,
@@ -706,6 +722,7 @@ export function useFormulaEditor({
     isExpressionDirty,
     pendingFocusRef,
     handleInputFocus,
+    handleEditorCreate,
     handleInputBlur,
     handleEditExpression,
     handleChange,

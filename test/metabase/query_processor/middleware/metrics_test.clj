@@ -2,7 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.metrics-test]}}}}}}
   (:require
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
@@ -19,13 +19,17 @@
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
 ;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private counter (atom 2000))
 
@@ -167,6 +171,17 @@
     (is (=? {:stages [{:source-table (meta/id :products)
                        :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
             (adjust query)))))
+
+(deftest ^:parallel metric-with-name-override-test
+  (testing "name from the metric clause options is preserved (GHY-4517) so later stages can reference the column"
+    (let [[source-metric mp] (mock-metric)
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.options/update-options (lib/ref (lib.metadata/metric mp (:id source-metric)))
+                                                               assoc :name "avg_rating")))]
+      (is (=? {:stages [{:aggregation [[:avg {:name "avg_rating"} some?]]}]}
+              (adjust query)))
+      (is (= ["avg_rating"]
+             (map :name (lib/returned-columns (adjust query))))))))
 
 (deftest ^:parallel adjust-aggregation-metric-ref-test
   (let [[source-metric mp] (mock-metric)

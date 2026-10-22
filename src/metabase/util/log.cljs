@@ -16,13 +16,11 @@
 (glogi-console/install!)
 (log/set-levels {:glogi/root :info})
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn is-loggable?
   "Part of the internals of [[glogi-logp]] etc."
   [logger-name level]
   (glog/isLoggable (log/logger logger-name) (log/level level)))
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn format-msg
   "Part of the internals of [[logf]]."
   [fmt & args]

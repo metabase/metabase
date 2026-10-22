@@ -206,44 +206,7 @@ function recursiveCheckFields(id, i = 0) {
 }
 
 export const setupWritableDB = (type = "postgres") => {
-  const connectionConfig = {
-    postgres: {
-      client: "pg",
-      connection: {
-        ...QA_DB_CREDENTIALS,
-        port: QA_POSTGRES_PORT,
-      },
-    },
-    mysql: {
-      client: "mysql2",
-      connection: {
-        ...QA_DB_CREDENTIALS,
-        user: "root",
-        port: QA_MYSQL_PORT,
-      },
-    },
-  };
-
-  const dbName = WRITABLE_DB_CONFIG[type].connection.database;
-
-  const dbCheckQuery = {
-    postgres: `SELECT FROM pg_database WHERE datname = '${dbName}';`,
-    mysql: `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${dbName}'`,
-  };
-
-  // we need to initially connect to the db we know exists to create the writable_db
-  cy.task("connectAndQueryDB", {
-    connectionConfig: connectionConfig[type],
-    query: dbCheckQuery[type],
-  }).then((results) => {
-    if (!results.rows.length) {
-      cy.log(`**-- Adding ${type} DB for actions --**`);
-      cy.task("connectAndQueryDB", {
-        connectionConfig: connectionConfig[type],
-        query: `CREATE DATABASE ${dbName};`,
-      });
-    }
-  });
+  cy.task("createWritableDb", { type });
 };
 
 export function queryQADB(query, type = "postgres") {
@@ -388,51 +351,62 @@ export function waitForSyncToFinish({
       retrigger,
     });
 
-  cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
-    if (!body.tables.length) {
-      return rerunSync();
-    }
-
-    if (tables.length) {
-      const completed = new Set(
-        body.tables
-          .filter((table) => table.initial_sync_status === "complete")
-          .map((table) => table.name),
-      );
-
-      return tables.every((name) => completed.has(name)) ? null : rerunSync();
-    }
-
-    if (tableName) {
-      const table = body.tables.find(
-        (table) =>
-          table.name === tableName && table.initial_sync_status === "complete",
-      );
-
-      if (!table) {
+  return cy
+    .request("GET", `/api/database/${dbId}/metadata`)
+    .then(({ body }) => {
+      if (!body.tables.length) {
         return rerunSync();
       }
 
-      if (tableAlias) {
-        cy.wrap(table).as(tableAlias);
+      if (tables.length) {
+        const completed = new Set(
+          body.tables
+            .filter((table) => table.initial_sync_status === "complete")
+            .map((table) => table.name),
+        );
+
+        return tables.every((name) => completed.has(name)) ? null : rerunSync();
       }
 
-      return null;
-    }
-  });
+      if (tableName) {
+        const table = body.tables.find(
+          (table) =>
+            table.name === tableName &&
+            table.initial_sync_status === "complete",
+        );
+
+        if (!table) {
+          return rerunSync();
+        }
+
+        if (tableAlias) {
+          cy.wrap(table).as(tableAlias);
+        }
+
+        return null;
+      }
+    });
 }
 
+/**
+ * @param {object} options
+ * @param {number} [options.dbId]
+ * @param {string} [options.tableName] - wait until this table is synced
+ * @param {string} [options.tableAlias]
+ * @param {string[]} [options.tables] - wait until all of these tables are synced
+ * @param {boolean} [options.retrigger] - occasionally re-trigger the schema sync while waiting
+ */
 export function resyncDatabase({
   dbId = 2,
   tableName = "",
-  tableAlias = undefined, // TS was complaining that this was a required param
-  tables,
+  tableAlias = undefined,
+  tables = [],
   retrigger = false,
 }) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
-  waitForSyncToFinish({
+  return waitForSyncToFinish({
     iteration: 0,
     dbId,
     tableName,

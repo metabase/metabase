@@ -4,6 +4,8 @@
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
+   [metabase.agent-api.query-guards :as agent-api.query-guards]
+   [metabase.ai-tracing.api]
    [metabase.analytics.api]
    [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
@@ -16,7 +18,7 @@
    [metabase.bookmarks.api]
    [metabase.bug-reporting.api]
    [metabase.cache.api]
-   [metabase.channel.api]
+   [metabase.channel.rest.api]
    [metabase.cloud-migration.api]
    [metabase.collections-rest.api]
    [metabase.comments.api]
@@ -25,20 +27,23 @@
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
+   [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
+   [metabase.explorations.api]
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
+   [metabase.indexes-rest.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
-   [metabase.mcp.api]
    [metabase.mcp.callback-api]
+   [metabase.mcp.core :as mcp]
+   [metabase.mcp.v2.api]
    [metabase.measures.api]
    [metabase.metabot.api]
-   [metabase.metabot.api.entity-analysis]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -46,15 +51,15 @@
    [metabase.oauth-server.api.admin]
    [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
-   [metabase.premium-features.api]
-   [metabase.product-feedback.api]
+   [metabase.premium-features.rest.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
    [metabase.queries-rest.api]
    [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
-   [metabase.segments.api]
+   [metabase.segments.rest.api]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -79,6 +84,7 @@
 (comment metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
+         metabase.ai-tracing.api/keep-me
          metabase.analytics.api/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
@@ -93,14 +99,16 @@
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
+         metabase.indexes-rest.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
-         metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
+         metabase.mcp.v2.api/keep-me
          metabase.oauth-server.api.admin/keep-me
          metabase.osi.ai-context.api/keep-me
          metabase.measures.api/keep-me
@@ -108,11 +116,10 @@
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
-         metabase.product-feedback.api/keep-me
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
-         metabase.segments.api/keep-me
+         metabase.segments.rest.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
@@ -147,9 +154,29 @@
   (cond-> x
     (simple-symbol? x) api.macros/ns-handler))
 
+(defn- sanitize-streaming-errors
+  "Middleware that reduces any error written by a streaming response body to
+  [[metabase.public-sharing-rest.api/error-response]]. The public and embedding route wrappers catch and genericize
+  exceptions thrown by the handler, but a streaming body runs after the handler has returned, so a query failure --
+  or an exception attaching the Card's query as `ex-data` -- would otherwise reach an unauthenticated client as-is.
+
+  This lives here rather than next to those wrappers in [[metabase.api.routes.common]] because the `api` module can't
+  depend on `server` (which depends on the query processor, which depends on `api`)."
+  [handler]
+  (fn [request respond raise]
+    (handler request
+             (fn [response]
+               (respond (streaming-response/with-error-response-fn
+                          response
+                          metabase.public-sharing-rest.api/error-response)))
+             raise)))
+
+(def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
+  (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
+
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
-(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
-(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
+(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (+sanitize-streaming-errors (->handler handler))))
+(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (+sanitize-streaming-errors (->handler handler))))
 
 (declare routes)
 
@@ -165,7 +192,6 @@
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
-   "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
@@ -176,36 +202,51 @@
    "/cache"                (+auth 'metabase.cache.api)
    "/card"                 (+auth metabase.queries-rest.api/card-routes)
    "/cards"                (+auth metabase.queries-rest.api/cards-routes)
-   "/channel"              (+auth metabase.channel.api/channel-routes)
+   "/channel"              (+auth metabase.channel.rest.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   "/dataset"              (+auth 'metabase.query-processor.api)
+   ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
+   ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
+   ;; token's scopes as a signed claim, and the guard
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL, and MCP's group
+   ;; policy to stop a user denied `execute_sql`. The spec-generation
+   ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
+   ;; fails openapi.json generation for the whole /api tree.
+   "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
+                                    (partial agent-api.query-guards/+refuse-unscoped-native-sql
+                                             #'mcp/check-execute-sql-allowed!))
+                                   (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
-   "/email"                metabase.channel.api/email-routes
+   "/email"                (+auth metabase.channel.rest.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
+   "/embedding-hub"        metabase.embedding-hub.api/routes
+   "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
+   "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
+   "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/health-inspector"     (+auth 'metabase.health-inspector.api)
+   "/index"                (+auth 'metabase.indexes-rest.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
-   ;; existing clients. See [[metabase.mcp.api/endpoint-paths]].
-   "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
+   ;; existing clients. See [[metabase.mcp.paths/endpoint-paths]].
+   "/mcp"                  (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
-   "/metabase-mcp"         (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
+   "/metabase-mcp"         (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
@@ -216,18 +257,17 @@
    "/osi"                  {"/ai-context" (+auth 'metabase.osi.ai-context.api)}
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
-   "/premium-features"     (+auth metabase.premium-features.api/routes)
+   "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
-   "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
-   "/segment"              (+auth 'metabase.segments.api)
+   "/segment"              (+auth 'metabase.segments.rest.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api
-   "/slack"                (+auth metabase.channel.api/slack-routes)
+   "/slack"                (+auth metabase.channel.rest.api/slack-routes)
    "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
@@ -235,6 +275,7 @@
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/transform"            (+auth metabase.transforms-rest.api.transform/routes)
+   "/transform-dag-run"    (+auth metabase.transforms-rest.api.transform/transform-dag-run-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
    "/upload"               (+auth 'metabase.upload.api)

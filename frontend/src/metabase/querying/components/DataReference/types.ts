@@ -26,10 +26,14 @@ export type DataReferencePaneProps<TItem = unknown> = {
   onClose?: () => void;
   onBack?: () => void;
   onItemClick: OnItemClick;
+  // The database the current query targets, used by the Library pane to list
+  // its tables first. Not part of the navigation stack.
+  queryDatabaseId?: DatabaseId;
 } & TItem;
 
 export type DataReferenceItem =
   | DataReferenceDatabaseItem
+  | DataReferenceLibraryItem
   | DataReferenceSchemaItem
   | DataReferenceTableItem
   | DataReferenceQuestionItem
@@ -38,6 +42,10 @@ export type DataReferenceItem =
 export type DataReferenceDatabaseItem = {
   type: "database";
   id: DatabaseId;
+};
+
+export type DataReferenceLibraryItem = {
+  type: "library";
 };
 
 export type DataReferenceSchemaItem = {

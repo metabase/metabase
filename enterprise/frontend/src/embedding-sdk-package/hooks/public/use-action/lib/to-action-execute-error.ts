@@ -21,6 +21,7 @@ export const toActionExecuteError = (error: unknown): ActionExecuteError => {
   const status = getErrorStatus(error);
 
   if (status !== undefined) {
+    // Unjustified type cast. FIXME
     const { data, isCancelled } = error as {
       data?: unknown;
       isCancelled?: unknown;
@@ -31,8 +32,10 @@ export const toActionExecuteError = (error: unknown): ActionExecuteError => {
     const message =
       typeof data === "string"
         ? data
-        : typeof (data as { message?: unknown })?.message === "string"
-          ? (data as { message: string }).message
+        : // Unjustified type cast. FIXME
+          typeof (data as { message?: unknown })?.message === "string"
+          ? // Unjustified type cast. FIXME
+            (data as { message: string }).message
           : undefined;
     // The execute endpoint may also include an `errors` map keyed by
     // parameter slug (`{ <slug>: <message> }`), or an empty `{}` for
@@ -42,7 +45,8 @@ export const toActionExecuteError = (error: unknown): ActionExecuteError => {
       rawErrors != null &&
       typeof rawErrors === "object" &&
       !Array.isArray(rawErrors)
-        ? (rawErrors as Record<string, string>)
+        ? // Unjustified type cast. FIXME
+          (rawErrors as Record<string, string>)
         : undefined;
 
     return {

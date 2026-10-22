@@ -1,8 +1,12 @@
 (ns metabase-enterprise.database-routing.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -205,6 +209,35 @@
     (testing "GET /database/:id/schemas"
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/schemas")))))
 
+(deftest routed-destination-database-names-are-hidden-in-metabot-resources
+  (mt/with-temp [:model/Database {router-id :id} {:name "Postgres Router"}
+                 :model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
+                 :model/Database {selected-destination-id :id} {:name "customer-a"
+                                                                :router_database_id router-id}
+                 :model/Database {other-destination-id :id} {:name "customer-b"
+                                                             :router_database_id router-id}]
+    (met/with-user-attributes! :rasta {"db_name" "customer-a"}
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "database list includes the router and hides destination databases"
+          (let [{:keys [output]} (test-util/call-tool read-resource/read-resource-tool
+                                                      {:uris ["metabase://databases"]})]
+            (is (str/includes? output "Postgres Router"))
+            (is (not (str/includes? output "customer-a")))
+            (is (not (str/includes? output "customer-b")))))
+        ;; A read that found nothing is a failed call, so these assert the failure rather than
+        ;; probing a per-URI `:error` — that list is the Agent API's shape, and the tool no longer
+        ;; builds it.
+        (testing "a sibling destination cannot be read by URI"
+          (is (= :metabase.metabot.tools.core/all-items-failed
+                 (:code (test-util/tool-failure
+                         read-resource/read-resource-tool
+                         {:uris [(str "metabase://database/" other-destination-id)]})))))
+        (testing "the current user's routed destination cannot be read by URI"
+          (is (= :metabase.metabot.tools.core/all-items-failed
+                 (:code (test-util/tool-failure
+                         read-resource/read-resource-tool
+                         {:uris [(str "metabase://database/" selected-destination-id)]})))))))))
+
 (deftest destination-databases-excluded-from-permissions-graph
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
@@ -229,6 +262,26 @@
         (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
       (testing "New group should NOT have permissions for the destination database"
         (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+
+(deftest manage-db-user-can-update-destination-database-test
+  (testing "PUT /api/database/:id on a routed destination honors manage-database perms held on its router database"
+    ;; The permission lives on the router database; the destination itself carries no grant of its own. Without
+    ;; `:advanced-permissions`, `current-user-can-write-db?` falls back to the OSS superuser check, so the grant would
+    ;; be a no-op and the assertions below would pass for the wrong reason.
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                     :model/Database {dest :id} {:router_database_id db-id :name "Destination DB 1"}]
+        (mt/with-no-data-perms-for-all-users!
+          (testing "without manage-database perms on the router the update is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "database/" dest) {:name "Renamed"})))
+            (is (= "Destination DB 1" (t2/select-one-fn :name :model/Database :id dest))))
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
+          (testing "with manage-database perms on the router the update succeeds"
+            (is (=? {:id dest}
+                    (mt/user-http-request :rasta :put 200 (str "database/" dest) {:name "Renamed"})))
+            (is (= "Renamed" (t2/select-one-fn :name :model/Database :id dest)))))))))
 
 (deftest manage-db-user-cannot-delete-destination-database-test
   (testing "DELETE /api/database/:id is rejected (403) for a non-superuser with manage-database perms on a routed destination"

@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -15,20 +14,17 @@ import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
+import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { Route, RouteProps } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
-import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   Database,
-  DatasetQuery,
-  DraftTransformSource,
   Transform,
   UpdateTransformRequest,
 } from "metabase-types/api";
@@ -39,10 +35,7 @@ import {
   getInitialValues,
 } from "../../components/IncrementalTransform/form";
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
-import {
-  TransformEditor,
-  type TransformEditorProps,
-} from "../../components/TransformEditor";
+import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
@@ -54,21 +47,25 @@ type TransformQueryPageParams = {
   transformId: string;
 };
 
-type TransformQueryPageProps = {
-  params: TransformQueryPageParams;
-  route: RouteProps;
-};
-
-export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
+export function TransformQueryPage() {
+  const params = useParams<TransformQueryPageParams>();
+  const { pathname } = useLocation();
+  const isEditRoute = pathname.endsWith("/edit");
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
     isLoading: isLoadingTransform,
     error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken);
-  const { readOnly, transformsDatabases, isLoadingDatabases, databasesError } =
-    useTransformPermissions({ transform });
-  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const {
+    readOnly,
+    remoteSyncReadOnly,
+    transformsDatabases,
+    isLoadingDatabases,
+    databasesError,
+  } = useTransformPermissions({ transform });
+  const isEditorLoaded = useQueryEditorChunk();
+  const isLoading = isLoadingTransform || isLoadingDatabases || !isEditorLoaded;
   const error = transformError || databasesError;
 
   if (isLoading || error != null) {
@@ -82,11 +79,12 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   return (
     <TransformQueryPageBody
       // Add key so the ui state gets reset when switching between edit and view
-      key={route.path}
+      key={String(isEditRoute)}
       transform={transform}
       databases={transformsDatabases}
-      route={route}
+      isEditRoute={isEditRoute}
       readOnly={readOnly}
+      remoteSyncReadOnly={remoteSyncReadOnly}
     />
   );
 }
@@ -94,57 +92,33 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
-  route: RouteProps;
+  isEditRoute: boolean;
   readOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
-  route,
+  isEditRoute,
   readOnly,
+  remoteSyncReadOnly,
 }: TransformQueryPageBodyProps) {
-  const {
-    source,
-    proposedSource,
-    isDirty,
-    setSource,
-    setSourceAndRejectProposed,
-    acceptProposed,
-    rejectProposed,
-  } = useSourceState({
+  const { source, isDirty, setSource } = useSourceState({
     transformId: transform.id,
     initialSource: transform.source,
   });
-  const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const navigate = useNavigate();
+  const getMetadataProvider = useMetadataProviderFactory();
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !readOnly && !!route.path?.includes("/edit");
+  const isEditMode = !readOnly && isEditRoute;
   const [
     isTurnOffIncrementalShown,
     { open: openTurnOffIncremental, close: closeTurnOffIncremental },
   ] = useDisclosure(false);
-
-  const lastRunError = useMemo(() => {
-    if (!transform.last_run) {
-      return undefined;
-    }
-    return transform.last_run.status === "failed"
-      ? (transform.last_run.message ?? undefined)
-      : undefined;
-  }, [transform.last_run]);
-  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
-  useRegisterMetabotTransformContext(
-    transform,
-    source,
-    dryRunError ?? lastRunError,
-  );
 
   const handleResetRef = useLatest(() => {
     setSource(transform.source);
@@ -157,16 +131,16 @@ function TransformQueryPageBody({
 
   useEffect(() => {
     if (source.type !== "python" && !isEditMode) {
-      setSourceAndRejectProposed(transform.source);
+      setSource(transform.source);
     }
-  }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
+  }, [source.type, isEditMode, setSource, transform.source]);
 
   useEffect(() => {
-    if (isEditMode && isRemoteSyncReadOnly) {
+    if (isEditRoute && remoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      dispatch(push(Urls.transform(transform.id)));
+      navigate(Urls.transform(transform.id));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
+  }, [remoteSyncReadOnly, isEditRoute, transform.id, navigate]);
 
   const handleSave = async (request: UpdateTransformRequest) => {
     const { error } = await updateTransform(request);
@@ -181,7 +155,7 @@ function TransformQueryPageBody({
       sendSuccessToast(t`Transform query updated`);
 
       if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
+        navigate(Urls.transform(transform.id));
       }
     }
   };
@@ -193,7 +167,7 @@ function TransformQueryPageBody({
     // Editing the SQL of an existing incremental transform to drop the table variable
     // would leave it in a broken state (and the backend rejects it). Warn first, and on
     // confirmation turn off incremental processing as part of the save.
-    if (isMissingIncrementalTableTag(transform, source, metadata)) {
+    if (isMissingIncrementalTableTag(transform, source, getMetadataProvider)) {
       openTurnOffIncremental();
       return;
     }
@@ -215,7 +189,7 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
+      navigate(Urls.transform(transform.id));
     }
   };
 
@@ -246,7 +220,7 @@ function TransformQueryPageBody({
         <Box
           w="100%"
           bg="background_page-primary"
-          bdrs="md"
+          bdrs="sm"
           bd="1px solid var(--mb-color-border-neutral)"
           flex={1}
           style={{
@@ -263,32 +237,21 @@ function TransformQueryPageBody({
           ) : source.type === "python" ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
-              proposedSource={
-                proposedSource?.type === "python" ? proposedSource : undefined
-              }
               uiOptions={{ readOnly }}
               isEditMode={isEditMode}
               transform={transform}
-              onChangeSource={setSourceAndRejectProposed}
-              onAcceptProposed={acceptProposed}
-              onRejectProposed={rejectProposed}
-              onDryRunErrorChange={setDryRunError}
+              onChangeSource={setSource}
             />
           ) : (
             <TransformEditor
               source={source}
-              proposedSource={
-                proposedSource?.type === "query" ? proposedSource : undefined
-              }
               uiState={uiState}
               // TODO (Uladzimir 2026-01-28) -- probably not the proper fix
               uiOptions={{ resizable: isEditMode && !readOnly }}
               isEditMode={isEditMode}
               databases={databases}
-              onChangeSource={setSourceAndRejectProposed}
+              onChangeSource={setSource}
               onChangeUiState={setUiState}
-              onAcceptProposed={acceptProposed}
-              onRejectProposed={rejectProposed}
               transform={transform}
               readOnly={readOnly}
             />
@@ -303,83 +266,25 @@ function TransformQueryPageBody({
         onConfirm={handleConfirmTurnOffIncremental}
         onClose={closeTurnOffIncremental}
       />
-      <LeaveRouteConfirmModal
-        route={route as Route}
-        isEnabled={isDirty && !isSaving}
-        onConfirm={rejectProposed}
-      />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </>
   );
 }
 
-export type TransformQueryPageEditorUiState = ReturnType<
-  typeof getInitialUiState
->;
-
-export type TransformQueryPageEditorProps = {
-  source: DraftTransformSource;
-  proposedSource?: DraftTransformSource;
-  uiState: TransformQueryPageEditorUiState;
-  databases: Database[];
-  setSourceAndRejectProposed: (source: DraftTransformSource) => void;
-  setUiState: (uiState: TransformQueryPageEditorUiState) => void;
-  isEditMode?: boolean;
-  acceptProposed: () => void;
-  rejectProposed: () => void;
-  uiOptions?: TransformEditorProps["uiOptions"];
-  onDryRunErrorChange?: (error: string | undefined) => void;
-  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
-  onRunTransform?: (result: any) => void;
-  onRun?: () => void;
+// The editor is a separate chunk. Folding it into the wait this page already
+// does for its own data means one wait rather than two in a row.
+const useQueryEditorChunk = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadQueryEditorWithParameters().then(() => {
+      if (!cancelled) {
+        setIsLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return isLoaded;
 };
-
-export function TransformQueryPageEditor({
-  source,
-  proposedSource,
-  uiState,
-
-  uiOptions,
-  databases,
-  setSourceAndRejectProposed,
-  setUiState,
-  isEditMode = false,
-  acceptProposed,
-  rejectProposed,
-  onDryRunErrorChange,
-  onRunQueryStart,
-  onRunTransform,
-  onRun,
-}: TransformQueryPageEditorProps) {
-  return source.type === "python" ? (
-    <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-      source={source}
-      uiOptions={uiOptions}
-      proposedSource={
-        proposedSource?.type === "python" ? proposedSource : undefined
-      }
-      isEditMode={isEditMode}
-      onChangeSource={setSourceAndRejectProposed}
-      onAcceptProposed={acceptProposed}
-      onRejectProposed={rejectProposed}
-      onDryRunErrorChange={onDryRunErrorChange}
-      onRunTransform={onRunTransform}
-      onRun={onRun}
-    />
-  ) : (
-    <TransformEditor
-      source={source}
-      proposedSource={
-        proposedSource?.type === "query" ? proposedSource : undefined
-      }
-      uiState={uiState}
-      uiOptions={uiOptions}
-      databases={databases}
-      isEditMode={isEditMode}
-      onChangeSource={setSourceAndRejectProposed}
-      onChangeUiState={setUiState}
-      onAcceptProposed={acceptProposed}
-      onRejectProposed={rejectProposed}
-      onRunQueryStart={onRunQueryStart}
-    />
-  );
-}

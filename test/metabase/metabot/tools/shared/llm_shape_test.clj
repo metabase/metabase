@@ -2,7 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel escape-xml-test
   (testing "escape-xml handles special characters"
@@ -14,6 +18,18 @@
            (#'llm-shape/escape-xml "<script>alert(\"xss\")</script>"))))
   (testing "escape-xml handles nil"
     (is (nil? (#'llm-shape/escape-xml nil)))))
+
+(deftest ^:parallel next-page-uri-xml-escaping-test
+  (let [output (llm-shape/metabot-list->xml
+                {:list-type :recent-items
+                 :items []
+                 :total 30
+                 :page 1
+                 :pages 2
+                 :next-page-uri "metabase://user/recent-items?filter=<&\"&page=2"})]
+    (is (str/includes? output
+                       (str "Fetch metabase://user/recent-items?filter=&lt;&amp;&quot;&amp;page=2 for the next page. "
+                            "Copy it exactly; do not modify its query string.")))))
 
 (deftest ^:parallel field->xml-test
   (testing "formats field with all attributes matching Python format"
@@ -80,7 +96,7 @@
                   :description "Sum of all revenue"
                   :verified true
                   :collection {:name "Finance"}
-                  :default_time_dimension_field {:name "created_at"}
+                  :default_time_dimension_field_name "date"
                   :queryable-dimensions [{:name "date" :field_id "d1" :base-type :type/Date :database_type "DATE"}]}
           xml (llm-shape/metric->xml metric)]
       (is (str/starts-with? xml "<metric"))
@@ -93,13 +109,36 @@
       (is (str/includes? xml "The following dimensions can be used for filter- or group-by operations"))
       (is (str/includes? xml "metabase://metric/42/dimensions/{field_id}"))
       (is (str/includes? xml "The metric is stored in the following collection"))
-      (is (str/includes? xml "Default Time Dimension Field: created_at"))
+      (is (str/includes? xml "Default Time Dimension Field: date"))
       (is (str/ends-with? (str/trim xml) "</metric>"))))
   (testing "handles metric without dimensions"
     (let [metric {:id 1 :name "Test" :verified false}
           xml (llm-shape/metric->xml metric)]
       (is (str/includes? xml "is_verified=\"false\""))
-      (is (not (str/includes? xml "### Dimensions"))))))
+      (is (not (str/includes? xml "### Dimensions")))))
+  (testing "surfaces join-required (FK-less join) dimensions with the pasteable join clause (BOT-1612)"
+    (let [metric {:id 42 :name "Order Count by Campaign" :verified true
+                  :join-required-dimensions
+                  [{:join_alias   "Campaign"
+                    :target_table "CAMPAIGNS"
+                    :join         {"lib/type" "mbql/join" "strategy" "left-join" "alias" "Campaign"
+                                   "stages" [{"lib/type" "mbql.stage/mbql"
+                                              "source-table" ["Sample" "PUBLIC" "CAMPAIGNS"]}]}
+                    :dimensions   [{:name "NAME" :field_id 301 :type "string"
+                                    :portable_fk ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]
+                                    :reference   ["field" {"join-alias" "Campaign"}
+                                                  ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]}]}]}
+          xml    (llm-shape/metric->xml metric)]
+      (is (str/includes? xml "### Dimensions that require an explicit join"))
+      (is (str/includes? xml "no foreign key"))
+      (testing "the exact join clause is embedded as JSON for the LLM to paste"
+        (is (str/includes? xml "\"mbql/join\""))
+        (is (str/includes? xml "\"source-table\"")))
+      (testing "the per-dimension Reference is the ALIAS-QUALIFIED field clause, not a bare FK"
+        (is (str/includes? xml "NAME"))
+        ;; the pasteable form carries the join-alias; a bare `[db,schema,table,field]` here would
+        ;; dead-end on :no-fk-path (BOT-1612)
+        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]"))))))
 
 (deftest ^:parallel format-metric-dimensions-table-test
   (testing "dimensions carry their source table + a copy-paste portable FK, disambiguating
@@ -517,6 +556,23 @@
       (is (str/includes? xml "<text_card"))
       (is (str/ends-with? (str/trim xml) "</dashboard>")))))
 
+(deftest ^:parallel dashboard->xml-caps-filters-test
+  (testing "lists at most 50 filters, cuts long names, and says how many filters were left out"
+    (let [long-name  (apply str "Region " (repeat 120 "x"))
+          parameters (for [i (range 53)]
+                       {:id (str "p" i) :name long-name :type :string/=})
+          xml        (llm-shape/dashboard->xml {:id 50 :name "Everything" :parameters parameters})]
+      (is (= 50 (count (re-seq #"<filter " xml))))
+      (is (str/includes? xml (str "<filter id=\"p49\" name=\"" (subs long-name 0 100) "...\" type=\"string/=\"/>")))
+      (is (str/includes? xml (str "<truncation-note>Showing 50 of 53 filters; "
+                                  "the other 3 are not listed.</truncation-note>")))))
+  (testing "cutting a name never splits an emoji"
+    (let [ascii (apply str (repeat 99 "a"))
+          xml   (llm-shape/dashboard->xml {:id 51 :name "Emoji" :parameters [{:id   "p1"
+                                                                              :name (str ascii "😀")
+                                                                              :type :string/=}]})]
+      (is (str/includes? xml (str "name=\"" ascii "...\""))))))
+
 (deftest ^:parallel user->xml-test
   (testing "formats user matching Python"
     (let [user {:id 1
@@ -549,6 +605,50 @@
       (is (str/includes? xml "Total revenue calculation"))
       (is (str/includes? xml "Collection: Finance"))
       (is (str/ends-with? (str/trim xml) "</metric>")))))
+
+(deftest ^:parallel metric->xml-source-test
+  (testing "a metric's source renders as exactly one of base-table / source-card"
+    (testing "table-based"
+      (let [xml (llm-shape/metric->xml {:id 1 :name "Table metric" :database_name "Sample"
+                                        :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]})]
+        (is (str/includes? xml "base_table_fully_qualified_name=\"PUBLIC.ORDERS\""))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))
+    (testing "the source card includes the ID to copy into `source-card:`"
+      (let [xml (llm-shape/metric->xml {:id 1 :name "Card metric" :database_name "Sample"
+                                        :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                                        :source_card_name "Orders question"})]
+        (is (str/includes? xml "source_card_portable_entity_id=\"T4wA_GPFwGb6R4FxIDGTo\""))
+        (is (str/includes? xml "source_card_name=\"Orders question\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))))
+    (testing "an unreadable source card is explicitly marked unavailable"
+      (let [xml (llm-shape/metric->xml {:id 1 :name "Walled-off metric" :database_name "Sample"
+                                        :source_unavailable true})]
+        (is (str/includes? xml "source_unavailable=\"true\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))))
+
+(deftest ^:parallel search-result->xml-metric-source-test
+  (testing "a metric search result's source renders as exactly one of base-table / source-card"
+    (testing "table-based"
+      (let [xml (llm-shape/search-result->xml {:id 100 :type :metric :name "Table metric"
+                                               :database_name "Sample"
+                                               :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]})]
+        (is (str/includes? xml "base_table_fully_qualified_name=\"PUBLIC.ORDERS\""))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))
+    (testing "card-based"
+      (let [xml (llm-shape/search-result->xml {:id 100 :type :metric :name "Card metric"
+                                               :database_name "Sample"
+                                               :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                                               :source_card_name "Orders question"})]
+        (is (str/includes? xml "source_card_portable_entity_id=\"T4wA_GPFwGb6R4FxIDGTo\""))
+        (is (str/includes? xml "source_card_name=\"Orders question\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))))
+    (testing "an unreadable source card uses the same unavailable marker as metric details"
+      (let [xml (llm-shape/search-result->xml {:id 100 :type :metric :name "Walled-off metric"
+                                               :database_name "Sample" :source_unavailable true})]
+        (is (str/includes? xml "source_unavailable=\"true\""))
+        (is (not (str/includes? xml "base_table_fully_qualified_name")))
+        (is (not (str/includes? xml "source_card_portable_entity_id")))))))
 
 (deftest ^:parallel search-result->xml-test-2
   (testing "table search result includes database_id, database_engine, and fully_qualified_name"
@@ -632,6 +732,25 @@
           xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "portable_entity_id"))))))
 
+(deftest ^:parallel search-result->xml-uri-test
+  (testing "search results carry a numeric-id read_resource uri attribute"
+    (are [result expected-uri] (str/includes? (llm-shape/search-result->xml result)
+                                              (str "uri=\"" expected-uri "\""))
+      {:id 133 :type "model" :name "Foundation MO"} "metabase://model/133"
+      {:id 11 :type :dataset :name "D"}             "metabase://model/11"
+      {:id 5 :type "question" :name "Q"}            "metabase://question/5"
+      {:id 13 :type :card :name "C"}                "metabase://question/13"
+      {:id 7 :type :metric :name "M"}               "metabase://metric/7"
+      {:id 9 :type "table" :name "T"}               "metabase://table/9"
+      {:id 15 :type "dashboard" :name "Dash"}       "metabase://dashboard/15"
+      {:id 17 :type "measure" :name "Meas"}         "metabase://measure/17"
+      {:id 19 :type "segment" :name "Seg"}          "metabase://segment/19"))
+  (testing "types without a read_resource URI form omit the uri attribute"
+    (is (not (str/includes? (llm-shape/search-result->xml {:id 3 :type "action" :name "A"})
+                            "uri=")))
+    (is (not (str/includes? (llm-shape/search-result->xml {:id 3 :type nil :name "A"})
+                            "uri=")))))
+
 (deftest ^:parallel search-result->xml-test-9
   (testing "non-table/model search results omit table-specific attributes"
     (let [result {:id 50
@@ -652,6 +771,25 @@
     ;; Card/question uses <metabase_question> tag
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
+
+(deftest ^:parallel search-result-write-permission-test
+  (testing "renders false as an explicit destination permission"
+    (is (str/includes? (llm-shape/search-result->xml
+                        {:id 5 :type :dashboard :name "Read only" :can_write false})
+                       "can_write=\"false\"")))
+  (testing "omits write permission for search entities where it is not supplied"
+    (is (not (str/includes? (llm-shape/search-result->xml
+                             {:id 1 :type :table :name "Orders"})
+                            "can_write=")))))
+
+(deftest ^:parallel list-item-write-permission-test
+  (is (str/includes? (llm-shape/metabot-list->xml
+                      {:list-type :dashboards
+                       :items     [{:type "dashboard" :id 5 :name "Read only" :can_write false}]
+                       :total     1
+                       :page      1
+                       :pages     1})
+                     "can_write=\"false\"")))
 
 (deftest ^:parallel search-results->xml-test
   (testing "formats multiple search results"
@@ -685,7 +823,13 @@
       (is (str/includes? xml "This field hasn't been sampled yet"))))
   (testing "a pipe in a sample value is escaped so it can't break the table"
     (let [xml (llm-shape/field-values-metadata->xml {:field_values ["a|b"]})]
-      (is (str/includes? xml "a\\|b")))))
+      (is (str/includes? xml "a\\|b"))))
+  (testing "a partial list says how many values the field has, and a complete one doesn't"
+    (are [value-metadata note] (= note (re-find #"This list shows [^.]+\."
+                                                (llm-shape/field-values-metadata->xml value-metadata)))
+      {:field_values ["Paris"] :field_values_total 37}                         "This list shows 1 of the field's 37 values."
+      {:field_values ["Paris"] :field_values_total 1000 :has_more_values true} "This list shows 1 of the field's 1000+ values."
+      {:field_values ["Paris"] :field_values_total 1}                          nil)))
 
 (deftest ^:parallel field-metadata->xml-test
   (testing "formats field metadata"
@@ -847,3 +991,160 @@
       (testing "identity-only related tables render both the FK field name and id"
         (is (str/includes? xml "related_by_field_name=\"user_id\" related_by_field_id=\"303\""))
         (is (str/includes? xml "related_by_field_name=\"review_id\" related_by_field_id=\"404\""))))))
+
+(deftest ^:parallel transform-query->text-native-test
+  (testing "native SQL renders verbatim"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+      {:native {:query "SELECT 1"}}
+      "SELECT 1")))
+
+(deftest ^:parallel transform-query->text-orphaned-source-test
+  (testing "orphaned sources skip normalization and still render as SQL through their string keys"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {"database" nil "native" {"query" "SELECT 1"}}
+      {"database" nil "stages" [{"native" "SELECT 1"}]})))
+
+(deftest ^:parallel transform-query->text-nil-test
+  (testing "nil stays nil"
+    (is (nil? (llm-shape/transform-query->text nil)))))
+
+(deftest ^:parallel transform-query->text-portable-mbql-test
+  (testing "an MBQL query exports to portable form, referencing tables by FK path"
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/query mp (lib.metadata/table mp (mt/id :products))))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= [(:name (lib.metadata/database mp)) "PUBLIC" "PRODUCTS"]
+             (get-in exported ["stages" 0 "source-table"])))
+      (is (not (contains? exported "lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-export-failure-fallback-test
+  (testing "a query that fails to export falls back to EDN without the metadata provider"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type :mbql/query
+                 :database (mt/id)
+                 :stages   [{:lib/type :mbql.stage/mbql :source-table Integer/MAX_VALUE}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-existing-metadata-fallback-test
+  (testing "the EDN fallback strips an existing provider even when there is no database to normalize"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type     :mbql/query
+                 :lib/metadata :fake-provider
+                 :stages       [{:lib/type :mbql.stage/mbql}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-multi-stage-test
+  (testing "a native stage followed by an MBQL stage renders every stage, not the first stage's SQL"
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/append-stage (lib/native-query mp "SELECT * FROM PRODUCTS")))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= 2 (count (get exported "stages"))))
+      (is (= "SELECT * FROM PRODUCTS" (get-in exported ["stages" 0 "native"]))))))
+
+(deftest transform-query->text-source-card-permission-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card       {card-id :id, entity-id :entity_id}
+                   {:collection_id collection-id
+                    :database_id   (mt/id)
+                    :dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}]
+      (let [query       {:lib/type :mbql/query
+                         :database (mt/id)
+                         :stages   [{:lib/type :mbql.stage/mbql
+                                     :source-card card-id}]}
+            render-as   (fn [user-id]
+                          (mt/with-current-user user-id
+                            (llm-shape/transform-query->text query)))
+            readable    (render-as (mt/user->id :crowberto))
+            exported    (json/decode (second (re-find #"(?s)```json\n(.*)\n```" readable)))]
+        (testing "a user who can read the source Card gets its portable entity id"
+          (is (= entity-id (get-in exported ["stages" 0 "source-card"]))))
+        (testing "a user who cannot read the source Card gets nothing at all"
+          (is (nil? (render-as (mt/user->id :rasta)))))))))
+
+(deftest ^:parallel transform->xml-source-query-test
+  (testing "a native source query renders as verbatim SQL text"
+    (let [xml (llm-shape/transform->xml
+               {:id     7
+                :name   "Orders rollup"
+                :source {:type  :query
+                         :query {:stages [{:lib/type :mbql.stage/native
+                                           :native   "SELECT * FROM orders WHERE total < 100"}]}}})]
+      (is (str/includes? xml "<query>SELECT * FROM orders WHERE total < 100</query>"))))
+  (testing "an MBQL source query renders as a JSON code block"
+    (let [xml (llm-shape/transform->xml
+               {:id     8
+                :name   "Notebook rollup"
+                :source {:type  :query
+                         :query (lib/query (mt/metadata-provider)
+                                           (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})]
+      (is (str/includes? xml "<query>\n```json"))
+      (is (str/includes? xml "```\n</query>"))
+      (is (str/includes? xml "\"PRODUCTS\"")))))
+
+(deftest ^:parallel metric->xml-dimension-reference-form-test
+  (testing "Dimensions use portable FKs for database fields and output names for computed columns"
+    (let [dims      [{:name "ID" :field_id 5 :type "number"
+                      :portable_fk ["Sample" "PUBLIC" "ORDERS" "ID"]}
+                     {:name "ID" :field_id 6 :type "number" :table_reference "Product"
+                      :portable_fk ["Sample" "PUBLIC" "PRODUCTS" "ID"]}
+                     {:name "CATEGORY" :field_id 7 :type "string" :table_reference "Product"
+                      :portable_fk ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]}
+                     ;; Computed columns have no database field, so they use their output names.
+                     {:name "PROFIT" :field_id "PROFIT" :type "number"}]
+          table-xml (llm-shape/metric->xml {:id 1 :name "Table metric" :database_name "Sample"
+                                            :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]
+                                            :queryable-dimensions dims})
+          card-xml  (llm-shape/metric->xml {:id 1 :name "Card metric" :database_name "Sample"
+                                            :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                                            :queryable-dimensions dims})]
+      (doseq [[label xml] [["table-based" table-xml] ["card-based" card-xml]]]
+        (testing label
+          (testing "every FK-backed column references its portable FK, which pins the table it came from"
+            (is (str/includes? xml "[\"Sample\",\"PUBLIC\",\"ORDERS\",\"ID\"]"))
+            (is (str/includes? xml "[\"Sample\",\"PUBLIC\",\"PRODUCTS\",\"ID\"]"))
+            (is (str/includes? xml "[\"Sample\",\"PUBLIC\",\"PRODUCTS\",\"CATEGORY\"]")))
+          (testing "so no FK-backed column is offered as a bare name"
+            (is (not (str/includes? xml "| \"ID\" |")))
+            (is (not (str/includes? xml "| \"CATEGORY\" |"))))
+          (testing "the expression column, which has no portable FK, falls back to its machine name"
+            (is (str/includes? xml "| \"PROFIT\" |")))
+          (testing "the Source table column distinguishes the two `ID` fields"
+            (is (str/includes? xml "Source table"))
+            (is (str/includes? xml "PUBLIC.PRODUCTS (via Product)")))))
+      (testing "the two renderings are identical: the metric's source does not change the reference form"
+        (is (= (re-find #"(?s)\| Field Name \|.*?\n\n" table-xml)
+               (re-find #"(?s)\| Field Name \|.*?\n\n" card-xml)))))))
+
+(deftest ^:parallel metric->xml-dimension-reference-omitted-without-portable-fk-test
+  (testing "A database field without a portable FK is listed without a reference"
+    (let [xml (llm-shape/metric->xml
+               {:id 1 :name "Metric" :database_name "Sample"
+                :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]
+                :queryable-dimensions [{:name "ID" :field_id 5 :type "number"}
+                                       {:name "PROFIT" :field_id "PROFIT" :type "number"}]})]
+      (testing "the real field is listed but left without a reference to copy"
+        (is (str/includes? xml "| ID |") "the dimension is still described")
+        (is (not (str/includes? xml "| \"ID\" |"))))
+      (testing "while the card-computed column still gets its machine name"
+        (is (str/includes? xml "| \"PROFIT\" |"))))))
+
+(deftest ^:parallel related-tables-note-does-not-presuppose-sql-test
+  (testing "table/model XML reaches profiles without SQL tools (read_resource, viewing context), so the related-tables usage note carries no SQL-writing guidance (BOT-1891)"
+    (let [related [{:id 20 :name "orders" :database_schema "public"
+                    :related_by {:id 91 :name "user_id"} :fields []}]]
+      (doseq [[label xml] {"table" (llm-shape/table->xml {:id 10 :name "users" :database_id 1
+                                                          :database_engine "postgres"
+                                                          :related_tables related})
+                           "model" (llm-shape/model->xml {:id 5 :name "Sales Model" :database_id 1
+                                                          :database_engine "postgres"
+                                                          :related_tables related})}]
+        (testing label
+          (is (str/includes? xml "Foreign key fields from related tables") "premise: the section renders")
+          (is (not (re-find #"(?i)for SQL queries" xml))))))))

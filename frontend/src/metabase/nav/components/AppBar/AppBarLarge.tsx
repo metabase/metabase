@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import cx from "classnames";
+import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
-import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
@@ -15,7 +16,7 @@ import NewItemButton from "../NewItemButton";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
-import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
+import S from "./AppBar.module.css";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
 
@@ -26,7 +27,6 @@ export interface AppBarLargeProps {
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
   isDocumentSidebarOpen?: boolean;
-  isCommentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
@@ -39,6 +39,7 @@ export interface AppBarLargeProps {
   questionLineage?: ReactNode;
   onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
+  onOpenNavbar: () => void;
 }
 
 export const AppBarLarge = ({
@@ -48,7 +49,6 @@ export const AppBarLarge = ({
   isNavBarEnabled,
   isMetabotVisible,
   isDocumentSidebarOpen,
-  isCommentSidebarOpen,
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
@@ -61,8 +61,10 @@ export const AppBarLarge = ({
   questionLineage,
   onSearchItemSelect,
   onToggleNavbar,
+  onOpenNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const isInfoVisible = !isNavBarVisible || isQuestionLineageVisible;
   const { isVisible: isGitSyncVisible } =
     PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
@@ -70,14 +72,20 @@ export const AppBarLarge = ({
     useUserMetabotPermissions();
 
   return (
-    <AppBarRoot
-      hasSidebarOpen={
-        isNavBarVisible ||
-        isMetabotVisible ||
-        isDocumentSidebarOpen ||
-        isCommentSidebarOpen ||
-        isMetricsViewer
-      }
+    <Flex
+      className={cx(S.navBar, S.withTransition, {
+        [S.withBorder]:
+          isNavBarVisible ||
+          isMetabotVisible ||
+          isDocumentSidebarOpen ||
+          isMetricsViewer,
+      })}
+      align="center"
+      gap="lg"
+      h={APP_BAR_HEIGHT}
+      pl="1.325rem"
+      pr="lg"
+      bg="background_page-primary"
     >
       <Flex align="center" miw="5rem" flex="1 1 auto">
         <AppBarToggle
@@ -89,14 +97,16 @@ export const AppBarLarge = ({
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
           isGitSyncVisible={isGitSyncVisible}
+          onLogoClick={onOpenNavbar}
         />
         <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
-        <AppBarInfoContainer
-          isVisible={!isNavBarVisible || isQuestionLineageVisible}
+        <Flex
+          className={cx(S.fade, { [S.hidden]: !isInfoVisible })}
+          opacity={isInfoVisible ? 1 : 0}
+          miw={0}
         >
           {detailView ? (
             <DetailViewNav
-              ml={DETAIL_VIEW_PADDING_LEFT - 125}
               rowName={detailView.rowName}
               table={detailView.table}
             />
@@ -105,7 +115,7 @@ export const AppBarLarge = ({
           ) : isCollectionPathVisible ? (
             collectionBreadcrumbs
           ) : null}
-        </AppBarInfoContainer>
+        </Flex>
       </Flex>
       {(isSearchVisible ||
         isNewButtonVisible ||
@@ -122,7 +132,7 @@ export const AppBarLarge = ({
             (isEmbeddingIframe ? (
               <SearchBar onSearchItemSelect={onSearchItemSelect} />
             ) : (
-              <SearchButton mr="md" />
+              <SearchButton mr="lg" />
             ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {<MetabotAppBarButton />}
@@ -133,6 +143,6 @@ export const AppBarLarge = ({
           )}
         </Flex>
       )}
-    </AppBarRoot>
+    </Flex>
   );
 };

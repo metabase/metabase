@@ -3,33 +3,36 @@ import { useEffect, useMemo, useState } from "react";
 import {
   useAddSampleDatabaseMutation,
   useListDatabasesQuery,
+  useListEnginesQuery,
 } from "metabase/api";
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { isSyncInProgress } from "metabase/utils/syncing";
 
 import { DatabaseList } from "../components/DatabaseList";
 import { getDeletes, getDeletionError } from "../selectors";
 
 interface DatabaseListAppProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const DatabaseListApp = (props: DatabaseListAppProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const deletes = useSelector(getDeletes);
   const deletionError = useSelector(getDeletionError);
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
 
   const [addSampleDb, addSampleDbResult] = useAddSampleDatabaseMutation();
 
   const [pollingInterval, setPollingInterval] = useState<number>();
 
   const databasesReq = useListDatabasesQuery(
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+    {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+      include_stubs: true,
+    },
     { pollingInterval },
   );
 

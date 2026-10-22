@@ -1,7 +1,3 @@
-import _ from "underscore";
-
-import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   VisualizerColumnReference,
@@ -132,22 +128,4 @@ export function extractReferencedColumns(
 
 export function isArtificialColumn(column: DatasetColumn) {
   return column.source === "artificial";
-}
-
-export function partitionTimeDimensions(columns: DatasetColumn[]): {
-  dimensions: DatasetColumn[];
-  timeDimensions: DatasetColumn[];
-  otherDimensions: DatasetColumn[];
-} {
-  // Extract only dimension columns (exclude metrics and pivot group columns)
-  const dimensions = columns.filter(
-    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-  );
-
-  // Partition temporal & non-temporal dimensions
-  const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
-    isDate(col),
-  );
-
-  return { dimensions, timeDimensions, otherDimensions };
 }

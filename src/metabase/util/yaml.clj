@@ -2,7 +2,6 @@
   "Convenience functions for parsing and generating YAML."
   (:refer-clojure :exclude [load])
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -84,8 +83,8 @@
                    (or (some-> e
                                ex-data
                                (select-keys [:error :value])
-                               u/pprint-to-str)
-                       e))
+                               pr-str)
+                       (ex-message e)))
        (throw e)))))
 
 (defn load-dir

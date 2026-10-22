@@ -1,7 +1,7 @@
 .ViewSectionRoot {
   display: flex;
   align-items: center;
-  padding: 0;
+  padding: 0 0.5rem;
 
   @container query-builder (min-width: 70em) {
     padding-left: 2rem;

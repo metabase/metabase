@@ -1,4 +1,4 @@
-import type { HoveredObject } from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
@@ -47,12 +47,15 @@ describe("content translation utils", () => {
     });
 
     it("should return msgid when msgid is not a string", () => {
+      // Unjustified type cast. FIXME
       expect(translateContentString(mockDictionary, "es", 123 as any)).toBe(
         123,
       );
+      // Unjustified type cast. FIXME
       expect(translateContentString(mockDictionary, "es", {} as any)).toEqual(
         {},
       );
+      // Unjustified type cast. FIXME
       expect(translateContentString(mockDictionary, "es", [] as any)).toEqual(
         [],
       );

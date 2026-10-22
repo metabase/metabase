@@ -19,6 +19,7 @@ const getUsageInfo = (hasContent: boolean) => ({
   transform: hasContent ? 50 : 0,
 });
 
+// Unjustified type cast. FIXME
 const database = { name: "database name", id: 1 } as Database;
 
 const setup = async ({

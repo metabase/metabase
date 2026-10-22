@@ -1,5 +1,6 @@
 (ns metabase.metabot.skills-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.agent.prompts :as prompts]
@@ -60,7 +61,7 @@
       (is (= "construct-notebook-query-core" (name (:id s))))
       (is (string? (:title s)))
       (is (str/includes? (:description s) "construct_notebook_query"))
-      (is (= ["construct_notebook_query"] (:tools s)))
+      (is (= ["construct_notebook_query" "document_construct_model_chart"] (:tools s)))
       (is (str/includes? (:body s) "Universal clause shape"))
       ;; the YAML frontmatter delimiter must not leak into the body
       (is (not (str/starts-with? (:body s) "---"))))))
@@ -121,6 +122,23 @@
       (testing "profile that opts out -> on-demand in catalog, not always-on"
         (is (empty? (:always-on on-demand)))
         (is (some #{"read-resource"} (map :id (:catalog on-demand))))))))
+
+(deftest ^:parallel build-skill-manifest-skills?-false-test
+  (testing "`:skills? false` empties the manifest even when tools would match skills"
+    (binding [scope/*current-loadable-skill-ids* (atom #{:read-resource})]
+      (let [manifest (skills/build-skill-manifest
+                      {:name :explorations :skills? false}
+                      ["read_resource" "search"]
+                      [])]
+        (is (empty? (:catalog manifest)))
+        (is (empty? (:always-on manifest)))
+        (is (empty? @scope/*current-loadable-skill-ids*)
+            "loadable set is cleared so guessed load_skill ids cannot resolve"))))
+  (testing "absent or true `:skills?` leaves normal matching intact"
+    (doseq [profile [{:name :internal}
+                     {:name :internal :skills? true}]]
+      (is (some #{"read-resource"}
+                (map :id (:catalog (skills/build-skill-manifest profile ["read_resource"] []))))))))
 
 (deftest ^:parallel always-on-skill-body-is-in-system-prompt-test
   ;; A "marker" line lifted verbatim from the read-resource skill body. If the skill is inlined,
@@ -196,3 +214,28 @@
     (is (= [] (skills/dialect-preload-parts nil))))
   (testing "returns empty when the dialect has no registered skill"
     (is (= [] (skills/dialect-preload-parts "nonexistent-engine")))))
+
+(defn- section-between
+  "Return the text of `s` from the first occurrence of `start` up to but excluding `end`."
+  [s start end]
+  (let [from (str/index-of s start)
+        to   (some->> from (str/index-of s end))]
+    (when (and from to)
+      (subs s from to))))
+
+(deftest ^:parallel construct-notebook-query-filter-guidance-in-sync-test
+  (testing (str "the `construct_notebook_query` tool prompt and construct-notebook-query skills\n"
+                "give identical filter guidance")
+    (let [tool-prompt (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
+          core        (:body (skills/get-skill :construct-notebook-query-core))
+          operators   (:body (skills/get-skill :construct-notebook-query-operators))]
+      (doseq [[start end] [["Use one entry per filter condition." "Aggregation (on a field, plus `count`):"]
+                           ["Editing an existing query" "Anti-hallucination:"]]
+              :let [section (section-between tool-prompt start end)]]
+        (testing start
+          (is (some? section))
+          (is (= section (section-between core start end)))))
+      (testing "`and` operator entry"
+        (let [line (first (filter #(str/starts-with? % "- `[\"and\"") (str/split-lines tool-prompt)))]
+          (is (some? line))
+          (is (str/includes? operators line)))))))

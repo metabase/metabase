@@ -51,6 +51,7 @@ const spec = {
 const makeResults = (
   overrides: Partial<CypressCommandLine.RunResult>,
 ): CypressCommandLine.RunResult =>
+  // Unjustified type cast. FIXME
   ({
     error: null,
     tests: [],
@@ -76,6 +77,7 @@ const test = (
 // Build a `results.screenshots`-shaped array from bare paths (the only field we
 // read). Cypress leaves `name` null for automatic failure shots.
 const screenshotsFromPaths = (...paths: string[]) =>
+  // Unjustified type cast. FIXME
   paths.map((path) => ({
     path,
   })) as unknown as CypressCommandLine.RunResult["screenshots"];
@@ -534,6 +536,7 @@ describe("reportFailedTestsToConductor", () => {
       reportFailedTestsToConductor(oneTest),
     ).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalled();
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 
@@ -585,6 +588,7 @@ describe("reportFailedTestsToConductor", () => {
 
     await reportFailedTestsToConductor(oneTest);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("500"));
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 
@@ -648,6 +652,7 @@ describe("reportFailedTestsToConductor", () => {
       reportFailedTestsToConductor(oneTest),
     ).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalled();
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 });
@@ -738,6 +743,7 @@ describe("recordFailedTestsForQuarantine", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() =>
+      // Unjustified type cast. FIXME
       recordFailedTestsForQuarantine([
         {
           name: "n",
@@ -749,6 +755,7 @@ describe("recordFailedTestsForQuarantine", () => {
       ] as Parameters<typeof recordFailedTestsForQuarantine>[0]),
     ).not.toThrow();
 
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 });

@@ -4,16 +4,42 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.provider :as llm.provider]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.persistence :as persistence]
+   [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.adapter :as adapter]
+   [metabase.metabot.self.bedrock :as bedrock]
+   [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.mistral :as mistral]
+   [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.registry :as registry]
+   [metabase.metabot.self.xai :as xai]
+   [metabase.metabot.self.zai :as zai]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.tracing.test-util :as tracing.tu]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [ring.adapter.jetty :as jetty]))
 
 (set! *warn-on-reflection* true)
@@ -22,65 +48,363 @@
 
 ;;; provider resolution tests
 
-(deftest ^:parallel parse-provider-model-test
-  (testing "parses provider/model format correctly"
-    (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? false}
-            (#'self/parse-provider-model "anthropic/claude-haiku-4-5")))
-    (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? false}
-            (#'self/parse-provider-model "openai/gpt-4.1-mini")))
-    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? false}
-            (#'self/parse-provider-model "openrouter/anthropic/claude-haiku-4-5")))
-    (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash" :ai-proxy? false}
-            (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash"))))
-  (testing "parses metabase/ prefix (AI proxy)"
-    (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
-            (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
-    (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? true}
-            (#'self/parse-provider-model "metabase/openai/gpt-4.1-mini")))
-    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? true}
-            (#'self/parse-provider-model "metabase/openrouter/anthropic/claude-haiku-4-5"))))
-  (testing "throws for invalid formats/models"
-    (is (thrown-with-msg? Exception #"Unknown LLM provider: no-slash" (#'self/parse-provider-model "no-slash")))
-    (is (thrown-with-msg? Exception #"Unknown LLM provider: " (#'self/parse-provider-model "")))
-    (is (thrown-with-msg? Exception #"Unknown LLM provider: " (#'self/parse-provider-model "/leading-slash")))))
+(def ^:private supported-models-by-provider-type
+  {"anthropic"  #'self.claude/supported-models
+   "bedrock"    #'bedrock/supported-models
+   "deepseek"   #'deepseek/supported-models
+   "mistral"    #'mistral/supported-models
+   "moonshot"   #'moonshot/supported-models
+   "openai"     #'openai/supported-models
+   "openrouter" #'openrouter/supported-models
+   "xai"        #'xai/supported-models
+   "zai"        #'zai/supported-models})
 
-(deftest ^:parallel resolve-adapter-test
-  (testing "resolves known providers to adapter functions"
-    (is (fn? (#'self/resolve-adapter "anthropic")))
-    (is (fn? (#'self/resolve-adapter "openai")))
-    (is (fn? (#'self/resolve-adapter "openrouter"))))
-  (testing "throws for unknown provider"
+(deftest ^:parallel registry-models-are-listable-test
+  (testing (str "`list-models` hands the admin picker the intersection of the adapter's whitelist with the "
+                "provider's own catalog, so a model the registry names but the whitelist omits is never offered: "
+                "the picker renders it as a blank selection. Azure and the managed provider are absent because "
+                "neither adapter filters against a whitelist.")
+    (doseq [[provider-type supported] supported-models-by-provider-type]
+      (testing provider-type
+        (is (contains? @supported (llm.provider/default-model provider-type)))
+        (is (contains? @supported (llm.provider/mini-model provider-type)))
+        (testing "and a retired model reads as one the picker offers"
+          (doseq [successor (vals (:retired-models (llm.provider/provider-type provider-type)))]
+            (is (contains? @supported successor))))))))
+
+(deftest parse-provider-model-test
+  (llm.tu/with-default-connections
+    (testing "resolves connection-key/model against the configured connections"
+      (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? false}
+              (#'self/parse-provider-model "anthropic/claude-haiku-4-5")))
+      (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? false}
+              (#'self/parse-provider-model "openai/gpt-4.1-mini")))
+      (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? false}
+              (#'self/parse-provider-model "openrouter/anthropic/claude-haiku-4-5")))
+      (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash")))
+      (is (=? {:provider "zai" :model "glm-5.2" :ai-proxy? false}
+              (#'self/parse-provider-model "zai/glm-5.2")))
+      (is (=? {:provider "mistral" :model "mistral-medium-3-5" :ai-proxy? false}
+              (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
+      (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
+              (#'self/parse-provider-model "moonshot/kimi-k3")))
+      (is (=? {:provider "deepseek" :model "deepseek-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-flash")))
+      (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
+              (#'self/parse-provider-model "xai/grok-4.7")))
+      (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "resolves the provider type, not the admin's name for the connection"
+      (llm.tu/with-connections [{:key    "openrouter-1"
+                                 :type   "openrouter"
+                                 :name   "openrouter-1"
+                                 :config {:api-key "sk-or-v1-test"}}]
+        (is (=? {:provider "openrouter" :model "anthropic/claude-sonnet-4.6" :ai-proxy? false}
+                (#'self/parse-provider-model "openrouter-1/anthropic/claude-sonnet-4.6")))))
+    (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
+      (llm.tu/with-connections [(llm.tu/connection "vllm")]
+        (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
+                (#'self/parse-provider-model "vllm/mlx-community/Qwen3-14B-4bit")))))
+    (testing "serves the managed connection through the wire family the model names"
+      (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
+              (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
+      (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? true}
+              (#'self/parse-provider-model "metabase/openai/gpt-4.1-mini")))
+      (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? true}
+              (#'self/parse-provider-model "metabase/openrouter/anthropic/claude-haiku-4-5"))))
+    (testing "throws when the string names no configured connection"
+      (doseq [model-ref ["no-slash" "" "/leading-slash" "nonexistent/some-model"]]
+        (let [e (is (thrown-with-msg? Exception #"No LLM provider connection named"
+                                      (#'self/parse-provider-model model-ref)))]
+          (is (= :llm-not-configured (:error-code (ex-data e)))))))))
+
+(deftest ^:parallel registry-test
+  (testing "every registered provider resolves to an adapter and a listing"
+    ;; derived from the rows rather than listed here, so a provider added to the platform and the registry
+    ;; with an empty row fails this instead of going unchecked. The managed connection is excluded because it
+    ;; is served by the wire family its model names and so has no adapter of its own — asked of the platform
+    ;; rather than named, for the same reason.
+    (let [serving (remove (comp llm.provider/managed-type? key) @#'registry/adapters)]
+      (is (seq serving))
+      (doseq [[provider _row] serving]
+        (is (ifn? (registry/required provider :stream)) provider)
+        (is (ifn? (registry/required provider :list-models)) provider))))
+  (testing "a capability a provider does not have is absent, not a default"
+    (is (nil? (registry/optional "vllm" :supported-models)))
+    (is (nil? (registry/optional "vllm" :context-window)))
+    (is (some? (registry/optional "anthropic" :supported-models))))
+  (testing "the registry covers exactly the provider types the platform knows about"
+    (is (= (set (map :type (llm.provider/provider-types)))
+           (set (keys @#'registry/adapters)))))
+  (testing "every row conforms to the schema, so a mistyped capability key cannot read as an absent one"
+    (doseq [[provider row] @#'registry/adapters]
+      (is (nil? (mr/explain registry/AdapterRow row)) provider)))
+  (testing "an adapter's own schema and the schema its row declares are the same contract, so a change to
+            one without the other fails here rather than at a call site"
+    ;; compared rather than exercised: the row's `:=>` forms are documentation — Malli checks one no further
+    ;; than `ifn?` — and `mu/defn` already validates each implementation against its own schema on every
+    ;; call. What nothing else covers is the two declarations drifting apart.
+    ;; Skipped: `:stream` is registered as a plain `defn` and carries no schema to compare, and
+    ;; `:supported-models` is a var holding a map rather than a function.
+    (let [declared (into {} (map (fn [[capability _props schema]] [capability (mc/form schema)]))
+                         (mc/children (mc/schema registry/AdapterRow)))]
+      (doseq [[provider row]              @#'registry/adapters
+              [capability implementation] (dissoc row :stream :supported-models)]
+        (is (= (declared capability)
+               (some-> (:schema (meta implementation)) mc/form))
+            (str provider " " capability)))))
+  (testing "every `:supported-models` allow-list conforms to the schema the shared listing helper takes."
+    (doseq [[provider row] @#'registry/adapters
+            :let  [models (some-> (:supported-models row) deref)]
+            :when models]
+      (is (nil? (mr/explain adapter/SupportedModels models)) provider)))
+  (testing "the capability enum and the row schema name the same capabilities, so the two hand-written
+            lists cannot drift apart — a capability in one but not the other would either be unlookupable
+            or unstorable"
+    (is (= (set (mc/children (mc/schema registry/Capability)))
+           (set (map first (mc/children (mc/schema registry/AdapterRow)))))))
+  (testing "throws for an unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
-                          (#'self/resolve-adapter "unknown")))))
+                          (registry/required "unknown" :stream)))))
 
 (deftest call-llm-tool-choice-test
-  (testing "passes required tool choice to LLM providers"
+  (llm.tu/with-default-connections
+    (testing "passes required tool choice to LLM providers"
+      (let [captured (atom nil)]
+        (mt/with-premium-features #{:metabase-ai-managed}
+          ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+          (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                     (when (:body opts)
+                                                       (reset! captured (json/decode+kw (:body opts))))
+                                                     (throw (ex-info "stop" {::skip true :api-error true})))]
+            (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
+                                               llm-proxy-base-url     "http://proxy.example"
+                                               llm-openrouter-api-key "sk-or-v1-test-key"
+                                               llm-openai-api-key     "sk-test-key"]
+              (doseq [[model expected] [["anthropic/test-model"   {:type "any"}]
+                                        ["metabase/anthropic/claude-sonnet-4-6" {:type "any"}]
+                                        ["openrouter/test-model" "required"]
+                                        ["openai/test-model"     "required"]]]
+                (try
+                  (run! identity (self/call-llm model
+                                                nil
+                                                []
+                                                {"search" (get test-util/TOOLS "get-time")}
+                                                {:tag "agent"}
+                                                {:tool-choice "required"}))
+                  (catch Exception e
+                    (when-not (::skip (ex-data e))
+                      (throw e))))
+                (is (= expected (:tool_choice @captured)))))))))))
+
+(deftest call-llm-fast-mode-test
+  (llm.tu/with-default-connections
+    (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured {:body    (json/decode+kw (:body opts))
+                                                                       :headers (:headers opts)}))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
+            (doseq [fast? [true false]]
+              (testing (str "llm-fast-mode " fast?)
+                (mt/with-temporary-setting-values [llm-fast-mode fast?]
+                  (try
+                    (run! identity (self/call-llm "anthropic/claude-opus-5" nil [] {} {:tag "agent"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (= (when fast? "fast") (get-in @captured [:body :speed])))
+                  (is (= (when fast? "fast-mode-2026-02-01")
+                         (get-in @captured [:headers "anthropic-beta"]))))))))))))
+
+(deftest call-llm-serves-azure-and-google-connections-test
+  (testing "the Azure and Google adapters accept their connection's resolved config, registry defaults included"
+    (llm.tu/with-default-connections
+      (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
+                                    ["azure/anthropic/claude-deployment"         "/v1/messages"]
+                                    ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
+                                    ["google/anthropic/claude-haiku-4-5"         "/publishers/anthropic/models/claude-haiku-4-5:"]
+                                    ;; a selection saved before Google dropped the date requests the undated model
+                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5:"]]]
+        (testing model-ref
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (reset! captured req)
+                                                                  {:status 200 :body []})]
+              (run! identity (self/call-llm model-ref nil [{:role :user :content "hi"}] {} {:tag "agent"}))
+              (is (str/includes? (str (:url @captured)) url-part)))))))))
+
+(deftest request-timeout-settings-test
+  (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
     (let [captured (atom nil)]
-      (mt/with-premium-features #{:metabase-ai-managed}
+      (with-redefs [http/request (fn [opts] (reset! captured opts) {:status 200 :body ""})]
+        (testing "uses the current setting values as defaults"
+          (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000
+                                             llm-request-timeout-ms    45000]
+            (self.core/request {:url "https://api.example.com" :headers {}} {})
+            (is (= 3000 (:connection-timeout @captured)))
+            (is (= 45000 (:socket-timeout @captured)))))
+        (testing "per-request overrides in req win over the settings"
+          (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000
+                                             llm-request-timeout-ms    45000]
+            (self.core/request {:url "https://api.example.com" :headers {}}
+                               {:connection-timeout 100 :socket-timeout 200})
+            (is (= 100 (:connection-timeout @captured)))
+            (is (= 200 (:socket-timeout @captured)))))))))
+
+(deftest request-enforces-llm-allowed-networks-test
+  ;; IP literals throughout: the resolver goes through real DNS. `resolving` stands in for clj-http far enough to
+  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
+  (let [captured  (atom nil)
+        resolving (fn [{:keys [url] :as opts}]
+                    (some-> ^org.apache.http.conn.DnsResolver (:dns-resolver opts) (.resolve (u.http/->hostname url)))
+                    (reset! captured opts)
+                    {:status 200 :body ""})
+        req       {:method :get :url "/v1/models"}
+        rejected  (fn [auth]
+                    (try (self.core/request auth req)
+                         nil
+                         (catch clojure.lang.ExceptionInfo e (ex-data e))))]
+    (testing "under :external-only"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
+          (testing "a base URL on an internal network is refused when the connection resolves it"
+            (is (=? {:status-code 400
+                     :status      400
+                     :api-error   true
+                     :error-code  :llm-host-not-allowed
+                     :llm-host    "127.0.0.1"}
+                    (rejected {:url "http://127.0.0.1:9" :headers {}}))))
+          (testing "a public base URL goes out with the policy resolver on the connection"
+            (self.core/request {:url "https://8.8.8.8" :headers {}} req)
+            (is (= "https://8.8.8.8/v1/models" (:url @captured)))
+            (is (= :none (:redirect-strategy @captured)))
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))
+          (testing "the managed AI proxy's floor allows private addresses under the default policy"
+            (self.core/request {:url "http://10.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://10.0.0.1:9/v1/models" (:url @captured))))
+          (testing "but still refuses loopback"
+            (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                    (rejected {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private})))))
+        (testing "a URL that is not http(s) is refused before any request is made"
+          (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
+            (is (=? {:status-code 400 :error-code :llm-host-not-allowed :llm-host "8.8.8.8"}
+                    (rejected {:url "8.8.8.8" :headers {}})))))))
+    (testing "under :allow-all an internal base URL goes out on clj-http's default resolver"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
+          (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
+          (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+          (is (not (contains? @captured :dns-resolver)))
+          (testing "and the AI proxy's floor does not tighten that: a proxy on this machine is reachable"
+            (self.core/request {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+            (is (not (contains? @captured :dns-resolver)))))))))
+
+(deftest resolve-auth-tags-proxy-auth-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "an environment-supplied proxy URL carries the private-network floor"
+      (mt/with-temp-env-var-value! [mb-llm-proxy-base-url "http://proxy.internal/"]
+        (is (=? {:url                  "http://proxy.internal/anthropic"
+                 :network-policy-floor :allow-private}
+                (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)))))
+    (testing "a stored proxy URL gets the default policy: no floor"
+      (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.internal/"]
+        (let [auth (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)]
+          (is (= "http://proxy.internal/anthropic" (:url auth)))
+          (is (not (contains? auth :network-policy-floor))))
+        (is (= {:url "https://api.anthropic.com"}
+               (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} false)))))))
+
+(deftest call-llm-prompt-cache-key-test
+  (llm.tu/with-default-connections
+    (testing "the conversation id (:session-id) is forwarded as the Mistral prompt_cache_key"
+      (let [captured (atom nil)]
         ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
         (mt/with-dynamic-fn-redefs [http/request (fn [opts]
                                                    (when (:body opts)
                                                      (reset! captured (json/decode+kw (:body opts))))
                                                    (throw (ex-info "stop" {::skip true :api-error true})))]
-          (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
-                                             llm-proxy-base-url     "http://proxy.example"
-                                             llm-openrouter-api-key "sk-or-v1-test-key"
-                                             llm-openai-api-key     "sk-test-key"]
-            (doseq [[model expected] [["anthropic/test-model"   {:type "any"}]
-                                      ["metabase/anthropic/claude-sonnet-4-6" {:type "any"}]
-                                      ["openrouter/test-model" "required"]
-                                      ["openai/test-model"     "required"]]]
-              (try
-                (run! identity (self/call-llm model
-                                              nil
-                                              []
-                                              {"search" (get test-util/TOOLS "get-time")}
-                                              {:tag "agent"}
-                                              {:tool-choice "required"}))
-                (catch Exception e
-                  (when-not (::skip (ex-data e))
-                    (throw e))))
-              (is (= expected (:tool_choice @captured))))))))))
+          (mt/with-temporary-setting-values [llm-mistral-api-key "mistral-key-test"]
+            (let [call! (fn [tracking-opts]
+                          (reset! captured nil)
+                          (try
+                            (run! identity (self/call-llm "mistral/mistral-medium-3-5" nil [] {} tracking-opts))
+                            (catch Exception e
+                              (when-not (::skip (ex-data e))
+                                (throw e)))))]
+              (call! {:tag "agent" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"})
+              (is (= "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48" (:prompt_cache_key @captured)))
+              (testing "no prompt_cache_key without a :session-id"
+                (call! {:tag "agent"})
+                (is (not (contains? @captured :prompt_cache_key)))))))))))
+
+(deftest call-llm-structured-prompt-cache-key-test
+  (llm.tu/with-default-connections
+    (testing "call-llm-structured forwards :session-id as the prompt_cache_key, same contract as call-llm"
+      (let [captured (atom nil)]
+        ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured (json/decode+kw (:body opts))))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-mistral-api-key "mistral-key-test"]
+            (let [call! (fn [tracking-opts]
+                          (reset! captured nil)
+                          (try
+                            (self/call-llm-structured "mistral/mistral-medium-3-5"
+                                                      [{:role "user" :content "hi"}]
+                                                      {:type "object" :properties {:title {:type "string"}}}
+                                                      nil
+                                                      128
+                                                      tracking-opts)
+                            (catch Exception e
+                              (when-not (::skip (ex-data e))
+                                (throw e)))))]
+              (call! {:tag "conversation-title" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"})
+              (is (= "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48" (:prompt_cache_key @captured)))
+              (testing "no prompt_cache_key without a :session-id"
+                (call! {:tag "example-question-generation"})
+                (is (not (contains? @captured :prompt_cache_key)))))))))))
+
+(deftest call-llm-prompt-cache-key-not-leaked-to-other-providers-test
+  (llm.tu/with-default-connections
+    (testing "call-llm hands :prompt-cache-key to every adapter, but only mistral forwards it to the wire"
+      (let [captured (atom nil)]
+        (mt/with-premium-features #{:metabase-ai-managed}
+          ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+          (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                     (when (:body opts)
+                                                       (reset! captured (json/decode+kw (:body opts))))
+                                                     (throw (ex-info "stop" {::skip true :api-error true})))]
+            (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
+                                               llm-proxy-base-url     "http://proxy.example"
+                                               llm-openrouter-api-key "sk-or-v1-test-key"
+                                               llm-openai-api-key     "sk-test-key"
+                                               llm-zai-api-key        "zai-key.test"]
+              (doseq [model ["anthropic/test-model"
+                             "metabase/anthropic/claude-sonnet-4-6"
+                             "openrouter/test-model"
+                             "openai/test-model"
+                             "zai/glm-5.2"]]
+                (testing model
+                  (reset! captured nil)
+                  (try
+                    (run! identity (self/call-llm model
+                                                  nil
+                                                  []
+                                                  {}
+                                                  {:tag "agent" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (map? @captured))
+                  (is (not (contains? @captured :prompt_cache_key)))
+                  (is (not (contains? @captured :prompt-cache-key))))))))))))
 
 ;;; utils tests
 
@@ -105,21 +429,24 @@
       (is (= ["msg-0" "msg-1" "msg-2"] result)))))
 
 (deftest sse-reducible-stops-response-test
-  (let [cnt     (atom 30)
+  (let [total   500
+        sent    (atom 0)
+        stopped (promise)
         handler (fn [_req]
                   (let [out (java.io.PipedOutputStream.)
                         in  (java.io.PipedInputStream. out 65536)]
                     (future
                       (try
-                        (dotimes [i @cnt]
+                        (dotimes [i total]
                           (.write out (.getBytes (test-util/make-sse [(str "msg-" i)])))
                           (.flush out)
-                          (swap! cnt dec)
+                          (swap! sent inc)
                           (Thread/sleep 10))
                         (catch Exception _)
                         (finally
                           (try (.close out)
-                               (catch Exception _)))))
+                               (catch Exception _))
+                          (deliver stopped true))))
                     {:status  200
                      :headers {"Content-Type"      "text/event-stream"
                                "Cache-Control"     "no-cache"}
@@ -127,22 +454,25 @@
         server  (jetty/run-jetty handler {:port 0
                                           :join? false
                                           :output-buffer-size 1})
-        url     (str "http://localhost:" (.. server getURI getPort))]
+        url     (str "http://localhost:" (.. server getURI getPort))
+        opts    {:method :post :url url :as :stream}]
     (try
-      (let [res       (http/request {:method :post :url url :as :stream})
-            reducible (self.core/sse-reducible (:body res))
-            ;; Take only 2 items, which should trigger early termination
-            result    (reduce (fn [acc item]
-                                (if (< (count acc) 2)
-                                  (conj acc item)
-                                  (reduced acc)))
-                              []
-                              reducible)]
-        (is (= ["msg-0" "msg-1"] result))
-        ;; Give time for cancellation to propagate
-        (Thread/sleep 30)
-        ;; Should have stopped writing when reduction stopped
-        (is (> @cnt 20) "SHOULD have stopped writing when reduction terminated early"))
+      ;; Held through the checks, so that a garbage-collected socket can't stop the server in sse-reducible's place
+      (with-open [^java.io.Closeable body (self.core/abort-on-close (http/request opts) opts)]
+        (let [reducible (self.core/sse-reducible body)
+              ;; Take only 2 items, which should trigger early termination
+              result    (reduce (fn [acc item]
+                                  (if (< (count acc) 2)
+                                    (conj acc item)
+                                    (reduced acc)))
+                                []
+                                reducible)]
+          (is (= ["msg-0" "msg-1"] result))
+          (is (deref stopped 10000 false)
+              "the server was still writing 10 s after the client stopped reading")
+          (is (< @sent (/ total 2))
+              (str "the server kept writing after the client stopped reading: it wrote "
+                   @sent " of " total " messages"))))
       (finally
         (.stop server)))))
 
@@ -176,13 +506,95 @@
                    :toolName               "search"
                    :result                 {:data []}
                    ::self.core/duration-ms 1234}]]
+      ;; No `:error` key: a failed call carries its error inside `:result`, and a second copy on
+      ;; the part is what let a failure read as a success downstream.
       (is (= [{:type        :tool-output
                :id          "call-1"
                :function    "search"
                :result      {:data []}
-               :error       nil
                :duration-ms 1234}]
-             (into [] (self.core/lite-aisdk-xf) chunks))))))
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "streams reasoning deltas and carries provider metadata on the end"
+    (let [chunks [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "Think"}
+                  {:type :reasoning-delta :id "r1" :delta "ing"}
+                  {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}]]
+      (is (= [{:type :reasoning :id "r1" :text "Think"}
+              {:type :reasoning :id "r1" :text "ing"}
+              {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "sig"}}}]
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "a reasoning-end without provider metadata emits no carrier"
+    (is (= [{:type :reasoning :id "r1" :text "hm"}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "hm"}
+                  {:type :reasoning-end :id "r1"}])))))
+
+(deftest ^:parallel aisdk-xf-reasoning-grouping-test
+  (testing "non-streaming mode joins reasoning deltas into one part with metadata"
+    (is (= [{:type :reasoning :id "r1" :text "abc" :provider-metadata {:anthropic {:signature "sig"}}}]
+           (into [] (self.core/aisdk-xf)
+                 [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "ab"}
+                  {:type :reasoning-delta :id "r1" :delta "c"}
+                  {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
+
+(deftest ^:parallel aisdk-xf-orphan-chunk-test
+  (testing "a group that does not open with its start chunk fails with an error naming the chunk"
+    (doseq [[mode xf] [["aisdk-xf" (self.core/aisdk-xf)]
+                       ["lite-aisdk-xf" (self.core/lite-aisdk-xf)]]]
+      (testing mode
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Model stream sent a :tool-input-delta chunk for \"call-1\" without its start chunk"
+             (into [] xf
+                   [{:type :start :messageId "msg-1"}
+                    {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{}"}
+                    {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])))))))
+
+(deftest ^:parallel aisdk-xf-nested-object-arguments-validate-test
+  (testing "a tool call with object-valued arguments replays as valid LLMRequestOpts input"
+    ;; The agent loop replays tool calls on its next iteration, where every adapter validates them against
+    ;; `LLMRequestOpts`.
+    (let [chunks [{:type :tool-input-start :toolCallId "call-1" :toolName "construct_notebook_query"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "{\"query\":{\"lib/type\":\"mbql/query\","}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"stages\":[{\"source-table\":[\"db\",\"public\",\"orders\"]}]},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"visualization\":{\"chart_type\":\"line\"},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"title\":\"Orders per month\",\"description\":\"Monthly orders in 2025\"}"}
+                  {:type :tool-input-available :toolCallId "call-1" :toolName "construct_notebook_query"}]
+          parts  (into [] (self.core/aisdk-xf) chunks)]
+      (is (= [{:type      :tool-input
+               :id        "call-1"
+               :function  "construct_notebook_query"
+               :arguments {:query         {"lib/type" "mbql/query"
+                                           "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                           :visualization {"chart_type" "line"}
+                           :title         "Orders per month"
+                           :description   "Monthly orders in 2025"}}]
+             parts))
+      (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))
+
+(deftest ^:parallel aisdk-xf-non-object-arguments-validate-test
+  (testing "a tool call whose arguments aren't a JSON object replays as valid LLMRequestOpts input"
+    ;; The executor rejects the call, and the agent loop replays it with that error on its next iteration.
+    (doseq [[raw decoded] [["[\"orders\"]" ["orders"]]
+                           ["false" false]
+                           ["[{\"a\":{\"b\":1}}]" [{"a" {"b" 1}}]]]]
+      (testing raw
+        (let [parts (into [] (self.core/aisdk-xf)
+                          [{:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                           {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta raw}
+                           {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])]
+          (is (= {::self.core/non-object-arguments decoded} (:arguments (first parts))))
+          (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))))
 
 ;;; tool executor
 
@@ -256,9 +668,35 @@
       (is (=? {:type       :tool-output-available
                :toolCallId "call-err"
                :toolName   "get-time"
-               :error      {:message string?
-                            :type    string?}}
+               :result     {:output string?
+                            :error  {:class :unrecoverable :code :internal}}}
               (last result))))))
+
+(def ^:private failing-tool-exception
+  "What `failing-tool` throws. An atom so the tool can be a real var, which is what `adapt` accepts."
+  (atom nil))
+
+(mu/defn ^{:tool-name "failing"}
+  failing-tool
+  "Always throws whatever `failing-tool-exception` holds."
+  [_args :- [:map {:closed true}]]
+  (throw @failing-tool-exception))
+
+(deftest tool-failure-log-level-test
+  (let [run-failing (fn [e]
+                      (reset! failing-tool-exception e)
+                      (into [] (self.core/tool-executor-xf
+                                (metabot.tools/->entries [#'failing-tool] (atom {}) nil nil))
+                            (test-util/parts->aisdk-chunks
+                             [{:type :tool-input :id "call-f" :function "failing" :arguments {}}])))]
+    (testing "an unexpected tool failure is logged at error"
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
+        (run-failing (ex-info "boom" {}))
+        (is (= [:error] (map :level (messages))))))
+    (testing "a failure the tool wrote for the model is not"
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
+        (run-failing (ex-info "No such field" {:agent-error? true}))
+        (is (empty? (messages)))))))
 
 (deftest ^:parallel tool-executor-xf-test-6
   (testing "tool-executor-xf handles nil arguments for no-arg tools"
@@ -273,258 +711,621 @@
               (last result))))))
 
 (deftest ^:parallel tool-executor-xf-test-7
-  (testing "tool-executor-xf ignores unknown tool names"
+  (testing "tool-executor-xf answers a call to an unknown tool with an error listing the tools it can call"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
-                   {:type :tool-input :id "call-1" :function "unknown-tool" :arguments {:foo :bar}}])
+                   {:type :tool-input :id "call-1" :function "analyze_chart" :arguments {:chart_config_id "abc"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
-      (is (= chunks result)
-          "Unknown tools should be ignored, chunks pass through unchanged"))))
+      (is (=? (conj (vec chunks)
+                    {:type       :tool-output-available
+                     :toolCallId "call-1"
+                     :toolName   "analyze_chart"
+                     :result     {:output (str "Tool `analyze_chart` does not exist. "
+                                               "Available tools: convert-currency, get-time, mock-llm, no-arg.")
+                                  :error  {:class :validation :code :unknown-tool}}})
+              result)))))
+
+(deftest ^:parallel tool-executor-xf-stream-error-test
+  (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
+    (let [running  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+          cut-off  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-2" :function "convert-currency"
+                      :arguments {:amount 100, :from "EUR", :to "USD"}}])
+          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+        (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
+                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+        (testing "and a warning names the call that never ran"
+          (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
+
+;;; tool argument validation tests
+
+(defn- validation-error
+  "The text the model would see for `arguments` against `args-schema`, or nil when they are accepted."
+  [args-schema arguments]
+  (let [tools  (metabot.tools/->entries
+                [(reify tools.core/Tool
+                   (declaration [_] {:name "validated" :description "validation test tool"
+                                     :args args-schema})
+                   (handle [_ _args _ctx] {:output "ok"}))]
+                (atom {}) nil nil)
+        chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-v"}
+                 {:type :tool-input :id "call-v" :function "validated" :arguments arguments}])
+        result (-> (into [] (self.core/tool-executor-xf tools) chunks) last :result)]
+    (when (:error result)
+      (:output result))))
+
+(deftest ^:parallel tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:names {:optional true} [:sequential {:error/message "must be an array of strings"} :string]]
+                [:limit {:optional true} [:int {:min 1 :max 50}]]]]
+    (testing "a well-formed call is accepted"
+      (is (nil? (validation-error schema {:names ["orders"] :limit 10}))))
+    (testing "a scalar where an array is declared names the field and what it received"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a string."
+             (validation-error schema {:names "orders"}))))
+    (testing "the received type reflects the value the model actually sent"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a number."
+             (validation-error schema {:names 5})))
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received an object."
+             (validation-error schema {:names {:a 1}}))))
+    (testing "a bad element reports the element's constraint without a received clause"
+      (is (= "Invalid tool arguments: `names` should be a string."
+             (validation-error schema {:names ["ok" 5]}))))
+    (testing "an unsupported key is called out as such"
+      (is (= "Invalid tool arguments: `nope` is not a supported argument."
+             (validation-error schema {:names ["ok"] :nope 1}))))
+    (testing "constraint violations on scalars are reported too"
+      (is (= "Invalid tool arguments: `limit` should be at most 50; received a number."
+             (validation-error schema {:limit 999}))))
+    (testing "arguments that aren't an object at all"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (validation-error schema ["orders"]))))))
+
+(deftest ^:parallel tool-unparseable-arguments-test
+  (testing "arguments the provider streamed as invalid JSON are reported as such"
+    (let [tools  (metabot.tools/->entries
+                  [(reify tools.core/Tool
+                     (declaration [_] {:name "validated" :description "validation test tool"
+                                       :args [:map {:closed true}
+                                              [:names {:optional true} [:sequential :string]]]})
+                     (handle [_ _args _ctx] {:output "ok"}))]
+                  (atom {}) nil nil)
+          chunks (concat [{:type :tool-input-start :toolName "validated" :toolCallId "call-j"}]
+                         [{:type :tool-input-delta :toolCallId "call-j" :inputTextDelta "{\"names\": ["}]
+                         [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])
+          result (-> (into [] (self.core/tool-executor-xf tools) chunks) last :result)]
+      (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+             (:output result)))
+      (is (= {:class :validation :code :invalid-json} (:error result))))))
+
+(deftest ^:parallel tool-unparseable-arguments-warning-test
+  (testing "invalid JSON logs one warning with the tool name, the call ID and the length, but not the parse error"
+    (let [raw "{\"tz\": jane_doe_4165551234}"]
+      (doseq [[tool-name logged-name] [["get-time" "get-time"] ["analyze_chart" "unknown"]]]
+        (testing tool-name
+          (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+            (run! identity (eduction (self.core/tool-executor-xf test-util/TOOLS)
+                                     (self.core/lite-aisdk-xf)
+                                     [{:type :tool-input-start :toolName tool-name :toolCallId "call-j"}
+                                      {:type :tool-input-delta :toolCallId "call-j" :inputTextDelta raw}
+                                      {:type :tool-input-available :toolName tool-name :toolCallId "call-j"}]))
+            (is (=? [{:level   :warn
+                      :message (str "Failed to parse tool arguments as JSON {:tool-name " logged-name
+                                    ", :tool-call-id call-j, :raw-len " (count raw) "}")}]
+                    (messages)))))))))
+
+(deftest ^:parallel tool-sentinel-key-arguments-test
+  (testing "valid JSON that sets the raw-arguments sentinel key gets a validation outcome"
+    (doseq [[tool-name code] [["get-time" :invalid-json] ["analyze_chart" :unknown-tool]]]
+      (testing tool-name
+        (let [chunks (test-util/parts->aisdk-chunks
+                      [{:type :tool-input :id "call-k" :function tool-name
+                        :arguments {::self.core/raw-arguments 1}}])]
+          (is (= {:class :validation :code code}
+                 (-> (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks) last :result :error))))))))
+
+(deftest ^:parallel tool-non-object-arguments-test
+  (let [received (atom ::not-called)
+        tools    {"open" {:fn     (fn [args] (reset! received args) {:output "ok"})
+                          :doc    "accepts any object"
+                          :schema [:=> [:cat [:map]] :any]}
+                  "untyped" {:fn     (fn [args] (reset! received args) {:output "ok"})
+                             :doc    "declares no argument schema"
+                             :schema nil}}
+        run      (fn run
+                   ([raw] (run "open" raw))
+                   ([tool-name raw]
+                    (reset! received ::not-called)
+                    ;; `:result`, not a chunk-level `:error`: a non-object argument list is a
+                    ;; validation failure like any other, so it comes back classed, with its text
+                    ;; where every other failure's text is.
+                    (-> (into [] (self.core/tool-executor-xf tools)
+                              [{:type :tool-input-start :toolName tool-name :toolCallId "call-n"}
+                               {:type :tool-input-delta :toolCallId "call-n" :inputTextDelta raw}
+                               {:type :tool-input-available :toolName tool-name :toolCallId "call-n"}])
+                        last :result)))
+        message  (fn [& args] (:output (apply run args)))]
+    (testing "valid JSON that isn't an object is rejected before it reaches a tool whose schema accepts any map"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (message "[\"orders\"]")))
+      (is (= {:class :validation :code :invalid-arguments} (:error (run "[\"orders\"]"))))
+      (is (= ::not-called @received)))
+    (testing "a JSON string holding an object is reported as the string the model sent, not decoded into one"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received a string."
+             (message "\"{\\\"names\\\": [\\\"orders\\\"]}\"")))
+      (is (= ::not-called @received)))
+    (testing "a JSON boolean is rejected, not run as an empty argument map"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received a boolean."
+             (message "false")))
+      (is (= ::not-called @received)))
+    (testing "JSON null still runs the tool with an empty argument map"
+      (is (nil? (:error (run "null"))))
+      (is (= {} @received)))
+    (testing "a tool with no argument schema rejects a non-object too"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (message "untyped" "[\"orders\"]")))
+      (is (= ::not-called @received)))))
+
+(deftest ^:parallel tool-without-schema-is-not-validated-test
+  (testing "a tool with no declared argument schema is left alone"
+    (let [tools  {"anything" {:fn (fn [_args] {:output "ok"}) :doc "d" :schema nil}}
+          chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-ns"}
+                   {:type :tool-input :id "call-ns" :function "anything" :arguments {:whatever "x"}}])]
+      (is (=? {:type :tool-output-available :toolCallId "call-ns" :result {:output "ok"}}
+              (last (into [] (self.core/tool-executor-xf tools) chunks)))))))
 
 ;;; tool :decode tests
 
-(defn- make-decode-tool
-  "Create a wrapped tool map that records its received arguments and has an optional `:decode` fn.
-  Returns a map with `:fn`, `:doc`, `:schema` and optionally `:decode` — the same shape
-  that [[wrap-tools-with-state]] produces."
-  [tool-name received-atom decode-fn]
-  (let [f (fn [args]
-            (reset! received-atom args)
-            {:output "ok"})]
-    (cond-> {:fn f
-             :doc (str tool-name " test tool")
-             :schema [:=> [:cat [:map [:x :any]]] :any]}
-      decode-fn (assoc :decode decode-fn))))
+(defn- probe-tool
+  "Entries for a tool named `probe` that declares `args-schema` and records the arguments it is
+  called with.
 
-(deftest ^:parallel tool-decode-var-test
-  (testing "tool definition map with :decode has decode applied before invocation"
-    (let [received (atom nil)
-          decode-fn (fn [args]
-                      (update args :x inc))
-          tool-def {:fn     (fn [args]
-                              (reset! received args)
-                              {:output "ok"})
-                    :decode decode-fn
-                    :schema [:=> [:cat [:map [:x :int]]] :any]
-                    :doc    "increment x"}
-          tools {"decode-inc" tool-def}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-1"}
-                   {:type :tool-input :id "call-d1" :function "decode-inc" :arguments {:x 41}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (= 42 (:x @received))
-          "decode should have incremented x before the tool saw it")
-      (is (=? {:type :tool-output-available :toolCallId "call-d1"}
-              tool-result)))))
+  Built through `->entries` rather than by hand, because argument coercion and validation live in
+  `metabase.metabot.tools.runtime` — a hand-made `:fn` would be called with the raw arguments."
+  [args-schema received]
+  (metabot.tools/->entries
+   [(reify tools.core/Tool
+      (declaration [_] {:name        "probe"
+                        :description "Records the arguments it was called with."
+                        :args        (or args-schema :any)})
+      (handle [_ args _ctx]
+        (reset! received args)
+        {:output "ok"}))]
+   (atom {}) nil nil))
 
-(deftest ^:parallel tool-decode-map-test
-  (testing "wrapped tool map with :decode has decode applied"
-    (let [received (atom nil)
-          tool (make-decode-tool "coerce-test" received
-                                 (fn [args]
-                                   (update args :x str)))
-          tools {"coerce-test" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-2"}
-                   {:type :tool-input :id "call-d2" :function "coerce-test" :arguments {:x 123}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (= "123" (:x @received))
-          "decode should have converted x to string before the tool saw it")
-      (is (=? {:type :tool-output-available :toolCallId "call-d2"}
-              tool-result)))))
+(defn- run-probe
+  "Run one `probe` tool call with `arguments` against `tools`. Returns the last output chunk."
+  [tools arguments]
+  (let [chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-coerce"}
+                 {:type :tool-input :id "call-c1" :function "probe" :arguments arguments}])]
+    (last (into [] (self.core/tool-executor-xf tools) chunks))))
 
-(deftest ^:parallel tool-decode-error-test
-  (testing "decode that throws agent-error is returned to LLM"
-    (let [received (atom nil)
-          tool (make-decode-tool "bad-decode" received
-                                 (fn [_args]
-                                   (throw (ex-info "Value must be positive"
-                                                   {:agent-error? true :status-code 400}))))
-          tools {"bad-decode" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-3"}
-                   {:type :tool-input :id "call-d3" :function "bad-decode" :arguments {:x -1}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (nil? @received)
-          "tool function should not have been called")
-      (is (=? {:type       :tool-output-available
-               :toolCallId "call-d3"
-               :toolName   "bad-decode"
-               :error      {:message #"Value must be positive"}}
-              tool-result)))))
+(defn- tool-received-args
+  "Run one `probe` tool call with `arguments` and return the arguments the tool saw."
+  [args-schema arguments]
+  (let [received (atom nil)]
+    (run-probe (probe-tool args-schema received) arguments)
+    @received))
 
-(deftest ^:parallel tool-without-decode-test
-  (testing "tool without :decode still works normally"
-    (let [received (atom nil)
-          tool (make-decode-tool "no-decode" received nil)
-          tools {"no-decode" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-4"}
-                   {:type :tool-input :id "call-d4" :function "no-decode" :arguments {:x 99}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (= 99 (:x @received))
-          "without decode, arguments pass through unchanged")
-      (is (=? {:type :tool-output-available :toolCallId "call-d4"}
-              tool-result)))))
+(deftest ^:parallel tool-args-stringified-int-coerced-test
+  (testing "an integer sent as a string is parsed using the tool's schema"
+    (is (= {:limit 15}
+           (tool-received-args [:map [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]]
+                               {:limit "15"})))))
 
-(deftest ^:parallel tool-decode-coercion-test
-  (testing "decode can deeply transform nested arguments (simulating temporal filter coercion)"
-    (let [received (atom nil)
-          ;; Simulate the temporal filter decode: walk into query.filters and coerce values
-          decode-fn (fn [args]
-                      (update-in args [:query :filters]
-                                 (fn [filters]
-                                   (mapv (fn [f]
-                                           (if (and (= "year-of-era" (:bucket f))
-                                                    (string? (:value f)))
-                                             (assoc f :value (Integer/parseInt (subs (:value f) 0 4)))
-                                             f))
-                                         filters))))
-          tool (make-decode-tool "construct-test" received decode-fn)
-          tools {"construct-test" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-5"}
-                   {:type :tool-input :id "call-d5" :function "construct-test"
-                    :arguments {:query {:filters [{:bucket "year-of-era" :value "2024-01-01"}
-                                                  {:bucket nil :value "2024-06-15"}]}}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)]
-      (is (= 2024 (get-in @received [:query :filters 0 :value]))
-          "year-of-era filter value should be coerced to integer")
-      (is (= "2024-06-15" (get-in @received [:query :filters 1 :value]))
-          "filter without bucket should pass through unchanged")
-      (is (=? {:type :tool-output-available :toolCallId "call-d5"}
-              (last result))))))
+(deftest ^:parallel tool-args-stringified-scalars-in-collections-coerced-test
+  (testing "stringified scalars nested inside collections are parsed too"
+    (is (= {:ids    [1 2]
+            :nested {:ratio 0.5}}
+           (tool-received-args [:map
+                                [:ids [:sequential :int]]
+                                [:nested [:map [:ratio :double]]]]
+                               {:ids    ["1" "2"]
+                                :nested {:ratio "0.5"}})))))
 
-;;; AI SDK v4 Line Protocol tests
+(deftest ^:parallel tool-args-stringified-boolean-coerced-test
+  (testing "a boolean sent as a string is parsed"
+    (is (= {:verbose true}
+           (tool-received-args [:map [:verbose :boolean]] {:verbose "true"})))))
 
-(deftest format-text-line-test
-  (testing "formats text as JSON-encoded string with 0: prefix"
-    (is (= "0:\"Hello world\"" (self.core/format-text-line {:text "Hello world"})))
-    (is (= "0:\"Line with \\\"quotes\\\"\"" (self.core/format-text-line {:text "Line with \"quotes\""})))))
+(deftest ^:parallel tool-args-strings-left-alone-test
+  (testing "strings the schema actually asks for are never reinterpreted"
+    (is (= {:keyword_queries ["15"]
+            :entity_types    ["table"]}
+           (tool-received-args [:map
+                                [:keyword_queries [:sequential :string]]
+                                [:entity_types [:sequential [:enum "table" "model"]]]]
+                               {:keyword_queries ["15"]
+                                :entity_types    ["table"]})))))
 
-(deftest format-data-line-test
-  (testing "formats data with type, version, and value"
-    (is (= "2:{\"type\":\"state\",\"version\":1,\"value\":{\"queries\":{}}}"
-           (self.core/format-data-line {:data-type "state" :data {:queries {}}})))
-    (is (= "2:{\"type\":\"navigate_to\",\"version\":1,\"value\":{\"url\":\"/question/123\"}}"
-           (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
+(deftest ^:parallel tool-args-unparseable-scalar-rejected-test
+  (testing "a string that isn't a number is rejected at the boundary instead of reaching the tool"
+    (is (nil? (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))
+    (is (= "Invalid tool arguments: `limit` should be an integer; received a string."
+           (validation-error [:map [:limit [:maybe :int]]] {:limit "abc"})))))
 
-(deftest format-error-line-test
-  (testing "formats plain error message as a JSON string with 3: prefix"
-    (is (= "3:\"Something went wrong\"" (self.core/format-error-line {:error {:message "Something went wrong"}})))
-    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"}))))
-  (testing "formats structured error with error-code as a JSON object"
-    (let [line   (self.core/format-error-line {:error {:message    "You've used all of your included AI service tokens."
-                                                       :error-code "metabase_ai_managed_locked"}})
-          parsed (json/decode+kw (subs line 2))]
-      (is (str/starts-with? line "3:"))
-      (is (= "You've used all of your included AI service tokens." (:message parsed)))
-      (is (= "metabase_ai_managed_locked" (:error-code parsed)))))
-  (testing "formats ai_usage_limit_reached error-code as a JSON object"
-    (let [line   (self.core/format-error-line {:error {:message    "You have reached your AI usage limit."
-                                                       :error-code "ai_usage_limit_reached"}})
-          parsed (json/decode+kw (subs line 2))]
-      (is (str/starts-with? line "3:"))
-      (is (= "You have reached your AI usage limit." (:message parsed)))
-      (is (= "ai_usage_limit_reached" (:error-code parsed)))))
-  (testing "coerces keyword error-code to string"
-    (let [line   (self.core/format-error-line {:error {:message    "Usage limit reached"
-                                                       :error-code :metabase_ai_managed_locked}})
-          parsed (json/decode+kw (subs line 2))]
-      (is (= "metabase_ai_managed_locked" (:error-code parsed))))))
+(deftest ^:parallel tool-args-coercion-tolerates-unusable-schema-test
+  (testing "a tool without a usable schema still receives its arguments"
+    (is (= {:limit "15"}
+           (tool-received-args nil {:limit "15"})))))
 
-(deftest format-tool-call-line-test
-  (testing "formats tool call with toolCallId, toolName, and args"
-    (let [line (self.core/format-tool-call-line {:id "call-123"
-                                                 :function "search"
-                                                 :arguments {:query "revenue"}})]
-      (is (str/starts-with? line "9:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-123" (:toolCallId parsed)))
-        (is (= "search" (:toolName parsed)))
-        ;; args should be JSON string, not object
-        (is (string? (:args parsed)))))))
+(deftest ^:parallel tool-args-stringified-int-satisfies-tool-validation-test
+  (testing "a stringified integer no longer fails a tool that validates its own arguments"
+    (let [args-schema [:map [:limit [:maybe [:int {:min 1 :max 50}]]]]
+          tools       (metabot.tools/->entries
+                       [(reify tools.core/Tool
+                          (declaration [_] {:name "probe" :description "Validates its arguments."
+                                            :args args-schema})
+                          (handle [_ args _ctx]
+                            {:output (str "limit=" (:limit (mc/coerce args-schema args nil)))}))]
+                       (atom {}) nil nil)]
+      (is (=? {:type   :tool-output-available
+               :result {:output "limit=15"}}
+              (run-probe tools {:limit "15"}))))))
 
-(deftest format-tool-result-line-test
-  (testing "formats tool result with toolCallId and result"
-    (let [line (self.core/format-tool-result-line {:id "call-123"
-                                                   :result {:data [{:id 1}]}})]
-      (is (str/starts-with? line "a:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-123" (:toolCallId parsed)))
-        ;; result should be JSON string
-        (is (string? (:result parsed))))))
-  (testing "formats tool error"
-    (let [line (self.core/format-tool-result-line {:id "call-456"
-                                                   :error {:message "Tool failed"}})]
-      (is (str/starts-with? line "a:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-456" (:toolCallId parsed)))
-        (is (string? (:error parsed))))))
-  (testing ":duration-ms is ignored"
-    (let [line (self.core/format-tool-result-line {:id "call-789"
-                                                   :result {:data [{:id 1}]}
-                                                   :duration-ms 1234})]
-      (is (str/starts-with? line "a:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-789" (:toolCallId parsed)))
-        (is (not (contains? parsed :duration-ms)))))))
+;;; AI SDK SSE output tests
 
-(deftest format-finish-line-test
-  (testing "formats finish message with usage"
-    (let [line (self.core/format-finish-line false {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
-      (is (str/starts-with? line "d:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "stop" (:finishReason parsed)))
-        ;; Keys are keywordized when parsing JSON
-        (is (= 100 (get-in parsed [:usage :claude-sonnet-4-5-20250929 :prompt])))))))
+(defn- sse-events
+  "Run `parts` through [[self.core/parts->aisdk-sse-xf]] and decode each
+  `data: {json}` line back to a map, asserting every event validates against
+  the wire schema. The `[DONE]` terminator is checked then excluded."
+  ([parts] (sse-events nil parts))
+  ([opts parts]
+   (let [lines (into [] (self.core/parts->aisdk-sse-xf opts) parts)]
+     (is (every? #(str/starts-with? % "data: ") lines))
+     (is (= "data: [DONE]\n" (last lines)))
+     (let [events (mapv #(json/decode+kw (subs (str/trimr %) 6)) (butlast lines))]
+       (doseq [event events]
+         (is (nil? (mr/explain ::schema.v2/ui-message-chunk event))
+             (str "event does not match the wire schema: " (pr-str event))))
+       events))))
 
-(deftest format-start-line-test
-  (testing "formats start message with messageId"
-    (let [line (self.core/format-start-line {:id "msg-123"})]
-      (is (str/starts-with? line "f:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "msg-123" (:messageId parsed)))))))
+(defn- usage-part [finish-reason raw-finish-reason]
+  {:type              :usage
+   :model             "m"
+   :usage             {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+   :finish-reason     finish-reason
+   :raw-finish-reason raw-finish-reason})
 
-(deftest aisdk-line-xf-test
-  (testing "converts internal parts to AI SDK v4 line protocol, skipping usage by default"
-    (let [parts [{:type :start :id "msg-1"}
-                 {:type :text :text "Hello"}
-                 {:type :tool-input :id "call-1" :function "search" :arguments {:q "test"}}
-                 {:type :tool-output :id "call-1" :result {:data []}}
-                 {:type :usage :id "msg-1" :model "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
-                 {:type :finish}]
-          lines (into [] (self.core/aisdk-line-xf) parts)]
-      ;; Should have: start, text, tool-call, tool-result, finish (usage skipped)
-      (is (= 5 (count lines)))
-      (is (str/starts-with? (nth lines 0) "f:"))  ;; start
-      (is (str/starts-with? (nth lines 1) "0:"))  ;; text
-      (is (str/starts-with? (nth lines 2) "9:"))  ;; tool-call
-      (is (str/starts-with? (nth lines 3) "a:"))  ;; tool-result
-      (is (str/starts-with? (nth lines 4) "d:")))) ;; finish
+(deftest parts->aisdk-sse-xf-finish-reason-test
+  (let [error-part {:type :error :error {:message "tool blew up mid-turn"}}]
+    (testing "a truncated turn emits finishReason \"length\" and without an error"
+      (is (= ["text-start" "text-delta" "text-end" "finish"]
+             (mapv :type
+                   (sse-events [{:type :text :id "t1" :text "partial"}
+                                (usage-part "length" "max_tokens")]))))
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [{:type :text :id "t1" :text "partial"}
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "an in-turn error part does not override a length finish"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [error-part
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "a filtered turn emits finishReason \"content-filter\""
+      (is (=? {:type "finish" :finishReason "content-filter"}
+              (last (sse-events [{:type :text :id "t1" :text "I can't help with that."}
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "an in-turn error part outranks a content-filter finish — the errored turn is rewound"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "a loop stopped at max iterations emits finishReason \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "tool-calls"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a terminal-tool stop stays \"stop\" even though the provider reported \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :terminal-tool}])))))
+    (testing "an in-turn error part outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a length finish outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [(usage-part "length" "max_tokens")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a content-filter finish outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "content-filter"}
+              (last (sse-events [(usage-part "content-filter" "refusal")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "the last non-nil usage finish reason decides"
+      (testing "a later stop supersedes an earlier content-filter"
+        (is (=? {:type "finish" :finishReason "stop"}
+                (last (sse-events [(usage-part "content-filter" "refusal")
+                                   (usage-part "stop" "end_turn")])))))
+      (testing "a later usage carrying no finish reason leaves an earlier length in place"
+        (is (=? {:type "finish" :finishReason "length"}
+                (last (sse-events [(usage-part "length" "max_tokens")
+                                   (usage-part nil nil)])))))
+      (testing "a filtered step with a tool call, then a completed OpenAI Responses step, is a normal stop"
+        (let [parts [(usage-part "content-filter" "content_filter")
+                     {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}
+                     (usage-part "stop" "completed")]]
+          (is (nil? (self.core/parts->incomplete-finish-reason parts)))
+          (is (=? {:type "finish" :finishReason "stop"}
+                  (last (sse-events parts)))))))
+    (testing "a turn ending on a terminal tool call is a normal stop, not an incomplete turn"
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")])))))
+    (testing "an in-turn error outranks every non-length provider finish reason"
+      (doseq [finish-reason (disj self.core/finish-reasons "length" "error")]
+        (is (=? {:type "finish" :finishReason "error"}
+                (last (sse-events [error-part
+                                   (usage-part finish-reason nil)]))))))))
 
-  (testing "emits usage as data line when :emit-usage? is true"
-    (let [parts [{:type :start :id "msg-1"}
-                 {:type :text :text "Hello"}
-                 {:type  :usage :id "msg-1" :model "claude-sonnet-4-5-20250929"
-                  :usage {:promptTokens 10 :completionTokens 5}}]
-          lines (into [] (self.core/aisdk-line-xf {:emit-usage? true}) parts)]
-      (is (=? [#"f:.*"
-               #"0:.*"
-               #"d:.*"]
-              lines))
-      (is (=? {:usage {:promptTokens 10 :completionTokens 5}}
-              (-> (last lines) (subs 2) (json/decode+kw))))))
-  (testing ":external-id overrides the messageId on the start line"
-    (let [parts [{:type :start :id "provider-id" :messageId "provider-msg-id"}
-                 {:type :text :text "hi"}]
-          lines (into [] (self.core/aisdk-line-xf {:external-id "override-id"}) parts)]
-      (is (= "override-id"
-             (-> (first lines) (subs 2) (json/decode+kw) :messageId))))))
+(deftest parts->aisdk-sse-xf-lifecycle-test
+  (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
+    (is (= [["start" "msg-1"] ["start-step" nil]
+            ["finish-step" nil] ["start-step" nil]
+            ["finish-step" nil] ["finish" nil]]
+           (mapv (juxt :type :messageId)
+                 (sse-events [{:type :start :id "msg-1"}
+                              {:type :start :id "msg-1"}])))))
+  (testing "a stream that never started still emits finish"
+    (is (= ["finish"] (mapv :type (sse-events [])))))
+  (testing ":message-id overrides the start event's message_id"
+    (is (= "override-id"
+           (-> (sse-events {:message-id "override-id"} [{:type :start :id "provider-id"}])
+               first
+               :messageId)))))
+
+(deftest parts->aisdk-sse-xf-text-coalescing-test
+  (testing "consecutive same-id :text parts share one block; an id change closes it"
+    (is (= [["text-start" "t1" nil]
+            ["text-delta" "t1" "Hel"]
+            ["text-delta" "t1" "lo"]
+            ["text-end" "t1" nil]
+            ["text-start" "t2" nil]
+            ["text-delta" "t2" "next"]
+            ["text-end" "t2" nil]
+            ["finish" nil nil]]
+           (mapv (juxt :type :id :delta)
+                 (sse-events [{:type :text :id "t1" :text "Hel"}
+                              {:type :text :id "t1" :text "lo"}
+                              {:type :text :id "t2" :text "next"}])))))
+  (testing "a non-text part closes the open text block before its own events"
+    (is (= ["text-start" "text-delta" "text-end" "data-state" "finish"]
+           (mapv :type
+                 (sse-events [{:type :text :id "t1" :text "hi"}
+                              {:type :data :data-type "state" :data {:queries {}}}]))))))
+
+(deftest parts->aisdk-sse-xf-reasoning-test
+  (testing "consecutive same-id :reasoning parts share one block with a short wire id"
+    (is (= [["reasoning-start" "1" nil]
+            ["reasoning-delta" "1" "Think"]
+            ["reasoning-delta" "1" "ing"]
+            ["reasoning-end" "1" nil]
+            ["finish" nil nil]]
+           (mapv (juxt :type :id :delta)
+                 (sse-events [{:type :reasoning :id "r1" :text "Think"}
+                              {:type :reasoning :id "r1" :text "ing"}])))))
+  (testing "reasoning and text close each other in both directions"
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end"
+            "text-start" "text-delta" "text-end"
+            "reasoning-start" "reasoning-delta" "reasoning-end"
+            "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "hmm"}
+                              {:type :text :id "t1" :text "answer"}
+                              {:type :reasoning :id "r2" :text "more"}])))))
+  (testing "empty-text parts (metadata carriers) emit nothing"
+    (is (= ["finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "sig"}}}]))))
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end" "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "hi"}
+                              {:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "sig"}}}])))))
+  (testing "a whitespace-only part (paragraph separator) flows as a delta"
+    (is (= [["reasoning-delta" "part one"]
+            ["reasoning-delta" "\n\n"]
+            ["reasoning-delta" "part two"]]
+           (->> (sse-events [{:type :reasoning :id "r1" :text "part one"}
+                             {:type :reasoning :id "r1" :text "\n\n"}
+                             {:type :reasoning :id "r1" :text "part two"}])
+                (filter #(= "reasoning-delta" (:type %)))
+                (mapv (juxt :type :delta))))))
+  (testing "a tool part closes an open reasoning block first"
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end" "tool-input-available" "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "planning"}
+                              {:type :tool-input :id "call-1" :function "search" :arguments {}}]))))))
+
+(deftest parts->aisdk-sse-xf-tool-test
+  (testing "tool input and successful output"
+    (let [[input-event output-event] (sse-events [{:type :tool-input :id "call-1" :function "search"
+                                                   :arguments {:q "test"}}
+                                                  {:type :tool-output :id "call-1" :function "search"
+                                                   :result {:output "rows" :resources [1 2]}
+                                                   :duration-ms 12}])]
+      (is (= {:type "tool-input-available" :toolCallId "call-1" :toolName "search" :input {:q "test"}}
+             input-event))
+      (is (= {:type "tool-output-available" :toolCallId "call-1" :output "rows"}
+             output-event)
+          "only the LLM-facing output string goes on the wire")))
+  (testing "a result map without :output keeps internal keys off the wire"
+    (let [[output-event] (sse-events [{:type :tool-output :id "call-i" :function "clarify"
+                                       :result {:instructions "internal LLM steering — never show the client"
+                                                :data-parts   [{:type "data-foo"}]}}])]
+      (is (= {:type "tool-output-available" :toolCallId "call-i" :output ""}
+             output-event)
+          "no :output key -> empty wire output; internal :instructions/:data-parts never leak")))
+  (testing (str "a failed call becomes tool-output-error, read from the result and rendered for a "
+                "reader rather than for the model")
+    (is (= {:type "tool-output-error" :toolCallId "call-2"
+            :errorText "Metabot could not complete this step."}
+           (first (sse-events [{:type   :tool-output :id "call-2"
+                                :result {:output "`n` should be an int; received a string."
+                                         :error  {:class :validation :code :invalid-arguments}}}]))))
+    (testing "and an unrecoverable failure shows the message the tool chose for the user"
+      (is (= {:type "tool-output-error" :toolCallId "call-5" :errorText "Ask an admin for access."}
+             (first (sse-events [{:type   :tool-output :id "call-5"
+                                  :result {:output "This call failed and the user was shown the error."
+                                           :error  {:class        :unrecoverable
+                                                    :code         :scope-denied
+                                                    :user-message "Ask an admin for access."}}}]))))))
+  (testing ":tool-input-start maps to tool-input-start"
+    (is (= {:type "tool-input-start" :toolCallId "call-3" :toolName "search"}
+           (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}])))))
+  (testing "a :title on a :tool-input part rides along on tool-input-available"
+    (is (= {:type "tool-input-available" :toolCallId "call-4" :toolName "read_resource"
+            :input {} :title "Inspecting [Orders](metabase://dashboard/5)"}
+           (first (sse-events [{:type :tool-input :id "call-4" :function "read_resource"
+                                :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
+
+(deftest ^:parallel stamp-tool-titles-xf-test
+  (let [tools {"greet"   {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"    {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"     {:tool-name "num"   :title-fn (fn [_] 42)}
+               "plain"   {:tool-name "plain"}
+               "coerced" {:tool-name "coerced"
+                          :title-fn  (fn [{:keys [who]}]
+                                       (str "Greeting " (str/join ", " (cond-> who
+                                                                         (string? who) vector))))}}
+        stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
+    (testing "title-fn result becomes :title"
+      (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
+               :title "Greeting Sam"}]
+             (stamp {:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}}))))
+    (testing "a throwing title-fn leaves the part untitled"
+      (is (= [{:type :tool-input :id "c2" :function "boom" :arguments {}}]
+             (stamp {:type :tool-input :id "c2" :function "boom" :arguments {}}))))
+    (testing "a non-string result leaves the part untitled"
+      (is (= [{:type :tool-input :id "c3" :function "num" :arguments {}}]
+             (stamp {:type :tool-input :id "c3" :function "num" :arguments {}}))))
+    (testing "a tool without a title-fn is untouched"
+      (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
+             (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
+    (testing "a double-encoded argument is coerced, as it is before the tool runs"
+      (is (= [{:type :tool-input :id "c7" :function "coerced" :arguments {:who "[\"Sam\",\"Kim\"]"}
+               :title "Greeting Sam, Kim"}]
+             (stamp {:type :tool-input :id "c7" :function "coerced" :arguments {:who "[\"Sam\",\"Kim\"]"}}))))
+    (testing "non-tool-input parts pass through"
+      (is (= [{:type :text :id "t1" :text "hi"}]
+             (stamp {:type :text :id "t1" :text "hi"}))))))
+
+(deftest parts->aisdk-sse-xf-data-test
+  (testing "data parts become typed data events with a generated id"
+    (let [[event] (sse-events [{:type :data :data-type "navigate_to" :data {:url "/question/123"}}])]
+      (is (= "data-navigate_to" (:type event)))
+      (is (string? (:id event)))
+      (is (= {:url "/question/123"} (:data event)))))
+  (testing "unknown part types pass through as data events"
+    (is (= "data-mystery"
+           (-> (sse-events [{:type :mystery :id "x"}]) first :type)))))
+
+(deftest parts->aisdk-sse-xf-error-test
+  (testing "an error before any :start synthesizes start + start-step, and flips finish_reason"
+    (let [events (sse-events [{:type :error :error {:message "Something went wrong"}}])]
+      (is (=? [{:type "start" :messageId string?}
+               {:type "start-step"}
+               {:type "error" :errorText "Something went wrong"}
+               {:type "finish-step"}
+               {:type "finish" :finishReason "error"}]
+              events))))
+  (testing "a typed error's code rides finish.messageMetadata"
+    (let [events (sse-events [{:type :error :error {:message    "You have reached your AI usage limit."
+                                                    :error-code :ai_usage_limit_reached}}])]
+      (is (=? [{:type "start" :messageId string?}
+               {:type "start-step"}
+               {:type "error" :errorText "You have reached your AI usage limit."}
+               {:type "finish-step"}
+               {:type "finish" :finishReason "error"
+                :messageMetadata {:errorCode "ai_usage_limit_reached"}}]
+              events))))
+  (testing "accumulated usage and a typed error code share one finish.messageMetadata"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
+                  {:type :error :error {:message    "You have reached your AI usage limit."
+                                        :error-code :ai_usage_limit_reached}}]
+          finish (last (sse-events parts))]
+      (is (=? {:type            "finish"
+               :finishReason    "error"
+               :messageMetadata {:usage        {:inputTokens 10 :outputTokens 5 :totalTokens 15}
+                                 :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15}}
+                                 :errorCode    "ai_usage_limit_reached"}}
+              finish)))))
+
+(deftest parts->aisdk-sse-xf-usage-test
+  (testing "accumulated usage lands on finish.messageMetadata, last snapshot per model"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 5 :completionTokens 1}}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
+                  {:type :finish}]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
+      (is (= {:type "finish"
+              :finishReason "stop"
+              :messageMetadata {:usage        {:inputTokens 12 :outputTokens 8 :totalTokens 20
+                                               :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}
+                                :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15
+                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}
+                                               :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
+                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+                                :contextWindowTokens 1000000
+                                ;; the turn's last call alone: (10-5) prompt + (5-1) completion
+                                :contextTokens 9}}
+             finish))))
+  (testing "contextTokens follows the turn's last call, not its biggest"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 900 :completionTokens 100}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 7 :completionTokens 3}}
+                  {:type :finish}]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
+      (is (= 10 (get-in finish [:messageMetadata :contextTokens])))))
+  (testing "finish omits messageMetadata when no usage was observed"
+    (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
+                        :messageMetadata)))))
+
+(deftest parts->aisdk-sse-xf-usage-cache-test
+  (testing "Anthropic cache breakdown flows onto finish.messageMetadata; non-cache models contribute 0"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
+                  {:type :usage :model "claude-sonnet-4-6"
+                   :usage {:promptTokens 1540 :completionTokens 10
+                           :cacheCreationTokens 300 :cacheReadTokens 1200}}
+                  {:type :finish}]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
+      (is (= {:type "finish"
+              :finishReason "stop"
+              :messageMetadata
+              {:usage        {:inputTokens 1542 :outputTokens 13 :totalTokens 1555
+                              ;; cachedInputTokens mirrors cacheReadTokens; gpt-5 adds 0 to each
+                              :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
+               :usageByModel {:claude-sonnet-4-6 {:inputTokens 1540 :outputTokens 10 :totalTokens 1550
+                                                  :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
+                              :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
+                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+               :contextWindowTokens 1000000
+               :contextTokens 1550}}
+             finish)))))
+
+(deftest context-window-tokens-test
+  (llm.tu/with-default-connections
+    (are [model window] (= window (self/context-window-tokens model))
+      "anthropic/claude-sonnet-4-6"          1000000 ; adapter table hit
+      "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
+      "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
+      "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
+      "google/google/gemini-3.8-flash"       1048576 ; Gemini 3.8 Flash reaches the Google adapter
+      "zai/glm-5.3"                          1048576 ; Z.AI direct
+      "openrouter/z-ai/glm-5.3"              1048576 ; OpenRouter serving limit
+      "deepseek/deepseek-v4-pro"             1048576 ; DeepSeek direct, probed overflow message
+      "deepseek/deepseek-flash"              1048576 ; DeepSeek direct, probed overflow message
+      "zai/glm-5.3-flash"                    1048576 ; Z.AI direct
+      "openrouter/z-ai/glm-5.3-flash"        1048575 ; lower of context_length and top_provider.context_length
+      "openrouter/google/gemini-3.8-flash"   1048576 ; OpenRouter serving limit
+      "azure/openai/my-deployment"           nil     ; unmatched deployment
+      "anthropic/some-future-model"          nil     ; unknown model
+      "unknown"                              nil)))  ; no such connection
 
 ;;; ===================== Retry Logic Tests =====================
 
@@ -539,8 +1340,28 @@
       ;; connection errors are also retriable
       true  (java.net.ConnectException. "refused")
       true  (java.net.SocketTimeoutException. "timed out")
+      ;; ...even when wrapped by rethrow-api-error! (the real provider shape: an
+      ;; ExceptionInfo with no :status whose cause is the transient socket error)
+      true  (ex-info "anthropic API request failed: Read timed out"
+                     {:api-error true :provider "anthropic" :error-code :provider-request-failed}
+                     (java.net.SocketTimeoutException. "Read timed out"))
+      true  (ex-info "anthropic API request failed: Connection refused"
+                     {:api-error true :provider "anthropic" :error-code :provider-request-failed}
+                     (java.net.ConnectException. "Connection refused"))
       ;; but other stuff is not
-      false (RuntimeException. "oops"))))
+      false (RuntimeException. "oops")
+      ;; a wrapped non-transient cause stays non-retryable
+      false (ex-info "boom" {} (IllegalArgumentException. "bad"))))
+  (testing ":retryable? false outranks both the status check and the cause walk"
+    (are [x y] (= x (#'self/retryable-error? y))
+      false (ex-info "vLLM stopped responding"
+                     {:api-error true :error-code :vllm-timeout :retryable? false}
+                     (java.net.SocketTimeoutException. "Read timed out"))
+      false (ex-info "vLLM queue full" {:status 429 :retryable? false})))
+  (testing "the tag is an opt-out only — :retryable? true cannot force a retry"
+    (are [x y] (= x (#'self/retryable-error? y))
+      true  (ex-info "rate limited" {:status 429 :retryable? true})
+      false (ex-info "bad request" {:status 400 :retryable? true}))))
 
 (deftest retry-delay-ms-test
   (testing "backoff"
@@ -556,6 +1377,19 @@
       3000 1 (ex-info "err" {:status 429 :headers {"retry-after" "3"}})
       ;; ignores Retry-After > 60s
       500  1 (ex-info "err" {:status 429 :headers {"retry-after" "120"}}))))
+
+(deftest parse-retry-after-header-test
+  (let [parse #'self/parse-retry-after-header]
+    (testing "parses a plain string Retry-After into milliseconds"
+      (is (= 3000 (parse (ex-info "e" {:headers {"retry-after" "3"}}))))
+      (is (= 3000 (parse (ex-info "e" {:headers {"Retry-After" "3"}})))))
+    (testing "ignores values over 60s and non-numeric values"
+      (is (nil? (parse (ex-info "e" {:headers {"retry-after" "120"}}))))
+      (is (nil? (parse (ex-info "e" {:headers {"retry-after" "soon"}})))))
+    (testing "returns nil when the header is absent"
+      (is (nil? (parse (ex-info "e" {})))))
+    (testing "does not throw on a vector-valued header (duplicate Retry-After); uses the first value"
+      (is (= 3000 (parse (ex-info "e" {:headers {"retry-after" ["3" "5"]}})))))))
 
 (deftest with-retries-test
   (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
@@ -607,181 +1441,590 @@
                         :ok)))))
         (is (= 2 @calls))))))
 
+(defn- malformed-tool-input-response
+  "A reducible LLM stream whose forced tool call streams invalid JSON, so
+  `parse-tool-arguments` yields the raw-arguments sentinel.
+  `trailing-parts` are appended after it, e.g. a [[usage-part]] carrying a finish reason."
+  [& trailing-parts]
+  (let [chunks (concat [{:type :start :messageId "m1"}
+                        {:type :tool-input-start :toolCallId "c1" :toolName "json"}
+                        {:type :tool-input-delta :toolCallId "c1" :inputTextDelta "{not valid json"}
+                        {:type :tool-input-available :toolCallId "c1" :toolName "json"}]
+                       (test-util/parts->aisdk-chunks trailing-parts))]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (reduce rf init chunks)))))
+
+(defn- structured-call-error
+  "Run a structured call against whatever `openrouter/openrouter` is currently redefined to, and return the
+  exception it threw. Returns the call's result instead when it did not throw, so a test that expects a
+  failure fails on its assertions rather than propagating."
+  []
+  (try
+    (self/call-llm-structured "openrouter/test-model"
+                              [{:role "user" :content "test"}]
+                              {:type "object" :properties {:answer {:type "string"}}}
+                              0.3 1024 {:tag "metabot_agent"})
+    (catch clojure.lang.ExceptionInfo e e)))
+
+(defn- text-turn-response
+  "A mocked LLM stream for a turn that answers in text: a `:start` part, one `:text` part per string in
+  `texts`, then `trailing-parts`, e.g. a [[usage-part]]."
+  [texts & trailing-parts]
+  (test-util/mock-llm-response
+   (concat [{:type :start :id "m1"}]
+           (map-indexed (fn [i text] {:type :text :id (str "t" i) :text text}) texts)
+           trailing-parts)))
+
+(def ^:private answer-text "Here you go:\n```json\n{\"answer\": \"42\"}\n```")
+
+(def ^:private more-text "\n\nI could also explain how I got there, step by st")
+
+(deftest call-llm-structured-rejects-malformed-json-test
+  (llm.tu/with-default-connections
+    (testing "a content-filter finish does not reroute malformed JSON — only a truncation does"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (malformed-tool-input-response
+                                                          (usage-part "content-filter" "refusal")))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "structured-output-invalid" (:error-code (ex-data e))))))))
+    (testing "malformed tool-call JSON is rejected as an error, not returned as a bogus result"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly (malformed-tool-input-response))]
+        (mt/with-log-level [metabase.metabot.self.core :fatal]
+          (let [e (try
+                    (self/call-llm-structured "openrouter/test-model"
+                                              [{:role "user" :content "test"}]
+                                              {:type "object" :properties {:answer {:type "string"}}}
+                                              0.3 1024 {:tag "metabot_agent"})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (instance? clojure.lang.ExceptionInfo e)
+                "malformed JSON must throw, not return the raw-arguments sentinel as a result")
+            (is (= "structured-output-invalid" (:error-code (ex-data e))))
+            (is (= "{not valid json" (:raw-arguments (ex-data e))))))))))
+
+(deftest call-llm-structured-rejects-non-object-json-test
+  (llm.tu/with-default-connections
+    (testing "valid JSON that isn't an object is rejected as an error, not returned as a bogus result"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type :start :id "m1"}
+                                                           {:type :tool-input :id "c1" :function "json" :arguments ["orders"]}]))]
+        (let [e (try
+                  (self/call-llm-structured "openrouter/test-model"
+                                            [{:role "user" :content "test"}]
+                                            {:type "object" :properties {:answer {:type "string"}}}
+                                            0.3 1024 {:tag "metabot_agent"})
+                  (catch clojure.lang.ExceptionInfo e e))]
+          (is (instance? clojure.lang.ExceptionInfo e)
+              "a non-object payload must throw, not come back as the structured result")
+          (is (= "structured-output-invalid" (:error-code (ex-data e))))
+          (is (= ["orders"] (:non-object-arguments (ex-data e)))))))))
+
+(deftest call-llm-structured-surfaces-provider-error-test
+  (llm.tu/with-default-connections
+    (testing "with no tool call, a provider :error part outranks an incomplete finish reason"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type :error :errorText "content policy violation"}
+                                                           (usage-part "length" "max_tokens")]))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "llm-stream-error" (:error-code (ex-data e))))))))
+    (testing "a provider mid-stream :error part surfaces its message, not a generic 'no tool call' error"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms      (constantly 0)
+                                  openrouter/openrouter    (constantly
+                                                            (test-util/mock-llm-response
+                                                             [{:type :error :errorText "content policy violation"}]))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (try
+                    (self/call-llm-structured "openrouter/test-model"
+                                              [{:role "user" :content "test"}]
+                                              {:type "object" :properties {:answer {:type "string"}}}
+                                              0.3 1024 {:tag "metabot_agent"})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (instance? clojure.lang.ExceptionInfo e))
+            (is (re-find #"content policy violation" (ex-message e))
+                "the provider error message is surfaced, not hidden behind 'no tool call'")
+            (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-text-reply-test
+  (llm.tu/with-default-connections
+    (let [schema {:type                 "object"
+                  :properties           {"title" {:type "string"}
+                                         "tags"  {:type "array" :items {:type "string"}}
+                                         "score" {:type "number" :minimum 0 :maximum 1}}
+                  :required             ["title"]
+                  :additionalProperties false}
+          answer {:title "Q2 revenue" :tags ["revenue"] :score 0.5}
+          reply  (fn [text] {:type :text :id "t1" :text text})
+          fenced (fn [json-text] (str "Here you go:\n```json\n" json-text "\n```"))
+          call!  (fn [& parts]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            (cons {:type :start :id "m1"} parts)))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a model that answers in text instead of calling the tool has its JSON used"
+        (are [text] (= answer (call! (reply text)))
+          (json/encode answer)
+          (fenced (json/encode answer))))
+      (testing "the last fenced code block that matches the schema is used"
+        (are [text] (= answer (call! (reply text)))
+          (str (fenced (json/encode {:title "Draft"})) "\n" (fenced (json/encode answer)))
+          (str (fenced (json/encode answer)) "\n" (fenced (json/encode {:title 42})))))
+      (testing "a line break the model left unescaped inside a string doesn't stop the JSON from being used"
+        (are [text] (= {:title "Q2 revenue\nby region"} (call! (reply text)))
+          "{\"title\": \"Q2 revenue\nby region\"}"
+          (fenced "{\"title\": \"Q2 revenue\nby region\"}")))
+      (testing "a text reply without JSON matching the schema still fails"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          "Q2 revenue"
+          "{\"title\": \"Q2 revenue\""
+          (json/encode {:tags ["revenue"]})
+          (json/encode {:title "Q2 revenue" :note "x"})
+          (json/encode {:title 42})
+          (json/encode {:title "Q2 revenue" :tags [1]})
+          (json/encode {:title "Q2 revenue" :score 2})))
+      (testing "JSON followed by anything but whitespace is not used, in the whole reply or in a fence"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          (str (json/encode answer) " Hope that helps!")
+          (str (json/encode answer) (json/encode {:title "Other"}))
+          (fenced (str (json/encode answer) " Hope that helps!"))
+          (fenced (str (json/encode answer) (json/encode {:title "Other"})))))
+      (testing "a tool call is used as is, whatever text comes with it"
+        (is (= {:title "From the tool"}
+               (call! (reply (json/encode answer))
+                      {:type      :tool-input
+                       :id        "c1"
+                       :function  "structured_output"
+                       :arguments {:title "From the tool"}})))))))
+
+(deftest call-llm-structured-incomplete-without-tool-call-test
+  (llm.tu/with-default-connections
+    (testing "a turn that stopped early, with no tool call and no JSON in its text, reports why, not a generic 'no tool call' error"
+      (doseq [[reason raw] [["length" "max_tokens"] ["content-filter" "refusal"]]]
+        (testing reason
+          (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                      openrouter/openrouter (constantly
+                                                             (test-util/mock-llm-response
+                                                              [{:type :start :id "m1"}
+                                                               {:type :text :id "t1" :text "partial answer"}
+                                                               (usage-part reason raw)]))]
+            (let [e (structured-call-error)]
+              (is (instance? clojure.lang.ExceptionInfo e))
+              (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+              (is (= reason (:finish-reason (ex-data e))))
+              (is (= raw (:raw-finish-reason (ex-data e))))
+              (is (not (re-find #"no tool call" (ex-message e)))
+                  "the message must distinguish an incomplete turn from a model that simply did not call the tool"))))))))
+
+(deftest call-llm-structured-incomplete-truncated-json-test
+  (llm.tu/with-default-connections
+    (mt/with-log-level [metabase.metabot.self :fatal]
+      (testing "a tool call cut off mid-JSON by a length finish is incomplete, not invalid"
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                    openrouter/openrouter (constantly
+                                                           (malformed-tool-input-response
+                                                            (usage-part "length" "max_tokens")))]
+          (let [e (structured-call-error)]
+            (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+            (is (= "length" (:finish-reason (ex-data e))))
+            (is (= "max_tokens" (:raw-finish-reason (ex-data e)))))))
+      (testing "the truncated tool call outranks an :error part in the same turn"
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                    openrouter/openrouter (constantly
+                                                           (malformed-tool-input-response
+                                                            {:type :error :errorText "provider exploded"}
+                                                            (usage-part "length" "max_tokens")))]
+          (let [e (structured-call-error)]
+            (is (= "structured-output-incomplete" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-incomplete-is-not-retried-test
+  (llm.tu/with-default-connections
+    (testing "an incomplete structured response is not transient, so the provider is called exactly once"
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                    openrouter/openrouter (fn [_opts]
+                                                            (swap! calls inc)
+                                                            (test-util/mock-llm-response
+                                                             [{:type :start :id "m1"}
+                                                              (usage-part "length" "max_tokens")]))]
+          (structured-call-error)
+          (is (= 1 @calls)))))))
+
+(deftest call-llm-structured-text-json-on-early-stop-test
+  (llm.tu/with-default-connections
+    (testing "a text reply with a closed JSON block that matches the schema is used, also after an early stop"
+      (doseq [[reason raw] [["length" "max_tokens"] ["content-filter" "refusal"]]]
+        (testing reason
+          (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                      openrouter/openrouter (constantly
+                                                             (text-turn-response
+                                                              [answer-text more-text]
+                                                              (usage-part reason raw)))]
+            (is (= {:answer "42"} (structured-call-error)))))))))
+
+(deftest call-llm-structured-text-json-logs-finish-reason-test
+  (llm.tu/with-default-connections
+    (testing "a text JSON result after an early stop logs the finish reasons"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          [answer-text more-text]
+                                                          (usage-part "length" "max_tokens")))]
+        (log.capture/with-log-messages-for-level [messages [metabase.metabot.self :info]]
+          (structured-call-error)
+          (let [msg (some #(when (str/includes? (str (:message %)) "LLM answered in text") (:message %))
+                          (messages))]
+            (is (some? msg))
+            (is (re-find #":finish-reason \"?length" (str msg)))
+            (is (re-find #":raw-finish-reason \"?max_tokens" (str msg)))))))))
+
+(defn- empty-tool-call-response
+  "A reducible LLM stream for a turn that answers in `text`, then starts a `json` tool call and stops with a
+  `length` finish after the argument deltas `arg-deltas` (none by default)."
+  [text & arg-deltas]
+  (let [chunks (concat (test-util/parts->aisdk-chunks [{:type :start :id "m1"}
+                                                       {:type :text :id "t1" :text text}])
+                       [{:type :tool-input-start :toolCallId "c1" :toolName "json"}]
+                       (for [delta arg-deltas]
+                         {:type :tool-input-delta :toolCallId "c1" :inputTextDelta delta})
+                       (test-util/parts->aisdk-chunks [(usage-part "length" "max_tokens")]))]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (reduce rf init chunks)))))
+
+(deftest call-llm-structured-empty-tool-call-on-length-stop-uses-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a tool call cut off before its first argument byte has no arguments, so the text JSON is used"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly (empty-tool-call-response answer-text))]
+        (is (= {:answer "42"} (structured-call-error)))))))
+
+(deftest call-llm-structured-truncated-tool-call-outranks-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a tool call cut off after its first argument byte throws, even when the text holds valid JSON"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly (empty-tool-call-response answer-text "{"))]
+        (is (=? {:error-code    "structured-output-incomplete"
+                 :finish-reason "length"}
+                (ex-data (structured-call-error))))))))
+
+(deftest call-llm-structured-draft-json-before-unclosed-block-test
+  (llm.tu/with-default-connections
+    (testing "a closed JSON block is used when an unclosed block after it was cut off by a length stop"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": \"draft\"}\n```"
+                                                           "\n\nRevised:\n```json\n{\"answer\": \"fin"]
+                                                          (usage-part "length" "max_tokens")))]
+        (is (= {:answer "draft"} (structured-call-error)))))))
+
+(deftest call-llm-structured-schema-invalid-text-json-on-length-stop-test
+  (llm.tu/with-default-connections
+    (testing "text JSON that does not match the schema is not used, so a length stop reports why"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": 42}\n```" more-text]
+                                                          (usage-part "length" "max_tokens")))]
+        (let [e (structured-call-error)]
+          (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+          (is (= "length" (:finish-reason (ex-data e))))
+          (is (= "max_tokens" (:raw-finish-reason (ex-data e)))))))))
+
+(deftest call-llm-structured-error-part-outranks-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a provider :error part outranks JSON in the text reply"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          [answer-text]
+                                                          {:type :error :errorText "content policy violation"}
+                                                          (usage-part "length" "max_tokens")))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-unclosed-json-on-length-stop-test
+  (llm.tu/with-default-connections
+    (testing "JSON in an unclosed block is never used, so a length stop reports why"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": \"4"]
+                                                          (usage-part "length" "max_tokens")))]
+        (let [e (structured-call-error)]
+          (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+          (is (= "length" (:finish-reason (ex-data e)))))))))
+
+(deftest call-llm-structured-nested-keys-test
+  (llm.tu/with-default-connections
+    (let [schema {:type       "object"
+                  :properties {"items" {:type  "array"
+                                        :items {:type       "object"
+                                                :properties {"name" {:type "string"}}
+                                                :required   ["name"]}}}
+                  :required   ["items"]}
+          answer {:items [{:name "x"}]}
+          call!  (fn [part]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            [{:type :start :id "m1"} part]))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a tool call and a text reply give the same result: keyword argument names, string keys below them"
+        (are [part] (= {:items [{"name" "x"}]} (call! part))
+          {:type :tool-input :id "c1" :function "structured_output" :arguments answer}
+          {:type :text :id "t1" :text (json/encode answer)})))))
+
+(deftest ^:parallel stringify-nested-keys-test
+  (testing "keys below the top level become strings, and the top-level keys stay keywords"
+    (is (= {:query {"stages" [{"limit" 1}]}}
+           (self.core/stringify-nested-keys {:query {:stages [{:limit 1}]}}))))
+  (testing "a nested namespaced keyword key becomes \"ns/name\", the key json/encode writes"
+    (is (= {:a {"foo/bar" 1}}
+           (self.core/stringify-nested-keys {:a {:foo/bar 1}}))))
+  (testing "the parse sentinels come back unchanged"
+    (are [arguments] (= arguments (self.core/stringify-nested-keys arguments))
+      {::self.core/raw-arguments "{oops"}
+      {::self.core/non-object-arguments [{"a" 1} "x"]}))
+  (testing "a value that is not a map comes back unchanged"
+    (are [arguments] (= arguments (self.core/stringify-nested-keys arguments))
+      nil
+      "{oops")))
+
+(deftest call-llm-does-not-replay-after-partial-emission-test
+  (llm.tu/with-default-connections
+    (testing "a retryable failure AFTER parts were emitted does not replay the stream (no duplicate output / re-run tools)"
+      (mt/with-dynamic-fn-redefs
+        [self/retry-delay-ms   (constantly 0)
+         openrouter/openrouter (constantly
+                                (reify clojure.lang.IReduceInit
+                                  (reduce [_ rf init]
+                                    ;; emit one chunk, then fail mid-stream with an otherwise-retryable error
+                                    (let [_acc (rf init {:type :start :messageId "m1"})]
+                                      (throw (ex-info "mid-stream boom" {:status 500}))))))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [seen       (atom [])
+                collect-rf (fn ([acc] acc) ([acc x] (swap! seen conj x) acc))]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"mid-stream boom"
+                 (reduce collect-rf nil (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
+            (is (= 1 (count (filter #(= :start (:type %)) @seen)))
+                "the :start part reaches the consumer exactly once, not once per retry attempt")))))))
+
+(deftest call-llm-still-retries-before-any-emission-test
+  (llm.tu/with-default-connections
+    (testing "a retryable failure BEFORE any part is emitted is still retried (clean replay)"
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs
+          [self/retry-delay-ms   (constantly 0)
+           openrouter/openrouter (fn [_opts]
+                                   (reify clojure.lang.IReduceInit
+                                     (reduce [_ rf init]
+                                       (if (< (swap! calls inc) 3)
+                                         (throw (ex-info "rate limited" {:status 429}))
+                                         (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
+          (mt/with-log-level [metabase.metabot.self :fatal]
+            (let [seen (atom [])]
+              (reduce (fn [acc x] (swap! seen conj x) acc) nil
+                      (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))
+              (is (= 3 @calls) "retries until the pre-emission failures clear")
+              (is (= 1 (count (filter #(= :start (:type %)) @seen)))))))))))
+
 ;;; ===================== Prometheus Metrics Tests =====================
 
 (deftest call-llm-prometheus-test
-  (mt/with-prometheus-system! [_ system]
-    (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels {:model "openrouter/test-model" :source "metabot_agent"}]
-        (testing "increments llm-requests and observes duration on success"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
-          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
-          (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "ExceptionInfo"))))
-          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-        ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
-        (analytics/clear! :metabase-metabot/llm-requests)
-        (analytics/clear! :metabase-metabot/llm-duration-ms)
-        (testing "increments llm-retries on transient failures, no errors on eventual success"
-          (let [calls (atom 0)]
-            (mt/with-log-level [metabase.metabot.self :fatal]
-              (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                          (fn [_opts]
-                                            (reify clojure.lang.IReduceInit
-                                              (reduce [_ rf init]
-                                                (if (< (swap! calls inc) 3)
-                                                  (throw (ex-info "rate limited" {:status 429}))
-                                                  (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
-                (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
+  (llm.tu/with-default-connections
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
+        (let [labels {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}]
+          (testing "increments llm-requests and observes duration on success"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
+              (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "ExceptionInfo"))))
+            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+          ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
+          (analytics/clear! :metabase-metabot/llm-requests)
+          (analytics/clear! :metabase-metabot/llm-duration-ms)
+          (testing "increments llm-retries on transient failures, no errors on eventual success"
+            (let [calls (atom 0)]
+              (mt/with-log-level [metabase.metabot.self :fatal]
+                (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                            (fn [_opts]
+                                              (reify clojure.lang.IReduceInit
+                                                (reduce [_ rf init]
+                                                  (if (< (swap! calls inc) 3)
+                                                    (throw (ex-info "rate limited" {:status 429}))
+                                                    (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
+                  (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
+              (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+              (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+              (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                         (assoc labels :error-type "ExceptionInfo"))))
+              (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
+          (analytics/clear! :metabase-metabot/llm-requests)
+          (analytics/clear! :metabase-metabot/llm-retries)
+          (analytics/clear! :metabase-metabot/llm-duration-ms)
+          (testing "increments llm-errors on non-retryable failure, no retries"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ _rf _init]
+                                              (throw (ex-info "unauthorized" {:status 401})))))]
+              (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "ExceptionInfo"))))
+            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+          (analytics/clear! :metabase-metabot/llm-requests)
+          (analytics/clear! :metabase-metabot/llm-errors)
+          (analytics/clear! :metabase-metabot/llm-duration-ms)
+          (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
+              (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "llm-sse-error")))))
+          (testing "reports token usage metrics on :usage parts"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type  :start
+                                                       :id    "m1"}
+                                                      {:type  :usage
+                                                       :usage {:promptTokens 100 :completionTokens 25}
+                                                       :model "test-model"}]))]
+              (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
+            (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
+            (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
+            (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))
+          (analytics/clear! :metabase-metabot/llm-input-tokens)
+          (analytics/clear! :metabase-metabot/llm-output-tokens)
+          (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
+          (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
+          (testing "increments cache token counters when the :usage part carries cache fields"
+            ;; :promptTokens is the pre-summed total input (40 fresh + 300 cache_creation + 1200 cache_read = 1540).
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type  :start :id "m1"}
+                                                      {:type  :usage
+                                                       :usage {:promptTokens        1540
+                                                               :completionTokens    10
+                                                               :cacheCreationTokens 300
+                                                               :cacheReadTokens     1200}
+                                                       :model "test-model"}]))]
+              (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
+            (is (==  300 (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+            (is (== 1200 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+          (analytics/clear! :metabase-metabot/llm-input-tokens)
+          (analytics/clear! :metabase-metabot/llm-output-tokens)
+          (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
+          (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
+          (testing "does not increment cache counters when cache fields are absent or zero"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type  :start :id "m1"}
+                                                      {:type  :usage
+                                                       :usage {:promptTokens 10 :completionTokens 5}
+                                                       :model "test-model"}]))]
+              (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
+            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+          (testing "labels a managed-proxy call with the metabase provider"
+            (mt/with-dynamic-fn-redefs [self.claude/claude
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type :start :id "m1"}
+                                                      {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]))]
+              (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+            (let [managed-labels (assoc labels :model "metabase/anthropic/claude-haiku-4-5" :provider "metabase")]
+              (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests managed-labels)))
+              (is (== 10 (mt/metric-value system :metabase-metabot/llm-input-tokens managed-labels))))))))))
+
+(deftest call-llm-structured-prometheus-test
+  (llm.tu/with-default-connections
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
+        (let [labels        {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}
+              success-mock  (test-util/mock-llm-response
+                             [{:type :start :id "m1"}
+                              {:type :tool-input :id "call-1" :function "json"
+                               :arguments {:answer "42"}}])
+              call-structured! #(self/call-llm-structured
+                                 "openrouter/test-model"
+                                 [{:role "user" :content "test"}]
+                                 {:type "object" :properties {:answer {:type "string"}}}
+                                 0.3 1024 {:tag "metabot_agent"})]
+          (testing "increments llm-requests and observes duration on success"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly success-mock)]
+              (call-structured!))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "ExceptionInfo"))))
+            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+          (analytics/clear! :metabase-metabot/llm-requests)
+          (analytics/clear! :metabase-metabot/llm-duration-ms)
+          (testing "increments llm-retries on transient failures, no errors on eventual success"
+            (let [calls (atom 0)]
+              (mt/with-log-level [metabase.metabot.self :fatal]
+                (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                            (fn [_opts]
+                                              (if (< (swap! calls inc) 3)
+                                                (throw (ex-info "rate limited" {:status 429}))
+                                                success-mock))]
+                  (call-structured!))))
             (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
             (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
             (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                        (assoc labels :error-type "ExceptionInfo"))))
-            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
-        (analytics/clear! :metabase-metabot/llm-requests)
-        (analytics/clear! :metabase-metabot/llm-retries)
-        (analytics/clear! :metabase-metabot/llm-duration-ms)
-        (testing "increments llm-errors on non-retryable failure, no retries"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (fn [_opts]
-                                        (reify clojure.lang.IReduceInit
-                                          (reduce [_ _rf _init]
-                                            (throw (ex-info "unauthorized" {:status 401})))))]
-            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
-          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "ExceptionInfo"))))
-          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-        (analytics/clear! :metabase-metabot/llm-requests)
-        (analytics/clear! :metabase-metabot/llm-errors)
-        (analytics/clear! :metabase-metabot/llm-duration-ms)
-        (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "llm-sse-error")))))
-        (testing "reports token usage metrics on :usage parts"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (constantly (test-util/mock-llm-response
-                                                   [{:type  :start
-                                                     :id    "m1"}
-                                                    {:type  :usage
-                                                     :usage {:promptTokens 100 :completionTokens 25}
-                                                     :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
-          (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
-          (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
-          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))
-        (analytics/clear! :metabase-metabot/llm-input-tokens)
-        (analytics/clear! :metabase-metabot/llm-output-tokens)
-        (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
-        (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
-        (testing "increments cache token counters when the :usage part carries cache fields"
-          ;; :promptTokens is the pre-summed total input (40 fresh + 300 cache_creation + 1200 cache_read = 1540).
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (constantly (test-util/mock-llm-response
-                                                   [{:type  :start :id "m1"}
-                                                    {:type  :usage
-                                                     :usage {:promptTokens        1540
-                                                             :completionTokens    10
-                                                             :cacheCreationTokens 300
-                                                             :cacheReadTokens     1200}
-                                                     :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
-          (is (==  300 (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
-          (is (== 1200 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
-        (analytics/clear! :metabase-metabot/llm-input-tokens)
-        (analytics/clear! :metabase-metabot/llm-output-tokens)
-        (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
-        (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
-        (testing "does not increment cache counters when cache fields are absent or zero"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (constantly (test-util/mock-llm-response
-                                                   [{:type  :start :id "m1"}
-                                                    {:type  :usage
-                                                     :usage {:promptTokens 10 :completionTokens 5}
-                                                     :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
-          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
-          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))))))
-
-(deftest call-llm-structured-prometheus-test
-  (mt/with-prometheus-system! [_ system]
-    (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels        {:model "openrouter/test-model" :source "metabot_agent"}
-            success-mock  (test-util/mock-llm-response
-                           [{:type :start :id "m1"}
-                            {:type :tool-input :id "call-1" :function "json"
-                             :arguments {:answer "42"}}])
-            call-structured! #(self/call-llm-structured
-                               "openrouter/test-model"
-                               [{:role "user" :content "test"}]
-                               {:type "object" :properties {:answer {:type "string"}}}
-                               0.3 1024 {:tag "metabot_agent"})]
-        (testing "increments llm-requests and observes duration on success"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly success-mock)]
-            (call-structured!))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
-          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
-          (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "ExceptionInfo"))))
-          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-        (analytics/clear! :metabase-metabot/llm-requests)
-        (analytics/clear! :metabase-metabot/llm-duration-ms)
-        (testing "increments llm-retries on transient failures, no errors on eventual success"
-          (let [calls (atom 0)]
-            (mt/with-log-level [metabase.metabot.self :fatal]
-              (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                          (fn [_opts]
-                                            (if (< (swap! calls inc) 3)
-                                              (throw (ex-info "rate limited" {:status 429}))
-                                              success-mock))]
-                (call-structured!))))
-          (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
-          (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
-          (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "ExceptionInfo"))))
-          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-        (analytics/clear! :metabase-metabot/llm-requests)
-        (analytics/clear! :metabase-metabot/llm-retries)
-        (analytics/clear! :metabase-metabot/llm-duration-ms)
-        (testing "increments llm-errors on non-retryable failure, no retries"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (fn [_opts] (throw (ex-info "unauthorized" {:status 401})))]
-            (is (thrown? Exception (call-structured!))))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
-          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "ExceptionInfo"))))
-          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-        (analytics/clear! :metabase-metabot/llm-requests)
-        (analytics/clear! :metabase-metabot/llm-errors)
-        (analytics/clear! :metabase-metabot/llm-duration-ms)
-        (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (constantly (test-util/mock-llm-response
-                                                   [{:type :error :errorText "content policy violation"}]))]
-            (is (thrown? Exception (call-structured!))))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
-          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "llm-sse-error")))))
-        (testing "reports token usage metrics on :usage parts"
-          (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                      (constantly (test-util/mock-llm-response
-                                                   [{:type :start :id "m1"}
-                                                    {:type :tool-input :id "call-1" :function "json"
-                                                     :arguments {:answer "42"}}
-                                                    {:type :usage :usage {:promptTokens 100 :completionTokens 25}
-                                                     :model "test-model"}]))]
-            (call-structured!))
-          (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
-          (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
-          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
+            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+          (analytics/clear! :metabase-metabot/llm-requests)
+          (analytics/clear! :metabase-metabot/llm-retries)
+          (analytics/clear! :metabase-metabot/llm-duration-ms)
+          (testing "increments llm-errors on non-retryable failure, no retries"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (fn [_opts] (throw (ex-info "unauthorized" {:status 401})))]
+              (is (thrown? Exception (call-structured!))))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "ExceptionInfo"))))
+            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+          (analytics/clear! :metabase-metabot/llm-requests)
+          (analytics/clear! :metabase-metabot/llm-errors)
+          (analytics/clear! :metabase-metabot/llm-duration-ms)
+          (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type :error :errorText "content policy violation"}]))]
+              (is (thrown? Exception (call-structured!))))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "llm-sse-error")))))
+          (testing "reports token usage metrics on :usage parts"
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type :start :id "m1"}
+                                                      {:type :tool-input :id "call-1" :function "json"
+                                                       :arguments {:answer "42"}}
+                                                      {:type :usage :usage {:promptTokens 100 :completionTokens 25}
+                                                       :model "test-model"}]))]
+              (call-structured!))
+            (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
+            (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
+            (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels))))))))))
 
 ;;; ===================== Snowplow Analytics Tests =====================
 
@@ -792,80 +2035,344 @@
    :tag        "test-tag"})
 
 (deftest call-llm-snowplow-test
-  (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with a tool call"
-    (let [rasta-id (mt/user->id :rasta)]
-      ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
-      ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
-      ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                  (constantly (test-util/mock-llm-response
-                                               [{:type :start :id "msg-1"}
-                                                {:type :tool-input :id "call-1" :function "get-time"
-                                                 :arguments {:tz "UTC"}}
-                                                {:type :usage :usage {:promptTokens        950
-                                                                      :completionTokens    20
-                                                                      :cacheCreationTokens 50
-                                                                      :cacheReadTokens     800}
-                                                 :model "test-model" :id "msg-1"}]))]
-        (mt/with-current-user rasta-id
-          (snowplow-test/with-fake-snowplow-collector
-            (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
-            (let [events       (snowplow-test/pop-event-data-and-user-id!)
-                  token-events (filter #(contains? (:data %) "total_tokens") events)
-                  tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
-              (is (=? [{:user-id (str rasta-id)
-                        :data    {"model_id"              "openrouter/test-model"
-                                  "total_tokens"           970
-                                  "prompt_tokens"          950
-                                  "completion_tokens"      20
-                                  "cache_creation_tokens"  50
-                                  "cache_read_tokens"      800
-                                  "estimated_costs_usd"    0.0
-                                  "duration_ms"            nat-int?
-                                  "source"                 "metabot_agent"
-                                  "tag"                    "test-tag"
-                                  "session_id"             "00000000-0000-0000-0000-000000000002"}}]
-                      token-events))
-              (is (=? [{:user-id (str rasta-id)
-                        :data    {"event"         "agent_used_tool"
-                                  "source"        "metabot_agent"
-                                  "result"        "success"
-                                  "duration_ms"   nat-int?
-                                  "session_id"    "00000000-0000-0000-0000-000000000002"
-                                  "event_details" {"tool_name" "get-time"}}}]
-                      tool-events)))))))))
+  (llm.tu/with-default-connections
+    (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with tool calls"
+      (let [rasta-id (mt/user->id :rasta)
+            ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
+            ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
+            ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
+            chunks   (test-util/parts->aisdk-chunks
+                      [{:type :start :id "msg-1"}
+                       {:type :tool-input :id "call-1" :function "get-time"
+                        :arguments {:tz "UTC"}}
+                       {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
+                        :arguments {}}
+                       {:type :usage :usage {:promptTokens        950
+                                             :completionTokens    20
+                                             :cacheCreationTokens 50
+                                             :cacheReadTokens     800}
+                        :model "test-model" :id "msg-1"}
+                       {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
+                        :arguments {:tz "UTC"}}])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (constantly (concat (drop-last 2 chunks)
+                                                        [{:type :error :errorText "Overloaded"}]))]
+          (mt/with-current-user rasta-id
+            (snowplow-test/with-fake-snowplow-collector
+              (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
+                                   (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :debug]]
+                                     (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
+                                     [(tracing.tu/finished-spans exporter) (messages)]))
+                    events       (snowplow-test/pop-event-data-and-user-id!)
+                    token-events (filter #(contains? (:data %) "total_tokens") events)
+                    tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
+                (is (=? [{:user-id (str rasta-id)
+                          :data    {"model_id"              "openrouter/test-model"
+                                    "provider"               "openrouter"
+                                    "model_name"             "test-model"
+                                    "total_tokens"           970
+                                    "prompt_tokens"          950
+                                    "completion_tokens"      20
+                                    "cache_creation_tokens"  50
+                                    "cache_read_tokens"      800
+                                    "estimated_costs_usd"    0.0
+                                    "duration_ms"            nat-int?
+                                    "source"                 "metabot_agent"
+                                    "tag"                    "test-tag"
+                                    "session_id"             "00000000-0000-0000-0000-000000000002"}}]
+                        token-events))
+                (is (=? [{:user-id (str rasta-id)
+                          :data    {"event"         "agent_used_tool"
+                                    "source"        "metabot_agent"
+                                    "result"        "success"
+                                    "duration_ms"   nat-int?
+                                    "session_id"    "00000000-0000-0000-0000-000000000002"
+                                    "event_details" {"tool_name" "get-time"}}}
+                         {:data {"event"         "agent_used_tool"
+                                 "result"        "error"
+                                 "event_details" {"tool_name" "unknown"}}}]
+                        tool-events))
+                (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
+                (is (some #(str/includes? (:message %) "call-2") logs))
+                (is (some #(str/includes? (:message %) "call-3 unknown") logs))
+                (is (some #(str/includes? (:message %) ":tool-call-id call-3") logs))
+                (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
+                    "a name the model made up never reaches analytics, spans or logs")))))))))
 
 (deftest call-llm-structured-snowplow-test
-  (testing "fires :snowplow/token_usage event for call-llm-structured"
-    (let [rasta-id (mt/user->id :rasta)]
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                  (constantly (test-util/mock-llm-response
-                                               [{:type :start :id "msg-1"}
-                                                {:type :tool-input :id "call-1" :function "json"
-                                                 :arguments {:answer "42"}}
-                                                {:type :usage :usage {:promptTokens 50 :completionTokens 10}
-                                                 :model "test-model" :id "msg-1"}]))]
-        (mt/with-current-user rasta-id
-          (snowplow-test/with-fake-snowplow-collector
-            (self/call-llm-structured "openrouter/test-model"
-                                      [{:role "user" :content "test"}]
-                                      {:type "object" :properties {:answer {:type "string"}}}
-                                      0.3
-                                      1024
+  (llm.tu/with-default-connections
+    (testing "fires :snowplow/token_usage event for call-llm-structured"
+      (let [rasta-id (mt/user->id :rasta)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (constantly (test-util/mock-llm-response
+                                                 [{:type :start :id "msg-1"}
+                                                  {:type :tool-input :id "call-1" :function "json"
+                                                   :arguments {:answer "42"}}
+                                                  {:type :usage :usage {:promptTokens 50 :completionTokens 10}
+                                                   :model "test-model" :id "msg-1"}]))]
+          (mt/with-current-user rasta-id
+            (snowplow-test/with-fake-snowplow-collector
+              (self/call-llm-structured "openrouter/test-model"
+                                        [{:role "user" :content "test"}]
+                                        {:type "object" :properties {:answer {:type "string"}}}
+                                        0.3
+                                        1024
+                                        snowplow-tracking-opts)
+              (let [events       (snowplow-test/pop-event-data-and-user-id!)
+                    token-events (filter #(contains? (:data %) "total_tokens") events)]
+                (is (=? [{:user-id (str rasta-id)
+                          :data    {"model_id"            "openrouter/test-model"
+                                    "provider"             "openrouter"
+                                    "model_name"           "test-model"
+                                    "total_tokens"         60
+                                    "prompt_tokens"        50
+                                    "completion_tokens"    10
+                                    "estimated_costs_usd"  0.0
+                                    "duration_ms"          nat-int?
+                                    "source"               "metabot_agent"
+                                    "tag"                  "test-tag"
+                                    "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                        token-events))
+                (testing "cache counts are 0 when the provider reports none"
+                  (is (=? [{:data {"cache_creation_tokens" 0 "cache_read_tokens" 0}}]
+                          token-events)))))))))))
+
+(deftest call-llm-provider-and-model-test
+  (testing (str "call-llm and call-llm-structured log the provider type and the model as the provider names it, "
+                "in ai_usage_log and on the token_usage event")
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")
+                              (llm.tu/connection "metabase")]
+      (let [model-ref "openrouter-1/anthropic/claude-sonnet-4.6"
+            response  (test-util/mock-llm-response
+                       [{:type :start :id "m1"}
+                        {:type :tool-input :id "call-1" :function "json" :arguments {:answer "42"}}
+                        {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged    (atom [])]
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
+                                      self.claude/claude    (constantly response)
+                                      usage/log-ai-usage!   #(swap! logged conj %)]
+            (run! identity (self/call-llm model-ref nil [] {} snowplow-tracking-opts))
+            (self/call-llm-structured model-ref [{:role "user" :content "test"}]
+                                      {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
                                       snowplow-tracking-opts)
-            (let [events       (snowplow-test/pop-event-data-and-user-id!)
-                  token-events (filter #(contains? (:data %) "total_tokens") events)]
-              (is (=? [{:user-id (str rasta-id)
-                        :data    {"model_id"            "openrouter/test-model"
-                                  "total_tokens"         60
-                                  "prompt_tokens"        50
-                                  "completion_tokens"    10
-                                  "estimated_costs_usd"  0.0
-                                  "duration_ms"          nat-int?
-                                  "source"               "metabot_agent"
-                                  "tag"                  "test-tag"
-                                  "session_id"           "00000000-0000-0000-0000-000000000002"}}]
-                      token-events)))))))))
+            (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} snowplow-tracking-opts)))
+          (is (=? (concat (repeat 2 {:model      model-ref
+                                     :provider   "openrouter"
+                                     :model-name "anthropic/claude-sonnet-4.6"})
+                          [{:model      "metabase/anthropic/claude-haiku-4-5"
+                            :provider   "anthropic"
+                            :model-name "claude-haiku-4-5"
+                            :ai-proxied true}])
+                  @logged))
+          (is (=? (concat (repeat 2 {:data {"model_id"   model-ref
+                                            "provider"   "openrouter"
+                                            "model_name" "anthropic/claude-sonnet-4.6"}})
+                          [{:data {"model_id"   "metabase/anthropic/claude-haiku-4-5"
+                                   "provider"   "metabase"
+                                   "model_name" "claude-haiku-4-5"}}])
+                  (filter #(contains? (:data %) "total_tokens")
+                          (snowplow-test/pop-event-data-and-user-id!)))))))))
+
+(deftest call-llm-usage-log-profile-id-test
+  (testing "a profile the usage log does not list is logged without a profile id rather than failing the call"
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")]
+      (let [response (test-util/mock-llm-response
+                      [{:type :start :id "m1"}
+                       {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged   (atom [])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter          (constantly response)
+                                    usage/valid-usage-profile-id   #(when (= :internal %) %)
+                                    usage/log-ai-usage!            #(swap! logged conj %)]
+          (doseq [profile-id [:internal :internal-sql]]
+            (run! identity (self/call-llm "openrouter-1/anthropic/claude-sonnet-4.6" nil [] {}
+                                          {:tag "metabot_agent" :profile-id profile-id}))))
+        (is (= [:internal nil] (map :profile-id @logged)))))))
+
+;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
+;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and
+;;; an optional `:required-permission` against the current user's metabot perms.
+
+(defn- try-structured-call [opts]
+  (llm.tu/with-default-connections
+    (try
+      (self/call-llm-structured-with-trace
+       "anthropic/claude-haiku-4-5"
+       [{:role "user" :content "hi"}]
+       {:type "object"}
+       0.0 100
+       opts)
+      (catch clojure.lang.ExceptionInfo e e))))
+
+(deftest call-llm-structured-with-trace-throws-on-usage-limit-test
+  (testing "When check-usage-limits! returns a message, the call throws an ex-info with
+            :type :metabot/usage-limit-reached *before* hitting the provider adapter."
+    (let [adapter-calls (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits!
+         (fn [] "you've used all of your AI tokens")
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
+        (let [ex (try-structured-call {})]
+          (is (= :metabot/usage-limit-reached (:type (ex-data ex))))
+          (is (= "ai_usage_limit_reached" (:error-code (ex-data ex))))
+          (is (zero? @adapter-calls)
+              "provider adapter must not be reached when usage limit is hit"))))))
+
+(deftest call-llm-structured-with-trace-throws-on-permission-denied-test
+  (testing ":required-permission is checked against the caller's metabot perms; a missing
+            grant throws :metabot/permission-denied before the provider adapter is hit."
+    (let [adapter-calls (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot                :yes
+                     :permission/metabot-sql-generation :yes
+                     :permission/metabot-nlq            :yes
+                     :permission/metabot-other-tools    :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
+        (let [ex (try-structured-call {:required-permission :permission/metabot-other-tools})]
+          (is (= :metabot/permission-denied (:type (ex-data ex))))
+          (is (= :permission/metabot-other-tools (:required-permission (ex-data ex))))
+          (is (zero? @adapter-calls)))))))
+
+(deftest call-llm-structured-with-trace-throws-on-base-permission-denied-test
+  (testing "When `:required-permission` is set but the base :permission/metabot is denied,
+            the call throws with :required-permission :permission/metabot."
+    (mt/with-dynamic-fn-redefs
+      [usage/check-usage-limits! (constantly nil)
+       scope/resolve-user-permissions
+       (fn [_uid] {:permission/metabot                :no
+                   :permission/metabot-sql-generation :yes
+                   :permission/metabot-nlq            :yes
+                   :permission/metabot-other-tools    :yes})]
+      (let [ex (try-structured-call {:required-permission :permission/metabot-other-tools})]
+        (is (= :metabot/permission-denied (:type (ex-data ex))))
+        (is (= :permission/metabot (:required-permission (ex-data ex)))
+            "base metabot denial is reported as the failing permission")))))
+
+(deftest call-llm-structured-with-trace-base-perm-always-checked-test
+  (testing "Even without `:required-permission`, the base :permission/metabot check runs.
+            Granting the base perm lets the call proceed to the adapter."
+    (let [resolve-calls (atom 0)
+          adapter-calls (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid]
+           (swap! resolve-calls inc)
+           {:permission/metabot :yes})
+         ;; Throw inside the adapter so we don't depend on parts-shape details —
+         ;; we just want to verify the base perm check passed and the call
+         ;; reached the provider.
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) (throw (ex-info "adapter reached" {})))]
+        (try-structured-call {})
+        (is (pos? @resolve-calls)
+            "the base :permission/metabot check resolves perms even when no :required-permission is set")
+        (is (pos? @adapter-calls)
+            "the provider adapter should be reached when the base perm is granted")))))
+
+(deftest call-llm-structured-with-trace-base-perm-denied-without-required-perm-test
+  (testing "Without `:required-permission`, the base :permission/metabot is still enforced;
+            a denial throws :metabot/permission-denied."
+    (let [adapter-calls (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
+        (let [ex (try-structured-call {})]
+          (is (= :metabot/permission-denied (:type (ex-data ex))))
+          (is (= :permission/metabot (:required-permission (ex-data ex))))
+          (is (zero? @adapter-calls)))))))
+
+(deftest call-llm-emits-usage-limit-error-part-test
+  (testing "When check-usage-limits! returns a message, call-llm returns a reducible
+            that yields a single :error part with error-code ai_usage_limit_reached
+            and never opens the provider stream."
+    (let [adapter-calls (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits!
+         (fn [] "you've used all of your AI tokens")
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
+        (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"
+                                            nil [] {} {} nil))]
+          (is (= 1 (count parts)))
+          (is (= :error (:type (first parts))))
+          (is (= "ai_usage_limit_reached" (:error-code (:error (first parts)))))
+          (is (zero? @adapter-calls)))))))
+
+(deftest call-llm-emits-permission-denied-error-part-test
+  (testing ":required-permission is checked against the caller's perms; a missing
+            grant yields a single :error part with error-code permission_denied,
+            without opening the provider stream."
+    (let [adapter-calls (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot                :yes
+                     :permission/metabot-sql-generation :yes
+                     :permission/metabot-nlq            :yes
+                     :permission/metabot-other-tools    :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
+        (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"
+                                            nil [] {}
+                                            {:required-permission :permission/metabot-other-tools}
+                                            nil))]
+          (is (= 1 (count parts)))
+          (is (= :error (:type (first parts))))
+          (is (= "permission_denied" (:error-code (:error (first parts)))))
+          (is (zero? @adapter-calls)))))))
+
+;;; shared pre-flight gate ([[llm-call-unavailable-reason]] / [[llm-call-available?]])
+
+(deftest llm-call-unavailable-reason-test
+  (let [perm :permission/metabot-other-tools]
+    (testing "nil (and llm-call-available? true) when every check passes"
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly nil)
+         scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
+        (is (nil? (self/llm-call-unavailable-reason perm)))
+        (is (true? (self/llm-call-available? perm)))))
+    (testing ":metabot-disabled when Metabot is off"
+      (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled? (constantly false)]
+        (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))
+        (is (false? (self/llm-call-available? perm)))))
+    (testing ":no-llm when no provider is configured"
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly false)]
+        (is (= :no-llm (self/llm-call-unavailable-reason perm)))))
+    (testing ":usage-limit when over the AI usage limit"
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly "You've used all your tokens")]
+        (is (= :usage-limit (self/llm-call-unavailable-reason perm)))))
+    (testing ":permission-denied when the current user lacks the required permission"
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly nil)
+         scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                     perm :no))]
+        (is (= :permission-denied (self/llm-call-unavailable-reason perm)))
+        (is (false? (self/llm-call-available? perm)))))
+    (testing "checks short-circuit in order: disabled before usage/permission"
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly false)
+         metabot.settings/llm-metabot-configured? (constantly false)
+         usage/check-usage-limits!                (constantly "limit")
+         scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                     perm :no))]
+        (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))))))
 
 (deftest ^:parallel body-preview-test
   (let [body-preview #'self.core/body-preview]
@@ -1029,6 +2536,31 @@
       (is (= #{:api-error :provider :error-code :exception-class}
              (set (keys (ex-data ex))))))))
 
+(deftest ^:parallel reducible-with-api-errors-test
+  (testing "successful streams reduce transparently through the wrapper"
+    (is (= [1 2 3]
+           (into [] (self.core/reducible-with-api-errors
+                     (reify clojure.lang.IReduceInit
+                       (reduce [_ rf init]
+                         (reduce rf init [1 2 3])))
+                     "anthropic" (constantly "unused"))))))
+  (testing "mid-stream IO failures get the provider-friendly translation"
+    (let [boom      (java.net.SocketTimeoutException. "Read timed out")
+          reducible (self.core/reducible-with-api-errors
+                     (reify clojure.lang.IReduceInit
+                       (reduce [_ rf init]
+                         (rf init 1) ; one chunk arrives, then the socket times out
+                         (throw boom)))
+                     "anthropic" (constantly "unused"))
+          ex        (caught #(into [] reducible))]
+      (is (str/includes? (ex-message ex) "API request failed"))
+      (is (str/includes? (ex-message ex) "Read timed out"))
+      (is (=? {:api-error true :provider "anthropic" :error-code :provider-request-failed
+               :exception-class "java.net.SocketTimeoutException"}
+              (ex-data ex)))
+      (is (identical? boom (ex-cause ex))
+          "the raw socket exception is preserved as the cause"))))
+
 (deftest rethrow-api-error!-input-stream-test
   (testing "InputStream JSON bodies are decoded and structured-extracted"
     (let [json     (json/encode {:error {:message "model decommissioned"}})
@@ -1099,7 +2631,7 @@
           "retry-delay-ms picks up the 3-second Retry-After through the rethrown exception"))))
 
 (deftest rethrow-api-error!-warn-log-test
-  (testing "the full upstream body is emitted at warn level alongside provider and status"
+  (testing "provider and status are emitted at warn level; the body is never logged"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
                              :headers {"content-type" "text/plain"}
@@ -1114,9 +2646,11 @@
       (is (nil? more) "exactly one warn line at the failure boundary")
       (is (=? {:level :warn :namespace 'metabase.metabot.self.core}
               entry))
-      (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
-                   (:message entry)))))
-  (testing "an oversized body is capped in the warn log, but preserved in full on ex-data"
+      (is (re-find #"provider=openrouter status=502"
+                   (:message entry)))
+      (is (not (str/includes? (:message entry) "upstream gateway timeout"))
+          "the response body is not logged")))
+  (testing "the body never reaches the warn log, but is preserved in full on ex-data"
     (let [cap      @#'self.core/max-body-log-chars
           big-body (apply str (repeat (+ cap 1000) \x))
           upstream (ex-info "clj-http error"
@@ -1133,11 +2667,9 @@
                   "the full, untruncated body still survives on ex-data"))
             (msgs))]
       (is (nil? more) "exactly one warn line at the failure boundary")
-      (is (str/ends-with? (:message entry)
-                          (str "body=" (subs (pr-str big-body) 0 cap) "…"))
-          "the warn line's body segment is capped at max-body-log-chars with a trailing ellipsis")
-      (is (not (str/includes? (:message entry) big-body))
-          "the full oversized body is not spliced into the warn line"))))
+      (is (re-find #"provider=openrouter status=502" (:message entry)))
+      (is (not (str/includes? (:message entry) "xxx"))
+          "no fragment of the body is spliced into the warn line"))))
 
 (deftest rethrow-api-error!-auth-status-body-not-leaked-test
   (testing "401/403 bodies are not appended to the user-facing message (may carry sensitive auth/account detail)"
@@ -1162,5 +2694,306 @@
                     "the full decoded body is still preserved on ex-data for debugging"))
               (msgs))]
         (is (nil? more) "exactly one warn line at the failure boundary")
-        (is (str/includes? (:message entry) secret)
-            "the full body is still emitted at warn level for server-side debugging")))))
+        (is (str/includes? (:message entry)
+                           (str "provider=anthropic status=" status))
+            "a warn with provider and status is still emitted for server-side debugging")
+        (is (not (str/includes? (:message entry) secret))
+            "the secret-bearing body never appears in the warn log")))))
+
+(defn- provider-api-error!
+  "What an adapter throws when `provider` answers with an HTTP error `status` and a JSON `body`."
+  [provider status body]
+  (mt/with-log-level [metabase.metabot.self.core :fatal]
+    (caught #(self.core/rethrow-api-error! provider
+                                           (constantly "API error")
+                                           (ex-info "clj-http error"
+                                                    {:status  status
+                                                     :headers {"content-type" "application/json"}
+                                                     :body    (json/encode body)})))))
+
+(def ^:private anthropic-credit-balance-body
+  {:type  "error"
+   :error {:type    "invalid_request_error"
+           :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
+
+(deftest provider-error-test
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+    (testing "classifies the failures that the customer can fix on their side, and the provider's outages"
+      (are [code provider status body]
+           (= code (:error-code (mt/as-admin (self/provider-error (provider-api-error! provider status body)))))
+        "ai_provider_billing"     "anthropic"  400 anthropic-credit-balance-body
+        "ai_provider_billing"     "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                            :message "You have reached your specified API usage limits."}}
+        "ai_provider_billing"     "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
+        "ai_provider_billing"     "anthropic"  429 {:error {:type    "rate_limit_error"
+                                                            :message "You have reached your API usage limits."
+                                                            :details {:error_code "enforced_spend_limit_reached"}}}
+        "ai_provider_billing"     "openai"     429 {:error {:type    "insufficient_quota"
+                                                            :code    "insufficient_quota"
+                                                            :message "You exceeded your current quota."}}
+        "ai_provider_billing"     "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
+        "ai_provider_rate_limit"  "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
+        "ai_provider_rate_limit"  "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
+        "ai_provider_auth"        "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
+        "ai_provider_auth"        "anthropic"  403 {:error {:type    "permission_error"
+                                                            :message "Your API key does not have permission to use the specified resource."}}
+        "ai_provider_unavailable" "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}
+        "ai_provider_unavailable" "anthropic"  500 {:error {:type "api_error" :message "Internal server error"}}
+        "ai_provider_unavailable" "openai"     503 {:error {:message "The server is overloaded or not ready yet."}}
+        nil                       "openai"     403 {:error {:type    "request_forbidden"
+                                                            :code    "unsupported_country_region_territory"
+                                                            :message "Country, region, or territory not supported"}}
+        nil                       "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                            :message "max_tokens: Input should be greater than 0"}}))
+    (testing "admins are told which provider failed, everyone else is not"
+      (doseq [status [402 429 401 529]]
+        (let [e (provider-api-error! "anthropic" status {})]
+          (is (str/includes? (:message (mt/as-admin (self/provider-error e)))
+                             "Anthropic"))
+          (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
+                                              (self/provider-error e)))
+                                  "Anthropic"))))))
+    (testing "on the managed provider only an outage is explained, and without naming the provider"
+      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+        (is (nil? (mt/as-admin
+                    (self/provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))
+        (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
+                (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
+
+(defn- openrouter-relayed-error-body
+  "OpenRouter's 400 body when every upstream refused the request with the JSON string `raw`.
+
+  Shape probed 2026-10-13 (https://github.com/metabase/metabase/pull/83989): OpenRouter's own message is generic, and
+  the upstream's body is only in `metadata.raw`."
+  [raw]
+  {:error {:message  "Provider returned error"
+           :code     400
+           :metadata {:raw             raw
+                      :provider_name   "Azure"
+                      :is_byok         false
+                      :previous_errors [{:code          400
+                                         :message       "Provider returned error"
+                                         :provider_name "Amazon Bedrock"
+                                         :raw           raw}]}}})
+
+(deftest context-overflow-error-test
+  (testing "a 400 for a prompt that does not fit the window is a \"full\" error"
+    ;; Bodies probed 2026-10-09 (https://github.com/metabase/metabase/pull/83989), unless a row names a doc.
+    (are [provider body]
+         (= "ai_provider_context_full"
+            (:error-code (self/context-overflow-error (provider-api-error! provider 400 body))))
+      "openrouter" {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you "
+                                           "requested about 200001 tokens (1 of text input, 200000 in the output).")
+                            :code     400
+                            :metadata {:provider_name nil}}}
+      ;; https://openrouter.ai/docs/api-reference/errors
+      "openrouter" {:error {:message  "Provider returned error"
+                            :code     400
+                            :metadata {:error_type "context_length_exceeded"}}}
+      "deepseek"   {:error {:message (str "This model's maximum context length is 1048576 tokens. However, you "
+                                          "requested 1048600 tokens (1016600 in the messages, 32000 in the completion).")
+                            :type    "invalid_request_error"
+                            :param   nil
+                            :code    "invalid_request_error"}}
+      "mistral"    {:object          "error"
+                    :message         "Prompt 1000015 > 262144 maximum context length"
+                    :type            "invalid_request_prompt_too_long"
+                    :param           nil
+                    :code            "3059"
+                    :raw_status_code 400}
+      "moonshot"   {:error {:message "Invalid request: Your request exceeded model token limit: 262144 (requested: 1000008)"
+                            :type    "invalid_request_error"}}
+      ;; https://platform.kimi.ai/docs/api/errors
+      "moonshot"   {:error {:message "Input token length too long" :type "invalid_request_error"}}
+      "moonshot"   {:error {:message "prompt tokens + max_tokens exceeds the model specification"
+                            :type    "invalid_request_error"}}
+      ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
+      "anthropic"  {:type  "error"
+                    :error {:type "invalid_request_error" :message "prompt is too long: 208310 tokens > 200000 maximum"}}
+      ;; https://docs.z.ai/api-reference/api-code
+      "zai"        {:error {:code "1261" :message "Prompt too long"}}
+      ;; probed 2026-10-13 on Vertex, gemini-3.5-flash
+      "google"     {:error {:code    400
+                            :message "The input token count exceeds the maximum number of tokens allowed 1048576."
+                            :status  "INVALID_ARGUMENT"}}
+      "openrouter" (openrouter-relayed-error-body
+                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}}"))))
+
+(deftest context-overflow-error-other-failure-test
+  (testing "any other failure is not a \"full\" error"
+    (are [status body]
+         (nil? (self/context-overflow-error (provider-api-error! "openrouter" status body)))
+      400 {:error {:code 400 :message "Bad request"}}
+      400 {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}
+      400 (openrouter-relayed-error-body
+           "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tools.0: Input should be a valid dictionary\"}}")
+      400 anthropic-credit-balance-body
+      ;; Gemini's INVALID_ARGUMENT for a bad `maxOutputTokens`, probed 2026-10-13 on Vertex, gemini-3.5-flash
+      400 {:error {:code    400
+                   :message (str "Unable to submit request because it has a maxOutputTokens value of 70000 but the "
+                                 "supported range is from 1 (inclusive) to 65537 (exclusive). Update the value and "
+                                 "try again.")
+                   :status  "INVALID_ARGUMENT"}}
+      429 {:error {:code 429 :message "This endpoint's maximum context length is 200000 tokens."}}
+      500 {:error {:code 500 :message "This endpoint's maximum context length is 200000 tokens."}})))
+
+(deftest context-overflow-error-not-api-error-test
+  (testing "an exception that is not a provider API error"
+    (is (nil? (self/context-overflow-error
+               (ex-info "boom" {:status 400
+                                :body   {:error {:message "This endpoint's maximum context length is 200000 tokens."}}}))))))
+
+(deftest known-models-normalization-test
+  (testing "adapters that key model id to a map are passed through"
+    (let [models (self/known-models "anthropic")]
+      (is (seq models))
+      (is (every? (comp :display-name val) models))))
+  (testing "DeepSeek records only a display name, and still comes back in the same shape"
+    (let [models (self/known-models "deepseek")]
+      (is (seq models))
+      (is (every? (comp string? :display-name val) models))))
+  (testing "the types with no allow-list return nil rather than an empty map"
+    (doseq [provider ["azure" "google" "vllm" "metabase"]]
+      (is (nil? (self/known-models provider)) provider)))
+  (testing "an unregistered provider throws instead of reading as one with no models"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown LLM provider"
+                          (self/known-models "brand-new"))))
+  (testing "an entry that is not a map throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" 42))))
+  (testing "so does a map with no display name — the dox table would print the model id as its name"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {:context-window 200000}))))
+  (testing "every provider that publishes an allow-list names every model in it"
+    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "xai" "zai"]]
+      (let [models (self/known-models provider)]
+        (is (seq models) provider)
+        (is (every? (comp string? :display-name val) models) provider)))))
+
+;;; ===== A failed call stays failed all the way out =====
+
+(defn- throwing-tool
+  "A tool whose one job is to fail with `error-class`."
+  [tool-name thrower]
+  (reify tools.core/Tool
+    (declaration [_] {:name tool-name :description "Fails." :args [:map {:closed true}]})
+    (handle [_ _args _ctx] (thrower))))
+
+(defn- failed-outcome
+  "What the runtime hands back for a failing call of each class, through the real `invoke`."
+  [tool-name thrower]
+  (let [tool    (throwing-tool tool-name thrower)
+        entries (tools.core/entries [tool])]
+    (tools.runtime/invoke entries
+                          {:profile-id :nlq :metabot nil :user-scope #{"*"}
+                           :tool-names (set (keys entries))}
+                          tool-name
+                          {})))
+
+(defn- tool-output-part
+  "The `:tool-output` part the stream assembles for `outcome` — the shape every consumer downstream
+  of the runtime actually reads."
+  [outcome]
+  (->> [{:type :tool-input-start :toolCallId "c1" :toolName "failer"}
+        {:type :tool-input-available :toolCallId "c1" :toolName "failer"}
+        {:type :tool-output-available :toolCallId "c1" :toolName "failer" :result outcome}]
+       (into [] (self.core/aisdk-xf))
+       (filter #(= :tool-output (:type %)))
+       first))
+
+(deftest a-failed-call-is-failed-at-every-consumer-test
+  (testing (str "from `invoke` through the part to the SSE writer and persistence. Nothing spanned "
+                "this before, which is how the error moving into `:result` left three consumers "
+                "still reading it off the part and reporting every failure as a success.")
+    (doseq [[label thrower expected-text]
+            [["recoverable"
+              #(tools.error/throw-recoverable! :metabase.metabot.tools.recoverable.common/not-found
+                                               {:kind :table :id 7})
+              "Metabot could not complete this step."]
+             ["unrecoverable with a :user-message"
+              #(tools.error/unrecoverable! ::nope {:user-message "Ask an admin for access."})
+              "Ask an admin for access."]
+             ["unrecoverable without one"
+              #(tools.error/unrecoverable! ::nope {})
+              "Metabot could not complete this step."]]]
+      (testing label
+        (let [outcome (failed-outcome "failer" thrower)
+              part    (tool-output-part outcome)]
+          (testing "the outcome carries the error inside :result, and only there"
+            (is (some? (:error outcome)))
+            (is (not (contains? part :error))
+                "a second copy on the part is what let a failure read as a success"))
+          (testing "the SSE writer emits tool-output-error with text written for a reader"
+            (let [events (into [] (self.core/parts->aisdk-sse-xf) [part])
+                  body   (apply str events)]
+              (is (str/includes? body "tool-output-error") body)
+              (is (str/includes? body expected-text) body)
+              (testing "and never the model's own text, nor the EDN of the error map"
+                (is (not (str/includes? body "Don't retry")) body)
+                (is (not (str/includes? body ":class")) body))))
+          (testing (str "persistence stores it as a failed step, keeping the MODEL's text: "
+                        "`tool-part->llm-messages` replays `:errorText` to the model, so a generic "
+                        "sentence here would lose the authored failure on every replay")
+            (let [stored (#'persistence/internal-parts->storable
+                          [{:type :tool-input :id "c1" :function "failer" :arguments {}}
+                           part])
+                  entry  (first (filter #(= "tool-failer" (:type %)) stored))]
+              (is (= "output-error" (:state entry)) (pr-str entry))
+              (is (= (:output outcome) (:errorText entry)))
+              (is (nil? (:output entry))
+                  "a failed step stores no :output; its text is the :errorText")
+              (testing "and that text replays to the model verbatim"
+                ;; a pair: the assistant's tool_call, then the `:tool` message the model reads
+                (is (= (:output outcome)
+                       (:content (last (persistence/tool-part->llm-messages entry)))))))))))))
+
+(deftest a-rejected-argument-is-failed-at-every-consumer-test
+  (testing (str "the validation class takes the same path, and its message is the most "
+                "model-facing text there is — it names the argument and the repair")
+    (let [tool    (reify tools.core/Tool
+                    (declaration [_] {:name "strict" :description "Takes an int."
+                                      :args [:map {:closed true} [:n :int]]})
+                    (handle [_ _ _] {:output "unreachable"}))
+          entries (tools.core/entries [tool])
+          outcome (tools.runtime/invoke entries
+                                        {:profile-id :nlq :metabot nil :user-scope #{"*"}
+                                         :tool-names #{"strict"}}
+                                        "strict" {:n "not an int"})
+          part    (tool-output-part outcome)
+          body    (apply str (into [] (self.core/parts->aisdk-sse-xf) [part]))]
+      (is (= :validation (get-in outcome [:error :class])))
+      (is (str/includes? (:output outcome) "`n`") "the model is told which argument")
+      (is (str/includes? body "tool-output-error") body)
+      (is (str/includes? body "Metabot could not complete this step.") body)
+      (testing "and the argument message is not shown to the reader"
+        (is (not (str/includes? body "`n`")) body))
+      (testing "but it is what replays to the model"
+        (let [stored (#'persistence/internal-parts->storable
+                      [{:type :tool-input :id "c1" :function "strict" :arguments {}} part])
+              entry  (first (filter #(= "tool-strict" (:type %)) stored))]
+          (is (str/includes? (:errorText entry) "`n`") (pr-str entry)))))))
+
+(deftest a-successful-call-is-still-successful-test
+  (testing "the same path, with nothing to report"
+    (let [tool    (reify tools.core/Tool
+                    (declaration [_] {:name "fine" :description "Works." :args [:map {:closed true}]})
+                    (handle [_ _ _] {:output "all good"}))
+          entries (tools.core/entries [tool])
+          outcome (tools.runtime/invoke entries
+                                        {:profile-id :nlq :metabot nil :user-scope #{"*"}
+                                         :tool-names #{"fine"}}
+                                        "fine" {})
+          part    (tool-output-part outcome)
+          body    (apply str (into [] (self.core/parts->aisdk-sse-xf) [part]))
+          stored  (#'persistence/internal-parts->storable
+                   [{:type :tool-input :id "c1" :function "failer" :arguments {}} part])]
+      (is (nil? (:error outcome)))
+      (is (str/includes? body "tool-output-available") body)
+      (is (= "output-available" (:state (first (filter #(= "tool-failer" (:type %)) stored))))))))

@@ -11,6 +11,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
@@ -385,6 +386,56 @@
               (substitute query {"snippet: outer" (lib/parsed-referenced-query-snippet-param 123 "{{snippet:symbol_is_A}}")
                                  "snippet: symbol_is_A" (lib/parsed-referenced-query-snippet-param 124 "symbol = 'A'")}))))))
 
+(deftest ^:parallel substitute-repeated-native-query-snippets-test
+  (testing "The same snippet can be used more than once, including from within other snippets"
+    (let [query ["SELECT * FROM test_scores WHERE " (lib/parsed-param "snippet: outer")
+                 " OR " (lib/parsed-param "snippet: symbol_is_A")]]
+      (is (=? ["SELECT * FROM test_scores WHERE (symbol = 'A' AND symbol = 'A') OR symbol = 'A'" nil]
+              (substitute query {"snippet: outer"       (lib/parsed-referenced-query-snippet-param
+                                                         123 "({{snippet:symbol_is_A}} AND {{snippet:symbol_is_A}})")
+                                 "snippet: symbol_is_A" (lib/parsed-referenced-query-snippet-param 124 "symbol = 'A'")}))))))
+
+(deftest ^:parallel substitute-circular-native-query-snippets-test
+  (testing "Snippets that (directly or indirectly) reference themselves are rejected"
+    (let [query ["SELECT * FROM test_scores WHERE " (lib/parsed-param "snippet: a")]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"circular"
+           (substitute query {"snippet: a" (lib/parsed-referenced-query-snippet-param 1 "{{snippet: a}}")})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"circular"
+           (substitute query {"snippet: a" (lib/parsed-referenced-query-snippet-param 1 "x {{snippet: b}}")
+                              "snippet: b" (lib/parsed-referenced-query-snippet-param 2 "y {{snippet: a}}")}))))))
+
+(defn- doubling-snippets
+  "Snippets `s0` ... `s<depth>` where each references the next one twice, and the last one has `leaf-content`."
+  [depth leaf-content]
+  (into {(str "snippet: s" depth) (lib/parsed-referenced-query-snippet-param (inc depth) leaf-content)}
+        (for [i (range depth)
+              :let [next-tag (str "{{snippet: s" (inc i) "}}")]]
+          [(str "snippet: s" i) (lib/parsed-referenced-query-snippet-param (inc i) (str next-tag next-tag))])))
+
+(deftest ^:parallel substitute-native-query-snippets-expansion-limit-test
+  (testing "Snippets that expand into too many nested snippets are rejected"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"too many"
+         (substitute ["SELECT " (lib/parsed-param "snippet: s0")]
+                     (doubling-snippets 20 ""))))))
+
+(deftest ^:parallel substitute-native-query-snippets-length-limit-test
+  (testing "Snippets that expand into a huge query are rejected"
+    (let [leaf (str/join (repeat 10000 "x"))]
+      (is (= (+ (count "SELECT ") (* 512 (count leaf)))
+             (count (first (substitute ["SELECT " (lib/parsed-param "snippet: s0")]
+                                       (doubling-snippets 9 leaf))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"too long"
+           (substitute ["SELECT " (lib/parsed-param "snippet: s0")]
+                       (doubling-snippets 10 leaf)))))))
+
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e [sql params]
@@ -517,15 +568,10 @@
 (mu/defn- expand**
   "Expand parameters inside a top-level native `query`. Not recursive. Expands against `meta/metadata-provider` unless
   an explicit metadata provider `mp` is supplied (handy for overriding field metadata)."
-  ([query]
+  ([query :- :metabase.lib.util/query-like]
    (expand** meta/metadata-provider query))
-  ([mp
-    {:keys [parameters], :as query} :- [:or
-                                        [:map
-                                         [:lib/type [:= :mbql/query]]]
-                                        [:map
-                                         [:native [:map
-                                                   [:query some?]]]]]]
+  ([mp :- ::lib.schema.metadata/metadata-providerable
+    {:keys [parameters], :as query} :- :metabase.lib.util/query-like]
    (driver/with-driver :h2
      (-> (if (:lib/type query)
            (lib/query mp (dissoc query :parameters))
@@ -534,10 +580,8 @@
             (merge {:database (meta/id)
                     :type     :native}
                    query)))
-         (lib/update-query-stage 0 (fn [stage]
-                                     (-> stage
-                                         (update :parameters concat parameters)
-                                         (->> (qp.native/expand-stage mp)))))
+         (lib/update-query-stage 0 update :parameters concat parameters)
+         (qp.native/expand-stage 0)
          lib/->legacy-MBQL))))
 
 (defn- expand*

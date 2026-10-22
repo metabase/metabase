@@ -1,43 +1,26 @@
+import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import type { InputProps } from "metabase/common/components/Input";
-import { Input } from "metabase/common/components/Input";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { Checkbox, Flex, Text } from "metabase/ui";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
+import { Box, Checkbox, Input, Text, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
-import {
-  EmptyStateContainer,
-  FilterInputContainer,
-  OptionContainer,
-  OptionsList,
-} from "./ListField.styled";
+import S from "./ListField.module.css";
 import type { ListFieldProps, Option } from "./types";
 import {
+  createOptionsFromValuesWithoutOptions,
   getOptionDisplayName,
   normalizeValuesToOptionKeys,
+  optionItemEqualsFilter,
   optionMatchesFilter,
 } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
-
-function createOptionsFromValuesWithoutOptions(
-  values: RowValue[],
-  options: Option[],
-): Option[] {
-  const optionsMap = new Map(options.map((option) => [option[0], option]));
-  return values
-    .filter((value) => !optionsMap.has(value))
-    .map((value) => [value]);
-}
 
 export const ListField = ({
   onChange,
@@ -46,7 +29,6 @@ export const ListField = ({
   optionRenderer,
   placeholder,
   isDashboardFilter,
-  isLoading,
 }: ListFieldProps) => {
   const normalizedValue = useMemo(
     () => normalizeValuesToOptionKeys(value, options),
@@ -127,13 +109,13 @@ export const ListField = ({
   const shouldShowEmptyState =
     augmentedOptions.length > 0 && filteredOptions.length === 0;
 
-  const handleToggleOption = (option: any) => {
+  const handleToggleOption = (option: RowValue) => {
     const newSelectedValues = selectedValues.has(option)
       ? Array.from(selectedValues).filter((value) => value !== option)
       : [...selectedValues, option];
 
     setSelectedValues(new Set(newSelectedValues));
-    onChange?.(newSelectedValues);
+    onChange(newSelectedValues);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -143,7 +125,7 @@ export const ListField = ({
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) =>
+      !augmentedOptions.some((option) =>
         optionItemEqualsFilter(option[0], filter),
       )
     ) {
@@ -152,7 +134,7 @@ export const ListField = ({
     }
   };
 
-  const handleFilterChange: InputProps["onChange"] = (e) =>
+  const handleFilterChange: ChangeEventHandler<HTMLInputElement> = (e) =>
     setFilter(e.target.value);
 
   const handleToggleAll = () => {
@@ -170,60 +152,64 @@ export const ListField = ({
 
   return (
     <>
-      <FilterInputContainer isDashboardFilter={isDashboardFilter}>
-        <Input
-          fullWidth
-          autoFocus
-          placeholder={placeholder}
-          value={filter}
-          onChange={handleFilterChange}
-          onKeyDown={handleKeyDown}
-          onResetClick={() => setFilter("")}
-          data-testid="list-field"
-        />
-      </FilterInputContainer>
+      <TextInput
+        autoFocus
+        placeholder={placeholder}
+        value={filter}
+        onChange={handleFilterChange}
+        onKeyDown={handleKeyDown}
+        rightSectionPointerEvents="all"
+        rightSection={
+          filter.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setFilter("")}
+            />
+          ) : null
+        }
+        mb={isDashboardFilter ? 0 : "sm"}
+        data-testid="list-field"
+      />
 
       {shouldShowEmptyState && (
-        <EmptyStateContainer>
+        <Box pt="xxl" px="xxl">
           <EmptyState message={t`Didn't find anything`} icon="search" />
-        </EmptyStateContainer>
+        </Box>
       )}
 
-      {isLoading && (
-        <Flex p="md" align="center" justify="center">
-          <LoadingSpinner size={24} />
-        </Flex>
-      )}
-
-      {!isLoading && (
-        <OptionsList isDashboardFilter={isDashboardFilter}>
-          {filteredOptions.length > 0 && (
-            <OptionContainer>
-              <Checkbox
-                variant="stacked"
-                label={
-                  <Text c="text-secondary" lh="inherit">
-                    {debouncedFilter ? t`Select these` : t`Select all`}
-                  </Text>
-                }
-                checked={isAll}
-                indeterminate={!isAll && !isNone}
-                onChange={handleToggleAll}
-              />
-            </OptionContainer>
-          )}
-          {filteredOptions.map((option, index) => (
-            <OptionContainer key={index}>
-              <Checkbox
-                data-testid={`${option[0]}-filter-value`}
-                checked={selectedValues.has(option[0])}
-                label={optionRenderer(option)}
-                onChange={() => handleToggleOption(option[0])}
-              />
-            </OptionContainer>
-          ))}
-        </OptionsList>
-      )}
+      <Box
+        component="ul"
+        className={S.optionsList}
+        mah={isDashboardFilter ? 300 : undefined}
+        pt={isDashboardFilter ? "sm" : undefined}
+        px={isDashboardFilter ? "sm" : undefined}
+      >
+        {filteredOptions.length > 0 && (
+          <Box component="li" py="sm" px="xxxs">
+            <Checkbox
+              variant="stacked"
+              label={
+                <Text c="text-secondary" lh="inherit">
+                  {debouncedFilter ? t`Select these` : t`Select all`}
+                </Text>
+              }
+              checked={isAll}
+              indeterminate={!isAll && !isNone}
+              onChange={handleToggleAll}
+            />
+          </Box>
+        )}
+        {filteredOptions.map((option, index) => (
+          <Box component="li" key={index} py="sm" px="xxxs">
+            <Checkbox
+              data-testid={`${option[0]}-filter-value`}
+              checked={selectedValues.has(option[0])}
+              label={optionRenderer(option)}
+              onChange={() => handleToggleOption(option[0])}
+            />
+          </Box>
+        ))}
+      </Box>
     </>
   );
 };

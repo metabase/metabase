@@ -1,12 +1,12 @@
 (ns metabase.search.ingestion
   (:require
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
@@ -15,7 +15,6 @@
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
    (java.util.concurrent DelayQueue)))
@@ -28,29 +27,15 @@
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
 (def ^:private message-delay-ms
-  "The time a message should wait before coming off the queue.
-  This delay exists to ensure the data is fully committed before indexing."
+  "The time a message waits before coming off the queue.
+  Updates made in a transaction are queued when it commits, see [[ingest-maybe-async!]].
+  The delay is a head start for a write in a transaction `mdb/do-after-commit` cannot see, such as a raw JDBC one.
+  Such a write is still missed if its transaction stays open longer than the delay."
   100)
 
 (def ^:private listener-name
   "The name of the listener that consumes the queue"
   "search-index-update")
-
-(def max-searchable-value-length
-  "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
-  And is about half of postgresql's max, since we concat two values together often. That is likely aggressive, but being safe until we can better understand normal data shapes"
-  500000)
-
-(defn searchable-value-trim-sql
-  "Returns the honeysql expression to trim a searchable value to the max length.
-  The passed column should be a keyword that is qualified as needed.
-  Uses a slightly larger value that what will be stored in the db so we can better use word boundaries on the actual end"
-  [column]
-  (if (#{:postgres :h2} (mdb/db-type))
-    [:left
-     column
-     [:cast (+ max-searchable-value-length 100) :integer]]
-    column))
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -93,16 +78,12 @@
                             field-keys)]
     (str header "\n" (str/join "\n" fields))))
 
-(defn- search-term-columns
-  "Extract column names from search-terms spec for SQL query generation"
-  [search-terms]
-  (if (map? search-terms) (keys search-terms) search-terms))
-
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
 
 (defn- execute-function-attr
-  "Execute a single function attribute and return the result"
+  "Execute a single function attribute and return the result, or nil if the function throws.
+  nil is valid for every column type, so a failure can never poison the document's insert batch."
   [attr-key attr-def record]
   (try
     (let [f (:fn attr-def)
@@ -112,28 +93,19 @@
                   record)]
       (f input))
     (catch Exception e
-      (log/warn e "Function execution failed for attribute" attr-key)
-      false)))
+      (log/warn "Function execution failed for attribute" attr-key ":" (ex-message e))
+      nil)))
 
 (defn- execute-all-function-attrs
   "Execute all function attributes for a given spec and return computed values.
-  If a function returns a map, its entries are merged directly into the result —
-  this allows a single function to populate multiple document keys (e.g. :temporal-info
-  returns both :has_temporal_dim and :non_temporal_dim_ids in one call).
-
-  When a function attr declares `:provides`, the attr-key itself is not a column in
-  the index — it's a logical grouping whose `:provides` keys are the real columns.
-  In that case, on non-map results (e.g. when the function threw and `false` was
-  returned), skip writing instead of poisoning the document with an unknown column."
+  Each function's result is written under the attr key (snake_case) — the attr's index column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
-       (let [result (execute-function-attr attr-key attr-def record)]
-         (cond
-           (map? result)                          (merge acc result)
-           (seq (search.spec/function-attr-provides attr-def)) acc
-           :else                                  (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
+       (assoc acc
+              (keyword (u/->snake_case_en (name attr-key)))
+              (execute-function-attr attr-key attr-def record))
        acc))
    {}
    (:attrs spec)))
@@ -159,58 +131,11 @@
            :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
                                              :curated curated)))))
 
-(defn- attrs->select-items [attrs]
-  (for [[k v] attrs
-        :when (and v (not (search.spec/function-attr? v)))]
-    (let [as (keyword (u/->snake_case_en (name k)))]
-      (if (true? v) as [v as]))))
-
-(defn- spec-index-query*
-  [_db-type search-model]
-  (let [spec         (search.spec/spec search-model)
-        fn-deps      (search.spec/collect-fn-attr-req-fields spec)
-        fn-selects   (map (fn [field]
-                            [(keyword (str "this." (name field))) field])
-                          fn-deps)
-        search-terms (set (search-term-columns (:search-terms spec)))]
-    (u/remove-nils
-     {:select    (search.spec/qualify-columns :this
-                                              (concat
-                                               (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
-                                                                term])
-                                                    search-terms)
-                                               (mapcat (fn [k] (attrs->select-items
-                                                                (->> (get spec k)
-                                                                     (remove (comp search-terms key)))))
-                                                       [:attrs :render-terms])
-                                               fn-selects))
-      :from      [[(t2/table-name (:model spec)) :this]]
-      :where     (:where spec [:inline [:= 1 1]])
-      :left-join (when (:joins spec)
-                   (into []
-                         cat
-                         (for [[join-alias [join-model join-condition]] (:joins spec)]
-                           [[(t2/table-name join-model) join-alias]
-                            join-condition])))})))
-
-(def ^:private spec-index-query-memo (memoize spec-index-query*))
-
-(defn- spec-index-query
-  ;; Memoized per db-type since the generated HoneySQL varies by database engine
-  ;; (e.g. searchable-value-trim-sql emits LEFT/CAST only for postgres and h2).
-  [search-model]
-  (spec-index-query-memo (mdb/db-type) search-model))
-
-(defn- spec-index-query-where [search-model where-clause]
-  (-> (spec-index-query search-model)
-      (sql.helpers/where where-clause)))
-
 (defn- spec-index-reducible [search-model & [where-clause]]
   ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
-  (->> (spec-index-query-where search-model where-clause)
-       mdb/streaming-reducible-query
+  (->> (search.db/spec-index-reducible-rows search-model where-clause)
        (eduction (comp (map #(assoc % :model search-model))
                        (m/distinct-by (juxt :id :model))))))
 
@@ -229,14 +154,10 @@
   (if-not (contains? (set search.spec/search-models) search-model)
     :no-spec
     (let [spec      (search.spec/spec search-model)
-          indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
-                        (assoc :select [[[:inline 1] :one]] :limit 1)
-                        t2/query
-                        seq
-                        boolean)]
+          indexed?  (some? (search.db/spec-index-row search-model id))]
       (cond
         indexed?                              :indexable
-        (t2/exists? (:model spec) :id id)     :excluded
+        (search.db/entity-exists? (:model spec) id)     :excluded
         :else                                 :not-found))))
 
 (def ^:private max-document-error-logs 10)
@@ -265,7 +186,7 @@
                                  (let [n (vswap! failures inc)]
                                    (cond
                                      (<= n max-document-error-logs)
-                                     (log/warnf t "Error building search document for %s %s; skipping" (:model m) (:id m))
+                                     (log/warnf "Error building search document for %s %s; skipping: %s" (:model m) (:id m) (ex-message t))
                                      (= n (inc max-document-error-logs))
                                      (log/warnf "Suppressing further per-document error logs after %d failures" max-document-error-logs)))
                                  nil))]
@@ -281,18 +202,16 @@
   "Returns a count of all searchable items in the database."
   []
   (->> (for [model search.spec/search-models]
-         (-> (spec-index-query-where model nil)
-             (assoc :select [[:%count.* :count]])
-             t2/query
-             first
-             :count))
+         (search.db/spec-index-count model))
        (filter some?)
        (reduce + 0)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-updates*
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
@@ -375,7 +294,8 @@
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
-  Can also be forced to run synchronously for testing."
+  Can also be forced to run synchronously for testing.
+  Async updates are queued when the outermost transaction commits, and dropped if it rolls back."
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
@@ -383,10 +303,13 @@
      (if sync?
        (bulk-ingest! updates)
        (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
+         ;; The worker reads rows back on its own connection, so it cannot see them before the commit.
+         (mdb/do-after-commit
+          (fn []
+            (doseq [update updates]
+              (log/trace "Queuing update" update)
+              (queue/put-with-delay! queue message-delay-ms update))
+            (track-queue-size!)))
          true)))))
 
 (defn wait-for-idle!
@@ -425,7 +348,7 @@
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]
-                                          (log/error err "Error indexing search entries")
+                                          (log/errorf "Error indexing search entries: %s" (ex-message err))
                                           (analytics/inc! :metabase-search/index-error)
                                           (track-queue-size!))
                     ;; Note that each message can correspond to multiple documents,

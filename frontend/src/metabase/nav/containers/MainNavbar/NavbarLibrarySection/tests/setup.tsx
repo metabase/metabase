@@ -5,9 +5,9 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Collection } from "metabase-types/api";
 import {
@@ -89,13 +89,13 @@ export const setup = ({
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <NavbarLibrarySection
           collections={collections}
           selectedId={undefined}
           onItemSelect={jest.fn()}
         />
-      )}
+      }
     />,
     {
       storeInitialState: state,

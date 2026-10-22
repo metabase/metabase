@@ -12,6 +12,7 @@ import {
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -20,11 +21,12 @@ import {
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { Link } from "metabase/common/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { IndexRedirect, Link, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -214,24 +216,24 @@ async function setup({
     );
   }
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
-      <Route path="notAdmin" component={OtherComponent} />
+      <Route path="notAdmin" element={<OtherComponent />} />
       <Route path="admin/datamodel">
-        <IndexRedirect to="database" />
-        <Route path="database" component={DataModelV1} />
-        <Route path="database/:databaseId" component={DataModelV1} />
+        <Route index element={redirect("database")} />
+        <Route path="database" element={<DataModelV1 />} />
+        <Route path="database/:databaseId" element={<DataModelV1 />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
       </Route>
     </>,
@@ -254,7 +256,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { history };
+  return { router };
 }
 
 describe("DataModelV1", () => {
@@ -274,14 +276,11 @@ describe("DataModelV1", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
-      await waitFor(async () => {
-        expect(
-          await findTablePickerDatabase(SAMPLE_DB_NO_SCHEMA.name),
-        ).toBeInTheDocument();
-      });
-
+      expect(
+        await findTablePickerDatabase(SAMPLE_DB_NO_SCHEMA.name),
+      ).toBeInTheDocument();
       expect(
         await findTablePickerTable(ORDERS_TABLE_NO_SCHEMA.display_name),
       ).toBeInTheDocument();
@@ -673,7 +672,7 @@ describe("DataModelV1", () => {
 
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           initialRoute: "notAdmin",
           waitForDatabase: false,
           waitForTable: false,
@@ -687,7 +686,9 @@ describe("DataModelV1", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        history?.goBack();
+        act(() => {
+          router?.back();
+        });
 
         await waitFor(() => {
           expect(

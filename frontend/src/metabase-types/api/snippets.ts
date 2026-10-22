@@ -22,9 +22,9 @@ export interface NativeQuerySnippet {
   collection?: Collection;
 }
 
-export interface ListSnippetsParams {
+export type ListSnippetsParams = {
   archived?: boolean;
-}
+};
 
 export interface CreateSnippetRequest {
   name: string;

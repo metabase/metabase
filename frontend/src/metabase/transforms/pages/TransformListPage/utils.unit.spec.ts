@@ -3,6 +3,7 @@ import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
+  DatabaseId,
   RemoteSyncEntity,
   RemoteSyncEntityStatus,
 } from "metabase-types/api";
@@ -45,7 +46,9 @@ jest.mock("metabase-lib", () => ({
 
 const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
+// Unjustified type cast. FIXME
 const mockGetLibQuery = getLibQuery as jest.MockedFunction<typeof getLibQuery>;
+// Unjustified type cast. FIXME
 const mockTemplateTags = Lib.templateTags as jest.MockedFunction<
   typeof Lib.templateTags
 >;
@@ -271,13 +274,17 @@ describe("getFolderSyncColor", () => {
 
 describe("getIncrementalWarning", () => {
   const metadata = createMockMetadata({});
+  const getMetadataProvider = (databaseId: DatabaseId | null) =>
+    Lib.metadataProvider(databaseId, metadata);
 
   it("should return undefined for non-incremental transform", () => {
     const transform = createMockTransform({
       target: createMockTransformTarget({ type: "table" }),
     });
 
-    expect(getIncrementalWarning(transform, metadata)).toBeUndefined();
+    expect(
+      getIncrementalWarning(transform, getMetadataProvider),
+    ).toBeUndefined();
   });
 
   it("should warn when native query has no table variables", () => {
@@ -295,7 +302,7 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/table variable/);
   });
 
@@ -307,7 +314,7 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/table variable/);
   });
 
@@ -331,7 +338,7 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/checkpoint field/);
   });
 
@@ -359,7 +366,9 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(getIncrementalWarning(transform, metadata)).toBeUndefined();
+    expect(
+      getIncrementalWarning(transform, getMetadataProvider),
+    ).toBeUndefined();
   });
 
   it("should warn when mbql incremental transform has no checkpoint field", () => {
@@ -368,7 +377,7 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/checkpoint field/);
   });
 
@@ -386,6 +395,8 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(getIncrementalWarning(transform, metadata)).toBeUndefined();
+    expect(
+      getIncrementalWarning(transform, getMetadataProvider),
+    ).toBeUndefined();
   });
 });

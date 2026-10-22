@@ -107,8 +107,8 @@ export const CollectionSyncList = ({
 
   if (isLoading) {
     return (
-      <Flex justify="center" py="lg">
-        <Loader data-testid="loading-indicator" />
+      <Flex justify="center" py="xl">
+        <Loader />
       </Flex>
     );
   }

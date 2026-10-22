@@ -7,10 +7,15 @@ import { TitleSection } from "./TitleSection";
 type SetupOpts = {
   label?: string;
   children?: ReactNode;
+  actions?: ReactNode;
 };
 
-function setup({ label = "Default Title", children }: SetupOpts = {}) {
-  renderWithProviders(<TitleSection label={label}>{children}</TitleSection>);
+function setup({ label = "Default Title", children, actions }: SetupOpts = {}) {
+  renderWithProviders(
+    <TitleSection label={label} actions={actions}>
+      {children}
+    </TitleSection>,
+  );
 }
 
 describe("TitleSection", () => {
@@ -22,5 +27,13 @@ describe("TitleSection", () => {
 
     expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.getByText("Title section content")).toBeInTheDocument();
+  });
+
+  it("should render the actions slot", () => {
+    setup({ actions: <button>Create index</button> });
+
+    expect(
+      screen.getByRole("button", { name: "Create index" }),
+    ).toBeInTheDocument();
   });
 });

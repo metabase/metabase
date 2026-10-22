@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -14,12 +14,12 @@ import {
   getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
+import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { isEmpty } from "metabase/utils/validate";
-import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   VirtualDashboardCard,

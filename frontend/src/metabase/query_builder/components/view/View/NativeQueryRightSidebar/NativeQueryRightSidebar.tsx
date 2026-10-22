@@ -1,35 +1,29 @@
 import { match } from "ts-pattern";
 
-import { setTemplateTagConfig } from "metabase/query_builder/actions";
-import { AIQuestionAnalysisSidebar } from "metabase/query_builder/components/AIQuestionAnalysisSidebar";
-import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
-import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
-import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
-import { getOriginalQuestion } from "metabase/query_builder/selectors";
+import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   CollectionId,
-  DatabaseId,
   EmbeddingParameterVisibility,
   NativeDatasetQuery,
   NativeQuerySnippet,
   RowValue,
   TemplateTag,
   TemplateTagId,
-  Timeline,
-  TimelineEvent,
 } from "metabase-types/api";
+
+import { setTemplateTagConfig } from "../../../../actions";
+import { getOriginalQuestion } from "../../../../store/selectors";
+import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
+import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
+import { TimelineSidebar } from "../../sidebars/TimelineSidebar";
 
 interface NativeQueryRightSidebarProps {
   question: Question;
-  timelineEvents: TimelineEvent[];
-  timelines: Timeline[];
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
@@ -38,11 +32,6 @@ interface NativeQueryRightSidebarProps {
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   snippetCollectionId: CollectionId | null;
   setSnippetCollectionId?: (id: CollectionId | null) => void;
-  showTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
-  hideTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
-  selectTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
-  deselectTimelineEvents: () => void;
-  onCloseTimelines: () => void;
   onSave: (question: Question) => Promise<void>;
   isShowingTemplateTagsEditor: boolean;
   isShowingDataReference: boolean;
@@ -50,12 +39,6 @@ interface NativeQueryRightSidebarProps {
   isShowingTimelineSidebar: boolean;
   isShowingQuestionInfoSidebar: boolean;
   isShowingQuestionSettingsSidebar: boolean;
-  isShowingAIQuestionAnalysisSidebar: boolean;
-  onCloseAIQuestionAnalysisSidebar: () => void;
-  visibleTimelineEventIds: number[];
-  selectedTimelineEventIds: number[];
-  databases: Database[];
-  sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
@@ -73,16 +56,9 @@ export const NativeQueryRightSidebar = (
 ) => {
   const {
     question,
-    timelineEvents,
-    timelines,
     toggleTemplateTagsEditor,
     toggleDataReference,
     toggleSnippetSidebar,
-    showTimelineEvents,
-    hideTimelineEvents,
-    selectTimelineEvents,
-    deselectTimelineEvents,
-    onCloseTimelines,
     onSave,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
@@ -90,8 +66,6 @@ export const NativeQueryRightSidebar = (
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingAIQuestionAnalysisSidebar,
-    onCloseAIQuestionAnalysisSidebar,
   } = props;
 
   const dispatch = useDispatch();
@@ -104,7 +78,6 @@ export const NativeQueryRightSidebar = (
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingAIQuestionAnalysisSidebar,
   })
     .with({ isShowingTemplateTagsEditor: true }, () => {
       const query = question.legacyNativeQuery();
@@ -121,34 +94,21 @@ export const NativeQueryRightSidebar = (
       ) : null;
     })
     .with({ isShowingDataReference: true }, () => (
-      <DataReference {...props} onClose={toggleDataReference} />
+      <DataReference
+        {...props}
+        databaseId={question.databaseId() ?? undefined}
+        onClose={toggleDataReference}
+      />
     ))
     .with({ isShowingSnippetSidebar: true }, () => (
       <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />
     ))
-    .with({ isShowingTimelineSidebar: true }, () => (
-      <TimelineSidebar
-        {...props}
-        onShowTimelineEvents={showTimelineEvents}
-        onHideTimelineEvents={hideTimelineEvents}
-        onSelectTimelineEvents={selectTimelineEvents}
-        onDeselectTimelineEvents={deselectTimelineEvents}
-        onClose={onCloseTimelines}
-      />
-    ))
+    .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)
     .with({ isShowingQuestionInfoSidebar: true }, () => (
       <QuestionInfoSidebar question={question} onSave={onSave} />
     ))
     .with({ isShowingQuestionSettingsSidebar: true }, () => (
       <QuestionSettingsSidebar question={question} />
-    ))
-    .with({ isShowingAIQuestionAnalysisSidebar: true }, () => (
-      <AIQuestionAnalysisSidebar
-        question={question}
-        visibleTimelineEvents={timelineEvents}
-        timelines={timelines}
-        onClose={onCloseAIQuestionAnalysisSidebar}
-      />
     ))
     .otherwise(() => null);
 };

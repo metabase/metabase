@@ -1,0 +1,6 @@
+# Each test app under this directory commits its `src/` and its `data_app.yaml`
+# manifest. Everything else — the SDK/template base pulled in at test setup and
+# the built `dist/` bundle (Vite API) — is generated, so it's ignored here.
+/*/*
+!/*/src
+!/*/data_app.yaml

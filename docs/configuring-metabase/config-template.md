@@ -70,7 +70,6 @@ config:
     admin-email: null
     aggregated-query-row-limit: null
     ai-features-enabled: true
-    ai-usage-max-retention-days: null
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -105,11 +104,9 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    audit-max-retention-days: null
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
-    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     csp-img-allowed-hosts: ''
@@ -150,13 +147,14 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
+    enable-embedding-modular: false
     enable-embedding-sdk: false
-    enable-embedding-simple: false
-    enable-embedding-static: false
+    enable-embedding-sidecar: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-xrays: true
+    explorations-worker-count: 2
     fingerprint-max-fields-per-table: 10000
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
@@ -165,12 +163,13 @@ config:
     gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help/premium
+    help-link-custom-destination: https://www.metabase.com/help-premium
     hide-stacktraces: false
-    http-channel-host-strategy: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
-    install-analytics-database: true
+    interestingness-max-fields-per-sync: 100000
+    jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
+    jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
     jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
@@ -189,7 +188,7 @@ config:
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
-    ldap-attribute-firstname: givenName
+    ldap-attribute-firstname: givenname
     ldap-attribute-lastname: sn
     ldap-bind-dn: null
     ldap-enabled: false
@@ -202,24 +201,83 @@ config:
     ldap-port: 389
     ldap-security: none
     ldap-sync-user-attributes: true
+    ldap-sync-user-attributes-allowlist: ''
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
     ldap-timeout-seconds: 15.0
+    ldap-trust-store: null
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
+    llm-azure-api-base-url: null
+    llm-azure-api-key: null
+    llm-azure-deployment-name: null
+    llm-azure-model-family: null
+    llm-bedrock-access-key-id: null
+    llm-bedrock-region: us-east-1
+    llm-bedrock-secret-access-key: null
+    llm-bedrock-session-token: null
+    llm-connection-timeout-ms: 10000
+    llm-deepseek-api-base-url: https://api.deepseek.com
+    llm-deepseek-api-key: null
+    llm-fast-mode: false
+    llm-google-api-base-url: https://aiplatform.googleapis.com
+    llm-google-location: null
+    llm-google-oauth-access-token: null
+    llm-google-project-id: null
+    llm-google-service-account-key: null
     llm-metabot-provider: anthropic/claude-sonnet-4-6
-    load-analytics-content: true
+    llm-mini-model: null
+    llm-mistral-api-base-url: https://api.mistral.ai/v1
+    llm-mistral-api-key: null
+    llm-moonshot-api-base-url: https://api.moonshot.ai/v1
+    llm-moonshot-api-key: null
+    llm-ollama-api-base-url: null
+    llm-ollama-api-key: null
+    llm-ollama-request-timeout-ms: 300000
+    llm-openai-api-base-url: https://api.openai.com
+    llm-openai-api-key: null
+    llm-openai-compatible-api-base-url: null
+    llm-openai-compatible-api-key: null
+    llm-openai-model: gpt-5.4
+    llm-openrouter-api-base-url: https://openrouter.ai/api
+    llm-openrouter-api-key: null
+    llm-providers: []
+    llm-request-timeout-ms: 120000
+    llm-vllm-api-base-url: null
+    llm-vllm-api-key: null
+    llm-vllm-request-timeout-ms: 300000
+    llm-xai-api-base-url: https://api.x.ai/v1
+    llm-xai-api-key: null
+    llm-zai-api-base-url: https://api.z.ai/api/paas/v4
+    llm-zai-api-key: null
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
+    metabot-advanced-permissions: false
+    metabot-chat-system-prompt: ''
+    metabot-chat-turn-async-timeout-ms: 1800000
     metabot-enabled: true
+    metabot-icon: metabot
+    metabot-limit-reset-rate: monthly
+    metabot-limit-unit: tokens
+    metabot-name: Metabot
+    metabot-nlq-system-prompt: ''
+    metabot-query-execution-enabled: false
+    metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
+    metabot-show-illustrations: true
     metabot-slack-signing-secret: null
+    metabot-sql-execution-enabled: true
+    metabot-sql-system-prompt: ''
+    mfa-challenge-signing-key: null
+    mfa-enforcement: 'off'
+    mfa-requirement-deadline: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
@@ -230,21 +288,25 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
-    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
-    oidc-allowed-networks: allow-all
     oidc-providers: []
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
+    pivot-max-result-rows: 200000
     premium-embedding-token: null
+    query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
+    queue-backend: null
+    queue-max-retries: 5
+    queue-no-listener-max-age-ms: 86400000
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
     remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
+    remote-sync-custom-collections-enabled: false
     remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     remote-sync-token: null
@@ -281,15 +343,13 @@ config:
     sdk-encryption-validation-key: null
     search-language: null
     search-typeahead-enabled: true
-    send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
-    session-cookies: null
+    session-cookies: false
     session-timeout: null
     setup-embedding-autoenabled: false
     setup-license-active-at-setup: false
     show-database-syncing-modal: null
-    show-google-sheets-integration: null
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
@@ -320,12 +380,14 @@ config:
     thread-interrupt-escalation-timeout-ms: 0
     transform-run-job-sql-concurrency: 3
     transform-timeout: 240
-    transforms-enabled: false
+    transforms-enabled: null
     unaggregated-query-row-limit: null
     uploads-settings: null
     usage-metadata-enabled: false
     usage-metadata-last-completed-day: null
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
+    use-native-pivot-tables: false
+    use-tenants: false
     user-visibility: all
 ```

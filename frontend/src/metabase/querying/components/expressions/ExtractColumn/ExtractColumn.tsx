@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { getExample } from "metabase/querying/drills/utils/column-extract-drill";
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -108,7 +108,7 @@ function ColumnPicker({
       )}
       <Box py="sm">
         {!onCancel && (
-          <Title p="md" pt="sm" pb={0} order={6}>
+          <Title p="lg" pt="sm" pb={0} order={6}>
             {t`Select column to extract from`}
           </Title>
         )}
@@ -190,7 +190,7 @@ function ExtractColumnButton({
       variant="subtle"
       type="button"
       p="sm"
-      mb="xs"
+      mb="xxs"
       className={styles.button}
       classNames={{
         inner: styles.inner,

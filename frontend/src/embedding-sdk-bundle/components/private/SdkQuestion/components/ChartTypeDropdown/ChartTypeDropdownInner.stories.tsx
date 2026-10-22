@@ -1,5 +1,5 @@
 import { Box } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { ChartTypeDropdownInner } from "./ChartTypeDropdown";
 

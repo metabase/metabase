@@ -32,6 +32,7 @@ export function initMetaplow(config: MetaplowConfig): void {
     hostUrl,
     tag: "metabase-instance",
     beforeSend: (type, originalPayload) => {
+      // Unjustified type cast. FIXME
       let payload = originalPayload as Record<string, unknown>;
 
       // Replace default pageview behavior with our own custom pageview tracking
@@ -41,6 +42,7 @@ export function initMetaplow(config: MetaplowConfig): void {
       }
       if (payload.name === "pageview" && isObject(payload.data)) {
         payload = { ...payload, url: payload.data.url };
+        // Unjustified type cast. FIXME
         delete (payload.data as Record<string, unknown>).url;
       }
 
@@ -55,6 +57,7 @@ export function initMetaplow(config: MetaplowConfig): void {
         title: "",
         hostname: anonymizedHostname,
         data: {
+          // Unjustified type cast. FIXME
           ...(payload.data as Record<string, unknown> | undefined),
           user_id: config.getUserId(),
         },

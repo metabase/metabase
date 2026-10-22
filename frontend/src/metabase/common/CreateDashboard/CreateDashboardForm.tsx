@@ -2,11 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
@@ -19,7 +17,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Stack } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
@@ -54,7 +52,7 @@ export interface CreateDashboardProperties {
 
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
-  targetCollection?: SdkCollectionId | null;
+  targetCollection?: CollectionId | null;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -67,7 +65,6 @@ export function CreateDashboardForm({
 }: CreateDashboardFormOwnProps) {
   const initialCollectionId = useInitialCollectionId({ collectionId });
 
-  // When passing `"root"` it will be resolved to `null`
   const hasTargetCollection = targetCollection !== undefined;
 
   const [handleCreateDashboard] = useCreateDashboardMutation();
@@ -98,40 +95,40 @@ export function CreateDashboardForm({
       onSubmit={handleCreate}
     >
       {() => (
-        <Form as={Stack} gap={0}>
-          <FormTextInput
-            labelProps={{ mb: "xs" }}
-            name="name"
-            label={t`Name`}
-            placeholder={t`What is the name of your dashboard?`}
-            data-autofocus
-            mt="md"
-          />
-          <FormTextarea
-            labelProps={{ mb: "xs" }}
-            name="description"
-            label={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-            autosize={false}
-            minRows={5}
-            maxRows={5}
-            my="md"
-          />
-          {!hasTargetCollection && (
-            <FormCollectionPicker
-              name="collection_id"
-              title={t`Which collection should this go in?`}
-              entityType="dashboard"
+        <Form>
+          <Stack gap="xl">
+            <FormTextInput
+              labelProps={{ mb: "xxs" }}
+              name="name"
+              label={t`Name`}
+              placeholder={t`What is the name of your dashboard?`}
+              data-autofocus
             />
-          )}
-          <FormFooter mt="md">
-            <FormErrorMessage inline />
+            <FormTextarea
+              labelProps={{ mb: "xxs" }}
+              name="description"
+              label={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              nullable
+              autosize={false}
+              minRows={5}
+              maxRows={5}
+            />
+            {!hasTargetCollection && (
+              <FormCollectionPicker
+                name="collection_id"
+                title={t`Which collection should this go in?`}
+                entityType="dashboard"
+              />
+            )}
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
             <FormSubmitButton label={t`Create`} variant="filled" />
-          </FormFooter>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

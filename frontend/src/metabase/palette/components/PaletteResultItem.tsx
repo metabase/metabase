@@ -1,6 +1,7 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui";
 
@@ -8,7 +9,7 @@ import type { PaletteActionImpl } from "../types";
 import {
   getCommandPaletteIcon,
   isAbsoluteURL,
-  locationDescriptorToURL,
+  navigationTargetToURL,
 } from "../utils";
 
 interface PaletteResultItemProps {
@@ -49,8 +50,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         />
       )}
 
-      <Stack gap="xs" flex="1" style={{ overflow: "hidden" }}>
-        <Flex align="center" gap="md" justify="space-between" wrap="nowrap">
+      <Stack gap="xxs" flex="1" style={{ overflow: "hidden" }}>
+        <Flex align="center" gap="lg" justify="space-between" wrap="nowrap">
           <Group align="center" gap="sm" wrap="nowrap">
             <Text c="inherit" component="span" lh="1rem" lineClamp={1} miw={0}>
               {item.name}
@@ -76,7 +77,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               fz="0.75rem"
               lh="1rem"
               maw="40%"
-              gap="xs"
+              gap="xxs"
               justify="end"
               align="center"
             >
@@ -103,7 +104,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
     </Flex>
   );
   if (item.extra?.href) {
-    const url = locationDescriptorToURL(item.extra.href);
+    const url = navigationTargetToURL(item.extra.href);
     if (isAbsoluteURL(url)) {
       return (
         <Box
@@ -117,6 +118,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           role="link"
           w="100%"
           lh={1}
+          className={CS.noDecoration}
         >
           {content}
         </Box>

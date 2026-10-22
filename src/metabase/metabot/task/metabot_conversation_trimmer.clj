@@ -9,12 +9,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,13 +27,15 @@
       (do
         (log/infof "Trimming metabot_conversation rows older than %d days." (long retention-days))
         (let [cutoff  (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              deleted (t2/delete! :model/MetabotConversation {:where [:< :created_at cutoff]})]
+              deleted (metabot.db/delete-conversations-created-before! cutoff)]
           (log/infof "Metabot conversation cleanup complete. Deleted %d conversations (messages/feedback removed by ON DELETE CASCADE)."
                      (or deleted 0)))))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Delete old metabot_conversation rows (cascades to metabot_message)"}
-  MetabotConversationTrimmer [_ctx]
+(task/defjob MetabotConversationTrimmer
+  "Delete old metabot_conversation rows (cascades to metabot_message)"
+  {:saved-class "metabase.metabot.task.metabot_conversation_trimmer.MetabotConversationTrimmer"
+   :concurrent? false}
+  [_ctx]
   (trim-old-conversations!))
 
 (defmethod task/init! ::MetabotConversationTrimmer

@@ -3,6 +3,11 @@ import type {
   RowValues,
 } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockMetricDimension,
+  createMockMetricDimensionGroup,
+  createMockNormalizedMetric,
+} from "metabase-types/api/mocks/metric";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
 import type { ExpressionDimensionItem } from "../components/DimensionPillBar";
@@ -64,6 +69,7 @@ function makeColorMap(values: string[]): BreakoutColorMap {
 }
 
 const METRIC_ENTITY: MetricsViewerFormulaEntity = {
+  // Unjustified type cast. FIXME
   id: "metric:1" as MetricSourceId,
   type: "metric",
   definition: null,
@@ -354,6 +360,7 @@ describe("computeSourceBreakoutColors", () => {
     );
 
     expect(result[0]).toBeInstanceOf(Map);
+    // Unjustified type cast. FIXME
     const colorMap = result[0] as Map<string, string>;
     expect(colorMap.size).toBe(2);
     expect(colorMap.has("Gadgets")).toBe(true);
@@ -568,6 +575,27 @@ describe("buildDimensionItemsFromDefinitions", () => {
       definition: geoDefinition,
     },
   };
+  const curatedMetric = createMockNormalizedMetric({
+    id: 3,
+    name: "Order revenue",
+    dimensions: [
+      createMockMetricDimension({
+        id: "order-date",
+        display_name: "Order date",
+        effective_type: "type/DateTime",
+        semantic_type: "type/CreationTimestamp",
+        sources: [{ type: "field", "field-id": 1 }],
+        group: createMockMetricDimensionGroup({
+          id: "orders",
+          type: "connection",
+          display_name: "Orders",
+        }),
+      }),
+    ],
+  });
+  const curatedMetadata = createMetricMetadata([curatedMetric]);
+  const curatedDefinition = setupDefinition(curatedMetadata, curatedMetric.id);
+  const curatedSourceId: MetricSourceId = "metric:3";
   const emptyProjectionConfig = {};
 
   describe("standalone metric entities", () => {
@@ -599,6 +627,37 @@ describe("buildDimensionItemsFromDefinitions", () => {
       expect(items[0].type).toBe("metric");
       expect(items[0].label).toBe("Created At");
       expect(items[0].icon).toBeDefined();
+    });
+
+    it("uses the curated dimension name without its table prefix", () => {
+      const projectedDefinition = setupDefinitionWithBreakout(
+        curatedMetadata,
+        curatedMetric.id,
+        0,
+      );
+
+      const items = buildDimensionItemsFromDefinitions(
+        {
+          [curatedSourceId]: {
+            id: curatedSourceId,
+            definition: curatedDefinition,
+          },
+        },
+        { 0: "order-date" },
+        new Map([[0, projectedDefinition]]),
+        { 0: ["#509EE3"] },
+        [{ slotIndex: 0, entityIndex: 0, sourceId: curatedSourceId }],
+        [
+          {
+            id: curatedSourceId,
+            type: "metric",
+            definition: curatedDefinition,
+          },
+        ],
+        emptyProjectionConfig,
+      );
+
+      expect(items[0].label).toBe("Order date");
     });
   });
 
@@ -649,11 +708,51 @@ describe("buildDimensionItemsFromDefinitions", () => {
       );
 
       expect(items).toHaveLength(1);
+      // Unjustified type cast. FIXME
       const expressionItem = items[0] as ExpressionDimensionItem;
       expect(expressionItem.type).toBe("expression");
       expect(expressionItem.label).toBe("Created At");
       expect(expressionItem.icon).toBeDefined();
       expect(expressionItem.metricSources).toHaveLength(2);
+    });
+
+    it("uses curated dimension names for expression sources", () => {
+      const expression: MetricsViewerFormulaEntity = {
+        id: "expression:product-revenue",
+        type: "expression",
+        name: "Product revenue expression",
+        tokens: [
+          {
+            type: "metric",
+            sourceId: curatedSourceId,
+            occurrenceCount: 1,
+          },
+        ],
+      };
+
+      const items = buildDimensionItemsFromDefinitions(
+        {
+          [curatedSourceId]: {
+            id: curatedSourceId,
+            definition: curatedDefinition,
+          },
+        },
+        { 0: "order-date" },
+        new Map(),
+        { 0: ["#509EE3"] },
+        [
+          {
+            slotIndex: 0,
+            entityIndex: 0,
+            sourceId: curatedSourceId,
+            tokenPosition: 0,
+          },
+        ],
+        [expression],
+        emptyProjectionConfig,
+      );
+
+      expect(items[0].label).toBe("Order date");
     });
 
     it("shows 'multiple dimensions' label when the dimensions are different", () => {
@@ -670,6 +769,7 @@ describe("buildDimensionItemsFromDefinitions", () => {
       );
 
       expect(items).toHaveLength(1);
+      // Unjustified type cast. FIXME
       const expressionItem = items[0] as ExpressionDimensionItem;
       expect(expressionItem.type).toBe("expression");
       expect(expressionItem.label).toBe("Multiple dimensions");
@@ -683,6 +783,7 @@ describe("shouldShowStackSeries", () => {
   const metricMeta = createMetricMetadata([REVENUE_METRIC]);
 
   const metricEntity: MetricsViewerFormulaEntity = {
+    // Unjustified type cast. FIXME
     id: "metric:1" as MetricSourceId,
     type: "metric",
     definition: null,
@@ -699,7 +800,9 @@ describe("shouldShowStackSeries", () => {
       ? setupDefinitionWithBreakout(metricMeta, REVENUE_METRIC.id, 0)
       : setupDefinition(metricMeta, REVENUE_METRIC.id);
     return {
+      // Unjustified type cast. FIXME
       ["metric:1" as MetricSourceId]: {
+        // Unjustified type cast. FIXME
         id: "metric:1" as MetricSourceId,
         definition,
       },

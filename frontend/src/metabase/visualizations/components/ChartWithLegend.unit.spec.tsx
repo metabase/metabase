@@ -1,20 +1,15 @@
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
 import { render, screen } from "__support__/ui";
-import type { HoveredObject } from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
+import type { LegendPosition } from "metabase-types/api";
 
+import { ChartWithLegend } from "./ChartWithLegend";
 import {
-  ChartWithLegend,
   HIDE_HORIZONTAL_LEGEND_THRESHOLD,
   HIDE_SECONDARY_INFO_THRESHOLD,
-} from "./ChartWithLegend";
-
-type LegendTitle = string | string[];
-
-type LegendHover = {
-  index: number;
-  element?: HTMLElement | null;
-};
+} from "./chart-with-legend-layout";
+import type { LegendHover, LegendTitle } from "./types";
 
 interface SetupProps {
   children?: ReactNode;
@@ -32,7 +27,7 @@ interface SetupProps {
   aspectRatio?: number;
   height: number;
   width: number;
-  showLegend?: boolean;
+  legendPosition?: LegendPosition;
   isDashboard?: boolean;
   isDocument?: boolean;
   onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
@@ -44,7 +39,6 @@ const defaultProps: SetupProps = {
     ["Series 2", "50%"],
   ],
   legendColors: ["Red", "Green"],
-  showLegend: true,
   width: 800,
   height: 600,
   gridSize: { width: 8, height: 6 },
@@ -104,5 +98,12 @@ describe("ChartWithLegend", () => {
 
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Foo 10%");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Bar 90%");
+  });
+
+  it("should render no legend when the position is off", () => {
+    setup({ legendPosition: "off" });
+
+    expect(screen.getByText("Chart stub")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
   });
 });

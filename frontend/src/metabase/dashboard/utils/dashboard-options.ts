@@ -79,6 +79,7 @@ export function getDefaultOptionForParameterSectionMap(): Record<
   ParameterMappingOptions
 > {
   const sections = getDashboardParameterSections();
+  // Unjustified type cast. FIXME
   const map = {} as Record<ParameterSectionId, ParameterMappingOptions>;
 
   for (const section of sections) {

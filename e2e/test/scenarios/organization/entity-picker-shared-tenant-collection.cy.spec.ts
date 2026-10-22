@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { Dashboard } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -426,6 +427,43 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           H.sidebar().findByText("Tenant Orders Question").click();
           H.getDashboardCards().should("have.length", 1);
         });
+      });
+    });
+
+    it("should allow admins to add questions from shared tenant sub-collections", () => {
+      setupTenantCollections().as("tenantCollections");
+
+      cy.get<{ subCollectionId: number }>("@tenantCollections").then(
+        ({ subCollectionId }) =>
+          H.createQuestion({
+            name: "Tenant Sub-Collection Orders Question",
+            collection_id: subCollectionId,
+            query: { "source-table": ORDERS_ID },
+          }),
+      );
+
+      H.createDashboard({ name: "Test Dashboard" }).its("body").as("dashboard");
+
+      cy.get<Dashboard>("@dashboard").then(({ id }) => {
+        H.visitDashboard(id);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        H.sidebar()
+          .findByTestId("breadcrumbs")
+          .should("contain", "Collections")
+          .and("contain", "Our analytics")
+          .findByText("Collections")
+          .click();
+
+        H.sidebar().findByText(TENANT_ROOT_NAME).should("be.visible").click();
+        H.sidebar().findByText("Test Tenant Collection").click();
+        H.sidebar().findByText("Tenant Sub-Collection").click();
+        H.sidebar().findByText("Tenant Sub-Collection Orders Question").click();
+
+        H.getDashboardCards()
+          .should("have.length", 1)
+          .and("contain", "Tenant Sub-Collection Orders Question");
       });
     });
 

@@ -32,13 +32,13 @@ function setup({ hasCreateError }: SetupOpts = {}) {
 describe("CreateLibraryModal", () => {
   it("should be able to create the library", async () => {
     const { onCreate } = setup();
-    await userEvent.click(screen.getByText("Create my Library"));
+    await userEvent.click(screen.getByText("Create my semantic layer"));
     await waitFor(() => expect(onCreate).toHaveBeenCalled());
   });
 
   it("should show a library creation error", async () => {
     const { onCreate } = setup({ hasCreateError: true });
-    await userEvent.click(screen.getByText("Create my Library"));
+    await userEvent.click(screen.getByText("Create my semantic layer"));
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
     expect(onCreate).not.toHaveBeenCalled();
   });

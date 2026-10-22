@@ -11,6 +11,14 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *text-wrapping-fallback-width*
+  "The CSS width given to a text-wrapping column that has no explicit `table.column_widths` entry. Email and Slack
+  clients won't wrap a cell without an explicit width, so this defaults to a wide value. Renderers that lay the table
+  out at a known width and auto-wrap (the PDF, via CSSBox) bind this to `nil`, so a wrapping column sizes to the table
+  and its text wraps within the real column width instead of overflowing the narrower page."
+  "780px")
+
 (defn- bar-th-style []
   (merge
    (style/font-style)
@@ -177,6 +185,12 @@
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
     (h val)))
 
+(defn- image-url?
+  "Whether a `view_as: \"image\"` cell may become an `<img src>`: only http(s), never an attacker-supplied
+  `file:`/`javascript:`/`data:`. Matches `(str cell)`, which is what `h` puts in the attribute."
+  [cell]
+  (boolean (re-matches #"(?i)https?://\S+" (str cell))))
+
 (defn- render-table-body
   "Renders the body (<tbody>) of an HTML table as a Hiccup data structure.
 
@@ -188,42 +202,51 @@
   - viz-settings: Viz settings
   - minibar-cols: Columns that should display mini-bar visualizations instead of raw values
   - col->styles: Map of column names to their style specifications
-  - row-index?: Boolean flag to include row index numbers (1-based)"
-  [get-background-color column-names rows columns viz-settings minibar-cols col->styles row-index?]
+  - row-index?: Boolean flag to include row index numbers (1-based)
+  - striped?: Boolean flag to shade alternating rows"
+  [get-background-color column-names rows columns viz-settings minibar-cols col->styles row-index? striped?]
   [:tbody
    (for [[row-idx {:keys [row]}] (m/indexed rows)]
-     [:tr {:style (style/style {:color style/color-gray-3})}
-      (when row-index?
-        [:td {:style (style/style
-                      (bar-td-row-index-style)
-                      (when (= row-idx (dec (count rows)))
-                        {:border-bottom 0}))}
-         (inc row-idx)])
-      (for [[col-idx cell] (m/indexed row)]
-        (let [column       (nth columns col-idx)
-              column-name  (get column-names col-idx)
-              minibar-col  (first (filter #(= (:name column) (:name %)) minibar-cols))
-              col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name column-name}] {})]
+     (let [stripe-bg (when (and striped? (odd? row-idx))
+                       style/color-row-stripe-bg)]
+       [:tr {:style (style/style (cond-> {:color style/color-gray-3}
+                                   stripe-bg (assoc :background-color stripe-bg)))}
+        (when row-index?
           [:td {:style (style/style
-                        (row-style-for-type cell)
-                        (get col->styles (:name column))
-                        {:background-color (get-background-color row-idx col-idx)}
+                        (bar-td-row-index-style)
+                        (when stripe-bg
+                          {:background-color stripe-bg})
                         (when (= row-idx (dec (count rows)))
-                          {:border-bottom 0})
-                        (when (= col-idx (dec (count row)))
-                          {:border-right 0}))}
-           (cond
-             ;; Minibar column
-             (some? minibar-col)
-             (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
+                          {:border-bottom 0}))}
+           (inc row-idx)])
+        (for [[col-idx cell] (m/indexed row)]
+          (let [column       (nth columns col-idx)
+                column-name  (get column-names col-idx)
+                minibar-col  (first (filter #(= (:name column) (:name %)) minibar-cols))
+                col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name column-name}] {})]
+            [:td {:style (style/style
+                          (row-style-for-type cell)
+                          (get col->styles (:name column))
+                          ;; conditional formatting colors win over the stripe background
+                          {:background-color (or (get-background-color row-idx col-idx)
+                                                 stripe-bg)}
+                          (when (= row-idx (dec (count rows)))
+                            {:border-bottom 0})
+                          (when (= col-idx (dec (count row)))
+                            {:border-right 0}))}
+             (cond
+               ;; Minibar column
+               (some? minibar-col)
+               (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
 
-             ;; View as image
-             (= (get col-settings ::mb.viz/view-as) "image")
-             [:img {:src (h cell)
-                    :style (style/style style/view-as-img-style)}]
+               ;; View as image
+               (and (= (get col-settings ::mb.viz/view-as) "image")
+                    (image-url? cell))
+               [:img {:src (h cell)
+                      :style (style/style style/view-as-img-style)}]
 
-             :else
-             (h cell))]))])])
+               :else
+               (h cell))]))]))])
 
 (defn- get-min-width
   "Get the min width for a column with text wrapping enabled. In the happy path, column widths are supplied in viz settings
@@ -268,12 +291,16 @@
            ;; text wrapping
            (::mb.viz/text-wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
-                                     (if (column-has-width column-widths column-index)
+                                     (cond
+                                       (column-has-width column-widths column-index)
                                        {:min-width (format "%spx" (get-min-width column-widths column-index))}
-                                       ;; Text wrapping enabled but conditions not met, fall back to 780px
-                                       ;; Email clients respond to `min-width`, but slack responds to `width`
-                                       {:max-width "780px !important"
-                                        :width "780px"})))
+
+                                       ;; No explicit width: email clients respond to `min-width`, slack to `width`,
+                                       ;; so fall back to a fixed width. Renderers that auto-wrap bind
+                                       ;; [[*text-wrapping-fallback-width*]] to nil to opt out (no fixed width).
+                                       *text-wrapping-fallback-width*
+                                       {:max-width (str *text-wrapping-fallback-width* " !important")
+                                        :width     *text-wrapping-fallback-width*})))
 
            ;; text alignment
            (::mb.viz/text-align col-setting)
@@ -308,6 +335,7 @@
   ([color-data {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings minibar-cols]
    (let [col->styles        (column->viz-setting-styles columns viz-settings)
          row-index?         (:table.row_index viz-settings)
+         striped?           (boolean (:table.striped viz-settings))
          pivot-grouping-idx (u/index-of #{"pivot-grouping"} col-names)
          col-names          (cond->> col-names
                               pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
@@ -327,7 +355,7 @@
                                                                      (mapv second keyed-cells)))
          color-getter       (fn [row-idx col-idx] (get cell-colors [row-idx col-idx]))
          thead              (render-table-head (vec col-names) header columns col->styles row-index?)
-         tbody              (render-table-body color-getter cols-for-color-lookup rows columns viz-settings minibar-cols col->styles row-index?)]
+         tbody              (render-table-body color-getter cols-for-color-lookup rows columns viz-settings minibar-cols col->styles row-index? striped?)]
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)

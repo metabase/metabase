@@ -8,7 +8,7 @@ const esmPackages = require("./jest.esm-packages.js");
 module.exports = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
-    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
+    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)(\\?url)?$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "\\.svg\\?(component|source)":
@@ -36,10 +36,7 @@ module.exports = {
   coverageDirectory: "./",
   coverageReporters: ["text", "json-summary"],
   collectCoverageFrom: ["frontend/src/**/*.{js,ts,jsx,tsx}"],
-  coveragePathIgnorePatterns: [
-    "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js",
-  ],
+  coveragePathIgnorePatterns: ["/node_modules/"],
   testEnvironment: "jest-environment-jsdom",
   testTimeout: 30000,
 };

@@ -1,11 +1,12 @@
 (ns metabase.channel.render.util
   (:require
    [clojure.string :as str]
-   [hiccup.core :refer [html]]
+   [hiccup.core :refer [h html]]
    [metabase.channel.render.style :as style]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 ;;; --------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -222,18 +223,27 @@
      :rows (apply mapv vector unzipped-rows)}))
 
 (defn render-parameters
-  "Renders parameters as inline left-aligned spans for use inside a dashcard."
+  "Renders parameters as inline left-aligned spans for use inside a dashcard. A parameter that fails to render is
+  skipped so it doesn't fail the whole notification.
+
+  Names and values come back escaped: `html` here is hiccup 1, which doesn't escape strings, and callers splice
+  the result into the notification body without escaping it."
   [parameters]
   (html
    (let [locale (system/site-locale)]
      [:div {:style (style/style {:font-size "14px"
                                  :font-weight 700
                                  :padding-bottom "8px"})}
-      (for [{:keys [name] :as param} parameters]
+      (for [{:keys [name] :as param} parameters
+            :let [value-str (try
+                              (shared.params/value-string param locale)
+                              (catch Throwable e
+                                (log/errorf "Error rendering filter %s; skipping it: %s" (:id param) (ex-message e))))]
+            :when value-str]
         [:div
          {:style (style/style {:margin-bottom "4px"})}
          [:span {:style (style/style {:color style/color-text-dark
                                       :padding-right "8px"})}
-          name]
+          (h name)]
          [:span {:style (style/style {:color style/color-text-medium})}
-          (shared.params/value-string param locale)]])])))
+          (h value-str)]])])))

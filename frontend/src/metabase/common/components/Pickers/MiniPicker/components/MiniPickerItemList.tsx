@@ -12,14 +12,14 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
+import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
-import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Ellipsified,
@@ -420,15 +420,16 @@ function DatabaseItemList({
 }
 
 function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
-  const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
+  const { setPath, onChange, isFolder, isHidden, models } =
+    useMiniPickerContext();
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
     id: parent.sourceCollectionId ?? (parent.id === null ? "root" : parent.id),
-    include_can_run_adhoc_query: true,
+    ...getCollectionItemsOptions({ models }),
   });
 
   const allItems: CollectionItem[] = (data?.data ?? []).filter(
-    (item) => canCollectionCardBeUsed(item) && !isHidden(item),
+    (item) => !isHidden(item),
   );
   const typeFilter = parent.childTypeFilter;
   const items = typeFilter
@@ -499,6 +500,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
   ): SearchRequest => {
     const params: SearchRequest = {
       q: query,
+      // Unjustified type cast. FIXME
       models: models as SearchModel[],
       limit: 50,
       context: "data-picker",
@@ -562,7 +564,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
         {!isSearching && searchResults.length === 0 && (
           <Box>
             <Text
-              px="md"
+              px="lg"
               py="sm"
               c="text-secondary"
             >{t`No search results`}</Text>
@@ -639,6 +641,12 @@ const isSchema = (
   return item.model === "schema";
 };
 
+const isDatabase = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerDatabaseItem => {
+  return item.model === "database";
+};
+
 const useLocationDetails = (item: MiniPickerPickableItem) => {
   const getIcon = useGetIcon();
 
@@ -662,6 +670,9 @@ const useLocationDetails = (item: MiniPickerPickableItem) => {
       iconProps: { name: "database" as const },
     };
   }
+  if (isDatabase(item)) {
+    return { itemText: null, iconProps: null };
+  }
   return {
     itemText: item?.collection?.name ?? t`Our analytics`,
     iconProps: getIcon({ ...item.collection, model: "collection" }),
@@ -676,7 +687,7 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
   }
 
   return (
-    <Flex gap="xs" align="center" ml="auto" style={{ overflow: "hidden" }}>
+    <Flex gap="xxs" align="center" ml="auto" style={{ overflow: "hidden" }}>
       {iconProps && <Icon {...iconProps} size={12} miw={12} />}
       <Text size="sm" c="text-secondary" miw="0">
         <Ellipsified>{itemText}</Ellipsified>

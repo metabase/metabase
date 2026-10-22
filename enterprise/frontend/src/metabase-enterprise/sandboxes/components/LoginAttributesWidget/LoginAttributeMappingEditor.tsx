@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -103,6 +104,7 @@ export const LoginAttributeMappingEditor = ({
   const [entries, setEntries] = useState<MappingEditorEntry[]>(
     structuredAttributes ? [] : buildEntries(simpleAttributes),
   );
+  const [autoFocusIndex, setAutoFocusIndex] = useState<number | null>(null);
 
   useEffect(() => {
     // structuredAttributes can change if a different tenant is selected
@@ -121,6 +123,7 @@ export const LoginAttributeMappingEditor = ({
       onError(hasError(newEntries));
     } else {
       onChange(buildMapping(newEntries));
+      setAutoFocusIndex(newEntries.length - 1);
     }
   };
 
@@ -143,9 +146,10 @@ export const LoginAttributeMappingEditor = ({
                 }}
                 keyOpts={keyOpts}
                 error={entryError(entries, key)}
+                autoFocus={index === autoFocusIndex}
               />
             </Flex>
-            <Flex gap="sm" w="50%">
+            <Flex gap="sm" w="50%" align="center">
               <ValueInput
                 canDelete={canDeleteThis}
                 canRevert={!!canRevert}
@@ -172,11 +176,13 @@ export const LoginAttributeMappingEditor = ({
         );
       })}
       <Button
-        variant="light"
-        size="xs"
+        variant="transparent"
+        size="compact-md"
         leftSection={<Icon name="add" />}
-        onClick={() => handleChange(addEntry(entries))}
-        mt="md"
+        onClick={() => {
+          handleChange(addEntry(entries));
+        }}
+        mt="lg"
         disabled={_.some(
           entries,
           (entry) => entry.value === "" || entry.key === "",
@@ -193,11 +199,13 @@ const KeyInput = ({
   value,
   onChange,
   error,
+  autoFocus,
 }: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   keyOpts: MappingEditorEntry["keyOpts"];
   error?: string | boolean;
+  autoFocus?: boolean;
 }) => {
   if (keyOpts?.disabled) {
     return (
@@ -215,6 +223,7 @@ const KeyInput = ({
       w="100%"
       onChange={onChange}
       error={error}
+      autoFocus={autoFocus}
     />
   );
 };
@@ -246,21 +255,28 @@ const ValueInput = ({
         {...valueOpts}
       />
       {canDelete && (
-        <Button
-          leftSection={<Icon name="close" />}
+        <ActionIcon
+          variant="subtle"
+          size="sm"
           onClick={onDelete}
           data-testid="remove-mapping"
-        />
+          aria-label={t`Remove mapping`}
+        >
+          <Icon name="close" />
+        </ActionIcon>
       )}
       {canRevert && (
         <Tooltip
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
-          <Button
-            leftSection={<Icon name="refresh" />}
+          <ActionIcon
+            variant="subtle"
+            size="sm"
             onClick={onRevert}
             data-testid="revert-mapping"
-          />
+          >
+            <Icon name="refresh" />
+          </ActionIcon>
         </Tooltip>
       )}
     </>

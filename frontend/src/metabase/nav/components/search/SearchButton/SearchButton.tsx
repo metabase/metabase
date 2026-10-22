@@ -4,18 +4,14 @@ import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { getSearchTextFromLocation } from "metabase/common/search";
-import type { SearchAwareLocation } from "metabase/common/search/types";
-import { withRouter } from "metabase/router";
-import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
+import { useLocation } from "metabase/router";
+import { ActionIcon, Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
 import S from "./SearchButton.module.css";
 
-type SearchButtonProps = ButtonProps & {
-  location: SearchAwareLocation;
-};
-
-const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
+export const SearchButton = (props: ButtonProps) => {
+  const location = useLocation();
   const kbar = useKBar();
   const { setVisualState } = kbar.query;
   const searchText = getSearchTextFromLocation(location);
@@ -28,20 +24,19 @@ const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
 
   if (isSmallScreen) {
     return (
-      <Button
-        h="36px"
-        leftSection={<Icon name="search" />}
+      <ActionIcon
         variant="subtle"
+        size="sm"
         onClick={handleClick}
-        color="text-secondary"
         aria-label="Search"
-      />
+      >
+        <Icon name="search" />
+      </ActionIcon>
     );
   }
 
   return (
     <Button
-      h="36px"
       w="240px"
       c={searchText ? "text-primary" : "text-disabled"}
       leftSection={<Icon name="search" c="text-primary" />}
@@ -61,12 +56,10 @@ const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
       {...props}
     >
       <span>{searchText || t`Search...`}</span>
-      <Flex gap="xs">
+      <Flex gap="xxs">
         <span className={S.shortcutText}>{METAKEY}</span>
         <span className={S.shortcutText}>{t`K`}</span>
       </Flex>
     </Button>
   );
 };
-
-export const SearchButton = withRouter(SearchButtonView);

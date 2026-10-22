@@ -1,23 +1,29 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import type { SdkActionId } from "embedding-sdk-bundle/types/action";
+import type {
+  SdkActionDefinition,
+  SdkActionId,
+  SdkActionInput,
+} from "embedding-sdk-bundle/types/action";
 import { executeAction as executeActionMutation } from "metabase/api/action";
+import { isDataApp } from "metabase/embedding-sdk/config";
 import type {
   BaseEntityId,
   ParametersForActionExecution,
   WritebackActionId,
 } from "metabase-types/api";
 import { isBaseEntityID } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 type ActionParametersPayload = Record<string, unknown>;
 
 export type ExecuteActionParams = {
-  actionId: SdkActionId;
+  actionId: SdkActionInput;
   parameters?: ActionParametersPayload;
 };
 
 /**
- * Loose response shape from the execute-action endpoint. The body varies by
- * action kind (created-row / rows-updated / rows-deleted / rows-affected /
+ * Loose response shape from the execute-action endpoint. The body varies
+ * by action kind (created-row / rows-updated / rows-deleted / rows-affected
  * success+counts). Per-kind discrimination happens in the package hook via the
  * generated `ActionResult<TAction>` type — this lib stays loose.
  *
@@ -36,14 +42,34 @@ const parseActionId = (
   if (typeof actionId === "number" || isBaseEntityID(actionId)) {
     return actionId;
   }
+
   throw new Error(`Invalid action id: ${actionId}`);
 };
 
+const isActionDefinition = (
+  input: SdkActionInput,
+): input is SdkActionDefinition => isObject(input) && "action" in input;
+
+function toExecutableActionId(input: SdkActionInput): SdkActionId {
+  if (isActionDefinition(input)) {
+    return input.action.id;
+  }
+
+  if (isDataApp()) {
+    throw new Error(
+      `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass a \`defineAction(...)\` definition from its typed schema.`,
+    );
+  }
+
+  return input;
+}
+
 /**
  * Triggers a pre-existing Metabase action. The curried `(store) => fn` shape
- * mirrors `createDashboard` / `queryQuestion` / `queryMetric` so the package
+ * mirrors `createDashboard` / `queryQuestion` so the package
  * hook can read `executeAction(reduxStore)({...})` off
- * `window.METABASE_EMBEDDING_SDK_BUNDLE`.
+ * `window.METABASE_EMBEDDING_SDK_BUNDLE`. The action runs by dispatching the
+ * `metabase/api` execute-action mutation on the passed store.
  */
 export const executeAction =
   (reduxStore: SdkStore) =>
@@ -54,7 +80,7 @@ export const executeAction =
     return reduxStore
       .dispatch(
         executeActionMutation.initiate({
-          id: parseActionId(actionId),
+          id: parseActionId(toExecutableActionId(actionId)),
           // Forwarded unchanged: the SDK keeps the parameter bag loose, and the
           // endpoint validates the values server-side.
           parameters: parameters as ParametersForActionExecution,

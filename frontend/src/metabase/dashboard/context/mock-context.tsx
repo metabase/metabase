@@ -45,6 +45,7 @@ const DashboardContextWithReduxProps = (
   );
 };
 
+// Unjustified type cast. FIXME
 const ConnectedDashboardContextWithReduxProps = connect(
   mapStateToProps,
   mapDispatchToProps,
@@ -84,7 +85,7 @@ export const MockDashboardContext = ({
   autoScrollToDashcardId = undefined,
   reportAutoScrolledToDashcard = noop,
   cardTitled = true,
-  getClickActionMode = undefined,
+  clickActionMode = undefined,
   withFooter = true,
   isFullscreen = false,
   dashboardActions = undefined,
@@ -109,7 +110,7 @@ export const MockDashboardContext = ({
       autoScrollToDashcardId={autoScrollToDashcardId}
       reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       cardTitled={cardTitled}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={clickActionMode}
       withFooter={withFooter}
       dashboardActions={dashboardActions}
       dashcardMenu={dashcardMenu}

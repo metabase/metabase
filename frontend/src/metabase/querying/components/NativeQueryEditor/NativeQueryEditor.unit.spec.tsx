@@ -4,7 +4,6 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
 
@@ -17,10 +16,12 @@ jest.mock(
 
 type UseNotebookScreenSize = ReturnType<typeof useNotebookScreenSize>;
 
+// Unjustified type cast. FIXME
 const useNotebookScreenSizeMock = useNotebookScreenSize as jest.MockedFunction<
   () => UseNotebookScreenSize
 >;
 
+// Unjustified type cast. FIXME
 const mockQuestion = {
   isSaved: () => false,
 } as any;
@@ -28,7 +29,7 @@ const mockQuestion = {
 describe("NativeQueryEditor", () => {
   const createEditor = (
     screenSize: Exclude<UseNotebookScreenSize, undefined>,
-    isMetabotSidebarOpen: boolean,
+    canAutoOpenDataReference: boolean,
   ) => {
     const setIsNativeEditorOpen = jest.fn();
 
@@ -42,24 +43,15 @@ describe("NativeQueryEditor", () => {
     renderWithProviders(
       <NativeQueryEditor
         availableHeight={700}
+        canAutoOpenDataReference={canAutoOpenDataReference}
         isNativeEditorOpen={false}
         question={mockQuestion}
+        // Unjustified type cast. FIXME
         query={null as any}
         setDatasetQuery={jest.fn()}
         setIsNativeEditorOpen={setIsNativeEditorOpen}
         isInitiallyOpen={false}
       />,
-      {
-        storeInitialState: createMockState({
-          metabot: {
-            conversations: {
-              omnibot: {
-                visible: isMetabotSidebarOpen,
-              },
-            },
-          },
-        } as any),
-      },
     );
 
     return setIsNativeEditorOpen;
@@ -70,20 +62,20 @@ describe("NativeQueryEditor", () => {
     useNotebookScreenSizeMock.mockReset();
   });
 
-  it("should not open data reference when metabot sidebar is open", () => {
-    const setIsNativeEditorOpen = createEditor("large", true);
+  it("should not open data reference when canAutoOpenDataReference is false", () => {
+    const setIsNativeEditorOpen = createEditor("large", false);
 
     expect(setIsNativeEditorOpen).toHaveBeenCalledWith(false, false);
   });
 
   it("should not open data reference on small screens", () => {
-    const setIsNativeEditorOpen = createEditor("small", false);
+    const setIsNativeEditorOpen = createEditor("small", true);
 
     expect(setIsNativeEditorOpen).toHaveBeenCalledWith(false, false);
   });
 
-  it("should open data reference when metabot is closed", () => {
-    const setIsNativeEditorOpen = createEditor("large", false);
+  it("should open data reference on large screens", () => {
+    const setIsNativeEditorOpen = createEditor("large", true);
 
     expect(setIsNativeEditorOpen).toHaveBeenCalledWith(false, true);
   });

@@ -1,13 +1,8 @@
-import type { FC, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
-import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
 import {
   Box,
   Button,
@@ -16,14 +11,11 @@ import {
   Group,
   Stack,
   type StackProps,
-  Tabs,
-  type TabsTabProps,
   Tooltip,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./PaneHeader.module.css";
-import type { PaneHeaderTab } from "./types";
 
 export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   title?: ReactNode;
@@ -32,7 +24,6 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   tabs?: ReactNode;
   actions?: ReactNode;
   breadcrumbs: ReactNode;
-  showMetabotButton?: boolean;
   showAppSwitcher?: boolean;
 }
 
@@ -44,17 +35,15 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
-  showMetabotButton,
   showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
   return (
-    <Stack gap={0} pt="xs" {...rest}>
-      <Flex mb="lg" mt="md" w="100%" h="xl">
+    <Stack gap={0} pt="xxs" {...rest}>
+      <Flex mb="xl" mt="lg" w="100%" h="xxl">
         {breadcrumbs}
 
-        <Group ml="auto" gap="md" className={S.ButtonGroup}>
-          {showMetabotButton && <MetabotDataStudioButton />}
+        <Group ml="auto" gap="lg" className={S.ButtonGroup}>
           {showAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
@@ -65,12 +54,17 @@ export const PaneHeader = ({
         align="flex-start"
         wrap="nowrap"
       >
-        <Stack gap="md">
+        <Stack gap="lg">
           {title && (
             <Group align="center" gap="sm" wrap="nowrap">
               {icon && <FixedSizeIcon name={icon} c="core-brand" size={20} />}
               {title}
-              {menu}
+              {menu && (
+                // The menu button is taller than the title, keep it from growing the header
+                <Flex h="var(--mantine-h3-line-height)" align="center">
+                  {menu}
+                </Flex>
+              )}
             </Group>
           )}
           {tabs}
@@ -123,7 +117,7 @@ export function PaneHeaderInput({
       fw="bold"
       fz="h3"
       lh="h3"
-      px={isOptional ? "xs" : undefined}
+      px={isOptional ? "xxs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border-neutral)" : undefined}
       isOptional={isOptional}
       isDisabled={readOnly}
@@ -131,50 +125,6 @@ export function PaneHeaderInput({
       onChange={onChange}
       onContentChange={onContentChange}
     />
-  );
-}
-
-type PaneHeaderTabsProps = {
-  tabs: PaneHeaderTab[];
-};
-
-/**
- * Mantine's `Tabs.Tab` is built with the non-polymorphic `factory`, so
- * `component`/`to` aren't in its prop types. However it still accepts the
- * prop and it works as expected, thus type casting.
- */
-const LinkTab = Tabs.Tab as FC<
-  TabsTabProps & { component: typeof Link; to: string }
->;
-
-function isTabSelected(tab: PaneHeaderTab, pathname: string) {
-  const { to, isSelected } = tab;
-  return typeof isSelected === "function"
-    ? isSelected(pathname)
-    : (isSelected ?? to === pathname);
-}
-
-export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
-  const { pathname } = useSelector(getLocation);
-  const activeTab = tabs.find((tab) => isTabSelected(tab, pathname));
-
-  return (
-    <Tabs variant="pills" value={activeTab?.to ?? null}>
-      <Tabs.List>
-        {tabs.map(({ label, to, icon, isGated }) => (
-          <LinkTab
-            key={label}
-            value={to}
-            component={Link}
-            to={to}
-            leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
-            rightSection={isGated ? <UpsellGem.New size={14} /> : null}
-          >
-            {label}
-          </LinkTab>
-        ))}
-      </Tabs.List>
-    </Tabs>
   );
 }
 

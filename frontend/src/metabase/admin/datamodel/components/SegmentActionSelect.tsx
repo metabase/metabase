@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
@@ -27,7 +27,7 @@ export function SegmentActionSelect({
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon>
+          <ActionIcon variant="subtle">
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>

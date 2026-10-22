@@ -4,17 +4,9 @@ import { useGetTableSelectionInfoQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTableUnpublished } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { UnpublishTablesModalProps } from "metabase/plugins";
-import {
-  Button,
-  FocusTrap,
-  Group,
-  List,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, FocusTrap, List, Modal, Stack, Text } from "metabase/ui";
 import { useUnpublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
@@ -121,7 +113,7 @@ function ModalBody({
 
   return (
     <>
-      <Stack gap="sm" mt="sm">
+      <Stack gap="sm">
         <Text>
           {getInfoMessage(selected_table, published_downstream_tables)}
         </Text>
@@ -138,16 +130,16 @@ function ModalBody({
           </>
         )}
       </Stack>
-      <Group mt="xl" gap="sm" wrap="nowrap" justify="flex-end">
-        <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+      <Modal.Footer>
         <Button
-          onClick={handleSubmit}
-          variant="filled"
-          color="feedback-negative"
-        >
+          variant="subtle"
+          color="neutral"
+          onClick={onClose}
+        >{t`Cancel`}</Button>
+        <Button onClick={handleSubmit} variant="filled" color="negative">
           {getSubmitButtonLabel(selected_table, published_downstream_tables)}
         </Button>
-      </Group>
+      </Modal.Footer>
     </>
   );
 }
@@ -172,8 +164,8 @@ function getInfoMessage(
   publishedRemappedTables: BulkTableInfo[],
 ) {
   return selectedTable != null && publishedRemappedTables.length === 0
-    ? t`This will remove this table from the Library.`
-    : t`This will remove these tables from the Library.`;
+    ? t`This will remove this table from the semantic layer.`
+    : t`This will remove these tables from the semantic layer.`;
 }
 
 function getForeignKeyMessage(selectedTable: BulkTableInfo | null) {

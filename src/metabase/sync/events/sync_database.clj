@@ -9,15 +9,21 @@
    [metabase.warehouses.core :as warehouses]
    [methodical.core :as methodical]))
 
-(derive ::event :metabase/event)
-(derive :event/database-create ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/database-create ::event)
+(events/derive! :event/database-update ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  "When a new Database is created, kick off a sync process for it in a different thread."
-  [topic {database :object :as _event}]
+  "When a new Database is created or a stub Database gets connected, kick off a sync process for it in a different
+  thread."
+  [topic {database :object previous-database :previous-object :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when (and database (not (warehouses/disable-auto-sync)))
+    (when (and database
+               (not (:is_stub database))
+               (or (= topic :event/database-create)
+                   (:is_stub previous-database))
+               (not (warehouses/disable-auto-sync)))
       ;; just kick off a sync on another thread
       (quick-task/submit-task!
        (fn []
@@ -27,6 +33,6 @@
              (sync/sync-database! database)
              (sync-metadata/sync-db-metadata! database))
            (catch Throwable e
-             (log/errorf e "Error syncing Database %s" (u/the-id database)))))))
+             (log/errorf "Error syncing Database %s: %s" (u/the-id database) (ex-message e)))))))
     (catch Throwable e
-      (log/warnf e "Failed to process sync-database event: %s" topic))))
+      (log/warnf "Failed to process sync-database event: %s: %s" topic (ex-message e)))))

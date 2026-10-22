@@ -1,7 +1,5 @@
-import type {
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 
 import { isQuestionOrDashboardSettings } from "./is-question-or-dashboard-settings";
 
@@ -18,6 +16,7 @@ describe("isQuestionOrDashboardSettings", () => {
     ])(
       "should return $expected when dashboardId is $description",
       ({ dashboardId, expected }) => {
+        // Unjustified type cast. FIXME
         const settings = {
           dashboardId,
           apiKey: "test-key",
@@ -30,6 +29,7 @@ describe("isQuestionOrDashboardSettings", () => {
     );
 
     it("should return false when questionId is provided instead of dashboardId", () => {
+      // Unjustified type cast. FIXME
       const settings = {
         questionId: 123,
         apiKey: "test-key",
@@ -53,6 +53,7 @@ describe("isQuestionOrDashboardSettings", () => {
     ])(
       "should return $expected when questionId is $description",
       ({ questionId, expected }) => {
+        // Unjustified type cast. FIXME
         const settings = {
           questionId,
           apiKey: "test-key",
@@ -65,6 +66,7 @@ describe("isQuestionOrDashboardSettings", () => {
     );
 
     it("should return false when dashboardId is provided instead of questionId", () => {
+      // Unjustified type cast. FIXME
       const settings = {
         dashboardId: 456,
         apiKey: "test-key",
@@ -79,24 +81,28 @@ describe("isQuestionOrDashboardSettings", () => {
   describe("other experiences", () => {
     it.each([
       {
+        // Unjustified type cast. FIXME
         experience: "exploration" as SdkIframeEmbedSetupExperience,
         settings: { questionId: 123 },
         description: "exploration with questionId",
         expected: false,
       },
       {
+        // Unjustified type cast. FIXME
         experience: "exploration" as SdkIframeEmbedSetupExperience,
         settings: { dashboardId: 123 },
         description: "exploration with dashboardId",
         expected: false,
       },
       {
+        // Unjustified type cast. FIXME
         experience: "browser" as SdkIframeEmbedSetupExperience,
         settings: { questionId: 123, dashboardId: 456 },
         description: "browser with both IDs",
         expected: false,
       },
       {
+        // Unjustified type cast. FIXME
         experience: "metabot" as SdkIframeEmbedSetupExperience,
         settings: { questionId: 123, dashboardId: 456 },
         description: "metabot with both IDs",
@@ -107,6 +113,7 @@ describe("isQuestionOrDashboardSettings", () => {
       ({ experience, settings, expected }) => {
         const result = isQuestionOrDashboardSettings(
           experience,
+          // Unjustified type cast. FIXME
           settings as unknown as SdkIframeEmbedSetupSettings,
         );
 
@@ -126,6 +133,7 @@ describe("isQuestionOrDashboardSettings", () => {
     ])(
       "should return $expected when both IDs are present for $description experience",
       ({ experience, expected }) => {
+        // Unjustified type cast. FIXME
         const settings = {
           dashboardId: 123,
           questionId: 456,
@@ -150,6 +158,7 @@ describe("isQuestionOrDashboardSettings", () => {
       ({ settings, expected }) => {
         const result = isQuestionOrDashboardSettings(
           "dashboard",
+          // Unjustified type cast. FIXME
           settings as SdkIframeEmbedSetupSettings,
         );
 
@@ -160,6 +169,7 @@ describe("isQuestionOrDashboardSettings", () => {
 
   describe("type guard behavior", () => {
     it("should narrow type to SdkIframeDashboardEmbedSettings for dashboard", () => {
+      // Unjustified type cast. FIXME
       const settings = {
         dashboardId: 123,
         apiKey: "test-key",
@@ -174,6 +184,7 @@ describe("isQuestionOrDashboardSettings", () => {
     });
 
     it("should narrow type to SdkIframeQuestionEmbedSettings for chart", () => {
+      // Unjustified type cast. FIXME
       const settings = {
         questionId: 456,
         apiKey: "test-key",

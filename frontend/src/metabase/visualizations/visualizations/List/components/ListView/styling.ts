@@ -21,9 +21,11 @@ export const ENTITY_ICONS = {
 } satisfies Record<string, IconName>;
 
 export const getEntityIcon = (entityType?: string) => {
+  // Unjustified type cast. FIXME
   return (
     entityType
-      ? ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
+      ? // Unjustified type cast. FIXME
+        ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
       : "document"
   ) as IconName;
 };
@@ -36,6 +38,10 @@ export const ENTITY_ICON_COLORS: ColorName[] = [
   "accent3",
   "accent6",
 ];
+
+/** Cards saved on v0.59.1–v0.63.0 store old color name "brand". */
+export const getEntityIconColor = (iconColor?: string) =>
+  iconColor === "brand" ? "core-brand" : iconColor;
 
 // For icons with default color, use white background,
 // otherwise derive transparent background from custom color.

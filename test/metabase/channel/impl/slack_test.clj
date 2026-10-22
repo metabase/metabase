@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.slack :as slack]
@@ -51,14 +52,13 @@
           (channel/send! {:type :channel/slack}
                          {:channel "C0CHANNEL" :blocks [] :pdf pdf})
           (is (= [{:channel "C0CHANNEL" :text "the caption"}] @posted)))))
-    (testing "when sharing to a DM fails after the caption was delivered as the opener, send! does not re-post it"
+    (testing "the same fallback applies to a DM, where the caption is never posted ahead of the file"
       (let [posted (atom [])]
-        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _]
-                                                                    (throw (ex-info "boom" {::slack/caption-already-posted? true})))
+        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _] (throw (ex-info "boom" {})))
                                     slack/post-chat-message!      (fn [m] (swap! posted conj m))]
           (channel/send! {:type :channel/slack}
                          {:channel "U0USER123" :blocks [] :pdf pdf})
-          (is (= [] @posted)))))))
+          (is (= [{:channel "U0USER123" :text "the caption"}] @posted)))))))
 
 (deftest mkdwn-link-escaping-test
   (let [parts [{:type :card
@@ -155,6 +155,29 @@
       (let [links (render-dashboard-links false)]
         (is (= 2 (count links)))))))
 
+(defn- test-dashcard
+  "A DashboardCard row for card `card-id` on dashboard `dashboard-id`, as a Dashboard Subscription part carries it."
+  [id dashboard-id card-id]
+  {:id                     id
+   :dashboard_id           dashboard-id
+   :card_id                card-id
+   :created_at             (t/offset-date-time)
+   :updated_at             (t/offset-date-time)
+   :size_x                 4
+   :size_y                 4
+   :row                    0
+   :col                    0
+   :parameter_mappings     []
+   :visualization_settings {}
+   :entity_id              "test-dashcard-entity"
+   :action_id              nil
+   :dashboard_tab_id       nil
+   :inline_parameters      nil})
+
+(def ^:private empty-result
+  "A QP result with no rows."
+  {:data {:cols [] :rows []} :row_count 0})
+
 (deftest dashboard-card-links-include-parameters-test
   (let [dashboard-id 42
         card-id 123
@@ -169,7 +192,8 @@
                                      :parameters      dashboard-params
                                      :dashboard_parts [{:type :card
                                                         :card {:id card-id :name "Test Card"}
-                                                        :dashcard {:id 456 :dashboard_id dashboard-id}}]}
+                                                        :dashcard (test-dashcard 456 dashboard-id card-id)
+                                                        :result empty-result}]}
                       :creator      {:common_name "Test User"}}
         recipient {:type    :notification-recipient/raw-value
                    :details {:value "#test-channel"}}]
@@ -188,8 +212,8 @@
           notification {:payload_type :notification/dashboard
                         :payload {:dashboard       {:id 1 :name "Test Dashboard"}
                                   :parameters      []
-                                  :dashboard_parts [{:type :card :card {:id 1 :name "Good Card"} :dashcard {:id 10 :dashboard_id 1}}
-                                                    {:type :card :card {:id 2 :name "Bad Card"}  :dashcard {:id 20 :dashboard_id 1}}]}
+                                  :dashboard_parts [{:type :card :card {:id 1 :name "Good Card"} :dashcard (test-dashcard 10 1 1) :result empty-result}
+                                                    {:type :card :card {:id 2 :name "Bad Card"}  :dashcard (test-dashcard 20 1 2) :result empty-result}]}
                         :creator {:common_name "Test User"}}
           recipient    {:type :notification-recipient/raw-value :details {:value "#test-channel"}}]
       (mt/with-dynamic-fn-redefs [slack/upload-file!             (fn [_ _] {:id "uploaded-file-id"})

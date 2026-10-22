@@ -5,8 +5,8 @@ import {
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSetupState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSetupState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockCollection,
@@ -46,10 +46,10 @@ const setup = ({
   setupRecentViewsEndpoints(mockRecentModels);
   return renderWithProviders(
     <>
-      <Route path="/" component={() => <BrowseModels />} />
+      <Route path="/" element={<BrowseModels />} />
       <Route
         path="/model/:slug"
-        component={() => <div data-testid="model-detail-page" />}
+        element={<div data-testid="model-detail-page" />}
       />
     </>,
     {
@@ -325,7 +325,7 @@ describe("BrowseModels", () => {
         await within(emptyState).findByRole("link", { name: "Read the docs" }),
       ).toHaveAttribute(
         "href",
-        "https://www.metabase.com/docs/latest/data-modeling/models.html",
+        "https://www.metabase.com/docs/latest/data-modeling/models/models.html",
       );
     });
 
@@ -376,7 +376,7 @@ describe("BrowseModels", () => {
         await within(banner).findByRole("link", { name: "Read the docs" }),
       ).toHaveAttribute(
         "href",
-        "https://www.metabase.com/docs/latest/data-modeling/models.html",
+        "https://www.metabase.com/docs/latest/data-modeling/models/models.html",
       );
 
       const dismissButton = await within(banner).findByRole("button", {
@@ -491,7 +491,7 @@ describe("BrowseModels", () => {
   });
 
   it("should render links that point directly to /model/{id}-{slug} (metabase#55166)", async () => {
-    const { history } = setup({ modelCount: 25 });
+    const { router } = setup({ modelCount: 25 });
     const recentModelsGrid = await screen.findByRole("grid", {
       name: /Recents/,
     });
@@ -516,6 +516,6 @@ describe("BrowseModels", () => {
     expect(screen.queryByTestId("model-detail-page")).not.toBeInTheDocument();
     await userEvent.click(within(recentModelsGrid).getByText("Model 1"));
     expect(screen.getByTestId("model-detail-page")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe("/model/1-model-1");
+    expect(router?.location.pathname).toBe("/model/1-model-1");
   });
 });

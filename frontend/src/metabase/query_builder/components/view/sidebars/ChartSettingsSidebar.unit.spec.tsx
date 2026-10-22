@@ -1,12 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,

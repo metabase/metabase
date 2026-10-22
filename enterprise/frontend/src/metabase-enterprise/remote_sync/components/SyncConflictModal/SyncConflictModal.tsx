@@ -1,16 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
-import { Box, Button, Group, Icon, Modal } from "metabase/ui";
+import { useGetSettingsQuery, useSetting } from "metabase/settings";
+import { Button, Icon, Modal, Stack } from "metabase/ui";
 import {
   useGetBranchesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
-import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/utils";
+import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/hooks/use-get-library-collection";
 import {
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
@@ -46,6 +45,7 @@ import {
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
+  /** switch-branch variant only: the branch to switch to once the chosen action resolves local changes. */
   nextBranch?: string | null;
   onClose: VoidFunction;
   variant: RemoteSyncConflictVariant;
@@ -99,6 +99,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
       const remoteSyncSettings: RemoteSyncConfigurationSettings = {
+        // Unjustified type cast. FIXME
         [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
           COLLECTIONS_KEY
         ],
@@ -158,8 +159,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "discard") {
-      // nextBranch is set on a switch-branch discard; currentBranch is the branch we're on now and is
-      // asserted against the setting to catch a stale tab.
+      // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
+      // and reload the current branch. currentBranch is the expected-branch assertion (caught if a stale tab
+      // switched under us).
       await discardChangesAndImport(
         nextBranch || currentBranch,
         currentBranch,
@@ -187,21 +189,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
 
   return (
     <Modal
+      density="relaxed"
       onClose={onClose}
       opened
-      padding="xl"
-      styles={{ title: { lineHeight: "2rem" } }}
       title={getModalTitle(variant, canMerge)}
       withCloseButton={false}
     >
-      <Box pt="md">
-        {variant === "setup" ? (
-          <SetupConflictInfo />
-        ) : conflicts && conflicts.length > 0 ? (
-          <ConflictingChangesList conflicts={conflicts} />
-        ) : (
-          <ChangesLists />
-        )}
+      <Stack gap="xl">
+        <ConflictSummary variant={variant} conflicts={conflicts} />
 
         <OutOfSyncOptions
           currentBranch={currentBranch}
@@ -230,39 +225,52 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
 
         {/* Pushing (merge / force / new branch) needs a commit message; pull/switch/setup don't. */}
         {variant === "push" && optionValue && optionValue !== "discard" && (
-          <Box mt="lg">
-            <CommitMessageSection
-              value={commitMessage}
-              onChange={setCommitMessage}
-            />
-          </Box>
+          <CommitMessageSection
+            value={commitMessage}
+            onChange={setCommitMessage}
+          />
         )}
+      </Stack>
 
-        <Group gap="sm" justify="end" mt="lg">
-          <Button onClick={onClose} variant="subtle">
-            {t`Cancel`}
-          </Button>
-          <Button
-            color={
-              optionValue === "discard" ? "feedback-negative" : "core-brand"
-            }
-            disabled={isButtonDisabled}
-            leftSection={
-              optionValue === "force-push" ? <Icon name="warning" /> : undefined
-            }
-            loading={isProcessing}
-            onClick={handleContinueButtonClick}
-            variant="filled"
-            title={
-              optionValue === "force-push"
-                ? t`Force push will replace the remote version with your changes`
-                : undefined
-            }
-          >
-            {getContinueButtonText(optionValue)}
-          </Button>
-        </Group>
-      </Box>
+      <Modal.Footer>
+        <Button onClick={onClose} variant="subtle" color="neutral">
+          {t`Cancel`}
+        </Button>
+        <Button
+          color={optionValue === "discard" ? "negative" : "brand"}
+          disabled={isButtonDisabled}
+          leftSection={
+            optionValue === "force-push" ? <Icon name="warning" /> : undefined
+          }
+          loading={isProcessing}
+          onClick={handleContinueButtonClick}
+          variant="filled"
+          title={
+            optionValue === "force-push"
+              ? t`Force push will replace the remote version with your changes`
+              : undefined
+          }
+        >
+          {getContinueButtonText(optionValue)}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };
+
+interface ConflictSummaryProps {
+  variant: RemoteSyncConflictVariant;
+  conflicts?: string[];
+}
+
+function ConflictSummary({ variant, conflicts }: ConflictSummaryProps) {
+  if (variant === "setup") {
+    return <SetupConflictInfo />;
+  }
+
+  if (conflicts && conflicts.length > 0) {
+    return <ConflictingChangesList conflicts={conflicts} />;
+  }
+
+  return <ChangesLists />;
+}

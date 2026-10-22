@@ -4,12 +4,16 @@ import * as Yup from "yup";
 
 import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
-import { Button, Flex, Icon } from "metabase/ui";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button, Flex, Icon, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
@@ -77,22 +81,29 @@ function SnippetFormInner({
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
-        <Form disabled={!dirty && !isInitiallyDirty} className={S.SnippetForm}>
-          <FormTextArea
-            inputClassName={S.FormSnippetTextArea}
+        <Form
+          as={Stack}
+          gap="lg"
+          disabled={!dirty && !isInitiallyDirty}
+          className={S.SnippetForm}
+        >
+          <FormTextarea
+            classNames={{ input: S.FormSnippetTextArea }}
             name="content"
-            title={t`Enter some SQL here so you can reuse it later`}
+            label={t`Enter some SQL here so you can reuse it later`}
             placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
-            rows={4}
+            autosize={false}
+            resize="vertical"
+            rows={5}
           />
-          <FormInput
+          <FormTextInput
             name="name"
-            title={t`Give your snippet a name`}
+            label={t`Give your snippet a name`}
             placeholder={t`Current Customers`}
           />
-          <FormInput
+          <FormTextInput
             name="description"
-            title={t`Add a description`}
+            label={t`Add a description`}
             placeholder={t`It's optional but oh, so helpful`}
             nullable
           />
@@ -110,19 +121,18 @@ function SnippetFormInner({
                   type="button"
                   className={S.ArchiveButton}
                   leftSection={<Icon name="archive" />}
-                  variant="subtle"
-                  color="text-secondary"
-                  size="sm"
+                  variant="transparent"
+                  size="compact-md"
                   onClick={onArchive}
                 >
                   {t`Archive`}
                 </Button>
               )}
-              <FormErrorMessage inline />
+              <FormErrorMessage />
             </Flex>
-            <Flex align="center" justify="center" gap="sm" mt="md">
+            <Flex align="center" justify="center" gap="sm">
               {!!onCancel && (
-                <Button type="button" size="sm" onClick={onCancel}>
+                <Button type="button" onClick={onCancel}>
                   {t`Cancel`}
                 </Button>
               )}
@@ -130,7 +140,6 @@ function SnippetFormInner({
                 label={t`Save`}
                 disabled={!dirty && !isInitiallyDirty}
                 variant="filled"
-                size="sm"
               />
             </Flex>
           </Flex>

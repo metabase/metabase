@@ -1,28 +1,39 @@
 import type { EChartsType } from "echarts/core";
-import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
-import React from "react";
-import { useSet } from "react-use";
+import React, {
+  type MouseEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { isWebkit } from "metabase/utils/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import {
-  useCartesianChartSeriesColorsClasses,
-  useCloseTooltipOnScroll,
-} from "metabase/visualizations/echarts/tooltip";
+import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
+import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
+import {
+  type TimelineEventGroup,
+  getLegendItems,
+  isRowChartSeries,
+  useCartesianChartSeriesColorsClasses,
+  useCloseTooltipOnScroll,
+} from "metabase/viz-core";
 
+import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-import { getDashboardAdjustedSettings } from "./utils";
+import { useTimelineEventsHover } from "./use-timeline-events-hover";
+import { getHoveredFromHighlighted, getSizeAdjustedSettings } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,14 +41,11 @@ function CartesianChartInner(props: VisualizationProps) {
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
-  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
-
   const {
     showAllLegendItems,
     hideLegend,
     rawSeries,
     settings: originalSettings,
-    autoAdjustSettings = false,
     card,
     getHref,
     width: outerWidth,
@@ -51,43 +59,71 @@ function CartesianChartInner(props: VisualizationProps) {
     isQueryBuilder,
     isVisualizerCard,
     isFullscreen,
-    hovered,
+    isMobile,
+    gridSize,
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
     titleMenuItems,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onSeeAllEvents,
+    selectedTimelineEventIds,
   } = props;
 
   const settings = useMemo(
     () =>
-      autoAdjustSettings
-        ? getDashboardAdjustedSettings?.({
-            settings: originalSettings,
-            height: outerHeight,
-            width: outerWidth,
-          })
-        : originalSettings,
-    [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
+      getSizeAdjustedSettings({
+        settings: originalSettings,
+        height: outerHeight,
+        width: outerWidth,
+        gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
+      }),
+    [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
   );
 
-  const { chartModel, timelineEventsModel, option, renderingContext } =
-    useModelsAndOption(
-      {
-        ...props,
-        width: chartSize.width,
-        height: chartSize.height,
-        hiddenSeries,
-        settings,
-      },
-      containerRef,
-    );
+  const [hiddenSeries, toggleSeriesVisibility] = useLegendHiddenSeries<string>(
+    settings["legend.position"],
+  );
+
+  // Row charts don't offer timeline events (UXW-4833).
+  const { timelineEvents } = useTimelineEvents({
+    ...props,
+    settings,
+    skip: isRowChartSeries(rawSeries),
+  });
+
+  const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
+    useState<TimelineEventGroup | null>(null);
+
+  const {
+    chartModel,
+    chartLayout,
+    legendChart,
+    timelineEventsModel,
+    option,
+    renderingContext,
+  } = useModelsAndOption(
+    {
+      ...props,
+      width: chartSize.width,
+      height: chartSize.height,
+      hiddenSeries,
+      settings,
+      timelineEvents,
+    },
+    containerRef,
+    { width: outerWidth, height: outerHeight },
+  );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   // Mirror the ECharts instance into state so that effects depending on it
-  // (e.g. brush setup) re-run once it becomes available. With the lazily loaded
-  // EChartsRenderer, `onInit` fires after the surrounding effects have already
-  // run, and a ref assignment alone would not re-trigger them.
+  // (e.g. brush setup) re-run once it becomes available. The renderer renders
+  // nothing until ExplicitSize has measured it, which it does a tick after
+  // mount, so `onInit` fires after the surrounding effects have already run and
+  // a ref assignment alone would not re-trigger them.
   const [chartInstance, setChartInstance] = useState<EChartsType>();
 
   const description = settings["card.description"];
@@ -98,21 +134,25 @@ function CartesianChartInner(props: VisualizationProps) {
   );
   const hasLegend = !hideLegend && legendItems.length > 0;
 
-  const handleInit = useCallback((chart: EChartsType) => {
-    chartRef.current = chart;
-    setChartInstance(chart);
+  const handleInit = useCallback(
+    (chart: EChartsType) => {
+      chartRef.current = chart;
+      setChartInstance(chart);
 
-    // HACK: clip paths cause glitches in Safari on multiseries line charts on dashboards (metabase#51383)
-    if (isWebkit()) {
-      chartRef.current.on("finished", () => {
-        const svg = containerRef.current?.querySelector("svg");
-        if (svg) {
-          const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
-          clipPaths.forEach((cp) => cp.setAttribute("id", ""));
-        }
-      });
-    }
-  }, []);
+      // HACK: clip paths cause glitches in Safari on multiseries line charts on dashboards (metabase#51383)
+      // Waterfall renders a custom series that relies on clipping, so skip this hack in that case (metabase#82032)
+      if (isWebkit() && card.display !== "waterfall") {
+        chartRef.current.on("finished", () => {
+          const svg = containerRef.current?.querySelector("svg");
+          if (svg) {
+            const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
+            clipPaths.forEach((cp) => cp.setAttribute("id", ""));
+          }
+        });
+      }
+    },
+    [card.display],
+  );
 
   const handleToggleSeriesVisibility = useCallback(
     (event: MouseEvent, seriesIndex: number) => {
@@ -127,20 +167,52 @@ function CartesianChartInner(props: VisualizationProps) {
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
-  const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
-    chartRef,
-    containerRef,
-    chartModel,
-    timelineEventsModel,
-    option,
-    renderingContext,
-    props,
-    chartInstance,
-  );
+  const hovered: CartesianHoveredObject | null = useMemo(() => {
+    if (props.hovered) {
+      return props.hovered;
+    }
+    if (props.highlighted) {
+      return getHoveredFromHighlighted(
+        props.highlighted,
+        rawSeries,
+        chartModel,
+      );
+    }
+    return null;
+  }, [props.hovered, props.highlighted, rawSeries, chartModel]);
+
+  const { onSelectSeries, getSeriesHref, onOpenQuestion, eventHandlers } =
+    useChartEvents(
+      chartRef,
+      containerRef,
+      chartModel,
+      option,
+      renderingContext,
+      hovered,
+      props,
+      chartInstance,
+    );
 
   const handleResize = useCallback((width: number, height: number) => {
     setChartSize({ width, height });
   }, []);
+
+  const timelineEventsXAxisIndex =
+    chartLayout.panelHeight != null
+      ? chartModel.seriesModels.filter((series) => series.visible).length - 1
+      : 0;
+
+  useTimelineEventsHover({
+    chartRef,
+    hoveredTimelineEventGroup,
+    chartModel,
+    chartLayout,
+    option,
+    timelineEventsModel,
+    renderingContext,
+    display: card.display,
+    selectedTimelineEventIds,
+  });
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case
@@ -178,22 +250,27 @@ function CartesianChartInner(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        legendPosition={settings["legend.position"]}
+        alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={renderingContext.fontFamily}
+        measureText={renderingContext.measureText}
         onSelectSeries={onSelectSeries}
+        getSeriesHref={getSeriesHref}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
+        chart={legendChart}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}
-          display={card.display}
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}
@@ -202,8 +279,20 @@ function CartesianChartInner(props: VisualizationProps) {
           <DataPointsVisiblePopover
             isDashboard={isDashboard}
             isVisualizer={isVisualizer}
-            chartModel={chartModel}
-            settings={settings}
+            chartInstance={chartInstance}
+          />
+          <TimelineEventsBand
+            chartInstance={chartInstance}
+            chartSize={chartSize}
+            timelineEventsModel={timelineEventsModel}
+            chartLayout={chartLayout}
+            xAxisIndex={timelineEventsXAxisIndex}
+            selectedTimelineEventIds={selectedTimelineEventIds}
+            onGroupHover={setHoveredTimelineEventGroup}
+            onOpenTimelines={onOpenTimelines}
+            onSelectTimelineEvents={onSelectTimelineEvents}
+            onDeselectTimelineEvents={onDeselectTimelineEvents}
+            onSeeAllEvents={onSeeAllEvents}
           />
         </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>

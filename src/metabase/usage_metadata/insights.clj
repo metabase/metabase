@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
@@ -13,8 +14,7 @@
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +39,7 @@
   [field-ids]
   (let [field-ids (into #{} (filter pos-int?) field-ids)
         rows      (when (seq field-ids)
-                    (t2/select [:model/Field :id :name :display_name] :id [:in field-ids]))]
+                    (usage-metadata.db/field-names field-ids))]
     (into {}
           (map (fn [{:keys [id name display_name]}]
                  [id {:id           id
@@ -55,10 +55,9 @@
         table-ids (into #{} (comp (keep second) (filter pos-int?)) (get by-type :table))
         card-ids  (into #{} (comp (keep second) (filter pos-int?)) (get by-type :card))
         tables    (when (seq table-ids)
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema]
-                               :id [:in table-ids]))
+                    (usage-metadata.db/table-names table-ids))
         cards     (when (seq card-ids)
-                    (t2/select [:model/Card :id :name] :id [:in card-ids]))]
+                    (usage-metadata.db/card-names card-ids))]
     (into {}
           cat
           [(map (fn [{:keys [id name display_name db_id schema]}]
@@ -83,69 +82,24 @@
     (try
       (vec (lib/all-field-ids predicate))
       (catch Throwable e
-        (log/debug e "usage-metadata: predicate-field-ids failed")
+        (log/debugf "usage-metadata: predicate-field-ids failed: %s" (ex-message e))
         []))))
 
 ;; No SQL LIMIT here: callers filter saved-signature collisions in Clojure, so a SQL LIMIT can under-deliver.
 (defn- grouped-segment-rows
   "Group + sum `source_segment_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (t2/select [:model/SourceSegmentDaily
-                :source_type
-                :source_id
-                :field_id
-                :predicate
-                [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :field_id :predicate]
-                :order-by [[:total_count :desc]]})))
+  (usage-metadata.db/grouped-segment-rows source-type source-id bucket-start bucket-end))
 
 (defn- grouped-metric-rows
   "Group + sum `source_metric_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (t2/select [:model/SourceMetricDaily
-                :source_type
-                :source_id
-                :agg_type
-                :agg_field_id
-                :temporal_field_id
-                :temporal_unit
-                [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit]
-                :order-by [[:total_count :desc]]})))
+  (usage-metadata.db/grouped-metric-rows source-type source-id bucket-start bucket-end))
 
 (defn- grouped-dimension-rows
   "Group + sum `source_dimension_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (t2/select [:model/SourceDimensionDaily
-                :source_type
-                :source_id
-                :field_id
-                :temporal_unit
-                :binning
-                [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :field_id :temporal_unit :binning]
-                :order-by [[:total_count :desc]]})))
+  (usage-metadata.db/grouped-dimension-rows source-type source-id bucket-start bucket-end))
 
 (defn- decode-atom-fingerprints [x]
   (cond
@@ -159,44 +113,14 @@
   Each returned row carries the whole-clause JSON, the atom-fingerprint array, and the summed count
   across the window — the input shape expected by the FIM pass."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type  (conj [:= :source_type (name source-type)])
-                source-id    (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (->> (t2/select [:model/SourceSegmentCompositeDaily
-                     :source_type
-                     :source_id
-                     :clause
-                     :atom_fingerprints
-                     :atom_count
-                     [[:sum :count] :total_count]]
-                    {:where    where
-                     :group-by [:source_type :source_id :clause :atom_fingerprints :atom_count]
-                     :order-by [[:total_count :desc]]})
-         (mapv (fn [row]
-                 (update row :atom_fingerprints decode-atom-fingerprints))))))
+  (->> (usage-metadata.db/grouped-composite-rows source-type source-id bucket-start bucket-end)
+       (mapv (fn [row]
+               (update row :atom_fingerprints decode-atom-fingerprints)))))
 
 (defn- grouped-profile-rows
   "Group + sum `source_dimension_profile_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (t2/select [:model/SourceDimensionProfileDaily
-                :source_type
-                :source_id
-                :field_id
-                :source_basis
-                :observation_type
-                :observation_value
-                [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
-                :order-by [[:total_count :desc]]})))
+  (usage-metadata.db/grouped-profile-rows source-type source-id bucket-start bucket-end))
 
 (defn- wrap-query
   "Wrap a raw MBQL map in a full lib query using the app DB metadata-provider. Returns nil on failure."
@@ -205,7 +129,7 @@
     (try
       (lib/query (lib-be/application-database-metadata-provider database-id) query-map)
       (catch Throwable e
-        (log/debug e "Failed to wrap query for usage-metadata insights")
+        (log/debugf "Failed to wrap query for usage-metadata insights: %s" (ex-message e))
         nil))))
 
 (defn- extract-facts
@@ -214,7 +138,7 @@
     (try
       (usage-metadata.extract/extract-usage-facts q)
       (catch Throwable e
-        (log/debug e "Failed to extract usage facts for usage-metadata insights")
+        (log/debugf "Failed to extract usage facts for usage-metadata insights: %s" (ex-message e))
         nil))))
 
 (def ^:private cache-ttl-ms
@@ -222,14 +146,13 @@
 
 (defn- existing-segment-predicates*
   [[source-type source-id]]
-  (let [where     (cond-> [:and [:= :archived false]]
-                    (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment :id :table_id :definition] {:where where})
+  (let [table-id  (when (and (= source-type :table) source-id) source-id)
+        segments  (usage-metadata.db/unarchived-segments table-id)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (t2/select [:model/Table :id :db_id] :id [:in table-ids])))]
+                          (usage-metadata.db/table-database-ids table-ids)))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]
@@ -252,9 +175,7 @@
 
 (defn- existing-metric-signatures*
   []
-  (let [cards (t2/select [:model/Card :id :database_id :dataset_query :card_schema]
-                         :type "metric"
-                         :archived false)]
+  (let [cards (usage-metadata.db/unarchived-metric-cards)]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [database_id dataset_query]}]
@@ -485,14 +406,13 @@
 
 (defn- existing-composite-atomsets*
   [[source-type source-id]]
-  (let [where     (cond-> [:and [:= :archived false]]
-                    (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment :id :table_id :definition] {:where where})
+  (let [table-id  (when (and (= source-type :table) source-id) source-id)
+        segments  (usage-metadata.db/unarchived-segments table-id)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (t2/select [:model/Table :id :db_id] :id [:in table-ids])))]
+                          (usage-metadata.db/table-database-ids table-ids)))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]

@@ -61,6 +61,7 @@ export function EntityIcon({
           maskRepeat: "no-repeat",
           maskPosition: "center",
         }}
+        // Unjustified type cast. FIXME
         {...(rest as HTMLAttributes<HTMLSpanElement>)}
       />
     );

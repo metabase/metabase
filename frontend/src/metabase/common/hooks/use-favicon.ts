@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 export const useFavicon = ({ favicon }: { favicon: string | null }) => {
   const defaultFavicon = useSetting("application-favicon-url");

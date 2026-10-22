@@ -1,12 +1,19 @@
 (ns metabase.metabot.tools.entity-details-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.entity-details-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -395,6 +402,32 @@
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
 
+(deftest get-field-values-has-stable-shape-test
+  (let [field-id   (mt/id :categories :name)
+        raw-values ["African" "American"]]
+    (testing "cache hits return raw values"
+      (is (= raw-values
+             (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))))
+
+(deftest table-details-read-cached-field-values-in-one-query-test
+  (testing "table details read the cached values of unrestricted columns in one query, not one per column"
+    (mt/with-temp-copy-of-db
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [field-ids   (t2/select-pks-set :model/Field :table_id (mt/id :venues))
+              details     #(:structured-output
+                            (entity-details/get-table-details {:entity-type :table, :entity-id (mt/id :venues)}))
+              query-count (fn [field-ids-with-values]
+                            (mt/with-dynamic-fn-redefs [field-values/field-should-have-field-values?
+                                                        #(contains? field-ids-with-values (:id %))]
+                              ;; creates the FieldValues and warms the memoized field and table lookups
+                              (is (= field-ids-with-values
+                                     (set (keep #(when (:field_values %) (:field_id %)) (:fields (details))))))
+                              (t2/with-call-count [call-count]
+                                (details)
+                                (call-count))))]
+          (is (= (query-count #{(first field-ids)})
+                 (query-count field-ids))))))))
+
 ;;; ============================================================
 ;;; Base-table surfacing on get-metric-details (regression)
 ;;; ============================================================
@@ -425,6 +458,380 @@
             (is (= [db-name (:schema orders) (:name orders)]
                    (:base_table_portable_fk output))
                 "portable FK should be `[database_name, schema, table_name]`")))))))
+
+(deftest get-metric-details-hides-unreadable-base-table-test
+  (testing "metric details do not reveal metadata for a base table the user cannot read"
+    (let [mp (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Restricted base-table metric"
+                                                  :type          :metric}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (mt/with-dynamic-fn-redefs
+              [params.field-values/get-or-create-field-values-by-field-id!
+               (fn [_]
+                 (throw (ex-info "field values must not be fetched" {})))]
+              (let [output (:structured-output
+                            (entity-details/get-metric-details {:metric-id     metric-id
+                                                                :with-segments? true}))]
+                (is (= metric-id (:id output)) "collection access still makes the metric readable")
+                (is (not-any? #(contains? output %)
+                              [:base_table_id
+                               :base_table_name
+                               :base_table_portable_fk
+                               :default_time_dimension_field_id
+                               :queryable-dimensions
+                               :segments]))))))))))
+
+(deftest get-metric-details-card-based-metric-surfaces-source-card-test
+  (testing "Metric details name the source card required by a single-stage card metric"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name          "Orders question"
+                    :type          :question
+                    :dataset_query (mt/mbql-query orders)}
+                   :model/Card {metric-id :id}
+                   {:name          "Card-based metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id          metric-id
+                                           :with-field-values? false}))]
+          (testing "the source card includes the entity ID needed for `source-card:`"
+            (is (=? {:source_card_id                 question-id
+                     :source_card_name               "Orders question"
+                     :source_card_portable_entity_id question-eid}
+                    output)))
+          (testing "the dimensions come from the metric query, so they stay usable on that source"
+            (is (= ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]
+                   (->> (:queryable-dimensions output)
+                        (remove :table_reference)
+                        (mapv :name)))
+                "every column of the card's own table")
+            (is (= #{"User" "Product"}
+                   (into #{} (keep :table_reference) (:queryable-dimensions output)))
+                "plus the FK-reachable tables"))
+          (testing "and the base table is not offered as a source"
+            (is (not-any? #(contains? output %)
+                          [:base_table_id :base_table_name :base_table_portable_fk]))))))))
+
+(deftest get-metric-details-hides-unreadable-source-card-test
+  (testing "metric details do not reveal a source card the user cannot read"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
+                   :model/Card {question-id :id}
+                   {:name          "Orders question"
+                    :type          :question
+                    :collection_id coll-id
+                    :dataset_query (mt/mbql-query orders)}
+                   :model/Card {metric-id :id}
+                   {:name          "Card-based metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        ;; Request dimensions too, since access to the base table does not make the source card readable.
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id          metric-id
+                                           :with-field-values? false}))]
+          (is (= metric-id (:id output)) "collection access still makes the metric readable")
+          (is (not-any? #(contains? output %)
+                        [:source_card_id :source_card_name :source_card_portable_entity_id]))
+          (testing "the base table is not offered as a substitute for the unreadable card"
+            (is (not-any? #(contains? output %)
+                          [:base_table_id :base_table_name :base_table_portable_fk])))
+          (testing "the metric is marked unavailable"
+            (is (true? (:source_unavailable output))))
+          (testing "an unavailable metric has no dimensions"
+            (is (not-any? #(contains? output %)
+                          [:queryable-dimensions :default_time_dimension_field_id :segments]))))))))
+
+(deftest get-metric-details-multi-stage-card-based-metric-surfaces-base-table-test
+  (testing "Metric details offer the base table for a multi-stage card metric"
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name          "Orders question"
+                    :type          :question
+                    :dataset_query (mt/mbql-query orders)}
+                   :model/Card {metric-id :id}
+                   {:name          "Multi-stage card metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-query {:source-table (str "card__" question-id)}
+                                                       :aggregation  [[:count]]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id          metric-id
+                                           :with-field-values? false}))]
+          (testing "the base table is offered as the source"
+            (is (=? {:base_table_id (mt/id :orders)
+                     :base_table_name "ORDERS"}
+                    output))
+            (is (vector? (:base_table_portable_fk output))))
+          (testing "the card named by the definition is not offered as a source"
+            (is (not-any? #(contains? output %)
+                          [:source_card_id :source_card_name :source_card_portable_entity_id])))
+          (testing "the metric is available on its base table"
+            (is (not (contains? output :source_unavailable))))
+          (testing "and it still describes its dimensions, so the LLM can filter and group on that source"
+            (is (seq (:queryable-dimensions output)))))))))
+
+(deftest get-metric-details-marks-unreadable-base-table-unavailable-test
+  (testing "A table metric with no queryable source is marked unavailable"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Card {metric-id :id}
+                     {:name          "Table-based metric"
+                      :type          :metric
+                      :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [output (:structured-output (entity-details/get-metric-details
+                                            {:metric-id          metric-id
+                                             :with-field-values? false}))]
+            (is (= metric-id (:id output)) "collection access still makes the metric readable")
+            (is (not-any? #(contains? output %)
+                          [:base_table_id :base_table_name :base_table_portable_fk]))
+            (testing "the source is explicitly marked unavailable"
+              (is (true? (:source_unavailable output))))))))))
+
+(deftest tool-arguments-cannot-carry-a-card-read-verdict-test
+  (testing "Tool arguments cannot supply trusted source-card read permissions"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
+                   :model/Card {question-id :id}
+                   {:name          "Orders question"
+                    :type          :question
+                    :collection_id coll-id
+                    :dataset_query (mt/mbql-query orders)}
+                   :model/Card {metric-id :id}
+                   {:name          "Card-based metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id               metric-id
+                                           :with-field-values?      false
+                                           ;; a read verdict, supplied the way a tool call would
+                                           :known-readable-card-ids #{question-id}
+                                           :card-read-verdicts      {question-id true}}))]
+          (is (not-any? #(contains? output %)
+                        [:source_card_id :source_card_name :source_card_portable_entity_id])
+              "the unreadable source card is still withheld")
+          (is (true? (:source_unavailable output))))))))
+
+(deftest get-metric-details-survives-a-deleted-source-card-test
+  (testing "A metric whose source card was deleted is marked unavailable"
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name          "Doomed question"
+                    :type          :question
+                    :dataset_query (mt/mbql-query orders)}
+                   :model/Card {metric-id :id}
+                   {:name          "Metric on a deleted question"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}]
+      (t2/delete! :model/Card :id question-id)
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id          metric-id
+                                           :with-field-values? false}))]
+          (is (= metric-id (:id output)) "the metric itself still renders")
+          (is (true? (:source_unavailable output))
+              "the missing source is marked unavailable")
+          (is (not-any? #(contains? output %)
+                        [:source_card_id :source_card_name :source_card_portable_entity_id
+                         :base_table_id :base_table_name :base_table_portable_fk])))))))
+
+(deftest get-metric-details-marks-unreadable-definition-unavailable-test
+  (testing "A metric with a blank definition is marked unavailable"
+    (mt/with-temp [:model/Card {metric-id :id}
+                   {:name          "Blank metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+      ;; Straight to the table: the model's `:in` transform would not store a blank query.
+      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (is (= (mt/id :orders) (t2/select-one-fn :table_id :model/Card :id metric-id))
+          "the base table is still recorded, so it is there to be wrongly offered")
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id          metric-id
+                                           :with-field-values? false}))]
+          (is (=? {:id metric-id, :source_unavailable true} output))
+          (is (not-any? #(contains? output %)
+                        [:source_card_id :source_card_name :source_card_portable_entity_id
+                         :base_table_id :base_table_name :base_table_portable_fk])))))))
+
+(deftest cards-details-metric-branch-reports-each-source-kind-test
+  (testing "Bulk card details report the source required by each metric"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name          "Orders question"
+                    :type          :question
+                    :dataset_query (mt/mbql-query orders)}
+                   :model/Card {table-metric-id :id}
+                   {:name          "Table metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+                   :model/Card {card-metric-id :id}
+                   {:name          "Card metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}
+                   :model/Card {multi-metric-id :id}
+                   {:name          "Multi-stage card metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-query {:source-table (str "card__" question-id)}
+                                                       :aggregation  [[:count]]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [cards   (t2/select :model/Card :id [:in [table-metric-id card-metric-id multi-metric-id]])
+              by-id   (into {} (map (juxt :id identity))
+                            (entity-details/cards-details :metric (mt/id) cards {:with-field-values? false}))]
+          (testing "table-based: its own base table"
+            (is (=? {:base_table_id (mt/id :orders)} (get by-id table-metric-id)))
+            (is (not (contains? (get by-id table-metric-id) :source_card_id))))
+          (testing "single-stage card-based: the card it sits on"
+            (is (=? {:source_card_id                 question-id
+                     :source_card_portable_entity_id question-eid}
+                    (get by-id card-metric-id)))
+            (is (not (contains? (get by-id card-metric-id) :base_table_id))))
+          (testing "multi-stage card-based: the base table, not the card it names"
+            (is (=? {:base_table_id (mt/id :orders)} (get by-id multi-metric-id)))
+            (is (not (contains? (get by-id multi-metric-id) :source_card_id)))))))))
+
+(deftest metric-details-carries-default-time-dimension-name-without-dimensions-test
+  (testing "The default temporal breakout includes its ID and name without requesting dimensions"
+    (mt/with-temp [:model/Card {metric-id :id}
+                   {:name          "Orders over time"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]
+                                                          :breakout    [!month.created_at]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id                  metric-id
+                                           :with-field-values?         false
+                                           :with-queryable-dimensions? false}))]
+          (is (=? {:default_time_dimension_field_id   (mt/id :orders :created_at)
+                   :default_time_dimension_field_name "CREATED_AT"}
+                  output)
+              "the name is available without requesting dimensions")
+          (is (not (contains? output :queryable-dimensions))))))))
+
+(deftest card-details-lists-card-based-metrics-test
+  (testing "Card details accept lib metadata cards when listing available metrics"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Orders question" :type :question :dataset_query (mt/mbql-query orders)}
+                   :model/Card {metric-id :id}
+                   {:name "Card-based metric" :type :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [details (first (entity-details/cards-details
+                              :question (mt/id)
+                              [(t2/select-one :model/Card :id question-id)]
+                              {:with-metrics?              true
+                               :with-queryable-dimensions? false
+                               :with-field-values?         false
+                               :field-values-fn            identity}))
+              metric  (first (:metrics details))]
+          (is (= [metric-id] (mapv :id (:metrics details)))
+              "the card metric is listed")
+          (testing "and it points back at the card being described, not its underlying table"
+            (is (= question-id (:source_card_id metric)))
+            (is (= question-eid (:source_card_portable_entity_id metric)))
+            (is (not-any? #(contains? metric %)
+                          [:base_table_id :base_table_name :base_table_portable_fk]))))))))
+
+(deftest metric-details-on-native-source-question-test
+  (testing "A metric on a native question reports the source card and its columns"
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Native question" :type :question
+                    :dataset_query (mt/native-query {:query "SELECT 1 AS n, 'x' AS s"})
+                    ;; `with-temp` does not run the native query, so its output columns must be supplied explicitly.
+                    :result_metadata [{:name "N" :display_name "N" :base_type :type/Integer}
+                                      {:name "S" :display_name "S" :base_type :type/Text}]}
+                   :model/Card {metric-id :id}
+                   {:name "Metric on native question" :type :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "the metric has no base table at all"
+          (is (nil? (t2/select-one-fn :table_id :model/Card :id metric-id))))
+        (testing "the single-arg (t2 row) path reports the source card"
+          (is (=? {:source_card_id                 question-id
+                   :source_card_portable_entity_id question-eid}
+                  (:structured-output (entity-details/get-metric-details
+                                       {:metric-id                  metric-id
+                                        :with-queryable-dimensions? false
+                                        :with-field-values?         false})))))
+        (testing "a metric on a native question describes the columns returned by its source card"
+          (let [dims (:queryable-dimensions
+                      (:structured-output (entity-details/get-metric-details
+                                           {:metric-id          metric-id
+                                            :with-field-values? false})))]
+            (is (=? [{:name "N" :field_id "N"}
+                     {:name "S" :field_id "S"}]
+                    dims))
+            (testing (str "with no portable FK -- a native card's output column has no database field behind it, "
+                          "so the machine name in `:field_id` is the only reference")
+              (is (not-any? :portable_fk dims)))))
+        (testing "and so does the lib-metadata-map path through card-details"
+          (let [details (first (entity-details/cards-details
+                                :question (mt/id)
+                                [(t2/select-one :model/Card :id question-id)]
+                                {:with-metrics?              true
+                                 :with-queryable-dimensions? false
+                                 :with-field-values?         false
+                                 :field-values-fn            identity}))]
+            (is (=? [{:id metric-id, :source_card_id question-id}]
+                    (:metrics details)))))))))
+
+(deftest get-metric-details-hides-unreadable-fk-target-test
+  (testing "metric dimensions do not reveal metadata for an unreadable FK target table"
+    (mt/with-temp [:model/Database db         {}
+                   :model/Table    target     {:db_id              (:id db)
+                                               :name               "secret_table"
+                                               :schema             "private"}
+                   :model/Field    target-id  {:table_id           (:id target)
+                                               :name               "secret_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Table    source     {:db_id              (:id db)
+                                               :name               "orders"
+                                               :schema             "public"}
+                   :model/Field    _source-id {:table_id           (:id source)
+                                               :name               "id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Field    _source-fk {:table_id           (:id source)
+                                               :name               "user_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer
+                                               :semantic_type      :type/FK
+                                               :fk_target_field_id (:id target-id)}]
+      (let [mp           (lib-be/application-database-metadata-provider (:id db))
+            metric-query (-> (lib/query mp (lib.metadata/table mp (:id source)))
+                             (lib/aggregate (lib/count)))]
+        (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                    :database_id   (:id db)
+                                                    :table_id      (:id source)
+                                                    :name          "Readable source metric"
+                                                    :type          :metric}]
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) source
+                                         :perms/create-queries :query-builder-and-native)
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [output     (:structured-output
+                                (entity-details/get-metric-details {:metric-id          metric-id
+                                                                    :with-field-values? false}))
+                    dimensions (:queryable-dimensions output)
+                    source-fk  (some #(when (= "user_id" (:name %)) %) dimensions)]
+                (is (= "orders" (:base_table_name output)))
+                (is (some? source-fk) "the readable source FK column is returned")
+                (is (not (contains? source-fk :fk_target_portable_fk)))
+                (is (not (str/includes? (pr-str output) "secret_table")))
+                (is (not (str/includes? (pr-str output) "secret_id")))))))))))
 
 ;;; ============================================================
 ;;; Portable entity_id in card details (step 11.2)
@@ -484,6 +891,25 @@
             ;; Portable FK paths use the human-readable database name, not numeric ids.
             (is (vector? (get-in exported ["stages" 0 "source-table"])))
             (is (not (contains? exported "lib/metadata")))))))))
+
+(deftest card-details-tolerates-a-query-that-will-not-build-test
+  (testing "one Card whose stored query has no stages does not take down the response the others are in"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card broken {:name "Broken", :type :question, :dataset_query {}}
+                       :model/Card good   {:database_id   (mt/id)
+                                           :type          :question
+                                           :name          "Venues by Price"
+                                           :dataset_query (mt/mbql-query venues
+                                                            {:aggregation [[:count]]
+                                                             :breakout    [$price]})}]
+          ;; Exercise `cards-details`, the batch path used by the data app schema endpoint. Calling
+          ;; `get-table-details` for each Card would miss a failure that terminates the complete sequence.
+          (let [details (->> (entity-details/cards-details :question (mt/id) [broken good] {})
+                             (into [] (map #(select-keys % [:name :query_json]))))]
+            (is (= ["Broken" "Venues by Price"] (mapv :name details)))
+            (is (nil? (:query_json (first details))))
+            (is (map? (:query_json (second details))))))))))
 
 (deftest card-details-exposes-query-json-native-test
   (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
@@ -560,6 +986,21 @@
                 (is (=? {:id card-id :type :question} output))
                 (is (not (contains? output :metrics)))
                 (is (= 0 @calls))))))))))
+
+(deftest answer-sources-omits-models-with-no-visible-fields-test
+  (testing "a model built on a table the user has no view-data permission on is omitted entirely from
+            list_available_data_sources, rather than listed with :fields []"
+    (mt/with-temp [:model/Card    {model-id :id} {:dataset_query (mt/mbql-query orders)
+                                                  :type          :model
+                                                  :collection_id nil}
+                   :model/Metabot metabot {:name          "root metabot"
+                                           :collection_id nil
+                                           :use_verified_content false}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [structured-output]} (entity-details/answer-sources
+                                             {:metabot metabot})]
+            (is (not (contains? (set (map :id (:models structured-output))) model-id)))))))))
 
 (deftest related-tables-with-fields-capped-test
   (testing (str "FK-related-table *column* expansion is capped at `max-related-tables-with-fields` so a table "
@@ -710,3 +1151,148 @@
             (is (=? #{{:id products :related_by {:id (mt/id :orders :product_id) :name "PRODUCT_ID"}}
                       {:id products :related_by {:id (mt/id :reviews :product_id) :name "PRODUCT_ID"}}}
                     (into #{} (map #(select-keys % [:id :related_by])) product-rows)))))))))
+
+;;; ============================================================
+;;; Explicit-join dimensions on metric-details (BOT-1612)
+;;;
+;;; A metric whose definition reaches a dimension through an EXPLICIT join with no foreign key.
+;;; The consumer-framed `queryable-dimensions` drop that column; `metric-details` must instead
+;;; surface it under `:join-required-dimensions`, carrying the exact portable join clause to paste.
+;;; ============================================================
+
+;;; These use real app-db tables rather than a `lib.tu/mock-metadata-provider`: `metric-details`
+;;; gates its base table and every surfaced column on app-db Table/sandbox read permissions, so
+;;; synthetic table ids that have no `:model/Table` row cannot get through the permission checks.
+
+(defn- no-fk-join-metric-query
+  "A metric query on ORDERS that reaches REVIEWS through an EXPLICIT join with no foreign key — there
+  is no FK from ORDERS to REVIEWS, so REVIEWS.RATING is reachable only by re-adding this join."
+  [mp]
+  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+      (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                 [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                         (lib.metadata/field mp (mt/id :reviews :product_id)))]))
+      (lib/aggregate (lib/count))))
+
+(defn- unjoined-metric-query
+  "A metric query on ORDERS with no explicit joins at all."
+  [mp]
+  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+      (lib/aggregate (lib/count))))
+
+(defn- metric-details-for
+  "Create a temp metric Card whose definition is `(query-fn mp)`, then return `metric-details` for it.
+  The provider is rebuilt after the insert so the new card is visible to `lib.metadata/card`."
+  [query-fn]
+  (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (query-fn (mt/metadata-provider))
+                                              :database_id   (mt/id)
+                                              :name          "Metric with a no-FK join"
+                                              :type          :metric}]
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+      (entity-details/metric-details (lib.metadata/card mp metric-id) mp {:field-values-fn identity}))))
+
+(deftest metric-details-surfaces-explicit-join-dimensions-test
+  (testing (str "metric-details surfaces FK-less join dimensions the consumer-framed dimension list "
+                "drops, each with the portable join clause to paste into `joins:` (BOT-1612)")
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [rating-id (mt/id :reviews :rating)
+            details   (metric-details-for no-fk-join-metric-query)
+            jrd       (:join-required-dimensions details)]
+        (testing "the base queryable-dimensions do NOT advertise the joined column"
+          (is (not (some #(= rating-id (:field_id %)) (:queryable-dimensions details)))))
+        (testing "join-required-dimensions surfaces REVIEWS.RATING under the REVIEWS join"
+          (is (= 1 (count jrd)))
+          (let [{:keys [target_table join dimensions]} (first jrd)
+                reviews (t2/select-one [:model/Table :name :schema] :id (mt/id :reviews))]
+            (is (= (:name reviews) target_table))
+            (is (some #(= rating-id (:field_id %)) dimensions))
+            (testing "the join clause is a pasteable portable mbql/join targeting REVIEWS"
+              (is (= "mbql/join" (get join "lib/type")))
+              (is (= "left-join" (get join "strategy")))
+              (is (= [(t2/select-one-fn :name [:model/Database :name] :id (mt/id))
+                      (:schema reviews)
+                      (:name reviews)]
+                     (get-in join ["stages" 0 "source-table"])))
+              (testing "volatile lib/uuid keys are stripped so the clause can be pasted repeatedly"
+                (is (nil? (get join "lib/uuid")))))))))))
+
+(deftest metric-details-omits-join-required-dimensions-when-no-explicit-join-test
+  (testing "a metric with only FK-reachable (or no) joins has no :join-required-dimensions"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (nil? (:join-required-dimensions (metric-details-for unjoined-metric-query)))))))
+
+(deftest metric-details-default-time-dimension-test
+  (testing "metric-details finds the time dimension a metric breaks out by when its table has FK-reachable columns"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (= (mt/id :orders :created_at)
+             (:default_time_dimension_field_id
+              (metric-details-for
+               (fn [mp]
+                 (lib/breakout (unjoined-metric-query mp)
+                               (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                                 :month))))))))))
+
+(deftest metric-details-omits-join-required-dimensions-when-export-fails-test
+  (testing (str "fail closed: when the portable join clause cannot be exported, the entry is DROPPED "
+                "rather than surfaced with a nil join - instructing the LLM to paste `null` into "
+                "`joins:` would be strictly worse than the :no-fk-path dead-end (BOT-1612)")
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-dynamic-fn-redefs [repr.resolve/try-export-query (constantly nil)]
+        (is (nil? (:join-required-dimensions (metric-details-for no-fk-join-metric-query)))
+            "no join-required-dimensions when the join clause failed to export")))))
+
+(deftest metric-details-omits-join-required-dimensions-for-unreadable-join-target-test
+  (testing (str "the FK-less join target is a table the consumer-framed query never reaches, so no "
+                "other pass has permission-checked it: dimensions from a table the user cannot read "
+                "must not be surfaced, and a join with no readable dimensions drops entirely")
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
+                                   :perms/create-queries :query-builder-and-native)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [details (metric-details-for no-fk-join-metric-query)]
+          (is (seq (:queryable-dimensions details))
+              "the readable base table still yields dimensions")
+          (is (nil? (:join-required-dimensions details))
+              "REVIEWS is unreadable, so its join-required dimensions are withheld")
+          (is (not (str/includes? (pr-str details) "RATING"))))))))
+
+(deftest get-metric-details-surfaces-join-required-dims-through-resource-path-test
+  (testing (str "the REAL resource entry point (get-metric-details, as resources.clj calls it) "
+                "surfaces join-required dimensions for a metric with an explicit no-FK join, with "
+                "alias-qualified references - and omits them when queryable-dimensions are off. Guards "
+                "the get-metric-details wiring + option keys the mock-provider tests bypass (BOT-1612).")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp           (mt/metadata-provider)
+              ;; ORDERS explicitly joins REVIEWS on PRODUCT_ID (there is NO FK from ORDERS to REVIEWS)
+              ;; to reach REVIEWS.RATING.
+              metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               (lib/join (lib/join-clause
+                                          (lib.metadata/table mp (mt/id :reviews))
+                                          [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                  (lib.metadata/field mp (mt/id :reviews :product_id)))]))
+                               (lib/aggregate (lib/count)))]
+          (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                      :database_id   (mt/id)
+                                                      :name          "Orders w/ no-FK Reviews join"
+                                                      :type          :metric}]
+            (testing "/dimensions path (with-queryable-dimensions? default true): join-required dims present"
+              (let [out (:structured-output (entity-details/get-metric-details
+                                             {:metric-id metric-id :with-field-values? false}))
+                    jrd (:join-required-dimensions out)]
+                (is (seq jrd) "join-required-dimensions surfaced through the real resource path")
+                (let [{:keys [target_table dimensions]} (first jrd)
+                      rating (first (filter #(= (mt/id :reviews :rating) (:field_id %)) dimensions))]
+                  (is (= (t2/select-one-fn :name [:model/Table :name] :id (mt/id :reviews)) target_table))
+                  (is (some? rating) "REVIEWS.RATING is surfaced")
+                  (is (= "field" (first (:reference rating))))
+                  (is (contains? (second (:reference rating)) "join-alias")
+                      "the reference is alias-qualified, not a bare FK"))))
+            (testing "plain metric resource (with-queryable-dimensions? false): dims omitted"
+              (let [out (:structured-output (entity-details/get-metric-details
+                                             {:metric-id metric-id
+                                              :with-queryable-dimensions? false
+                                              :with-field-values?         false}))]
+                (is (nil? (:queryable-dimensions out)))
+                (is (nil? (:join-required-dimensions out)))))))))))

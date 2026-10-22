@@ -1,9 +1,16 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
+import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
-import type { Database, DatabaseUsageInfo } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  DatabaseUsageInfo,
+  Engine,
+  SchemaName,
+} from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
@@ -34,6 +41,18 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
+export function setupDatabaseMetadataEndpoint(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}/metadata`, db, {
+    name: `database-${db.id}-metadata`,
+  });
+}
+
+export function setupDatabaseMetadataErrorEndpoint(databaseId: DatabaseId) {
+  fetchMock.get(`path:/api/database/${databaseId}/metadata`, 500, {
+    name: `database-${databaseId}-metadata`,
+  });
+}
+
 export function setupUpdateDatabaseEndpoint(db: Database) {
   fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
     const body = await call?.request?.json();
@@ -56,6 +75,10 @@ export function setupDatabaseUsageInfoEndpoint(
   usageInfo: DatabaseUsageInfo,
 ) {
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
+}
+
+export function setupEnginesEndpoint(engines: Record<string, Engine>) {
+  fetchMock.get("path:/api/setting/engines", engines);
 }
 
 export function setupDatabaseListEndpoint(databases: Database[]) {
@@ -102,12 +125,23 @@ export const setupSchemaEndpoints = (db: Database) => {
   fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
 
   schemaNames.forEach((schema) => {
-    fetchMock.get(
-      `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
-      schemas[schema],
-      { name: `database-${db.id}-schema-${schema}` },
-    );
+    const isQueryParam = shouldSchemaBePassedAsQueryParam(schema);
+    fetchMock.get({
+      url: isQueryParam
+        ? `path:/api/database/${db.id}/schema/`
+        : `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
+      ...(isQueryParam && { query: { schema } }),
+      response: schemas[schema],
+      name: `database-${db.id}-schema-${schema}`,
+    });
   });
+};
+
+export const setupListDatabaseSchemasEndpoint = (
+  databaseId: DatabaseId,
+  schemaNames: SchemaName[],
+) => {
+  fetchMock.get(`path:/api/database/${databaseId}/schemas`, schemaNames);
 };
 
 export function setupDatabaseIdFieldsEndpoints({

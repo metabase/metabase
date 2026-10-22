@@ -1,13 +1,12 @@
 (ns metabase.channel.render.js.color
-  "Determines the background colors of pulse table cells by delegating to the shared color-selector javascript (loaded
-  into every pooled static-viz context — see `metabase.channel.render.js.pool`). All the colors for a table are
-  computed in a single batched JS call, so no context-bound value ever escapes the pool."
+  "Determines the background colors of pulse table cells by delegating to the shared color-selector javascript through
+  [[metabase.channel.render.js.protocol]]. All the colors for a table are computed in a single batched JS call."
   (:require
-   [metabase.channel.render.js.engine :as js.engine]
-   [metabase.channel.render.js.pool :as js.pool]
+   [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
-   [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,15 +14,21 @@
   "This is a pretty loose schema, more as a safety net as we have a long feedback loop for this being broken as it's
   being handed to the JS color picking code. Currently it just needs column names from `:cols`, and the query results
   from `:rows`"
-  [:map
-   [:cols [:sequential [:map
+  [:map {:closed true}
+   [:cols [:sequential [:map {:closed true}
                         [:name :string]]]]
-   [:rows [:sequential [:sequential :any]]]])
+   [:rows [:sequential [:sequential
+                        [:or ms/FieldValue
+                         (ms/InstanceOfClass metabase.formatter.impl.NumericWrapper)
+                         (ms/InstanceOfClass metabase.formatter.impl.TextWrapper)]]]]])
 
 (def ^:private Cell
   "One cell to color: its value (possibly a formatter wrapper), its row index (row-highlight rules read the whole row
   from the `:rows` passed alongside), and its column name."
-  [:tuple :any :int [:maybe :string]])
+  [:tuple [:or ms/FieldValue
+           (ms/InstanceOfClass metabase.formatter.impl.NumericWrapper)
+           (ms/InstanceOfClass metabase.formatter.impl.TextWrapper)]
+   :int [:maybe :string]])
 
 (defn- ->js-number
   "Coerce BigDecimal/BigInteger to primitive double/long so the JSON handed to the JS side carries plain numbers.
@@ -59,19 +64,17 @@
   string (hex or `rgba()`) or nil for cells no rule matches. The coloring rules come from `:table.column_formatting`
   in `viz-settings` (row-highlight rules are disabled when `:table.pivot` is set)."
   [{:keys [cols rows]} :- QueryResults
-   viz-settings
+   viz-settings :- [:maybe ms/VisualizationSettings]
    cells :- [:sequential Cell]]
   (if (or (empty? cells)
           (empty? (or (:table.column_formatting viz-settings)
                       (get viz-settings "table.column_formatting"))))
     (vec (repeat (count cells) nil))
-    (js.pool/with-static-viz-context context
-      (-> (js.engine/execute-fn-name context "getCellBackgroundColors"
-                                     (json/encode rows)
-                                     (json/encode cols)
-                                     (json/encode viz-settings)
-                                     (json/encode (mapv (fn [[value row-index column-name]]
-                                                          [(->js-value value) row-index column-name])
-                                                        cells)))
-          .asString
-          json/decode))))
+    (js.protocol/cell-background-colors
+     (renderer/renderer)
+     {:rows     rows
+      :cols     cols
+      :settings viz-settings
+      :cells    (mapv (fn [[value row-index column-name]]
+                        [(->js-value value) row-index column-name])
+                      cells)})))

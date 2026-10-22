@@ -2,9 +2,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
+   [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.test :as mt]))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -51,7 +57,14 @@
     (is (=? [{:type :tool-input :id "t1" :function "search" :arguments "{bad-json"}]
             (messages/input-message->parts
              {:role       :assistant
-              :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]})))))
+              :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]}))))
+  (testing "map tool_call arguments get keyword argument names and string keys below them"
+    (is (= {:query {"stages" [{"limit" 1}]}}
+           (-> (messages/input-message->parts
+                {:role       :assistant
+                 :tool_calls [{:id "t1" :name "search" :arguments {"query" {:stages [{:limit 1}]}}}]})
+               first
+               :arguments)))))
 
 (deftest ^:parallel input-message-tool-test
   (testing "tool result message"
@@ -71,6 +84,21 @@
              {:role    :user
               :content [{:type "tool_result" :tool_use_id "t1" :content "Result 1"}
                         {:type "tool_result" :tool_use_id "t2" :content "Result 2"}]})))))
+
+(deftest ^:parallel persisted-tool-call-replays-into-adapter-test
+  (testing "a stored tool call replays with keyword argument names and string nested keys, and the adapter accepts it"
+    (let [stored {:type       "tool-construct_notebook_query"
+                  :toolCallId "call-1"
+                  :state      "output-available"
+                  :input      {:query {:stages [{:source-table 1}]} :limit 5}
+                  :output     {:output "ok"}}
+          parts  (into [] (mapcat messages/input-message->parts)
+                       (metabot.persistence/tool-part->llm-messages stored))]
+      (is (= {:query {"stages" [{"source-table" 1}]} :limit 5}
+             (:arguments (first parts))))
+      (is (=? {:messages [{:role "assistant" :tool_calls [{:id "call-1" :function {:arguments string?}}]}
+                          {:role "tool" :tool_call_id "call-1"}]}
+              (chat-completions/request-body {:model "some/model" :input parts}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; build-message-history
@@ -233,6 +261,17 @@
                     (memory/initialize [{:role :user :content "Hi"}] {})))]
       (is (str/includes? content "Sales")))))
 
+(deftest ^:parallel context-injection-recent-views-test
+  (testing "includes recent views in the injected context"
+    (let [content (last-user-content
+                   (messages/build-message-history
+                    {:user_recently_viewed [{:type "question" :id 7 :name "Monthly Revenue"}]
+                     :user_is_viewing      [{:type "dashboard" :id 1 :name "Sales"}]}
+                    (memory/initialize [{:role :user :content "Hi"}] {})))]
+      (is (str/includes? content "recently viewed"))
+      (is (str/includes? content "Monthly Revenue"))
+      (is (str/ends-with? content "Hi")))))
+
 (deftest ^:parallel context-injection-viewing-native-query-test
   (testing "includes SQL and schema when user is viewing a native query"
     (let [mp (mt/metadata-provider)
@@ -271,14 +310,109 @@
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:role "system" :content #"(?s).*Metabot.*"}
               (messages/build-system-message {} profile {})))))
-  (testing "includes viewing context when provided"
-    (let [context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales Dashboard"}]}
-          profile {:prompt-template "internal.selmer"
-                   :model           "claude-sonnet-4-5-20250929"}]
-      (is (=? {:content #(not (str/blank? %))}
-              (messages/build-system-message context profile {})))))
   (testing "handles empty context gracefully"
     (let [profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:content #(not (str/blank? %))}
               (messages/build-system-message {} profile {}))))))
+
+(deftest build-system-message-excludes-user-context-test
+  (testing "viewing context does not leak into the system message (it is injected into the last user message)"
+    (let [context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales Dashboard"}]}
+          profile {:prompt-template "internal.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}]
+      (is (=? {:content #(not (str/includes? % "Sales Dashboard"))}
+              (messages/build-system-message context profile {}))))))
+
+(deftest build-system-message-does-not-enrich-context-test
+  (testing "building the system message never runs the expensive context formatting"
+    (let [calls   (atom 0)
+          profile {:prompt-template "internal.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}]
+      (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                  (fn [_] (swap! calls inc) {})]
+        (messages/build-system-message
+         {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+         profile
+         {})
+        (is (zero? @calls))))))
+
+(deftest build-system-message-uses-profile-system-prompt-context-test
+  (testing "a profile's :system-prompt-context fn contributes extra, feature-specific template vars
+            to the system prompt — the generic agent stays unaware of what they are"
+    (let [profile {:prompt-template       "explorations.selmer"
+                   :model                 "claude-sonnet-4-5-20250929"
+                   ;; stand in for any feature hook; here it fills the template's {{research_plan}}
+                   :system-prompt-context (fn [ctx] {:research_plan (str "PLAN:" (:marker ctx))})}
+          content (:content (messages/build-system-message {:marker "abc123"} profile {}))]
+      (is (str/includes? content "PLAN:abc123")
+          "the hook receives the request context and its returned vars reach the template")))
+  (testing "a profile with no :system-prompt-context contributes nothing (and does not error)"
+    (let [profile {:prompt-template "explorations.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}
+          content (:content (messages/build-system-message {} profile {}))]
+      (is (not (str/includes? content "Current research plan"))))))
+
+(deftest build-message-history-enriches-context-once-test
+  (testing "one LLM call formats the user context exactly once (in build-message-history)"
+    (let [calls   (atom 0)
+          profile {:prompt-template "internal.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}
+          context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+          orig    (mt/original-fn #'user-context/enrich-context-for-template)]
+      (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                  (fn [ctx] (swap! calls inc) (orig ctx))]
+        (messages/build-system-message context profile {})
+        (messages/build-message-history
+         context
+         (memory/initialize [{:role :user :content "Hello"}] {}))
+        (is (= 1 @calls))))))
+
+(deftest ^:parallel build-message-history-dialect-preload-gates-on-sql-tools-test
+  (let [context  {:user_is_viewing [{:type       "adhoc"
+                                     :sql_engine "postgres"
+                                     :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
+        memory   (memory/initialize [{:role :user :content "Hello"}] {})
+        preload? (fn [parts]
+                   (boolean (some #(and (= :tool-input (:type %)) (= "load_skill" (:function %))) parts)))]
+    (testing "a profile with a SQL-writing tool gets the dialect skill preloaded"
+      (is (preload? (messages/build-message-history context memory {"create_sql_query" nil}))))
+    (testing "a profile without SQL tools does not, even with the native editor open"
+      (is (not (preload? (messages/build-message-history context memory {"construct_notebook_query" nil})))))
+    (testing "the 2-arity has no tools and never preloads"
+      (is (not (preload? (messages/build-message-history context memory)))))))
+
+(deftest ^:parallel host-app-native-viewing-context-does-not-claim-sql-editor-test
+  (testing "the host-app system prompt says there is no SQL editor; the injected user context must not say the user is in one"
+    (let [context {:in_host_app     true
+                   :user_is_viewing [{:type       "adhoc"
+                                      :sql_engine "postgres"
+                                      :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
+          profile (profiles/get-profile :embedding_next)
+          system  (binding [scope/*current-user-scope* api-scope/unrestricted]
+                    (:content (messages/build-system-message context profile
+                                                             (profiles/profile->tools profile []))))
+          user    (->> (messages/build-message-history context
+                                                       (memory/initialize [{:role :user :content "Hi"}] {})
+                                                       {"construct_notebook_query" nil})
+                       (filter #(= :user (:role %))) last :content)]
+      (is (str/includes? system "there is no SQL editor") "premise")
+      (is (not (str/includes? user "The user is currently in the SQL editor"))))))
+
+(deftest ^:parallel sql-profile-dialect-claim-matches-preload-test
+  (testing "sql-querying-only.selmer claims the dialect skill 'has already been loaded'; that claim and the preload must agree now that the preload gates on SQL tools"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :sql)
+            context {:user_is_viewing [{:type       "adhoc"
+                                        :sql_engine "postgres"
+                                        :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
+            memory  (memory/initialize [{:role :user :content "Hi"}] {})]
+        (doseq [[label caps] {"with write_sql_queries" ["permission:write_sql_queries"]
+                              "without it"             []}]
+          (testing label
+            (let [tools      (profiles/profile->tools profile caps)
+                  system     (:content (messages/build-system-message (assoc context :capabilities caps) profile tools))
+                  parts      (messages/build-message-history context memory tools)
+                  claims?    (str/includes? system "have already been loaded into this conversation")
+                  preloaded? (boolean (some #(= "load_skill" (:function %)) parts))]
+              (is (= claims? preloaded?) (pr-str {:claims? claims? :preloaded? preloaded?})))))))))

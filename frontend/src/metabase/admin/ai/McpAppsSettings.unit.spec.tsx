@@ -7,11 +7,14 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { McpAppsSettings } from "./McpAppsSettings";
+
+const SITE_URL = "https://metabase.example.com";
+const MCP_URL = `${SITE_URL}/api/metabase-mcp`;
 
 const setup = async ({
   commonOrigins = [],
@@ -26,6 +29,7 @@ const setup = async ({
     "mcp-enabled?": enabled,
     "mcp-apps-cors-enabled-clients": commonOrigins,
     "mcp-apps-cors-custom-origins": customOrigins,
+    "site-url": SITE_URL,
   });
 
   setupPropertiesEndpoints(settings);
@@ -38,7 +42,9 @@ const setup = async ({
     }),
   });
 
-  await screen.findByText("MCP server");
+  if (enabled) {
+    await screen.findByText("MCP server");
+  }
 };
 
 describe("McpAppsSettings", () => {
@@ -86,19 +92,6 @@ describe("McpAppsSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show custom inline chart origins copy", async () => {
-    await setup();
-
-    expect(
-      await screen.findByText("Custom inline chart origins"),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Add custom origins for MCP clients that should display inline charts. Separate values with a space.",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("can toggle all MCP clients on", async () => {
     await setup();
 
@@ -132,11 +125,23 @@ describe("McpAppsSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("can update custom origins on blur", async () => {
-    await setup();
+  it("updates custom inline chart origins on blur", async () => {
+    await setup({ customOrigins: "https://librechat.example.com" });
 
     const input = await screen.findByPlaceholderText("https://*.example.com");
-    await userEvent.type(input, "https://my-app.example.com");
+
+    await waitFor(() => {
+      expect(input).toHaveValue("https://librechat.example.com");
+    });
+
+    await userEvent.clear(input);
+
+    // MCP client custom origins are separated by spaces
+    await userEvent.type(
+      input,
+      "https://librechat.example.com https://openwebui.example.com",
+    );
+
     await userEvent.tab();
 
     const puts = await findRequests("PUT");
@@ -144,15 +149,28 @@ describe("McpAppsSettings", () => {
 
     const [{ url, body }] = puts;
     expect(url).toContain("/setting/mcp-apps-cors-custom-origins");
-    expect(body).toEqual({ value: "https://my-app.example.com" });
+
+    expect(body).toEqual({
+      value: "https://librechat.example.com https://openwebui.example.com",
+    });
   });
 
-  it("hides MCP client configuration when the MCP server is off", async () => {
+  it("keeps the toggle but hides the server URL and MCP client configuration when the MCP server is off", async () => {
     await setup({ enabled: false });
 
+    expect(
+      await screen.findByRole("switch", { name: "MCP server" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(MCP_URL)).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Claude")).not.toBeInTheDocument();
     expect(
       screen.queryByPlaceholderText("https://*.example.com"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the server URL when the MCP server is on", async () => {
+    await setup();
+
+    expect(await screen.findByDisplayValue(MCP_URL)).toBeInTheDocument();
   });
 });

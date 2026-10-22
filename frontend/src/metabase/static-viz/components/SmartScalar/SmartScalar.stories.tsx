@@ -3,8 +3,7 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
-import { colors } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
@@ -18,16 +17,19 @@ const COLS = [
     name: "Date",
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
+    source: "breakout",
   }),
   createMockColumn({
     name: "Count",
     base_type: "type/Integer",
     effective_type: "type/Integer",
+    source: "aggregation",
   }),
   createMockColumn({
     name: "Average",
     base_type: "type/Integer",
     effective_type: "type/Integer",
+    source: "aggregation",
   }),
 ];
 
@@ -104,6 +106,7 @@ export default {
     "scalar.comparisons": [{ id: "1", type: "previousPeriod" }],
     "scalar.switch_positive_negative": false,
     "scalar.compact_primary_number": false,
+    "scalar.show_comparison_value": true,
   },
   argTypes: {
     "scalar.field": {
@@ -114,6 +117,9 @@ export default {
       control: { type: "boolean" },
     },
     "scalar.compact_primary_number": {
+      control: { type: "boolean" },
+    },
+    "scalar.show_comparison_value": {
       control: { type: "boolean" },
     },
   },
@@ -134,7 +140,7 @@ const createTemplate = ({ rows, vizSettings }: SmartScalarSeriesOpts) =>
         rawSeries={[series]}
         renderingContext={{
           fontFamily: "Lato",
-          getColor: createColorGetter(colors),
+          getColor: createColorGetter(),
           measureText: (text, style) =>
             measureTextWidth(text, Number(style.size), Number(style.weight)),
           measureTextHeight: (_, style) =>

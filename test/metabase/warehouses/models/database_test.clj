@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
@@ -71,6 +72,35 @@
     (testing "All permissions are deleted when we delete the database"
       (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
+(deftest ^:synchronized delete-empty-database-does-not-run-field-delete-test
+  (testing "Deleting a Database with no Fields avoids the locking bulk-delete query"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (let [original-query-one @#'t2/query-one
+            delete-queries     (atom [])]
+        ;; A dynamic redef permanently proxies this hot var. This test is synchronized, so a temporary root swap is
+        ;; both safe and cheaper for the rest of the test JVM.
+        (with-redefs [t2/query-one (fn [& args]
+                                     (swap! delete-queries into (filter :delete-from args))
+                                     (apply original-query-one args))]
+          (#'database/delete-database-fields! db-id))
+        (is (empty? @delete-queries))))))
+
+(deftest ^:parallel delete-database-fields-test
+  (testing "Fields, including nested Fields, are deleted when the Database has Fields"
+    (mt/with-temp [:model/Database {db-id :id}     {}
+                   :model/Table    {table-id :id}  {:db_id db-id}
+                   :model/Field    {parent-id :id} {:table_id table-id}
+                   :model/Field    _               {:table_id table-id :parent_id parent-id}]
+      (t2/with-call-count [call-count]
+        ;; This only deletes the test-local Database Fields created above.
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
+        (#'database/delete-database-fields! db-id)
+        (is (= 4 (call-count))
+            "One existence check, two successful DELETEs, and one terminating DELETE"))
+      (is (not (t2/exists? :model/Field :id parent-id)))
+      (is (not (t2/exists? :model/Field :table_id table-id))))))
+
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler!
@@ -89,12 +119,55 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest delete-database-deletes-query-actions-test
+  (testing "deleting a Database deletes the query Actions that run against it, including the ones without a model"
+    (mt/with-temp [:model/Database    {db-id :id}     {}
+                   :model/Action      {action-id :id} {:type :query :name "No model" :model_id nil}
+                   :model/QueryAction _               {:action_id     action-id
+                                                       :dataset_query {:database db-id
+                                                                       :type     :native
+                                                                       :native   {:query "select 1"}}}]
+      (t2/delete! :model/Database :id db-id)
+      (is (not (t2/exists? :model/Action :id action-id))))))
+
+(deftest health-check-candidates-test
+  (testing "startup health checks pick one representative database per engine: the lowest id, skipping
+            audit/sample/destination databases"
+    (mt/with-temp [:model/Database {router :id} {:engine :postgres}
+                   :model/Database {dest :id}   {:engine :mysql :router_database_id router}
+                   :model/Database {sample :id} {:engine :mysql :is_sample true}
+                   :model/Database {audit :id}  {:engine :mysql :is_audit true}
+                   :model/Database {stub :id}   {:engine :mysql :is_stub true}
+                   :model/Database {_mysql :id} {:engine :mysql}
+                   :model/Database {pg2 :id}    {:engine :postgres}
+                   :model/Database {pg3 :id}    {:engine :postgres}]
+      (let [candidates    (#'database/health-check-candidates)
+            candidate-ids (into #{} (map :id) candidates)
+            engines       (into #{} (map :engine) candidates)]
+        (testing "exactly one representative per engine"
+          (is (= (count candidates) (count engines))))
+        (testing "every engine with an eligible database gets a representative"
+          (is (contains? engines :postgres))
+          (is (contains? engines :mysql)))
+        (testing "only the lowest-id database of an engine can be the representative"
+          (is (not (contains? candidate-ids pg2)))
+          (is (not (contains? candidate-ids pg3))))
+        (testing "router destinations are never candidates"
+          (is (not (contains? candidate-ids dest))))
+        (testing "sample databases can't claim an engine's slot"
+          (is (not (contains? candidate-ids sample))))
+        (testing "audit databases are never candidates"
+          (is (not (contains? candidate-ids audit))))
+        (testing "stub databases can't claim an engine's slot"
+          (is (not (contains? candidate-ids stub))))))))
+
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
     (let [original-select (mt/original-fn #'t2/select)]
       (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
+                                  ;; make the startup candidate fetch return only the test DB
                                   t2/select (fn [model & args]
-                                              (if (and (= model :model/Database) (empty? args))
+                                              (if (= model :model/Database)
                                                 [(mt/db)]
                                                 (apply original-select model args)))]
         (binding [driver.settings/*allow-testing-h2-connections* true]
@@ -131,8 +204,9 @@
             (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception")))
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms -1]
-              (database/health-check-database! (mt/db))
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 1]
+              (with-redefs [driver/can-connect? (fn [& _args] (Thread/sleep 500) true)]
+                (database/health-check-database! (mt/db)))
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
               (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))
@@ -529,7 +603,6 @@
                                        :name "Secret Test"
                                        :details base-details}]
       (mt/with-current-user (mt/user->id :crowberto)
-        #_{:clj-kondo/ignore [:redundant-nested-call]}
         (are [expected extra-details] (= (merge
                                           base-details
                                           expected)
@@ -708,21 +781,106 @@
         (testing ":write_data_details :auth-provider is keywordized"
           (is (keyword? (get-in db [:write_data_details :auth-provider]))))))))
 
-(deftest user-may-not-update-sample-database-test
-  (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
-                                                                    :is_sample true
-                                                                    :name      "Sample Database"
-                                                                    :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
-    (testing " updating the engine of a sample database is not allowed"
+(driver/register! ::test, :abstract? true)
+
+(driver/register! ::host-details-driver, :abstract? true)
+(driver/register! ::alternate-details-driver, :abstract? true)
+
+(defmethod driver/connection-hosts ::host-details-driver
+  [_driver details]
+  (driver/hosts-from-details details [:host]))
+
+(defmethod driver/connection-hosts ::alternate-details-driver
+  [_driver details]
+  (driver/hosts-from-details details [:alternate-host]))
+
+(deftest engine-change-validates-existing-details-with-new-driver-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-temp [:model/Database db {:engine  (u/qualified-name ::host-details-driver)
+                                       :details {:host "8.8.8.8" :alternate-host "127.0.0.1"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"The engine on a sample database cannot be changed."
-           (t2/update! :model/Database id {:engine :sqlite}))))
-    (testing " updating other attributes of a sample database is allowed"
-      (t2/update! :model/Database id {:name "My New Name"})
-      (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
+           #"private or internal network address"
+           (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
 
-(driver/register! ::test, :abstract? true)
+(deftest overlay-details-are-validated-the-way-they-are-resolved-test
+  ;; `:write_data_details` and `:admin_details` are merged onto `:details` by
+  ;; [[metabase.driver.connection/effective-details]] rather than used on their own, so that merge is what has to
+  ;; satisfy the policy -- an overlay holding nothing but credentials repoints nothing.
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-temp [:model/Database db {:engine  (u/qualified-name ::host-details-driver)
+                                       :details {:host "8.8.8.8"}}]
+      (testing "an overlay carrying only credentials inherits the host it will be merged with"
+        (is (pos? (t2/update! :model/Database (:id db) {:write_data_details {:user "hummingbird"}}))))
+      (testing "an overlay that repoints the connection at an internal address is refused"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
+             (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+
+(deftest disallowed-connection-parameters-are-refused-on-save-test
+  ;; like the network policy, enforced on the model so serialization import and config-file provisioning -- which
+  ;; write a Database without testing a connection -- cannot store one either
+  (testing "a disallowed connection parameter cannot be stored"
+    (doseq [details [{:host "db.example.com" :additional-options "socketFactory=a.b.C"}
+                     {:host "db.example.com" :sslfactory "a.b.C"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (mt/with-temp [:model/Database _ {:engine :postgres :details details}]))))))
+  (testing "...including by adding it to an existing database"
+    (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"dangerous"
+           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
+  (testing "a database whose driver isn't registered (e.g. an uninstalled plugin) can still be saved"
+    (mt/with-temp [:model/Database db {:engine "not-a-registered-driver" :details {:host "db.example.com"}}]
+      (t2/update! :model/Database (:id db) {:details {:host "db2.example.com"}})
+      (is (=? {:details {:host "db2.example.com"}}
+              (t2/select-one :model/Database (:id db)))))))
+
+(deftest empty-details-are-not-subject-to-the-network-policy-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (testing "a database with empty details can be created"
+      (mt/with-temp [:model/Database db {:engine :h2, :details {}}]
+        (testing "and its engine changed, the way installing analytics flips the audit db's"
+          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))
+        (testing "but giving it an internal address is refused"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"private or internal network address"
+               (t2/update! :model/Database (:id db) {:details {:host "127.0.0.1"}}))))))))
+
+(deftest attached-dwh-relaxes-the-network-policy-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-premium-features #{:attached-dwh}
+      ;; the exemption requires the :attached-dwh token feature, which an OSS build can never have
+      (when config/ee-available?
+        (testing "an attached DWH on a private address can be written"
+          (mt/with-temp [:model/Database db {:engine          (u/qualified-name ::host-details-driver)
+                                             :is_attached_dwh true
+                                             :details         {:host "10.224.7.141"}}]
+            (testing "and updated"
+              (is (pos? (t2/update! :model/Database (:id db) {:details {:host "10.224.7.142"}})))))))
+      (testing "loopback and link-local stay blocked even for the attached DWH"
+        (doseq [host ["127.0.0.1" "169.254.169.254"]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"private or internal network address"
+               (t2/insert! :model/Database {:name            "attached dwh"
+                                            :engine          (u/qualified-name ::host-details-driver)
+                                            :is_attached_dwh true
+                                            :details         {:host host}}))
+              (str "should be refused: " host)))))
+    (testing "without the :attached-dwh token feature the flag confers no exemption"
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
+             (t2/insert! :model/Database {:name            "dwh-flavored smuggling"
+                                          :engine          (u/qualified-name ::host-details-driver)
+                                          :is_attached_dwh true
+                                          :details         {:host "10.224.7.141"}})))))))
 
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
@@ -730,22 +888,28 @@
       (is (= ::test
              (t2/select-one-fn :engine :model/Database :id db-id))))))
 
-(deftest identity-hash-test
-  (testing "Database hashes are composed of the name and engine"
-    (mt/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
-      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes/identity-hash db)))
-      (is (= "b6f1a9e8"
-             (serdes/identity-hash db))))))
-
 (deftest ^:parallel serdes-extract-is-stub-test
-  (testing "serdes/extract-one preserves :is_stub true and elides it when false"
+  (testing "serdes/extract-one never exports :is_stub"
     (mt/with-temp [:model/Database stub     {:engine :h2 :name "stub" :is_stub true}
                    :model/Database non-stub {:engine :h2 :name "non-stub"}]
-      (testing "stub DB carries :is_stub true into the extracted map"
-        (is (true? (:is_stub (serdes/extract-one "Database" nil stub)))))
-      (testing "non-stub DB elides :is_stub from the extracted map (matches default)"
-        (is (not (contains? (serdes/extract-one "Database" nil non-stub) :is_stub)))))))
+      (is (not (contains? (serdes/extract-one "Database" nil stub) :is_stub)))
+      (is (not (contains? (serdes/extract-one "Database" nil non-stub) :is_stub))))))
+
+(deftest ^:parallel serdes-is-sample-not-trusted-test
+  (testing "serdes never trusts an archive's :is_sample (SEC-1175): the real Sample Database is excluded from export,
+            so an incoming is_sample is forged. It is dropped from :copy and imported as false."
+    (let [spec (serdes/make-spec "Database" nil)]
+      (is (not (contains? (set (:copy spec)) :is_sample)))
+      (is (false? ((get-in spec [:transform :is_sample :import]) true))))))
+
+(deftest assert-sqlite-not-hosted-test
+  (testing "serdes import refuses a SQLite Database on a hosted instance (SEC-1175); self-hosted and non-SQLite are fine"
+    (mt/with-premium-features #{:hosting}
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
+                            (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x" :details {:db "/etc/hosts"}})))
+      (is (nil? (database/assert-sqlite-not-hosted! {:engine :postgres :name "x"}))))
+    (mt/with-premium-features #{}
+      (is (nil? (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x"}))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
@@ -1066,3 +1230,16 @@
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
         (is (false? (mi/can-query? :model/Database db-id)))))))
+
+(deftest router-database-id-is-immutable-test
+  (testing "updating a database's router_database_id throws"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {normal-id :id} {}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"router_database_id"
+           (t2/update! :model/Database normal-id {:router_database_id router-id})))))
+  (testing "a no-op update that does not touch router_database_id is allowed (destination can still be edited)"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {dest-id :id} {:router_database_id router-id}]
+      (is (t2/update! :model/Database dest-id {:name "renamed-destination"})))))

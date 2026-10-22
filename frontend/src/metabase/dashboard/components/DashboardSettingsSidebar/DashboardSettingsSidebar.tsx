@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
@@ -35,12 +35,12 @@ export function DashboardSettingsSidebar() {
   if (currentModal === "caching") {
     return (
       <PLUGIN_CACHING.SidebarCacheForm
+        // Unjustified type cast. FIXME
         item={dashboard as CacheableDashboard}
         model="dashboard"
         isOpen={state.caching}
         onClose={closeSidebar}
         onBack={() => close("caching")}
-        pt="md"
       />
     );
   }
@@ -98,7 +98,6 @@ const DashboardSidesheetBody = ({
           label={t`Auto-apply filters`}
           labelPosition="left"
           variant="stretch"
-          size="sm"
           id={autoApplyFilterToggleId}
           checked={dashboard.auto_apply_filters}
           onChange={(e) => handleToggleAutoApplyFilters(e.target.checked)}

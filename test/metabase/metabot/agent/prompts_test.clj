@@ -3,7 +3,15 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.prompts :as prompts]))
+   [metabase.agent-api.api]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.api.macros :as api.macros]
+   [metabase.metabot.agent.messages :as messages]
+   [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.skills :as skills]
+   [metabase.metabot.tools.construct :as construct]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -29,6 +37,52 @@
     (testing "examples use the exact sample database name, not the old abbreviated portable FK"
       (is (str/includes? prompt "Sample Database"))
       (is (not (re-find #"\[Sample\s*," prompt))))))
+
+(deftest ^:parallel sample-database-examples-use-a-null-schema-test
+  (doseq [[source text] {"construct_notebook_query.md"          (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
+                         "construct-notebook-query-core.md"     (slurp (io/resource "metabot/skills/construct-notebook-query-core.md"))
+                         "construct-notebook-query-advanced.md" (slurp (io/resource "metabot/skills/construct-notebook-query-advanced.md"))
+                         "mbql-shape.selmer"                    (slurp (io/resource "metabot/prompts/shared/prompt_snippets/mbql-shape.selmer"))
+                         "construct_notebook_query tool"        (:description @#'construct/construct-notebook-query-json-schema)
+                         "Agent API construct_query tool"       (-> (api.macros/find-route 'metabase.agent-api.api :post "/v2/construct-query")
+                                                                    (get-in [:form :metadata :tool :description]))
+                         "Agent API reference.md"               (slurp (io/resource "metabase/agent_api/reference.md"))}]
+    (testing source
+      (is (= #{"null"}
+             (set (map second (re-seq #"\"Sample Database\",\s*([^,\s]+)" text))))))))
+(deftest ^:parallel metric-source-guidance-is-carried-by-every-surface-test
+  ;; The MCP prompt, advanced skill, and aggregation catalog must agree on how to choose a metric's source.
+  (let [surfaces {"prompts/tools/construct_notebook_query.md"
+                  (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
+                  "skills/construct-notebook-query-advanced.md"
+                  (slurp (io/resource "metabot/skills/construct-notebook-query-advanced.md"))}]
+    (doseq [[path doc] surfaces]
+      (testing path
+        (testing "names both source attributes the `<metric>` tag can carry"
+          (is (str/includes? doc "base_table_fully_qualified_name"))
+          (is (str/includes? doc "source_card_portable_entity_id")))
+        (testing "and the marker for a metric whose source cannot be offered"
+          (is (str/includes? doc "source_unavailable")))
+        (testing "and states the rule that makes the choice between them conditional"
+          (is (str/includes? doc "Build the stage on that source")))
+        (testing "and breaks a metric out through an implicit join, the way the query runs"
+          (is (str/includes? doc "on a `source-table` and a `source-card` stage alike"))
+          (is (not (str/includes? doc "cannot resolve an implicit join against a metric aggregation"))))))
+    (testing "the discovery snippet does not send the agent to the base table unconditionally"
+      (let [doc (slurp (io/resource "metabot/prompts/shared/prompt_snippets/semantic-layer-discovery.selmer"))]
+        (is (str/includes? doc "base_table_fully_qualified_name"))
+        (is (str/includes? doc "source_card_portable_entity_id"))
+        (is (str/includes? doc "Use the source specified by its `<metric>` tag"))))
+    (testing "the aggregation catalogs describe the metric clause the same way"
+      (doseq [path ["metabot/prompts/tools/construct_notebook_query.md"
+                    "metabot/skills/construct-notebook-query-operators.md"]]
+        (testing path
+          (let [line (->> (str/split-lines (slurp (io/resource path)))
+                          (filter #(str/starts-with? % "- `[\"metric\", {}, "))
+                          first)]
+            (is (some? line) "the catalog lists a `metric` aggregation clause")
+            (is (str/includes? line "base_table_fully_qualified_name"))
+            (is (str/includes? line "source_card_portable_entity_id"))))))))
 
 (deftest ^:parallel render-system-prompt-test
   (testing "renders template with variables"
@@ -79,7 +133,6 @@
   (testing "builds complete system message"
     (let [profile {:prompt-template "embedding-next.selmer"}
           context {:current_time "2024-01-15 14:30:00"
-                   :first_day_of_week "Sunday"
                    :sql-dialect "postgresql"}
           tools {}
           content (prompts/build-system-message-content profile context tools [])]
@@ -87,7 +140,8 @@
       (is (string? content))
       (is (> (count content) 100))
       (is (re-find #"Metabot" content))
-      (is (re-find #"2024-01-15 14:30:00" content)))))
+      (is (not (str/includes? content "2024-01-15 14:30:00"))
+          "current time is not in system message (moved to message injection)"))))
 
 (deftest ^:parallel build-system-message-content-test-2
   (testing "includes dialect instructions when dialect specified"
@@ -120,22 +174,6 @@
       (is (string? content))
       (is (> (count content) 1000)))))
 
-(deftest ^:parallel build-system-message-content-test-5
-  (testing "renders transform codegen template with literal model syntax"
-    (let [profile {:prompt-template "transform-codegen.selmer"}
-          context {:current_time "2024-01-15 14:30:00"
-                   :sql-dialect "postgresql"}
-          tools {}
-          content (prompts/build-system-message-content profile context tools [])]
-      (is (some? content))
-      (is (string? content))
-      (is (str/includes? content "{{#model_id-short-slug}}"))
-      (is (str/includes? content "{{#5-user-details}}"))
-      (is (str/includes? content "{{snippet: Snippet Name}}"))
-      (is (str/includes? content "{{snippet: recent orders}}"))
-      (is (not (str/includes? content "{%raw%}")))
-      (is (not (str/includes? content "{% safe %}"))))))
-
 (deftest ^:parallel build-system-message-content-test-6
   (testing "current user info is not in system message (moved to message injection)"
     (let [profile {:prompt-template "internal.selmer"}
@@ -146,3 +184,159 @@
       (is (some? content))
       (is (not (str/includes? content "Here is some information about the user:")))
       (is (not (str/includes? content "<user><name>Jane Doe</name></user>"))))))
+
+(deftest ^:parallel build-system-message-content-test-7
+  (testing "viewing context and recent views are not in system message (moved to message injection)"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:viewing_context "The user is currently looking at dashboard 42."
+                   :recent_views    "Here are some items the user has recently viewed: card 7"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (some? content))
+      (is (not (str/includes? content "dashboard 42")))
+      (is (not (str/includes? content "recently viewed"))))))
+
+(deftest ^:parallel inject-context-test
+  (testing "prepends the rendered context block to the message"
+    (let [injected (prompts/inject-context {:current_time      "2024-01-15 14:30:00"
+                                            :first_day_of_week "Monday"}
+                                           "Show me revenue")]
+      (is (str/starts-with? injected "<context>"))
+      (is (str/ends-with? injected "Show me revenue"))
+      (is (str/includes? injected "2024-01-15 14:30:00"))
+      (is (str/includes? injected "Monday")))))
+
+(deftest ^:parallel inject-context-recent-views-test
+  (testing "recent views are injected into the message"
+    (let [recent   "Here are some items the user has recently viewed: card 7"
+          injected (prompts/inject-context {:recent_views recent} "Show me revenue")]
+      (is (str/starts-with? injected "<context>"))
+      (is (str/includes? injected recent)))))
+
+(deftest ^:parallel inject-context-no-context-test
+  (testing "message is returned unchanged when there is nothing to inject"
+    (is (= "Hi" (prompts/inject-context {} "Hi")))
+    (is (= "Hi" (prompts/inject-context {:viewing_context ""
+                                         :current_time    ""
+                                         :recent_views    ""}
+                                        "Hi")))))
+
+(deftest ^:parallel build-system-message-content-test-8
+  (testing "builds exploration system message"
+    (let [profile {:prompt-template "explorations.selmer"}
+          context {}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (string? content))
+      (is (not (str/includes? content "{% include"))
+          "unresolved {% include %} tags mean rendering failed and the raw template was returned"))))
+
+(deftest ^:parallel build-system-message-content-document-skills-test
+  (testing "the document prompt lists the notebook query skills its model chart tool needs"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :document-generate-content)
+            content (prompts/build-system-message-content profile {} (profiles/profile->tools profile []) [])]
+        (doseq [skill-id [:construct-notebook-query-core
+                          :construct-notebook-query-advanced
+                          :construct-notebook-query-operators]]
+          (is (str/includes? content (:description (skills/get-skill skill-id)))))))))
+
+;;; Embedded profile (BOT-1891)
+;;;
+;;; The embedded profile has no SQL tools, so everything it says about SQL is prose in the prompt.
+;;; These tests render through [[messages/build-system-message]] so the profile's
+;;; `:system-prompt-context` hook, which maps the request's `:in_host_app` onto the template, is
+;;; exercised too.
+
+(defn- embedded-prompt
+  [context]
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (let [profile (profiles/get-profile :embedding_next)]
+      (:content (messages/build-system-message context profile (profiles/profile->tools profile []))))))
+
+(deftest ^:parallel embedding-profile-has-no-sql-tools-test
+  (testing "premise of the prompt rules below: no surface gives this profile a SQL-writing tool"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [tools (profiles/profile->tools (profiles/get-profile :embedding_next) [])]
+        (is (empty? (filter prompts/sql-generation-tool-names (keys tools))))))))
+
+(deftest ^:parallel embedding-prompt-in-host-app-test
+  (testing "SDK, modular embedding, data app: no Metabase pages exist, so no hand-off and no SQL"
+    (let [content (embedded-prompt {:in_host_app true})]
+      (is (str/includes? content "Never write SQL"))
+      (is (not (str/includes? content "direct the user to the SQL editor")))
+      (is (not (str/includes? content "direct the user to the dashboard builder")))
+      (is (not (str/includes? content "When writing raw SQL"))
+          "the shared data-sources snippet must not presuppose SQL writing here"))))
+
+(deftest ^:parallel embedding-prompt-in-full-app-embed-test
+  (testing "full-app iframe embed: the SQL editor, dashboard builder and search exist, so the hand-off stays"
+    (doseq [context [{} {:in_host_app false}]]
+      (let [content (embedded-prompt context)]
+        (is (str/includes? content "direct the user to the SQL editor") (pr-str context))
+        (is (str/includes? content "direct the user to the dashboard builder") (pr-str context))
+        (is (not (str/includes? content "Never write SQL")) (pr-str context))
+        (is (not (str/includes? content "When writing raw SQL"))
+            (str "no SQL tools in this surface either: " (pr-str context)))))))
+
+(deftest ^:parallel data-sources-raw-sql-sentence-gates-on-sql-tools-test
+  (testing "the raw-SQL aside (now in the templates, not the directive-free shared snippet) renders only when SQL tools are active"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
+                                                        :permission/metabot-nlq            :yes
+                                                        :permission/metabot-other-tools    :yes}]
+      (let [render (fn [tools]
+                     (prompts/build-system-message-content {:prompt-template "internal.selmer"} {} tools []))]
+        (is (str/includes? (render {"create_sql_query" nil}) "When writing raw SQL"))
+        (is (not (str/includes? (render {"construct_notebook_query" nil}) "When writing raw SQL")))))))
+
+(deftest ^:parallel build-system-message-content-test-9
+  (testing "renders sql querying template with literal model syntax"
+    (let [profile {:prompt-template "sql-querying-only.selmer"}
+          context {:current_time "2024-01-15 14:30:00"
+                   :sql-dialect "postgresql"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (some? content))
+      (is (string? content))
+      (is (str/includes? content "SELECT * FROM {{#model_id}} AS model_alias"))
+      (is (str/includes? content "SELECT * FROM {{#5}} AS model_alias"))
+      (is (str/includes? content "FROM {{#5}} a"))
+      (is (str/includes? content "LEFT JOIN {{#7}} b ON a.customer_id = b.customer_id"))
+      (is (str/includes? content "queried with {{#id}} syntax"))
+      (is (not (str/includes? content "{%raw%}")))
+      (is (not (str/includes? content "{% safe %}")))
+      (is (not (str/includes? content "verbatim"))))))
+
+(deftest ^:parallel embedding-loadable-skills-do-not-presuppose-sql-test
+  (testing "every skill the embedded profile can load is free of SQL-writing guidance, since it has no SQL tools"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :embedding_next)
+            tools   (profiles/profile->tools profile [])
+            {:keys [catalog always-on]} (skills/build-skill-manifest profile (keys tools) [])
+            ids     (concat (map (comp keyword :id) catalog) (map :id always-on))]
+        (is (some #{:read-resource} ids) "premise: read-resource is loadable here")
+        (doseq [id ids]
+          (testing id
+            (is (not (re-find #"(?i)before writing SQL|recommending raw-table SQL"
+                              (:body (skills/get-skill id)))))))))))
+
+(deftest ^:parallel embedding-prompt-full-app-scope-text-unchanged-test
+  (testing "full-app embed: the Scope section is byte-identical to the pre-BOT-1891 text (no blank lines left by the Selmer tags)"
+    (let [content (embedded-prompt {})]
+      (is (str/includes? content
+                         (str "# Scope\n\n"
+                              "Your job is to answer analytical questions by producing visualizations. For other needs:\n\n"
+                              "- Dashboards: direct the user to the dashboard builder.\n"
+                              "- SQL queries: direct the user to the SQL editor.\n"
+                              "- Finding existing saved content: direct the user to search/browse.\n\n")))
+      (is (not (str/includes? content "search/browse.\n\n\n\n"))
+          "the {% endif %} must not add a blank line after the hand-off"))))
+
+(deftest ^:parallel raw-sql-aside-in-internal-sql-section-test
+  (testing "the raw-SQL aside left the directive-free shared snippet, so internal.selmer carries it in its SQL section"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
+                                                        :permission/metabot-nlq            :yes
+                                                        :permission/metabot-other-tools    :yes}]
+      (is (str/includes? (prompts/build-system-message-content {:prompt-template "internal.selmer"} {}
+                                                               {"create_sql_query" nil} [])
+                         "When writing raw SQL")))))

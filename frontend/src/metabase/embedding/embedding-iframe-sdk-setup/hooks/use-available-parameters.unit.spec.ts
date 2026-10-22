@@ -19,32 +19,23 @@ jest.mock("metabase/parameters/utils/dashboards", () => ({
   getSavedDashboardUiParameters: jest.fn(),
 }));
 
-jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
-  getCardUiParameters: jest.fn(),
-}));
+// This spec has no store: it mocks `metabase/redux` wholesale and exercises the
+// hook's branching, not parameter derivation. So the card's parameters are
+// stubbed at the store door the hook reads.
+const mockCardParameters = jest.fn();
 
-jest.mock("metabase/redux/metadata", () => ({
-  updateMetadata: jest.fn((data) => ({
+jest.mock("metabase/metadata-store", () => ({
+  useQuestionFromCardBuilder: () => () => ({ parameters: mockCardParameters }),
+  paramFieldsFetched: jest.fn((paramFields) => ({
     type: "metabase/entities/UPDATE",
-    payload: data,
+    payload: paramFields,
   })),
-}));
-
-jest.mock("metabase/schema", () => ({
-  FieldSchema: {},
-}));
-
-jest.mock("metabase/selectors/metadata", () => ({
-  getMetadata: jest.fn(),
 }));
 
 const mockUseSelector = jest.requireMock("metabase/redux").useSelector;
 const mockGetSavedDashboardUiParameters = jest.requireMock(
   "metabase/parameters/utils/dashboards",
 ).getSavedDashboardUiParameters;
-const mockGetCardUiParameters = jest.requireMock(
-  "metabase-lib/v1/parameters/utils/cards",
-).getCardUiParameters;
 
 const mockParameter1 = createMockParameter({
   id: "param1",
@@ -77,7 +68,7 @@ describe("useAvailableParameters", () => {
       mockParameter1,
       mockParameter2,
     ]);
-    mockGetCardUiParameters.mockReturnValue([mockParameter1]);
+    mockCardParameters.mockReturnValue([mockParameter1]);
   });
 
   describe("with null resource", () => {
@@ -135,19 +126,6 @@ describe("useAvailableParameters", () => {
 
       expect(result.current.availableParameters).toEqual([mockParameter1]);
     });
-
-    it("should handle null return from getCardUiParameters", () => {
-      mockGetCardUiParameters.mockReturnValue(null);
-
-      const { result } = renderHook(() =>
-        useAvailableParameters({
-          experience: "chart",
-          resource: mockCard,
-        }),
-      );
-
-      expect(result.current.availableParameters).toEqual([]);
-    });
   });
 
   describe("resource change handling", () => {
@@ -175,6 +153,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: firstDashboard as Dashboard | Card | null },
         },
       );
@@ -207,6 +186,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: dashboard as Dashboard | Card | null },
         },
       );
@@ -234,7 +214,7 @@ describe("useAvailableParameters", () => {
       const cardParameters = [mockParameter1];
 
       mockGetSavedDashboardUiParameters.mockReturnValue(dashboardParameters);
-      mockGetCardUiParameters.mockReturnValue(cardParameters);
+      mockCardParameters.mockReturnValue(cardParameters);
 
       const { result, rerender } = renderHook(
         ({
@@ -250,7 +230,9 @@ describe("useAvailableParameters", () => {
           }),
         {
           initialProps: {
+            // Unjustified type cast. FIXME
             experience: "dashboard" as "dashboard" | "chart",
+            // Unjustified type cast. FIXME
             resource: dashboard as Dashboard | Card | null,
           },
         },
@@ -276,6 +258,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: null as Dashboard | Card | null },
         },
       );
@@ -298,6 +281,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: mockDashboard as Dashboard | Card | null },
         },
       );
@@ -315,7 +299,7 @@ describe("useAvailableParameters", () => {
   });
 
   describe("param_fields handling", () => {
-    it("should dispatch updateMetadata when resource has param_fields", () => {
+    it("should mirror the param_fields the resource carries", () => {
       const dashboardWithParamFields = {
         ...mockDashboard,
         param_fields: {
@@ -327,6 +311,7 @@ describe("useAvailableParameters", () => {
       renderHook(() =>
         useAvailableParameters({
           experience: "dashboard",
+          // Unjustified type cast. FIXME
           resource: dashboardWithParamFields as unknown as Dashboard,
         }),
       );

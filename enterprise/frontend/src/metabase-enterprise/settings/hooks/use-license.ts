@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { premiumFeaturesApi, useUpdateSettingMutation } from "metabase/api";
+import { premiumFeaturesApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch } from "metabase/redux";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { reload } from "metabase/utils/dom";
 import type { TokenStatus } from "metabase-types/api";
 
 export const LICENSE_ACCEPTED_URL_HASH = "#activated";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
-// eslint-disable-next-line ttag/no-module-declaration, metabase/no-literal-metabase-strings
-const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.`;
+const getInvalidTokenError = () =>
+  t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
+
+const getUnableToValidateToken = () =>
+  // eslint-disable-next-line metabase/no-literal-metabase-strings
+  t`We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.`;
 
 export const useLicense = (onActivated?: () => void) => {
   const dispatch = useDispatch();
@@ -46,10 +49,11 @@ export const useLicense = (onActivated?: () => void) => {
         }
         reload();
       } catch (e) {
+        // Unjustified type cast. FIXME
         if ((e as any).status === 503) {
-          setError(UNABLE_TO_VALIDATE_TOKEN);
+          setError(getUnableToValidateToken());
         } else {
-          setError(INVALID_TOKEN_ERROR);
+          setError(getInvalidTokenError());
         }
       } finally {
         setIsUpdating(false);
@@ -69,8 +73,9 @@ export const useLicense = (onActivated?: () => void) => {
           ),
         );
       } catch (e) {
+        // Unjustified type cast. FIXME
         if ((e as any).status !== 404) {
-          setError(UNABLE_TO_VALIDATE_TOKEN);
+          setError(getUnableToValidateToken());
         }
       } finally {
         setLoading(false);

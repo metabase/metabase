@@ -8,9 +8,9 @@ Metabase runs on the Java Virtual Machine (JVM), and depending on how it's confi
 
 ## Java version
 
-Metabase should be run on Java version 21 (older versions are unsupported).
+Metabase should be run on Java version 25 (older versions are unsupported).
 
-When searching for versions of Java, always use the latest minor version of the major version you're choosing. E.g., when choosing between Java 21.0.1 and Java 21.0.4, choose the latest version (in this case, 21.0.4).
+When searching for versions of Java, always use the latest minor version of the major version you're choosing. E.g., when choosing between Java 25.0.1 and Java 25.0.3, choose the latest version (in this case, 25.0.3).
 
 We recommend running only one version of Java on a single server, because running more than one version of Java on a single server can cause application problems. If you need to run multiple applications that each require a different java version, consider using containers (as containers were meant to solve this problem). Otherwise, just make sure that you can run all your applications with a single Java version.
 
@@ -45,7 +45,7 @@ If you're seeing this "Out of memory" (OOM) error, you'll need to [allocate more
 You can use tools to view how Metabase uses the memory available to it over time. Check out:
 
 - [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md)
-- [Monitoring your Metabase](../installation-and-operation/monitoring-metabase.md)
+- [Profiling your Metabase](./profiling-metabase.md)
 
 The specific Prometheus metric you need to check is jvm_memory_bytes_used{area="heap"}
 
@@ -61,7 +61,7 @@ You can set a JVM option to allocate more memory to the JVM's heap. For example,
 java -Xmx2g -jar metabase.jar
 ```
 
-Adjust the memory allocation upward until Metabase seems happy, but make sure to keep the number lower than the total amount of RAM available on your machine, because Metabase won't be the only process running. Leaving 1 to 2 GB of RAM for other processes on the machine is generally enough, so you might set `-Xmx` to `1g` on a machine with 2 GB of RAM, `2g` on one with 4 GB of RAM, and so on. You may need to experiment with this settings to find one that makes Metabase and everything else play nicely together (and this experimentation may require upgrading to a machine with more memory).
+Adjust the memory allocation upward until Metabase seems happy, but make sure to keep the number lower than the total amount of RAM available on your machine, because Metabase won't be the only process running. Leaving 1 to 2 GB of RAM for other processes on the machine is generally enough, so you might set `-Xmx` to `1g` on a machine with 2 GB of RAM, `2g` on one with 4 GB of RAM, and so on. You may need to experiment with this setting to find one that makes Metabase and everything else play nicely together (and this experimentation may require upgrading to a machine with more memory).
 
 You can also use the environment variable `JAVA_OPTS` to set JVM args instead of passing them directly to `java`. This is particularly useful when running the Docker image:
 
@@ -93,4 +93,4 @@ WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impac
 
 If you see the above error, ignore it. Your Metabase is perfectly healthy and performing as it should.
 
-[eclipse-memory-analyzer]: https://www.eclipse.org/mat/
+[eclipse-memory-analyzer]: https://eclipse.dev/mat/

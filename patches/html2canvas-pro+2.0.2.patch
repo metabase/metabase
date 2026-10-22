@@ -1,5 +1,5 @@
 diff --git a/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js b/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
-index d49f1bd..2f21002 100644
+index d49f1bd..cb90b52 100644
 --- a/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
 +++ b/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
 @@ -5875,6 +5875,8 @@ class SVGElementContainer extends ElementContainer {
@@ -11,7 +11,7 @@ index d49f1bd..2f21002 100644
          const bounds = parseBounds(context, img);
          img.setAttribute('width', `${bounds.width}px`);
          img.setAttribute('height', `${bounds.height}px`);
-@@ -7144,14 +7146,48 @@ const ignoredStyleProperties = [
+@@ -7144,14 +7146,55 @@ const ignoredStyleProperties = [
      'd', // #2483
      'content' // Safari shows pseudoelements if content is set
  ];
@@ -64,10 +64,17 @@ index d49f1bd..2f21002 100644
 +        target.style.setProperty('transform', transform);
 +        target.style.setProperty('transform-origin', style.getPropertyValue('transform-origin'));
 +        target.style.setProperty('transform-box', style.getPropertyValue('transform-box'));
++    }
++    // Same empty-cssText Chrome quirk drops the resolved `color`, so SVGs painting
++    // with fill="currentColor" lose their inherited color when serialized standalone
++    // (rendered black). Re-apply it so currentColor resolves. (metabase#77001)
++    const color = style.getPropertyValue('color');
++    if (color) {
++        target.style.setProperty('color', color);
      }
      return target;
  };
-@@ -7534,7 +7570,8 @@ class ElementPaint {
+@@ -7534,7 +7577,8 @@ class ElementPaint {
              const rotateMatrix = [cos, sin, -sin, cos, 0, 0];
              this.effects.push(new TransformEffect(offsetX, offsetY, rotateMatrix));
          }
@@ -77,7 +84,7 @@ index d49f1bd..2f21002 100644
              const origin = this.container.styles.transformOrigin;
              const offsetX = this.container.bounds.left + getAbsoluteValue(origin[0], this.container.bounds.width);
              const offsetY = this.container.bounds.top + getAbsoluteValue(origin[1], this.container.bounds.height);
-@@ -10373,12 +10410,12 @@ class Validator {
+@@ -10373,12 +10417,12 @@ class Validator {
          }
          // Basic format validation - nonce should be base64-like
          // Typical format: base64 string, often 32+ characters

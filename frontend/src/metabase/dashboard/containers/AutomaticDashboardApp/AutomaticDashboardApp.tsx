@@ -18,7 +18,7 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import type { WithRouterProps } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -32,8 +32,6 @@ import { SuggestionsSidebar } from "./SuggestionsSidebar";
 import { trackXRaySaved } from "./analytics";
 
 const SIDEBAR_W = 346;
-
-type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
 const AutomaticDashboardAppInner = () => {
   const { dashboard, parameters, isHeaderVisible, tabs } =
@@ -110,9 +108,9 @@ const AutomaticDashboardAppInner = () => {
                 isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
                 <Flex
-                  columnGap="md"
+                  columnGap="lg"
                   justify="space-between"
-                  py="md"
+                  py="lg"
                   wrap={{ base: "wrap", sm: "nowrap" }}
                 >
                   <FixedWidthContainer
@@ -125,7 +123,7 @@ const AutomaticDashboardAppInner = () => {
                   </FixedWidthContainer>
                   <Group
                     align="center"
-                    gap="md"
+                    gap="lg"
                     justify="flex-end"
                     w={{ base: "auto", md: SIDEBAR_W }}
                     wrap="nowrap"
@@ -145,7 +143,7 @@ const AutomaticDashboardAppInner = () => {
                       <ActionButton
                         className={cx(CS.mlAuto, CS.textNoWrap)}
                         variant="filled"
-                        color="feedback-positive"
+                        color="positive"
                         // The dashboard isn't always loaded when the header first
                         // renders. Without this guard, "Save this" is clickable while
                         // `dashboard` is undefined, which fires a false `x-ray_saved`
@@ -219,16 +217,14 @@ const AutomaticDashboardAppInner = () => {
   );
 };
 
-export const AutomaticDashboardApp = ({
-  router,
-  location,
-  params,
-}: AutomaticDashboardAppRouterProps) => {
-  useDashboardUrlQuery(router, location);
+export const AutomaticDashboardApp = () => {
+  const location = useLocation();
+  const params = useParams();
+  useDashboardUrlQuery(location);
 
   const dispatch = useDispatch();
 
-  const dashboardId = `/auto/dashboard/${params.splat}${location.hash.replace(/^#?/, "?")}`;
+  const dashboardId = `/auto/dashboard/${params["*"]}${location.hash.replace(/^#?/, "?")}`;
 
   return (
     <DashboardContextProvider

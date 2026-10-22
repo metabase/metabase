@@ -10,7 +10,8 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,13 +39,20 @@
                                                               :conversation_id (str (random-uuid))
                                                               :history         []
                                                               :state           {}})
-                            lines      (str/split-lines response)
-                            error-line (first (filter #(str/starts-with? % "3:") lines))]
+                            events      (->> (str/split-lines response)
+                                             (filter #(str/starts-with? % "data: "))
+                                             (remove #(= "data: [DONE]" %))
+                                             (map #(json/decode+kw (subs % 6))))
+                            error-event (first (filter #(= "error" (:type %)) events))]
                         (is (false? @llm-called?)
                             "the LLM must never be called once the instance limit is exceeded")
-                        (is (some? error-line))
-                        (is (str/includes? error-line "ai_usage_limit_reached"))
-                        (is (str/includes? error-line (ee.metabot.settings/metabot-quota-reached-message))))))))
+                        (is (some? error-event)
+                            "an SSE error event is streamed")
+                        (is (= (ee.metabot.settings/metabot-quota-reached-message)
+                               (:errorText error-event))
+                            "the quota message is the error event's errorText")
+                        (is (str/includes? response "ai_usage_limit_reached")
+                            "the ai_usage_limit_reached code surfaces on the finish event"))))))
               ;; the limit check is TTL-memoized process-wide; bust it so the now-removed temp limit
               ;; doesn't leak a stale "exceeded" verdict into other tests
               (finally
@@ -52,9 +60,9 @@
 
 (deftest usage-get-returns-token-status-usage-test
   (mt/with-premium-features #{:metabot-v3}
-    (with-redefs [premium-features/token-status (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value      12345
-                                                                                                           :meter-free-units 1337
-                                                                                                           :meter-updated-at "2026-04-02T19:29:12Z"}}})]
+    (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value      12345
+                                                                                                                         :meter-free-units 1337
+                                                                                                                         :meter-updated-at "2026-04-02T19:29:12Z"}}})]
       (is (= {:tokens       12345
               :free_tokens  1337
               :updated_at   "2026-04-02T19:29:12Z"

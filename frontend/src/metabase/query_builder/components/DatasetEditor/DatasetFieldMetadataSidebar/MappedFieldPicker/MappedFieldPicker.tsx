@@ -41,7 +41,7 @@ export function MappedFieldPicker({
 
   const selectedField = field && selectedFieldId ? field : null;
 
-  const selectButtonRef = useRef<HTMLButtonElement>();
+  const selectButtonRef = useRef<HTMLButtonElement>(undefined);
 
   const focusSelectButton = useCallback(() => {
     selectButtonRef.current?.focus();
@@ -75,6 +75,7 @@ export function MappedFieldPicker({
         }}
         hasValue={!!selectedField}
         tabIndex={tabIndex}
+        // Unjustified type cast. FIXME
         ref={selectButtonRef as any}
         onClear={() => onChange(null)}
       >
@@ -114,7 +115,6 @@ export function MappedFieldPicker({
         selectedFieldId={selectedFieldId}
         getTriggerElementContent={renderTriggerElement}
         hasTriggerExpandControl={false}
-        triggerTabIndex={tabIndex}
         setFieldFn={onFieldChange}
         onClose={focusSelectButton}
       />

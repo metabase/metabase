@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import { singularize } from "metabase/utils/formatting";
 import type { Measure, NormalizedTable, Segment } from "metabase-types/api";
@@ -32,10 +30,10 @@ interface Table extends Omit<
  */
 class Table {
   private readonly _plainObject: NormalizedTable;
+  private _fieldsLookup?: Record<string, Field>;
 
   constructor(table: NormalizedTable) {
     this._plainObject = table;
-    this.fieldsLookup = _.memoize(this.fieldsLookup);
     Object.assign(this, table);
   }
 
@@ -45,12 +43,6 @@ class Table {
 
   getFields() {
     return this.fields ?? [];
-  }
-
-  hasSchema() {
-    return (
-      (this.schema_name && this.db && this.db.getSchemas().length > 1) || false
-    );
   }
 
   // Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
@@ -92,10 +84,17 @@ class Table {
   }
 
   // FIELDS
-  fieldsLookup() {
-    return Object.fromEntries(
+  fieldsLookup(): Record<string, Field> {
+    const cached = this._fieldsLookup;
+    if (cached != null) {
+      return cached;
+    }
+
+    const lookup: Record<string, Field> = Object.fromEntries(
       this.getFields().map((field) => [field.id, field]),
     );
+    this._fieldsLookup = lookup;
+    return lookup;
   }
 
   // @deprecated: use fieldsLookup
@@ -110,17 +109,6 @@ class Table {
   connectedTables(): Table[] {
     const fks = this.fks || [];
     return fks.map((fk) => fk.origin?.table).filter((table) => table != null);
-  }
-
-  foreignTables(): Table[] {
-    const fields = this.getFields();
-    if (!fields) {
-      return [];
-    }
-    return fields
-      .filter((field) => field.isFK() && field.fk_target_field_id)
-      .map((field) => this.metadata?.field(field.fk_target_field_id)?.table)
-      .filter(Boolean) as Table[];
   }
 
   clone() {

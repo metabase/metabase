@@ -2,12 +2,12 @@ import { renderHook } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   renderHookWithProviders,
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 
 import {
@@ -25,7 +25,7 @@ describe("getDocsLinkConditionally", () => {
     return renderWithProviders(
       <Route
         path="*"
-        component={() => (
+        element={
           <>
             {getDocsLinkConditionally(
               "My Link Title",
@@ -33,7 +33,7 @@ describe("getDocsLinkConditionally", () => {
               showMetabaseLinks,
             )}
           </>
-        )}
+        }
       />,
       {
         withRouter: true,

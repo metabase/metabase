@@ -1,12 +1,10 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useCreateTimelineEventMutation,
   useGetTimelineQuery,
 } from "metabase/api";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/redux";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type {
@@ -18,7 +16,7 @@ import type {
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
   const id = Urls.extractEntityId(params.timelineId);
   const {
@@ -38,9 +36,10 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
     _collection?: unknown,
     timeline?: Timeline,
   ) => {
+    // Unjustified type cast. FIXME
     await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
     if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
+      navigate(Urls.timelineInCollection(timeline));
     }
   };
 

@@ -1,30 +1,52 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { getMetabotRequestState } from "metabase/metabot/state";
+import {
+  createMockMetabotConversationDetail,
+  createMockMetabotMessage,
+  createMockMetabotTextMessage,
+  setupGetMetabotConversationEndpoint,
+} from "__support__/server-mocks/metabot";
+import { act, waitFor } from "__support__/ui";
+import {
+  attachAgentToConversation,
+  fetchConversationSnapshot,
+  getIsConversationProcessing,
+  getMessages,
+  getMetabotConversation,
+  getMetabotRequestState,
+  loadConversation,
+} from "metabase/metabot/state";
 
 import {
   assertConversation,
-  createMockReadableStream,
+  createMockSSEStream,
   createPauses,
   enterChatMessage,
   erroredResponse,
+  hideMetabot,
+  lastReqBody,
   mockAgentEndpoint,
+  newConversationButton,
   setup,
+  showMetabot,
   stopResponseButton,
+  testConversationId,
+  whoIsYourFavoriteResponse,
 } from "./utils";
 
 describe("metabot > convo state", () => {
   it("should update the convo state on a successful request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `2:{"type":"state","version":1,"value":{"queries":{}}}\n`;
+          yield { type: "data-state", data: { queries: {} } };
           expect(getConvoReqState()).toEqual({});
-          yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          yield { type: "finish", finishReason: "stop" };
         })(),
       ),
     });
@@ -37,11 +59,11 @@ describe("metabot > convo state", () => {
   it("should not update the convo state on a failed request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
-      textChunks: [
-        `2:{"type":"state","version":1,"value":{"queries":{}}}`,
+      events: [
+        { type: "data-state", data: { queries: {} } },
         ...erroredResponse,
       ],
     });
@@ -54,13 +76,15 @@ describe("metabot > convo state", () => {
   it("should preserve conversation state if aborted response didn't contain a state data object", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
-      textChunks: [
-        `0:"here ya go"`,
-        `2:{"type":"state","version":1,"value":{"testing":123}}`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+      events: [
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "here ya go" },
+        { type: "text-end", id: "t1" },
+        { type: "data-state", data: { testing: 123 } },
+        { type: "finish", finishReason: "stop" },
       ],
     });
     await enterChatMessage("gimme state plz");
@@ -72,11 +96,11 @@ describe("metabot > convo state", () => {
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `0:"blah blah blah"\n`;
+          yield { type: "text-delta", id: "t1", delta: "blah blah blah" };
           await pause1.promise;
-          yield `0:"something something"\n`;
+          yield { type: "text-delta", id: "t1", delta: "something something" };
         })(),
       ),
     });
@@ -99,16 +123,198 @@ describe("metabot > convo state", () => {
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `2:{"type":"state","version":1,"value":{"testing":123}}`;
+          yield { type: "data-state", data: { testing: 123 } };
           await pause1.promise;
         })(),
       ),
     });
     await enterChatMessage("hi");
     await userEvent.click(await stopResponseButton());
-    const reqState = getMetabotRequestState(store.getState(), "omnibot");
+    const reqState = getMetabotRequestState(
+      store.getState(),
+      testConversationId("omnibot"),
+    );
     expect(reqState).toEqual({ testing: 123 });
+  });
+
+  it("should keep streaming into a conversation the surface has navigated away from", async () => {
+    const { store } = setup();
+    const { conversationId } = getMetabotConversation(
+      store.getState(),
+      "omnibot",
+    );
+
+    const [pause1] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-start", id: "t1" };
+          yield { type: "text-delta", id: "t1", delta: "first half" };
+          await pause1.promise;
+          yield { type: "text-delta", id: "t1", delta: " second half" };
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("stream me");
+    await assertConversation([
+      ["user", "stream me"],
+      ["agent", "first half"],
+    ]);
+
+    act(() => {
+      store.dispatch(
+        attachAgentToConversation({
+          agentId: "omnibot",
+          conversationId: "some-other-conversation",
+        }),
+      );
+    });
+    await assertConversation([]);
+
+    await act(async () => {
+      pause1.resolve();
+    });
+
+    act(() => {
+      store.dispatch(
+        attachAgentToConversation({ agentId: "omnibot", conversationId }),
+      );
+    });
+
+    await assertConversation([
+      ["user", "stream me"],
+      ["agent", "first half second half"],
+    ]);
+  });
+
+  it("should keep the conversation thread when metabot is hidden or opened", async () => {
+    const { store } = setup();
+    const agentSpy = mockAgentEndpoint({
+      events: whoIsYourFavoriteResponse,
+    });
+
+    await enterChatMessage("Who is your favorite?");
+    await waitFor(() => expect(agentSpy).toHaveBeenCalledTimes(1));
+    const firstReqBody = await lastReqBody(agentSpy);
+
+    hideMetabot(store.dispatch);
+    showMetabot(store.dispatch);
+    await enterChatMessage("Hi!");
+    const reqBody = await lastReqBody(agentSpy);
+    // the thread survives hide/show: the next request still points at the prior turn
+    expect(reqBody.parent_message_id).toBe(firstReqBody.assistant_message_id);
+  });
+
+  it("should start a new conversation when the new conversation button is clicked", async () => {
+    const { store } = setup();
+    const getState = () => getMetabotConversation(store.getState(), "omnibot");
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+
+    await enterChatMessage("Who is your favorite?");
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", "You, but don't tell anyone."],
+    ]);
+
+    const beforeResetState = getState();
+    expect(beforeResetState.messages).toMatchObject([
+      {
+        role: "user",
+        parts: [{ type: "text", message: "Who is your favorite?" }],
+      },
+      {
+        role: "agent",
+        parts: [{ type: "text", message: "You, but don't tell anyone." }],
+      },
+    ]);
+
+    await userEvent.click(await newConversationButton());
+
+    const afterResetState = getState();
+    expect(afterResetState.conversationId).not.toBe(
+      beforeResetState.conversationId,
+    );
+    expect(afterResetState.messages).toStrictEqual([]);
+  });
+
+  it("should refuse to load a conversation that is currently streaming", async () => {
+    const { store } = setup();
+    const [pause] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-delta", id: "t1", delta: "live reply" };
+          await pause.promise;
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("hello");
+    await assertConversation([
+      ["user", "hello"],
+      ["agent", "live reply"],
+    ]);
+    const { conversationId } = getMetabotConversation(
+      store.getState(),
+      "omnibot",
+    );
+    setupGetMetabotConversationEndpoint(
+      createMockMetabotConversationDetail({
+        conversation_id: conversationId,
+        messages: [
+          createMockMetabotTextMessage("user", "hello"),
+          createMockMetabotMessage({ status: { type: "in_progress" } }),
+        ],
+      }),
+    );
+    const expectedError = {
+      message: `Cannot load conversation ${conversationId} while it is streaming`,
+    };
+
+    try {
+      await expect(
+        store.dispatch(fetchConversationSnapshot(conversationId)).unwrap(),
+      ).rejects.toMatchObject(expectedError);
+
+      act(() => {
+        store.dispatch(
+          attachAgentToConversation({
+            agentId: "omnibot",
+            conversationId: "some-other-conversation",
+          }),
+        );
+      });
+
+      await expect(
+        store
+          .dispatch(loadConversation({ agentId: "omnibot", conversationId }))
+          .unwrap(),
+      ).rejects.toMatchObject(expectedError);
+      expect(
+        getMetabotConversation(store.getState(), "omnibot").conversationId,
+      ).toBe("some-other-conversation");
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/metabot/conversations/${conversationId}`,
+        ),
+      ).toHaveLength(0);
+    } finally {
+      pause.resolve();
+    }
+
+    await waitFor(() => {
+      expect(
+        getIsConversationProcessing(store.getState(), conversationId),
+      ).toBe(false);
+    });
+    expect(getMessages(store.getState(), conversationId).at(-1)).toMatchObject({
+      status: { type: "done" },
+      parts: [{ type: "text", message: "live reply" }],
+    });
   });
 });

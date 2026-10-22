@@ -1,6 +1,7 @@
 import { startSampleAppContainers } from "./start-sample-app-containers";
 import type { SampleAppTestSuiteName } from "./types";
 
+// Unjustified type cast. FIXME
 const testSuite = process.argv?.[2]?.trim() as SampleAppTestSuiteName;
 
 if (!testSuite) {

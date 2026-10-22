@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   ;; exercises the raw tools.logging pipeline that metabase.logger.core plugs into
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
@@ -92,7 +93,6 @@
                 (line-seq (io/reader f))))))))
 
 (deftest level-enabled?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [set-level check-level expected-value] (= expected-value
                                                  (mt/with-log-level [metabase.logger.core-test set-level]
                                                    (logger/level-enabled? 'metabase.logger.core-test check-level)))

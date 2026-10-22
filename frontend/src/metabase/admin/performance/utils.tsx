@@ -3,7 +3,7 @@ import { c } from "ttag";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import {
   PLUGIN_CACHING,
@@ -11,7 +11,6 @@ import {
   type StrategyData,
   type StrategyLabel,
   defaultMinDurationMs,
-  strategies,
 } from "metabase/plugins";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type {
@@ -21,18 +20,9 @@ import type {
   CacheStrategyType,
   CacheableModel,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import { rootId } from "./constants/simple";
-
-type ErrorWithMessage = { data: { message: string } };
-export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
-  typeof error === "object" &&
-  error !== null &&
-  "data" in error &&
-  isObject(error.data) &&
-  "message" in error.data &&
-  typeof error.data.message === "string";
 
 const delay = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -48,7 +38,7 @@ export const resolveSmoothly = async (
 };
 
 export const getFrequencyFromCron = (cron: string) => {
-  const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  const scheduleType = cronToBuilderValue(cron)?.schedule_type;
   const { scheduleOptionNames } = getScheduleStrings();
   return isNullOrUndefined(scheduleType)
     ? ""
@@ -81,12 +71,35 @@ export const getShortStrategyLabel = (
     .with({ type: "schedule" }, (strategy) =>
       getFrequencyFromCron(strategy.schedule),
     )
-    .with(
-      { type: "duration" },
-      (strategy) =>
-        c(
-          "{0} is a number. Indicates a number of hours (the length of a cache)",
-        ).t`${strategy.duration}h`,
+    .with({ type: "duration" }, ({ duration, unit }) =>
+      match(unit)
+        .with(
+          CacheDurationUnit.Minutes,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} minutes (the length of a cache)",
+            ).t`${duration}m`,
+        )
+        .with(
+          CacheDurationUnit.Seconds,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} seconds (the length of a cache)",
+            ).t`${duration}s`,
+        )
+        .with(
+          CacheDurationUnit.Days,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} days (the length of a cache)",
+            ).t`${duration}d`,
+        )
+        .otherwise(
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} hours (the length of a cache)",
+            ).t`${duration}h`,
+        ),
     )
     .otherwise(() => null);
   if (subLabel) {
@@ -106,6 +119,7 @@ export const getStrategyValidationSchema = (strategyData: StrategyData) => {
   }
 };
 
+// Unjustified type cast. FIXME
 export const strategyValidationSchema = Yup.object().test(
   "strategy-validation",
   "The object must match one of the strategy validation schemas",
@@ -115,6 +129,7 @@ export const strategyValidationSchema = Yup.object().test(
         message: "Strategy is falsy",
       });
     }
+    // Unjustified type cast. FIXME
     const { type } = value as unknown as { type: string };
     if (!isValidStrategyName(type)) {
       return this.createError({
@@ -122,7 +137,7 @@ export const strategyValidationSchema = Yup.object().test(
         path: "type",
       });
     }
-    const schema = getStrategyValidationSchema(strategies[type]);
+    const schema = getStrategyValidationSchema(PLUGIN_CACHING.strategies[type]);
     try {
       schema.validateSync(value);
       return true;
@@ -143,6 +158,7 @@ export const strategyValidationSchema = Yup.object().test(
 export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;
   const strategyData = strategies[strategyType];
+  // Unjustified type cast. FIXME
   const validationSchemaDescription = getStrategyValidationSchema(
     strategyData,
   ).describe() as SchemaObjectDescription;
@@ -155,6 +171,7 @@ export const translateConfig = <T extends CacheConfig>(
   config: T,
   direction: "fromAPI" | "toAPI",
 ): T => {
+  // Unjustified type cast. FIXME
   const translated = { ...config, strategy: { ...config.strategy } } as T;
 
   // If strategy type is unsupported, use a fallback
@@ -191,9 +208,9 @@ export const translateConfigToAPI = <T extends CacheConfig>(config: T): T =>
   translateConfig(config, "toAPI");
 
 export const getPerformanceTabName = (tabId: PerformanceTabId) =>
-  PLUGIN_CACHING.getTabMetadata().find(
-    ({ key }) => key === `performance-${tabId}`,
-  )?.name;
+  PLUGIN_CACHING.getTabMetadata()
+    .find(({ key }) => key === `performance-${tabId}`)
+    ?.getName();
 
 export const getDefaultValueForField = (
   strategyType: CacheStrategyType,

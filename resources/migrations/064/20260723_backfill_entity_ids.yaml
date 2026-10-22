@@ -1,0 +1,377 @@
+## Backfill NULL entity_id values with random identifiers so the column can be treated as always
+## present: the insert hook now generates one in every case (including deserialization), and the
+## export/import-time app-level backfills are gone. The generated values are 21 hex characters (a
+## subset of the NanoID alphabet) from a per-row UUID, so they satisfy the entity_id uniques —
+## uuid generation rather than md5() because md5 is unavailable on FIPS-configured servers. With the
+## blanks gone (and the insert hook generating ids in every remaining case), the column becomes
+## NOT NULL everywhere it exists. All three dialect variants live in one changeset so every
+## database executes (and records) it — a changeset whose only change is dbms-filtered away never
+## reaches the changelog, which breaks consolidation.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-23T12:00:00
+      author: ranquild
+      comment: Backfill NULL entity_id values
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              UPDATE action SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE collection SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE core_user SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE dashboard_tab SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE dimension SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE document SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE embedding_theme SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE measure SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metabot SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metabot_prompt SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metric SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE native_query_snippet SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE permissions_group SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse_card SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse_channel SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE python_library SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_card SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_dashboard SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_dashboardcard SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE segment SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE timeline SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_job SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_job_transform_tag SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_tag SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_transform_tag SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              UPDATE action SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE collection SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE core_user SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE dashboard_tab SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE dimension SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE document SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE embedding_theme SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE measure SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metabot SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metabot_prompt SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metric SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE native_query_snippet SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE permissions_group SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse_card SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse_channel SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE python_library SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_card SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_dashboard SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_dashboardcard SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE segment SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE timeline SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_job SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_job_transform_tag SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_tag SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_transform_tag SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: h2
+            sql: |
+              UPDATE action SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE collection SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE core_user SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE dashboard_tab SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE dimension SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE document SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE embedding_theme SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE measure SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metabot SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metabot_prompt SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE metric SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE native_query_snippet SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE permissions_group SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse_card SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE pulse_channel SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE python_library SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_card SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_dashboard SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE report_dashboardcard SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE segment SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE timeline SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_job SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_job_transform_tag SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_tag SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+              UPDATE transform_transform_tag SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+      rollback: []
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:03
+      author: ranquild
+      comment: entity_id is NOT NULL on action
+      changes:
+        - addNotNullConstraint:
+            tableName: action
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:04
+      author: ranquild
+      comment: entity_id is NOT NULL on collection
+      changes:
+        - addNotNullConstraint:
+            tableName: collection
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:05
+      author: ranquild
+      comment: entity_id is NOT NULL on core_user
+      changes:
+        - addNotNullConstraint:
+            tableName: core_user
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:06
+      author: ranquild
+      comment: entity_id is NOT NULL on dashboard_tab
+      changes:
+        - addNotNullConstraint:
+            tableName: dashboard_tab
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:07
+      author: ranquild
+      comment: entity_id is NOT NULL on dimension
+      changes:
+        - addNotNullConstraint:
+            tableName: dimension
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:08
+      author: ranquild
+      comment: entity_id is NOT NULL on document
+      changes:
+        - addNotNullConstraint:
+            tableName: document
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:09
+      author: ranquild
+      comment: entity_id is NOT NULL on embedding_theme
+      changes:
+        - addNotNullConstraint:
+            tableName: embedding_theme
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:10
+      author: ranquild
+      comment: entity_id is NOT NULL on measure
+      changes:
+        - addNotNullConstraint:
+            tableName: measure
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:11
+      author: ranquild
+      comment: entity_id is NOT NULL on metabot
+      changes:
+        - addNotNullConstraint:
+            tableName: metabot
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:12
+      author: ranquild
+      comment: entity_id is NOT NULL on metabot_prompt
+      changes:
+        - addNotNullConstraint:
+            tableName: metabot_prompt
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:13
+      author: ranquild
+      comment: entity_id is NOT NULL on metric
+      changes:
+        - addNotNullConstraint:
+            tableName: metric
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:14
+      author: ranquild
+      comment: entity_id is NOT NULL on native_query_snippet
+      changes:
+        - addNotNullConstraint:
+            tableName: native_query_snippet
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:15
+      author: ranquild
+      comment: entity_id is NOT NULL on permissions_group
+      changes:
+        - addNotNullConstraint:
+            tableName: permissions_group
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:16
+      author: ranquild
+      comment: entity_id is NOT NULL on pulse
+      changes:
+        - addNotNullConstraint:
+            tableName: pulse
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:17
+      author: ranquild
+      comment: entity_id is NOT NULL on pulse_card
+      changes:
+        - addNotNullConstraint:
+            tableName: pulse_card
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:18
+      author: ranquild
+      comment: entity_id is NOT NULL on pulse_channel
+      changes:
+        - addNotNullConstraint:
+            tableName: pulse_channel
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:19
+      author: ranquild
+      comment: entity_id is NOT NULL on python_library
+      changes:
+        - addNotNullConstraint:
+            tableName: python_library
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:20
+      author: ranquild
+      comment: entity_id is NOT NULL on report_card
+      changes:
+        - addNotNullConstraint:
+            tableName: report_card
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:21
+      author: ranquild
+      comment: entity_id is NOT NULL on report_dashboard
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboard
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:22
+      author: ranquild
+      comment: entity_id is NOT NULL on report_dashboardcard
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:23
+      author: ranquild
+      comment: entity_id is NOT NULL on segment
+      changes:
+        - addNotNullConstraint:
+            tableName: segment
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:24
+      author: ranquild
+      comment: entity_id is NOT NULL on timeline
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:25
+      author: ranquild
+      comment: entity_id is NOT NULL on transform
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:26
+      author: ranquild
+      comment: entity_id is NOT NULL on transform_job
+      changes:
+        - addNotNullConstraint:
+            tableName: transform_job
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:27
+      author: ranquild
+      comment: entity_id is NOT NULL on transform_job_transform_tag
+      changes:
+        - addNotNullConstraint:
+            tableName: transform_job_transform_tag
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:28
+      author: ranquild
+      comment: entity_id is NOT NULL on transform_tag
+      changes:
+        - addNotNullConstraint:
+            tableName: transform_tag
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-23T12:00:29
+      author: ranquild
+      comment: entity_id is NOT NULL on transform_transform_tag
+      changes:
+        - addNotNullConstraint:
+            tableName: transform_transform_tag
+            columnName: entity_id
+            columnDataType: char(21)

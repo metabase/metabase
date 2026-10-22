@@ -21,6 +21,7 @@ describe("Visualizations > Gauge > utils", () => {
 
   valueTestCases.forEach(([input, output]) => {
     it(`should return ${output} for ${JSON.stringify(input)}`, () => {
+      // Unjustified type cast. FIXME
       expect(getValue(input as unknown[][])).toEqual(output);
     });
   });

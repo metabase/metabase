@@ -3,7 +3,10 @@ import { match } from "ts-pattern";
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
-import type { CreateApiKeyResponse } from "metabase-types/api";
+import type {
+  CreateApiKeyResponse,
+  CustomVizDisplayType,
+} from "metabase-types/api";
 
 import { createApiKey, updateSetting } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
@@ -34,6 +37,7 @@ export interface BaseEmbedTestPageOptions {
     theme?: MetabaseTheme;
     preferredAuthMethod?: "jwt" | "saml";
     locale?: string;
+    allowedCustomVisualizations?: CustomVizDisplayType[];
   };
 
   elements: MetabaseElement[];
@@ -47,6 +51,9 @@ export interface BaseEmbedTestPageOptions {
   };
 
   onVisitPage?(win: Cypress.AUTWindow): void;
+
+  // The embed must not see the Cypress session cookie unless the test needs it
+  signOut?: boolean;
 }
 
 export interface MetabaseElement {
@@ -110,6 +117,7 @@ export function loadSdkIframeEmbedTestPage({
   origin = "",
   selector,
   onVisitPage,
+  signOut = true,
   ...options
 }: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
@@ -120,6 +128,10 @@ export function loadSdkIframeEmbedTestPage({
     body: testPageSource,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
+
+  if (signOut) {
+    cy.signOut();
+  }
 
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
@@ -199,11 +211,9 @@ const convertPropertiesToEmbedTagAttributes = (
 export function prepareSdkIframeEmbedTest({
   withToken = "bleeding-edge",
   enabledAuthMethods = ["jwt"],
-  signOut = false,
 }: {
   withToken?: false | "starter" | "bleeding-edge";
   enabledAuthMethods?: EnabledAuthMethods[];
-  signOut?: boolean;
 } = {}) {
   restore();
   cy.signInAsAdmin();
@@ -212,7 +222,7 @@ export function prepareSdkIframeEmbedTest({
     activateToken(withToken);
   }
 
-  cy.request("PUT", "/api/setting/enable-embedding-simple", {
+  cy.request("PUT", "/api/setting/enable-embedding-modular", {
     value: true,
   });
 
@@ -223,10 +233,6 @@ export function prepareSdkIframeEmbedTest({
   setupMockAuthProviders(enabledAuthMethods);
 
   mockEmbedJsToDevServer();
-
-  if (signOut) {
-    cy.signOut();
-  }
 }
 
 /**
@@ -252,10 +258,7 @@ export function prepareGuestEmbedSdkIframeEmbedTest({
 
   onPrepare?.();
 
-  cy.request("PUT", "/api/setting/enable-embedding-simple", {
-    value: true,
-  });
-  cy.request("PUT", "/api/setting/enable-embedding-static", {
+  cy.request("PUT", "/api/setting/enable-embedding-modular", {
     value: true,
   });
 
@@ -325,6 +328,7 @@ export const getNewEmbedConfigurationScript = ({
   useExistingUserSession,
   preferredAuthMethod,
   locale,
+  allowedCustomVisualizations,
 }: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
@@ -335,6 +339,7 @@ export const getNewEmbedConfigurationScript = ({
     theme,
     preferredAuthMethod,
     locale,
+    allowedCustomVisualizations,
   };
 
   return `
@@ -349,9 +354,11 @@ export const visitCustomHtmlPage = (
   {
     origin = "",
     onVisitPage,
+    signOut = true,
   }: {
     origin?: string;
     onVisitPage?: () => void;
+    signOut?: boolean;
   } = {},
 ) => {
   const testPageUrl = `${origin}/custom-html-page`;
@@ -359,6 +366,10 @@ export const visitCustomHtmlPage = (
     body: html,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
+
+  if (signOut) {
+    cy.signOut();
+  }
 
   cy.visit(testPageUrl, { onLoad: onVisitPage });
 

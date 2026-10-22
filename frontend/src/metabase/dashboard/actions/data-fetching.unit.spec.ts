@@ -6,15 +6,18 @@ import {
   setupDashboardsEndpoints,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
-import type { DashboardState, State } from "metabase/redux/store";
+import type { StoreSeedState } from "__support__/state";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { waitFor } from "__support__/ui";
+import { Api } from "metabase/api";
+import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { defer } from "metabase/utils/promise";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -28,6 +31,7 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { dashboardReducers } from "../reducers";
+import { getLastSeenTabDashcards } from "../selectors";
 
 import {
   fetchCardDataAction,
@@ -78,6 +82,79 @@ function setup({
 }
 
 describe("fetchDashboard", () => {
+  describe("while the query metadata is still loading (DSN-749)", () => {
+    let queryMetadataRequest = defer();
+
+    const setupDeferredQueryMetadata = (dashboardId: number) => {
+      queryMetadataRequest = defer();
+      fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
+        queryMetadataRequest.promise.then(() =>
+          createMockDashboardQueryMetadata(),
+        ),
+      );
+    };
+
+    // Never leave the request pending, or teardown waits on it when a test fails.
+    afterEach(() => queryMetadataRequest.resolve());
+
+    it("publishes the dashboard layout before the fetch finishes", async () => {
+      const dashboard = createMockDashboard({
+        id: 1,
+        dashcards: [createMockDashboardCard({ id: 10, dashboard_id: 1 })],
+      });
+      const store = setup();
+      setupDashboardsEndpoints([dashboard]);
+      setupDeferredQueryMetadata(1);
+
+      const fetchResult = store.dispatch(
+        fetchDashboard({ dashId: 1, queryParams: {}, options: {} }),
+      );
+
+      // The skeleton can draw the real layout while the dashboard still loads.
+      await waitFor(() => {
+        expect(getLastSeenTabDashcards(store.getState(), 1)).toHaveLength(1);
+      });
+      expect(store.getState().dashboard.dashboardId).toBeNull();
+
+      queryMetadataRequest.resolve();
+      await expect(fetchResult).resolves.toHaveProperty(
+        "type",
+        "metabase/dashboard/FETCH_DASHBOARD/fulfilled",
+      );
+      expect(store.getState().dashboard.dashboardId).toBe(1);
+    });
+
+    it("does not publish the layout early when refetching a dashboard that is already on screen", async () => {
+      const store = setup({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            1: createMockStoreDashboard({ id: 1, name: "Old", dashcards: [] }),
+          },
+        }),
+      });
+      setupDashboardsEndpoints([createMockDashboard({ id: 1, name: "New" })]);
+      setupDeferredQueryMetadata(1);
+
+      const fetchResult = store.dispatch(
+        fetchDashboard({ dashId: 1, queryParams: {}, options: {} }),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/dashboard/1/query_metadata"),
+        ).toBe(true);
+      });
+      // Let the dashboard GET resolve before checking nothing was merged early.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(store.getState().dashboard.dashboards[1].name).toBe("Old");
+
+      queryMetadataRequest.resolve();
+      await fetchResult;
+      expect(store.getState().dashboard.dashboards[1].name).toBe("New");
+    });
+  });
+
   it("should cancel previous dashboard fetch when a new one is initiated (metabase#35959)", async () => {
     const store = setup({
       dashboards: [
@@ -279,6 +356,7 @@ describe("fetchDashboard", () => {
     // dashboards otherwise fail to load).
     const token = "header.payload.signature";
     const dashboard = createMockDashboard({
+      // Unjustified type cast. FIXME
       id: token as unknown as number,
       dashcards: [
         createMockVirtualDashCard({
@@ -398,7 +476,7 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
   });
 
   const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
-  const state: Partial<State> = {
+  const state: Partial<StoreSeedState> = {
     dashboard: createMockDashboardState({
       dashboardId: DASHBOARD.id,
       dashboards: {
@@ -425,6 +503,7 @@ describe("fetchDashboardCardData", () => {
       8,
     );
 
+    // Unjustified type cast. FIXME
     await fetchDashboardCardData()(dispatch as never, getState as never);
 
     expect(getMaxConcurrent()).toBe(5);
@@ -486,7 +565,7 @@ describe("fetchDashboardCardData", () => {
       dashcards,
     });
 
-    const state: Partial<State> = {
+    const state: Partial<StoreSeedState> = {
       dashboard: createMockDashboardState({
         dashboardId: DASHBOARD.id,
         selectedTabId: tab1.id,
@@ -506,7 +585,9 @@ describe("fetchDashboardCardData", () => {
 
     // Start loading Tab 1 (slow query)
     const tab1Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -516,7 +597,9 @@ describe("fetchDashboardCardData", () => {
     // Switch to Tab 2
     (state.dashboard as DashboardState).selectedTabId = tab2.id;
     const tab2Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -529,7 +612,9 @@ describe("fetchDashboardCardData", () => {
     // and reused — no new query execution.
     (state.dashboard as DashboardState).selectedTabId = tab1.id;
     const backToTab1Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -550,6 +635,7 @@ describe("reloadDashboardCards", () => {
       8,
     );
 
+    // Unjustified type cast. FIXME
     await reloadDashboardCards()(dispatch as never, getState as never);
 
     expect(getMaxConcurrent()).toBe(5);

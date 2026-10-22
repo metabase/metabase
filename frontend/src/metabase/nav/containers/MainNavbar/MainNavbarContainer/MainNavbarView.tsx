@@ -4,7 +4,6 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
@@ -12,35 +11,34 @@ import {
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/current-user";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
-import {
-  getIsTenantUser,
-  getUser,
-  getUserCanWriteToCollections,
-} from "metabase/selectors/user";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { useSetting, useUserSetting } from "metabase/settings";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
 
-import {
-  PaddedSidebarLink,
-  SidebarContentRoot,
-  SidebarHeading,
-  SidebarSection,
-  TrashSidebarSection,
-} from "../MainNavbar.styled";
-import { SidebarCollectionLink } from "../SidebarItems";
+import { SidebarHeading, SidebarSection } from "../Sidebar";
+import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import {
   trackAddDataModalOpened,
   trackNewCollectionFromNavInitiated,
@@ -178,17 +176,17 @@ export function MainNavbarView({
 
   return (
     <ErrorBoundary>
-      <SidebarContentRoot>
+      <Flex direction="column" justify="space-between" flex={1}>
         <div>
           <SidebarSection>
-            <PaddedSidebarLink
+            <SidebarLink
               isSelected={nonEntityItem?.url === "/"}
               icon="home"
               onClick={handleHomeClick}
               url="/"
             >
               {t`Home`}
-            </PaddedSidebarLink>
+            </SidebarLink>
           </SidebarSection>
 
           {shouldDisplayGettingStarted && (
@@ -260,8 +258,8 @@ export function MainNavbarView({
                   canWriteToCollections && !isTenantUser ? (
                     <Tooltip label={t`Create a new collection`}>
                       <ActionIcon
+                        variant="subtle"
                         aria-label={t`Create a new collection`}
-                        color="text-secondary"
                         onClick={() => {
                           trackNewCollectionFromNavInitiated();
                           handleCreateNewCollection();
@@ -292,16 +290,21 @@ export function MainNavbarView({
                   />
                 )}
                 {showOtherUsersCollections && (
-                  <PaddedSidebarLink
+                  <SidebarLink
                     icon="group"
                     url={OTHER_USERS_COLLECTIONS_URL}
+                    isSelected={collectionItem?.id === "users"}
                   >
                     {t`Other users' personal collections`}
-                  </PaddedSidebarLink>
+                  </SidebarLink>
                 )}
               </CollapseSection>
             </ErrorBoundary>
           </SidebarSection>
+
+          {PLUGIN_DATA_APPS.isEnabled && (
+            <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
+          )}
 
           <SidebarSection>
             <ErrorBoundary>
@@ -315,7 +318,7 @@ export function MainNavbarView({
           </SidebarSection>
 
           {trashCollection && (
-            <TrashSidebarSection>
+            <SidebarSection>
               <ErrorBoundary>
                 <Tree
                   data={[trashCollection]}
@@ -325,10 +328,10 @@ export function MainNavbarView({
                   role="tree"
                 />
               </ErrorBoundary>
-            </TrashSidebarSection>
+            </SidebarSection>
           )}
         </div>
-      </SidebarContentRoot>
+      </Flex>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>

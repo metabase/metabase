@@ -33,6 +33,7 @@ export const CleanupCollectionBulkActions = ({
   const handleUndo = async (items: StaleCollectionItem[]) => {
     return Promise.all(
       items.map((item) =>
+        // Unjustified type cast. FIXME
         archive(item as ArchivableItem, false, { notify: false }),
       ),
     )
@@ -44,6 +45,7 @@ export const CleanupCollectionBulkActions = ({
     const actions = selected.map((item) => {
       return archiveAndTrack({
         archive: async () => {
+          // Unjustified type cast. FIXME
           await archive(item as ArchivableItem, true, { notify: false });
         },
         model: item.model,
@@ -66,6 +68,7 @@ export const CleanupCollectionBulkActions = ({
         onArchive({ totalArchivedItems });
 
         const id = Date.now();
+        // Unjustified type cast. FIXME
         const timeoutId = setTimeout(() => {
           setUndo((undo) => (undo?.id === id ? undefined : undo));
         }, 5000) as unknown as number;

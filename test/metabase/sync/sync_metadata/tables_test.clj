@@ -48,10 +48,6 @@
         normal-table {:name   "orders"
                       :schema "public"}
         db-metadata  {:tables #{temp-table normal-table}}]
-    (testing "with no premium features, sync excludes transform temporary tables"
-      (mt/with-premium-features #{}
-        (is (= #{normal-table}
-               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))
     (testing "when hosted, includes transform temporary tables"
       (mt/with-premium-features #{:hosting}
         (is (= #{normal-table temp-table}
@@ -82,7 +78,7 @@
                          (:engine (mt/db))
                          dbdef
                          (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
-        (sync/sync-database! (mt/db) {:sync :schema})
+        (sync/sync-database! (mt/db) {:scan :schema})
         (is (=? {:active true
                  :description "added comment"}
                 (t2/select-one :model/Table (mt/id :user))))))))

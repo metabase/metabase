@@ -1,0 +1,7 @@
+.resizableBox {
+  display: flex;
+}
+
+.noSelect {
+  user-select: none;
+}

@@ -4,14 +4,39 @@ import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import {
   LISTABLE_FIELD_WITH_MANY_VALUES_ID,
+  PK_REMAPPED_TO_NUMBER_FIELD_ID,
+  REMAPPED_TO_NUMBER_FIELD_ID,
+  REMAPPED_TO_STRING_FIELD_ID,
   STRING_PK_FIELD_ID,
   metadata,
 } from "./testMocks.spec";
-import { getValuesMode, isSearchable, searchField } from "./utils";
+import {
+  getValuesMode,
+  isSearchable,
+  parseStringValue,
+  searchField,
+} from "./utils";
 
 const getField = (id: FieldId) => asNotNull(metadata.field(id));
 
 describe("Components > FieldValuesWidget > utils", () => {
+  describe("parseStringValue", () => {
+    it("should return null for falsy and whitespace values", () => {
+      expect(parseStringValue("")).toBeNull();
+      expect(parseStringValue(" ")).toBeNull();
+      expect(parseStringValue(" \n ")).toBeNull();
+      expect(parseStringValue(null)).toBeNull();
+      expect(parseStringValue(false)).toBeNull();
+      expect(parseStringValue(0)).toBeNull();
+    });
+
+    it("should return truthy values coerced into strings", () => {
+      expect(parseStringValue(123)).toBe("123");
+      expect(parseStringValue(true)).toBe("true");
+      expect(parseStringValue(" abc 123 \n ")).toBe("abc 123");
+    });
+  });
+
   describe("isSearchable", () => {
     const listField = getField(PRODUCTS.CATEGORY);
     const searchField = getField(PEOPLE.EMAIL);
@@ -100,27 +125,24 @@ describe("Components > FieldValuesWidget > utils", () => {
     });
 
     describe("when the field is remapped to a searchable field", () => {
-      const stringField = getField(PRODUCTS.TITLE);
-      const remappedField = getField(PRODUCTS.CATEGORY).clone();
-      remappedField.remappedExternalField = () => stringField;
-
       it("should return the remapped field", () => {
-        expect(searchField(remappedField)).toBe(stringField);
+        const remappedField = getField(REMAPPED_TO_STRING_FIELD_ID);
+
+        expect(searchField(remappedField)).toBe(getField(PRODUCTS.TITLE));
       });
     });
 
     describe("when the field is remapped to a non-searchable field", () => {
       it("should ignore it and return the original field, assuming it is searchable", () => {
-        const numberField = getField(ORDERS.TOTAL);
-
-        const remappedField = getField(PRODUCTS.CATEGORY).clone();
-        remappedField.remappedExternalField = () => numberField;
-
-        const nonSearchableRemappedField = getField(PRODUCTS.ID);
-        nonSearchableRemappedField.remappedExternalField = () => numberField;
+        const remappedField = getField(REMAPPED_TO_NUMBER_FIELD_ID);
 
         expect(searchField(remappedField)).toBe(remappedField);
-        expect(searchField(nonSearchableRemappedField)).toBeNull();
+      });
+
+      it("should return null when the original field is not searchable either", () => {
+        const remappedField = getField(PK_REMAPPED_TO_NUMBER_FIELD_ID);
+
+        expect(searchField(remappedField)).toBeNull();
       });
     });
 

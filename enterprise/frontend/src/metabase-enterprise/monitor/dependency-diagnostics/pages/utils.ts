@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import * as Urls from "metabase/urls";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import {
@@ -19,28 +17,26 @@ export function getPageUrl(
 }
 
 export function parseUrlParams(
-  location: Location,
+  searchParams: URLSearchParams,
 ): Urls.DependencyDiagnosticsParams {
-  const {
-    page,
-    query,
-    "group-types": groupTypes,
-    "include-personal-collections": includePersonalCollections,
-    "sort-column": sortColumn,
-    "sort-direction": sortDirection,
-  } = location.query;
-
   return {
-    page: Urls.parseNumberParam(page),
-    query: Urls.parseStringParam(query),
-    groupTypes: Urls.parseListParam(groupTypes, (item) =>
-      Urls.parseEnumParam(item, DEPENDENCY_GROUP_TYPES),
+    page: Urls.parseNumberParam(searchParams.get("page")),
+    query: Urls.parseStringParam(searchParams.get("query")),
+    groupTypes: Urls.parseListParam(
+      searchParams.getAll("group-types"),
+      (item) => Urls.parseEnumParam(item, DEPENDENCY_GROUP_TYPES),
     ),
     includePersonalCollections: Urls.parseBooleanParam(
-      includePersonalCollections,
+      searchParams.get("include-personal-collections"),
     ),
-    sortColumn: Urls.parseEnumParam(sortColumn, DEPENDENCY_SORT_COLUMNS),
-    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
+    sortColumn: Urls.parseEnumParam(
+      searchParams.get("sort-column"),
+      DEPENDENCY_SORT_COLUMNS,
+    ),
+    sortDirection: Urls.parseEnumParam(
+      searchParams.get("sort-direction"),
+      SORT_DIRECTIONS,
+    ),
   };
 }
 
@@ -71,6 +67,6 @@ export function getUserParams(
   };
 }
 
-export function isEmptyParams(location: Location): boolean {
-  return Object.values(location.query).every((value) => value == null);
+export function isEmptyParams(searchParams: URLSearchParams): boolean {
+  return [...searchParams.keys()].length === 0;
 }

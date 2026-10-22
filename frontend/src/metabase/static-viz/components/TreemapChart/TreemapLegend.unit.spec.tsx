@@ -1,17 +1,19 @@
 import { render, screen } from "@testing-library/react";
 
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import type { RenderingContext } from "metabase/visualizations/types";
+import type { RenderingContext } from "metabase/viz-core";
 
 import { TreemapLegend } from "./TreemapLegend";
 import type { TreemapLegendModel } from "./legend";
 
+// Unjustified type cast. FIXME
 const renderingContext = {
   getColor: (color: string) => color,
   measureText: (text: string, style: { size: number; weight: number }) =>
     measureTextWidth(text, style.size, style.weight),
   measureTextHeight: () => 16,
   fontFamily: "Lato",
+  // Unjustified type cast. FIXME
   theme: {} as RenderingContext["theme"],
 } as RenderingContext;
 

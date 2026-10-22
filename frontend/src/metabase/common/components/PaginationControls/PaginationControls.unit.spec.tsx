@@ -107,4 +107,18 @@ describe("PaginationControls", () => {
     const container = screen.getByTestId("test-container");
     expect(container).toHaveTextContent("251 - 275");
   });
+
+  it("should clamp the item range to the total when stale items from the previous page overshoot it", () => {
+    setup({
+      page: 2,
+      pageSize: 25,
+      itemsLength: 25,
+      total: 53,
+      showTotal: true,
+      onNextPage: () => {},
+      onPreviousPage: () => {},
+    });
+    const container = screen.getByTestId("test-container");
+    expect(container).toHaveTextContent("51 - 53 of 53");
+  });
 });

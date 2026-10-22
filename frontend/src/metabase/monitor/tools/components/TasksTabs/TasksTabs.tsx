@@ -1,64 +1,27 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useGetTaskCountsQuery } from "metabase/api";
 import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useDispatch } from "metabase/redux";
-import { type WithRouterProps, withRouter } from "metabase/router";
-import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
+  type PillTab,
+  PillTabNavigation,
+  getTabCount,
+} from "metabase/common/components/PillTabNavigation";
 import * as Urls from "metabase/urls";
 
-type TabConfig = {
-  value: string;
-  label: string;
-};
-
-type TasksTabsProps = WithRouterProps & {
-  children: React.ReactNode;
-};
-
-const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
-  const tabs: TabConfig[] = [
-    { value: Urls.adminToolsTasksList(), label: t`Tasks` },
-    { value: Urls.adminToolsTasksRuns(), label: t`Runs` },
+export const TasksTabs = () => {
+  const { currentData: counts, isError } = useGetTaskCountsQuery();
+  const tabs: PillTab[] = [
+    {
+      label: t`Tasks`,
+      to: Urls.monitorTasksList(),
+      count: getTabCount({ value: counts?.tasks, isError }),
+    },
+    {
+      label: t`Runs`,
+      to: Urls.monitorTasksRuns(),
+      count: getTabCount({ value: counts?.runs, isError }),
+    },
   ];
-  const DEFAULT_TAB = tabs[0].value;
-  const dispatch = useDispatch();
-  const activeTab =
-    tabs.find(({ value }) => value === location.pathname)?.value ?? DEFAULT_TAB;
 
-  const handleTabChange = (value: string | null) => {
-    if (value) {
-      dispatch(push(value));
-    }
-  };
-
-  return (
-    <SettingsPageWrapper>
-      <SettingsSection>
-        <Flex align="center" gap="sm">
-          <Title order={1}>{t`Troubleshooting logs`}</Title>
-          <Tooltip
-            label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
-          >
-            <Icon name="info" />
-          </Tooltip>
-        </Flex>
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List>
-            {tabs.map((tab) => (
-              <Tabs.Tab key={tab.value} value={tab.value}>
-                {tab.label}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs>
-        {children}
-      </SettingsSection>
-    </SettingsPageWrapper>
-  );
+  return <PillTabNavigation tabs={tabs} />;
 };
-
-export const TasksTabs = withRouter(TasksTabsBase);

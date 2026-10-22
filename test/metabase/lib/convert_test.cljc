@@ -85,7 +85,6 @@
                                       {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                                       (meta/id :categories :name)]]
                        :joins       [{:lib/type    :mbql/join
-                                      :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
                                       :conditions  [[:=
                                                      {:lib/uuid string?}
@@ -114,22 +113,45 @@
 
 (deftest ^:parallel ->mbql5-native-query-test
   (testing "template tag dimensions are converted"
-    (let [original {:type :native
-                    :native
-                    {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                     :template-tags
-                     {"NAME"
-                      {:name "NAME"
-                       :display-name "Name"
-                       :type :dimension
-                       :dimension [:field 866 nil]
-                       :widget-type :string/=
-                       :default nil}}}
-                    :database 76}
+    (let [original  {:type     :native
+                     :native
+                     {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                      :template-tags
+                      {"NAME"
+                       {:name         "NAME"
+                        :display-name "Name"
+                        :type         :dimension
+                        :dimension    [:field 866 nil]
+                        :widget-type  :string/=
+                        :default      nil}}}
+                     :database 76}
           converted (lib.convert/->mbql5 original)]
-      (is (=? {:stages [{:template-tags {"NAME" {:dimension [:field {:lib/uuid string?} 866]}}}]}
+      (is (=? {:stages [{:template-tags [{:dimension [:field {:lib/uuid string?} 866]}]}]}
               converted))
       (is (mr/validate :metabase.lib.schema/query converted)))))
+
+(deftest ^:parallel native-query->legacy-test
+  (is (= {:database 76
+          :native {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                   :template-tags {"NAME" {:default      nil
+                                           :dimension    [:field 866 nil]
+                                           :display-name "Name"
+                                           :name         "NAME"
+                                           :type         :dimension
+                                           :widget-type  :string/=}}}
+          :type     :native}
+         (lib.convert/->legacy-MBQL
+          {:database 76
+           :stages   [{:native   "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                       :template-tags
+                       [{:default      nil
+                         :dimension    [:field {:lib/uuid "7ba4c681-b39e-418b-8b77-b98ad974eeb1"} 866]
+                         :display-name "Name"
+                         :name         "NAME"
+                         :type         :dimension
+                         :widget-type  :string/=}]
+                       :lib/type :mbql.stage/native}]
+           :lib/type :mbql/query}))))
 
 (deftest ^:parallel ->mbql5-joins-default-alias-test
   (let [original {:database (meta/id)
@@ -149,7 +171,6 @@
              :database (meta/id)
              :stages   [{:lib/type :mbql.stage/mbql
                          :joins    [{:lib/type    :mbql/join
-                                     :lib/options {:lib/uuid string?}
                                      :alias       "__join"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
@@ -163,7 +184,6 @@
                                      :stages      [{:lib/type     :mbql.stage/mbql
                                                     :source-table (meta/id :venues)}]}
                                     {:lib/type    :mbql/join
-                                     :lib/options {:lib/uuid string?}
                                      :alias       "__join_2"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
@@ -192,8 +212,7 @@
                                                         [:field {:lib/uuid string?} 2]]]
                                          :lib/type    :mbql/join
                                          :stages      [{:lib/type     :mbql.stage/mbql
-                                                        :source-table 3}]
-                                         :lib/options {:lib/uuid string?}}]
+                                                        :source-table 3}]}]
                          :limit        1
                          :source-table 4}]
              :database 5}
@@ -512,6 +531,28 @@
     "2020-10-20T10:20:00Z"
     "10:20:00"))
 
+(deftest ^:parallel ->legacy-MBQL-raw-int-literals-test
+  (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                   (lib/join (lib/join-clause (meta/table-metadata :categories) [(lib/= 1 1)]))
+                   (lib/filter (lib/= 1 1))
+                   (lib/filter (lib/< 4 5))
+                   (lib/filter (lib/between 5 1 10))
+                   (lib/aggregate (lib/count-where (lib/= 2 2)))
+                   (lib/aggregate (lib/sum 3)))
+        legacy (lib.convert/->legacy-MBQL query)]
+    (testing "raw integer literals in comparisons and aggregation arguments stay literals in legacy MBQL"
+      (is (=? {:filter      [:and [:= 1 1] [:< 4 5] [:between 5 1 10]]
+               :aggregation [[:count-where [:= 2 2]]
+                             [:sum 3]]
+               :joins       [{:condition [:= 1 1]}]}
+              (:query legacy))))
+    (testing "raw integer literals survive converting back to MBQL 5"
+      (is (=? {:filters     [[:= {} 1 1] [:< {} 4 5] [:between {} 5 1 10]]
+               :aggregation [[:count-where {} [:= {} 2 2]]
+                             [:sum {} 3]]
+               :joins       [{:conditions [[:= {} 1 1]]}]}
+              (-> legacy lib.convert/->mbql5 :stages first))))))
+
 (deftest ^:parallel round-trip-filter-expression-test
   (are [expressions filter-expression]
        (test-round-trip {:database 1
@@ -536,7 +577,7 @@
     {"false" [:value false nil]}
     [:expression "false"]
 
-    {"eq"  [:= 1 2]}
+    {"eq"  [:= "a" "b"]}
     [:expression "eq"]
 
     {"and"  [:and [:field 1 nil] [:field 2 nil]]}
@@ -582,7 +623,7 @@
                               :metabase.query-processor.util.add-alias-info/source-table 224}]]
                            {:name "avg"
                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
-                            :metabase.query-processor.util.add-alias-info/position 1
+                            :metabase.query-processor.util.add-alias-info/source-table 224
                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
             :source-table 224}
     :type :query}))
@@ -820,18 +861,18 @@
                               :base_type       :type/Integer}]}
 
                  :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
-                 [{:base-type                    :type/Text
-                   :semantic-type                :type/Category
-                   :table-id                     32600
+                 [{:base_type                    :type/Text
+                   :semantic_type                :type/Category
+                   :table_id                     32600
                    :name                         "category"
                    :source                       :breakout
-                   :effective-type               :type/Text
+                   :effective_type               :type/Text
                    :id                           134551
-                   :lib/join-alias "products__via__product_id"
-                   :visibility-type              :normal
-                   :display-name                 "Product → Category"
-                   :field-ref                    [:field 134551 {:source-field 134534}]
-                   :fk-field-id                  134534
+                   :lib/join-alias               "products__via__product_id"
+                   :visibility_type              :normal
+                   :display_name                 "Product → Category"
+                   :field_ref                    [:field 134551 {:source-field 134534}]
+                   :fk_field_id                  134534
                    :fingerprint                  {:global {:distinct-count 4, :nil% 0.0}
                                                   :type   {:type/Text {:percent-json   0.0
                                                                        :percent-url    0.0
@@ -1014,17 +1055,20 @@
 
 (deftest ^:parallel convert-aggregation-reference-test
   (testing "Don't wrap :aggregation in :aggregation options when converting between legacy and MBQL 5"
+    ;; the alias options are spelled out in full, the way `metabase.query-processor.util.add-alias-info` writes them:
+    ;; ref options are a closed schema in both MBQL versions, so an undeclared key would be dropped in the round trip
+    ;; and this test would be measuring the stripping rather than the conversion.
     (let [query {:database 2
                  :type     :query
                  :query    {:aggregation  [[:aggregation-options
-                                            [:sum [:field 100 {:source-table 12, :source-alias "TOTAL"}]]
+                                            [:sum [:field 100 {:metabase.query-processor.util.add-alias-info/source-table 12
+                                                               :metabase.query-processor.util.add-alias-info/source-alias "TOTAL"}]]
                                             {:name "sum"}]]
-                            :order-by     [[:asc [:aggregation 0 {:desired-alias "sum", :position 1}]]
+                            :order-by     [[:asc [:aggregation 0 {:metabase.query-processor.util.add-alias-info/desired-alias "sum"}]]
                                            [:asc
-                                            [:field 99 {:source-table  12
-                                                        :source-alias  "PRODUCT_ID"
-                                                        :desired-alias "PRODUCT_ID"
-                                                        :position      0}]]]
+                                            [:field 99 {:metabase.query-processor.util.add-alias-info/source-table  12
+                                                        :metabase.query-processor.util.add-alias-info/source-alias  "PRODUCT_ID"
+                                                        :metabase.query-processor.util.add-alias-info/desired-alias "PRODUCT_ID"}]]]
                             :source-table 12}}]
       (is (= query
              (-> query lib.convert/->mbql5 lib.convert/->legacy-MBQL))))))
@@ -1512,7 +1556,7 @@
                                                          :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
                                                                         [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
                                              :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
-                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1 2]]}]}]}]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} "a" "b"]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
@@ -1520,7 +1564,7 @@
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
                                       :fields       [[:field 1 {:join-alias "J"}]]
-                                      :condition    [:= 1 2]}]}}
+                                      :condition    [:= "a" "b"]}]}}
              (lib.convert/->legacy-MBQL query)
              ;; make sure roundtripping doesn't introduce extra stages.
              (-> query
@@ -1539,14 +1583,14 @@
                                                            :source-table 2
                                                            :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
                                                                           [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
-                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 1 2]]}]}]}]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} "a" "b"]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
                                       :source-query {:source-table 2
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
-                                      :condition    [:= 1 2]}]}}
+                                      :condition    [:= "a" "b"]}]}}
              (lib.convert/->legacy-MBQL query)
              ;; make sure roundtripping doesn't introduce extra stages.
              (-> query
@@ -1595,7 +1639,7 @@
           [:relative-datetime -15 :day]
           [:relative-datetime 0 :day]]
          (lib.convert/->legacy-MBQL [:between
-                                     {:include-current true,
+                                     {:include-current true
                                       :lib/uuid        "b8991b40-d452-4922-8768-b07f6f2b1918"}
                                      [:field
                                       {:base-type :type/Text
@@ -1678,7 +1722,7 @@
                                             :dimension    [:field 2 nil]}}}))))
 
 (deftest ^:parallel round-trip-offset-inside-case-inside-aggregation-test
-  (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> pMBQL round-trip"
+  (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> MBQL 5 round-trip"
     ;; OFFSET retains a random :lib/uuid in its (mbql5-style) options, so exact round-trip equality is not
     ;; possible; instead assert the conversion happens without an "Error normalizing" exception and that the
     ;; clause shape is preserved in both directions.

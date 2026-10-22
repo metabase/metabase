@@ -64,6 +64,7 @@ const setup = ({
       sidebar={{
         props: { dashcardId },
       }}
+      // Unjustified type cast. FIXME
       onUpdateDashCardVisualizationSettings={vizUpdateSpy as any}
       closeSidebar={closeSpy}
       navigateToNewCardFromDashboard={null}

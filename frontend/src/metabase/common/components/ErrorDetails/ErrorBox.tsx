@@ -1,12 +1,20 @@
+import cx from "classnames";
+
 import { Box } from "metabase/ui";
 
 import S from "./ErrorDetails.module.css";
 import type { ErrorDetails } from "./types";
 
-export const ErrorBox = ({ children }: { children: ErrorDetails }) => (
+export const ErrorBox = ({
+  children,
+  className,
+}: {
+  children: ErrorDetails;
+  className?: string;
+}) => (
   <Box
-    className={S.monospace}
-    p="md"
+    className={cx(S.monospace, className)}
+    p="lg"
     mt="sm"
     fw="bold"
     bg="background_page-secondary"

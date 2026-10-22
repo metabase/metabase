@@ -1,6 +1,8 @@
 import type {
   CardId,
   CollectionId,
+  DashboardId,
+  DashboardSubscription,
   DatabaseId,
   ErdParams,
   FieldId,
@@ -9,6 +11,7 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
+  WritebackActionId,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -39,6 +42,7 @@ export function isDataStudioTableMetadataTab(
   tab: unknown,
 ): tab is DataStudioTableMetadataTab {
   return DATA_STUDIO_TABLE_METADATA_TABS.includes(
+    // Unjustified type cast. FIXME
     tab as DataStudioTableMetadataTab,
   );
 }
@@ -53,6 +57,10 @@ type DataStudioDataParams = {
 
 export function dataStudio() {
   return ROOT_URL;
+}
+
+export function dataStudioGuide() {
+  return `${ROOT_URL}/guide`;
 }
 
 export function dataStudioData({
@@ -88,16 +96,59 @@ export function dataStudioData({
   return parts.join("/");
 }
 
-export function dataStudioLibrary({
-  expandedIds,
-}: { expandedIds?: CollectionId[] } = {}) {
-  let query = "";
-  if (expandedIds?.length) {
-    const params = new URLSearchParams();
-    expandedIds.forEach((id) => params.append("expandedId", String(id)));
-    query = `?${params.toString()}`;
+type ExpandedIdsParams = { expandedIds?: CollectionId[] };
+
+function getExpandedIdsQueryString({ expandedIds }: ExpandedIdsParams) {
+  if (!expandedIds?.length) {
+    return "";
   }
-  return `${ROOT_URL}/library${query}`;
+  const params = new URLSearchParams();
+  expandedIds.forEach((id) => params.append("expandedId", String(id)));
+  return `?${params.toString()}`;
+}
+
+export function dataStudioLibrary(params: ExpandedIdsParams = {}) {
+  return `${ROOT_URL}/library${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioSnippets(params: ExpandedIdsParams = {}) {
+  return `${ROOT_URL}/snippets${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioActions(params: ExpandedIdsParams = {}) {
+  return `${ROOT_URL}/actions${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioDashboards(params: ExpandedIdsParams = {}) {
+  return `${ROOT_URL}/dashboards${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioDashboard(dashboardId: DashboardId) {
+  return `${dataStudioDashboards()}/${dashboardId}`;
+}
+
+export function dataStudioDashboardContents(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/contents`;
+}
+
+export function dataStudioDashboardDependencies(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/dependencies`;
+}
+
+export function dataStudioDashboardUsage(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/usage`;
+}
+
+export function dataStudioDashboardHistory(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/history`;
+}
+
+export function dataStudioDashboardSubscriptions(
+  dashboardId: DashboardId,
+  subscriptionId?: DashboardSubscription["id"],
+) {
+  const baseUrl = `${dataStudioDashboard(dashboardId)}/subscriptions`;
+  return subscriptionId != null ? `${baseUrl}/${subscriptionId}` : baseUrl;
 }
 
 export function dataStudioTable(tableId: TableId) {
@@ -263,6 +314,10 @@ export function dataStudioMetricQuery(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/query`;
 }
 
+export function dataStudioMetricDimensions(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/dimensions`;
+}
+
 export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
@@ -321,7 +376,7 @@ export function dataStudioGitSync() {
 }
 
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
-  return `${dataStudioLibrary()}/snippets/${snippetId}`;
+  return `${dataStudioSnippets()}/${snippetId}`;
 }
 
 export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
@@ -329,13 +384,51 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 }
 
 export function newDataStudioSnippet() {
-  return `${dataStudioLibrary()}/snippets/new`;
+  return `${dataStudioSnippets()}/new`;
 }
 
 export function dataStudioArchivedSnippets() {
-  return `${dataStudioLibrary()}/snippets/archived`;
+  return `${dataStudioSnippets()}/archived`;
 }
 
-export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioLibrary()}/segments/${segmentId}`;
+export function dataStudioAction(actionId: WritebackActionId) {
+  return `${dataStudioActions()}/${actionId}`;
+}
+
+export function dataStudioActionEdit(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/edit`;
+}
+
+export function dataStudioActionFields(
+  actionId: WritebackActionId,
+  fieldId?: string,
+) {
+  const fieldsUrl = `${dataStudioAction(actionId)}/fields`;
+  return fieldId != null
+    ? `${fieldsUrl}/${encodeURIComponent(fieldId)}`
+    : fieldsUrl;
+}
+
+export function dataStudioActionDependencies(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/dependencies`;
+}
+
+export function dataStudioActionRun(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/run`;
+}
+
+export function dataStudioActionSettings(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/settings`;
+}
+
+export function newDataStudioAction() {
+  return `${dataStudioActions()}/new`;
+}
+
+export function dataStudioArchivedActions() {
+  return `${dataStudioActions()}/archived`;
+}
+
+export function dataStudioSettings() {
+  return `${dataStudio()}/settings`;
 }

@@ -81,12 +81,18 @@ export type Table = {
   collection_id: CollectionId | null;
   is_published: boolean;
   collection?: Collection;
+  can_write?: boolean;
 };
 
 export type TableOwner = Pick<
   UserInfo,
   "id" | "email" | "first_name" | "last_name"
 >;
+
+export type TablePublishingInfo = {
+  published_at: string;
+  published_by: Pick<UserInfo, "id" | "common_name"> | null;
+};
 
 export type SchemaName = string;
 
@@ -107,7 +113,7 @@ export interface TableMetadataQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface TableListQuery {
+export type TableListQuery = {
   dbId?: DatabaseId;
   schemaName?: string;
   include_hidden?: boolean;
@@ -124,7 +130,7 @@ export interface TableListQuery {
   "unused-only"?: boolean | null;
   "orphan-only"?: boolean;
   "published-only"?: boolean | null;
-}
+};
 
 export interface ForeignKey {
   origin?: Field;

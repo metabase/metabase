@@ -5,7 +5,7 @@
   padding: 0.5rem 0.75rem;
   font-weight: bold;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--default-button-border-radius);
+  border-radius: var(--mantine-radius-xs);
   opacity: 1;
   transition:
     transform 0.25s,
@@ -17,6 +17,14 @@
   &:hover {
     color: var(--mb-color-text-brand);
     background: var(--mb-color-background_page-secondary);
+  }
+
+  &:disabled,
+  &:disabled:hover {
+    color: var(--mb-color-text-disabled);
+    border-color: var(--mb-color-border-neutral);
+    background-color: var(--mb-color-background_surface-disabled);
+    cursor: not-allowed;
   }
 }
 

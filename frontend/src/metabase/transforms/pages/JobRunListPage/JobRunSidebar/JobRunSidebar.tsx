@@ -75,19 +75,20 @@ export const JobRunSidebar = memo(function JobRunSidebar({
         className={S.sidebar}
         direction="column"
         flex={1}
+        miw={0}
         h="100%"
         bg="background_page-primary"
         data-testid="job-run-list-sidebar"
       >
-        <Box className={S.header} p="lg">
+        <Box className={S.header} p="xl">
           <JobRunSidebarHeader onClose={onClose} />
         </Box>
-        <Box className={S.scrollArea} flex={1} mih={0} p="lg">
-          <Stack gap="xl">
+        <Box className={S.scrollArea} flex={1} mih={0} p="xl">
+          <Stack gap="xxl">
             <JobRunInfoSection run={run} />
-            <Stack gap="md">
+            <Stack gap="lg">
               <Group gap="sm" wrap="nowrap">
-                <Badge variant="filled" bg="core-brand">
+                <Badge color="brand" size="sm" variant="filled">
                   {transformRuns.length}
                 </Badge>
                 <Title order={5}>{t`Transforms`}</Title>
@@ -146,7 +147,7 @@ function JobRunSidebarHeader({ onClose }: JobRunSidebarHeaderProps) {
       data-testid="job-run-list-sidebar-header"
     >
       <Title order={3}>{t`Job run`}</Title>
-      <ActionIcon aria-label={t`Close`} onClick={onClose}>
+      <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
         <FixedSizeIcon name="close" />
       </ActionIcon>
     </Group>

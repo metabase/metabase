@@ -10,8 +10,7 @@ import {
 import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
-
-import type { ChartSettingWidgetProps } from "./types";
+import type { ChartSettingWidgetProps } from "metabase/viz-core";
 
 const ALLOWED_CHARS = new Set([
   "0",
@@ -41,8 +40,8 @@ interface ChartSettingInputProps extends Omit<
   };
   id?: string;
   placeholder?: string;
-  getDefault?: () => string;
   className?: string;
+  disabled?: boolean;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -51,12 +50,11 @@ export const ChartSettingInputNumeric = ({
   placeholder,
   options,
   id,
-  getDefault,
   className,
+  disabled,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const isFocusedRef = useRef(false);
-  const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
 
   const processValueRef = useLatest((rawValue: string) => {
     const rawNum = rawValue !== "" ? Number(rawValue) : Number.NaN;
@@ -111,9 +109,9 @@ export const ChartSettingInputNumeric = ({
   return (
     <TextInput
       id={id}
-      {...defaultValueProps}
       placeholder={placeholder}
       type="text"
+      disabled={disabled}
       error={inputValue && isNaN(Number(inputValue))}
       value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {

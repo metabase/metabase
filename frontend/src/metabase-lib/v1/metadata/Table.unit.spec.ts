@@ -1,9 +1,15 @@
 import { createMockMetadata } from "__support__/metadata";
+import Database from "metabase-lib/v1/metadata/Database";
+import Table from "metabase-lib/v1/metadata/Table";
 import {
   createMockField,
   createMockForeignKey,
   createMockTable,
 } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 const TABLE_ORIGIN_ID = 1;
 const TABLE_DESTINATION_ID = 2;
@@ -78,6 +84,27 @@ describe("Table", () => {
       const destinationTable = metadata.table(TABLE_DESTINATION_ID);
 
       expect(destinationTable?.connectedTables()).toEqual([originTable]);
+    });
+  });
+
+  describe("with the sample database", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const table = metadata.table(ORDERS_ID);
+
+    it("should be a table", () => {
+      expect(table).toBeInstanceOf(Table);
+    });
+
+    it("should have a database", () => {
+      expect(table?.db).toBeInstanceOf(Database);
+    });
+
+    describe("date fields", () => {
+      it("should return date fields", () => {
+        expect(table?.dateFields()).toHaveLength(1);
+      });
     });
   });
 });

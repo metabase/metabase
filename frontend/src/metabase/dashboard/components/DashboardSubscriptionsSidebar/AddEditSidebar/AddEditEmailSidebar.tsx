@@ -3,22 +3,33 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  type ScheduleChangeProp,
-  SchedulePicker,
-} from "metabase/common/components/SchedulePicker";
+import { Schedule } from "metabase/common/components/Schedule";
+import type { ScheduleValue } from "metabase/common/components/Schedule/domain";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
+import { canAccessSettings, getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
+import {
+  getScheduleDefaultsWithoutHour,
+  toScheduleSettings,
+} from "metabase/notifications/utils";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { dashboardPulseIsValid } from "metabase/pulse";
+import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
+import {
+  Icon,
+  Input,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+  Title,
+} from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -26,6 +37,7 @@ import {
   type ChannelSpec,
   type Dashboard,
   DataPermissionValue,
+  type DraftDashboardSubscription,
   type ScheduleSettings,
   type User,
 } from "metabase-types/api";
@@ -34,7 +46,10 @@ import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
-import { CHANNEL_NOUN_PLURAL } from "./constants";
+import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
+import { getSubscriptionScheduleDescription } from "./utils";
+
+const SUBJECT_MAX_LENGTH = 255;
 
 interface AddEditEmailSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -81,8 +96,23 @@ export const AddEditEmailSidebar = ({
   setPulseParameters,
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const hasValidTarget = channelTargetIsValid(channel, channelSpec);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getUser);
+  const applicationName = useSelector(getApplicationName);
+  const timezone = useSelector((state) =>
+    getSetting(state, "report-timezone-short"),
+  );
+
+  const renderScheduleDescription = (value: ScheduleValue) => {
+    const description = getSubscriptionScheduleDescription({
+      schedule: toScheduleSettings(value),
+      channelSpec,
+      applicationName,
+      timezone,
+    });
+    return description ? <Text c="text-secondary">{description}</Text> : null;
+  };
 
   // Return true if the results of all cards can be downloaded
   const allowDownload = pulse.cards.every(
@@ -111,7 +141,7 @@ export const AddEditEmailSidebar = ({
       >
         {isEmbeddingSdk() ? null : (
           <div>
-            <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
+            <Input.Label>{t`To`}</Input.Label>
             <RecipientPicker
               autoFocus={false}
               recipients={channel.recipients}
@@ -127,8 +157,22 @@ export const AddEditEmailSidebar = ({
             />
           </div>
         )}
-        <SchedulePicker
-          schedule={_.pick(
+        <TextInput
+          mt="lg"
+          label={t`Subject`}
+          placeholder={dashboard.name}
+          value={channel.details?.subject ?? ""}
+          maxLength={SUBJECT_MAX_LENGTH}
+          onChange={({ target: { value } }) =>
+            onChannelPropertyChange("details", {
+              ...channel.details,
+              subject: value.trim() ? value : undefined,
+            })
+          }
+        />
+        <Schedule
+          mt="lg"
+          value={_.pick(
             channel,
             "schedule_day",
             "schedule_frame",
@@ -136,13 +180,14 @@ export const AddEditEmailSidebar = ({
             "schedule_type",
           )}
           scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Sent`}
-          textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
-            t`Messages`
-          } will be sent at`}
-          onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(newSchedule, changedProp)
+          verb={t`Sent`}
+          getDefaults={getScheduleDefaultsWithoutHour}
+          renderScheduleDescription={renderScheduleDescription}
+          onScheduleChange={({ value }) =>
+            onChannelScheduleChange(toScheduleSettings(value), {
+              name: "schedule_type",
+              value: value.schedule_type,
+            })
           }
         />
         <div className={cx(CS.py2)}>
@@ -153,7 +198,7 @@ export const AddEditEmailSidebar = ({
             testPulse={testPulse}
             normalText={t`Send email now`}
             successText={t`Email sent`}
-            disabled={!isValid}
+            disabled={!hasValidTarget}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
@@ -171,7 +216,7 @@ export const AddEditEmailSidebar = ({
             parameters={parameters}
           />
         )}
-        <Stack gap="md" py="lg" className={CS.borderTop}>
+        <Stack gap="lg" py="xl" className={CS.borderTop}>
           <Switch
             checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}

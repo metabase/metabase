@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
@@ -9,8 +8,11 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
@@ -23,15 +25,12 @@ import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
-import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { useNavigate } from "metabase/router";
+import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
-
-import S from "./MetricToolbar.module.css";
 
 type MetricModalType =
   | "move"
@@ -84,7 +83,7 @@ function MetricToolbarButtons({
   showDataStudioLink: showDataStudioLinkProp,
   onOpenModal,
 }: MetricToolbarButtonsProps) {
-  const metadata = useSelector(getMetadata);
+  const metadataProvider = useMetadataProvider(card.dataset_query.database);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const { data: questionNotifications, isLoading: isNotificationsLoading } =
@@ -95,7 +94,7 @@ function MetricToolbarButtons({
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
   const moderationMenuItems = PLUGIN_MODERATION.useCardMenuItems(card);
-  const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
+  const query = Lib.fromJsQuery(metadataProvider, card.dataset_query);
   const queryInfo = Lib.queryDisplayInfo(query);
 
   const isBookmarked = bookmarks.some(
@@ -117,16 +116,9 @@ function MetricToolbarButtons({
     PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
 
   return (
-    <Menu position="bottom-end">
+    <Menu>
       <Menu.Target>
-        <ActionIcon
-          variant="default"
-          size="lg"
-          className={S.moreOptionsButton}
-          aria-label={t`More options`}
-        >
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <MoreMenuButton aria-label={t`More options`} />
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
@@ -233,10 +225,10 @@ interface MetricModalProps {
 }
 
 function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleCopy = (newCard: Card) => {
-    dispatch(push(urls.about(newCard.id)));
+    navigate(urls.about(newCard.id));
   };
 
   switch (modalType) {
@@ -253,7 +245,7 @@ function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
         <AddToDashSelectDashModal
           card={card}
           onClose={onClose}
-          onChangeLocation={(location) => dispatch(push(location))}
+          onChangeLocation={(location) => navigate(location)}
         />
       );
     case "alert":

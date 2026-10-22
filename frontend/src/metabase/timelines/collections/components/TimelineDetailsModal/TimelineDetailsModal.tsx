@@ -1,14 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
+import {
+  type ChangeEventHandler,
+  type JSX,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { InputProps } from "metabase/common/components/Input";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
-import ButtonsS from "metabase/css/components/buttons.module.css";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ModalHeader } from "metabase/timelines/common/components/ModalHeader";
+import { MODAL_MIN_HEIGHT } from "metabase/timelines/common/constants";
+import { ActionIcon, Button, Flex, Icon, Menu, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -17,14 +23,6 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import EventList from "../EventList";
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";
-
-import {
-  ModalBody,
-  ModalRoot,
-  ModalToolbar,
-  ModalToolbarInput,
-  ModalToolbarLink,
-} from "./TimelineDetailsModal.styled";
 
 export interface TimelineDetailsModalProps {
   timeline: Timeline;
@@ -70,18 +68,18 @@ const TimelineDetailsModal = ({
   const canWrite = timeline.collection?.can_write;
   const canGoBack = isArchive || !isOnlyTimeline;
 
-  const handleSearchChange: InputProps["onChange"] = (e) =>
+  const handleSearchChange: ChangeEventHandler<HTMLInputElement> = (e) =>
     setInputText(e.target.value);
 
   return (
-    <ModalRoot>
+    <Flex direction="column" mih={MODAL_MIN_HEIGHT}>
       <ModalHeader
         title={title}
         onClose={onClose}
         onGoBack={canGoBack ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
-          <Menu position="bottom-end" shadow="md">
+          <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Timeline menu`}>
                 <Icon name="ellipsis" />
@@ -92,24 +90,36 @@ const TimelineDetailsModal = ({
         )}
       </ModalHeader>
       {(isNotEmpty || isSearching) && (
-        <ModalToolbar>
-          <ModalToolbarInput
-            fullWidth
+        <Flex pt="lg" px="xxl">
+          <TextInput
+            flex="1 1 auto"
             value={inputText}
             placeholder={t`Search for an event`}
-            leftIcon="search"
+            leftSection={<Icon name="search" />}
             onChange={handleSearchChange}
           />
           {canWrite && !isArchive && (
-            <ModalToolbarLink
-              className={ButtonsS.Button}
+            <Button
+              size="lg"
+              component={ForwardRefLink}
               to={Urls.newEventInCollection(timeline)}
               role="button"
-            >{t`Create event`}</ModalToolbarLink>
+              flex="0 0 auto"
+              ml="lg"
+            >{t`Create event`}</Button>
           )}
-        </ModalToolbar>
+        </Flex>
       )}
-      <ModalBody isTopAligned={isNotEmpty}>
+      <Flex
+        className={CS.overflowYAuto}
+        direction="column"
+        flex="1 1 auto"
+        justify={isNotEmpty ? undefined : "center"}
+        mt="lg"
+        pt="lg"
+        px="xxl"
+        pb="xxl"
+      >
         {isNotEmpty ? (
           <EventList
             events={events}
@@ -122,8 +132,8 @@ const TimelineDetailsModal = ({
         ) : (
           <TimelineEmptyState timeline={timeline} />
         )}
-      </ModalBody>
-    </ModalRoot>
+      </Flex>
+    </Flex>
   );
 };
 

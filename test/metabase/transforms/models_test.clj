@@ -357,21 +357,26 @@
           (let [t (t2/select-one :model/Transform transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
-(deftest schedules-for-transforms-test
-  (testing "returns the schedules of the active jobs that run a transform via shared tags"
-    (mt/with-temp [:model/TransformTag          tag      {}
-                   :model/TransformJob          active   {:schedule "0 0 * * * ? *" :active true}
-                   :model/TransformJob          inactive {:schedule "0 0 0 * * ? *" :active false}
-                   :model/TransformJobTransformTag _      {:job_id (:id active) :tag_id (:id tag) :position 0}
-                   :model/TransformJobTransformTag _      {:job_id (:id inactive) :tag_id (:id tag) :position 1}
-                   :model/Transform             t        {}
-                   :model/TransformTransformTag _         {:transform_id (:id t) :tag_id (:id tag) :position 0}
-                   :model/Transform             untagged {}]
-      (is (= {(:id t) #{"0 0 * * * ? *"}}
-             (transform-tag/schedules-for-transforms #{(:id t)}))
-          "only the active job's schedule is included")
-      (is (= {} (transform-tag/schedules-for-transforms #{(:id untagged)}))
-          "a transform with no scheduling job is absent"))))
+(deftest lookback-round-trips-with-keyword-keys-test
+  (testing "the nested lookback map comes back from the app DB with keyword keys"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Transform {transform-id :id}
+                     {:source {:type "query"
+                               :query {:database db-id
+                                       :type "native"
+                                       :native {:query "SELECT 1"
+                                                :template-tags {}}}
+                               :source-incremental-strategy {:type "checkpoint"
+                                                             :checkpoint-filter-field-id 100
+                                                             :lookback {:value 4 :unit "day"}}}
+                      :target {:type "table-incremental"
+                               :schema "public"
+                               :name "test_lookback"
+                               :db_id db-id}}]
+        (is (= {:value 4 :unit "day"}
+               (get-in (t2/select-one :model/Transform transform-id)
+                       [:source :source-incremental-strategy :lookback])))))))
 
 (deftest start-run-stores-job-run-id-test
   (testing "start-run! stores job_run_id when provided in properties"

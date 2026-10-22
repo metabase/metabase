@@ -4,8 +4,21 @@ import type {
   ListTaskRunsResponse,
   ListTasksResponse,
   Task,
+  TaskCountsResponse,
+  TaskInfo,
   TaskRunExtended,
 } from "metabase-types/api";
+
+export function setupTaskCountsEndpoint(
+  response: TaskCountsResponse = { tasks: 0, runs: 0 },
+  options?: UserRouteConfig,
+) {
+  fetchMock.get("path:/api/task/counts", response, options);
+}
+
+export function setupTaskCountsErrorEndpoint() {
+  fetchMock.get("path:/api/task/counts", { status: 500 });
+}
 
 export function setupTasksEndpoints(
   response: ListTasksResponse,
@@ -24,6 +37,13 @@ export function setupUniqueTasksEndpoint(
   options?: UserRouteConfig,
 ) {
   fetchMock.get(`path:/api/task/unique-tasks`, tasks, options);
+}
+
+export function setupTasksInfoEndpoint(
+  taskInfo: TaskInfo,
+  options?: UserRouteConfig,
+) {
+  fetchMock.get("path:/api/task/info", taskInfo, options);
 }
 
 export function setupTaskRunsEndpoints(

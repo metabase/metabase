@@ -3,7 +3,7 @@
   `:destination-database/id`, on the query if a destination database should be used. The second middleware runs around query
   execution, and should be THE LAST middleware before we hit the database and query execution actually occurs."
   (:require
-   [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
+   [metabase-enterprise.database-routing.common :as common :refer [router-db-or-id->destination-db-id]]
    [metabase.database-routing.core :refer [with-database-routing-on]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *destination-database-id*
   "Bound to the destination database id during query execution when DB routing has swapped in a destination DB.
   Mirrors the shape of [[metabase-enterprise.impersonation.driver/*impersonation-role*]]: analytics code reads it
@@ -61,7 +62,11 @@
   :feature :none
   [query]
   (let [database (lib.metadata/database (qp.store/metadata-provider))
+        ;; both the assert and the routing computation hit the app-db, which skip-middleware contexts
+        ;; (e.g. the offline semantic checker) must not do; they never execute queries, so there is
+        ;; nothing for the assert to protect there.
         destination-db-id (when-not qp.i/*skip-middleware-because-app-db-access*
+                            (common/assert-not-direct-destination-access! database)
                             (router-db-or-id->destination-db-id database))]
     (when destination-db-id
       (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
@@ -69,5 +74,7 @@
                                     :database-routing
                                     database)
         (throw (ex-info "Unsupported database for database routing" {}))))
-    (cond-> query
+    ;; dissoc first: a client-supplied :destination-database/id must never survive preprocessing,
+    ;; since swap-destination-db trusts this key at execution time.
+    (cond-> (dissoc query :destination-database/id)
       destination-db-id (assoc :destination-database/id destination-db-id))))

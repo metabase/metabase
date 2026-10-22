@@ -55,6 +55,7 @@ export const executeRowAction = async ({
           );
 
     const message = getActionExecutionMessage(
+      // Unjustified type cast. FIXME
       dashcard.action as WritebackAction,
       result,
     );
@@ -75,8 +76,7 @@ export const executeRowAction = async ({
     if (shouldToast) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message,
         }),
       );

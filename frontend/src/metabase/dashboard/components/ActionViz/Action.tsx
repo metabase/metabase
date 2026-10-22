@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { getActionDisplayType } from "metabase/actions/utils";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   executeRowAction,
@@ -11,12 +12,11 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { connect, useSelector } from "metabase/redux";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -25,9 +25,8 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { FullContainer } from "./ActionButton.styled";
 import ActionButtonView from "./ActionButtonView";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 import {
   getDashcardParamValues,
   getMappedActionParameters,
@@ -63,15 +62,12 @@ const ActionComponent = ({
   const { data: card } = useGetCardQuery(
     dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
   );
-  const metadata = useSelector(getMetadata);
-  const model = useMemo(
-    () => (card ? new Question(card, metadata) : undefined),
-    [card, metadata],
-  );
+  const model = useQuestionFromCard(card);
 
-  const actionSettings = dashcard.action?.visualization_settings;
-  const actionDisplayType =
-    settings?.actionDisplayType ?? actionSettings?.type ?? "button";
+  const actionDisplayType = getActionDisplayType(
+    settings?.actionDisplayType,
+    dashcard.action,
+  );
 
   const dashcardParamValues = useMemo(
     () => getDashcardParamValues(dashcard, parameterValues),
@@ -129,6 +125,7 @@ const ActionComponent = ({
 
   return (
     <ActionVizForm
+      // Unjustified type cast. FIXME
       action={dashcard.action as WritebackAction}
       dashboard={dashboard}
       dashcard={dashcard}
@@ -168,15 +165,16 @@ function ActionFn(props: ActionProps) {
 
     return (
       <Tooltip label={tooltip}>
-        <FullContainer data-testid="action-button-full-container">
+        <Box w="100%" h="100%" data-testid="action-button-full-container">
           <ActionButtonView
             disabled
             icon="bolt"
             tooltip={tooltip}
             settings={props.settings}
+            isFullHeight={!props.isSettings}
             focus={props.isEditingDashcard}
           />
-        </FullContainer>
+        </Box>
       </Tooltip>
     );
   }
@@ -202,5 +200,4 @@ function getErrorTooltip({
   return t`Something’s gone wrong`;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(ActionFn);
+export const Action = connect(mapStateToProps)(ActionFn);

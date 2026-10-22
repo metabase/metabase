@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -15,6 +15,30 @@
    (java.time Instant LocalDateTime ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
+
+(def transform-run-timeout-seconds
+  "How long tests wait for a transform run to finish execution and sync."
+  ;; BigQuery runs routinely take 50-70s in CI.
+  120)
+
+(defn do-with-transforms-api-users!
+  "Implementation of [[with-transforms-api-users!]]."
+  [f]
+  ;; a data analyst only reaches the transforms API with `advanced-permissions`, which no OSS build can
+  ;; have — so under OSS only the superuser drives these endpoints
+  (doseq [user (cond-> [:crowberto] config/ee-available? (conj :lucky))]
+    (testing (str "as " (name user))
+      (if (= user :crowberto)
+        (f user)
+        (mt/with-data-analyst-role! (mt/user->id user)
+          (f user))))))
+
+(defmacro with-transforms-api-users!
+  "Runs `body` once per user who may drive the transforms API, with `user` bound to the test-user keyword:
+  `:crowberto` in every edition, and `:lucky` as a data analyst when EE is available. Every assertion in
+  `body` must hold for both."
+  [[user] & body]
+  `(do-with-transforms-api-users! (^:once fn* [~user] ~@body)))
 
 (defn seconds-from-now-ns
   "Returns a deadline `seconds` from now in nanoseconds, for use with `System/nanoTime`.
@@ -30,11 +54,27 @@
     {:alias alias :table_id table-id :database_id db_id :schema schema}))
 
 (defn default-source-table-entry
-  "Build a source-table-entry for the first active table in the current test database."
+  "Build a source-table-entry for an active, field-synced table in the current test database.
+  Deterministic: orders by id and requires a synced field."
   ([]
    (default-source-table-entry "test"))
   ([alias]
-   (source-table-entry alias (t2/select-one-pk :model/Table :db_id (mt/id) :active true))))
+   ;; Requiring a field skips field-less leftovers (un-synced transform targets, or Snowflake tables whose
+   ;; columns haven't propagated yet) that would make the QP throw "Table has no Fields associated with it".
+   (source-table-entry alias
+                       (t2/select-one-pk :model/Table
+                                         :db_id  (mt/id)
+                                         :active true
+                                         :id     [:in ^:allow-subquery {:select [:table_id]
+                                                                        :from   [(t2/table-name :model/Field)]
+                                                                        ;; Mirror the QP's queryable-column filter (active-column-pred):
+                                                                        ;; active, and visibility not sensitive/retired, else the picked
+                                                                        ;; table still yields no implicit fields.
+                                                                        :where  [:and
+                                                                                 [:= :active true]
+                                                                                 [:or [:= :visibility_type nil]
+                                                                                  [:not-in :visibility_type ["sensitive" "retired"]]]]}]
+                                         {:order-by [[:id :asc]]}))))
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
@@ -47,7 +87,7 @@
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
                  (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
-                 (assoc :schema (driver.sql/default-schema driver)))]
+                 (assoc :schema (:default_schema (mt/db))))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
@@ -158,7 +198,7 @@
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" transform-id))
-        timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+        timeout-s transform-run-timeout-seconds
         deadline  (seconds-from-now-ns timeout-s)]
     (is (=? {:message "Transform run started"}
             resp))
@@ -230,8 +270,7 @@
   "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
    Useful for tests that need to create tables with a schema matching transform targets."
   []
-  (or (when (get-method driver.sql/default-schema driver/*driver*)
-        (driver.sql/default-schema driver/*driver*))
+  (or (:default_schema (mt/db))
       (if (= :bigquery-cloud-sdk driver/*driver*)
         (t2/select-one-fn :schema :model/Table :db_id (mt/id))
         "public")))

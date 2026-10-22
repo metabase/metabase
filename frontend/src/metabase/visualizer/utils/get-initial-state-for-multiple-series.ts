@@ -2,9 +2,9 @@ import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "met
 import { isNotNull } from "metabase/utils/types";
 import type {
   Card,
+  DashCardDataSeries,
   Dataset,
   DatasetColumn,
-  RawSeries,
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
@@ -108,7 +108,9 @@ function processColumnsForDataSource(
   return columnInfos;
 }
 
-export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
+export function getInitialStateForMultipleSeries(
+  rawSeries: DashCardDataSeries,
+) {
   const mainCard = rawSeries[0].card;
 
   const state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets = {
@@ -118,9 +120,11 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
     settings: {},
     preloadedDatasets: rawSeries.reduce(
       (acc, s) => {
+        // Unjustified type cast. FIXME
         acc[s.card.id] = s as unknown as Dataset;
         return acc;
       },
+      // Unjustified type cast. FIXME
       {} as Record<number, Dataset | null | undefined>,
     ),
   };

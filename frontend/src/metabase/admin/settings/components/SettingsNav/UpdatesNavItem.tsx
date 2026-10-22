@@ -1,15 +1,19 @@
 import { t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
-import { useGetVersionInfoQuery } from "metabase/api";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
+import { useGetVersionInfoQuery } from "metabase/settings";
 import { Indicator } from "metabase/ui";
 import { newVersionAvailable } from "metabase/utils/version";
 
 import { SettingsNavItem } from "./SettingsNavItem";
 
 export function UpdatesNavItem() {
-  const { data: versionInfo } = useGetVersionInfoQuery();
+  const isAdmin = useSelector(getUserIsAdmin);
+  const { data: versionInfo } = useGetVersionInfoQuery(undefined, {
+    skip: !isAdmin,
+  });
   const currentVersion = useSelector(getCurrentVersion);
   const latestVersion = versionInfo?.latest?.version;
 

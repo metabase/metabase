@@ -3,18 +3,19 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import { LOCATION_CHANGE, push } from "react-router-redux";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
-  Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
+import { LOCATION_CHANGE, navigate } from "metabase/router";
+import { shouldOpenInBlankWindow } from "metabase/urls";
 import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
-import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
+import { isObject } from "metabase-types/guards/common";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
@@ -45,34 +46,25 @@ export function resetErrorPage() {
   };
 }
 
-export const openUrl = (url: string) => (dispatch: Dispatch) => {
+export const openUrl = (url: string) => () => {
   if (shouldOpenInBlankWindow(url)) {
     openInBlankWindow(url);
   } else {
-    dispatch(push(url));
+    navigate(url);
   }
 };
 
 const errorPage = handleActions(
   {
-    [SET_ERROR_PAGE]: (_, { payload }) => payload,
+    [SET_ERROR_PAGE]: (_, { payload }: { payload: unknown }) =>
+      isObject(payload)
+        ? { ...payload, message: findErrorMessage(payload) }
+        : payload,
     [RESET_ERROR_PAGE]: () => null,
     [LOCATION_CHANGE]: () => null,
   },
   null,
 );
-
-// regexr.com/7r89i
-// Word boundaries are added so partial matches don't collapse the navbar
-// e.g. /model shouldn't match /browse/models, /question shouldn't match /reference/.../questions
-const PATH_WITH_COLLAPSED_NAVBAR =
-  /\/(model\b|question\b|dashboard|metabot|document|explore).*/;
-
-export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
-  return (
-    !isSmallScreen() && !PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState
-  );
-}
 
 export const OPEN_NAVBAR = "metabase/app/OPEN_NAVBAR";
 export const CLOSE_NAVBAR = "metabase/app/CLOSE_NAVBAR";
@@ -87,6 +79,9 @@ const isNavbarOpen = handleActions(
     [OPEN_NAVBAR]: () => true,
     [TOGGLE_NAVBAR]: (isOpen) => !isOpen,
     [CLOSE_NAVBAR]: () => false,
+    // The navbar only opens or closes on explicit user action, so navigation
+    // keeps whatever state the user last chose. The one exception is small
+    // screens, where an open navbar would cover the whole page.
     [LOCATION_CHANGE]: (
       prevState: boolean,
       { payload }: LocationChangeAction,
@@ -95,7 +90,7 @@ const isNavbarOpen = handleActions(
         return prevState;
       }
 
-      return isNavbarOpenForPathname(payload.pathname, prevState);
+      return isSmallScreen() ? false : prevState;
     },
   },
   true,
@@ -132,6 +127,7 @@ const detailView = handleActions(
 
 const tempStorageSlice = createSlice({
   name: "tempStorage",
+  // Unjustified type cast. FIXME
   initialState: {} as TempStorage,
   reducers: {
     setTempSetting: (

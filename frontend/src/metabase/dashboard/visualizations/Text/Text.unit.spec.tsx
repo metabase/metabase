@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockDashboardState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import type { ParameterValuesMap } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -124,7 +124,9 @@ describe("Text", () => {
 
       const img = screen.getByRole("img", { name: "alt" });
       expect(img).toBeInTheDocument();
-      expect(img).toHaveAttribute("src", "");
+      // The unsafe data URI is stripped, so the image has no source. React 19
+      // drops an empty `src` attribute rather than rendering `src=""`.
+      expect(img).not.toHaveAttribute("src");
     });
   });
 

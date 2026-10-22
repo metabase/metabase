@@ -1,0 +1,104 @@
+import fs from "node:fs";
+import path from "node:path";
+
+import { load as parseYaml } from "js-yaml";
+
+export type DataAppManifest = {
+  slug?: string;
+  allowed_hosts?: string[];
+  /** The entity ID of the app's collection, whose file sits under the repository's `collections/data_apps/`. */
+  collection?: string;
+};
+
+const isString = (value: unknown): value is string => typeof value === "string";
+
+const parseCollection = (
+  value: unknown,
+  manifestPath: string,
+): string | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!isString(value)) {
+    throw new Error(`${manifestPath}: "collection" must be an entity ID.`);
+  }
+
+  return value;
+};
+
+const parseAllowedHosts = (
+  value: unknown,
+  manifestPath: string,
+): string[] | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error(`${manifestPath}: "allowed_hosts" must be a list.`);
+  }
+
+  if (!value.every(isString)) {
+    const nonString = value.find((host) => !isString(host));
+
+    throw new Error(
+      `${manifestPath}: every "allowed_hosts" entry must be a string, got ${JSON.stringify(
+        nonString,
+      )}.`,
+    );
+  }
+
+  return value;
+};
+
+const parseSlug = (
+  value: unknown,
+  manifestPath: string,
+): string | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!isString(value)) {
+    throw new Error(`${manifestPath}: "slug" must be a string.`);
+  }
+
+  return value;
+};
+
+export const readManifest = (
+  appRoot: string,
+): { manifestPath: string; manifest: DataAppManifest } | null => {
+  const manifestPath = [path.join(appRoot, "data_app.yaml")].find((candidate) =>
+    fs.existsSync(candidate),
+  );
+
+  if (!manifestPath) {
+    return null;
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = parseYaml(fs.readFileSync(manifestPath, "utf8"));
+  } catch (error) {
+    throw new Error(
+      `Could not parse ${manifestPath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+
+  const raw: { slug?: unknown; allowed_hosts?: unknown; collection?: unknown } =
+    typeof parsed === "object" && parsed !== null ? parsed : {};
+
+  return {
+    manifestPath,
+    manifest: {
+      slug: parseSlug(raw.slug, manifestPath),
+      allowed_hosts: parseAllowedHosts(raw.allowed_hosts, manifestPath),
+      collection: parseCollection(raw.collection, manifestPath),
+    },
+  };
+};

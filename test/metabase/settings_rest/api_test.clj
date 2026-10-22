@@ -2,14 +2,17 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver.h2 :as h2]
    [metabase.permissions.validation :as validation]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting-test :as models.setting-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture]
+   [toucan2.core :as t2]))
 
 (comment h2/keep-me)
 
@@ -36,6 +39,13 @@
   (deferred-tru "Setting to test the `:settings-manager` visibility level. This only shows up in dev.")
   :visibility :settings-manager
   :encryption :when-encryption-key-set)
+
+(defsetting test-api-setting-premium-feature
+  (deferred-tru "Setting gated behind a premium feature. This only shows up in dev.")
+  :visibility :admin
+  :type       :boolean
+  :default    false
+  :feature    :test-feature)
 
 (defsetting test-admin-write-authed-read-visibility
   (deferred-tru "Setting to test the `:admin-write-authed-read` visibility level. This only shows up in dev.")
@@ -140,6 +150,19 @@
       (test-api-setting-integer! 42)
       (is (= 42 (fetch-setting :test-api-setting-integer 200))))))
 
+(deftest ^:parallel include-in-list-false-test
+  (testing "a setting marked :include-in-list? false is left out of the bulk payloads but still readable by key"
+    (let [properties (mt/user-http-request :crowberto :get 200 "session/properties")
+          listed     (into #{} (map (comp keyword :key)) (mt/user-http-request :crowberto :get 200 "setting"))]
+      (doseq [setting-key [:engines :available-timezones]]
+        (testing setting-key
+          (testing "left out of GET /api/session/properties, which is the payload the page inlines"
+            (is (not (contains? properties setting-key))))
+          (testing "left out of GET /api/setting"
+            (is (not (contains? listed setting-key))))
+          (testing "still served by GET /api/setting/:key"
+            (is (some? (fetch-setting setting-key 200)))))))))
+
 (deftest ^:parallel engines-mark-h2-superseded-test
   (testing "GET /api/setting/:key"
     (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
@@ -198,6 +221,21 @@
     (testing "Check that a generic 403 error is returned if a non-superuser tries to set a Setting that doesn't exist"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/bad-setting" {:value "NICE!"}))))))
+
+(deftest update-setting-without-premium-feature-test
+  (testing "PUT /api/setting/:key for a setting whose premium feature is unavailable returns a 402, not a 500"
+    (mt/with-premium-features #{}
+      (doseq [[endpoint body] [["setting/test-api-setting-premium-feature" {:value true}]
+                               ["setting"                                  {:test-api-setting-premium-feature true}]]]
+        (testing (str "PUT /api/" endpoint)
+          (let [response (mt/user-http-request :crowberto :put 402 endpoint body)]
+            (is (= "Setting test-api-setting-premium-feature is not enabled because feature :test-feature is not available"
+                   (:message response)))
+            (testing "the setting definition is not leaked into the response body"
+              (is (not-any? (set (keys response)) [:description :getter :setter :default])))))))
+    (testing "turning the setting off is rejected the same way, rather than 500ing"
+      (mt/with-premium-features #{}
+        (mt/user-http-request :crowberto :put 402 "setting/test-api-setting-premium-feature" {:value false})))))
 
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"
@@ -403,3 +441,31 @@
         (let [site-name-setting (some #(when (= "site-name" (:key %)) %)
                                       (mt/user-http-request :crowberto :get 200 "setting"))]
           (is (str/includes? (:description site-name-setting) "New Test Co")))))))
+
+(deftest set-user-local-setting-with-unparseable-settings-column-test
+  (testing "PUT /api/setting/:key"
+    (testing "works when the user's `settings` column can't be decrypted or parsed"
+      (mt/with-temp [:model/User {user-id :id} {}]
+        ;; a `settings` column that is encrypted the way the column expects but whose contents aren't JSON: the
+        ;; transform hands back the raw column value (a String) instead of a map
+        (t2/query {:update :core_user
+                   :set    {:settings (encryption/maybe-encrypt "not-json")}
+                   :where  [:= :id user-id]})
+        (mt/user-http-request user-id :put 204 "setting/test-user-local-only-setting" {:value "NEW"})
+        (is (= "NEW"
+               (mt/user-http-request user-id :get 200 "setting/test-user-local-only-setting")))))))
+
+(deftest set-setting-read-from-app-db-test
+  (testing "PUT /api/setting/:key inserts, updates and deletes the row that GET reads back from the app DB (GHY-4589)"
+    ;; With the cache off, GET reads the row by key rather than from memory, so the filter on the key is exercised.
+    (binding [config/*disable-setting-cache* true]
+      (mt/with-temporary-setting-values [test-setting-1 nil]
+        (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "first"})
+        (is (= "first" (fetch-setting :test-setting-1 200)))
+        (testing "a value that looks like SQL is stored and read back as a string"
+          (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "x' OR '1'='1"})
+          (is (= "x' OR '1'='1" (fetch-setting :test-setting-1 200))))
+        (testing "clearing the value deletes the row"
+          (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value nil})
+          (is (nil? (fetch-setting :test-setting-1 204)))
+          (is (not (t2/exists? :model/Setting :key "test-setting-1"))))))))

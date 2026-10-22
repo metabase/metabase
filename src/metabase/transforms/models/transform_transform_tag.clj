@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-transform-tag
   (:require
    [metabase.models.serialization :as serdes]
+   [metabase.transforms.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -11,10 +12,6 @@
 (doto :model/TransformTransformTag
   (derive :metabase/model)
   (derive :hook/entity-id))
-
-(defmethod serdes/hash-fields :model/TransformTransformTag
-  [_transform-transform-tag]
-  [:transform_id :tag_id :position])
 
 (defmethod serdes/make-spec "TransformTransformTag"
   [_model-name _opts]

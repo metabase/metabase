@@ -8,6 +8,7 @@ import type {
   Dataset,
   Document,
   ParametersForActionExecution,
+  PrefetchPublicDashcardValuesRequest,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -40,13 +41,6 @@ export type ExecutePublicDashcardActionRequest = {
   dashcardId: DashCardId;
   modelId: CardId | null;
   parameters: ParametersForActionExecution;
-};
-
-export type PrefetchPublicDashcardValuesRequest = {
-  dashboardId: DashboardId;
-  dashcardId: DashCardId;
-  // Already JSON-stringified by the caller and passed through the query string.
-  parameters?: string;
 };
 
 export type PublicCardQueryRequest = {
@@ -127,10 +121,10 @@ export const publicApi = Api.injectEndpoints({
       ParametersForActionExecution,
       PrefetchPublicDashcardValuesRequest
     >({
-      query: ({ dashboardId, dashcardId, ...params }) => ({
-        method: "GET",
-        url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
-        params,
+      query: ({ dashboardId, dashcardId, parameters }) => ({
+        method: "POST",
+        url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/execute/values`,
+        body: { parameters },
       }),
       keepUnusedDataFor: 0,
     }),

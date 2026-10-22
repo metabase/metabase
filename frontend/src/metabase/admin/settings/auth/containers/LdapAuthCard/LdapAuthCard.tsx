@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useAdminSetting } from "metabase/settings";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 import { AuthCard } from "../../components/AuthCard";
@@ -19,6 +19,7 @@ export function LdapAuthCard() {
 
   const handleDeactivate = () => {
     return updateSettings(
+      // Unjustified type cast. FIXME
       LDAP_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
     );
   };

@@ -10,7 +10,7 @@ import {
 } from "metabase/transforms/utils";
 import { Box, Card } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { formatDurationLong } from "metabase/utils/formatting/time";
+import { formatDurationLong } from "metabase/utils/formatting";
 import type { TransformJobRun } from "metabase-types/api";
 
 type JobRunInfoSectionProps = {

@@ -3,15 +3,17 @@ import { useEffect } from "react";
 import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-events";
 import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
 import {
+  getHostReactVersion,
   getSdkAuthMethod,
+  getSdkClient,
   getSdkLocaleUsed,
   initSdkTracker,
   trackSdkSimpleEvent,
 } from "embedding-sdk-bundle/analytics/snowplow";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { initMetaplow } from "metabase/utils/metaplow";
 
@@ -71,6 +73,8 @@ export function useInitSdkTracker(
             auth_method: getSdkAuthMethod(),
             sdk_version: sdkVersion,
             locale_used: getSdkLocaleUsed(),
+            react_version: getHostReactVersion(),
+            client: getSdkClient(),
           },
         }),
       });

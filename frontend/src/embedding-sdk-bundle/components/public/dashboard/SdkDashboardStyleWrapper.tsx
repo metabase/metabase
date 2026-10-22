@@ -10,8 +10,17 @@ import SdkDashboardStyleWrapperS from "./SdkDashboardStyleWrapper.module.css";
 export const SdkDashboardStyledWrapper = ({
   className,
   style,
+  fullHeight = false,
   children,
-}: PropsWithChildren<CommonStylingProps>) => {
+}: PropsWithChildren<
+  CommonStylingProps & {
+    /**
+     * Stretches the child to the wrapper's height, so children sized with
+     * percentage heights have something to resolve against.
+     */
+    fullHeight?: boolean;
+  }
+>) => {
   return (
     <Flex
       direction="column"
@@ -20,6 +29,7 @@ export const SdkDashboardStyledWrapper = ({
       className={cx(
         className,
         SdkDashboardStyleWrapperS.SdkDashboardStyleWrapper,
+        fullHeight && SdkDashboardStyleWrapperS.FullHeight,
         CS.overflowAuto,
       )}
       style={style}

@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.todo-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.tools.todo :as todo]))
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.todo :as todo]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel todo-write-test
   (testing "todo-write validates and stores todos in memory"
@@ -24,7 +26,6 @@
           data-part (first (:data-parts result))]
       (is (= :data (:type data-part)))
       (is (= "todo_list" (:data-type data-part)))
-      (is (= 1 (:version data-part)))
       (is (= todos (:data data-part))))))
 
 (deftest ^:parallel todo-write-test-3
@@ -99,3 +100,14 @@
           result (todo/todo-read {:memory-atom memory-atom})]
       (is (contains? result :instructions))
       (is (string? (:instructions result))))))
+
+(deftest ^:parallel todo-tools-errors-test
+  (testing "an invalid todo goes back to the agent as output"
+    (binding [shared/*memory-atom* (atom {:state {}})]
+      (is (= {:output "Todo item missing required 'id' field"}
+             (todo/todo-write-tool {:todos [{:id "" :content "Task" :status "pending" :priority "high"}]})))))
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [todo/todo-write (fn [_] (throw (ex-info "boom" {})))
+                                todo/todo-read  (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (todo/todo-write-tool {:todos []})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (todo/todo-read-tool {}))))))

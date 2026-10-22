@@ -16,6 +16,7 @@ const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
   acknowledged_by: null,
   acknowledged_at: null,
   affected_versions: [{ min: "0.45.0", fixed: "0.59.0" }],
+  download_jar_urls: [],
   ...overrides,
 });
 

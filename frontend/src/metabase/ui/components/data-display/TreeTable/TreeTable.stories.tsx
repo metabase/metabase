@@ -247,6 +247,7 @@ export const LargeDataset = {
 export const EmptyState = {
   render: function EmptyStateStory() {
     const instance = useTreeTableInstance({
+      // Unjustified type cast. FIXME
       data: [] as CollectionItem[],
       columns: detailedColumns,
       getSubRows: (node) => node.children,
@@ -258,9 +259,9 @@ export const EmptyState = {
         <TreeTable
           instance={instance}
           emptyState={
-            <Box ta="center" py="xl">
+            <Box ta="center" py="xxl">
               <Icon name="folder" size={48} c="text-disabled" />
-              <Text c="text-secondary" mt="md">
+              <Text c="text-secondary" mt="lg">
                 This collection is empty
               </Text>
             </Box>

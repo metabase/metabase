@@ -24,6 +24,7 @@ export function findContainer<
 
   return (
     Object.keys(items).find((key) =>
+      // Unjustified type cast. FIXME
       items[key as keyof typeof items].includes(id),
     ) ?? null
   );

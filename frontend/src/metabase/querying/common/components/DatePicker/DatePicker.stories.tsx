@@ -1,29 +1,28 @@
 import type { Store } from "@reduxjs/toolkit";
-import FakeTimers from "@sinonjs/fake-timers";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, type ComponentType, useEffect } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
-
 import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -31,26 +30,31 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
+// Unjustified type cast. FIXME
 export default {
   title: "Components/Parameters/DatePicker",
   component: DatePicker,
   decorators: [ReduxDecorator],
 } as Meta<typeof DatePicker>;
 
-let clock: FakeTimers.InstalledClock | undefined;
-function WithMockDate(StoryFn: StoryFn) {
-  if (!clock) {
-    clock = FakeTimers.install({
-      toFake: ["Date"],
-      // Happy new year 2025! 🥳
-      now: new Date("2025-01-01T00:00:00.000Z"),
-    });
-  }
+const MOCKED_NOW = new Date("2025-01-01T00:00:00.000Z").getTime();
+const OriginalDate = Date;
+
+const MockedDate: DateConstructor = new Proxy(OriginalDate, {
+  construct: (target, args: unknown[]) =>
+    Reflect.construct(target, args.length ? args : [MOCKED_NOW]),
+  get: (target, property, receiver) =>
+    property === "now"
+      ? () => MOCKED_NOW
+      : Reflect.get(target, property, receiver),
+});
+
+function WithMockDate(StoryFn: ComponentType) {
+  window.Date = MockedDate;
 
   useEffect(() => {
     return () => {
-      clock?.uninstall();
-      clock = undefined;
+      window.Date = OriginalDate;
     };
   }, []);
 
@@ -149,10 +153,9 @@ export const RelativeCurrent = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
-    const week = canvas.getByRole("button", {
-      name: "Week",
-    });
-    week.classList.add("pseudo-hover");
+    // Chip's hover styles live on its label, not the hidden radio input
+    const week = canvas.getByText("Week").closest("label");
+    week?.classList.add("pseudo-hover");
     const next = canvas.getByRole("tab", {
       name: "Next",
     });

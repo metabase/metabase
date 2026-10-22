@@ -3,7 +3,7 @@ import { useAsync } from "react-use";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 
@@ -58,6 +58,7 @@ export const useGetCurrentResource = ({
     error: cardLoadingError,
     isLoading: isCardLoading,
     isFetching: isCardFetching,
+    // Unjustified type cast. FIXME
   } = useGetCardQuery(questionId ? { id: questionId as number } : skipToken, {
     refetchOnMountOrArgChange: true,
   });

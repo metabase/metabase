@@ -22,7 +22,6 @@
                   :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
                                                                         (.getName (class clock))
                                                                         (pr-str clock)))))]
-      #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
         (thunk)))))
 
@@ -83,7 +82,6 @@
   (comp
    (memoize
     (fn [toucan-model]
-      #_{:clj-kondo/ignore [:discouraged-var]}
       (t2.with-temp/with-temp [toucan-model x {}
                                toucan-model y {}]
         (let [[_ _ things-in-both] (data/diff x y)]

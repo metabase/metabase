@@ -4,7 +4,9 @@
   These are the shape contracts pinned at the `metabase.usage-metadata.core` boundary and
   enforced inside `metabase.usage-metadata.insights` producers."
   (:require
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::source-type [:enum :table :card])
 
@@ -110,3 +112,98 @@
                    :any]]]
    [:count       {:description "Number of executions in the window that surfaced this observation for this field."}
     pos-int?]])
+
+(mr/def ::source-dimension-daily
+  "A SourceDimensionDaily as selected from the app DB: every column of `:source_dimension_daily`."
+  [:merge
+   ::source-dimension-daily.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
+
+(mr/def ::source-dimension-daily.update
+  "What an update (or insert) of a SourceDimensionDaily accepts: every column of `:source_dimension_daily` except `id`, all optional."
+  [:map {:closed true}
+   [:source_type    {:optional true} [:maybe [:or :keyword :string]]]
+   [:source_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:ownership_mode {:optional true} [:maybe [:or :keyword :string]]]
+   [:field_id       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:temporal_unit  {:optional true} [:maybe [:or :keyword :string]]]
+   [:binning        {:optional true} [:maybe :string]]
+   [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
+   [:count          {:optional true} [:maybe :int]]])
+
+(mr/def ::source-dimension-profile-daily
+  "A SourceDimensionProfileDaily as selected from the app DB: every column of `:source_dimension_profile_daily`."
+  [:merge
+   ::source-dimension-profile-daily.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
+
+(mr/def ::source-dimension-profile-daily.update
+  "What an update (or insert) of a SourceDimensionProfileDaily accepts: every column of `:source_dimension_profile_daily` except `id`, all optional."
+  [:map {:closed true}
+   [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
+   [:source_id         {:optional true} [:maybe ms/PositiveInt]]
+   [:field_id          {:optional true} [:maybe ::lib.schema.id/field]]
+   [:source_basis      {:optional true} [:maybe [:or :keyword :string]]]
+   [:observation_type  {:optional true} [:maybe [:or :keyword :string]]]
+   [:observation_value {:optional true} [:maybe :string]]
+   [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
+   [:count             {:optional true} [:maybe :int]]])
+
+(mr/def ::source-metric-daily
+  "A SourceMetricDaily as selected from the app DB: every column of `:source_metric_daily`."
+  [:merge
+   ::source-metric-daily.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
+
+(mr/def ::source-metric-daily.update
+  "What an update (or insert) of a SourceMetricDaily accepts: every column of `:source_metric_daily` except `id`, all optional."
+  [:map {:closed true}
+   [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
+   [:source_id         {:optional true} [:maybe ms/PositiveInt]]
+   [:ownership_mode    {:optional true} [:maybe [:or :keyword :string]]]
+   [:agg_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:agg_field_id      {:optional true} [:maybe ::lib.schema.id/field]]
+   [:temporal_field_id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:temporal_unit     {:optional true} [:maybe [:or :keyword :string]]]
+   [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
+   [:count             {:optional true} [:maybe :int]]])
+
+(mr/def ::source-segment-composite-daily
+  "A SourceSegmentCompositeDaily as selected from the app DB: every column of `:source_segment_composite_daily`."
+  [:merge
+   ::source-segment-composite-daily.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
+
+(mr/def ::source-segment-composite-daily.update
+  "What an update (or insert) of a SourceSegmentCompositeDaily accepts: every column of `:source_segment_composite_daily` except `id`, all optional."
+  [:map {:closed true}
+   [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
+   [:source_id         {:optional true} [:maybe ms/PositiveInt]]
+   [:ownership_mode    {:optional true} [:maybe [:or :keyword :string]]]
+   [:clause            {:optional true} [:maybe :string]]
+   [:atom_fingerprints {:optional true} [:maybe :string]]
+   [:atom_count        {:optional true} [:maybe :int]]
+   [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
+   [:count             {:optional true} [:maybe :int]]])
+
+(mr/def ::source-segment-daily
+  "A SourceSegmentDaily as selected from the app DB: every column of `:source_segment_daily`."
+  [:merge
+   ::source-segment-daily.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
+
+(mr/def ::source-segment-daily.update
+  "What an update (or insert) of a SourceSegmentDaily accepts: every column of `:source_segment_daily` except `id`, all optional."
+  [:map {:closed true}
+   [:source_type    {:optional true} [:maybe [:or :keyword :string]]]
+   [:source_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:ownership_mode {:optional true} [:maybe [:or :keyword :string]]]
+   [:field_id       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:predicate      {:optional true} [:maybe :string]]
+   [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
+   [:count          {:optional true} [:maybe :int]]])

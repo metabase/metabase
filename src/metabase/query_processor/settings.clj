@@ -11,6 +11,13 @@
   :visibility :authenticated
   :audit      :getter)
 
+(defsetting use-native-pivot-tables
+  (deferred-tru "When enabled, run pivot queries as a single native GROUPING SETS query on drivers that support it, instead of running one query per breakout combination.")
+  :type       :boolean
+  :default    false
+  :export?    false
+  :visibility :internal)
+
 ;;; the default values for the next two settings live in [[metabase.query-processor.middleware.constraints]] instead of
 ;;; as setting `:default`s... there is some sort of reason for this but I don't understand it -- Cam
 
@@ -33,6 +40,20 @@
   :audit          :getter
   :doc            "Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.")
 
+(defsetting pivot-max-result-rows
+  (deferred-tru (str "Maximum number of rows a pivot query can return. "
+                     "Overrides MB_AGGREGATED_QUERY_ROW_LIMIT for pivot queries."))
+  :visibility     :authenticated
+  :export?        true
+  :type           :integer
+  :default        200000
+  :database-local :allowed
+  :audit          :getter
+  :doc            (str "Applies to pivot queries only. When MB_USE_NATIVE_PIVOT_TABLES is on and the "
+                       "driver supports native pivots, this is a hard cap on the number of rows a "
+                       "pivot query returns. Otherwise it only approximates the cap, and larger "
+                       "pivots can exceed it. Must be less than 1048575."))
+
 (defsetting attachment-row-limit
   (deferred-tru "Row limit in file attachments excluding the header.")
   :visibility :internal
@@ -51,6 +72,7 @@
   details."
   1048575)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *minimum-download-row-limit*
   "Minimum download row limit. Using dynamic so we can rebind in tests"
   absolute-max-results)

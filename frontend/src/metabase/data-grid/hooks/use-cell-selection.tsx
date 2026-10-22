@@ -27,7 +27,7 @@ interface UseCellSelectionProps {
   /** Table instance from TanStack Table */
   table: Table<any>;
   /** Ref to the grid element */
-  gridRef: RefObject<HTMLDivElement>;
+  gridRef: RefObject<HTMLDivElement | null>;
   /** Whether cell selection is enabled */
   isEnabled?: boolean;
   /** Optional function to scroll to a specific cell */
@@ -81,6 +81,7 @@ export const useCellSelection = ({
         return;
       }
 
+      // Unjustified type cast. FIXME
       const target = e.target as HTMLElement;
       const isInsideSelectableCell = target.closest("[data-selectable-cell]");
       if (isInsideSelectableCell || selectedCells.length === 0) {
@@ -233,6 +234,7 @@ export const useCellSelection = ({
         return;
       }
 
+      // Unjustified type cast. FIXME
       const selectedCellsInRange = getCellsBetween(
         table,
         selectedStartCell,
@@ -510,7 +512,7 @@ const extractCellValue = (
  * @returns Tab-separated values with newlines between rows
  */
 const getCellValues = (
-  gridRef: RefObject<HTMLDivElement>,
+  gridRef: RefObject<HTMLDivElement | null>,
   table: Table<unknown>,
   cells: CellId[],
   useRawValues = false,
@@ -524,6 +526,7 @@ const getCellValues = (
 
   const columnIds = Object.keys(columnGroups);
 
+  // Unjustified type cast. FIXME
   const headerRow = columnIds
     .map((columnId) => {
       return columnId

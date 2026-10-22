@@ -4,13 +4,15 @@ import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/common/data-studio/collection-utils";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconProps } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import {
+  type Bookmark,
+  type BookmarkType,
   type CardType,
   type Collection,
   type CollectionContentModel,
@@ -79,7 +81,7 @@ export function isPersonalCollection(
 }
 
 export function isRootTrashCollection(
-  collection?: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
 ): boolean {
   return collection?.type === "trash";
 }
@@ -127,6 +129,12 @@ export function isInstanceAnalyticsCustomCollection(
     PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID ===
     collection.entity_id
   );
+}
+
+export function isDataAppCollection(
+  collection: Pick<Collection, "namespace">,
+): boolean {
+  return collection.namespace === "data-apps";
 }
 
 export function isSyncedCollection(collection: Partial<Collection>): boolean {
@@ -233,6 +241,34 @@ export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
+/**
+ * If item.model is `dataset` or `metric`, that is, a Model or a Metric in a
+ * product sense, call it "card" because they are treated the same in the
+ * back-end bookmark API.
+ */
+export function getItemBookmarkType(
+  item: CollectionItem,
+): BookmarkType | undefined {
+  switch (item.model) {
+    case "dataset":
+    case "metric":
+      return "card";
+    case "action":
+      return undefined;
+    default:
+      return item.model;
+  }
+}
+
+export function isItemBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
+  const bookmarkType = getItemBookmarkType(item);
+
+  return bookmarks.some(
+    (bookmark) =>
+      bookmark.type === bookmarkType && bookmark.item_id === item.id,
+  );
+}
+
 export function canBookmarkItem({ model, type, archived }: CollectionItem) {
   if (archived) {
     return false;
@@ -244,21 +280,13 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
 
   switch (model) {
     case "table":
+    case "action":
       return false;
     case "collection":
       return !isLibraryCollection({ type });
     default:
       return true;
   }
-}
-
-export function canPreviewItem(item: CollectionItem, collection?: Collection) {
-  return (
-    collection?.can_write &&
-    isItemPinned(item) &&
-    (isItemQuestion(item) || isItemMetric(item)) &&
-    !item.archived
-  );
 }
 
 export function canArchiveItem(item: CollectionItem, collection?: Collection) {
@@ -269,13 +297,16 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
       isItemCollection(item) &&
       (isRootPersonalCollection(item) || isDedicatedTenantCollectionRoot(item))
     ) &&
+    // Unjustified type cast. FIXME
     !isLibraryCollection(item as Pick<Collection, "type">) &&
     item.model !== "table" &&
     !item.archived
   );
 }
 
-export function canCopyItem(item: CollectionItem) {
+export type CopyableItem = CollectionItem & { model: "dashboard" | "document" };
+
+export function canCopyItem(item: CollectionItem): item is CopyableItem {
   return (
     (item.model === "dashboard" || item.model === "document") && !item.archived
   );
@@ -296,18 +327,6 @@ export function canPlaceEntityInCollectionOrDescendants(
     entityType,
     collectionType,
   );
-}
-
-export function isPreviewShown(item: CollectionItem) {
-  return isPreviewEnabled(item) && isFullyParameterized(item);
-}
-
-export function isPreviewEnabled(item: CollectionItem) {
-  return item.collection_preview ?? true;
-}
-
-export function isFullyParameterized(item: CollectionItem) {
-  return item.fully_parameterized ?? true;
 }
 
 export function coerceCollectionId(
@@ -423,6 +442,8 @@ export function getCollectionIcon(
         return { name: "table" };
       case "library-metrics":
         return { name: "metric" };
+      case "library-dashboards":
+        return { name: "dashboard" };
     }
   }
 

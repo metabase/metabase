@@ -1,18 +1,13 @@
 import { type ReactNode, useMemo, useRef } from "react";
 import _ from "underscore";
 
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { Box, Portal, Tooltip } from "metabase/ui";
 import { getEventTarget } from "metabase/utils/dom";
-import type {
-  HoveredObject,
-  HoveredTimelineEvent,
-} from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
-import StackedDataTooltip from "./StackedDataTooltip";
-import TimelineEventTooltip from "./TimelineEventTooltip";
 
 export interface ChartTooltipProps {
   hovered?: HoveredObject | null;
@@ -48,13 +43,6 @@ export const ChartTooltipContent = ({
   if (!hovered) {
     return null;
   }
-  if (!_.isEmpty(hovered.timelineEvents)) {
-    return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
-  }
-
-  if (hovered.stackedTooltipModel) {
-    return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
-  }
 
   return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
 };
@@ -76,8 +64,6 @@ const ChartTooltip = ({
     }
     return (
       hovered.value !== undefined ||
-      !_.isEmpty(hovered.timelineEvents) ||
-      !_.isEmpty(hovered.stackedTooltipModel) ||
       !_.isEmpty(hovered.data) ||
       !_.isEmpty(hovered.dimensions)
     );
@@ -97,14 +83,12 @@ const ChartTooltip = ({
   const lastDisplayRef = useRef<{
     content: ReactNode;
     rect: TargetRect;
-    isPadded: boolean;
   } | null>(null);
 
   if (isOpen) {
     lastDisplayRef.current = {
       content: tooltip,
       rect: targetRect,
-      isPadded: !hovered?.stackedTooltipModel,
     };
   }
 
@@ -115,12 +99,7 @@ const ChartTooltip = ({
       <Tooltip
         opened={isOpen}
         label={display?.content ?? null}
-        styles={{
-          tooltip: {
-            maxWidth: "unset",
-            ...(display?.isPadded === false ? { padding: 0 } : null),
-          },
-        }}
+        styles={{ tooltip: { maxWidth: "unset" } }}
       >
         <Box
           data-testid="chart-tooltip-proxy"

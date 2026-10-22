@@ -1,19 +1,19 @@
-import type { ReactNode } from "react";
+import type { JSX } from "react";
+
+import { Outlet } from "metabase/router";
+import { Box, Flex } from "metabase/ui";
 
 import DeprecationNotice from "../../containers/DeprecationNotice";
+import { SdkReact18Notice } from "../SdkReact18Notice";
 
-export interface AdminAppProps {
-  children?: ReactNode;
-}
-
-const AdminApp = ({ children }: AdminAppProps): JSX.Element => {
+export const AdminApp = (): JSX.Element => {
   return (
-    <>
+    <Flex direction="column" h="100%">
       <DeprecationNotice />
-      {children}
-    </>
+      <Box flex="1" mih={0}>
+        <Outlet />
+      </Box>
+      <SdkReact18Notice />
+    </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AdminApp;

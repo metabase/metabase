@@ -1,12 +1,15 @@
 describe("app-embed-mcp-public-path", () => {
   const setRuntimePublicPath = (value: string) => {
+    // Unjustified type cast. FIXME
     (globalThis as any).__webpack_public_path__ = value;
   };
 
   const getRuntimePublicPath = () =>
+    // Unjustified type cast. FIXME
     (globalThis as any).__webpack_public_path__;
 
   const setInstanceUrl = (instanceUrl: string | undefined) => {
+    // Unjustified type cast. FIXME
     (window as any).metabaseConfig =
       instanceUrl === undefined ? undefined : { instanceUrl };
   };
@@ -18,7 +21,9 @@ describe("app-embed-mcp-public-path", () => {
   });
 
   afterEach(() => {
+    // Unjustified type cast. FIXME
     delete (window as any).metabaseConfig;
+    // Unjustified type cast. FIXME
     delete (globalThis as any).__webpack_public_path__;
   });
 

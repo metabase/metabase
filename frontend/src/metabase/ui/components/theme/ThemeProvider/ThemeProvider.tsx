@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
@@ -11,6 +11,7 @@ import { getCspNonce } from "metabase/utils/csp";
 import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
+import "../../overlays/Popover/register-popover-dropdown";
 import { useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
@@ -45,6 +46,12 @@ export interface ThemeProviderProps {
    * CSS selector for Mantine CSS variables injection.
    */
   cssVariablesSelector?: string;
+
+  /**
+   * Keeps brand-derived colors as `color-mix()` over `--mb-color-core-brand` instead of
+   * replacing them with Ocean stops. Used by SDK.
+   */
+  forceDynamicBrandRamp?: boolean;
 }
 
 export const ThemeProvider = ({
@@ -54,17 +61,24 @@ export const ThemeProvider = ({
   whitelabelColors,
   onUpdateWhitelabelColors,
   cssVariablesSelector,
+  forceDynamicBrandRamp,
 }: ThemeProviderProps) => {
   const colorSchemeContext = useColorScheme();
   const resolvedColorScheme =
     resolvedColorSchemeProp ?? colorSchemeContext.resolvedColorScheme;
 
   const theme = useMemo(() => {
+    // Unjustified type cast. FIXME
     const baseTheme = merge(
-      getThemeOverrides(resolvedColorScheme, whitelabelColors),
+      getThemeOverrides({
+        colorScheme: resolvedColorScheme,
+        whitelabelColors,
+        forceDynamicBrandRamp,
+      }),
       themeOverride,
     ) as MantineTheme;
 
+    // Unjustified type cast. FIXME
     return {
       ...baseTheme,
       other: {
@@ -78,8 +92,11 @@ export const ThemeProvider = ({
           const { primaryShade, primaryColor } = baseTheme;
 
           return color in baseTheme.colors
-            ? baseTheme.colors[color][primaryShade as number]
-            : baseTheme.colors[primaryColor as ColorName][
+            ? // Unjustified type cast. FIXME
+              baseTheme.colors[color][primaryShade as number]
+            : // Unjustified type cast. FIXME
+              baseTheme.colors[primaryColor as ColorName][
+                // Unjustified type cast. FIXME
                 primaryShade as number
               ];
         },
@@ -87,6 +104,7 @@ export const ThemeProvider = ({
     } as MantineTheme;
   }, [
     themeOverride,
+    forceDynamicBrandRamp,
     resolvedColorScheme,
     whitelabelColors,
     onUpdateWhitelabelColors,

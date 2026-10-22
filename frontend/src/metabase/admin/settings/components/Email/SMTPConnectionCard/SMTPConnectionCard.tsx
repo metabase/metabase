@@ -1,5 +1,5 @@
-import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_SMTP_OVERRIDE } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 
 import { SelfHostedSMTPConnectionCard } from "../SelfHostedSMTPConnectionCard";
 

@@ -1,10 +1,10 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import type { MantineTheme } from "metabase/ui";
-import { adjustBrightness, alpha, color } from "metabase/ui/colors";
+import { adjustBrightness, alpha, color, lighten } from "metabase/ui/colors";
 
 import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
@@ -56,7 +56,7 @@ const getCellBackgroundColor = ({
 
   if (isEmphasized) {
     if (isDarkMode) {
-      return color("background_page-primary-inverse");
+      return lighten("background_page-primary-inverse", 0.65);
     }
 
     if (backgroundColor) {

@@ -1,10 +1,14 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
-import type { SubmitMcpAppsFeedbackRequest } from "metabase-types/api";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import type {
+  McpAppsBootstrapResponse,
+  SubmitMcpAppsFeedbackRequest,
+} from "metabase-types/api";
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   mcpSessionId: string;
   encodedQuery: string;
 };
@@ -15,8 +19,47 @@ type StoreDrillQueryResponse = {
 
 type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
 };
+
+type McpBootstrapRequest = {
+  instanceUrl: string;
+  uiCredential: string;
+  mcpSessionId: string;
+};
+
+/**
+ * Fetches the user and settings the iframe needs to mount.
+ *
+ * The UI credential authenticates this endpoint and nothing on the general REST API,
+ * so a failure here is the whole app's auth story. The status rides along on the error
+ * so the caller can tell "credential rejected" from "MCP is switched off".
+ */
+export async function fetchMcpBootstrap({
+  instanceUrl,
+  uiCredential,
+  mcpSessionId,
+}: McpBootstrapRequest): Promise<McpAppsBootstrapResponse> {
+  const response = await fetch(`${instanceUrl}/api/embed-mcp/bootstrap`, {
+    method: "GET",
+    headers: {
+      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
+      "Mcp-Session-Id": mcpSessionId,
+    },
+  });
+
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(
+        `fetchMcpBootstrap failed: ${response.status} ${response.statusText}`,
+      ),
+      { status: response.status },
+    );
+  }
+
+  return response.json();
+}
 
 /**
  * Stores the drill-through's query on the server and returns a handle UUID
@@ -27,7 +70,7 @@ type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
  */
 export async function storeDrillQuery({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   mcpSessionId,
   encodedQuery,
 }: StoreDrillQueryRequest): Promise<StoreDrillQueryResponse> {
@@ -35,8 +78,8 @@ export async function storeDrillQuery({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Metabase-Client": "mcp-apps",
-      "X-Metabase-Session": sessionToken,
+      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },
     body: JSON.stringify({ encodedQuery }),
@@ -51,9 +94,63 @@ export async function storeDrillQuery({
   return response.json();
 }
 
+type FetchQueryByHandleRequest = {
+  instanceUrl: string;
+  uiCredential: string;
+  mcpSessionId: string;
+  queryHandle: string;
+};
+
+type FetchQueryByHandleResponse = {
+  query: string;
+  prompt: string | null;
+};
+
+/**
+ * Exchanges a query handle for the base64-encoded query it stands for.
+ *
+ * The v2 MCP tools return only a handle, so the query never enters the model's
+ * context; the iframe resolves it here with the scoped UI credential it was
+ * rendered with. The lookup is user-scoped and the credential is accepted only
+ * on the MCP UI request surface, so a handle on its own is not a bearer
+ * credential.
+ *
+ * We cannot use RTK Query here as we are not in Metabase's React tree.
+ */
+export async function fetchQueryByHandle({
+  instanceUrl,
+  uiCredential,
+  mcpSessionId,
+  queryHandle,
+}: FetchQueryByHandleRequest): Promise<FetchQueryByHandleResponse> {
+  const response = await fetch(
+    `${instanceUrl}/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}`,
+    {
+      headers: {
+        "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+        "X-Metabase-Mcp-Ui-Auth": uiCredential,
+        "Mcp-Session-Id": mcpSessionId,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    // `status` carries the reason the iframe shows the user — an expired handle
+    // and an unreachable instance need different messages.
+    throw Object.assign(
+      new Error(
+        `fetchQueryByHandle failed: ${response.status} ${response.statusText}`,
+      ),
+      { status: response.status },
+    );
+  }
+
+  return response.json();
+}
+
 export async function submitMcpFeedback({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   mcpSessionId,
   payload,
 }: SubmitMcpFeedbackPayload): Promise<void> {
@@ -61,8 +158,8 @@ export async function submitMcpFeedback({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Metabase-Client": "mcp-apps",
-      "X-Metabase-Session": sessionToken,
+      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },
     body: JSON.stringify(payload),

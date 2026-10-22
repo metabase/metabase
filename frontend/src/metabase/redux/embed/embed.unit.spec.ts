@@ -174,5 +174,6 @@ const createMockStore = () => {
       embeddingDataPicker: embeddingDataPickerReducer,
     },
   });
+  // Unjustified type cast. FIXME
   return store as typeof store & { dispatch: Dispatch };
 };

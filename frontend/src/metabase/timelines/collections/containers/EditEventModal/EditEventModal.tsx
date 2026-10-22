@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useGetTimelineEventQuery,
@@ -7,8 +5,8 @@ import {
   useUpdateTimelineEventMutation,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/redux";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
@@ -16,7 +14,7 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -37,14 +35,14 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const onSubmit = async (event: TimelineEvent, timeline?: Timeline) => {
     await updateTimelineEvent(event).unwrap();
     if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
+      navigate(Urls.timelineInCollection(timeline));
     }
   };
 
   const onArchive = async (event: TimelineEvent, timeline?: Timeline) => {
     await archive({ id: event.id, model: "timeline-event" }, true);
     if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
+      navigate(Urls.timelineInCollection(timeline));
     }
   };
 

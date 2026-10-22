@@ -29,12 +29,13 @@ export function Footer({ className }: { className?: string }) {
 
   const handleChangeDisplay = useCallback(
     (nextDisplay: string) => {
+      // Unjustified type cast. FIXME
       dispatch(setDisplay(nextDisplay as VisualizationDisplay));
     },
     [dispatch],
   );
   return (
-    <Flex className={`${S.footer} ${className}`} px="xl" py="md">
+    <Flex className={`${S.footer} ${className}`} px="xxl" py="lg">
       {display && !isLoading && (
         <VisualizationPicker value={display} onChange={handleChangeDisplay} />
       )}

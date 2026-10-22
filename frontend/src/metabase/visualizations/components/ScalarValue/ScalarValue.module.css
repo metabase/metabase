@@ -1,5 +1,14 @@
 .value {
-  display: inline;
+  /* shrinks to the text so the parent can center it, and once the text is
+     wider than the card it fills the width and truncates from the end */
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  text-align: start;
+  /* clip only horizontally so deep descenders still render (metabase#72443) */
+  overflow-x: clip;
+  overflow-y: visible;
+  text-overflow: ellipsis;
   color: var(--scalar-value-color, inherit);
 }
 
@@ -9,4 +18,20 @@
 
 .hoverable:hover {
   color: var(--mb-color-core-brand);
+}
+
+.titleLink {
+  && {
+    line-height: inherit;
+  }
+
+  &&:focus-visible {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+.titleIcon {
+  flex: 0 0 auto;
 }

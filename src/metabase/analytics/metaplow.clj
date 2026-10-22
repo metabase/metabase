@@ -15,11 +15,13 @@
    [clojure.walk :as walk]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [metabase.version.core :as version]))
 
@@ -101,7 +103,7 @@
                 :connection-manager @connection-manager})
     (catch Throwable e
       (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
-      (log/warn e "Connection failure sending Metaplow event")
+      (log/warnf "Connection failure sending Metaplow event: %s" (ex-message e))
       {:status -1})))
 
 (defn- retryable-response?
@@ -123,7 +125,7 @@
     :sent
     (catch Throwable e
       (analytics/inc! :metabase-metaplow/errors {:stage :send-event-with-retries!})
-      (log/warn e "Error sending Metaplow event")
+      (log/warnf "Error sending Metaplow event: %s" (ex-message e))
       :error)))
 
 (defonce ^:private
@@ -162,16 +164,16 @@
 (mu/defn track-event! :- :boolean
   "Send a single analytics event to the Metaplow collector. Returns true when the event was enqueued, false when
   Metaplow tracking is disabled or the queue is full."
-  ([schema data]
+  ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData]
    (track-event! schema data nil))
-  ([schema :- :keyword data _user-id]
+  ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData _user-id :- [:maybe ms/PositiveInt]]
    (boolean
     (when (analytics.settings/metaplow-tracking-enabled)
       (try
         (enqueue! (build-payload schema data))
         (catch Throwable e
           (analytics/inc! :metabase-metaplow/errors {:stage :track-event!})
-          (log/warn e "Error queueing Metaplow event")
+          (log/warnf "Error queueing Metaplow event: %s" (ex-message e))
           false))))))
 
 (comment

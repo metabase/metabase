@@ -5,22 +5,22 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { useSelector } from "metabase/redux";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { createMetabotMentionSuggestionNew } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestionNew";
+} from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotMentionExtension";
+import { createMetabotMentionSuggestionNew } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew";
+import { useSelector } from "metabase/redux";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DatabaseId } from "metabase-types/api";
 
@@ -51,7 +51,7 @@ export const MetabotPromptInput = forwardRef<
   (
     {
       value,
-      placeholder = t`How can I help? Type @ to mention items.`,
+      placeholder = t`Ask about your data. Type @ to mention items.`,
       autoFocus,
       disabled,
       suggestionConfig,
@@ -99,7 +99,7 @@ export const MetabotPromptInput = forwardRef<
       {
         extensions,
         content: parseMetabotMessageToTiptapDoc(value),
-        autofocus: autoFocus,
+        autofocus: autoFocus ? "end" : false,
         injectNonce: getCspNonce(),
         onUpdate: ({ editor }) => {
           const jsonContent = editor.getJSON();
@@ -195,22 +195,42 @@ export const MetabotPromptInput = forwardRef<
       ],
     );
 
-    useImperativeHandle(ref, () => {
+    useImperativeHandle<
+      MetabotPromptInputRef | null,
+      MetabotPromptInputRef | null
+    >(ref, () => {
       if (!editor) {
         return null;
       }
 
-      return Object.assign(editor, {
+      // The handle is the editor itself, widened with the public methods, so
+      // callers (and specs) can still reach `editor.view` / `editor.state`.
+      Object.assign(editor, {
         focus: () => editor.commands.focus("end"),
         clear: () => editor.commands.clearContent(),
         getValue: () => serializeTiptapToMetabotMessage(editor.getJSON()),
-        get scrollHeight() {
-          return editor.view.dom.scrollHeight;
+      });
+
+      // Install the size accessors with `defineProperties` rather than through
+      // `Object.assign`, which would evaluate the getters eagerly. Under React
+      // 19 the editor view mounts after this handle runs, so reading
+      // `editor.view` now throws; keep it lazy until a caller reads the size.
+      Object.defineProperties(editor, {
+        scrollHeight: {
+          configurable: true,
+          get: () => editor.view.dom.scrollHeight,
         },
-        get scrollTop() {
-          return editor.view.dom.scrollTop;
+        scrollTop: {
+          configurable: true,
+          get: () => editor.view.dom.scrollTop,
         },
       });
+
+      // The runtime handle is the editor itself, widened with the members
+      // assigned and defined above. Assert that intersection (the editor does
+      // carry them at runtime); the public ref type then narrows it to what
+      // consumers may touch.
+      return editor as Editor & MetabotPromptInputRef;
     }, [editor]);
 
     // Sync external value changes to editor

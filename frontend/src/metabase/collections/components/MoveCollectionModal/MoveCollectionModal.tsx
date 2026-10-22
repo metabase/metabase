@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
@@ -49,7 +49,7 @@ const MoveCollectionModalView = ({
   );
 };
 
-// used with ModalRoute router
+// used with modalRoute
 export const MoveCollectionModal = ({
   collectionId,
   params,

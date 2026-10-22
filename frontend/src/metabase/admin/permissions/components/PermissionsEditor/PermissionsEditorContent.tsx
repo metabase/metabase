@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { Input } from "metabase/common/components/Input";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Text } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Icon, Input, Text, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type {
@@ -18,12 +18,6 @@ import {
 } from "../PermissionsTable";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
-import {
-  EditorEmptyStateContainer,
-  EditorFilterContainer,
-  PermissionEditorContentRoot,
-  PermissionTableWrapper,
-} from "./PermissionsEditorContent.styled";
 
 export type PermissionsEditorContentProps = PermissionEditorType &
   Pick<PermissionsTableProps, "onChange" | "onSelect" | "onAction"> & {
@@ -70,7 +64,7 @@ export function PermissionsEditorContent({
     setFilter(e.target.value);
 
   return (
-    <PermissionEditorContentRoot data-testid="permissions-editor">
+    <Flex direction="column" pl="xxl" h="100%" data-testid="permissions-editor">
       <PreHeaderContent />
       <Subhead data-testid="permissions-editor-breadcrumbs">
         {title}{" "}
@@ -86,18 +80,26 @@ export function PermissionsEditorContent({
 
       <PostHeaderContent />
 
-      <EditorFilterContainer>
-        <Input
-          colorScheme="core-filter"
-          placeholder={filterPlaceholder}
-          onChange={handleFilterChange}
-          onResetClick={() => setFilter("")}
-          value={filter}
-          leftIcon="search"
-        />
-      </EditorFilterContainer>
+      <TextInput
+        mt="lg"
+        mb="sm"
+        w="17.5rem"
+        placeholder={filterPlaceholder}
+        onChange={handleFilterChange}
+        value={filter}
+        leftSection={<Icon name="search" />}
+        rightSectionPointerEvents="all"
+        rightSection={
+          filter.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setFilter("")}
+            />
+          ) : null
+        }
+      />
 
-      <PermissionTableWrapper ref={setScrollElement}>
+      <Box ref={setScrollElement} className={CS.overflowAuto} flex={1} pb="xxl">
         <PermissionsTable
           entities={filteredEntities || entities}
           columns={columns}
@@ -106,12 +108,12 @@ export function PermissionsEditorContent({
           onAction={onAction}
           scrollElement={scrollElement}
           emptyState={
-            <EditorEmptyStateContainer>
+            <Box mt="7.5rem">
               <EmptyState message={t`Nothing here`} icon="folder" />
-            </EditorEmptyStateContainer>
+            </Box>
           }
         />
-      </PermissionTableWrapper>
-    </PermissionEditorContentRoot>
+      </Box>
+    </Flex>
   );
 }

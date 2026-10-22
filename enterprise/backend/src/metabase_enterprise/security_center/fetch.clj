@@ -5,10 +5,10 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [java-time.api :as t]
-   [metabase-enterprise.security-center.schema :as security-center.schema]
-   [metabase.app-db.core :as mdb]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -23,7 +23,7 @@
   [:enum "critical" "high" "medium" "low"])
 
 (mr/def ::affected-version
-  [:map {:closed true}
+  [:map
    [:min ::security-center.schema/semver]
    [:fixed ::security-center.schema/semver]])
 
@@ -44,6 +44,7 @@
    [:updated_at ms/TemporalString]
    [:advisory_url [:maybe :string]]
    [:affected_versions [:vector {:min 1} ::affected-version]]
+   [:download_jar_urls {:optional true} [:maybe ::security-center.schema/download-jar-urls]]
    [:matching_query [:maybe ::matching-query]]
    [:remediation [:string {:min 1}]]])
 
@@ -59,11 +60,7 @@
 (defn- latest-updated-at
   "Return the maximum `updated_at` across all advisories as an ISO-8601 string, or nil if none exist."
   []
-  (some-> (mdb/query {:select [[[:max :updated_at]]]
-                      :from   [:security_advisory]})
-          first
-          vals
-          first
+  (some-> (security-center.db/max-advisory-updated-at)
           t/instant
           t/format))
 
@@ -99,6 +96,7 @@
    :advisory_url      (:advisory_url advisory)
    :remediation       (:remediation advisory)
    :affected_versions (:affected_versions advisory)
+   :download_jar_urls (:download_jar_urls advisory)
    :matching_query    (parse-matching-query (:matching_query advisory))
    :published_at      (t/offset-date-time (:published_at advisory))
    :updated_at        (t/offset-date-time (:updated_at advisory))})
@@ -130,12 +128,7 @@
    On insert, match_status starts as :unknown until the matching engine evaluates it.
    On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
-  (mdb/update-or-insert! :model/SecurityAdvisory
-                         {:advisory_id (:advisory_id advisory)}
-                         (fn [existing]
-                           (if existing
-                             advisory
-                             (assoc advisory :match_status :unknown)))))
+  (security-center.db/upsert-advisory! advisory))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."
@@ -143,7 +136,7 @@
   (let [advisories (try
                      (fetch-advisories-from-store)
                      (catch Exception e
-                       (log/warn e "Error fetching advisories from MetaStore")))]
+                       (log/warnf "Error fetching advisories from MetaStore: %s" (ex-message e))))]
     (if (seq advisories)
       (let [total    (count advisories)
             failures (reduce (fn [n advisory]
@@ -151,7 +144,7 @@
                                  (upsert-advisory! advisory)
                                  n
                                  (catch Exception e
-                                   (log/warnf e "Error upserting advisory %s" (:advisory_id advisory))
+                                   (log/warnf "Error upserting advisory %s: %s" (:advisory_id advisory) (ex-message e))
                                    (inc n))))
                              0
                              advisories)

@@ -182,6 +182,7 @@ describe("moderation/service", () => {
 
   describe("getStatusIconForQuestion", () => {
     it('should return the status icon for the most recent "real" review', () => {
+      // Unjustified type cast. FIXME
       const questionWithReviews = {
         getModerationReviews: () => [
           { id: 1, status: "verified" },
@@ -199,6 +200,7 @@ describe("moderation/service", () => {
     });
 
     it("should return undefined vals for no review", () => {
+      // Unjustified type cast. FIXME
       const questionWithNoMostRecentReview = {
         getModerationReviews: () => [
           { moderator_id: 0, created_at: "", status: "verified" },
@@ -207,10 +209,12 @@ describe("moderation/service", () => {
         ],
       } as unknown as Question;
 
+      // Unjustified type cast. FIXME
       const questionWithNoReviews = {
         getModerationReviews: () => [],
       } as unknown as Question;
 
+      // Unjustified type cast. FIXME
       const questionWithUndefinedReviews = {
         getModerationReviews: () => undefined,
       } as unknown as Question;

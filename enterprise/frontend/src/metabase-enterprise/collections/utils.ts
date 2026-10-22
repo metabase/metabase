@@ -67,6 +67,7 @@ export const useGetIcon = () => {
       { isTenantUser = false }: { isTenantUser?: boolean } = {},
     ): IconData => {
       const collectionType = getCollectionType({
+        // Unjustified type cast. FIXME
         type: (item.type as CollectionType) || item.collection_type,
       }).type;
       if (collectionType === "instance-analytics") {

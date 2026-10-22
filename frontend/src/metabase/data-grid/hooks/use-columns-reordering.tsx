@@ -26,7 +26,7 @@ export type ColumnsReordering = {
 
 export const useColumnsReordering = <TData,>(
   table: ReactTable<TData>,
-  gridRef: React.RefObject<HTMLDivElement>,
+  gridRef: React.RefObject<HTMLDivElement | null>,
   onColumnReorder?: (columnNames: string[]) => void,
 ): ColumnsReordering => {
   const prevOrder = useRef<string[] | null>(null);
@@ -86,7 +86,9 @@ export const useColumnsReordering = <TData,>(
       const { active, over } = event;
       if (active && over && active.id !== over.id && !over.disabled) {
         table.setColumnOrder((columnOrder) => {
+          // Unjustified type cast. FIXME
           const oldIndex = columnOrder.indexOf(active.id as string);
+          // Unjustified type cast. FIXME
           const newIndex = columnOrder.indexOf(over.id as string);
           return arrayMove(columnOrder, oldIndex, newIndex);
         });

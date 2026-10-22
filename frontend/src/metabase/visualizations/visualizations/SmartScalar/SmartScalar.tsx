@@ -1,69 +1,57 @@
 import { useEffect, useMemo, useRef } from "react";
-import { c, t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box } from "metabase/ui";
+import { Box, Stack, Text } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
+import { assignLazily } from "metabase/utils/merge-lazily";
+import {
+  ScalarCardShell,
+  useScalarCardShell,
+} from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
 import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
+  compactifyValue,
+  estimateScalarValueWidth,
+} from "metabase/visualizations/lib/scalar_utils";
 import type {
-  VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
-  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, DatasetData, Series } from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
-import { PreviousValueComparison } from "./PreviousValueComparison";
-import { ScalarPeriod } from "./ScalarPeriod";
-import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
-import { computeTrend } from "./compute";
-import {
-  DASHCARD_HEADER_HEIGHT,
-  MAX_COMPARISONS,
-  VIZ_SETTINGS_DEFAULTS,
-} from "./constants";
-import {
-  getColumnsForComparison,
-  getComparisonOptions,
-  getComparisons,
-  getDefaultComparison,
-  getValueHeight,
-  getValueWidth,
-  isPeriodVisible,
-  isSuitableScalarColumn,
-  validateComparisons,
-} from "./utils";
+import { TrendCardComparison } from "./TrendCardComparison";
+import { TrendComparisonList } from "./TrendComparisonList";
+import { TrendComparisonRow } from "./TrendComparisonRow";
+import { TrendSymbol } from "./TrendSymbol";
+import { computeTrend, getComparisonDisplay } from "./compute";
+import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
 
-export function SmartScalar({
-  onVisualizationClick,
-  isDashboard,
-  settings,
-  visualizationIsClickable,
-  series,
-  rawSeries,
-  gridSize,
-  width,
-  height,
-  totalNumGridCols,
-  fontFamily,
-  onRenderError,
-}: VisualizationProps & VisualizationPassThroughProps) {
+function SmartScalarComponent(
+  props: VisualizationProps & VisualizationPassThroughProps,
+) {
+  const {
+    onVisualizationClick,
+    settings,
+    visualizationIsClickable,
+    series,
+    rawSeries,
+    width,
+    height,
+    fontFamily,
+    onRenderError,
+    actionButtons,
+    isQueryBuilder,
+    isStandaloneQuestion,
+  } = props;
+
   const scalarRef = useRef(null);
+  const { isTruncated: isValueTruncated, ref: valueRef } =
+    useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
@@ -78,13 +66,17 @@ export function SmartScalar({
     }
   }, [error, onRenderError]);
 
+  const { tier, rootFontScale, availableWidth, titleElement, description } =
+    useScalarCardShell(props, {
+      shouldHideDescription: (tier) =>
+        tier.size === 150 && (trend?.comparisons.length ?? 0) > 1,
+    });
+
   if (trend == null) {
     return null;
   }
 
   const { value, clicked, comparisons, display, formatOptions } = trend;
-
-  const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
 
   const isClickable = onVisualizationClick != null;
 
@@ -104,200 +96,153 @@ export function SmartScalar({
     }
   };
 
+  const isCompact = tier.size < 200;
+  const listsAllComparisons =
+    comparisons.length > 1 &&
+    tier.multiComparisonMinHeight != null &&
+    (height ?? 0) >= tier.multiComparisonMinHeight;
+
+  const primaryComparison = comparisons[0];
+  const symbolDirection =
+    isCompact || primaryComparison == null
+      ? null
+      : getComparisonDisplay(primaryComparison, formatOptions).symbolDirection;
+
+  const symbolAllowance =
+    symbolDirection != null
+      ? (tier.symbolSize + tier.symbolGap) * rootFontScale
+      : 0;
+  const centeredValueMaxWidth = Math.max(
+    width - 2 * Math.max(tier.xPadding * rootFontScale, symbolAllowance),
+    0,
+  );
+
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    width,
+    centeredValueMaxWidth,
+    tier.valueFontSize,
     formatOptions,
   );
 
-  const { valueHeight, comparisonsCount } = getValueHeight(
-    innerHeight,
-    comparisons.length,
+  const isValueWide =
+    typeof displayValue === "string" &&
+    estimateScalarValueWidth(displayValue, tier.valueFontSize) >
+      centeredValueMaxWidth;
+  const valueMaxWidth = isValueWide
+    ? Math.max(availableWidth - symbolAllowance, 0)
+    : centeredValueMaxWidth;
+  const valueBoxProps = {
+    pos: "relative" as const,
+    style: {
+      maxWidth: `${valueMaxWidth}px`,
+      marginLeft: isValueWide ? `${symbolAllowance}px` : undefined,
+      alignSelf: isValueWide ? ("flex-start" as const) : undefined,
+    },
+    "data-testid": "scalar-value-box",
+  };
+
+  const hasValueTooltip = fullScalarValue !== displayValue || isValueTruncated;
+
+  const valueElement = (
+    <ScalarValueContainer
+      className={DashboardS.fullscreenNormalText}
+      tooltip={fullScalarValue}
+      alwaysShowTooltip={hasValueTooltip}
+      isClickable={isClickable}
+    >
+      <span onClick={handleClick} ref={scalarRef}>
+        <ScalarValue
+          ref={valueRef}
+          fontSize={tier.valueFontSize}
+          // Unjustified type cast. FIXME
+          value={displayValue as string}
+        />
+      </span>
+    </ScalarValueContainer>
   );
 
-  return (
-    <ScalarWrapper>
-      <ScalarValueContainer
-        className={DashboardS.fullscreenNormalText}
-        tooltip={fullScalarValue}
-        alwaysShowTooltip={fullScalarValue !== displayValue}
-        isClickable={isClickable}
-      >
-        <span onClick={handleClick} ref={scalarRef}>
-          <ScalarValue
-            fontFamily={fontFamily}
-            gridSize={gridSize}
-            height={valueHeight}
-            totalNumGridCols={totalNumGridCols}
-            value={displayValue as string}
-            width={getValueWidth(width)}
-          />
-        </span>
-      </ScalarValueContainer>
-      {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
+  const symbolElement = symbolDirection != null && (
+    <Box
+      pos="absolute"
+      right="100%"
+      top="50%"
+      mr={tier.symbolGap}
+      style={{ transform: "translateY(-50%)", display: "flex" }}
+    >
+      <TrendSymbol
+        direction={symbolDirection}
+        colorName={primaryComparison?.changeColorName}
+        size={tier.symbolSize}
+      />
+    </Box>
+  );
 
-      {comparisonsCount === 1 && (
-        <Box maw="100%" data-testid="scalar-previous-value">
-          <PreviousValueComparison
-            comparison={comparisons[0]}
-            fontFamily={fontFamily}
-            formatOptions={formatOptions}
-            tooltipComparisons={comparisons}
-            width={width}
-          />
-        </Box>
-      )}
+  if (isQueryBuilder || isStandaloneQuestion) {
+    const hasSingleComparison = comparisons.length === 1;
 
-      {comparisonsCount !== 1 &&
-        comparisons.map((comparison, index) => (
-          <Box maw="100%" key={index} data-testid="scalar-previous-value">
-            <PreviousValueComparison
-              comparison={comparison}
-              fontFamily={fontFamily}
+    return (
+      <ScalarWrapper xPadding={tier.xPadding}>
+        <Stack align="center" gap="lg" maw="100%" data-testid="scalar-content">
+          {hasSingleComparison ? (
+            <Box {...valueBoxProps}>
+              {valueElement}
+              {symbolElement}
+            </Box>
+          ) : (
+            valueElement
+          )}
+          {hasSingleComparison ? (
+            <TrendComparisonRow
+              trend={trend}
               formatOptions={formatOptions}
-              tooltipComparisons={[comparison]}
-              width={width}
+              size="lg"
+              compactValue={false}
             />
-          </Box>
-        ))}
-    </ScalarWrapper>
+          ) : (
+            <>
+              {display.date != null && display.date !== "" && (
+                <Text
+                  fz="lg"
+                  lh="lg"
+                  c="text-secondary"
+                  ta="center"
+                  data-testid="scalar-period"
+                >
+                  {display.date}
+                </Text>
+              )}
+              {comparisons.length > 0 && (
+                <TrendComparisonList
+                  comparisons={comparisons}
+                  formatOptions={formatOptions}
+                />
+              )}
+            </>
+          )}
+        </Stack>
+      </ScalarWrapper>
+    );
+  }
+
+  return (
+    <ScalarCardShell tier={tier} actionButtons={actionButtons}>
+      <Box {...valueBoxProps}>
+        {valueElement}
+        {symbolElement}
+      </Box>
+      <TrendCardComparison
+        tier={tier}
+        title={titleElement}
+        description={description}
+        trend={trend}
+        availableWidth={availableWidth}
+        listsAllComparisons={listsAllComparisons}
+      />
+    </ScalarCardShell>
   );
 }
 
-export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
-  ...fieldSetting("scalar.field", {
-    getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Primary number`,
-    fieldFilter: isSuitableScalarColumn,
-  }),
-  "scalar.comparisons": {
-    getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Comparisons`,
-    widget: SmartScalarComparisonWidget,
-    getValue: (series, vizSettings) => getComparisons(series, vizSettings),
-    isValid: (series, vizSettings) => validateComparisons(series, vizSettings),
-    getDefault: (series, vizSettings) =>
-      getDefaultComparison(series, vizSettings),
-    getProps: (series, vizSettings) => {
-      const cols = series[0].data.cols;
-      return {
-        maxComparisons: MAX_COMPARISONS,
-        comparableColumns: getColumnsForComparison(cols, vizSettings),
-        options: getComparisonOptions(series, vizSettings),
-        series,
-        settings: vizSettings,
-      };
-    },
-    readDependencies: ["scalar.field"],
-  },
-  "scalar.switch_positive_negative": {
-    getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Switch positive / negative colors?`,
-    widget: "toggle",
-    inline: true,
-    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
-  },
-  "scalar.compact_primary_number": {
-    getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Compact number`,
-    widget: "toggle",
-    inline: true,
-    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
-  },
-  ...columnSettings({
-    getSection: () => t`Display`,
-    getColumns: (
-      [
-        {
-          data: { cols },
-        },
-      ],
-      settings,
-    ) => {
-      const metricColumn =
-        // try and find a selected field setting
-        cols.find((col) => col.name === settings["scalar.field"]) ||
-        // fall back to the second column
-        cols[1] ||
-        // but if there's only one column use that
-        cols[0];
-      // expose the date dimension so its granularity/format can be configured
-      const dateColumn = cols.find(
-        (col) => isDate(col) || isAbsoluteDateTimeUnit(col.unit),
-      );
-      const columns = [metricColumn, dateColumn].filter(
-        (col): col is DatasetColumn => col != null,
-      );
-      return columns.filter((col, index) => columns.indexOf(col) === index);
-    },
-    readDependencies: ["scalar.field"],
-  }),
-  click_behavior: {},
-};
-
-const SmartScalarViz: VisualizationDefinition = {
-  getUiName: () => t`Trend`,
-  identifier: "smartscalar",
-  iconName: "smartscalar",
-  canSavePng: true,
-
-  minSize: getMinSize("smartscalar"),
-  defaultSize: getDefaultSize("smartscalar"),
-
-  settings: SETTINGS_DEFINITIONS,
-
-  columnSettings: (column) => {
-    const isDateColumn = isDate(column) || isAbsoluteDateTimeUnit(column.unit);
-    if (!isDateColumn) {
-      return {};
-    }
-    return {
-      date_granularity: {
-        title: t`Date granularity`,
-        widget: "select",
-        getDefault: () => "default",
-        getProps: () => ({
-          options: [
-            { name: t`Full date`, value: "default" },
-            {
-              name: c(
-                "Date granularity option, distinct from the pluralized unit",
-              ).t`Year`,
-              value: "year",
-            },
-            { name: t`Quarter and year`, value: "quarter" },
-            { name: t`Month and year`, value: "month" },
-          ],
-        }),
-      },
-    };
-  },
-
-  isSensible({ cols, insights }: DatasetData) {
-    const dimensionCount = cols.filter(
-      (col) => isDimension(col) && !isMetric(col),
-    ).length;
-    return !!insights && insights?.length > 0 && dimensionCount === 1;
-  },
-
-  // Smart scalars need to have a breakout
-  checkRenderable([
-    {
-      data: { insights },
-    },
-  ]: Series) {
-    if (!insights || insights.length === 0) {
-      throw new ChartSettingsError(
-        t`Group only by a time field to see how this has changed over time`,
-      );
-    }
-  },
-
-  hasEmptyState: true,
-};
-
-Object.assign(SmartScalar, SmartScalarViz);
+export const SmartScalar = assignLazily(
+  SmartScalarComponent,
+  SMART_SCALAR_CHART_DEFINITION,
+);

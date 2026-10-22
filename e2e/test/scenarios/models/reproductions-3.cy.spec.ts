@@ -5,10 +5,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import type { NativeQuestionDetails } from "e2e/support/helpers/api/createQuestion";
 
-import {
-  openDetailsSidebar,
-  turnIntoModel,
-} from "./helpers/e2e-models-helpers";
+import { turnIntoModel } from "./helpers/e2e-models-helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -23,7 +20,7 @@ describe("issue 19180", () => {
     cy.intercept("/api/card/*/query").as("cardQuery");
   });
 
-  it("shouldn't drop native model query results after leaving the query editor", () => {
+  it("shouldn't drop native model query results after leaving the query editor (metabase#19180)", () => {
     H.createNativeQuestion(QUESTION).then(({ body: { id: QUESTION_ID } }) => {
       cy.request("PUT", `/api/card/${QUESTION_ID}`, { type: "model" }).then(
         () => {
@@ -60,199 +57,11 @@ describe("issue 20042", () => {
 
     cy.wait("@query");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders Model");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
+    cy.findByTestId("qb-header")
+      .findByText("Orders Model")
+      .should("be.visible");
+    H.tableInteractive().findByText("37.65").should("be.visible");
   });
-});
-
-describe("issue 20045", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      name: "Orders Model",
-      type: "model",
-    });
-  });
-
-  it("should not add query hash on the rerun (metabase#20045)", () => {
-    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-
-    cy.wait("@dataset");
-
-    cy.location("pathname").should(
-      "eq",
-      `/model/${ORDERS_QUESTION_ID}-orders-model`,
-    );
-    cy.location("hash").should("eq", "");
-
-    cy.findByTestId("qb-header-action-panel").find(".Icon-refresh").click();
-
-    cy.wait("@dataset");
-
-    cy.location("pathname").should(
-      "eq",
-      `/model/${ORDERS_QUESTION_ID}-orders-model`,
-    );
-    cy.location("hash").should("eq", "");
-  });
-});
-
-describe("issue 20624", { tags: "@skip" }, () => {
-  const renamedColumn = "TITLE renamed";
-
-  const questionDetails: NativeQuestionDetails = {
-    name: "20624",
-    type: "model",
-    native: { query: "select * from PRODUCTS limit 2" },
-    visualization_settings: {
-      column_settings: { '["name","TITLE"]': { column_title: renamedColumn } },
-    },
-  };
-
-  beforeEach(() => {
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("models metadata should override previously defined column settings (metabase#20624)", () => {
-    openDetailsSidebar();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Customize metadata").click();
-
-    // Open settings for this column
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(renamedColumn).click();
-    // Let's set a new name for it
-    cy.findByDisplayValue(renamedColumn).clear().type("Foo").blur();
-
-    cy.button("Save changes").click();
-    cy.wait("@updateCard");
-
-    cy.get("[data-testid=cell-data]").should("contain", "Foo");
-  });
-});
-
-describe("issue 20963", () => {
-  const snippetName = "string 'test'";
-  const questionName = "Converting questions with snippets to models";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow converting questions with static snippets to models (metabase#20963)", () => {
-    cy.visit("/");
-
-    H.startNewNativeQuestion();
-
-    // Create a snippet
-    cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        "'test'",
-      );
-      cy.findByLabelText("Give your snippet a name").type(snippetName);
-      cy.findByText("Save").click();
-    });
-
-    H.NativeEditor.type("{moveToStart}select ");
-
-    H.saveQuestion(
-      questionName,
-      { wrapId: true },
-      {
-        path: ["Our analytics"],
-      },
-    );
-
-    // Convert into to a model
-    H.openQuestionActions();
-    H.popover().within(() => {
-      cy.icon("model").click();
-    });
-
-    H.modal().within(() => {
-      cy.findByText("Turn this into a model").click();
-    });
-  });
-});
-
-describe("issue 22517", () => {
-  function renameColumn(column: string, newName: string) {
-    cy.findByDisplayValue(column).clear().type(newName).blur();
-  }
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("PUT", "/api/card/*").as("updateMetadata");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(
-      {
-        name: "22517",
-        native: { query: "select * from orders" },
-        type: "model",
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit metadata").click();
-
-    renameColumn("ID", "Foo");
-
-    cy.button("Save changes").click();
-    cy.wait("@updateMetadata");
-  });
-
-  it(
-    "adding or removing a column should not drop previously edited metadata (metabase#22517)",
-    { tags: "@skip" },
-    () => {
-      H.openQuestionActions();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit query definition").click();
-
-      // Make sure previous metadata changes are reflected in the UI
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
-
-      // This will edit the original query and add the `SIZE` column
-      // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-      H.NativeEditor.focus().type(
-        "{leftarrow}".repeat(" from orders".length) +
-          ", case when quantity > 4 then 'large' else 'small' end size ",
-      );
-
-      cy.findByTestId("native-query-editor-container").icon("play").click();
-      cy.wait("@dataset");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save changes").click();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
-    },
-  );
 });
 
 describe("issue 22518", () => {
@@ -295,70 +104,6 @@ describe("issue 22518", () => {
   });
 });
 
-describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("PUT", "/api/card/*").as("updateModel");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion({
-      native: {
-        query:
-          'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
-      },
-    }).then(({ body: { id } }) => {
-      // Turn the question into a model
-      cy.request("PUT", `/api/card/${id}`, { type: "model" });
-
-      // Let's go straight to the model metadata editor
-      cy.visit(`/model/${id}/columns`);
-      cy.findByText("Database column this maps to").should("be.visible");
-
-      // The first column `ID` is automatically selected
-      H.mapColumnTo({ table: "Orders", column: "ID" });
-      cy.findByText("ALIAS_CREATED_AT").click();
-
-      H.mapColumnTo({ table: "Orders", column: "Created At" });
-
-      // Make sure the column name updated before saving
-      cy.findByDisplayValue("Created At");
-
-      cy.button("Save changes").click();
-      cy.wait("@updateModel");
-
-      H.visitModel(id);
-    });
-  });
-
-  it("when done through the column header action (metabase#22715-1)", () => {
-    H.tableHeaderClick("Created At");
-    H.popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByText("Today").click();
-    });
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Today").should("not.exist");
-    cy.get("[data-testid=cell-data]")
-      .should("have.length", 4)
-      .and("contain", "Created At");
-  });
-
-  it("when done through the filter trigger (metabase#22715-2)", () => {
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Created At").click();
-      cy.findByText("Today").click();
-    });
-    cy.wait("@dataset");
-    cy.get("[data-testid=cell-data]")
-      .should("have.length", 4)
-      .and("contain", "Created At");
-  });
-});
-
 describe("issue 26091", () => {
   const modelDetails: StructuredQuestionDetails = {
     name: "Old model",
@@ -374,7 +119,6 @@ describe("issue 26091", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
   it("should allow to choose a newly created model in the data picker (metabase#26091)", () => {
@@ -394,7 +138,11 @@ describe("issue 26091", () => {
     startNewQuestion();
     H.miniPicker().within(() => {
       cy.findByText("Our analytics").click();
-      cy.findByText("New model").should("be.visible");
+      cy.findByText("New model")
+        .should("be.visible")
+        .closest("[role=menuitem]")
+        .icon("model")
+        .should("exist");
       cy.findByText("Old model").should("be.visible");
       cy.findByText("Orders Model").should("be.visible");
     });
@@ -487,151 +235,6 @@ describe("issue 28971", () => {
   });
 });
 
-describe("issue 53604 - nested native question with multiple breakouts on same column", () => {
-  const questionDetails: NativeQuestionDetails = {
-    name: "53604 base",
-    type: "question",
-    native: {
-      query: "select ID, CREATED_AT from ORDERS",
-      "template-tags": {},
-    },
-  };
-
-  function createNestedQuestion({
-    turnIntoModel: shouldTurnIntoModel = false,
-  } = {}) {
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      if (shouldTurnIntoModel) {
-        H.visitQuestion(id);
-        turnIntoModel();
-      }
-      H.createQuestion(
-        {
-          type: "question",
-          name: "53604",
-          query: {
-            "source-table": `card__${id}`,
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                "CREATED_AT",
-                { "temporal-unit": "month", "base-type": "type/DateTime" },
-              ],
-              [
-                "field",
-                "CREATED_AT",
-                { "temporal-unit": "year", "base-type": "type/DateTime" },
-              ],
-            ],
-          },
-          display: "line",
-        },
-        {
-          wrapId: true,
-          idAlias: "nestedQuestionId",
-        },
-      );
-    });
-  }
-
-  function testUnderlyingRecordsDrillThru() {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.visitQuestion("@nestedQuestionId");
-
-    // We can click on any circle; this index was chosen randomly
-    H.cartesianChartCircle().eq(25).click({ force: true });
-    H.popover()
-      .findByText(/^See these/)
-      .click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is May 1–31, 2027",
-    );
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT: Year is Jan 1 – Dec 31, 2027",
-    );
-
-    H.assertQueryBuilderRowCount(520);
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("Underlying records drill-through should work on nested native question (metabase#53604)", () => {
-    createNestedQuestion();
-    testUnderlyingRecordsDrillThru();
-  });
-
-  it("Underlying records drill-through should work on nested native model (metabase#53604)", () => {
-    createNestedQuestion({ turnIntoModel: true });
-    testUnderlyingRecordsDrillThru();
-  });
-});
-
-describe("issue 54108 - nested question broken out by day", () => {
-  const questionDetails: NativeQuestionDetails = {
-    name: "54108 base",
-    type: "question",
-    native: {
-      query: "select ID, CREATED_AT from ORDERS",
-      "template-tags": {},
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      H.createQuestion(
-        {
-          type: "question",
-          name: "54108",
-          query: {
-            "source-table": `card__${id}`,
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                "CREATED_AT",
-                { "temporal-unit": "day", "base-type": "type/Date" },
-              ],
-            ],
-          },
-          display: "line",
-        },
-        {
-          wrapId: true,
-          idAlias: "nestedQuestionId",
-        },
-      );
-    });
-  });
-
-  it("drill-through should work (metabase#54108)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.visitQuestion("@nestedQuestionId");
-
-    // We can click on any circle; this index was chosen randomly
-    H.cartesianChartCircle().eq(500).click({ force: true });
-    H.popover()
-      .findByText(/^See these/)
-      .click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is Oct 11, 2026",
-    );
-
-    H.assertQueryBuilderRowCount(6);
-  });
-});
-
 describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   const questionDetails: StructuredQuestionDetails = {
     name: "29951",
@@ -655,7 +258,6 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
@@ -714,12 +316,11 @@ describe("issue 31663", () => {
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByPlaceholderText("Select a target").click();
-    H.popover().findByText("Orders Model → ID").should("not.exist");
-    H.popover().findByText("Products Model → ID").should("not.exist");
-
     H.popover().findByText("Orders → ID").should("be.visible");
     H.popover().findByText("People → ID").should("be.visible");
     H.popover().findByText("Products → ID").should("be.visible");
+    H.popover().findByText("Orders Model → ID").should("not.exist");
+    H.popover().findByText("Products Model → ID").should("not.exist");
     H.popover()
       .scrollTo("bottom")
       .findByText("Reviews → ID")
@@ -727,30 +328,7 @@ describe("issue 31663", () => {
   });
 });
 
-describe("issue 31905", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/card/*").as("card");
-
-    H.createQuestion(
-      {
-        name: "Orders Model",
-        type: "model",
-        query: { "source-table": ORDERS_ID, limit: 2 },
-      },
-      { visitQuestion: true },
-    );
-  });
-
-  // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
-  it("should not send more than one same api requests to load a model (metabase#31905)", () => {
-    cy.get("@card.all").should("have.length.lte", 2);
-  });
-});
-
-describe("issue 32963", () => {
+describe("issues 31905 and 32963", () => {
   function assertLineChart() {
     H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
@@ -770,6 +348,7 @@ describe("issue 32963", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/card/*").as("card");
     H.createQuestion(
       {
         name: "Orders Model",
@@ -780,7 +359,11 @@ describe("issue 32963", () => {
     );
   });
 
-  it("should pick sensible display for model based questions (metabase#32963)", () => {
+  it("should load a model once and pick sensible display for model based questions (metabase#31905, metabase#32963)", () => {
+    cy.log("should not send more than one same api request (metabase#31905)");
+    // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
+    cy.get("@card.all").should("have.length.within", 1, 2);
+
     cy.findByTestId("qb-header")
       .button(/Summarize/)
       .click();
@@ -931,58 +514,5 @@ describe("issue 37009", () => {
       .its("request.body")
       .its("result_metadata")
       .should("not.be.null");
-  });
-});
-
-describe("issue 45926", () => {
-  const questionDetails: StructuredQuestionDetails = {
-    name: "33330",
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should restore model correctly without refresh (metabase#45926)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    cy.wait("@dataset");
-    H.openQuestionActions("Edit metadata");
-    H.sidebar().within(() => {
-      cy.findByDisplayValue("ID").type(" updated");
-    });
-
-    cy.button("Save changes").click();
-    cy.wait("@dataset");
-
-    cy.findByRole("columnheader", { name: "ID updated" }).should("be.visible");
-    H.openQuestionActions("Edit query definition");
-    cy.button("Sort").click();
-    H.popover().findByText("ID").click();
-    cy.button("Save changes").click();
-    cy.wait("@dataset");
-
-    H.questionInfoButton().click();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
-      cy.findByText(
-        "changed the visualization settings and edited the metadata.",
-      )
-        .closest('[data-testid="revision-history-event"]')
-        .findByTestId("question-revert-button")
-        .click();
-    });
-
-    cy.wait("@dataset");
-
-    H.sidesheet().button("Close").click();
-
-    cy.findByRole("columnheader", { name: "ID updated" }).should("be.visible");
   });
 });

@@ -1,0 +1,77 @@
+.link {
+  display: block;
+}
+
+.card {
+  cursor: pointer;
+  box-shadow: none;
+
+  &.selectable:hover {
+    border-color: var(--mb-color-core-brand);
+  }
+
+  &.selected {
+    border-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-brand-subtle);
+  }
+}
+
+.skeletonCard {
+  cursor: default;
+}
+
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-sm);
+  height: 100%;
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-xxl)
+    var(--mantine-spacing-lg) 1.25rem;
+}
+
+.icon {
+  flex: 0 0 auto;
+  /* optically center the 20px icon on the 16px title line */
+  margin-top: -2px;
+}
+
+.content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xxs);
+}
+
+/* Ellipsified's Text sets an inline `color: inherit`, so the title color and
+   its hover highlight must live on the row wrapper and cascade down. */
+.titleRow {
+  color: var(--mb-color-text-primary);
+  transition: color 0.2s ease;
+}
+
+.card:hover .titleRow {
+  color: var(--mb-color-core-brand);
+}
+
+.description {
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1rem;
+}
+
+.actions {
+  position: absolute;
+  top: var(--mantine-spacing-sm);
+  right: var(--mantine-spacing-sm);
+  visibility: hidden;
+}
+
+.card:hover .actions {
+  visibility: visible;
+}
+
+.selectCheckbox {
+  flex: 0 0 auto;
+  padding-inline: 2px;
+}

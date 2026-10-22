@@ -1,29 +1,44 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
-import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import type { MetabotChatMessage } from "metabase/metabot/state";
+import {
+  type MetabotMessagePart,
+  isGeneratedCardPart,
+} from "metabase/metabot/state";
 import { Stack } from "metabase/ui";
 
 import S from "./MetabotQuestion.module.css";
 
-const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
-  message.type === "data_part" && message.part.type === "navigate_to";
+const isHiddenInEmbedding = (part: MetabotMessagePart) =>
+  part.type === "chain_of_thought";
+
+const AGENT_ID = "omnibot";
 
 export function MetabotChatHistory() {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotAgent(AGENT_ID);
   const { messages } = metabot;
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const chatMessages = useMemo(
-    () => messages.filter((message) => !isQuestionNavigationMessage(message)),
+    () =>
+      messages.map((message) => ({
+        ...message,
+        parts: message.parts.filter(
+          (part) => !isGeneratedCardPart(part) && !isHiddenInEmbedding(part),
+        ),
+      })),
     [messages],
   );
 
-  const hasMessages = chatMessages.length > 0;
+  const messagePartCount = useMemo(
+    () => chatMessages.reduce((count, msg) => count + msg.parts.length, 0),
+    [chatMessages],
+  );
+  const hasMessages = messagePartCount > 0;
 
   // Auto-scroll to bottom when new messages are received
   useEffect(() => {
@@ -31,7 +46,7 @@ export function MetabotChatHistory() {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [chatMessages.length, metabot.isDoingScience]);
+  }, [messagePartCount, metabot.isDoingScience]);
 
   return (
     <Stack
@@ -39,21 +54,26 @@ export function MetabotChatHistory() {
       flex={1}
       gap={0}
       style={{ overflowY: "auto" }}
-      p="md"
+      p="lg"
       className={S.chatHistory}
     >
       {hasMessages ? (
         <Messages
           messages={chatMessages}
+          size="md"
           onRetryMessage={metabot.retryMessage}
+          onContinueMessage={metabot.continueResponse}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
+          conversationId={metabot.conversationId}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}
-      {metabot.isLongConversation && (
-        <MetabotResetLongChatButton
-          onResetConversation={metabot.resetConversation}
+      {metabot.longChatNotice && !metabot.isDoingScience && (
+        <MetabotLongChatNotice
+          variant={metabot.longChatNotice}
+          className={hasMessages ? S.longChatNotice : undefined}
+          onNewChat={metabot.createNewConversation}
         />
       )}
     </Stack>

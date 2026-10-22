@@ -12,6 +12,7 @@
   add-trigger!
   add-trigger-listener!
   defjob
+  defjob-type
   delete-all-triggers-of-job!
   delete-task!
   delete-trigger!
@@ -24,6 +25,7 @@
   reschedule-trigger!
   schedule-task!
   scheduler
+  scheduler-disabled?
   scheduler-info
   start-scheduler!
   stop-scheduler!

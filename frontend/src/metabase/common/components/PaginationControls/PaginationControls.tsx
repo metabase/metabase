@@ -35,6 +35,12 @@ export const PaginationControls = ({
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
+  const rangeStart = page * pageSize + 1;
+  const rangeEnd =
+    total != null
+      ? Math.min(page * pageSize + itemsLength, total)
+      : page * pageSize + itemsLength;
+
   return (
     <Group
       align="center"
@@ -44,7 +50,7 @@ export const PaginationControls = ({
       {...props}
     >
       <Text component="span" mr="sm">
-        {page * pageSize + 1} - {page * pageSize + itemsLength}
+        {rangeStart} - {rangeEnd}
         {showTotal && (
           <>
             <Text component="span" c="text-disabled">
@@ -61,7 +67,7 @@ export const PaginationControls = ({
         )}
       </Text>
       <ActionIcon
-        variant="viewHeader"
+        variant="subtle"
         onClick={onPreviousPage ?? undefined}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
@@ -71,7 +77,7 @@ export const PaginationControls = ({
       </ActionIcon>
 
       <ActionIcon
-        variant="viewHeader"
+        variant="subtle"
         onClick={onNextPage ?? undefined}
         disabled={isNextDisabled}
         data-testid="next-page-btn"

@@ -1,8 +1,6 @@
-import { push } from "react-router-redux";
-
 import { useListRecentsQuery } from "metabase/api";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
-import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Paper } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import type {
@@ -26,12 +24,12 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
     { refetchOnMountOrArgChange: true },
   );
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onChangeLocation = (item: RecentItem) => {
     const url = getItemUrl(item);
     if (url) {
-      dispatch(push(url));
+      navigate(url);
     }
   };
 

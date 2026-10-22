@@ -5,24 +5,26 @@ import * as Yup from "yup";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormFooter } from "metabase/common/components/FormFooter";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
 import type {
   EntityPickerOptions,
   FilterItemsInPersonalCollection,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { WithRouterProps } from "metabase/router";
-import { withRouter } from "metabase/router";
-import { Button, Flex } from "metabase/ui";
+import { useLocation, useParams } from "metabase/router";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
-import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
+import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelField";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -54,13 +56,11 @@ export interface CreateCollectionFormOwnProps {
   showAuthorityLevelPicker?: boolean;
 }
 
-type Props = CreateCollectionFormOwnProps & WithRouterProps;
+type Props = CreateCollectionFormOwnProps;
 
 function CreateCollectionForm({
   collectionId,
   initialCollectionId: explicitInitialCollectionId,
-  location,
-  params,
   onSubmit,
   onCancel,
   filterPersonalCollections,
@@ -69,13 +69,18 @@ function CreateCollectionForm({
   namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
+  const location = useLocation();
+  const params = useParams();
   const defaultInitialCollectionId = useInitialCollectionId({
     collectionId,
     location,
     params,
   });
+  const isNamespacedOnly = namespaces != null && !namespaces.includes(null);
+  // The user's default collection is outside the namespace, so start from the namespace root
   const initialCollectionId =
-    explicitInitialCollectionId ?? defaultInitialCollectionId;
+    explicitInitialCollectionId ??
+    (isNamespacedOnly ? null : defaultInitialCollectionId);
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
@@ -94,10 +99,11 @@ function CreateCollectionForm({
   const handleSubmit = useCallback(
     (values: CreateCollectionProperties) => {
       const parentCollection = selectedParentCollection ?? initialCollection;
-      const namespace =
+      const parentNamespace =
         parentCollection && "namespace" in parentCollection
           ? parentCollection.namespace
-          : namespaces?.[0];
+          : null;
+      const namespace = parentNamespace ?? namespaces?.[0];
 
       onSubmit({
         ...values,
@@ -125,49 +131,48 @@ function CreateCollectionForm({
 
         return (
           <Form>
-            <FormInput
-              name="name"
-              title={t`Name`}
-              placeholder={t`My new fantastic collection`}
-              data-autofocus
-            />
-            <FormTextArea
-              name="description"
-              title={t`Description`}
-              placeholder={t`It's optional but oh, so helpful`}
-              nullable
-              optional
-            />
-            {showCollectionPicker && (
-              <FormCollectionPicker
-                collectionPickerModalProps={{
-                  options: pickerOptions,
-                  namespaces,
-                }}
-                entityType="collection"
-                filterPersonalCollections={filterPersonalCollections}
-                mb="1rem"
-                name="parent_id"
-                onCollectionSelect={setSelectedParentCollection}
-                title={t`Collection it's saved in`}
+            <Stack gap="xl">
+              <FormTextInput
+                name="name"
+                label={t`Name`}
+                placeholder={t`My new fantastic collection`}
+                data-autofocus
               />
-            )}
-            {showAuthorityLevelPicker && !isParentTenantCollection && (
-              <FormAuthorityLevelField />
-            )}
-            <FormFooter mt="lg">
-              <FormErrorMessage inline />
-              <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
-                {!!onCancel && (
-                  <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-                )}
-                <FormSubmitButton
-                  label={t`Create`}
-                  disabled={!dirty}
-                  variant="filled"
+              <FormTextarea
+                name="description"
+                label={t`Description`}
+                placeholder={t`It's optional but oh, so helpful`}
+                minRows={5}
+                nullable
+              />
+              {showCollectionPicker && (
+                <FormCollectionPicker
+                  collectionPickerModalProps={{
+                    options: pickerOptions,
+                    namespaces,
+                  }}
+                  entityType="collection"
+                  filterPersonalCollections={filterPersonalCollections}
+                  name="parent_id"
+                  onCollectionSelect={setSelectedParentCollection}
+                  title={t`Collection it's saved in`}
                 />
-              </Flex>
-            </FormFooter>
+              )}
+              {showAuthorityLevelPicker && !isParentTenantCollection && (
+                <FormAuthorityLevelField />
+              )}
+            </Stack>
+            <Modal.Footer>
+              <FormErrorMessage flex={1} />
+              {!!onCancel && (
+                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+              )}
+              <FormSubmitButton
+                label={t`Create`}
+                disabled={!dirty}
+                variant="filled"
+              />
+            </Modal.Footer>
           </Form>
         );
       }}
@@ -176,4 +181,4 @@ function CreateCollectionForm({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouter(CreateCollectionForm);
+export default CreateCollectionForm;

@@ -1,72 +1,13 @@
-import { t } from "ttag";
-
-import {
-  isImplicitDeleteAction,
-  isImplicitUpdateAction,
-} from "metabase/actions/utils";
-import { hasActionsEnabled } from "metabase/common/utils/database";
-import { extractRemappedColumns } from "metabase/visualizations";
+import { extractRemappedColumns } from "metabase/viz-core";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
-  Database,
   Dataset,
   DatasetColumn,
-  IconName,
   RowValues,
   Table,
   TableColumnOrderSetting,
-  WritebackAction,
 } from "metabase-types/api";
-
-type ActionItem = {
-  title: string;
-  icon: IconName;
-  action: () => void;
-};
-
-export const getActionItems = ({
-  actions,
-  databases,
-  onDelete,
-  onUpdate,
-}: {
-  actions: WritebackAction[];
-  databases: Database[];
-  onDelete: (action: WritebackAction) => void;
-  onUpdate: (action: WritebackAction) => void;
-}): ActionItem[] => {
-  const actionItems: ActionItem[] = [];
-  const privateActions = actions.filter((action) => !action.public_uuid);
-  const deleteAction = privateActions.find(isValidImplicitDeleteAction);
-  const updateAction = privateActions.find(isValidImplicitUpdateAction);
-
-  if (updateAction && canRunAction(updateAction, databases)) {
-    const action = () => onUpdate(updateAction);
-    actionItems.push({ title: t`Update`, icon: "pencil", action });
-  }
-
-  if (deleteAction && canRunAction(deleteAction, databases)) {
-    const action = () => onDelete(deleteAction);
-    actionItems.push({ title: t`Delete`, icon: "trash", action });
-  }
-
-  return actionItems;
-};
-
-export const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
-  isImplicitDeleteAction(action) && !action.archived;
-
-export const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
-  isImplicitUpdateAction(action) && !action.archived;
-
-export const canRunAction = (
-  action: WritebackAction,
-  databases: Database[],
-) => {
-  const database = databases.find(({ id }) => id === action.database_id);
-  return database != null && hasActionsEnabled(database);
-};
 
 export function extractData(
   dataset: Dataset | undefined,

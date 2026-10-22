@@ -12,22 +12,15 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ListSearchField } from "metabase/common/components/ListSearchField";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import type { TextInputProps } from "metabase/ui";
-import { Box, Icon, Text, isValidIconName } from "metabase/ui";
+import { Box, Flex, Icon, Loader, Text, isValidIconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 import { isTouchDevice } from "metabase/utils/browser";
 
 import styles from "./AccordionListCell.module.css";
-import {
-  Content,
-  EmptyStateContainer,
-  IconWrapper,
-  ListCellItem,
-} from "./AccordionListCell.styled";
 import type { Item, Row, Section } from "./types";
 import { isReactNode } from "./utils";
 
@@ -231,7 +224,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
-              <LoadingSpinner size={16} borderWidth={2} />
+              <Loader size="xs" />
             </Box>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
@@ -299,24 +292,22 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         )}
         {showSpinner(section) && (
           <Box ml="0.5rem">
-            <LoadingSpinner size={16} borderWidth={2} />
+            <Loader size="xs" />
           </Box>
         )}
-        <IconWrapper>
-          <Icon name="chevronright" size={12} />
-        </IconWrapper>
+        <Icon name="chevronright" size={12} ml="auto" flex="0 0 auto" />
       </div>
     );
   } else if (type === "no-results") {
     content = (
-      <EmptyStateContainer>
+      <Box mt="xl" mb="lg" fz="md">
         <EmptyState message={t`Didn't find any results`} icon="search" />
-      </EmptyStateContainer>
+      </Box>
     );
   } else if (type === "loading") {
     content = (
       <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>
-        <LoadingSpinner />
+        <Loader size="lg" />
       </div>
     );
   } else if (type === "search") {
@@ -343,13 +334,12 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     const label = renderItemLabel ? renderItemLabel(item) : name;
 
     content = (
-      <ListCellItem
+      <div
         data-testid={itemTestId}
         aria-label={label}
         role="option"
         aria-selected={isSelected}
         aria-disabled={!isClickable}
-        isClickable={isClickable}
         data-element-id="list-item"
         data-hascursor={hasCursor}
         className={cx(
@@ -366,8 +356,12 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         )}
         style={getItemStyles(item, itemIndex) ?? {}}
       >
-        <Content
-          isClickable={isClickable}
+        <Flex
+          className={isClickable ? CS.cursorPointer : CS.cursorDefault}
+          flex="1 1 auto"
+          align="center"
+          p="sm"
+          miw={0}
           onClick={isClickable ? () => onChange(item) : undefined}
         >
           {icon && (
@@ -402,10 +396,10 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           </div>
           {showSpinner(item) && (
             <Box ml="0.5rem">
-              <LoadingSpinner size={16} borderWidth={2} />
+              <Loader size="xs" />
             </Box>
           )}
-        </Content>
+        </Flex>
         {extra}
         {showItemArrows && (
           <div
@@ -414,7 +408,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
             <Icon name="chevronright" size={8} />
           </div>
         )}
-      </ListCellItem>
+      </div>
     );
 
     if (renderItemWrapper) {

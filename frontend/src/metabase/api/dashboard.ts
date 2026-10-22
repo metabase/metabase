@@ -1,4 +1,3 @@
-import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -16,7 +15,6 @@ import type {
   GetPublicDashboard,
   GetRemappedDashboardParameterValueRequest,
   GetValidDashboardFilterFieldsRequest,
-  ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
@@ -27,7 +25,7 @@ import type {
   UpdateDashboardRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -40,7 +38,6 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -75,7 +72,6 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboards) =>
           dashboards ? provideDashboardListTags(dashboards) : [],
-        onQueryStarted: hydrateMetadataStore([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -86,7 +82,6 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
-        onQueryStarted: hydrateMetadataStore(DashboardSchema),
       }),
       getDashboardQueryMetadata: builder.query<
         DashboardQueryMetadata,
@@ -99,21 +94,12 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
       getDashboardCardQuery: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
-        // force a unique key per call) but must not be sent to the server.
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,
@@ -123,15 +109,9 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       getDashboardCardQueryPivot: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,
@@ -181,7 +161,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+        { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
@@ -232,6 +212,11 @@ export const dashboardApi = Api.injectEndpoints({
             tag("parameter-values"),
             listTag("revision"),
             listTag("subscription"),
+            // Archiving the dashboard the user has as their homepage clears the homepage server-side.
+            // getCurrentUser provides this tag, so invalidating it refetches the user.
+            idTag("user-homepage-dashboard", id),
+            // archiving a dashboard resolves any content-diagnostics finding for it
+            listTag("content-diagnostics-finding"),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
@@ -279,7 +264,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       updateDashboardEnableEmbedding: updateDashboardPropertiesMutation<
         "enable_embedding" | "embedding_type"
-      >([listTag("embedding-hub-checklist")]),
+      >([listTag("setup-guide-checklist")]),
       updateDashboardEmbeddingParams: updateDashboardPropertiesMutation<
         "embedding_params" | "embedding_type"
       >(),

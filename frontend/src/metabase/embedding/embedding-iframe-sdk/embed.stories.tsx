@@ -5,6 +5,7 @@ import {
   useControlledParametersPlaygroundState,
 } from "embedding-sdk-bundle/test/ParametersPlayground";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import { STORYBOOK_METABASE_INSTANCE_URL } from "embedding-sdk-shared/test/storybook-constants";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { SegmentedControl, Stack, Text } from "metabase/ui";
 
@@ -12,9 +13,7 @@ import type { MetabaseDashboardElement } from "./embed";
 
 type Mode = "controlled" | "uncontrolled";
 
-const INSTANCE_URL =
-  (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
-
+// Unjustified type cast. FIXME
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
 // Module-level init: the custom element reads `window.metabaseConfig`
@@ -23,7 +22,7 @@ const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 // is for memoization (not side effects) and `useEffect` runs after
 // children commit, too late for a child custom element's mount.
 (window as any).metabaseConfig = {
-  instanceUrl: INSTANCE_URL,
+  instanceUrl: STORYBOOK_METABASE_INSTANCE_URL,
   useExistingUserSession: true,
 };
 
@@ -61,6 +60,7 @@ const ControlledParametersEmbedJsPlayground = () => {
     let onParametersChange: ((event: Event) => void) | null = null;
     if (mode === "controlled") {
       onParametersChange = (event: Event) => {
+        // Unjustified type cast. FIXME
         const detail = (event as CustomEvent<ParameterChangePayload>).detail;
 
         playground.handleParametersChange(detail);
@@ -84,7 +84,7 @@ const ControlledParametersEmbedJsPlayground = () => {
       {...playground}
       title="Embed.js — parameters playground"
       description={
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text size="sm" c="text-secondary">
             Initial seed comes from the <code>initial-parameters</code>{" "}
             attribute (set once at mount).
@@ -97,13 +97,13 @@ const ControlledParametersEmbedJsPlayground = () => {
             inside the iframe and don&apos;t reach parent state. Push controls
             are no-ops in this mode.
             <br />
-            Dashboard runs inside the iframe at {INSTANCE_URL} (logged-in
-            session required).
+            Dashboard runs inside the iframe at{" "}
+            {STORYBOOK_METABASE_INSTANCE_URL} (logged-in session required).
           </Text>
           <SegmentedControl
-            size="xs"
             value={mode}
-            onChange={(value) => setMode(value)}
+            // Unjustified type cast. FIXME
+            onChange={(value) => setMode(value as Mode)}
             data={[
               { value: "controlled", label: "controlled" },
               { value: "uncontrolled", label: "uncontrolled" },

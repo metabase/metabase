@@ -16,7 +16,7 @@
   [_route-params
    _query-params
    {:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]}
-   :- [:map
+   :- [:map {:closed true}
        [:google-auth-client-id                   {:optional true} [:maybe :string]]
        [:google-auth-enabled                     {:optional true} [:maybe :boolean]]
        [:google-auth-auto-create-accounts-domain {:optional true} [:maybe :string]]]]

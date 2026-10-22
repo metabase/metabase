@@ -13,15 +13,14 @@ import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
 } from "metabase/plugins";
-import {
-  NotFoundPlaceholder,
-  PluginPlaceholder,
-} from "metabase/plugins/components/PluginPlaceholder";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
 import type {
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
 } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
@@ -41,8 +40,6 @@ export interface RemoteSyncDirtyState {
   changedCollections: Record<number, boolean>;
   /** Whether any dirty changes exist globally */
   isDirty: boolean;
-  /** Whether any entities have "removed" status */
-  hasRemovedItems: boolean;
   /** Whether data is loading */
   isLoading: boolean;
   /** Check if a specific collection has dirty items */
@@ -62,12 +59,16 @@ export interface RemoteSyncDirtyState {
 const getDefaultPluginRemoteSync = () => ({
   isEnabled: false,
   LibraryNav: PluginPlaceholder,
-  RemoteSyncSettings: NotFoundPlaceholder,
+  RemoteSyncSettings: PluginPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
+  // Unjustified type cast. FIXME
   GitSyncAppBarControls: PluginPlaceholder as ComponentType,
+  // Unjustified type cast. FIXME
   GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
   GitSyncSetupMenuItem: PluginPlaceholder,
+  // Unjustified type cast. FIXME
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
+  // Unjustified type cast. FIXME
   CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
@@ -79,9 +80,13 @@ const getDefaultPluginRemoteSync = () => ({
   }),
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
   useHasLibraryDirtyChanges: () => false,
+  useHasSnippetsDirtyChanges: () => false,
+  useHasDataActionsDirtyChanges: () => false,
   useHasTransformDirtyChanges: () => false,
+  useHasGlossaryDirtyChanges: () => false,
   getIsRemoteSyncReadOnly: () => false,
   useRemoteSyncDirtyState: () =>
+    // Unjustified type cast. FIXME
     ({
       isCollectionDirty: false,
     }) as unknown as RemoteSyncDirtyState,
@@ -110,14 +115,10 @@ export const PLUGIN_REMOTE_SYNC: {
     currentBranch: string | null | undefined;
   };
   useHasLibraryDirtyChanges: () => boolean;
+  useHasSnippetsDirtyChanges: () => boolean;
+  useHasDataActionsDirtyChanges: () => boolean;
   useHasTransformDirtyChanges: () => boolean;
+  useHasGlossaryDirtyChanges: () => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
   useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
-} = getDefaultPluginRemoteSync();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_REMOTE_SYNC, getDefaultPluginRemoteSync());
-}
+} = definePluginSlot(getDefaultPluginRemoteSync);

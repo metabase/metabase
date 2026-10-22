@@ -8,13 +8,25 @@
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.ai-tracing.log :as ait.log]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.mcp.core :as mcp]
+   [metabase.metabot.agent.profiles :as metabot.profiles]
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.resources :as metabot-resources]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -23,7 +35,11 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]
+   [oidc-provider.util :as oidc.util]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -80,6 +96,68 @@
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
 
+(deftest agent-api-401-for-an-unusable-bearer-token-carries-invalid-token-test
+  (testing "GHY-4542: RFC 6750 section 3 requires a 401 for a bearer token that does not authenticate to carry an
+            `invalid_token` challenge. The session middleware declines such a token silently, leaving the agent API
+            to answer the request, so the challenge has to come from there."
+    ;; site-url: resolving the bearer token builds the OAuth provider, whose config derives its issuer from it
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (client/client-full-response
+                      :get 401 "agent/v1/ping"
+                      {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+        (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+        ;; which of the JWT failures the body names depends on whether a shared secret is configured; the challenge
+        ;; is the same either way
+        (is (string? (get-in response [:body :message])))))))
+
+(deftest agent-api-401-when-no-jwt-provider-is-registered-test
+  (testing "GHY-4542: the JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and
+            `auth-identity/authenticate` has no method to dispatch to. A bearer token the OAuth bridge declined
+            reaches that dispatch, and the agent API has to answer it with the 401 `invalid_token` challenge rather
+            than let the dispatch throw and serve a 500 carrying a stack trace."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (with-redefs-fn {#'agent-api.api/jwt-provider-available? (constantly false)}
+        (fn []
+          (let [response (client/client-full-response
+                          :get 401 "agent/v1/ping"
+                          {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+            (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+            (is (= "jwt_not_configured" (get-in response [:body :error])))))))))
+
+(deftest agent-api-401-without-bearer-token-carries-plain-challenge-test
+  (testing "GHY-4542: RFC 7235 requires every 401 to carry a `WWW-Authenticate` challenge, and RFC 6750 section 3.1
+            says one answering a request with no bearer token SHOULD NOT include an error code. So both 401s the
+            agent API gives before it has a token to judge carry a plain `Bearer` challenge, with unchanged bodies."
+    (testing "no credentials at all"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping")]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "missing_authorization"
+                :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
+               (:body response)))))
+    (testing "an Authorization header that does not use the Bearer scheme"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping"
+                                                  {:request-options {:headers {"authorization" "Basic dXNlcjpwYXNz"}}})]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "invalid_authorization_format"
+                :message "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
+               (:body response)))))))
+
+(deftest enforce-authentication-does-not-widen-oauth-request-without-scopes-test
+  (testing "GHY-4542: the agent API defaults nil `:token-scopes` on an authenticated request to unrestricted, which
+            is right for a session but would hand an OAuth-authenticated request with no scopes full access and
+            defeat the scope middleware's own fail-closed check. That request keeps nil and is refused by the
+            endpoint's scope check."
+    (let [enforce-authentication #'agent-api.api/enforce-authentication
+          handler                (enforce-authentication
+                                  ((api.scope/enforce-scope "agent:search") (fn [_ respond _] (respond {:status 200}))))
+          status                 (fn [request]
+                                   (let [p (promise)]
+                                     (handler request #(deliver p (:status %)) #(deliver p %))
+                                     (deref p 10000 ::timeout)))]
+      (is (= 403 (status {:metabase-user-id (mt/user->id :rasta) :authenticated-via-oauth? true})))
+      (testing "a session request with nil token-scopes is still unrestricted"
+        (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
+
 (deftest agent-api-enabled-setting-test
   (testing "External Agent API routes return 403 when disabled"
     (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
@@ -93,11 +171,30 @@
       (is (= "AI features are not enabled."
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
 
+(deftest eval-tracing-wraps-agent-api-requests-test
+  (testing "with capture on, the routes wrapper opens a span recording status/response/user-id"
+    (let [nodes (atom [])]
+      ;; Force capture on and collect the emitted spans in-memory (redef the sink so no file is
+      ;; written). The wrapper mints a fresh session per direct HTTP request.
+      (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)
+                                  ait.log/emit!                       (fn [node _session-id]
+                                                                        (swap! nodes conj node)
+                                                                        nil)]
+        (is (= {:message "pong"} (mt/user-http-request :rasta :get 200 "agent/v1/ping")))
+        (let [span (first (filter #(str/starts-with? (str (:name %)) "agent-api.") @nodes))]
+          (is (some? span) "an agent-api.* span was emitted for the request")
+          (is (= "agent-api.get /api/agent/v1/ping" (:name span)))
+          (is (= 200 (get-in span [:attributes :http/status])))
+          ;; the plain-data body is recorded (a streaming body would be omitted, not stringified)
+          (is (= {:message "pong"} (get-in span [:attributes :http/response])))
+          ;; +auth binds *current-user-id* inside the handler, so the respond-time record! sees rasta
+          (is (= (mt/user->id :rasta) (get-in span [:attributes :http/user-id]))))))))
+
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
         (testing "Returns search results for term queries"
           (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
@@ -108,7 +205,7 @@
 (deftest search-content-types-test
   (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
     (binding [search.ingestion/*force-sync* true]
-      (search.tu/with-new-search-if-available-otherwise-legacy
+      (search.tu/with-appdb-search-if-available-otherwise-legacy
         (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
                        :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
                        :model/Collection _ {:name "AgentSearchAcmeCollection"}]
@@ -224,6 +321,60 @@
                                                   :aggregation [(orders-field-ref "ID")])})]
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
 
+(deftest construct-query-metadata-lookup-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (let [query (orders-query :fields [(orders-field-ref "ID")])]
+      (doseq [[failure delta] [[(SQLException. "Connection unavailable") 1]
+                               [(ex-info "SELECT private_metadata failed" {:toucan2/context-trace []}) 1]
+                               [(ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable")) 1]
+                               [(ex-info "SELECT private_metadata failed"
+                                         {:toucan2/context-trace [] :status-code 500}) 0]]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+            (is (= {:message "Something went wrong"}
+                   (mt/user-http-request :rasta :post 500 "agent/v2/construct-query" {:query query})))
+            (is (= (+ initial delta) (mt/metric-value system :metabase-api/unhandled-errors)))))))))
+
+(deftest construct-query-declared-errors-in-toucan-scopes-test
+  (let [query (orders-query :fields [(orders-field-ref "ID")])]
+    (doseq [status-code [nil 400]
+            agent-error? [false true]
+            [error message expected] [[:invalid-representations-query
+                                       "Representations query has an invalid structure."
+                                       "Representations query has an invalid structure."]
+                                      [:unknown-field
+                                       "Unknown field"
+                                       (str "Unknown field\nCall `read_resource` with `metabase://table/<numeric id>/fields` "
+                                            "to list this table's columns.")]]]
+      (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                  (fn [& _]
+                                    (t2/with-connection [_conn]
+                                      (throw (ex-info message (cond-> {:error error}
+                                                                status-code (assoc :status-code status-code)
+                                                                agent-error? (assoc :agent-error? true))))))]
+        (is (=? {:error (name error) :message expected}
+                (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
+
+(deftest database-error-callback-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (doseq [database-error? [false true]
+            delivery [:throw :raise]]
+      (let [failure          (if database-error? (SQLException. "Database failure") (Exception. "Handler failure"))
+            callback-failure (if database-error? (SQLException. "Callback failure") (Exception. "Callback failure"))
+            calls            (atom 0)
+            callback         (fn [_] (swap! calls inc) (throw callback-failure))
+            handler          (#'agent-api.api/wrap-database-errors
+                              (fn [_request _respond raise]
+                                (case delivery
+                                  :throw (throw failure)
+                                  :raise (raise failure))))
+            initial          (mt/metric-value system :metabase-api/unhandled-errors)
+            caught           (try (handler {} callback callback) (catch Throwable e e))]
+        (is (identical? callback-failure caught))
+        (is (= 1 @calls))
+        (is (= (+ initial (if database-error? 1 0))
+               (mt/metric-value system :metabase-api/unhandled-errors)))))))
+
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
     (mt/with-no-data-perms-for-all-users!
@@ -284,25 +435,45 @@
         (is (=? {:error "unknown-stage-key"} response))
         (is (re-find #"aggregation" (:message response)))))))
 
-(deftest construct-query-rejects-legacy-envelope-test
+(deftest construct-query-rejects-malformed-clauses-test
+  (testing "a malformed stage or clause returns HTTP 400 with an error about the query structure"
+    (doseq [[label query] (let [post-agg (orders-query :aggregation [["count" {}]]
+                                                       :filters     [[">" {} ["aggregation" {} 0] 1]])]
+                            {"a number as `aggregation`"
+                             (assoc-in (orders-query) [:stages 0 :aggregation] 42)
+                             "an empty aggregation clause used in `order-by`"
+                             (orders-query :aggregation [[]] :order-by [["desc" {} []]])
+                             "a number as `joins`"
+                             (assoc-in (orders-query) [:stages 0 :joins] 42)
+                             "a post-aggregation filter with a number as `order-by`"
+                             (assoc-in post-agg [:stages 0 :order-by] 42)
+                             "a post-aggregation filter with a number as `fields`"
+                             (assoc-in post-agg [:stages 0 :fields] 42)
+                             "a number as a later stage"
+                             (update (orders-query) :stages conj 42)
+                             "an aggregation list as a later stage"
+                             (update (orders-query) :stages conj [["count" {}]])})
+            endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
+      (testing (str endpoint ", " label)
+        (is (=? {:error "invalid-representations-query"}
+                (mt/user-http-request :rasta :post 400 endpoint {:query query})))))))
+
+(deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
-                "is rejected by the now-closed request schema, instead of being silently ignored. "
-                "This guards against a regression where the LLM's stale memory keeps sending the old "
-                "shape and we silently drop the extra keys.")
-    (is (=? {:specific-errors {:source_entity #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                "is dropped by the request schema, so a caller still sending the old shape is served.")
+    (is (=? {:query string?}
+            (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                   {:query          (orders-query)
                                    :source_entity  {:type "table" :id (mt/id :orders)}}))))
-  (testing "`/v2/query` fresh-query branch rejects the legacy envelope as well"
-    (is (=? {:specific-errors {:referenced_entities #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:query               (orders-query :limit 5)
-                                   :referenced_entities []}))))
-  (testing "`/v2/query` continuation_token branch rejects extra keys (closed schema)"
-    (is (=? {:specific-errors {:query #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:continuation_token "not-a-real-token"
-                                   :query               (orders-query :limit 5)})))))
+  (testing "`/v2/query` fresh-query branch drops the legacy envelope as well"
+    (is (some? (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                     {:query               (orders-query :limit 5)
+                                      :referenced_entities []}))))
+  (testing "`/v2/query` stays on the continuation branch when a stray `:query` rides along"
+    (is (re-find #"base64-encoded JSON object"
+                 (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                       {:continuation_token "not-a-real-token"
+                                        :query              (orders-query :limit 5)})))))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
@@ -475,14 +646,16 @@
     (doseq [[label q] [["legacy top-level :type"
                         {:database (mt/id) :type "native" :native {:query "select 1"}}]
                        ["MBQL 5 native stage"
-                        {:lib/type "mbql/query"
+                        {:database (mt/id)
+                         :lib/type "mbql/query"
                          :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]
-                       ["MBQL 5 native stage nested in a join"
-                        {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql"
-                                     :joins    [{:lib/type "mbql/join"
-                                                 :stages   [{:lib/type "mbql.stage/native"
-                                                             :native   "select 1"}]}]}]}]
+                       ["native source-query nested in a join"
+                        {:database (mt/id) :type "query"
+                         :query    {:source-table (mt/id :checkins)
+                                    :joins        [{:source-query {:native "select 1"}
+                                                    :alias        "j"
+                                                    :condition    [:= [:field (mt/id :checkins :id) nil]
+                                                                   [:field (mt/id :checkins :id) {:join-alias "j"}]]}]}}]
                        ["legacy nested native source-query"
                         {:database (mt/id) :type "query"
                          :query    {:source-query {:native "select 1"}}}]]]
@@ -556,7 +729,7 @@
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
                                           :type          :metric
                                           :database_id   (mt/id)
@@ -569,7 +742,7 @@
 
 (deftest search-finds-models-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
                                          :type          :model
                                          :database_id   (mt/id)
@@ -642,6 +815,18 @@
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
+
+(deftest create-question-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "The 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+    (mt/with-temp [:model/Card {secret-id :id} {:collection_id (:id (collection/user->personal-collection
+                                                                     (mt/user->id :crowberto)))
+                                                :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+      (let [q    {:database (mt/id) :type :query :query {:source-table (str "card__" secret-id)}}
+            body (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                       {:name  "Should Not Save"
+                                        :query (u/encode-base64 (json/encode q))})]
+        (is (= "You cannot save this Question because you do not have permissions to run its query."
+               body))))))
 
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 
@@ -920,7 +1105,13 @@
                                        {:archived true})]
         (is (true? (:archived resp))))
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
 
 (deftest update-metric-replace-query-test
   (testing "Replacing the underlying query via :query keeps a valid metric"
@@ -1155,7 +1346,13 @@
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
       ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
       ;; as inherited-from-trash and stay invisible in the Trash UI.
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
 
 (deftest update-question-replace-query-test
   (testing "Replacing the underlying query via :query (base64)"
@@ -1303,17 +1500,6 @@
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
       ;; cards on the dashboard should follow
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
-  (testing "Archiving a dashboard cascades to its cards"
-    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Archive"}
-                   :model/Card      {card-id :id} {:name          "Cascading Card"
-                                                   :dataset_query (orders-count-query)
-                                                   :display       :table
-                                                   :dashboard_id  dash-id}]
-      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
-                                       {:archived true})]
-        (is (true? (:archived resp))))
-      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
   (testing "Returns 404 when dashboard does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
                           {:name "doesn't matter"}))
@@ -1335,6 +1521,25 @@
         (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
                               {:collection_id locked-id})))))
 
+(deftest update-dashboard-archive-test
+  (testing "Archiving a dashboard cascades to its cards"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Archive"}
+                   :model/Card      {card-id :id} {:name          "Cascading Card"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table
+                                                   :dashboard_id  dash-id}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:archived true})]
+        (is (true? (:archived resp))))
+      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it, cards included"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))
+
 (deftest update-dashboard-dashcards-add-test
   (testing "Add a card to the dashboard (autoplaced)"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Add Target"}
@@ -1351,6 +1556,27 @@
           (is (nat-int? (:row (first dashcards))))
           (is (nat-int? (:col (first dashcards)))))))))
 
+(deftest update-dashboard-dashcards-add-restricted-timeline-card-test
+  (testing "Adding a card to a shared dashboard needs read access to the timelines it shows"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Dashboard {dash-id :id} {:public_uuid (str (random-uuid))}
+                     :model/Card {card-id :id} {:name          "Orders over time"
+                                                :dataset_query (orders-count-query)
+                                                :display       :line
+                                                :visualization_settings
+                                                {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (re-find #"You don't have permissions to do that\."
+                     (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                           {:dashcards [{:action "add" :card_id card-id}]})))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+        (testing "a user who can read the timeline can add it"
+          (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
+                                {:dashcards [{:action "add" :card_id card-id}]})
+          (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
+
 (deftest update-dashboard-dashcards-multi-add-test
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
@@ -1364,6 +1590,299 @@
         (is (= 2 (count dashcards)))
         (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col")))))
 
+(deftest update-dashboard-dashcards-add-heading-test
+  (testing "Add a heading - a full-width virtual dashcard with no backing card"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Heading Target"}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add_heading" :text "Revenue"}]})]
+        (is (= 1 (count (:dashcard_ids resp))))
+        (is (=? {:card_id                nil
+                 :row                    0
+                 :col                    0
+                 :size_x                 24
+                 :size_y                 1
+                 :visualization_settings {:virtual_card         {:display "heading"}
+                                          :text                 "Revenue"
+                                          :dashcard.background  false}}
+                (t2/select-one :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest update-dashboard-dashcards-add-text-test
+  (testing "Add a Markdown text card - a virtual dashcard with no backing card"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Text Target"}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add_text" :text "Orders *grew 12%*."}]})]
+        (is (= 1 (count (:dashcard_ids resp))))
+        (is (=? {:card_id                nil
+                 :size_x                 12
+                 :size_y                 3
+                 :visualization_settings {:virtual_card {:display "text"}
+                                          :text         "Orders *grew 12%*."}}
+                (t2/select-one :model/DashboardCard :dashboard_id dash-id))))))
+  (testing "display_size overrides the default text-card size"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Text Size Target"}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_text" :text "Full width" :display_size "full"}]})
+      (is (=? {:size_x 24 :size_y 9}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id))))))
+
+(deftest update-dashboard-dashcards-narrative-layout-test
+  (testing "Interleaved heading + card + text mutations autoplace in order without overlap"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Narrative Layout"}
+                   :model/Card      {card-id :id} {:name          "Chart"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text "Section 1"}
+                                         {:action "add" :card_id card-id}
+                                         {:action "add_text" :text "Narrative under the chart."}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id {:order-by [[:row :asc]]})
+            heading   (first dashcards)
+            chart     (second dashcards)]
+        (is (= 3 (count dashcards)))
+        ;; heading sits on top, the chart starts below it
+        (is (= 0 (:row heading)))
+        (is (>= (:row chart) (+ (:row heading) (:size_y heading))))
+        ;; no two dashcards share a position
+        (is (= 3 (count (set (map (juxt :row :col) dashcards)))))))))
+
+(deftest update-dashboard-dashcards-virtual-card-validation-test
+  (testing "add_text and add_heading require non-blank text"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Text Validation"}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_text"}]})
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text ""}]})
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+  (testing "add_heading rejects display_size instead of silently ignoring it (headings are always full-width)"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Heading Size Validation"}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text "KPIs" :display_size "wide"}]})
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id))))))
+
+(deftest update-dashboard-dashcards-add-then-move-top-test
+  (testing "A card added earlier in the batch reflows when a later move-to-top shifts the tab"
+    ;; Regression: :placed used to record the just-inserted dashcard without its :id, so the
+    ;; move-to-top shift ran `(t2/update! :model/DashboardCard nil ...)` — a silent no-op — and the
+    ;; new card ended up overlapping the moved one.
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Add Then Move Top"}
+                   :model/Card          {card-id :id} {:name "existing" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 12 :size_x 12 :size_y 5}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_text" :text "note"}
+                                         {:action "move" :dashcard_id dc-id :position "top"}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+            moved     (first (filter (comp #{dc-id} :id) dashcards))
+            text-card (first (remove (comp #{dc-id} :id) dashcards))]
+        (is (= [0 0] ((juxt :row :col) moved)))
+        (is (>= (:row text-card) (+ (:row moved) (:size_y moved)))
+            "the just-added text card must sit below the moved card, not overlap it")))))
+
+(deftest update-dashboard-dashcards-add-on-tabbed-dashboard-test
+  (testing "New headings/text cards land on the dashboard's first tab and only collide with its cards"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Tabbed Target"}
+                   :model/DashboardTab  {tab1-id :id} {:dashboard_id dash-id :name "One" :position 0}
+                   :model/DashboardTab  {tab2-id :id} {:dashboard_id dash-id :name "Two" :position 1}
+                   :model/Card          {card-id :id} {:name "on tab two" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard _             {:dashboard_id dash-id :dashboard_tab_id tab2-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 24 :size_y 4}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add_heading" :text "Tab one section"}]})]
+        (is (=? {:tabs [{:id tab1-id :name "One"} {:id tab2-id :name "Two"}]}
+                resp)
+            "the response lists the tabs in display order"))
+      (is (=? {:dashboard_tab_id tab1-id
+               ;; the full-width card on tab 2 must not block row 0 of tab 1
+               :row              0}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil)))
+      (testing "an explicit tab_id overrides the first-tab default and collides with that tab's cards"
+        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "add_text" :text "On tab two" :tab_id tab2-id}]})
+        (is (=? {:dashboard_tab_id tab2-id
+                 ;; placed below tab 2's existing full-width 4-row card
+                 :row              4}
+                (t2/select-one :model/DashboardCard :dashboard_id dash-id
+                               :card_id nil :dashboard_tab_id tab2-id))))
+      (testing "a tab_id that isn't a tab on this dashboard is a 404"
+        (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "add_heading" :text "Nope" :tab_id 999999}]})))))
+
+(deftest update-dashboard-dashcards-nil-tab-collision-test
+  (testing "A nil-tab dashcard on a tabbed dashboard blocks first-tab placement (it renders there)"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Nil Tab Collision"}
+                   :model/DashboardTab  {tab1-id :id} {:dashboard_id dash-id :name "One" :position 0}
+                   :model/DashboardTab  _             {:dashboard_id dash-id :name "Two" :position 1}
+                   :model/Card          {card-id :id} {:name "legacy" :dataset_query (orders-count-query) :display :table}
+                   ;; predates the tabs: no dashboard_tab_id, but the frontend renders it on tab 1
+                   :model/DashboardCard _             {:dashboard_id dash-id :dashboard_tab_id nil :card_id card-id
+                                                       :row 0 :col 0 :size_x 24 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text "Below the legacy card"}]})
+      (is (=? {:dashboard_tab_id tab1-id
+               :row              4}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil))
+          "the heading must land below the nil-tab card, not on top of it"))))
+
+(deftest update-dashboard-restore-and-edit-test
+  (testing "unarchiving and mutating dashcards in the same request works — restore-and-edit is one call"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Restore And Edit" :archived true}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:archived  false
+                             :dashcards [{:action "add_heading" :text "Back from the trash"}]})
+      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+
+(deftest update-dashboard-lifecycle-checks-test
+  (testing "dashcard mutations on an archived dashboard are rejected"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Archived Dash" :archived true}
+                   :model/Card      {card-id :id} {:name "c" :dataset_query (orders-count-query) :display :table}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id card-id}]})))
+  (testing "adding an archived card is rejected"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Live Dash"}
+                   :model/Card      {card-id :id} {:name "archived c" :dataset_query (orders-count-query)
+                                                   :display :table :archived true}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id card-id}]})
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+  (testing "adding a question internal to another dashboard is rejected"
+    (mt/with-temp [:model/Dashboard {other-dash :id} {:name "Owner Dash"}
+                   :model/Dashboard {dash-id :id}    {:name "Target Dash"}
+                   :model/Card      {card-id :id}    {:name "dq" :dataset_query (orders-count-query)
+                                                      :display :table :dashboard_id other-dash}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id card-id}]})))
+  (testing "an internal dashboard question archived by its own removal can be re-added, and unarchives"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "DQ Roundtrip"}
+                   :model/Card          {card-id :id} {:name "internal q" :dataset_query (orders-count-query)
+                                                       :display :table :dashboard_id dash-id}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 12 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "remove" :dashcard_id dc-id}]})
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id))
+          "removing the last dashcard archives the internal dashboard question")
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id card-id}]})
+      (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
+          "re-adding it unarchives the internal dashboard question")
+      (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
+  (testing "archiving and mutating dashcards in one request is rejected"
+    ;; the post-mutation internal-question sync could otherwise unarchive dashboard questions
+    ;; on the dashboard this same request just archived
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Archive Plus Mutate"}
+                   :model/Card          {dq-id :id}   {:name "internal q" :dataset_query (orders-count-query)
+                                                       :display :table :dashboard_id dash-id}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id dq-id
+                                                       :row 0 :col 0 :size_x 12 :size_y 4}
+                   :model/Card          {add-id :id}  {:name "to add" :dataset_query (orders-count-query)
+                                                       :display :table}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:archived  true
+                             :dashcards [{:action "add" :card_id add-id}]})
+      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id))
+          "the rejected request must not have archived the dashboard")
+      (is (t2/exists? :model/DashboardCard :id dc-id))))
+  (testing "archiving via the agent endpoint records archived_directly, like the REST path"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "To Archive"}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:archived true})
+      (is (true? (t2/select-one-fn :archived_directly :model/Dashboard :id dash-id))))))
+
+(deftest update-dashboard-dashcards-move-bottom-test
+  (testing "Moving a card to the bottom places it below the tab's bottom edge, not back into its old slot"
+    ;; Regression: "bottom" used first-fit autoplace over the layout minus the moved card, so a card
+    ;; moved from the top would be re-placed straight into the gap it had just vacated.
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Move Bottom"}
+                   :model/Card          {card-id :id} {:name "c" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {a-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 12 :size_y 4}
+                   :model/DashboardCard {b-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 4 :col 0 :size_x 12 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id a-dc :position "bottom"}]})
+      (let [a (t2/select-one :model/DashboardCard :id a-dc)
+            b (t2/select-one :model/DashboardCard :id b-dc)]
+        (is (>= (:row a) (+ (:row b) (:size_y b)))
+            "the moved card must land below the other card's bottom edge")))))
+
+(deftest update-dashboard-dashcard-ids-row-col-order-test
+  (testing "Response dashcard_ids come back in row/col order, not insertion order"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Ordered Ids"}
+                   :model/Card          {card-id :id} {:name "c" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {a-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 12 :size_y 4}
+                   :model/DashboardCard {b-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 4 :col 0 :size_x 12 :size_y 4}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "move" :dashcard_id b-dc :position "top"}]})]
+        (is (= [b-dc a-dc] (:dashcard_ids resp))
+            "after moving b to the top it should be listed first")))))
+
+(deftest update-dashboard-dashcards-update-text-test
+  (testing "update_text replaces a text card's text in place, keeping position and size"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retext Target"}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id nil
+                                                     :row 5 :col 3 :size_x 12 :size_y 3
+                                                     :visualization_settings
+                                                     {:virtual_card {:display "text"}
+                                                      :text         "Old narrative."}}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "New narrative."}]})
+      (is (=? {:row                    5
+               :col                    3
+               :size_x                 12
+               :size_y                 3
+               :visualization_settings {:virtual_card {:display "text"}
+                                        :text         "New narrative."}}
+              (t2/select-one :model/DashboardCard :id dc-id)))))
+  (testing "update_text works on headings too"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retitle Target"}]
+      (let [resp  (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                        {:dashcards [{:action "add_heading" :text "Old Title"}]})
+            dc-id (first (:dashcard_ids resp))]
+        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "update_text" :dashcard_id dc-id :text "New Title"}]})
+        (is (=? {:visualization_settings {:virtual_card {:display "heading"}
+                                          :text         "New Title"}}
+                (t2/select-one :model/DashboardCard :id dc-id))))))
+  (testing "update_text works on a legacy text card that predates virtual_card settings"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Legacy Retext"}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id nil
+                                                     :row 0 :col 0 :size_x 12 :size_y 3
+                                                     :visualization_settings {:text "legacy words"}}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "fresh words"}]})
+      (is (=? {:visualization_settings {:text "fresh words"}}
+              (t2/select-one :model/DashboardCard :id dc-id)))))
+  (testing "update_text on a card-backed dashcard is a 400"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retext Chart"}
+                   :model/Card          {card-id :id} {:name "chart" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id
+                                                     :row 0 :col 0 :size_x 12 :size_y 9}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "nope"}]})))
+  (testing "update_text on another dashboard's dashcard is a 404"
+    (mt/with-temp [:model/Dashboard {dash-id :id}  {:name "Retext Mine"}
+                   :model/Dashboard {other-id :id} {:name "Retext Other"}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id other-id :card_id nil
+                                                     :row 0 :col 0 :size_x 24 :size_y 1
+                                                     :visualization_settings
+                                                     {:virtual_card {:display "heading"}
+                                                      :text         "elsewhere"}}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "nope"}]}))))
+
+(deftest update-dashboard-dashcards-remove-virtual-card-test
+  (testing "A text card can be removed by dashcard_id like any other dashcard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Remove Text Card"}]
+      (let [resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                              {:dashcards [{:action "add_text" :text "temporary"}]})
+            dashcard-id (first (:dashcard_ids resp))]
+        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
+        (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))))
+
 (deftest update-dashboard-dashcards-remove-test
   (testing "Remove a dashcard"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Remove"}
@@ -1372,7 +1891,7 @@
                                                            :row 0 :col 0 :size_x 12 :size_y 9}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
-      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id)))))))
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id))))))
 
 (deftest update-dashboard-dashcards-move-top-test
   (testing "Move a dashcard to the top"
@@ -1518,9 +2037,131 @@
     (let [uris (vec (repeat 10 "metabase://databases"))]
       (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
                             {:uris uris})))
+  (testing "this endpoint publishes the tool's own argument schema, so its limits cannot drift from
+           the ones the agent loop enforces. The hand-written copy this replaced had already lost
+           the 5-URI cap."
+    ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
+    ;; so the outer form differs by a `:description` the endpoint never publishes.
+    (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)
+           (nth (mr/schema :metabase.agent-api.api/read-resource-request) 2))))
+  (testing (str "a URI that faults is that item's error, and the ones that read are kept. The agent "
+                "loop fails the whole call for an undeclared failure — a bug is not a partial "
+                "result — but this endpoint publishes one status for the call and an `:error` per "
+                "item, so it opts out with `:on-item-fault`.")
+    (mt/with-dynamic-fn-redefs [metabot-resources/dispatch
+                                (fn [uri]
+                                  (if (str/includes? uri "boom")
+                                    (throw (ex-info "a bug nobody wrote text for" {}))
+                                    {:structured-output {:result-type :metabot-list
+                                                         :list-type   :databases
+                                                         :items [] :total 0 :page 1 :pages 1}}))]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                       {:uris ["metabase://databases" "metabase://boom"]})]
+        (is (= ["metabase://databases" "metabase://boom"] (mapv :uri (:resources resp))))
+        (is (some? (-> resp :resources first :content))
+            "the URI that read is not discarded by the one that faulted")
+        (testing "and the faulting one carries an authored sentence, not the exception's message"
+          (is (= "This resource could not be read." (-> resp :resources second :error)))
+          (is (not (str/includes? (:output resp) "a bug nobody wrote text for")))))))
   (testing "Reports a per-URI error rather than failing the whole call"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
                                      {:uris ["metabase://nonsense/path"]})]
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+(deftest virtual-column-statistics-respect-blocked-source-tables-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :no)
+        (let [mp (mt/metadata-provider)
+              categories (lib.metadata/table mp (mt/id :categories))
+              venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              joined-query (lib/join venues-query
+                                     (lib/join-clause categories
+                                                      [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                              (lib.metadata/field mp (mt/id :categories :id)))]))]
+          (doseq [[query blocked?] [[(lib/query mp categories) true] [joined-query true] [venues-query false]]]
+            (let [query (lib/aggregate query (lib/count))
+                  columns (mt/as-admin (-> query qp/process-query :data :results_metadata :columns))]
+              (mt/with-temp [:model/Card {card-id :id} {:type :question :database_id (mt/id)
+                                                        :dataset_query query :result_metadata columns}]
+                (mt/user-http-request :rasta :post (if blocked? 403 202) (str "card/" card-id "/query"))
+                (mt/with-test-user :rasta
+                  (binding [metabot.scope/*current-user-scope* #{"*"}]
+                    (doseq [profile [:document-generate-content :slackbot]]
+                      (let [entries (metabot.tools/->entries (:tools (metabot.profiles/get-profile profile)) nil nil profile)
+                            args {:data_source "question" :source_id card-id :field_id "count"}
+                            unrestricted (mt/as-admin ((get-in entries ["get_field_values" :fn]) args))
+                            result ((get-in entries ["get_field_values" :fn]) args)]
+                        (is (some? (get-in unrestricted [:structured-output :value_metadata :statistics])))
+                        (if blocked?
+                          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                                 (:structured-output result)))
+                          (is (= unrestricted result)))))))
+                (let [response (mt/user-http-request :rasta :post 200 "agent/v1/read-resource"
+                                                     {:uris [(str "metabase://question/" card-id "/fields/count")]})
+                      resource (first (:resources response))
+                      metadata (get-in resource [:content :structured-output])]
+                  (is (nil? (:error resource)))
+                  (is (= "field-metadata" (:result-type metadata)))
+                  (is (= (not blocked?) (some? (get-in metadata [:value_metadata :statistics])))))))))))))
+
+(deftest read-resource-refuses-mcp-scopes-test
+  (testing "GHY-4939: MCP scopes gate the MCP surface only. An OAuth token issued to an MCP client must not reach a
+            REST endpoint, so a token holding every MCP scope is refused by POST /v1/read-resource."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token (str (random-uuid))]
+            (t2/insert! :model/OAuthAccessToken
+                        {:token     (oidc.util/hash-token token)
+                         :user_id   (mt/user->id :crowberto)
+                         :client_id client-id
+                         :scope     (vec (mcp/v2-scopes))
+                         :expiry    (+ (System/currentTimeMillis) 3600000)})
+            (is (= 403 (:status (client/client-full-response
+                                 :post "agent/v1/read-resource"
+                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                 {:uris ["metabase://databases"]}))))))))))
+
+(deftest endpoint-without-scope-refuses-mcp-scopes-test
+  (testing "GHY-4939: MCP scopes gate the MCP surface only. An endpoint that declares no `:scope` must refuse every
+            scoped token, so a token holding every MCP scope is refused by GET /api/user/:id."
+    (testing "the endpoint itself works for a normal session"
+      (is (= (mt/user->id :crowberto)
+             (:id (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :crowberto)))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token    (str (random-uuid))
+                _        (t2/insert! :model/OAuthAccessToken
+                                     {:token     (oidc.util/hash-token token)
+                                      :user_id   (mt/user->id :crowberto)
+                                      :client_id client-id
+                                      :scope     (vec (mcp/v2-scopes))
+                                      :expiry    (+ (System/currentTimeMillis) 3600000)})
+                response (client/client-full-response
+                          :get (str "user/" (mt/user->id :crowberto))
+                          {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
+            (is (= 403 (:status response)))
+            (is (= "scope_not_permitted" (get-in response [:body :error])))))))))
+
+(deftest decode-and-validate-query-strips-extra-keys-test
+  (testing "base64 query payloads are decoded, validated, and stripped of the query processor's internal keys"
+    ;; `:qp/source-card-id` and `:qp/stage-had-source-card` are keys the QP adds to a query while it runs and that
+    ;; permissions later read, so a client must never be able to send them in.
+    (let [encoded (u/encode-base64 (json/encode {:database          (mt/id)
+                                                 :type              "query"
+                                                 :qp/source-card-id 1
+                                                 :query             {:source-table              (mt/id :orders)
+                                                                     :qp/stage-had-source-card 1}}))
+          q       (#'agent-api.api/decode-and-validate-query encoded)]
+      (is (= :mbql/query (:lib/type q)))
+      (is (not (contains? q :qp/source-card-id)))
+      (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
+          "internal keys are stripped from every stage"))))

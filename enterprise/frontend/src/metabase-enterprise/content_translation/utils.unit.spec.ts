@@ -1,5 +1,5 @@
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Series,
   SeriesSettings,
@@ -33,6 +33,7 @@ const mockTranslateWithoutTranslations: ContentTranslationFunction =
 describe("translateFieldValuesInSeries", () => {
   it("should return original series when translation function has no translations", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -52,6 +53,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should return original series item when it has no data", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         card: { name: "Test Chart" },
       } as SingleSeries,
@@ -70,6 +72,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should translate field values in regular series data", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -99,6 +102,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle mixed data types in rows", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -122,6 +126,7 @@ describe("translateFieldValuesInSeries", () => {
   describe("for pies", () => {
     it("should handle pie.rows visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: "pie",
@@ -158,6 +163,7 @@ describe("translateFieldValuesInSeries", () => {
 
     it("should handle NO pie.rows visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: "pie",
@@ -198,6 +204,7 @@ describe("translateFieldValuesInSeries", () => {
       };
 
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: displayType,
@@ -228,6 +235,7 @@ describe("translateFieldValuesInSeries", () => {
 
     it("should handle NO series_settings visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: displayType,
@@ -257,11 +265,13 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle multiple series", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [["apple", 10]],
         },
       } as SingleSeries,
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [["banana", 20]],
@@ -280,6 +290,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle empty rows", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: createMockDatasetData({
           rows: [],

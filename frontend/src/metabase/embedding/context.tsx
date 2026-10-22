@@ -7,6 +7,7 @@ type EmbeddingEntityContextType = {
   token: EntityToken | null;
 };
 
+// Unjustified type cast. FIXME
 export const EmbeddingEntityContext = createContext<EmbeddingEntityContextType>(
   undefined as unknown as EmbeddingEntityContextType,
 );

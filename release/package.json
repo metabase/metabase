@@ -10,6 +10,7 @@
   "scripts": {
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "generate-changelog": "bun generate-changelog.ts",
+    "alert-upgrade-versions": "bun alert-upgrade-versions.ts",
     "format": "oxfmt --write",
     "release-offline": "tsx release-offline.ts",
     "test:unit": "jest --testPathPattern unit",
@@ -19,8 +20,9 @@
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@octokit/plugin-paginate-graphql": "^6.0.0",
     "@octokit/rest": "^21.1.1",
-    "@slack/web-api": "^7.16.0",
+    "@slack/web-api": "^8.0.0",
     "dayjs": "^1.11.20",
     "dotenv": "^16.6.1",
     "esbuild": "^0.28.1",
@@ -38,8 +40,5 @@
     "@types/semver": "^7.7.1",
     "jest": "^29.7.0",
     "oxfmt": "^0.38.0"
-  },
-  "overrides": {
-    "form-data": "4.0.6"
   }
 }

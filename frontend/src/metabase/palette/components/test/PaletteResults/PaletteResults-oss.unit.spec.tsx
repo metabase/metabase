@@ -1,6 +1,8 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
@@ -8,11 +10,39 @@ import {
 
 import { type CommonSetupProps, commonSetup } from "./setup";
 
-const setup = (props: CommonSetupProps = {}) => {
-  commonSetup({ ...props, isEE: false });
+// The search debounce is idle time in all but one test here, which asserts that
+// the remote search waits for it.
+let searchDebounceDuration = 0;
+
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  get SEARCH_DEBOUNCE_DURATION() {
+    return searchDebounceDuration;
+  },
+}));
+
+const withRealSearchDebounce = () => {
+  const actual = jest.requireActual("metabase/utils/constants");
+  beforeEach(() => {
+    searchDebounceDuration = actual.SEARCH_DEBOUNCE_DURATION;
+  });
+  afterEach(() => {
+    searchDebounceDuration = 0;
+  });
 };
 
+const setup = (props: CommonSetupProps = {}) =>
+  commonSetup({ ...props, isEE: false });
+
 describe("PaletteResults", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should not show actions when there is no search query", async () => {
     setup();
     expect(await screen.findByText("Recents")).toBeInTheDocument();
@@ -32,14 +62,18 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("Results")).toBeInTheDocument();
   });
 
-  it("should surface static actions before the remote search debounce fires", async () => {
-    setup({ query: "new" });
+  describe("with the real search debounce", () => {
+    withRealSearchDebounce();
 
-    expect(await screen.findByText("New question")).toBeInTheDocument();
+    it("should surface static actions before the remote search debounce fires", async () => {
+      setup({ query: "new" });
 
-    // useCommandPaletteBasicActions makes one baseline /api/search call; any
-    // additional call means the debounced remote search has already run.
-    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
+      expect(await screen.findByText("New question")).toBeInTheDocument();
+
+      // useCommandPaletteBasicActions makes one baseline /api/search call; any
+      // additional call means the debounced remote search has already run.
+      expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
+    });
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness
@@ -148,6 +182,11 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("Settings - Email")).toBeInTheDocument();
   });
 
+  it("should provide a link to Domains settings for admins", async () => {
+    setup({ query: "doma", isAdmin: true });
+    expect(await screen.findByText("Settings - Domains")).toBeInTheDocument();
+  });
+
   it("should not provide links to settings pages for non-admins", async () => {
     setup({ query: "setu", isAdmin: false });
     expect(
@@ -202,6 +241,72 @@ describe("PaletteResults", () => {
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
     expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
+  });
+
+  it("should offer the Download diagnostics action", async () => {
+    setup({ query: "issue" });
+    expect(await screen.findByText("Download diagnostics")).toBeInTheDocument();
+  });
+
+  it("should offer the New embed action to admins", async () => {
+    setup({ query: "new embed", isAdmin: true });
+    expect(await screen.findByText("New embed")).toBeInTheDocument();
+  });
+
+  it("should not offer the New embed action to non-admins", async () => {
+    setup({ query: "new embed", isAdmin: false });
+    expect(
+      await screen.findByText(`Search Metabase's docs for "new embed"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("New embed")).not.toBeInTheDocument();
+  });
+
+  it("should start a new metric", async () => {
+    const { router } = setup({ query: "new met" });
+
+    await userEvent.click(await screen.findByText("New metric"));
+
+    await waitFor(() => expect(router?.location.pathname).toBe("/metric/new"));
+  });
+
+  it("should start a new document", async () => {
+    const { router } = setup({ query: "new document" });
+
+    await userEvent.click(await screen.findByText("New document"));
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/document/new"),
+    );
+  });
+
+  it("should not report a keyboard shortcut when an action is clicked", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    setup({ query: "new met" });
+
+    await userEvent.click(await screen.findByText("New metric"));
+
+    expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: "keyboard_shortcut_performed" }),
+    );
+  });
+
+  it("should prompt admins to search everything when nothing matched", async () => {
+    setup({
+      query: "zzzz",
+      isAdmin: true,
+      settings: { "active-users-count": 2 },
+    });
+
+    expect(await screen.findByText("Search everything")).toBeInTheDocument();
+  });
+
+  it("should not prompt non-admins to search everything", async () => {
+    setup({ query: "zzzz", settings: { "active-users-count": 2 } });
+
+    expect(
+      await screen.findByText(`Search Metabase's docs for "zzzz"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Search everything")).not.toBeInTheDocument();
   });
 
   it("should not allow you to select or click disabled items", async () => {

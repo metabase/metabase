@@ -6,7 +6,6 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -57,8 +56,7 @@
             (throttle/check email-throttler true))
           (catch Exception _e
             (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
-                      {:email-subject  (:subject email)
-                       :recipients     (count recipients)
+                      {:recipients     (count recipients)
                        :max-recipients throttle-threshold})))))))
 
 (defn partition-recipients
@@ -106,7 +104,7 @@
      {})))
 
 (defn- smtp-settings []
-  (merge (if (and (channel.settings/smtp-override-enabled) (premium-features/is-hosted?))
+  (merge (if (channel.settings/smtp-override-active?)
            (-> {:host         (channel.settings/email-smtp-host-override)
                 :user         (channel.settings/email-smtp-username-override)
                 :pass         (channel.settings/email-smtp-password-override)
@@ -122,13 +120,23 @@
          {:reply-to  (channel.settings/email-reply-to)
           :from-name (channel.settings/email-from-name)}))
 
+(def ^:private EmailAttachment
+  "A postal attachment: an inline HTML body part, an inline image/logo attachment, or a CSV/XLS result attachment."
+  [:map {:closed true}
+   [:type         {:optional true} [:maybe [:or :string :keyword]]]
+   [:content      {:optional true} [:maybe [:or :string (ms/InstanceOfClass java.net.URL) (ms/InstanceOfClass java.io.File)]]]
+   [:content-id   {:optional true} [:maybe :string]]
+   [:content-type {:optional true} [:maybe :string]]
+   [:file-name    {:optional true} [:maybe :string]]
+   [:description  {:optional true} [:maybe :string]]])
+
 (def ^:private EmailMessage
   [:and
    [:map {:closed true}
     [:subject      :string]
     [:recipients   [:or [:sequential ms/Email] [:set ms/Email]]]
     [:message-type [:enum :text :html :attachments]]
-    [:message      [:or :string [:sequential :map]]]
+    [:message      [:or :string [:sequential EmailAttachment]]]
     [:bcc?         {:optional true} [:maybe :boolean]]]
    [:fn {:error/message (str "Bad message-type/message combo: message-type `:attachments` should have a sequence of maps as its message; "
                              "other types should have a String message.")}
@@ -150,7 +158,7 @@
   semantics in [[send-email-retrying!]]."
   [{:keys [subject recipients message-type message bcc?] :as _email}]
   (try
-    (when-not (channel.settings/email-smtp-host)
+    (when-not (channel.settings/email-configured?)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
     (let [to-type       (if bcc? :bcc :to)
@@ -186,7 +194,7 @@
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
   [email :- EmailMessage]
-  (retry/with-retry (retry/retry-configuration)
+  (retry/with-retry (channel.settings/retry-configuration)
     (send-message-or-throw! email)))
 
 (def ^:private SMTPStatus
@@ -212,7 +220,7 @@
   (try
     (send-email-retrying! msg-args)
     (catch Throwable e
-      (log/warn e "Failed to send email")
+      (log/warnf "Failed to send email: %s" (ex-message e))
       {::error e})))
 
 (def ^:private SMTPSettings
@@ -245,7 +253,7 @@
         (.connect transport host port user pass)))
     {::error nil}
     (catch Throwable e
-      (log/error e "Error testing SMTP connection")
+      (log/errorf "Error testing SMTP connection: %s" (ex-message e))
       {::error e})))
 
 (def ^:private email-security-order [:tls :starttls :ssl])

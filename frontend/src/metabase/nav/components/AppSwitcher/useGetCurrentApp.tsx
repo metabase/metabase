@@ -1,10 +1,18 @@
 import { match } from "ts-pattern";
 
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
+import * as Urls from "metabase/urls";
 
-export const useGetCurrentApp = () => {
-  const { location } = useRouter();
-  return match(location.pathname)
+export type CurrentApp =
+  | "main"
+  | "admin"
+  | "data-studio"
+  | "monitor"
+  | "embedding-hub";
+
+export const useGetCurrentApp = (): CurrentApp => {
+  const location = useLocation();
+  return match<string, CurrentApp>(location.pathname)
     .when(
       (path) => path.startsWith("/admin"),
       () => "admin",
@@ -12,6 +20,14 @@ export const useGetCurrentApp = () => {
     .when(
       (path) => path.startsWith("/data-studio"),
       () => "data-studio",
+    )
+    .when(
+      (path) => path.startsWith("/monitor"),
+      () => "monitor",
+    )
+    .when(
+      (path) => path.startsWith(Urls.embeddingHub()),
+      () => "embedding-hub",
     )
     .otherwise(() => "main");
 };

@@ -22,10 +22,10 @@ function setup({
 
   renderWithProviders(
     <>
-      <Route path="/admin/settings" component={() => <div>Settings</div>} />
+      <Route path="/admin/settings" element={<div>Settings</div>} />
       <Route
         path="/"
-        component={() => (
+        element={
           <UpsellCta
             onClick={onClick}
             onClickCapture={mockOnClickCapture}
@@ -33,7 +33,7 @@ function setup({
             url={url}
             internalLink={internalLink}
           />
-        )}
+        }
       />
     </>,
     {

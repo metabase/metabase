@@ -2,10 +2,12 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
 
-import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  DEFAULT_VISUALIZATION_THEME,
+  type RenderingContext,
+  type TreemapFormatters,
+  type TreemapTree,
+} from "metabase/viz-core";
 
 import { useLabelMeasurement } from "./use-label-measurement";
 
@@ -44,6 +46,7 @@ function createMockChartRef(
     getLayout: () => ({ x: 0, y: 0, ...rect }),
     children: id.includes("-") ? [] : [{}],
   }));
+  // Unjustified type cast. FIXME
   const chart = {
     getModel: () => ({
       getSeriesByIndex: () => ({
@@ -57,6 +60,7 @@ function createMockChartRef(
       }),
     }),
   } as unknown as EChartsType;
+  // Unjustified type cast. FIXME
   return { current: chart } as MutableRefObject<EChartsType | undefined>;
 }
 

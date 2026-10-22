@@ -3,10 +3,7 @@ import { type ReactNode, useContext, useEffect, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Select, type SelectProps, Stack } from "metabase/ui";
-import {
-  decodeWidgetValue,
-  encodeWidgetValue,
-} from "metabase/visualizations/lib/settings/widgets";
+import { decodeWidgetValue, encodeWidgetValue } from "metabase/viz-core";
 
 import S from "./ChartSettingSelect.module.css";
 import { WidgetPopoverPortalContext } from "./WidgetPopoverPortalContext";
@@ -39,6 +36,7 @@ type ChartSettingSelectProps = Pick<
   options?: ChartSettingSelectOption[];
   placeholder?: string;
   placeholderNoOptions?: string;
+  disabled?: boolean;
   rightSectionWidth?: string;
   searchProp?: string;
   value?: ChartSettingSelectValue;
@@ -61,6 +59,7 @@ export const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   pr,
+  disabled: externallyDisabled,
   rightSection,
   rightSectionWidth,
   searchProp,
@@ -91,6 +90,7 @@ export const ChartSettingSelect = ({
   }, [scrollContainer, dropdownOpened]);
 
   const disabled =
+    externallyDisabled ||
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
@@ -98,6 +98,11 @@ export const ChartSettingSelect = ({
     label: name,
     value: encodeWidgetValue(value) || "",
   }));
+
+  const encodedValue = encodeWidgetValue(value);
+  const selectedValue = data.some((option) => option.value === encodedValue)
+    ? encodedValue
+    : null;
 
   const inputPaddingRight = rightSectionWidth
     ? `${parseInt(rightSectionWidth, 10) + 8}px`
@@ -126,12 +131,23 @@ export const ChartSettingSelect = ({
         section: S.section,
         input: cx(S.input, { [S.inputWithLeftSection]: hasLeftSection }),
       }}
+      styles={
+        externallyDisabled
+          ? {
+              input: {
+                backgroundColor: "var(--mb-color-background_surface-disabled)",
+                color: "var(--mb-color-text-disabled)",
+              },
+            }
+          : undefined
+      }
       data={data}
       disabled={disabled}
-      value={value === null ? value : encodeWidgetValue(value)}
-      //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
+      value={selectedValue}
+      // Mantine's Select passes two arguments to onChange, but the onChange defined in the settings code takes one.
       onChange={(v) => {
         onChange(
+          // Unjustified type cast. FIXME
           v == null ? null : (decodeWidgetValue(v) as ChartSettingSelectValue),
         );
       }}

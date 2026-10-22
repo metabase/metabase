@@ -12,6 +12,7 @@ describe("getHours", () => {
   });
 
   const setup = ({ isClock24Hour }: { isClock24Hour: boolean }) => {
+    // Unjustified type cast. FIXME
     (has24HourModeSetting as jest.Mock).mockReturnValue(isClock24Hour);
   };
 

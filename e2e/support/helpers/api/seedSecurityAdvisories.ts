@@ -6,6 +6,7 @@ export type SecurityAdvisorySpec = {
   remediation: string;
   advisory_url?: string | null;
   affected_versions: { min: string; fixed: string }[];
+  download_jar_urls?: { version: string; url: string }[];
   matching_query?: Record<string, string> | null;
   match_status: "unknown" | "active" | "resolved" | "not_affected" | "error";
   published_at: string;

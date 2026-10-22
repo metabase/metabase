@@ -1,37 +1,41 @@
 (ns metabase.warehouse-schema.models.field
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.schema]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
 (comment metabase.lib.schema.metadata/keep-me)
 
-#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
 (p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
+
+(def data-sensitivity-types
+  "Possible values for a Field's `:data_sensitivity`, most severe first. See
+  [[metabase.lib.schema.metadata/column-data-sensitivity-types]]."
+  metabase.lib.schema.metadata/column-data-sensitivity-types)
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
@@ -102,20 +106,25 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-(t2/deftransforms :model/Field
+(def ^:private field-transforms
   {:base_type         transform-field-base-type
    :effective_type    transform-field-effective-type
    :coercion_strategy transform-field-coercion-strategy
    :semantic_type     transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
+   :data_sensitivity  mi/transform-keyword
    :fingerprint       transform-json-fingerprints
    :settings          mi/transform-json
-   :nfc_path          mi/transform-json})
+   :nfc_path          mi/transform-json
+   :json_unfolding    mi/transform-boolean})
+
+(t2/deftransforms :model/Field field-transforms)
 
 (doto :model/Field
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -158,69 +167,42 @@
         enforce-effective-type-invariant)))
 
 (def field-user-settings
-  "Set of user-settable values for a Field"
-  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id
-    :caveats :points_of_interest :nfc_path :json_unfolding :settings})
-
-(defn- ensure-field-user-settings-exist-for-fk-target-field [field]
-  (let [q {:select [:id]
-           :from [:metabase_field]
-           :where [:and
-                   [:= :fk_target_field_id (:id field)]
-                   [:not [:in :id {:select [:field_id]
-                                   :from [:metabase_field_user_settings]}]]]}
-        sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
-    (t2/insert! :model/FieldUserSettings
-                (map (fn [{:keys [id]}] {:field_id id})
-                     (t2/query sql)))))
-
-(defn- sync-user-settings [field]
-  ;; we transparently prevent updates that would override user-set values
-  (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
-        updated-field (-> (merge field (u/select-keys-when user-settings :non-nil field-user-settings))
-                          ;; GHY-3388 invariant: enforce coercion_strategy=nil ⇒ effective_type=base_type
-                          ;; AFTER the user-settings merge, since the overlay can introduce stale effective_type
-                          enforce-effective-type-invariant)]
-    (t2.protocols/with-current field updated-field)))
+  "Set of user-settable values for a Field; see [[warehouse-schema-overlay/user-settable-field-columns]]."
+  warehouse-schema-overlay/user-settable-field-columns)
 
 (t2/define-before-update :model/Field
   [field]
   (when (false? (:active (t2/changes field)))
-    (ensure-field-user-settings-exist-for-fk-target-field field)
-    (let [k {:fk_target_field_id (:id field)}
-          upds {:semantic_type      nil
-                :fk_target_field_id nil}]
-      (t2/update! :model/Field k upds)
-      ;; we must explicitly clear user-set fks in this case
-      (t2/update! :model/FieldUserSettings k upds)))
-  (sync-user-settings field))
+    (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
+    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
+  (enforce-effective-type-invariant field))
 
 (t2/define-before-delete :model/Field
   [field]
   ;; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
   ;; because parent_id contributes to a generated column, and MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (t2/delete! :model/Field :parent_id (:id field)))
+  (warehouse-schema.db/delete-child-fields! (:id field)))
 
 (defn- field->table
   "Get the Table for a Field, either from hydration or by fetching."
   [instance]
   (or (:table instance)
-      (t2/select-one :model/Table :id (:table_id instance))))
+      (warehouse-schema.db/table (:table_id instance))))
 
 (defmethod mi/can-read? :model/Field
   ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
   ([instance]
    (mi/can-read? (field->table instance)))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-read? (warehouse-schema.db/field pk))))
 
 (defmethod mi/can-query? :model/Field
   ;; Field permissions delegate to the parent Table. User can query this field if they can query its table.
   ([instance]
    (mi/can-query? (field->table instance)))
-  ([model pk]
-   (mi/can-query? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-query? (warehouse-schema.db/field pk))))
 
 (defenterprise current-user-can-write-field?
   "OSS implementation. Returns a boolean whether the current user can write the given field.
@@ -229,15 +211,15 @@
   metabase-enterprise.advanced-permissions.common
   [instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (warehouse-schema.db/table (:table_id instance)))]
     (and (remote-sync/table-editable? table)
          (mi/superuser?))))
 
 (defmethod mi/can-write? :model/Field
   ([instance]
    (current-user-can-write-field? instance))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-write? (warehouse-schema.db/field pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
   "Batched hydration for :can_write on fields. First hydrates :table for all fields,
@@ -253,7 +235,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (warehouse-schema.db/collections collection-ids))
                                 {})
         ;; Associate collection info with each field's table
         fields-with-collection (for [field fields-with-tables
@@ -270,16 +252,12 @@
      :id
      {:default false})))
 
-(defmethod serdes/hash-fields :model/Field
-  [_field]
-  [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
-
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [:model/FieldValues :field_id :values], :field_id id :type :full))
+  (warehouse-schema.db/full-field-values-rows id))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recursively find the field id for a nested field name, return nil if not found.
@@ -292,25 +270,22 @@
          field-id    nil]
     (if (seq field-names)
       (let [field-name (first field-names)
-            field-id   (t2/select-one-pk :model/Field :name field-name :parent_id field-id :table_id table-id)]
+            field-id   (warehouse-schema.db/field-id-by-name table-id field-id field-name)]
         (if field-id
           (recur (rest field-names) field-id)
           nil))
       field-id)))
 
-(defn- select-field-id->instance
-  "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
-  instance. This only returns a single instance for each Field! Duplicates are discarded!
+(defn- index-by-field-id
+  "Call `fetch-fn` with the IDs of `fields` and return a map of Field ID -> the fetched instance related to it by its
+  `field_id` FK. This only returns a single instance for each Field! Duplicates are discarded!
 
-    (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
-    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}
-
-  (select-field-id->instance [(Field 1) (Field 2)] FieldValues :type :full)
-    -> returns Fieldvalues of type :full for fields: [(Field 1) (Field 2)] "
-  [fields model & conditions]
+    (index-by-field-id [(Field 1) (Field 2)] warehouse-schema.db/dimensions-for-fields)
+    ;; -> {1 #Dimension{...}, 2 #Dimension{...}}"
+  [fields fetch-fn]
   (let [field-ids (set (map :id fields))]
     (m/index-by :field_id (when (seq field-ids)
-                            (apply t2/select model :field_id [:in field-ids] conditions)))))
+                            (fetch-fn field-ids)))))
 
 (mi/define-batched-hydration-method with-values
   :values
@@ -320,7 +295,7 @@
   ;; with Field. See the doc in [[metabase.warehouse-schema.models.field-values]] for more.
   ;; We filter down to only :type =:full values, as they contain configured labels which must be preserved. The Advanced
   ;; FieldValues can then be regenerated without loss given these Full entities.
-  (let [id->field-values (select-field-id->instance fields :model/FieldValues :type :full)]
+  (let [id->field-values (index-by-field-id fields #(warehouse-schema.db/full-field-values-by-field :model/FieldValues %))]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -328,9 +303,10 @@
   :normal_values
   "Efficiently hydrate the `FieldValues` for visibility_type normal `fields`."
   [fields]
-  (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
-                                                    [:model/FieldValues :id :human_readable_values :values :field_id]
-                                                    :type :full)]
+  (let [id->field-values (index-by-field-id (filter field-values/field-should-have-field-values? fields)
+                                            #(warehouse-schema.db/full-field-values-by-field
+                                              [:model/FieldValues :id :human_readable_values :values :field_id]
+                                              %))]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -346,10 +322,22 @@
   vector with the matching Dimension, or an empty vector. At least the response shape is consistent now. Maybe in the
   future we can change this key to `:dimension` and return it that way. -- Cam"
   [fields]
-  (let [id->dimensions (select-field-id->instance fields :model/Dimension)]
+  (let [id->dimensions (index-by-field-id fields warehouse-schema.db/dimensions-for-fields)]
     (for [field fields
           :let  [dimension (get id->dimensions (:id field))]]
       (assoc field :dimensions (if dimension [dimension] [])))))
+
+(defn- field->has-field-values-input
+  "Build the minimal Lib-style column map that [[lib/infer-has-field-values]] reads.
+
+  Going through [[metabase.lib-be.core/instance->metadata]] here would run a full Malli coercion over the ~90-key
+  `::lib.schema.metadata/column` schema for every Field, which dominates the cost of endpoints that hydrate whole
+  databases. The three keys below are the only ones `infer-has-field-values` looks at, and `deftransforms` has already
+  keywordized them. `mu/defn` still validates this map in dev and test."
+  [field]
+  {:base-type        (:base_type field)
+   :effective-type   (:effective_type field)
+   :has-field-values (:has_field_values field)})
 
 (methodical/defmethod t2.hydrate/simple-hydrate [#_model :default #_k :has_field_values]
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. See documentation for
@@ -361,8 +349,7 @@
   See [[lib/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
-      (assoc field k has-field-values))))
+    (assoc field k (lib/infer-has-field-values (field->has-field-values-input field)))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
   "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to
@@ -371,11 +358,19 @@
   true)
 
 (defn readable-fields-only
-  "Efficiently checks if each field is readable and returns only readable fields"
+  "Efficiently checks if each field is readable and returns only readable fields.
+
+  Reading a Field delegates to its Table, so the tables are loaded up front -- otherwise this costs a query per
+  distinct table, and another per distinct database, which is what makes it expensive for callers whose fields fan
+  out across tables, such as hydrating `:target` over a dashboard's FK columns."
   [fields]
-  (for [field (t2/hydrate fields :table)
-        :when (mi/can-read? field)]
-    (dissoc field :table)))
+  (let [fields (t2/hydrate fields :table)
+        tables (into #{} (keep :table) fields)]
+    (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                    :table-ids (into #{} (keep :id) tables)})
+    (for [field fields
+          :when (mi/can-read? field)]
+      (dissoc field :table))))
 
 (mi/define-batched-hydration-method with-targets
   :target
@@ -386,27 +381,17 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (t2/select :model/Field :id [:in target-field-ids]))))]
+                                           (readable-fields-only (warehouse-schema.db/fields target-field-ids))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
-(defn hydrate-target-with-write-perms
-  "Hydrates :target on field, but if the `:fk_target_field_id` field is not writable, `:target` will be nil."
-  [field]
-  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
-                          (:fk_target_field_id field))
-        target-field    (when-let [target-field (and target-field-id (t2/select-one :model/Field :id target-field-id))]
-                          (when (mi/can-write? (t2/hydrate target-field :table))
-                            target-field))]
-    (assoc field :target target-field)))
-
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (t2/select-one :model/Field :id parent-id)]
+  (conj (vec (if-let [parent (warehouse-schema.db/field parent-id)]
                (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (t2/select-one ['Table :name :schema], :id table-id)]
+               (let [{table-name :name, schema :schema} (warehouse-schema.db/table-name-and-schema table-id)]
                  (conj (when schema
                          [schema])
                        table-name))))
@@ -422,7 +407,7 @@
   (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (t2/select-one-fn :table_id :model/Field, :id field-id))))
+     (warehouse-schema.db/field-table-id field-id))))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."
@@ -435,15 +420,13 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (t2/select-one 'Table, :id table_id))
+  (warehouse-schema.db/table table_id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :parent]
   [_model k fields]
   (mi/instances-with-hydrated-data
    fields k
-   #(t2/select-fn->fn :id identity
-                      :model/Field
-                      :id [:in (map :parent_id fields)])
+   #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
@@ -456,33 +439,40 @@
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
 
+(defmethod serdes/ingested-path "Field" [_ {:keys [table_id parent_id name]}]
+  (serdes/field->path (conj (or parent_id table_id) name)))
+
 (defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 
 (defmethod serdes/load-find-local "Field"
   [path]
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
-        table               (serdes/load-find-local table-path)
-        field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
-    (t2/select-one :model/Field field-q)))
+        table               (serdes/load-find-local table-path)]
+    (when table
+      (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields))))))
 
-(defmethod serdes/deserialization-dependencies "Field" [field]
-  (let [db-path (first (serdes/path field))]
-    #{[db-path]}))
+(def ^:private legacy-dimensions
+  "The Dimensions a Field file carried before they got files of their own."
+  (serdes/nested :model/Dimension :field_id {}))
 
-(defmethod serdes/make-spec "Field" [_model-name opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_default :database_indexed
+(defmethod serdes/load-one! "Field" [ingested maybe-local]
+  (let [field (serdes/default-load-one! ingested maybe-local)]
+    (when (contains? ingested :dimensions)
+      ((:import-with-context legacy-dimensions) field :dimensions (:dimensions ingested)))
+    field))
+
+(defmethod serdes/make-spec "Field" [_model-name _opts]
+  {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
-   :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
-   :transform {:created_at         (serdes/date)
-               :table_id           (serdes/fk :model/Table)
+   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
+   :transform {:table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
-               :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+               :parent_id          (serdes/fk :model/Field)}
    :defaults  {:active                     true
                :database_is_auto_increment false
                :database_required          false
@@ -496,42 +486,3 @@
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
-
-(defmethod serdes/metadata-query :model/Field
-  [model opts]
-  (t2/reducible-query
-   {:select [[:f.id :id]
-             [:f.table_id :table_id]
-             [:f.name :name]
-             [:f.parent_id :parent_id]
-             [:f.fk_target_field_id :fk_target_field_id]
-             [:f.description :description]
-             [:f.base_type :base_type]
-             [:f.database_type :database_type]
-             [:f.effective_type :effective_type]
-             [:f.semantic_type :semantic_type]
-             [:f.coercion_strategy :coercion_strategy]
-             [:f.nfc_path :nfc_path]]
-    :from   [[(t2/table-name model) :f]]
-    :join   [[(t2/table-name :model/Table) :t]    [:= :f.table_id :t.id]
-             [(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
-    :where  [:and
-             (serdes/metadata-query-filter :model/Database :db opts)
-             (serdes/metadata-query-filter :model/Table :t opts)
-             (serdes/metadata-query-filter model :f opts)]}))
-
-(defmethod serdes/metadata-query-filter :model/Field
-  [_model alias {:keys [field-ids]}]
-  (cond-> [:and
-           [:= (u/qualified-key alias :active) true]
-           [:<> (u/qualified-key alias :visibility_type) "sensitive"]]
-    (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids])))
-
-(defmethod serdes/metadata-query-format :model/Field
-  [_model {:keys [base_type effective_type nfc_path] :as row}]
-  (-> row
-      (assoc :effective_type (when (not= base_type effective_type) effective_type))
-      (assoc :nfc_path (cond-> nfc_path
-                         (string? nfc_path) json/decode
-                         nfc_path           seq))
-      u/remove-nils))

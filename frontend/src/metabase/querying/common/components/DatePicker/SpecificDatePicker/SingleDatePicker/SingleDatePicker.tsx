@@ -45,7 +45,7 @@ export function SingleDatePicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Box p="md">
+      <Box p="lg">
         <SingleDatePickerBody
           value={date}
           hasTime={hasTime}

@@ -70,7 +70,7 @@ function setup({
 
   const { unmount } = renderWithProviders(
     <Route
-      component={() => (
+      element={
         <TransformPaneHeaderActions
           handleCancel={handleCancel}
           handleSave={handleSave}
@@ -80,7 +80,7 @@ function setup({
           source={resolvedSource}
           transform={transform}
         />
-      )}
+      }
       path="/"
     />,
     {

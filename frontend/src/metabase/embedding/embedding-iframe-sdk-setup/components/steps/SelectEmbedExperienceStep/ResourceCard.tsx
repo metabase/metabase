@@ -8,13 +8,13 @@ import {
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { Button, Card, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId, IconName } from "metabase-types/api";
 
 import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import type {
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../../../types";
@@ -23,6 +23,7 @@ import { getResourceIdFromSettings } from "../../../utils/get-default-sdk-iframe
 // The picker uses the "recents" id to open on the Recent items tab while still
 // being able to resolve to a valid initial path.
 const PICKER_RECENTS_VALUE = {
+  // Unjustified type cast. FIXME
   id: "recents" as CollectionId,
   model: "collection" as const,
 };
@@ -183,19 +184,19 @@ export const ResourceCard = () => {
 
   return (
     <>
-      <Card p="md">
-        <Stack gap="md">
+      <Card p="lg">
+        <Stack gap="lg">
           <Text size="lg" fw="bold">
             {title}
           </Text>
 
           <Button
-            variant="default"
             leftSection={<Icon name={icon} c="core-brand" size={16} />}
             rightSection={<Icon name="chevrondown" size={12} />}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
             aria-label={label}
+            size="lg"
             fullWidth
             styles={{ label: { flex: 1, textAlign: "left" } }}
           >
@@ -259,6 +260,7 @@ const hasResourceSelectionStep = (
   SdkIframeEmbedSetupExperience,
   (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 > =>
+  // Unjustified type cast. FIXME
   !(
     EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
   ).includes(experience);

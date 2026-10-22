@@ -1,9 +1,9 @@
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import {
   type Card,
   type Dashboard,
   isVirtualCardDisplayType,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 const cardsFromDashboard = (dashboard?: Dashboard) => {
   if (dashboard === undefined) {

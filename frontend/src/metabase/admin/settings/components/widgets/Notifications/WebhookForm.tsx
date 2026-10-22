@@ -1,9 +1,10 @@
 import type { FormikHelpers } from "formik";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useActionButtonLabel } from "metabase/common/hooks/use-action-button-label";
 import {
@@ -21,13 +22,12 @@ import {
   Button,
   Chip,
   Flex,
-  Group,
   Icon,
+  Modal,
   ScrollArea,
-  Text,
+  Stack,
   Title,
 } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import {
   type NotificationAuthMethods,
   type NotificationAuthType,
@@ -36,24 +36,43 @@ import {
 
 import { buildAuthInfo } from "./utils";
 
-const validationSchema = Yup.object({
-  url: Yup.string()
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .url(t`Please enter a correctly formatted URL`)
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .required(t`Please enter a correctly formatted URL`),
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  name: Yup.string().required(t`Please add a name`),
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  description: Yup.string().required(t`Please add a description`),
-  "auth-method": Yup.string()
-    .required()
-    .equals(["none", "header", "query-param", "request-body"]),
-  "fe-form-type": Yup.string()
-    .required()
-    .equals(["none", "basic", "bearer", "api-key"]),
-  "auth-info": Yup.object(),
-});
+function getValidationSchema() {
+  return Yup.object({
+    url: Yup.string()
+      .required(t`Please enter a correctly formatted URL`)
+      .test(
+        "is-http-url",
+        t`Please enter a correctly formatted URL`,
+        (value) => value != null && isValidWebhookUrl(value),
+      ),
+    name: Yup.string().required(t`Please add a name`),
+    description: Yup.string().required(t`Please add a description`),
+    "auth-method": Yup.string()
+      .required()
+      .equals(["none", "header", "query-param", "request-body"]),
+    "fe-form-type": Yup.string()
+      .required()
+      .equals(["none", "basic", "bearer", "api-key"]),
+    "auth-info": Yup.object(),
+  });
+}
+
+/**
+ * Approximates the backend validator (metabase.util/url?), which unlike Yup's
+ * .url() accepts bare hostnames such as http://webhook-tester:8080/
+ */
+function isValidWebhookUrl(value: string): boolean {
+  if (value !== value.trim() || !value.includes("://")) {
+    return false;
+  }
+
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 const styles = {
   wrapperProps: {
@@ -105,7 +124,6 @@ const renderAuthSection = (type: string) => {
             label={t`Username`}
             placeholder="user@email.com"
             {...styles}
-            mb="1.5rem"
           />
           <FormTextInput
             name="auth-password"
@@ -122,17 +140,12 @@ const renderAuthSection = (type: string) => {
           label={t`Bearer token`}
           placeholder={t`Secret Token`}
           {...styles}
-          mb="1.5rem"
         />
       );
     case "api-key":
       return (
-        <Flex direction="column">
-          <FormChipGroup
-            name="auth-method"
-            label={t`Add to`}
-            groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
-          >
+        <Stack gap="xl">
+          <FormChipGroup name="auth-method" label={t`Add to`}>
             <Chip value="header" variant="filled">
               {t`Header`}
             </Chip>
@@ -146,7 +159,6 @@ const renderAuthSection = (type: string) => {
               label={t`Key`}
               placeholder={t`X-API-KEY`}
               {...styles}
-              mb="1.5rem"
             />
             <FormTextInput
               name="auth-info-value"
@@ -155,7 +167,7 @@ const renderAuthSection = (type: string) => {
               {...styles}
             />
           </Flex>
-        </Flex>
+        </Stack>
       );
     default:
       return null;
@@ -178,6 +190,7 @@ export const WebhookForm = ({
   const { label: testButtonLabel, setLabel: setTestButtonLabel } =
     useActionButtonLabel({ defaultLabel: t`Send a test` });
   const [testChannel, { error }] = useTestChannelMutation();
+  const [validationSchema] = useState(getValidationSchema());
 
   const errorData = useMemo(() => {
     if (isNotificationChannelTestErrorResponse(error)) {
@@ -186,7 +199,7 @@ export const WebhookForm = ({
   }, [error]);
 
   const docsUrl = useSelector((state) =>
-    getDocsUrl(state, { page: "questions/sharing/alerts" }),
+    getDocsUrl(state, { page: "questions/alerts" }),
   );
 
   const handleTest = async (
@@ -208,8 +221,7 @@ export const WebhookForm = ({
         },
         (e) => {
           setTestButtonLabel(t`Test failed`);
-          const message =
-            typeof e === "string" ? e : getResponseErrorMessage(e);
+          const message = findErrorMessage(e);
 
           setFieldError("url", message);
         },
@@ -224,135 +236,118 @@ export const WebhookForm = ({
     >
       {({ dirty, values, setFieldError, setFieldValue }) => (
         <Form>
-          <Alert
-            variant="light"
-            mb="1.5rem"
-            style={{
-              backgroundColor: "var(--mb-color-background_page-secondary)",
-            }}
-            px="1.5rem"
-            py="1rem"
-            radius="0.5rem"
-          >
-            <Text>{jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
-              <ExternalLink key="link" href={docsUrl}>
-                {t`Learn about Alerts`}
-              </ExternalLink>
-            )}`}</Text>
-          </Alert>
-          <Box mb="1.5rem">
-            <Flex align="end" gap="1rem">
-              <FormTextInput
-                name="url"
-                label={t`Webhook URL`}
-                placeholder="http://hooks.example.com/hooks/catch/"
-                style={{ flexGrow: 1 }}
-                {...styles}
-                maw="21rem"
-              />
-              <Button
-                h="2.5rem"
-                onClick={() => handleTest(values, setFieldError)}
-              >
-                {testButtonLabel}
-              </Button>
-            </Flex>
-            {!!errorData && (
-              <ScrollArea.Autosize mah={200} mt="0.75rem">
-                <Title order={6} mb="0.75rem" lh="1rem">
-                  {c("The response returned by an API Request")
-                    .t`Test response`}
-                </Title>
-                <Box
-                  py="0.5rem"
-                  px="1.5rem"
-                  bg="background_page-secondary"
-                  style={{ borderRadius: "0.5rem" }}
-                  data-testid="notification-test-response"
+          <Stack gap="xl">
+            <Alert size="compact" variant="light">
+              {jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
+                <ExternalLink key="link" href={docsUrl}>
+                  {t`Learn about Alerts`}
+                </ExternalLink>
+              )}`}
+            </Alert>
+            <Box>
+              <Flex align="end" gap="1rem">
+                <FormTextInput
+                  name="url"
+                  label={t`Webhook URL`}
+                  placeholder="http://hooks.example.com/hooks/catch/"
+                  style={{ flexGrow: 1 }}
+                  {...styles}
+                  maw="21rem"
+                />
+                <Button
+                  size="lg"
+                  onClick={() => handleTest(values, setFieldError)}
                 >
-                  <pre
-                    style={{
-                      margin: 0,
-                      fontSize: "0.75rem",
-                      lineHeight: "1rem",
-                      whiteSpace: "pre-wrap",
-                    }}
+                  {testButtonLabel}
+                </Button>
+              </Flex>
+              {!!errorData && (
+                <ScrollArea.Autosize mah={200} mt="0.75rem">
+                  <Title order={6} mb="0.75rem" lh="1rem">
+                    {c("The response returned by an API Request")
+                      .t`Test response`}
+                  </Title>
+                  <Box
+                    py="0.5rem"
+                    px="1.5rem"
+                    bg="background_page-secondary"
+                    style={{ borderRadius: "0.5rem" }}
+                    data-testid="notification-test-response"
                   >
-                    {JSON.stringify(errorData, null, 2)}
-                  </pre>
-                </Box>
-              </ScrollArea.Autosize>
-            )}
-          </Box>
+                    <pre
+                      style={{
+                        margin: 0,
+                        fontSize: "0.75rem",
+                        lineHeight: "1rem",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {JSON.stringify(errorData, null, 2)}
+                    </pre>
+                  </Box>
+                </ScrollArea.Autosize>
+              )}
+            </Box>
 
-          <FormTextInput
-            name="name"
-            label={t`Give it a name`}
-            placeholder={t`Something descriptive`}
-            {...styles}
-            mb="1.5rem"
-            maw="14.5rem"
-          />
-          <FormTextInput
-            name="description"
-            label={t`Description`}
-            placeholder={t`Where is this going and what does it send?`}
-            {...styles}
-            mb="1.5rem"
-            maw="21rem"
-          />
-          <FormChipGroup
-            name="fe-form-type"
-            label={t`Authentication method`}
-            groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
-            onChange={(val) => {
-              if (val === "none") {
-                setFieldValue("auth-method", "none");
-              } else {
-                setFieldValue("auth-method", "header");
-              }
-            }}
-          >
-            <Chip value="none" variant="filled">
-              {t`None`}
-            </Chip>
-            <Chip value="basic" variant="filled">
-              {t`Basic`}
-            </Chip>
-            <Chip value="bearer" variant="filled">
-              {t`Bearer`}
-            </Chip>
-            <Chip value="api-key" variant="filled">
-              {t`API Key`}
-            </Chip>
-          </FormChipGroup>
+            <FormTextInput
+              name="name"
+              label={t`Give it a name`}
+              placeholder={t`Something descriptive`}
+              {...styles}
+              maw="14.5rem"
+            />
+            <FormTextInput
+              name="description"
+              label={t`Description`}
+              placeholder={t`Where is this going and what does it send?`}
+              {...styles}
+              maw="21rem"
+            />
+            <FormChipGroup
+              name="fe-form-type"
+              label={t`Authentication method`}
+              onChange={(val) => {
+                if (val === "none") {
+                  setFieldValue("auth-method", "none");
+                } else {
+                  setFieldValue("auth-method", "header");
+                }
+              }}
+            >
+              <Chip value="none" variant="filled">
+                {t`None`}
+              </Chip>
+              <Chip value="basic" variant="filled">
+                {t`Basic`}
+              </Chip>
+              <Chip value="bearer" variant="filled">
+                {t`Bearer`}
+              </Chip>
+              <Chip value="api-key" variant="filled">
+                {t`API Key`}
+              </Chip>
+            </FormChipGroup>
 
-          {renderAuthSection(values["fe-form-type"])}
+            {renderAuthSection(values["fe-form-type"])}
+          </Stack>
 
-          <Flex
-            mt="1.5rem"
-            justify={onDelete ? "space-between" : "end"}
-            gap="0.75rem"
-          >
+          <Modal.Footer>
             {onDelete && (
               <Button
-                variant="subtle"
-                c="text-secondary"
+                variant="transparent"
                 size="compact-md"
-                pl="0"
                 leftSection={<Icon name="trash" />}
                 onClick={onDelete}
+                mr="auto"
               >{t`Delete this destination`}</Button>
             )}
-            <Group>
-              <Button onClick={onCancel}>{t`Cancel`}</Button>
-              <FormSubmitButton
-                disabled={!dirty}
-                label={submitLabel}
-                variant="brand"
-              />
-            </Group>
-          </Flex>
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              disabled={!dirty}
+              label={submitLabel}
+              variant="filled"
+            />
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

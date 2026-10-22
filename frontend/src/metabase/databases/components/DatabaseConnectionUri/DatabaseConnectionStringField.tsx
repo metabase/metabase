@@ -64,6 +64,7 @@ export function DatabaseConnectionStringField({
       }
 
       const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
+      // Unjustified type cast. FIXME
       const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
       await setValues((previousValues) =>
         setDatabaseFormValues(previousValues, fields),
@@ -160,7 +161,7 @@ function ConnectionStringDescription({
       exitDelay={0}
     >
       {(styles) => (
-        <Group style={styles} top={0} pos="absolute" h="lg" component="span">
+        <Group style={styles} top={0} pos="absolute" h="xl" component="span">
           {t`You can use a connection string to pre-fill the details below.`}
         </Group>
       )}
@@ -184,7 +185,7 @@ function ConnectionStringDescription({
           fz="sm"
           component="span"
         >
-          <Group gap="xs" component="span">
+          <Group gap="xxs" component="span">
             <Icon name="warning_round_filled" c="feedback-negative" />
             {t`Couldn’t use this connection string.`}
           </Group>
@@ -210,7 +211,7 @@ function ConnectionStringDescription({
           fz="sm"
           component="span"
         >
-          <Group gap="xs" component="span">
+          <Group gap="xxs" component="span">
             <Icon
               name="check_filled"
               style={{ color: "var(--mb-color-feedback-positive)" }}
@@ -222,7 +223,7 @@ function ConnectionStringDescription({
     </Transition>
   );
   return (
-    <Group h="lg" pos="relative" component="span">
+    <Group h="xl" pos="relative" component="span">
       {failureMessage}
       {defaultDescription}
       {successMessage}

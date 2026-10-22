@@ -107,10 +107,13 @@
 
 (deftest ^:parallel variable-value-test-10
   (testing "BigInteger value"
-    (is (= 9223372036854775808
-           (value-for-tag
-            {:name "id", :id test-uuid, :display-name "ID", :type :number}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
+    (let [v (value-for-tag
+             {:name "id", :id test-uuid, :display-name "ID", :type :number}
+             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])]
+      (is (= 9223372036854775808 v))
+      ;; `=` does not distinguish BigInteger from BigInt; drivers dispatch parameter binding on class.
+      ;; Unimportant to the product that it's a BigInteger, but if not this test isn't testing what was intended:
+      (is (instance? java.math.BigInteger v)))))
 
 (deftest ^:parallel variable-multiple-values-test
   (testing "Allows multiple bindings of the same tag"
@@ -359,7 +362,7 @@
                nil))))))
 
 (mu/defn- query->params-map
-  ([inner-query]
+  ([inner-query :- ::mbql.s/SourceQuery]
    (query->params-map meta/metadata-provider inner-query))
   ([metadata-provider :- ::lib.schema.metadata/metadata-provider
     inner-query       :- ::mbql.s/SourceQuery]
@@ -385,7 +388,7 @@
             mp         (lib.tu/metadata-provider-with-cards-for-queries
                         meta/metadata-provider
                         [{:database (meta/id)
-                          :type     "native"
+                          :type     :native
                           :native   {:query test-query}}])]
         (is (=? {:card-id 1, :query test-query, :parameters nil}
                 (value-for-tag
@@ -401,8 +404,7 @@
     (testing "Card query template tag generates native query for MBQL query"
       (driver/with-driver :h2
         (let [mbql-query   (lib.tu.macros/mbql-query venues
-                             {:database (meta/id)
-                              :filter   [:< [:field $price nil] 3]})
+                             {:filter [:< $price 3]})
               expected-sql (str "SELECT "
                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
                                 "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
@@ -431,6 +433,7 @@
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       ;; legacy test -- don't hardcode driver names in new tests going forward.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (mt/test-driver :postgres
         ;; TODO (Cam 7/16/25) -- rework this to use metadata providers -- we support model persisted info directly from
@@ -438,6 +441,7 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+            ;; persist-models! and the persistence job machinery need real app-db rows
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
@@ -503,7 +507,7 @@
                              :template-tags {"#1" {:id           "#1"
                                                    :name         "#1"
                                                    :display-name "#1"
-                                                   :type         "card"
+                                                   :type         :card
                                                    :card-id      1}}}
                   :database (meta/id)}])
             tag      {:name         "card-template-tag-test"
@@ -619,13 +623,13 @@
                                            :content "venues WHERE price = 4"}]})
           query (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive_venues}}")
                     ;; force unnormalized snippet names
-                    (lib/update-query-stage 0 assoc :template-tags {"snippet:expensive_venues" {:type         :snippet
-                                                                                                :name         "snippet:expensive_venues"
-                                                                                                :display-name "Expensive Venues"
-                                                                                                :snippet-name "expensive_venues"
-                                                                                                :snippet-id   1}}))]
-      (is (=  {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-              (params.values/stage->params-map query (lib/query-stage query -1)))))))
+                    (lib/update-query-stage 0 assoc :template-tags [{:type         :snippet
+                                                                     :name         "snippet:expensive_venues"
+                                                                     :display-name "Expensive Venues"
+                                                                     :snippet-name "expensive_venues"
+                                                                     :snippet-id   1}]))]
+      (is (= {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+             (params.values/stage->params-map query (lib/query-stage query -1)))))))
 
 (deftest ^:parallel table-tag-test
   (testing "Table template tag produces a ReferencedTableQuery"
@@ -697,17 +701,20 @@
            (query->params-map query))))))
 
 (deftest ^:parallel dont-be-too-strict-test
-  (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
-    (testing "\nUnknown key 'filteringParameters'"
+  (testing "values-for-tag should allow the extra keys the FE sends along (#13868)"
+    ;; `:filteringParameters` used to stand in for "some key the FE tacked on". Template tags and parameters are
+    ;; closed schemas now, and the request decoder drops whatever they do not declare before a query gets here, so
+    ;; the keys that actually have to survive are the *declared* ones nothing in this code path reads.
+    (testing "\nExtra declared key 'id'"
       (testing "in tag"
         (is (= "2"
                (value-for-tag
-                {:name                "id"
-                 :display-name        "ID"
-                 :type                :text
-                 :required            true
-                 :default             "100"
-                 :filteringParameters "222b245f"}
+                {:name         "id"
+                 :display-name "ID"
+                 :type         :text
+                 :required     true
+                 :default      "100"
+                 :id           "222b245f"}
                 [{:type   :category
                   :target [:variable [:template-tag "id"]]
                   :value  "2"}]))))
@@ -719,10 +726,10 @@
                  :type         :text
                  :required     true
                  :default      "100"}
-                [{:type                :category
-                  :target              [:variable [:template-tag "id"]]
-                  :value               "2"
-                  :filteringParameters "222b245f"}])))))))
+                [{:type   :category
+                  :target [:variable [:template-tag "id"]]
+                  :value  "2"
+                  :id     "222b245f"}])))))))
 
 (deftest ^:parallel parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"

@@ -1,6 +1,8 @@
 import fetchMock from "fetch-mock";
 import jwt from "jsonwebtoken";
-import { act } from "react-dom/test-utils";
+import { act } from "react";
+
+import type { NavigatedEntityParameterChangePayload } from "embedding-sdk-bundle/types/navigation";
 
 import {
   type MetabaseDashboardElement,
@@ -9,6 +11,7 @@ import {
 } from "./embed";
 
 const defineMetabaseConfig = (config: unknown) => {
+  // Unjustified type cast. FIXME
   (window as any).metabaseConfig = config;
 };
 
@@ -26,10 +29,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    jest.resetModules();
     delete window.metabaseConfig;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require after jest.resetModules
-    require("./embed"); // we do things when the script is loaded
+    // The script does things when it is loaded, so load a fresh copy per test.
+    // Isolating it keeps the shared modules, such as fetch-mock, on the same
+    // instance the setup files hold.
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- a fresh copy per test
+      require("./embed");
+    });
 
     document.body.innerHTML = "";
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
@@ -124,6 +131,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   it.each(authErrorTestCases)(
     "reports an error when auth methods are not mutually exclusive for %p",
     (settings) => {
+      // Unjustified type cast. FIXME
       const { questionId, dashboardId, ...config } = settings as Partial<
         typeof settings
       > & {
@@ -166,6 +174,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   it.each(singleAuthTestCases)(
     "does not report an error when only one auth method is provided for %p",
     (settings) => {
+      // Unjustified type cast. FIXME
       const { questionId, dashboardId, ...config } = settings as Partial<
         typeof settings
       > & {
@@ -222,6 +231,19 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     );
   });
 
+  it('should have `allow="clipboard-write"` in the iframe to allow copying to clipboard in chrome', () => {
+    defineMetabaseConfig({
+      instanceUrl: "https://example.com",
+    });
+
+    const embed = document.createElement("metabase-dashboard");
+    embed.setAttribute("dashboard-id", "1");
+    document.body.appendChild(embed);
+
+    const iframe = embed.querySelector("iframe");
+    expect(iframe?.getAttribute("allow")).toBe("clipboard-write");
+  });
+
   describe("guest embed token provider", () => {
     function setupGuestEmbed({
       dashboardId,
@@ -247,6 +269,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       }
       document.body.appendChild(embed);
 
+      // Unjustified type cast. FIXME
       const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
@@ -516,12 +539,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const setupDashboard = () => {
       defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
 
+      // Unjustified type cast. FIXME
       const embed = document.createElement(
         "metabase-dashboard",
       ) as MetabaseDashboardElement;
       embed.setAttribute("dashboard-id", "1");
       document.body.appendChild(embed);
 
+      // Unjustified type cast. FIXME
       const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
@@ -658,6 +683,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       iframePostMessageSpy.mockClear();
 
       expect(() => {
+        // Unjustified type cast. FIXME
         (embed as unknown as { parameters: unknown }).parameters = null;
       }).not.toThrow();
 
@@ -688,8 +714,64 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
+      // Unjustified type cast. FIXME
       const event = handler.mock.calls[0][0] as CustomEvent;
       expect(event.detail).toEqual(payload);
+    });
+
+    it("reflects to the attribute and pushes a setSettings update when the `navigatedEntityParameters` property is set", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+      iframePostMessageSpy.mockClear();
+
+      const navigatedEntityParameters = {
+        "navigation-id": { category: ["Widget"] },
+      };
+      embed.navigatedEntityParameters = navigatedEntityParameters;
+
+      expect(embed).toHaveAttribute(
+        "navigated-entity-parameters",
+        JSON.stringify(navigatedEntityParameters),
+      );
+      expect(embed.navigatedEntityParameters).toEqual(
+        navigatedEntityParameters,
+      );
+
+      const setSettingsCalls = iframePostMessageSpy.mock.calls.filter(
+        ([message]) => message?.type === "metabase.embed.setSettings",
+      );
+      expect(setSettingsCalls).toHaveLength(1);
+      expect(setSettingsCalls[0][0].data.navigatedEntityParameters).toEqual(
+        navigatedEntityParameters,
+      );
+    });
+
+    it("dispatches a `navigated-entity-parameters-change` event when the iframe broadcasts a change", async () => {
+      const { iframe, embed, markReady } = setupDashboard();
+      await markReady();
+
+      const handler = jest.fn();
+      embed.addEventListener("navigated-entity-parameters-change", handler);
+
+      const payload = {
+        entityType: "dashboard",
+        entityId: "target-entity-id",
+        navigationId: "navigation-id",
+        source: "initial-state",
+        parameters: { category: ["Widget"], date: null },
+        defaultParameters: { category: null, date: null },
+        lastUsedParameters: {},
+        clickParameters: { category: ["Widget"] },
+      } satisfies NavigatedEntityParameterChangePayload;
+      triggerIframeMessage(iframe, {
+        type: "metabase.embed.navigatedEntityParametersChange",
+        data: payload,
+      });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ detail: payload }),
+      );
     });
   });
 
@@ -697,12 +779,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const setupQuestion = () => {
       defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
 
+      // Unjustified type cast. FIXME
       const embed = document.createElement(
         "metabase-question",
       ) as MetabaseQuestionElement;
       embed.setAttribute("question-id", "1");
       document.body.appendChild(embed);
 
+      // Unjustified type cast. FIXME
       const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
@@ -774,6 +858,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
+      // Unjustified type cast. FIXME
       const event = handler.mock.calls[0][0] as CustomEvent;
       expect(event.detail).toEqual(payload);
     });

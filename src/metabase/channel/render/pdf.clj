@@ -39,6 +39,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
@@ -47,6 +48,7 @@
    [metabase.channel.render.pdf.markdown :as md]
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.render.png :as png]
+   [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -73,6 +75,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-boxes*
   "When true, fill the *allocated* bounding box (the full space available, not the content's actual extent) behind
   each chart (red) and each card title / heading card (light blue), so one can see how much of its cell the content
@@ -85,8 +88,9 @@
   "Display types whose static-viz (ECharts/visx) renderer honors an explicit width AND height, so we can render them
   to exactly fit their grid cell (like the frontend).
 
-  Other types (pie, gauge, funnel, progress, scalar, table, ...) have a fixed size when rendered, and resized to fit
-  their grid cell, preserving aspect ratio."
+  Pies also fill their box (their static-viz component lays the legend out to the box), but are handled separately
+  since they aren't in this set. Other types (gauge, funnel, progress, scalar, table, ...) have a fixed size when
+  rendered, and are resized to fit their grid cell, preserving aspect ratio."
   #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row :treemap})
 
 (def ^:private table-like-chart-types
@@ -139,6 +143,7 @@
 ;; page draws we collect link rectangles into `*link-rects*` and add the annotations afterward.
 ;; --------------------------------------------------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *link-rects*
   "While a page renders, an atom holding a vector of `{:x0 :y0 :x1 :y1 :href}` rectangles for the clickable link
   annotations to add to the page once drawing is done."
@@ -557,21 +562,9 @@
 ;; Drawing
 ;; --------------------------------------------------------------------------------------------
 
-(defn- card-body-png
-  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those are
-  drawn natively at the PDF level.
-
-  Used for card types that can't fill an arbitrary box (pie, gauge, funnel, progress, scalar, table, ...); resize
-  to fit while preserving aspect."
-  ^bytes [timezone {:keys [card dashcard result]} px-width]
-  (-> (render.card/render-pulse-card :inline timezone card dashcard result
-                                     {:channel.render/include-title?       false
-                                      :channel.render/include-description? false})
-      (render.card/png-from-render-info px-width)))
-
 (defn- draw-image-in-cell!
   "Draw `img`, resizing to fit (preserving aspect) within a cell rectangle, horizontally centered and top-anchored.
-  Used for card types that can't fill an arbitrary box (scalar, pie, gauge, ...). Horizontal centering keeps a narrow
+  Used for card types that can't fill an arbitrary box (scalar, gauge, ...). Horizontal centering keeps a narrow
   scalar (e.g. a big number) from hugging the left edge of its cell."
   [^PDPageContentStream cs ^PDImageXObject img x top-y cell-w cell-h]
   (let [iw    (.getWidth img)
@@ -587,6 +580,39 @@
 (defn- px->pt ^double [px]
   (* (double px)
      (/ 72.0 common/dpi)))
+
+(def ^:private body-target-dpi
+  "Device DPI a fixed-size card body aims for: the same a rectangular chart already gets, i.e. [[common/dpi]]
+  laid out and rasterized at [[common/chart-supersample]]."
+  (* common/dpi common/chart-supersample))
+
+(defn- fixed-body-scale
+  "Supersample factor that lands an `iw` x `ih` (logical px) card body at [[body-target-dpi]] once
+  [[draw-image-in-cell!]] has fit it into the `cell-w` x `cell-h` point box.
+
+  The fit cancels the factor out -- `min(cell-w/iw, cell-h/ih)` scales both terms -- so the drawn width
+  follows from the 1:1 dims, and with it the factor. No cap needed: it can't exceed `cell-w`."
+  [cell-w cell-h iw ih]
+  (if (or (zero? iw) (zero? ih))
+    1.0
+    (let [drawn-w-pt (min (double cell-w) (* iw (/ (double cell-h) ih)))
+          target-px  (/ (* drawn-w-pt body-target-dpi) 72.0)]
+      (max 1.0 (/ target-px iw)))))
+
+(defn- card-body-png
+  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those
+  are drawn natively at the PDF level.
+
+  Used for card types that can't fill an arbitrary box (gauge, funnel, progress, scalar, table, ...), which
+  [[draw-image-in-cell!]] fits into the `cell-w` x `cell-h` point box preserving aspect. They lay out at their
+  intrinsic size, so they're supersampled by the magnification that fit will apply -- see [[fixed-body-scale]]."
+  ^bytes [timezone {:keys [card dashcard result]} cell-w cell-h]
+  (-> (render.card/render-pulse-card :inline timezone card dashcard result
+                                     {:channel.render/include-title?       false
+                                      :channel.render/include-description? false})
+      ;; the px width is CSSBox's layout viewport, not the output size -- the scale fn decides that
+      (render.card/png-from-render-info (-> cell-w pt->px (min 2200) (max 240) long)
+                                        {:channel.render/scale (partial fixed-body-scale cell-w cell-h)})))
 
 (defn- effective-display
   "The display type the card actually renders as. A visualizer dashcard overrides the underlying card's `:display`
@@ -621,7 +647,9 @@
   (binding [js.svg/*chart-size* {:width       w-px
                                  :height      h-px
                                  :scale       common/chart-supersample
-                                 :fit-within? true}]
+                                 :fit-within? true
+                                 :grid-size   (when (and (:size_x dashcard) (:size_y dashcard))
+                                                {:width (:size_x dashcard) :height (:size_y dashcard)})}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
@@ -906,6 +934,14 @@
     :else
     {:footer nil :footer-h 0}))
 
+(defn- body-chart-type
+  "The chart type the table body is styled and footered as. A `:table` card whose \"Pivot table\" toggle applies
+  renders as an assembled grid, so it takes a pivot's treatment: no header dividers and no source row count."
+  [chart-type data]
+  (if (and (= :table chart-type) (body/simple-pivot? data))
+    :pivot
+    chart-type))
+
 (defn- table-body-png
   "Render a table-like card body (`:table`, `:pivot`, or `:object`) to PNG bytes sized to the `px-w` x `px-h`
   cell (logical pixels), supersampled at [[table-supersample]]x. The body is a `width:100%` table inside a
@@ -918,17 +954,21 @@
   clipped body so a short card can't hide it). A pivot has neither."
   ^bytes [timezone {:keys [card dashcard result]} chart-type px-w px-h]
   (let [;; Render directly, not via render-pulse-card: its <p>/.pulse-body margins escape CSSBox's
-        ;; height clip and push the image past the cell. body/render gives the bare table.
-        info     (body/render chart-type :inline timezone card dashcard (:data result))
+        ;; height clip and push the image past the cell. body/render gives the bare table. Opt out of the email/Slack
+        ;; fixed-width fallback for wrapping columns: CSSBox lays the table out at `px-w` and auto-wraps, so a fixed
+        ;; width would only overflow the page and clip the text (see [[table/*text-wrapping-fallback-width*]]).
+        info     (binding [table/*text-wrapping-fallback-width* nil]
+                   (body/render chart-type :inline timezone card dashcard (:data result)))
+        body-type (body-chart-type chart-type (:data result))
         note     (when (= :object chart-type) (object-detail-note (:content info)))
         ;; the note is body/render's trailing element, so drop it from the clipped body (it's pinned below)
         body     (cond-> (:content info) note pop)
-        {:keys [footer footer-h]} (card-footer chart-type note (count (get-in result [:data :rows])))
+        {:keys [footer footer-h]} (card-footer body-type note (count (get-in result [:data :rows])))
         max-h    (max 0 (- (long px-h) footer-h 2))
         clip-css (format "width:%dpx;max-height:%dpx;overflow:hidden" (long px-w) max-h)
         ;; the frame is stroked natively in draw-table-card!, so this wrapper has no border
         content  [:div
-                  [:div {:style clip-css} (restyle-table body (= :table chart-type))]
+                  [:div {:style clip-css} (restyle-table body (= :table body-type))]
                   footer]]
     (png/render-html-to-png (assoc info :content content) px-w {:channel.render/scale table-supersample})))
 
@@ -1095,11 +1135,10 @@
         body-top   (- top-y header)
         body-h     (- cell-h header)
         display    (effective-display card dashcard)
-        ;; Rectangular charts always fill their box; pies fill (and move their legend to the
-        ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
+        ;; Rectangular charts and pies both fill their box exactly; the pie's static-viz component
+        ;; then places its legend to the side (wide box) or below (tall box).
         fill?      (or (contains? rectangular-displays display)
-                       (and (= :pie display)
-                            (>= cell-w body-h)))
+                       (= :pie display))
         chart-type (render.card/detect-pulse-chart-type card dashcard data)
         tabular?   (contains? table-like-chart-types chart-type)
         ;; a no-row result detects as :empty regardless of display -> no-results placeholder
@@ -1136,7 +1175,7 @@
           :let [png (when fill?
                       (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
 
-          ;; rectangular charts (and wide pies): fill the body area exactly
+          ;; rectangular charts and pies: fill the body area exactly
           png
           (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
                       (float x) (float (- body-top body-h))
@@ -1148,7 +1187,7 @@
           ;; other types (and charts whose render produced no SVG): title-less body PNG,
           ;; fit preserving aspect
           :else
-          (when-let [body (card-body-png timezone part (-> cell-w pt->px (min 2200) (max 240) long))]
+          (when-let [body (card-body-png timezone part cell-w body-h)]
             (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card")
                                  x body-top cell-w body-h)))))))
 
@@ -1401,7 +1440,7 @@
                            #(draw-markdown-in-cell! doc cs x top-y cell-w % (:align-h cell) (:align-v cell) (:text cell)))
                 nil)
               (catch Throwable e
-                (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
+                (log/errorf "Error rendering dashboard PDF cell; substituting placeholder: %s" (ex-message e))
                 (draw-text-block! cs (font/face :regular) 10.0 nil x top-y cell-w cell-h
                                   "[Unable to render this card]")))))
         (finally
@@ -1468,9 +1507,9 @@
                                     (map (juxt #(-> % :dashcard :id) identity)))
                            parts)
            dims      (paper-dims paper-key)
-           dash      (t2/select-one :model/Dashboard :id dashboard-id)
-           tabs      (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
-           dcs       (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
+           dash      (channel.db/dashboard dashboard-id)
+           tabs      (channel.db/dashboard-tabs dashboard-id)
+           dcs       (t2/hydrate (channel.db/dashcards dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
            tabbed?   (> (count tabs) 1)
@@ -1513,7 +1552,7 @@
              (try
                (run! #(some-> % :result :data :rows notification.payload/cleanup!) parts)
                (catch Throwable e
-                 (log/warn e "Error cleaning up temp files for dashboard PDF"))))))))))
+                 (log/warnf "Error cleaning up temp files for dashboard PDF: %s" (ex-message e)))))))))))
 
 (defn render-dashboard-to-pdf-file
   "Convenience wrapper for the REPL: render the dashboard to PDF and write it to `path`."

@@ -63,6 +63,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -87,6 +88,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -115,6 +117,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
       setup({
         createQuestionOverride: () => {
           createNativeQuestion(
+            // Unjustified type cast. FIXME
             questionAsPinMapWithTiles as NativeQuestionDetails,
             {
               wrapId: true,
@@ -127,6 +130,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -192,6 +196,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
         });
@@ -220,6 +225,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
         });
@@ -241,6 +247,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
     it("should show content of a question with `map` type  with tiles for unauthorized user", () => {
       setup({
+        // Unjustified type cast. FIXME
         questionDetails: {
           ...questionAsPinMapWithTiles,
           query: {
@@ -255,6 +262,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
         });

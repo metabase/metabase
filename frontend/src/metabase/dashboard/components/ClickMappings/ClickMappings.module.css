@@ -9,7 +9,7 @@
 }
 
 .groupLabel {
-  padding: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-xxs);
   color: var(--mb-color-core-brand);
   font-weight: 700;
   text-transform: uppercase;

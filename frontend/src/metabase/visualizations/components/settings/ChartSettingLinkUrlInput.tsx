@@ -8,6 +8,7 @@ interface ChartSettingLinkUrlInputProps {
   onChange: (value: string) => void;
   id?: string;
   options?: string[];
+  disabled?: boolean;
   onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
 }
 
@@ -30,7 +31,9 @@ const ChartSettingLinkUrlInput = ({
   value,
   onChange,
   options,
-  ...props
+  id,
+  disabled,
+  onChangeSettings,
 }: ChartSettingLinkUrlInputProps) => {
   const valueOrDefault = value ?? "";
   const [isFocused, setIsFocused] = useState(false);
@@ -61,9 +64,11 @@ const ChartSettingLinkUrlInput = ({
 
   return (
     <AutocompleteInput
-      {...props}
-      data-testid={props.id}
+      id={id}
+      data-testid={id}
+      onChangeSettings={onChangeSettings}
       options={options}
+      disabled={disabled}
       onChange={setFocusedValue}
       value={isFocused ? focusedValue : valueOrDefault}
       onFocus={handleFocus}

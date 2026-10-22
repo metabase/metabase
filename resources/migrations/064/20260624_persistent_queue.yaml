@@ -1,0 +1,108 @@
+## Adds the transactional outbox table backing persistent queue publishes
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.qmoutbox1
+      author: nvoxland
+      comment: Create the transactional outbox table backing persistent queue publishes
+      changes:
+        - createTable:
+            tableName: queue_message_outbox
+            remarks: >-
+              Transactional outbox for queue publishes. Rows are inserted inside the business
+              transaction (before-commit) and handed to the queue backend after it commits, so a
+              message is published iff the transaction that produced it commits. A recovery job
+              republishes any rows a crash left behind.
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: queue_name
+                  type: varchar(254)
+                  remarks: The name of the queue this batch will be published to
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the row was written to the outbox
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON-encoded payload (one stored batch)
+                  name: payload
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: publish_attempts
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: >-
+                    Number of consecutive times the recovery sweep has failed to publish this row.
+                    Drives the exponential backoff between recovery attempts; the row is never
+                    dropped (it is retried until it publishes).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_attempt_at
+                  type: ${timestamp_type}
+                  remarks: >-
+                    Earliest time the recovery sweep may retry this row after a failed publish
+                    (now + exponential backoff). Null until the first failure; until then the sweep
+                    gates on created_at instead.
+
+  - changeSet:
+      id: v64.qmoutbox2
+      author: nvoxland
+      comment: Index queue_message_outbox.created_at for the recovery sweep
+      changes:
+        - createIndex:
+            tableName: queue_message_outbox
+            indexName: idx_queue_message_outbox_created_at
+            columns:
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: v64.qmoutbox3
+      author: nvoxland
+      dbms: postgresql
+      comment: >-
+        Tune autovacuum for the high-churn outbox table.
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE queue_message_outbox SET (
+                autovacuum_vacuum_scale_factor = 0.0,
+                autovacuum_vacuum_threshold = 50,
+                autovacuum_analyze_scale_factor = 0.0,
+                autovacuum_analyze_threshold = 50
+              )
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE queue_message_outbox RESET (
+                autovacuum_vacuum_scale_factor,
+                autovacuum_vacuum_threshold,
+                autovacuum_analyze_scale_factor,
+                autovacuum_analyze_threshold
+              )
+
+  - changeSet:
+      id: v64.qmoutbox4
+      author: nvoxland
+      comment: Index queue_message_outbox.next_attempt_at for the recovery sweep's due-row lookup
+      changes:
+        - createIndex:
+            tableName: queue_message_outbox
+            indexName: idx_queue_message_outbox_next_attempt_at
+            columns:
+              - column:
+                  name: next_attempt_at

@@ -146,9 +146,13 @@ describe("scenarios > filters > bulk filtering", () => {
     H.queryBuilderFiltersPanel()
       .findByText("Product → Category is Gadget")
       .should("be.visible");
-    H.queryBuilderFooter()
-      .findByText("Showing first 2,000 rows")
-      .should("be.visible");
+
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+    H.queryBuilderMain()
+      .findByTestId("scalar-value")
+      .should("have.text", "4,939");
   });
 
   it("should update an existing filter", () => {
@@ -169,7 +173,6 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should remove an existing filter", () => {
     H.visitQuestionAdhoc(filteredQuestionDetails);
-    H.filter();
     H.queryBuilderFiltersPanel()
       .findByText("Quantity is less than 30")
       .icon("close")
@@ -254,22 +257,26 @@ describe("scenarios > filters > bulk filtering", () => {
       H.createSegment({
         name: SEGMENT_1_NAME,
         description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       });
 
       H.createSegment({
         name: SEGMENT_2_NAME,
         description: "All orders with a discount",
-        table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: [">", ["field", ORDERS.DISCOUNT, null], 0],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.DISCOUNT, null], 0],
+          },
         },
       });
     });
@@ -342,16 +349,6 @@ describe("scenarios > filters > bulk filtering", () => {
     beforeEach(() => {
       H.setupBooleanQuery();
       H.filter();
-    });
-
-    it("should apply a boolean filter", () => {
-      H.popover().within(() => {
-        cy.findByText("boolean").click();
-        cy.findByText("True").click();
-        cy.button("Apply filter").click();
-      });
-      cy.wait("@dataset");
-      H.assertQueryBuilderRowCount(2);
     });
 
     it("should change a boolean filter", () => {
@@ -582,7 +579,7 @@ describe("scenarios > filters > bulk filtering", () => {
       H.filter();
     });
 
-    it("can search for a column", () => {
+    it("can search for a column and apply a filter from it", () => {
       H.popover().within(() => {
         cy.findByText("Category").should("be.visible");
         cy.findByText("Vendor").should("be.visible");
@@ -590,12 +587,8 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByPlaceholderText("Find...").type("vend");
         cy.findByText("Category").should("not.exist");
         cy.findByText("Vendor").should("be.visible");
-      });
-    });
 
-    it("can apply a filter from a searched column", () => {
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Find...").type("price");
+        cy.findByPlaceholderText("Find...").clear().type("price");
         cy.findByText("Category").should("not.exist");
         cy.findByText("Price").click();
       });

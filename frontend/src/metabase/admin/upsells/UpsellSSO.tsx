@@ -2,10 +2,9 @@ import { t } from "ttag";
 
 import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
-import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting, hasAnySsoFeature } from "metabase/settings";
 import { Box, List } from "metabase/ui";
 
 export const UpsellSSO = ({ location }: { location: string }) => {
@@ -39,7 +38,8 @@ export const UpsellSSO = ({ location }: { location: string }) => {
         {t`Metabase Pro and Enterprise plans include:`}
         <List size="sm">
           <List.Item>{t`SSO with SAML and JWT`}</List.Item>
-          <List.Item>{t`Metabase group sync with SAML, JWT, and LDAP`}</List.Item>
+          <List.Item>{t`Metabase group sync with SAML and JWT`}</List.Item>
+          <List.Item>{t`Metabase user attribute sync with LDAP`}</List.Item>
           <List.Item>{t`User provisioning with SCIM`}</List.Item>
         </List>
       </Box>

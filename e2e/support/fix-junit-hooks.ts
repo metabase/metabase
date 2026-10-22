@@ -4,9 +4,9 @@
 // underlying test. When a `before each` / `before all` / `after each` /
 // `after all` hook throws, mocha-junit-reporter records the failing testcase
 // as `<suite> "before each" hook for "<test name>"`. That breaks downstream
-// Trunk that keys on the test name. This script parses the
-// XML and strips the hook label from `name` and `classname`, leaving the
-// failure body intact so the error is still preserved.
+// consumers that key on the test name. This script parses the XML and strips
+// the hook label from `name` and `classname`, leaving the failure body intact
+// so the error is still preserved.
 
 import {
   copyFileSync,
@@ -67,10 +67,12 @@ program
     "--include <substring>",
     "only rewrite when the Root Suite's spec file path contains this substring (repeatable)",
     (value: string, previous: string[]) => previous.concat([value]),
+    // Unjustified type cast. FIXME
     [] as string[],
   )
   .parse();
 
+// Unjustified type cast. FIXME
 const [inDir, outDir = inDir] = program.processedArgs as [string, string?];
 const { dryRun = false, include: includes } = program.opts<Options>();
 
@@ -138,6 +140,7 @@ function findSpecFile(node: unknown): string | null {
   if (!node || typeof node !== "object") {
     return null;
   }
+  // Unjustified type cast. FIXME
   const file = (node as Record<string, unknown>)["@_file"];
   if (typeof file === "string") {
     return file;

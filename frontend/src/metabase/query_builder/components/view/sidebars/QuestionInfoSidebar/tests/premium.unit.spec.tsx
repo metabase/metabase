@@ -65,6 +65,7 @@ describe("QuestionInfoSidebar > premium", () => {
   describe("entity id display", () => {
     it("should show entity ids only with serialization feature", async () => {
       const card = createMockCard({
+        // Unjustified type cast. FIXME
         entity_id: "jenny8675309" as Card["entity_id"],
       });
       await setupEnterprise({ card });
@@ -102,6 +103,14 @@ describe("QuestionInfoSidebar > premium", () => {
     });
 
     describe("for admins", () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
       it("should show tabs for Overview, History, and Relationships, and a link for Insights", async () => {
         setupEnterprise({ user: { is_superuser: true } });
         const tabs = await screen.findAllByRole("tab");

@@ -2,6 +2,7 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -14,7 +15,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+                                  (search.tu/with-appdb-search-if-available-otherwise-legacy (thunk)))))
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))
@@ -30,10 +31,13 @@
          :enabled-transform-source-types #{"mbql"}))
 
 (defn- with-all-models-and-regular-user [search-ctx]
-  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false)))
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false :is-routed-user? false)))
 
 (defn- with-all-models-and-sandboxed-user [search-ctx]
-  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true)))
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true :is-routed-user? false)))
+
+(defn- with-all-models-and-routed-user [search-ctx]
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false :is-routed-user? true)))
 
 (defn- with-all-models-and-superuser [search-ctx]
   (-> search-ctx
@@ -67,11 +71,14 @@
     (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
+    (is (= #{"dashboard" "dataset" "document" "exploration" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
+  (testing "Indexed entities and transforms (which are admin-only) are not visible for users routed to a destination database"
+    (is (= (disj search.config/all-models "indexed-entity" "transform")
+           (search.filter/search-context->applicable-models (with-all-models-and-routed-user {:archived? false})))))
   (testing "All models including transforms are visible for superusers"
     (is (= search.config/all-models
            (search.filter/search-context->applicable-models (with-all-models-and-superuser {:archived? false})))))
@@ -94,8 +101,6 @@
    :verified                       true
    :curated?                       true
    :ids                            [1 2 3 4]
-   :non-temporal-dim-ids           "[1]"
-   :has-temporal-dim               true
    :display-type                   ["line"]
    :models                         (disj search.config/all-models "dataset")
    :enabled-transform-source-types #{"mbql"}})
@@ -110,14 +115,16 @@
               :where
               [:and
                [:= 1 2]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= nil :search_index.exploration_id]]}
              (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
       (is (= {:select [:some :stuff],
               :from :somewhere,
               :where
               [:and
                [:in :search_index.model ["a"]]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= nil :search_index.exploration_id]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
@@ -126,13 +133,14 @@
               #{[:in :search_index.last_editor_id [321]]
                 [:in :search_index.creator_id [123]]
                 [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
-                [:not= :search_index.model [:inline "table"]]
+                [:not= :search_index.model "table"]
                 [:= :search_index.archived true]
                 [:= :search_index.curated true]
                 [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                 [:or
                  [:= nil :search_index.dashboard_id]
                  [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]]]
+                [:= nil :search_index.exploration_id]
                 [:in
                  :search_index.model
                  #{"dashboard"
@@ -142,6 +150,7 @@
                    "measure"
                    "transform"
                    "document"
+                   "exploration"
                    "database"
                    "action"
                    "indexed-entity"
@@ -151,8 +160,6 @@
                 [:in :search_index.model_id ["1" "2" "3" "4"]]
                 [:< [:cast :search_index.last_edited_at :date] #t "2024-10-03"]
                 [:>= [:cast :search_index.model_created_at :date] #t "2024-10-01"]
-                [:= :search_index.non_temporal_dim_ids "[1]"]
-                [:= :search_index.has_temporal_dim true]
                 :and
                 [:= :search_index.database_id 231]
                 [:in :search_index.display_type ["line"]]
@@ -176,8 +183,37 @@
       (is (=? [:or any? [:exists any?]]
               clause)))))
 
+(deftest in-place-curated-measure-segment-filter-test
+  (testing "the in-place curated filter for measures and segments follows the parent table's published state"
+    (mt/with-premium-features #{:library}
+      (doseq [model ["measure" "segment"]]
+        (is (= [:= :table.is_published true]
+               (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true))))))
+    (testing "and matches nothing without the :library feature"
+      (mt/with-premium-features #{}
+        (doseq [model ["measure" "segment"]]
+          (is (= [:= [:inline 0] [:inline 1]]
+                 (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true)))))))))
+
 (deftest in-place-curated-table-filter-counts-authoritative-test
   (testing "the in-place curated table filter counts authoritative tables regardless of publish state,
             mirroring collections.curation/curated? (BOT-1570)"
     (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
       (is (some #{"authoritative"} (tree-seq coll? seq where))))))
+
+(deftest in-place-curated-measure-segment-search-test
+  (testing "the in-place curated search keeps only measures and segments whose parent table is in the Library"
+    (search.tu/with-legacy-search
+      (mt/with-premium-features #{:library}
+        (collections.tu/with-library [{data :data}]
+          (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
+                         :model/Table   plain-tbl {:name "plain_tbl"}
+                         :model/Measure _ {:name "inplace measure lib"   :table_id (:id lib-tbl)}
+                         :model/Measure _ {:name "inplace measure plain" :table_id (:id plain-tbl)}
+                         :model/Segment _ {:name "inplace segment lib"   :table_id (:id lib-tbl)}
+                         :model/Segment _ {:name "inplace segment plain" :table_id (:id plain-tbl)}]
+            (is (= #{"inplace measure lib" "inplace segment lib"}
+                   (into #{} (map :name)
+                         (search.tu/search-results "inplace" {:search-engine "in-place"
+                                                              :models        #{"measure" "segment"}
+                                                              :curated       true}))))))))))

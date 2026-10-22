@@ -1,10 +1,10 @@
-import type * as Lib from "metabase-lib";
-
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
-import type { Parameter } from "./parameters";
+import type { MeasureId } from "./measure";
+import type { MetricId } from "./metric";
+import type { NormalizedQueryParameter } from "./parameters";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
 
@@ -20,7 +20,7 @@ export interface StructuredDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
 }
 
 export interface NativeDatasetQuery {
@@ -29,14 +29,23 @@ export interface NativeDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
 }
 
 export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
 
 export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
+// Audit-only query shape accepted by /api/dataset.
+// `fn` names a backend function.
+export interface InternalDatasetQuery {
+  type: "internal";
+  fn: string;
+  args: string[];
+  limit?: number;
+  offset?: number;
+}
+
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
@@ -309,6 +318,8 @@ export type SegmentFilter = ["segment", SegmentId];
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];
 
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+
 export type JoinStrategy =
   | "left-join"
   | "right-join"
@@ -456,13 +467,11 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";
-  name: string;
-  sourceName?: string;
-  displayName?: string;
-
-  // When the columns cannot be disambiguated with name, sourceName and displayName
-  // use this index to pick one.
-  index?: number;
+  name?: string;
+  fieldId?: FieldId;
+  joinAlias?: string;
+  sourceFieldId?: FieldId;
+  sourceFieldJoinAlias?: string;
 };
 
 export type TestExpressionSpec =
@@ -470,9 +479,39 @@ export type TestExpressionSpec =
   | TestOperatorSpec
   | TestColumnSpec;
 
-export type TestFilterSpec = TestExpressionSpec;
+export type TestSegmentSpec = {
+  type: "segment";
+  id: SegmentId;
+};
 
-export type TestAggregationSpec = TestExpressionSpec | TestNamedExpressionSpec;
+export type TestMeasureSpec = {
+  type: "measure";
+  id: MeasureId;
+};
+
+export type TestMetricSpec = {
+  type: "metric";
+  id: MetricId;
+};
+
+export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
+
+export type TestOperatorArgSpec =
+  | TestExpressionSpec
+  | TestSegmentSpec
+  | TestMeasureSpec
+  | TestMetricSpec;
+
+export type TestNamedAggregationSpec = {
+  name: string;
+  value: TestExpressionSpec | TestMeasureSpec | TestMetricSpec;
+};
+
+export type TestAggregationSpec =
+  | TestExpressionSpec
+  | TestNamedAggregationSpec
+  | TestMeasureSpec
+  | TestMetricSpec;
 
 export type TestNamedExpressionSpec = {
   name: string;
@@ -487,56 +526,79 @@ export type TestLiteralSpec = {
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args?: TestExpressionSpec[];
+  args?: readonly TestOperatorArgSpec[];
+
+  // For an aggregation: the name of its result column, which a later stage
+  // refers to.
+  name?: string;
 };
 
 export type TestTemporalBucketSpec = {
   unit?: TemporalUnit;
 };
 
-export type TestBinCountSpec = {
-  bins?: number | "auto";
+export type TestDefaultBinningSpec = {
+  strategy: "default";
 };
 
-export type TestBinWidthSpec = {
-  binWidth?: number | "auto";
+export type TestNumBinsBinningSpec = {
+  strategy: "num-bins";
+  numBins: number;
 };
 
-type TestBinningSpec =
-  | TestTemporalBucketSpec
-  | TestBinCountSpec
-  | TestBinWidthSpec;
+export type TestBinWidthBinningSpec = {
+  strategy: "bin-width";
+  binWidth: number;
+};
 
-export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
+export type TestBinningSpec =
+  | TestDefaultBinningSpec
+  | TestNumBinsBinningSpec
+  | TestBinWidthBinningSpec;
 
-export type TestBreakoutSpec = TestColumnWithBinningSpec;
+type TestBucketSpec = TestTemporalBucketSpec & {
+  binning?: TestBinningSpec;
+};
+
+export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
+
+export type TestBreakoutWithNameSpec = {
+  type: "breakout";
+  name: string;
+  column: TestColumnWithBinningSpec;
+};
+
+export type TestBreakoutSpec =
+  | TestColumnWithBinningSpec
+  | TestBreakoutWithNameSpec;
 
 export type TestJoinSpec = {
   source: TestSourceSpec;
   strategy: JoinStrategy;
+  alias?: string;
 
   // If not set we will use the suggested join conditions
   conditions?: TestJoinConditionSpec[];
 };
 
 type TestJoinConditionSpec = {
-  operator: Lib.JoinConditionOperator;
+  operator: JoinConditionOperator;
   left: TestColumnWithBinningSpec | TestExpressionSpec;
   right: TestColumnWithBinningSpec | TestExpressionSpec;
 };
 
 export type TestOrderBySpec = TestColumnSpec & {
   direction?: "asc" | "desc";
-};
+} & TestBucketSpec;
 
 export type TestStageSpec = {
-  fields?: TestColumnSpec[];
-  expressions?: TestNamedExpressionSpec[];
-  joins?: TestJoinSpec[];
-  filters?: TestFilterSpec[];
-  aggregations?: TestAggregationSpec[];
-  breakouts?: TestBreakoutSpec[];
-  orderBys?: TestOrderBySpec[];
+  fields?: readonly TestColumnSpec[];
+  expressions?: readonly TestNamedExpressionSpec[];
+  joins?: readonly TestJoinSpec[];
+  filters?: readonly TestFilterSpec[];
+  aggregations?: readonly TestAggregationSpec[];
+  breakouts?: readonly TestBreakoutSpec[];
+  orderBys?: readonly TestOrderBySpec[];
   limit?: number;
 };
 

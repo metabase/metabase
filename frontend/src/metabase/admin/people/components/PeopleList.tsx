@@ -225,7 +225,7 @@ export const PeopleList = ({
           <Flex
             align="center"
             justify="space-between"
-            p="md"
+            p="lg"
             data-testid="people-list-footer"
           >
             <Box fw={700}>
@@ -251,11 +251,11 @@ export const PeopleList = ({
             align="center"
             justify="center"
             direction="column"
-            px="xl"
-            pt="xl"
+            px="xxl"
+            pt="xxl"
             ta="center"
           >
-            <Box my="lg">
+            <Box my="xl">
               <Icon name="search" mb="sm" size={32} />
               <Text c="text-disabled" fz="lg" fw={700}>
                 {noResultsMessage}

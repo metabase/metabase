@@ -26,8 +26,9 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   auto: {},
   "auto-popover": {},
   info: {},
-  filter: {},
   details: {},
+  copy: {},
+  filter: {},
   custom: {},
   "new-column": {},
 };
@@ -38,9 +39,10 @@ Object.values(SECTIONS).map((section, index) => {
 export const getGroupedAndSortedActions = (
   clickActions: RegularClickAction[],
 ) => {
-  const groupedClickActions = _.groupBy(clickActions, "section") as {
-    [key in ClickActionSection]?: RegularClickAction[];
-  };
+  const groupedClickActions = Object.groupBy(
+    clickActions,
+    (action) => action.section,
+  );
 
   if (groupedClickActions["sum"]?.length === 1) {
     // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon

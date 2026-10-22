@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import type { ExportFormat } from "metabase/common/types/export";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { ExportFormat } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { PublicLinkPopoverProps } from "./PublicLinkPopover";
@@ -16,6 +16,7 @@ const TestComponent = ({
   isOpen: mockIsOpen,
   onClose: mockIsClosed,
   url,
+  canRemoveLink,
 }: Omit<PublicLinkPopoverProps, "target">) => {
   const target = (
     <button data-testid="target" onClick={() => setIsOpen(true)}>
@@ -44,6 +45,7 @@ const TestComponent = ({
       extensions={extensions}
       selectedExtension={extension}
       setSelectedExtension={setExtension}
+      canRemoveLink={canRemoveLink}
     />
   );
 };
@@ -53,11 +55,13 @@ const setup = ({
   isOpen = true,
   extensions = [],
   isAdmin = false,
+  canRemoveLink = true,
 }: {
   hasUUID?: boolean;
   isOpen?: boolean;
   extensions?: ExportFormat[];
   isAdmin?: boolean;
+  canRemoveLink?: boolean;
 } = {}) => {
   const createPublicLink = jest.fn();
   const deletePublicLink = jest.fn();
@@ -71,6 +75,7 @@ const setup = ({
       onClose={onClose}
       extensions={extensions}
       url={hasUUID ? "sample-public-link" : null}
+      canRemoveLink={canRemoveLink}
     />,
     {
       storeInitialState: createMockState({
@@ -129,22 +134,36 @@ describe("PublicLinkPopover", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render `Remove public link` for non-admins", () => {
+    it("should not render `Remove public link` for non-admins", async () => {
       setup({ isAdmin: false });
+      await screen.findByDisplayValue("sample-public-link");
 
+      expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
+    });
+
+    // Removing a link is a write; hidden when the resource isn't writable (e.g. a
+    // remote-synced entity on a read-only instance), while the link itself stays
+    // viewable/copyable (MB #72752).
+    it("should not render `Remove public link` when canRemoveLink is false, even for admins", async () => {
+      setup({ isAdmin: true, canRemoveLink: false });
+
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
       expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
     });
   });
 
   describe("when creating public links", () => {
-    it("should call createPublicLink when uuid is null and isOpen is true", () => {
+    it("should call createPublicLink when uuid is null and isOpen is true", async () => {
       const { createPublicLink } = setup({ hasUUID: false });
 
-      expect(createPublicLink).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(createPublicLink).toHaveBeenCalledTimes(1));
     });
 
-    it("should not call createPublicLink when isOpen is false", () => {
+    it("should not call createPublicLink when isOpen is false", async () => {
       const { createPublicLink } = setup({ isOpen: false, hasUUID: false });
+      await screen.findByTestId("target");
 
       expect(createPublicLink).not.toHaveBeenCalled();
     });

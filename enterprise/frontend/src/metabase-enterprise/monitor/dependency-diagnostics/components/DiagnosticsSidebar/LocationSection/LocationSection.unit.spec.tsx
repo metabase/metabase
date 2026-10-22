@@ -18,7 +18,7 @@ type SetupOpts = {
 
 function setup({ node = createMockCardDependencyNode() }: SetupOpts = {}) {
   renderWithProviders(
-    <Route path="/" component={() => <LocationSection node={node} />} />,
+    <Route path="/" element={<LocationSection node={node} />} />,
     { withRouter: true, initialRoute: "/" },
   );
 }

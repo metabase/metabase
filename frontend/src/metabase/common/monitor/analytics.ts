@@ -1,0 +1,32 @@
+import { trackSimpleEvent } from "metabase/analytics";
+
+export type MonitorSection =
+  | "diagnostics"
+  | "content-diagnostics"
+  | "erroring-questions"
+  | "alerts"
+  | "tasks"
+  | "jobs"
+  | "logs"
+  | "model-caching"
+  | "session-management"
+  | "ai-auditing-usage-stats"
+  | "ai-auditing-conversations"
+  | "ai-auditing-mcp"
+  | "ai-auditing-cli"
+  | "ai-auditing-data-apps"
+  | "api-key-usage";
+
+export const trackMonitorOpened = () => {
+  trackSimpleEvent({
+    event: "monitor_opened",
+    triggered_from: "nav_menu",
+  });
+};
+
+export const trackMonitorSectionClicked = (section: MonitorSection) => {
+  trackSimpleEvent({
+    event: "monitor_section_clicked",
+    event_detail: section,
+  });
+};

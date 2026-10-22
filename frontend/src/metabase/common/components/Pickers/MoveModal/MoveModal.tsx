@@ -330,6 +330,7 @@ export const BulkMoveModal = ({
         return !selectedItems.every(
           (selectedItem) =>
             canMoveCollectionToLibraryDestination(
+              // Unjustified type cast. FIXME
               selectedItem as OmniPickerCollectionItem,
               item,
             ) &&
@@ -346,6 +347,7 @@ export const BulkMoveModal = ({
 
   const handleMove = useCallback(
     async (destination: OmniPickerItem) => {
+      // Unjustified type cast. FIXME
       return onMove({
         id: destination.id,
         model: destination.model,

@@ -1,7 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
+import {
+  isHostReactVersionSupported,
+  useLogUnsupportedReactVersion,
+} from "embedding-sdk-bundle/lib/host-react-version";
+import {
+  ensureMetabaseProviderPropsStore,
+  useMetabaseProviderPropsStore,
+} from "embedding-sdk-bundle/lib/provider-props-store";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import { initGuestEmbed } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -12,38 +20,20 @@ import {
 import { getFetchRefreshTokenFn } from "embedding-sdk-bundle/store/selectors";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
-import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import {
-  type OnBeforeRequestHandler,
-  type RequestClientInfo,
-  api,
-} from "metabase/api/client";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
-import {
-  setEmbedPreviewHeader,
-  setRequestClientHeaders,
-} from "metabase/embedding/lib/embedding-request-auth";
+import { PLUGIN_API, type RequestClientInfo, api } from "metabase/api/client";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
-import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { setDataApp } from "metabase/embedding/config";
+import { setEmbedPreviewHeader } from "metabase/embedding/lib/auth/set-embed-preview-header";
+import { setReactSdkEmbedReferrerHeader } from "metabase/embedding/lib/auth/set-react-sdk-embed-referrer-header";
+import { setReactSdkReactVersionHeader } from "metabase/embedding/lib/auth/set-react-sdk-react-version-header";
+import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { setBasename } from "metabase/utils/basename";
-import registerVisualizations from "metabase/visualizations/register";
-
-const reactSdkEmbedReferrerHandler: OnBeforeRequestHandler = async (
-  config,
-) => ({
-  ...config,
-  headers: {
-    ...config.headers,
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-    "X-Metabase-Embed-Referrer": window.location.href,
-  },
-});
+import { registerVisualizations } from "metabase/visualizations/register";
 
 const sdkResponseErrorHandler = ({
   metabaseVersion,
@@ -84,7 +74,7 @@ interface InitDataLoaderParameters {
   isLocalHost?: boolean;
 }
 
-export const useInitData = () => {
+const useInitDataOnSupportedReact = () => {
   const {
     state: { props, internalProps },
   } = useMetabaseProviderPropsStore();
@@ -100,12 +90,25 @@ export const useInitData = () => {
 
   const isGuestEmbed = !!props.authConfig.isGuest;
 
+  // `DataAppDevProvider` puts the app on the props store before rendering
+  // `MetabaseProvider`. Applied here, ahead of `useInitDataInternal`, so no request
+  // goes out unattributed.
+  if (internalProps.dataApp) {
+    setDataApp(internalProps.dataApp.name, {
+      isDev: internalProps.dataApp.isDev,
+    });
+  }
+
   useInitDataInternal({
     reduxStore,
     isGuestEmbed,
     authConfig,
   });
 };
+
+export const useInitData = isHostReactVersionSupported()
+  ? useInitDataOnSupportedReact
+  : useLogUnsupportedReactVersion;
 
 export const useInitDataInternal = ({
   reduxStore,
@@ -118,7 +121,10 @@ export const useInitDataInternal = ({
   const isDataUninitialized = () =>
     reduxStore.getState().sdk.initStatus.status === "uninitialized";
 
-  const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
+  const fetchRefreshTokenFnFromStore = useSyncExternalStore(
+    reduxStore.subscribe,
+    () => getFetchRefreshTokenFn(reduxStore.getState()),
+  );
 
   const sdkPackageVersion = getSdkPackageVersion();
 
@@ -127,6 +133,7 @@ export const useInitDataInternal = ({
 
   setSdkRequestClientHeadersOnce({
     name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+    identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
     // Note: this is *package* version, it's undefined in EAJS
     version: sdkPackageVersion,
   });
@@ -135,8 +142,10 @@ export const useInitDataInternal = ({
   // header on every request. The EAJS iframe installs its own handler in
   // SdkIframeEmbedRoute.tsx using the value received via postMessage.
   if (!isEmbeddingEajs()) {
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer =
-      reactSdkEmbedReferrerHandler;
+    PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer =
+      setReactSdkEmbedReferrerHeader;
+    PLUGIN_API.onBeforeRequestHandlers.reactSdkReactVersion =
+      setReactSdkReactVersionHeader;
   }
 
   // Dedupe by handler identity rather than total listener count — other code

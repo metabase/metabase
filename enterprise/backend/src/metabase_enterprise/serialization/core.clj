@@ -1,10 +1,6 @@
 (ns metabase-enterprise.serialization.core
   (:require
    [metabase-enterprise.serialization.dump]
-   [metabase-enterprise.serialization.export]
-   ;; Required (without alias) so loading `serialization.core` populates the malli
-   ;; registry — callers can then refer to `::serialization.schema/...` keywords.
-   [metabase-enterprise.serialization.schema]
    [metabase-enterprise.serialization.v2.extract]
    [metabase-enterprise.serialization.v2.ingest]
    [metabase-enterprise.serialization.v2.load]
@@ -15,7 +11,6 @@
 
 (comment
   metabase-enterprise.serialization.dump/keep-me
-  metabase-enterprise.serialization.export/keep-me
   metabase-enterprise.serialization.v2.extract/keep-me
   metabase-enterprise.serialization.v2.ingest/keep-me
   metabase-enterprise.serialization.v2.load/keep-me
@@ -26,19 +21,21 @@
 (p/import-vars
  [metabase-enterprise.serialization.dump
   serialization-deep-sort]
- [metabase-enterprise.serialization.export
-  export-metadata!]
  [metabase-enterprise.serialization.v2.extract
   make-targets-of-type
   extract]
  [metabase-enterprise.serialization.v2.ingest
+  entity-file-path?
   legal-top-level-paths
+  replaced-top-level-paths
+  shared-top-level-paths
   strip-labels
   Ingestable
   ingest-yaml
   ingest-list
   ingest-one
   ingest-errors
+  read-resources
   read-timestamps
   parse-key]
  [metabase-enterprise.serialization.v2.load
@@ -48,5 +45,10 @@
  [metabase-enterprise.serialization.v2.storage.files
   file-writer]
  [metabase-enterprise.serialization.v2.storage.util
+  entity-file-path
+  entity-yaml
   resolve-storage-path
-  slugify-name])
+  resource-files
+  slugify-name
+  without-resources
+  yaml-file-path])

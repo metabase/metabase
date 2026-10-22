@@ -1,13 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import { permissionApi } from "metabase/api";
 import {
   getGroupSortOrder,
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
-import { permissionApi } from "metabase/api";
+} from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { Group, GroupId } from "metabase-types/api";
@@ -21,6 +21,7 @@ const EMPTY_GROUP_LIST: Group[] = [];
 // typed them as `Group[]`. Downstream code never reads `members` from list
 // results, so we cast to preserve the existing call signatures.
 export const selectGroupList = (state: State): Group[] =>
+  // Unjustified type cast. FIXME
   (permissionApi.endpoints.listPermissionsGroups.select({})(state).data ??
     EMPTY_GROUP_LIST) as Group[];
 

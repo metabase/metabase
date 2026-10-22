@@ -34,6 +34,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.user-key-value.db :as user-key-value.db]
    [metabase.user-key-value.models.user-key-value.types :as types]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -58,19 +59,13 @@
                     (mtx/default-value-transformer)
                     {:name :database}))]
     (t2/with-transaction [_]
-      (if (t2/select-one :model/UserKeyValue :user_id user-id :namespace namespace :key key)
-        (t2/update! :model/UserKeyValue :user_id user-id :namespace namespace :key key {:value value
-                                                                                        :expires_at expires-at})
+      (if (user-key-value.db/user-key-value user-id namespace key)
+        (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
         (try
-          (t2/insert! :model/UserKeyValue {:user_id user-id
-                                           :namespace namespace
-                                           :key key
-                                           :value value
-                                           :expires_at expires-at})
+          (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at)
           ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
           (catch Exception _
-            (t2/update! :model/UserKeyValue :user_id user-id :namespace namespace :key key {:value value
-                                                                                            :expires_at expires-at})))))
+            (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)))))
     value))
 
 (mu/defn delete!
@@ -78,7 +73,7 @@
   [user-id :- :int
    namespace :- :string
    k :- :string]
-  (t2/delete! :model/UserKeyValue :namespace namespace :user_id user-id :key k))
+  (user-key-value.db/delete-user-key-value! user-id namespace k))
 
 (mu/defn retrieve
   "Retrieves a KV-pair"
@@ -86,15 +81,7 @@
    namespace :- :string
    k :- :string]
   (when-let [ukv
-             (t2/select-one :model/UserKeyValue
-                            {:where
-                             [:and
-                              [:= :user_id user-id]
-                              [:= :namespace namespace]
-                              [:= :key k]
-                              [:or
-                               [:>= :expires_at :%now]
-                               [:= :expires_at nil]]]})]
+             (user-key-value.db/unexpired-user-key-value user-id namespace k)]
     (:value (mc/decode ::types/user-key-value
                        ukv
                        (mtx/transformer
@@ -105,14 +92,7 @@
   "Retrieves all KV-pairs in a namespace"
   [user-id :- :int
    namespace :- :string]
-  (when-let [kvs (seq (t2/select :model/UserKeyValue
-                                 {:where
-                                  [:and
-                                   [:= :user_id user-id]
-                                   [:= :namespace namespace]
-                                   [:or
-                                    [:>= :expires_at :%now]
-                                    [:= :expires_at nil]]]}))]
+  (when-let [kvs (seq (user-key-value.db/unexpired-user-key-values user-id namespace))]
     (let [parsed-kvs (mc/decode [:sequential ::types/user-key-value]
                                 kvs
                                 (mtx/transformer

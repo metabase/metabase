@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { getUserIsAdmin } from "metabase/current-user";
 import type { SourceReplacementButtonProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useListSourceReplacementRunsQuery } from "metabase-enterprise/api";
 
 export function SourceReplacementButton({

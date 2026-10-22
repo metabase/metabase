@@ -1,25 +1,46 @@
+import cx from "classnames";
+
 import {
   type PartialGroup,
+  type PartialTenant,
   type PartialUser,
-  initial,
-  userInitials,
+  prepareInitials,
 } from "metabase/common/utils/user";
+import { Center } from "metabase/ui";
 
-import type { AvatarProps } from "./UserAvatar.styled";
-import { Avatar as StyledAvatar } from "./UserAvatar.styled";
+import S from "./UserAvatar.module.css";
+
+interface AvatarProps {
+  bg?: string;
+  className?: string;
+}
 
 interface UserAvatarProps extends AvatarProps {
   user: PartialUser;
 }
 
-interface GroupProps {
+interface GroupProps extends AvatarProps {
   user: PartialGroup;
 }
 
-export function UserAvatar({ user, ...props }: UserAvatarProps | GroupProps) {
-  return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
+interface TenantProps extends AvatarProps {
+  user: PartialTenant;
 }
 
-export function Avatar({ children, ...props }: { children: string }) {
-  return <StyledAvatar {...props}>{initial(children) ?? "?"}</StyledAvatar>;
+export function UserAvatar({
+  user,
+  bg,
+  className,
+}: UserAvatarProps | GroupProps | TenantProps) {
+  return (
+    <Center
+      className={cx(S.avatar, className)}
+      c="text-primary-inverse"
+      fw={900}
+      lh={1}
+      style={bg ? { backgroundColor: bg } : undefined}
+    >
+      {prepareInitials(user) || "?"}
+    </Center>
+  );
 }

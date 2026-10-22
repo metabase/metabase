@@ -2,9 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -15,12 +15,14 @@ const setup = ({
   aiControlsEnabled = false,
   auditAppEnabled = false,
   isConfigured = true,
+  mcpEnabled = true,
   initialRoute = "/admin/metabot",
 }: {
   aiFeaturesEnabled?: boolean;
   aiControlsEnabled?: boolean;
   auditAppEnabled?: boolean;
   isConfigured?: boolean;
+  mcpEnabled?: boolean;
   initialRoute?: string;
 } = {}) => {
   mockSettings({
@@ -34,7 +36,7 @@ const setup = ({
   setupEnterprisePlugins();
 
   return renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotNavPane} />,
+    <Route path="/admin/metabot*" element={<MetabotNavPane />} />,
     {
       withRouter: true,
       initialRoute,
@@ -42,11 +44,19 @@ const setup = ({
         settings: createMockSettingsState({
           "ai-features-enabled?": aiFeaturesEnabled,
           "llm-metabot-configured?": isConfigured,
+          "mcp-enabled?": mcpEnabled,
         }),
       },
     },
   );
 };
+
+function getUsageControlLinks() {
+  return screen
+    .getAllByRole("link")
+    .map((link) => link.getAttribute("href"))
+    .filter((href) => href?.startsWith("/admin/metabot/usage-controls/"));
+}
 
 describe("MetabotNavPane", () => {
   afterEach(() => {
@@ -69,8 +79,8 @@ describe("MetabotNavPane", () => {
     expect(screen.queryByText("System prompts")).not.toBeInTheDocument();
   });
 
-  it("displays the ai controls in a disabled state when not configured", async () => {
-    setup({ aiControlsEnabled: true, isConfigured: false });
+  it("displays the ai controls in a disabled state when neither Metabot nor MCP is on", async () => {
+    setup({ aiControlsEnabled: true, isConfigured: false, mcpEnabled: false });
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
     expect(
@@ -92,6 +102,83 @@ describe("MetabotNavPane", () => {
         selector: '[data-disabled="true"] *',
       }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps Usage controls open with only MCP tools access when Metabot is not configured but MCP is on", async () => {
+    setup({
+      aiControlsEnabled: true,
+      isConfigured: false,
+      mcpEnabled: true,
+      initialRoute: "/admin/metabot/usage-controls/mcp-tools-access",
+    });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Usage controls", {
+        selector: '[data-disabled="true"] *',
+      }),
+    ).not.toBeInTheDocument();
+    expect(getUsageControlLinks()).toEqual([
+      "/admin/metabot/usage-controls/mcp-tools-access",
+    ]);
+    expect(
+      screen.getByText("Customization", {
+        selector: '[data-disabled="true"] *',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists AI feature access, MCP tools access, and Limits under Usage controls when both features are on", async () => {
+    setup({
+      aiControlsEnabled: true,
+      isConfigured: true,
+      mcpEnabled: true,
+      initialRoute: "/admin/metabot/usage-controls/ai-feature-access",
+    });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "AI feature access" }),
+    ).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-controls/ai-feature-access",
+    );
+    expect(
+      screen.getByRole("link", { name: "MCP tools access" }),
+    ).toHaveAttribute("href", "/admin/metabot/usage-controls/mcp-tools-access");
+    expect(screen.getByRole("link", { name: "Limits" })).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-controls/ai-usage-limits",
+    );
+    expect(getUsageControlLinks()).toEqual([
+      "/admin/metabot/usage-controls/ai-feature-access",
+      "/admin/metabot/usage-controls/mcp-tools-access",
+      "/admin/metabot/usage-controls/ai-usage-limits",
+    ]);
+    expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
+  });
+
+  it("lists AI feature access and Limits only when Metabot is configured and MCP is off", async () => {
+    setup({
+      aiControlsEnabled: true,
+      isConfigured: true,
+      mcpEnabled: false,
+      initialRoute: "/admin/metabot/usage-controls/ai-feature-access",
+    });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(getUsageControlLinks()).toEqual([
+      "/admin/metabot/usage-controls/ai-feature-access",
+      "/admin/metabot/usage-controls/ai-usage-limits",
+    ]);
+  });
+
+  it("no longer exposes the Auditing folder or CLI analytics with audit_app", async () => {
+    setup({ aiControlsEnabled: true, auditAppEnabled: true });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(screen.queryByText("Auditing")).not.toBeInTheDocument();
+    expect(screen.queryByText("CLI analytics")).not.toBeInTheDocument();
   });
 
   it("displays the ai controls upsell links when the ai controls feature is unavailable", async () => {
@@ -124,17 +211,18 @@ describe("MetabotNavPane", () => {
     ).toHaveAttribute("href", "/admin/metabot/mcp/authorizations");
   });
 
-  it("displays the usage auditing upsell link when audit app is available and ai controls is unavailable", async () => {
-    setup({
-      aiControlsEnabled: false,
-      auditAppEnabled: true,
-      aiFeaturesEnabled: true,
-    });
+  it("keeps the MCP folder to Settings and Authorizations", async () => {
+    setup({ aiControlsEnabled: true, initialRoute: "/admin/metabot/mcp" });
 
-    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("link", { name: /Usage auditing/ }),
-    ).toHaveAttribute("href", "/admin/metabot/usage-auditing");
+    const links = await screen.findAllByRole("link");
+    const mcpLinks = links
+      .filter((link) =>
+        link.getAttribute("href")?.startsWith("/admin/metabot/mcp"),
+      )
+      .map((link) => link.getAttribute("href"));
+    expect(mcpLinks).toEqual([
+      "/admin/metabot/mcp",
+      "/admin/metabot/mcp/authorizations",
+    ]);
   });
 });

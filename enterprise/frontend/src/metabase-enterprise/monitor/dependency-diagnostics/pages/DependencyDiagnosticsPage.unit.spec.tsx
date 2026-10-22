@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupDependencyCountsEndpoint,
   setupListBreakingGraphNodesEndpoint,
   setupListUnreferencedGraphNodesEndpoint,
   setupUserKeyValueEndpoints,
@@ -11,8 +12,10 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
 import type * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
   DependencyDiagnosticsUserParams,
@@ -80,6 +83,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupDependencyCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const PageComponent =
@@ -87,8 +91,15 @@ function setup({
       ? BrokenDependencyDiagnosticsPage
       : UnreferencedDependencyDiagnosticsPage;
 
-  const { history } = renderWithProviders(
-    <Route path={getPageUrl(mode, {})} component={PageComponent} />,
+  const { router } = renderWithProviders(
+    <Route
+      path={getPageUrl(mode, {})}
+      element={
+        <MonitorContent>
+          <PageComponent />
+        </MonitorContent>
+      }
+    />,
     {
       withRouter: true,
       initialRoute: getPageUrl(mode, urlParams),
@@ -98,7 +109,7 @@ function setup({
     },
   );
 
-  return { history };
+  return { router };
 }
 
 function getFilterButton() {
@@ -126,11 +137,21 @@ describe("DependencyDiagnosticsPage", () => {
       expect(await within(list).findByText("Question 1")).toBeInTheDocument();
       expect(await within(list).findByText("Question 2")).toBeInTheDocument();
     });
+
+    it("renders selected row details in the Monitor sidebar outlet", async () => {
+      setup({ nodes: CARD_NODES });
+
+      const list = await screen.findByRole("treegrid");
+      await userEvent.click(await within(list).findByText("Question 1"));
+
+      const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+      expect(sidebarRegion).toHaveTextContent("Question 1");
+    });
   });
 
   describe("URL parameters", () => {
     it("should set the group-types parameter when not all types are selected", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         urlParams: { groupTypes: ["table", "question", "model"] },
@@ -141,13 +162,13 @@ describe("DependencyDiagnosticsPage", () => {
       const popover = await getFilterPopover();
       await userEvent.click(getTypeCheckbox(popover, "Table"));
 
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({
         "group-types": ["question", "model"],
       });
     });
 
     it("should not set the group-types parameter when all types are selected", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         urlParams: { groupTypes: ["table", "question", "transform"] },
@@ -158,11 +179,11 @@ describe("DependencyDiagnosticsPage", () => {
       const popover = await getFilterPopover();
       await userEvent.click(getTypeCheckbox(popover, "Model"));
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
     });
 
     it("should set the include-personal-collections parameter when it is unchecked", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         urlParams: { includePersonalCollections: true },
@@ -176,13 +197,13 @@ describe("DependencyDiagnosticsPage", () => {
       });
       await userEvent.click(checkbox);
 
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({
         "include-personal-collections": "false",
       });
     });
 
     it("should not set the include-personal-collections parameter when it is checked", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         urlParams: { includePersonalCollections: false },
@@ -196,11 +217,11 @@ describe("DependencyDiagnosticsPage", () => {
       });
       await userEvent.click(checkbox);
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
     });
 
     it("should set the page parameter when navigating to the next page and it is not the first page", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         total: 50,
@@ -210,11 +231,13 @@ describe("DependencyDiagnosticsPage", () => {
       await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Next page"));
 
-      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({
+        page: "1",
+      });
     });
 
     it("should set the page parameter when navigating to the previous page and it is not the first page", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         total: 50,
@@ -224,11 +247,13 @@ describe("DependencyDiagnosticsPage", () => {
       await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Previous page"));
 
-      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({
+        page: "1",
+      });
     });
 
     it("should not set the page parameter when it is the first page", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         urlParams: { page: 1 },
@@ -238,7 +263,7 @@ describe("DependencyDiagnosticsPage", () => {
       await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Previous page"));
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
     });
   });
 
@@ -306,7 +331,7 @@ describe("DependencyDiagnosticsPage", () => {
     });
 
     it("should update URL with last used parameters when there is no query string", async () => {
-      const { history } = setup({
+      const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
         urlParams: {},
@@ -315,8 +340,8 @@ describe("DependencyDiagnosticsPage", () => {
 
       await waitForListToLoad();
 
-      const currentLocation = history?.getCurrentLocation();
-      expect(currentLocation?.query).toEqual({
+      const currentLocation = router?.location;
+      expect(parseSearchQuery(currentLocation?.search ?? "")).toEqual({
         "group-types": ["table", "question"],
       });
     });

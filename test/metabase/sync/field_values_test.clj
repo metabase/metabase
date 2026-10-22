@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.sync.core :as sync]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
@@ -78,6 +79,18 @@
     (testing "Make sure the value is back"
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
+
+(deftest sync-skips-field-values-of-user-hidden-table-test
+  (testing "sync refreshes a table's FieldValues until a user hides it through PUT /api/table/:id"
+    (data/with-temp-copy-of-db
+      (letfn [(field-values-after-sync! []
+                (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
+                (t2/update! :model/FieldValues :field_id (mt/id :venues :price) :type :full {:values [10 20 30 40]})
+                (sync/update-field-values! (data/db))
+                (venues-price-field-values))]
+        (is (= [1 2 3 4] (field-values-after-sync!)))
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (mt/id :venues)) {:visibility_type "hidden"})
+        (is (= [10 20 30 40] (field-values-after-sync!)))))))
 
 (deftest sync-should-properly-handle-last-used-at
   (try
@@ -321,6 +334,17 @@
 
 ;;; ---------------------------------- can-batch-distinct? ----------------------------------
 
+(deftest fields-for-field-values-honors-user-settings-test
+  (testing "fields-for-field-values reflects the user's has_field_values/visibility_type overrides"
+    (mt/with-temp [:model/Table {table-id :id} {}
+                   :model/Field {field-id :id} {:table_id table-id, :has_field_values nil, :visibility_type "normal"}]
+      (testing "sanity check: the sync values show by default"
+        (is (=? {:has_field_values nil, :visibility_type :normal}
+                (first (sync.db/fields-for-field-values [field-id])))))
+      (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id, :has_field_values :none, :visibility_type :sensitive}]
+        (is (=? {:has_field_values :none, :visibility_type :sensitive}
+                (first (sync.db/fields-for-field-values [field-id]))))))))
+
 (deftest can-batch-distinct?-test
   (testing "SQL driver with :nested-queries and no required filter → batch path"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
@@ -356,18 +380,18 @@
                                             :base_type :type/Text, :has_field_values :list}
                      :model/Field plain-c  {:table_id tbl-id, :name "plain"
                                             :base_type :type/Text, :has_field_values :list}]
-        (with-redefs [sync.field-values/fetch-distinct-for-table
-                      (fn [_table fields]
-                        (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
-                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
-                         :queries 1
-                         :failed-fields #{}})
-                      sync.field-values/fetch-distinct-per-field
-                      (fn [fields]
-                        (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
-                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
-                         :queries (count fields)
-                         :failed-fields #{}})]
+        (mt/with-dynamic-fn-redefs [sync.field-values/fetch-distinct-for-table
+                                    (fn [_table fields]
+                                      (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
+                                      {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                                       :queries 1
+                                       :failed-fields #{}})
+                                    sync.field-values/fetch-distinct-per-field
+                                    (fn [fields]
+                                      (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
+                                      {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                                       :queries (count fields)
+                                       :failed-fields #{}})]
           (#'sync.field-values/sync-fields-for-table! table [nested-a nested-b plain-c] {})
           (testing "Plain field goes to batch path"
             (is (= [#{(:id plain-c)}] @calls-to-fetch-distinct-for-table)))

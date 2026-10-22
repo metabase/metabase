@@ -1,9 +1,15 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
+import type { ComponentType } from "react";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
@@ -14,16 +20,12 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { stableStringify } from "metabase/utils/objects";
-import { registerVisualization } from "metabase/visualizations";
+import { checkNotNull } from "metabase/utils/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
+import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -44,9 +46,7 @@ import {
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 /**
@@ -80,8 +80,10 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+function ReduxDecorator(Story: ComponentType, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = context.args.dashboard as Dashboard;
+  // Unjustified type cast. FIXME
   const parameterType = context.args.parameterType as ParameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
@@ -264,7 +266,11 @@ function createDashboard({
       [CATEGORY_DROPDOWN_FILTER.id]: [createProductsCategoryField()],
       [DATE_FILTER_ID]: [createProductsCreatedAtField()],
       [UNIT_OF_TIME_FILTER_ID]: [createProductsCreatedAtField()],
-      [NUMBER_FILTER_ID]: [createProductsRatingField()],
+      // the story types a value into this filter, so its field must not offer
+      // a list to pick from
+      [NUMBER_FILTER_ID]: [
+        createProductsRatingField({ has_field_values: "none" }),
+      ],
     },
     dashcards: [
       createMockDashboardCard({
@@ -394,23 +400,19 @@ const createDefaultArgs = ({
 };
 
 function getLastPopover() {
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
-
-  return within(lastPopover);
+  return within(getLastPopoverElement());
 }
 
 function getLastPopoverElement() {
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
+  const popovers = document.documentElement.querySelectorAll<HTMLElement>(
+    '[data-element-id="mantine-popover"]',
+  );
+  // Mantine renders an input's options dropdown as a hidden popover when there are no options.
+  const lastPopover = Array.from(popovers)
+    .filter((popover) => popover.checkVisibility())
+    .at(-1);
 
-  return lastPopover;
+  return checkNotNull(lastPopover);
 }
 
 export const LightThemeText = {
@@ -474,6 +476,7 @@ export const LightThemeParameterSearchWithValue = {
     await userEvent.type(searchInput, "g");
 
     const dropdown = getLastPopover();
+    // Unjustified type cast. FIXME
     (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
       "data-hovered",
       "true",
@@ -592,9 +595,7 @@ export const LightThemeParameterListSingleWithValue = {
     );
     await userEvent.click(documentElement.getByText("Widget"));
     const popover = getLastPopover();
-    (popover.getByText("Gadget").parentNode as HTMLElement).classList.add(
-      "pseudo-hover",
-    );
+    popover.getByTestId("Gadget-filter-value").classList.add("pseudo-hover");
   },
 };
 
@@ -880,6 +881,7 @@ export const LightThemeUnitOfTime = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
+    // Unjustified type cast. FIXME
     (popover.getByText("Hour").parentNode as HTMLElement).classList.add(
       "pseudo-hover",
     );

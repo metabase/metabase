@@ -2,23 +2,22 @@ import { useDisclosure } from "@mantine/hooks";
 import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
-  AdminSettingInput,
-  BasicAdminSettingInput,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useUpdateSettingMutation,
-} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+  useUpdateSettingMutation,
+} from "metabase/settings";
+import {
+  AdminSettingInput,
+  BasicAdminSettingInput,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import {
   Alert,
   Box,
@@ -96,6 +95,7 @@ export const UserProvisioning = () => {
   );
 
   const samlUserProvisioningEnabled = useSetting(
+    // Unjustified type cast. FIXME
     "saml-user-provisioning-enabled?" as any,
   );
   const showSamlWarning = samlUserProvisioningEnabled && !isScimInitialized;
@@ -154,8 +154,8 @@ export const UserProvisioning = () => {
           loading={maskedTokenRequest.isLoading}
           error={scimTokenError}
         >
-          <Stack pl="md" gap="lg" maw="35rem">
-            <Stack gap="lg" mb="lg" data-testid="scim-enabled-setting">
+          <Stack pl="lg" gap="xl" maw="35rem">
+            <Stack gap="xl" mb="xl" data-testid="scim-enabled-setting">
               <Text
                 fz="1.25rem"
                 fw="bold"
@@ -178,6 +178,7 @@ export const UserProvisioning = () => {
               )}
               {isScimEnabledWithoutToken && !hasTokenGenerationError && (
                 <Alert
+                  size="compact"
                   color="warning"
                   icon={<Icon name="warning" />}
                 >{t`Generate a SCIM token below to complete the setup.`}</Alert>
@@ -216,6 +217,7 @@ export const UserProvisioning = () => {
                       <Flex gap="sm">
                         <Box style={{ flexGrow: 1 }}>{children}</Box>
                         <Button
+                          size="lg"
                           disabled={isLoadingToken || !isScimEnabled}
                           variant="filled"
                           onClick={
@@ -242,7 +244,7 @@ export const UserProvisioning = () => {
 
             {isAdminNotificationInputVisisble && (
               <>
-                <Divider my="lg" />
+                <Divider my="xl" />
                 <AdminSettingInput
                   name="send-new-sso-user-admin-email?"
                   title={t`Notify admins of new users provisioned from SSO`}

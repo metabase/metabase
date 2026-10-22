@@ -19,7 +19,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution ObjectAlreadyExistsException)))
+   (org.quartz ObjectAlreadyExistsException)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,13 +52,15 @@
         (if (::preserve (ex-data e))
           (log/infof "Kept existing suggested prompts for Metabot %s (regeneration produced %s)"
                      metabot-id (:status (ex-data e)))
-          (log/warnf e "Failed to regenerate suggested prompts for Metabot %s" metabot-id)))
+          (log/warnf "Failed to regenerate suggested prompts for Metabot %s: %s" metabot-id (ex-message e))))
       (catch Throwable e
-        (log/warnf e "Failed to regenerate suggested prompts for Metabot %s" metabot-id)))))
+        (log/warnf "Failed to regenerate suggested prompts for Metabot %s: %s" metabot-id (ex-message e))))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Regenerate a Metabot's suggested prompts after its content scope changes."}
-  SuggestedPromptsRefresh [ctx]
+(task/defjob SuggestedPromptsRefresh
+  "Regenerate a Metabot's suggested prompts after its content scope changes."
+  {:saved-class "metabase.metabot.task.suggested_prompts_refresh.SuggestedPromptsRefresh"
+   :concurrent? false}
+  [ctx]
   (when-let [metabot-id (get (qc/from-job-data ctx) "metabot-id")]
     (regenerate! metabot-id)))
 

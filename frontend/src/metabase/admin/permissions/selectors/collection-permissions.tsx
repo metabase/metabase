@@ -3,12 +3,6 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  getGroupNameLocalized,
-  getGroupSortOrder,
-  getSpecialGroupType,
-  isDefaultGroup,
-} from "metabase/admin/utils/groups";
 import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
@@ -17,6 +11,12 @@ import {
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import {
+  getGroupNameLocalized,
+  getGroupSortOrder,
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionTreeItem,
@@ -61,7 +61,8 @@ export const getIsDirty = createSelector(
 );
 
 export type CollectionIdProps = {
-  params: { collectionId: CollectionId };
+  // Either an extracted `CollectionId` or a raw route param, which is a string.
+  params: { collectionId?: CollectionId | string };
   namespace?: CollectionNamespace;
 };
 
@@ -192,10 +193,16 @@ const getCollection = createSelector(
   },
 );
 
-const getFolder = (state: State, props: CollectionIdProps) => {
+const FOLDER_NAMESPACES: CollectionNamespace[] = ["snippets", "data-actions"];
+
+const getFolder = (
+  state: State,
+  props: CollectionIdProps,
+  namespace: CollectionNamespace,
+) => {
   const folderId = getCurrentCollectionId(state, props);
   const folders = collectionApi.endpoints.listCollections.select({
-    namespace: "snippets",
+    namespace,
   })(state).data;
 
   return folders?.find((folder: Collection) => folder.id === folderId);
@@ -205,8 +212,9 @@ export const getCollectionEntity = (
   state: State,
   props: CollectionIdProps,
 ): Collection | undefined => {
-  return props.namespace === "snippets"
-    ? getFolder(state, props)
+  const namespace = props.namespace ?? null;
+  return FOLDER_NAMESPACES.includes(namespace)
+    ? getFolder(state, props, namespace)
     : (getCollection(state, props) ?? undefined);
 };
 
@@ -220,7 +228,7 @@ const getNamespace = (_state: State, props: CollectionIdProps) =>
   props.namespace;
 
 const getToggleLabel = (namespace?: CollectionNamespace) =>
-  namespace === "snippets"
+  FOLDER_NAMESPACES.includes(namespace ?? null)
     ? t`Also change sub-folders`
     : t`Also change sub-collections`;
 
@@ -230,7 +238,7 @@ const getCollectionDisabledTooltip = (
   isIACollection: boolean,
 ): string | null => {
   if (groupType === "admin" && isIACollection) {
-    return PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE;
+    return PLUGIN_COLLECTIONS.getInstanceAnalyticsAdminReadonlyMessage();
   }
   if (groupType === "analyst" && isLibrary) {
     return Messages.UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS;
@@ -342,6 +350,7 @@ export const getCollectionsPermissionEditor = createSelector(
               ),
               warning: getCollectionWarning(
                 group.id,
+                // Unjustified type cast. FIXME
                 collection as ExpandedCollection,
                 permissions,
               ),

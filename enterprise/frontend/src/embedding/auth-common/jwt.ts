@@ -1,4 +1,4 @@
-import * as MetabaseError from "embedding-sdk-bundle/errors";
+import * as MetabaseError from "embedding-sdk-shared/errors";
 
 export async function jwtDefaultRefreshTokenFunction(
   responseUrl: string,

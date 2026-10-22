@@ -27,6 +27,7 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useLocaleMock = useLocale as jest.Mock;
 
 const CURRENT_USER = createMockUser({
@@ -41,7 +42,7 @@ const ROOT_COLLECTION = createMockCollection({
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id,
+  id: CURRENT_USER.personal_collection_id ?? undefined,
   name: "Personal collection",
   can_write: true,
   is_personal: true,

@@ -1,11 +1,19 @@
 (ns metabase-enterprise.remote-sync.source-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase-enterprise.serialization.core :as serialization]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jgit.lib ObjectChecker)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -31,6 +39,7 @@
   (let [by-path (into {} (map (juxt :path :content)) (source/serialize-specs entities task-id))]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
+      (list-dir [_ p] (source/paths->children (keys by-path) p))
       (read-file [_ p] (get by-path p))
       (open-commit [_]
         (let [staged (atom [])]
@@ -42,8 +51,43 @@
             (finish-commit! [_ message]
               (reset! written {:message message :files @staged})
               "merged-version")
+            (finish-commit! [_ message report-progress]
+              (reset! written {:message message :files @staged})
+              (when report-progress (report-progress 0.8))
+              "merged-version")
             (abort-commit! [_] nil))))
       (version [_] "remote-tip"))))
+
+(deftest entity-file-path-uses-git-separators-test
+  (testing "paths are git tree paths joined with / and never the host filesystem separator (#74095)"
+    (let [path (serialization/entity-file-path (serdes/storage-base-context) (create-test-entity "A" "a" "Card"))]
+      (is (= "collections/main/test_a.yaml" path))
+      (is (not (str/includes? path "\\")))
+      (testing "JGit's Windows path checker accepts the path, so pushing from a Windows host does not fail"
+        (let [checker (doto (ObjectChecker.) (.setSafeForWindows true))]
+          (is (nil? (.checkPath checker ^String path))))))))
+
+(deftest paths->children-test
+  (testing "the flat-path stand-in matches the contract git's list-dir implements"
+    (let [paths ["root.txt"
+                 "data_apps/README.md"
+                 "data_apps/beta/data_app.yaml"
+                 "data_apps/alpha/data_app.yaml"
+                 "data_apps/alpha/deep/nested.js"]]
+      (testing "immediate children only, as full paths, sorted and deduped"
+        (is (= ["data_apps/README.md" "data_apps/alpha" "data_apps/beta"]
+               (source/paths->children paths "data_apps")))
+        (is (= ["data_apps/alpha/data_app.yaml" "data_apps/alpha/deep"]
+               (source/paths->children paths "data_apps/alpha"))))
+      (testing "the repo root — paths are repo-relative, so the root prefix is empty, not \"/\""
+        (is (= ["data_apps" "root.txt"] (source/paths->children paths ""))))
+      (testing "a file, or an absent directory, has no children"
+        (is (= [] (source/paths->children paths "root.txt")))
+        (is (= [] (source/paths->children paths "nope"))))
+      (testing "plain lexicographic order, which a single level of git's own tree order is not"
+        ;; git orders entries as if directories ended in "/", and \- sorts before \/, so git would hand
+        ;; back ("d/a-b" "d/a") here. Lexicographic is the rule a flat path list can honour too.
+        (is (= ["d/a" "d/a-b"] (source/paths->children ["d/a-b" "d/a/x"] "d")))))))
 
 (deftest preview-merge-clean-test
   (testing "preview-merge reports a clean merge and summary without writing"
@@ -76,3 +120,23 @@
         (is (= 1 (count (:conflicts result))))
         (is (every? string? (:conflicts result)))
         (is (nil? @written))))))
+
+(deftest serialize-specs-traverses-stream-once-test
+  (let [entities [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")]
+        counting (fn [traversals] (eduction (map (fn [e] (swap! traversals inc) e)) entities))]
+    (testing "an uncounted stream with :total is serialized in one pass and progress is reported against :total"
+      (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+        (let [traversals (atom 0)
+              specs      (source/serialize-specs (counting traversals) task-id :total 4)]
+          (is (= 2 (count specs)))
+          (is (= 2 @traversals))
+          (is (= 0.625 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id)))))))
+    (testing "an uncounted stream without :total is still traversed once"
+      (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+        (let [traversals (atom 0)]
+          (is (= 2 (count (source/serialize-specs (counting traversals) task-id))))
+          (is (= 2 @traversals)))))
+    (testing "without a task id the stream is serialized in one pass with no progress writes"
+      (let [traversals (atom 0)]
+        (is (= 2 (count (source/serialize-specs (counting traversals) nil))))
+        (is (= 2 @traversals))))))

@@ -1,0 +1,7 @@
+.warnings {
+  position: absolute;
+  top: var(--mantine-spacing-xxl);
+  inset-inline-end: var(--mantine-spacing-xxl);
+  z-index: 2;
+  color: var(--mb-color-accent4);
+}

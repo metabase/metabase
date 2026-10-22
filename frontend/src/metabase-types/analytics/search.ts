@@ -46,6 +46,7 @@ const SNOWPLOW_CONTENT_TYPES = [
   "action",
   "indexed-entity",
   "document",
+  "exploration",
   "transform",
   "other",
 ] as const;
@@ -105,6 +106,7 @@ const _allContextsHandled: Exclude<
 export const toSnowplowContext = (
   context: SearchContext,
 ): SnowplowSearchContext =>
+  // Unjustified type cast. FIXME
   (PENDING_CONTEXTS as readonly SearchContext[]).includes(context)
     ? "other"
     : // safe: the guard above proves every non-pending context is in the snowplow enum

@@ -1,18 +1,18 @@
 (ns metabase.channel.render.js.svg
-  "Functions to render charts as svg strings by using graal's js engine. A bundle is built by `bun run build-static-viz`
-  which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
-  strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
-  `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
+  "Functions to render charts as svg strings by invoking the static-viz JavaScript bundle (built by `bun run
+  build-static-viz`) through [[metabase.channel.render.js.protocol]], which runs the JS on a pooled in-process
+  GraalVM context. This namespace has wrapper functions that build the argument map, call the corresponding
+  protocol function, and rasterize the resulting SVG to PNG bytes via Batik."
   (:require
    [clojure.string :as str]
+   [hiccup.util :as hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-buffer :as image-buffer]
-   [metabase.channel.render.js.engine :as js.engine]
-   [metabase.channel.render.js.pool :as js.pool]
+   [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.render.js.renderer :as renderer]
    [metabase.channel.render.style :as style]
    [metabase.lib-be.core :as lib-be]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.json :as json])
+   [metabase.premium-features.core :as premium-features])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -82,18 +82,22 @@
   (let [s (sanitize-svg s)
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes ^String s StandardCharsets/UTF_8))]
-      (.createDocument factory "file:///fake.svg" is))))
+      ;; The document deliberately gets no base URI so that Batik will not fetch any external references or local files
+      (.createDocument factory nil is))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *svg-render-width*
   "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
   needed. Email should include width tags; slack automatically resizes inline and provides a nice detail view when
   clicked."
   (float 1200))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *svg-render-height*
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *chart-size*
   "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
   [[*javascript-visualization*]] use `:width`/`:height` as their intrinsic (logical) SVG
@@ -109,9 +113,14 @@
   An optional `:fit-within?` (default false) tells legended charts to treat `:width`x`:height` as
   the exact output box -- fitting the legend *inside* it rather than stacking it on top (which
   returns an SVG taller than requested and makes it shrink to fit). Used by the PDF renderer so a
-  chart fills its grid cell's full width."
+  chart fills its grid cell's full width.
+
+  An optional `:grid-size` `{:width <cols> :height <rows>}` is the dashcard's dashboard grid size
+  (`size_x`/`size_y`). Used by the PDF renderer so size-dependent settings (e.g. auto axis titles)
+  match the dashboard, independent of the print cell's pixel box."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *svg-background-color*
   "Background color for rendered PNG images. Set to nil for transparent background.
   Defaults to white to ensure charts are readable in dark mode email clients."
@@ -168,61 +177,55 @@
   frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options. Returns a byte array
   of a png file."
   [data settings]
-  (let [svg-string (js.pool/with-static-viz-context context
-                     (.asString (js.engine/execute-fn-name context "funnel" (json/encode data)
-                                                           (json/encode settings)
-                                                           (json/encode (premium-features/token-features)))))]
-    (svg-string->bytes svg-string)))
+  (-> (js.protocol/chart (renderer/renderer)
+                         {:kind          "funnel"
+                          :data          data
+                          :settings      settings
+                          :tokenFeatures (premium-features/token-features)})
+      :content
+      svg-string->bytes))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
-  (let [response (js.pool/with-static-viz-context context
-                   (.asString (js.engine/execute-fn-name context "javascript_visualization"
-                                                         (json/encode cards-with-data)
-                                                         (json/encode dashcard-viz-settings)
-                                                         (json/encode (cond-> {:applicationColors (appearance/application-colors)
-                                                                               :startOfWeek (lib-be/start-of-week)
-                                                                               :customFormatting (appearance/custom-formatting)
-                                                                               :tokenFeatures (premium-features/token-features)}
-                                                                        *chart-size*
-                                                                        (assoc :width (:width *chart-size*)
-                                                                               :height (:height *chart-size*)
-                                                                               :fitWithinBounds (boolean (:fit-within? *chart-size*))))))))]
-    (-> response
-        json/decode+kw
-        (update :type (fnil keyword "unknown")))))
+  (-> (js.protocol/chart
+       (renderer/renderer)
+       {:rawSeries        cards-with-data
+        :dashcardSettings dashcard-viz-settings
+        :options          (cond-> {:applicationColors (appearance/application-colors)
+                                   :startOfWeek (lib-be/start-of-week)
+                                   :customFormatting (appearance/custom-formatting)
+                                   :tokenFeatures (premium-features/token-features)}
+                            *chart-size*
+                            (assoc :width (:width *chart-size*)
+                                   :height (:height *chart-size*)
+                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))
+                                   :gridSize (:grid-size *chart-size*)))})
+      (update :type (fnil keyword "unknown"))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
-  (js.pool/with-static-viz-context context
-    (let [js-res (js.engine/execute-fn-name context "gauge"
-                                            (json/encode card)
-                                            (json/encode data)
-                                            (json/encode (premium-features/token-features)))
-          svg-string (.asString js-res)]
-      (svg-string->bytes svg-string))))
-
-(defn progress
-  "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
-  [value goal settings]
-  (js.pool/with-static-viz-context context
-    (let [js-res (js.engine/execute-fn-name context "progress"
-                                            (json/encode {:value value :goal goal})
-                                            (json/encode settings)
-                                            (json/encode (appearance/application-colors))
-                                            (json/encode (premium-features/token-features)))
-          svg-string (.asString js-res)]
-      (svg-string->bytes svg-string))))
+  (-> (js.protocol/chart (renderer/renderer)
+                         {:kind          "gauge"
+                          :card          card
+                          :data          data
+                          :tokenFeatures (premium-features/token-features)})
+      :content
+      svg-string->bytes))
 
 (def ^:private icon-paths
   {:dashboard "M32 28a4 4 0 0 1-4 4H4a4.002 4.002 0 0 1-3.874-3H0V4a4 4 0 0 1 4-4h25a3 3 0 0 1 3 3v25zm-4 0V8H4v20h24zM7.273 18.91h10.182v4.363H7.273v-4.364zm0-6.82h17.454v4.365H7.273V12.09zm13.09 6.82h4.364v4.363h-4.363v-4.364z"
    :bell      "M14.254 5.105c-7.422.874-8.136 7.388-8.136 11.12 0 4.007 0 5.61-.824 6.411-.549.535-1.647.802-3.294.802v4.006h28v-4.006c-1.647 0-2.47 0-3.294-.802-.55-.534-.824-3.205-.824-8.013-.493-5.763-3.205-8.936-8.136-9.518a2.365 2.365 0 0 0 .725-1.701C18.47 2.076 17.364 1 16 1s-2.47 1.076-2.47 2.404c0 .664.276 1.266.724 1.7zM11.849 29c.383 1.556 1.793 2.333 4.229 2.333s3.845-.777 4.229-2.333h-8.458z"})
 
 (defn- icon-svg-string
+  "Raw SVG for `icon-name` filled with `color`. Both are escaped: `color` is the whitelabel brand color, which is a free
+  string an admin can set to anything, and unescaped it can close the `fill` attribute and inject elements of its own
+  (SEC-722)."
   [icon-name color]
-  (str "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
+  (str "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"" (hiccup.util/escape-html (get icon-paths icon-name))
+       "\" fill=\"" (hiccup.util/escape-html color) "\"/></svg>"))
 
 (defn icon
   "Entrypoint for rendering an SVG icon as a PNG, with a specific color"

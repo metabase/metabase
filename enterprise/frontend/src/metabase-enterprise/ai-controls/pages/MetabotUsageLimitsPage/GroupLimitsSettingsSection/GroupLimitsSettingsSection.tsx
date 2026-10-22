@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import { Tabs } from "metabase/ui";
 import {
   useGetAIControlsGroupLimitsQuery,
@@ -121,9 +121,9 @@ export function GroupLimitsSettingsSection() {
     <SettingsSection title={t`Group and tenant limits`}>
       <Tabs
         value={activeTab}
-        onChange={(value) => setActiveTab(value as GroupLimitsTabValue)}
+        onChange={(value) => value && setActiveTab(value)}
       >
-        <Tabs.List mb="md">
+        <Tabs.List mb="lg">
           <Tabs.Tab value="user-groups">{t`User groups`}</Tabs.Tab>
           <Tabs.Tab value="tenant-groups">{t`Tenant groups`}</Tabs.Tab>
           <Tabs.Tab value="specific-tenants">{t`Specific tenants`}</Tabs.Tab>

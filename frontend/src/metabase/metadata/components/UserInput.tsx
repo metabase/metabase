@@ -2,8 +2,14 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
-import { Ellipsified } from "metabase/ui";
-import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
+import {
+  Avatar,
+  Ellipsified,
+  Flex,
+  Icon,
+  Select,
+  type SelectProps,
+} from "metabase/ui";
 import { isEmail } from "metabase/utils/email";
 import type { User, UserId } from "metabase-types/api";
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
@@ -85,6 +91,7 @@ export const UserInput = ({
       searchable
       searchValue={search}
       renderOption={(item) => {
+        // Unjustified type cast. FIXME
         const option = item.option as Option;
         return (
           <Flex align="center" gap="sm" p="sm" w="100%">
@@ -131,6 +138,7 @@ function getData(
     },
     ...users.map((user) => ({
       label: user.common_name,
+      // Unjustified type cast. FIXME
       value: stringifyValue(user.id) as string,
       type: "user" as const,
     })),

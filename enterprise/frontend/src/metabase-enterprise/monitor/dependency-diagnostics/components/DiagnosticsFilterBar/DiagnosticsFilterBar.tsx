@@ -2,7 +2,7 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { type ChangeEvent, memo, useState } from "react";
 import { t } from "ttag";
 
-import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Group, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { FilterOptionsPicker } from "metabase-enterprise/dependencies/components/FilterOptionsPicker";
 import type { DependencyFilterOptions } from "metabase-enterprise/dependencies/types";
@@ -18,7 +18,6 @@ type DiagnosticsFilterBarProps = {
   mode: DependencyDiagnosticsMode;
   query?: string;
   filterOptions: DependencyFilterOptions;
-  isFetching: boolean;
   isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
@@ -28,13 +27,11 @@ export const DiagnosticsFilterBar = memo(function DiagnosticsFilterBar({
   mode,
   query,
   filterOptions,
-  isFetching,
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
 }: DiagnosticsFilterBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
-  const hasLoader = isFetching && !isLoading;
   const hasDefaultFilterOptions = areFilterOptionsEqual(
     filterOptions,
     getDefaultFilterOptions(mode),
@@ -61,13 +58,12 @@ export const DiagnosticsFilterBar = memo(function DiagnosticsFilterBar({
   };
 
   return (
-    <Group gap="md" align="center" wrap="nowrap">
+    <Group gap="lg" align="center" wrap="nowrap">
       <TextInput
         value={searchValue}
         placeholder={t`Search…`}
         flex={1}
         leftSection={<FixedSizeIcon name="search" />}
-        rightSection={hasLoader ? <Loader size="sm" /> : undefined}
         data-testid="dependency-list-search-input"
         onChange={handleSearchChange}
       />

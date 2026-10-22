@@ -92,6 +92,7 @@ describe("MetricSearchDropdown", () => {
     });
 
     const searchCall = fetchMock.callHistory.lastCall("path:/api/search");
+    // Unjustified type cast. FIXME
     const searchUrl = new URL(searchCall?.url as string);
 
     expect(searchUrl.searchParams.get("q")).toBe("");

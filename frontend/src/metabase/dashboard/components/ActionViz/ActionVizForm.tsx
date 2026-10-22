@@ -1,7 +1,6 @@
 import type { FormikHelpers } from "formik";
-import { useCallback, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "metabase/actions/containers/ActionParametersInputForm";
@@ -9,8 +8,18 @@ import { useActionInitialValues } from "metabase/actions/hooks/use-action-initia
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import CS from "metabase/css/core/index.css";
+import {
+  ActionCreator,
+  loadActionCreator,
+} from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
-import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
+import {
+  Modal,
+  PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
+  Paper,
+  Title,
+} from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -23,7 +32,6 @@ import type {
 } from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
-import { FormTitle, FormWrapper } from "./ActionForm.styled";
 import { shouldShowConfirmation } from "./utils";
 
 export interface ActionFormProps {
@@ -43,7 +51,7 @@ export interface ActionFormProps {
   onActionEdit?: (newAction: WritebackAction) => void;
 }
 
-function ActionVizForm({
+export function ActionVizForm({
   action,
   dashcard,
   dashboard,
@@ -62,6 +70,13 @@ function ActionVizForm({
   const dispatch = useDispatch();
   const [showFormModal, setShowFormModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // The action editor is a separate chunk. Fetching it up front, and opening in
+  // a transition, keeps this card on screen until the editor is ready so the
+  // modal opens complete rather than empty.
+  useEffect(() => {
+    loadActionCreator();
+  }, []);
   const title = getFormTitle(action);
 
   // only show confirmation if there are no missing parameters
@@ -81,7 +96,9 @@ function ActionVizForm({
   };
 
   const handleActionEdit = () => {
-    setShowEditModal(true);
+    startTransition(() => {
+      setShowEditModal(true);
+    });
   };
 
   const closeEditModal = () => {
@@ -95,17 +112,7 @@ function ActionVizForm({
       return {};
     }
 
-    if (getDashboardType(dashboard.id) === "public") {
-      return runRtkEndpoint(
-        {
-          dashboardId: dashboard.id,
-          dashcardId: dashcard.id,
-          parameters: JSON.stringify(dashcardParamValues),
-        },
-        dispatch,
-        publicApi.endpoints.prefetchPublicDashcardValues,
-      );
-    }
+    const isPublic = getDashboardType(dashboard.id) === "public";
 
     return runRtkEndpoint(
       {
@@ -114,7 +121,9 @@ function ActionVizForm({
         parameters: dashcardParamValues,
       },
       dispatch,
-      actionApi.endpoints.prefetchDashcardValues,
+      isPublic
+        ? publicApi.endpoints.prefetchPublicDashcardValues
+        : actionApi.endpoints.prefetchDashcardValues,
     );
   }, [dashboard.id, dashcard.id, dashcardParamValues, dispatch]);
 
@@ -173,7 +182,7 @@ function ActionVizForm({
         >
           <ActionCreator
             action={action}
-            modelId={action.model_id}
+            modelId={action.model_id ?? undefined}
             databaseId={action.database_id}
             actionId={action.id}
             onSubmit={onActionEdit}
@@ -185,8 +194,20 @@ function ActionVizForm({
   }
 
   return (
-    <FormWrapper>
-      <FormTitle>{title}</FormTitle>
+    // A zero flex basis lets the form fill the dashcard and scroll instead of growing past it
+    // The md radius matches the dashcard, which clips its content to its own corners
+    <Paper
+      className={CS.overflowYAuto}
+      flex="1 1 0"
+      mih={0}
+      p="xl"
+      radius="md"
+      shadow="none"
+      withBorder
+    >
+      <Title order={4} size="h5" lh="normal" mb="xl">
+        {title}
+      </Title>
       <ActionParametersInputForm
         action={action}
         mappedParameters={mappedParameters}
@@ -194,9 +215,6 @@ function ActionVizForm({
         onSubmit={onSubmit}
         onSubmitSuccess={handleSubmitSuccess}
       />
-    </FormWrapper>
+    </Paper>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ActionVizForm;

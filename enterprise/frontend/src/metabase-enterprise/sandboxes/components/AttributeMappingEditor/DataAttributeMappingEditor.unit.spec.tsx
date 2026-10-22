@@ -84,6 +84,7 @@ const setup = async ({
 }: {
   shouldUseSavedQuestion: boolean;
 }) => {
+  // Unjustified type cast. FIXME
   const card = createMockCard({ id: cardPolicy.card_id as number });
   const cardQueryMetadata = createMockCardQueryMetadata({});
   setupTableQueryMetadataEndpoint(createMockTable());

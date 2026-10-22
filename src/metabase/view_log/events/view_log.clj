@@ -5,6 +5,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.audit-app.core :as audit]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
@@ -13,6 +14,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.view-log.db :as view-log.db]
+   [metabase.view-log.schema :as view-log.schema]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -54,16 +57,13 @@
           ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
           ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
           (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
-            ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
-            ;; specifically search-index enqueues on after-update.
-            (t2/query {:update (t2/table-name model)
-                       :set    {:view_count [:+ :view_count (into [:case]
-                                                                  (mapcat (fn [[cnt ids]]
-                                                                            [[:in :id ids] cnt])
-                                                                          cnt->ids))]}
-                       :where  [:in :id (apply concat (vals cnt->ids))]})))))
+            (case model
+              :model/Card      (view-log.db/increment-card-view-counts! cnt->ids)
+              :model/Dashboard (view-log.db/increment-dashboard-view-counts! cnt->ids)
+              :model/Table     (view-log.db/increment-table-view-counts! cnt->ids)
+              :model/Document  (view-log.db/increment-document-view-counts! cnt->ids))))))
     (catch Exception e
-      (log/error e "Failed to increment view counts"))))
+      (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
 (def ^:private increment-view-count-interval-seconds 20)
 
@@ -85,12 +85,25 @@
 
 (def ^:private record-view-queue-capacity 500)
 
-(defn- record-views!* [views]
+(defn- record-views!*
+  "Insert a batch of views in one statement. The batch is one transaction, so a single row the app DB rejects (e.g.
+  an overlong value in a narrow column) would discard every row in it: on failure, retry the rows one at a time so
+  only the bad row is lost. Any other failure (e.g. the app DB is down) would fail every retry too, each possibly
+  waiting for a connection, so then the batch is dropped."
+  [views]
   (log/debugf "Recording %d views" (count views))
   (try
-    (t2/insert! :model/ViewLog views)
+    (view-log.db/insert-view-logs! views)
     (catch Exception e
-      (log/error e "Failed to record views"))))
+      (if (sql-errors/row-rejected? e)
+        (do
+          (log/warnf "Failed to record %d views as a batch, retrying individually: %s" (count views) (ex-message e))
+          (doseq [view views]
+            (try
+              (view-log.db/insert-view-logs! [view])
+              (catch Exception e
+                (log/errorf "Failed to record view: %s" (ex-message e))))))
+        (log/errorf "Failed to record %d views: %s" (count views) (ex-message e))))))
 
 (defonce ^:private record-view-queue
   (delay (grouper/start!
@@ -103,7 +116,9 @@
   and inserted asynchronously, so they may not be visible in the view log for up
   to [[record-view-interval-seconds]] (plus they are lost on non-graceful shutdown); we consider that an acceptable
   trade for not paying for a synchronous INSERT on every read/query request."
-  [view-or-views :- [:or :map [:sequential :map]]]
+  [view-or-views :- [:or
+                     ::view-log.schema/view-log.update
+                     [:sequential ::view-log.schema/view-log.update]]]
   (span/with-span!
     {:name "record-view!"}
     (when (premium-features/log-enabled?)
@@ -123,8 +138,8 @@
    :context    context
    :tenant_id  (:tenant_id @api/*current-user*)})
 
-(derive ::card-read-event :metabase/event)
-(derive :event/card-read ::card-read-event)
+(events/derive! ::card-read-event :metabase/event)
+(events/derive! :event/card-read ::card-read-event)
 
 (m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
@@ -137,10 +152,34 @@
       (increment-view-counts! :model/Card object-id)
       (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
-(derive ::dashboard-queried :metabase/event)
-(derive :event/dashboard-queried ::dashboard-queried)
+(events/derive! ::card-query-view :metabase/event)
+(events/derive! :event/card-query ::card-query-view)
+
+(m/defmethod events/publish-event! ::card-query-view
+  "Log a view for the cards read through ad-hoc `card__id` queries, which never fire `:event/card-read`: models, and
+  the saved questions a published data app queries. Only ad-hoc queries count, which keeps downloads out. Other
+  ad-hoc queries on a regular question are left out too: opening the question is logged as its card-read."
+  [topic {:keys [card-id user-id context]}]
+  (span/with-span!
+    {:name    "view-log-card-query"
+     :topic   topic
+     :user-id user-id}
+    (try
+      (when (and (= context :ad-hoc)
+                 (or (analytics/data-app-client?)
+                     (= :model (view-log.db/card-type card-id))))
+        (increment-view-counts! :model/Card card-id)
+        (record-views! (generate-view :model :model/Card
+                                      :object-id card-id
+                                      :user-id   user-id
+                                      :context   :question)))
+      (catch Throwable e
+        (log/warnf "Failed to process card query view event. %s: %s" topic (ex-message e))))))
+
+(events/derive! ::dashboard-queried :metabase/event)
+(events/derive! :event/dashboard-queried ::dashboard-queried)
 
 (def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
 
@@ -150,22 +189,12 @@
   (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
                                              (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
-      ;; Use t2/query (raw SQL) instead of t2/update! to avoid triggering Toucan2 model hooks
-      ;; (specifically :hook/search-index after-update). The search index can tolerate staleness on this field: the
-      ;; index will catch up on the next re-index cycle or when the dashboard is edited. This matches the pattern used
-      ;; in increment-view-counts!*
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
-        (t2/query {:update (t2/table-name :model/Dashboard)
-                   :set    {:last_viewed_at (into [:case]
-                                                  (mapcat (fn [[id timestamp]]
-                                                            [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                          dashboard-id->timestamp))
-                            :updated_at :updated_at}
-                   :where  [:in :id (keys dashboard-id->timestamp)]}))
+        (view-log.db/update-dashboards-last-viewed-at! dashboard-id->timestamp))
       (catch Exception e
-        (log/error e "Failed to update dashboard last_viewed_at")))))
+        (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
@@ -186,10 +215,10 @@
   (try
     (update-dashboard-last-viewed-at! object-id)
     (catch Throwable e
-      (log/warnf e "Failed to process dashboard query event. %s" topic))))
+      (log/warnf "Failed to process dashboard query event. %s: %s" topic (ex-message e)))))
 
-(derive ::collection-read-event :metabase/event)
-(derive :event/collection-read ::collection-read-event)
+(events/derive! ::collection-read-event :metabase/event)
+(events/derive! :event/collection-read ::collection-read-event)
 
 (m/defmethod events/publish-event! ::collection-read-event
   "Handle processing for a generic read event notification"
@@ -199,26 +228,25 @@
         generate-view
         record-views!)
     (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+      (log/warnf "Failed to process view event. %s: %s" topic (ex-message e)))))
 
-(derive ::read-permission-failure :metabase/event)
-(derive :event/read-permission-failure ::read-permission-failure)
+(events/derive! ::read-permission-failure :metabase/event)
+(events/derive! :event/read-permission-failure ::read-permission-failure)
 
 (m/defmethod events/publish-event! ::read-permission-failure
   "Handle processing for a generic read event notification"
   [topic {:keys [object] :as event}]
   (try
-    ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
-    ;; other models.
-    (when (#{:model/Card :model/Dashboard} (t2/model object))
+    ;; Only log permission check failures for models whose successful reads are view-logged too.
+    (when (#{:model/Card :model/Dashboard :model/Exploration} (t2/model object))
       (-> event
           generate-view
           record-views!))
     (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+      (log/warnf "Failed to process view event. %s: %s" topic (ex-message e)))))
 
-(derive ::dashboard-read :metabase/event)
-(derive :event/dashboard-read ::dashboard-read)
+(events/derive! ::dashboard-read :metabase/event)
+(events/derive! :event/dashboard-read ::dashboard-read)
 
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
@@ -231,10 +259,10 @@
       (increment-view-counts! :model/Dashboard object-id)
       (record-views! (generate-view :model :model/Dashboard event))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
-(derive ::table-read :metabase/event)
-(derive :event/table-read ::table-read)
+(events/derive! ::table-read :metabase/event)
+(events/derive! :event/table-read ::table-read)
 
 (m/defmethod events/publish-event! ::table-read
   "Handle processing for the table read event. Does a basic permissions check to see if the the user has data perms for
@@ -255,4 +283,4 @@
             generate-view
             record-views!))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))

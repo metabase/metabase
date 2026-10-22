@@ -7,6 +7,7 @@
 (s/def ::remarks string?)
 
 (s/def :column.common.constraints/onDelete
+  ;; the bare string is an intentional in-body note explaining why onDelete is always rejected
   #_{:clj-kondo/ignore [:unused-value]}
   (fn [_]
     "Don't try to use onDelete in constraints! onDelete is only for addForeignKeyConstraints. Use deleteCascade!"

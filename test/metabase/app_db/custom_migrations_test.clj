@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.custom-migrations-test
   "Tests to make sure the custom migrations work as expected.
 
   As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
@@ -25,13 +25,15 @@
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.settings.models.setting]
+   [metabase.settings.models.setting :as setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
@@ -80,7 +82,10 @@
       (is (= (sort versions)
              versions)))))
 
-(task/defjob AbandonmentEmail [_] :default)
+(task/defjob AbandonmentEmail
+  {:saved-class "metabase.app_db.custom_migrations_test.AbandonmentEmail"}
+  [_]
+  :default)
 
 (defn- table-default [table]
   (letfn [(with-timestamped [props]
@@ -1525,7 +1530,7 @@
 (defmacro ^:private with-ldap-and-sso-configured!
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mappings sso-group-mappings & body]
-  (binding [metabase.settings.models.setting/*allow-retired-setting-names* true]
+  (binding [setting/*allow-retired-setting-names* true]
     `(call-with-ldap-and-sso-configured! ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
 
 ;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
@@ -1808,7 +1813,7 @@
               pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
               pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
           ;; trigger this so we schedule a trigger for send-pulse
-          (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+          (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
           (testing "sanity check that we have a send pulse trigger and 2 jobs"
             (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
             (is (= #{"metabase.task.send-pulses.send-pulse.job"
@@ -1977,8 +1982,8 @@
                 (is (not-empty settings-after))
                 (is (every? encryption/possibly-encrypted-string?
                             (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
+                (is (= (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-before))
+                       (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-after))))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
@@ -2676,6 +2681,23 @@
           (testing "everything back to normal after downgrade"
             (assert-pre-conditions)))))))
 
+(deftest migrate-clickhouse-details-keeps-encryption-state-test
+  (testing "v57.2025-08-23T16:00:00 : rewriting details keeps each row as plaintext or ciphertext, whichever it was"
+    (encryption-test/with-secret-key "clickhouse-details-state-key-1234"
+      (impl/test-migrations "v57.2025-08-23T16:00:00" [migrate!]
+        (let [plain-id (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                           :details (json/encode {:dbname "plain_db"})}))
+              enc-id   (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                           :details (encryption/encrypt (json/encode {:dbname "enc_db"}))}))
+              raw      (fn [id] (t2/select-one-fn :details :metabase_database :id id))]
+          (migrate!)
+          (testing "a plaintext row stays plaintext"
+            (is (not (encryption/decryptable-string? (raw plain-id))))
+            (is (= "plain_db" (:db-filters-patterns (json/decode+kw (raw plain-id))))))
+          (testing "an encrypted row stays encrypted"
+            (is (encryption/decryptable-string? (raw enc-id)))
+            (is (= "enc_db" (:db-filters-patterns (json/decode+kw (encryption/maybe-decrypt (raw enc-id))))))))))))
+
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
     (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
@@ -2700,6 +2722,35 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+
+(deftest backfill-example-dashboard-id-value-with-aad-test
+  (testing "v58.2026-09-03T00:00:04 : the example-dashboard-id row gets its value_with_aad from its encrypted value"
+    (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value (encryption/encrypt "7")}]})
+        (migrate!)
+        (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+          (is (= "7" (encryption/maybe-decrypt value)))
+          (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
+  (testing "a plaintext numeric value written by a version predating encryption of this setting is taken as-is"
+    (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+        (migrate!)
+        (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+          (is (= "7" value))
+          (is (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")}))
+          (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
+  (testing "without a key both columns stay plaintext"
+    (encryption-test/with-secret-key nil
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+        (migrate!)
+        (is (= {:value "7", :value_with_aad "7"}
+               (select-keys (t2/select-one :setting :key "example-dashboard-id") [:value :value_with_aad])))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
@@ -2939,199 +2990,187 @@
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
 
-(deftest ^:mb/old-migrations-test migrate-away-from-sqlite-sample-database-on-downgrade-rollback-test
-  (testing "Downgrading past the changeset (the real rollback path - the target version has none of the new
-           sample database code) removes the SQLite sample database and the whole Example collection tree that
-           the CreateSampleContent migration installed"
-    ;; Start early enough that CreateSampleContent runs under our binding and installs the real SQLite Sample
-    ;; Database and Example collection tree - the exact state a SQLite-sample version leaves to be torn down.
-    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
-      (binding [custom-migrations/*create-sample-content* true]
-        (migrate!))
-      (let [sample-db-id    (:id (t2/query-one {:select [:id] :from [:metabase_database]
-                                                :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
-            sample-coll-ids (mapv :id (t2/query {:select [:id] :from [:collection] :where [:= :is_sample true]}))]
-        (testing "precondition: the SQLite sample database and its Example collections exist after upgrade"
-          (is (some? sample-db-id))
-          (is (seq sample-coll-ids)))
-        (migrate! :down 62)
-        (testing "the SQLite sample database is gone"
-          (is (not (t2/exists? (t2/table-name :model/Database) :id sample-db-id))))
-        (testing "the entire outgoing Example collection tree is deleted - the cascade is complete"
-          (is (zero? (t2/count (t2/table-name :model/Collection) :id [:in sample-coll-ids]))))))))
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v63.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v63.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
 
-(deftest migrate-away-from-sqlite-sample-database-on-downgrade-test
-  (testing "Downgrade removes the SQLite sample database and the content it leaves empty, keeping everything else"
-    (mt/with-temp
-      [:model/Database   sample      {:engine :sqlite, :is_sample true, :details {:db "mem:sample"}}
-       :model/Database   other       {:engine :h2,     :details {:db "mem:other"}}
-       :model/Card       other-card  {:database_id (:id other)}
-       :model/Dashboard  sample-dash {}
-       :model/Dashboard  mixed-dash  {}
-       :model/Collection examples    {:name "Examples",   :is_sample true}
-       :model/Collection ecommerce   {:name "E-commerce", :is_sample true, :location (str "/" (:id examples) "/")}
-       :model/Collection keep-coll   {:name "Keep me"}]
-      ;; Mirror the bundled sample content's fan-out: 8 tables x 7 fields, 39 cards, plus dashcards,
-      ;; series, and tabs. MySQL 9.7 resolves a multi-level ON DELETE CASCADE of this shape
-      ;; incompletely (it deletes the tables but orphans most cards and all fields), so the cleanup
-      ;; must not rely on DB-level cascade. This fixture makes that regression visible.
-      (let [table-ids     (vec (t2/insert-returning-pks! :model/Table
-                                                         (for [i (range 8)]
-                                                           {:db_id  (:id sample)
-                                                            :name   (str "sample_table_" i)
-                                                            :active true})))
-            _             (t2/insert! :model/Field
-                                      (for [tid table-ids
-                                            i   (range 7)]
-                                        {:table_id      tid
-                                         :name          (str "field_" i)
-                                         :base_type     :type/Text
-                                         :database_type "TEXT"
-                                         :position      i}))
-            card-ids      (vec (t2/insert-returning-pks! :model/Card
-                                                         (for [i (range 39)]
-                                                           {:name                   (str "sample card " i)
-                                                            :display                "table"
-                                                            :dataset_query          {}
-                                                            :visualization_settings {}
-                                                            :creator_id             (mt/user->id :rasta)
-                                                            :database_id            (:id sample)
-                                                            :table_id               (nth table-ids (mod i (count table-ids)))})))
-            [dc1 _dc2 dc3] (t2/insert-returning-pks! :model/DashboardCard
-                                                     [{:dashboard_id (:id sample-dash) :card_id (first card-ids)
-                                                       :size_x 4 :size_y 4 :row 0 :col 0}
-                                                      {:dashboard_id (:id mixed-dash) :card_id (second card-ids)
-                                                       :size_x 4 :size_y 4 :row 0 :col 0}
-                                                      {:dashboard_id (:id mixed-dash) :card_id (:id other-card)
-                                                       :size_x 4 :size_y 4 :row 0 :col 4}])
-            _             (t2/insert! :model/DashboardCardSeries {:dashboardcard_id dc1
-                                                                  :card_id          (nth card-ids 2)
-                                                                  :position         0})
-            _             (t2/insert! :model/DashboardTab {:dashboard_id (:id sample-dash)
-                                                           :name         "Tab 1"
-                                                           :position     0})
-            ;; parameter_card rows orphan in three ways; a fourth must survive.
-            [pc-src
-             pc-card-owner
-             pc-dash-owner
-             pc-keep]    (t2/insert-returning-pks!
-                          :model/ParameterCard
-                          [;; value source is a sample card -> delete
-                           {:card_id (first card-ids) :parameterized_object_type "dashboard"
-                            :parameterized_object_id (:id mixed-dash) :parameter_id "src"}
-                           ;; parameterized object is a sample card -> delete
-                           {:card_id (:id other-card) :parameterized_object_type "card"
-                            :parameterized_object_id (second card-ids) :parameter_id "card-owner"}
-                           ;; parameterized object is a deleted sample dashboard -> delete
-                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
-                            :parameterized_object_id (:id sample-dash) :parameter_id "dash-owner"}
-                           ;; non-sample source on a surviving dashboard -> keep
-                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
-                            :parameterized_object_id (:id mixed-dash) :parameter_id "keep"}])]
-        ;; Collection creation auto-grants an "All Users" permission row (object "/collection/<id>/") for each
-        ;; sample collection; the migration must clean those up too.
-        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
-        (testing "the SQLite sample database and all of its child content are deleted, with no orphans"
-          (is (not (t2/exists? :model/Database :id (:id sample))))
-          (is (zero? (t2/count :metabase_table :db_id (:id sample))))
-          (is (zero? (t2/count :metabase_field :table_id [:in table-ids])))
-          (is (zero? (t2/count :report_card :database_id (:id sample))))
-          (is (zero? (t2/count :report_dashboardcard :card_id [:in card-ids])))
-          (is (zero? (t2/count :dashboardcard_series :card_id [:in card-ids]))))
-        (testing "a dashboard left empty by the deletion is deleted, along with its tabs"
-          (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))
-          (is (zero? (t2/count :dashboard_tab :dashboard_id (:id sample-dash)))))
-        (testing "parameter_card rows referencing a deleted sample card or dashboard are removed"
-          (is (not (t2/exists? :model/ParameterCard :id pc-src)))
-          (is (not (t2/exists? :model/ParameterCard :id pc-card-owner)))
-          (is (not (t2/exists? :model/ParameterCard :id pc-dash-owner)))
-          (testing "but an unrelated parameter_card is kept"
-            (is (t2/exists? :model/ParameterCard :id pc-keep))))
-        (testing "the sample Example collections and their permission records are deleted"
-          (is (not (t2/exists? :model/Collection :id (:id examples))))
-          (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
-          (is (zero? (t2/count :permissions :object [:in [(format "/collection/%d/" (:id examples))
-                                                          (format "/collection/%d/read/" (:id examples))]]))))
-        (testing "a dashboard that still has other cards, and unrelated content, is kept"
-          (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
-          (is (t2/exists? :report_dashboardcard :id dc3))
-          (is (t2/exists? :model/Card :id (:id other-card)))
-          (is (t2/exists? :model/Database :id (:id other)))
-          (is (t2/exists? :model/Collection :id (:id keep-coll))))))))
+(deftest retire-mcp-v1-oauth-scopes-test
+  (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
+                "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
+                "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
+                "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
+                "re-authorization validates. GHY-4491: the second changeset is a no-op. tools/list now lists every "
+                "tool and a call short of scope gets a 403 insufficient_scope step-up, so a legacy client "
+                "re-authorizes on its own; revoking its tokens would only force it through the refresh-failure path.")
+    (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
+      (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
+            legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
+                             "agent:notebook:create" "agent:query:construct" "agent:query:execute"
+                             "agent:question:create" "agent:question:update" "agent:question:execute"
+                             "agent:metric:create" "agent:metric:update"
+                             "agent:dashboard:create" "agent:dashboard:update" "agent:collection:create"
+                             "agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
+            v2-scopes       ["agent:content:read" "agent:content:write" "agent:query:run"
+                             "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+            ;; `oauth_access_token.user_id` is a real FK, so the row must exist. Inserted directly rather
+            ;; than via `new-instance-with-default` because this release makes `entity_id` NOT NULL.
+            user-id         (t2/insert-returning-pk!
+                             :core_user {:first_name  "MCP"
+                                         :last_name   "Migration"
+                                         :email       (str (random-uuid) "@metabase.com")
+                                         :password    "irrelevant"
+                                         :entity_id   (subs (str/replace (str (random-uuid)) "-" "") 0 21)
+                                         :date_joined :%now})
+            insert-client!  (fn [client-id registration-type scopes]
+                              (t2/insert-returning-pk!
+                               :oauth_client {:client_id         client-id
+                                              :client_name       "Legacy MCP Client"
+                                              :redirect_uris     (json/encode ["http://localhost/callback"])
+                                              :grant_types       (json/encode ["authorization_code"])
+                                              :response_types    (json/encode ["code"])
+                                              :scopes            (json/encode scopes)
+                                              :registration_type registration-type
+                                              :client_type       "public"
+                                              :created_at        :%now
+                                              :updated_at        :%now}))
+            insert-token!   (fn [table client-id scopes]
+                              (t2/insert-returning-pk!
+                               table {:token      (str (random-uuid))
+                                      :user_id    user-id
+                                      :client_id  client-id
+                                      :scope      (json/encode scopes)
+                                      :expiry     (+ (System/currentTimeMillis) 3600000)
+                                      :created_at :%now}))
+            dynamic-id      (insert-client! "dynamic-legacy" "dynamic" legacy-scopes)
+            static-id       (insert-client! "static-legacy" "static" legacy-scopes)
+            legacy-access   (insert-token! :oauth_access_token "dynamic-legacy" legacy-scopes)
+            legacy-refresh  (insert-token! :oauth_refresh_token "dynamic-legacy" legacy-scopes)
+            ;; A token already minted against the v2 surface — the migration must leave it alone, or upgrading
+            ;; would log out clients that were working.
+            v2-access       (insert-token! :oauth_access_token "dynamic-legacy" ["agent:content:read"])
+            v2-refresh      (insert-token! :oauth_refresh_token "dynamic-legacy" v2-scopes)
+            scopes-of       (fn [table id col]
+                              (set (json/decode (get (t2/query-one {:select [col] :from [table] :where [:= :id id]}) col))))
+            revoked?        (fn [table id]
+                              (some? (:revoked_at (t2/query-one {:select [:revoked_at] :from [table] :where [:= :id id]}))))]
+        (migrate!)
+        (testing "the dynamic client's snapshot gains the six v2 scopes, so a re-authorization validates"
+          (let [scopes (scopes-of :oauth_client dynamic-id :scopes)]
+            (is (every? scopes v2-scopes))
+            (testing "and keeps its legacy scopes — issued tokens carry literal strings, so none may be dropped"
+              (is (every? scopes legacy-scopes)))))
+        (testing "a statically registered client is left alone — it did not snapshot via DCR"
+          (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
+        (testing "GHY-4491: legacy-scoped tokens are NOT revoked; the client self-heals through the 403 step-up"
+          (is (not (revoked? :oauth_access_token legacy-access)))
+          (is (not (revoked? :oauth_refresh_token legacy-refresh))))
+        (testing "tokens already carrying a v2 tool scope keep working"
+          (is (not (revoked? :oauth_access_token v2-access)))
+          (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
 
-(deftest ^:mb/old-migrations-test downgrade-keeps-user-content-and-deletes-sample-dependents-test
-  (testing "Downgrade deletes everything that depends on the sample DB (transitively, even user-created), then keeps
-           any Example collection a user still has their own content in - leaving the RESTRICT FKs intact rather than
-           aborting on them"
-    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
-      (binding [custom-migrations/*create-sample-content* true]
-        (migrate!))
-      (let [examples-id  (:id (t2/query-one {:select [:id] :from [:collection]
-                                             :where [:= :is_sample true] :order-by [[:id :asc]]}))
-            ecommerce-id (:id (t2/query-one {:select [:id] :from [:collection]
-                                             :where [:= :is_sample true] :order-by [[:id :desc]]}))
-            sqlite-db-id (:id (t2/query-one {:select [:id] :from [:metabase_database]
-                                             :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
-            sample-card  (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
-            ins          (fn [t r] (first (t2/insert-returning-pks! t r)))
-            other-db     (ins :metabase_database {:name "User DB" :engine "h2" :is_sample false
-                                                  :details "{}" :created_at :%now :updated_at :%now})
-            ;; a user question that doesn't touch the sample DB, filed in Examples -> must survive
-            user-card    (ins :report_card {:name "keep me" :display "table" :dataset_query "{}"
-                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
-                                            :collection_id examples-id :created_at :%now :updated_at :%now})
-            ;; a user model built on a sample card -> depends transitively -> must be deleted
-            user-model   (ins :report_card {:name "built on sample" :display "table" :dataset_query "{}"
-                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
-                                            :source_card_id sample-card :collection_id examples-id
-                                            :created_at :%now :updated_at :%now})
-            ;; a curated table + a transform filed in E-commerce (RESTRICT FKs) -> keep that collection, FKs intact
-            table-id     (ins :metabase_table {:name "curated" :active true :db_id other-db
-                                               :collection_id ecommerce-id :created_at :%now :updated_at :%now})
-            transform-id (ins :transform {:name "tf" :source "{}" :target "{}" :source_type "query"
-                                          :collection_id ecommerce-id :created_at :%now :updated_at :%now})
-            exists?      (fn [t id] (boolean (seq (t2/query {:select [1] :from [t] :where [:= :id id] :limit 1}))))
-            coll-of      (fn [t id] (:collection_id (t2/query-one {:select [:collection_id] :from [t] :where [:= :id id]})))]
-        (migrate! :down 62)
-        (testing "the sample database and everything depending on it - including the user model - are deleted"
-          (is (not (exists? :metabase_database sqlite-db-id)))
-          (is (not (exists? :report_card sample-card)))
-          (is (not (exists? :report_card user-model))))
-        (testing "a user question that does not depend on the sample DB survives"
-          (is (exists? :report_card user-card)))
-        (testing "Example collections holding surviving user content are kept"
-          (is (exists? :collection examples-id))
-          (is (exists? :collection ecommerce-id)))
-        (testing "the RESTRICT-FK table and transform survive with their collection_id intact (no abort, no null-out)"
-          (is (exists? :metabase_table table-id))
-          (is (= ecommerce-id (coll-of :metabase_table table-id)))
-          (is (exists? :transform transform-id))
-          (is (= ecommerce-id (coll-of :transform transform-id))))))))
+(deftest move-data-app-resource-collections-to-their-namespace-test
+  (testing "v65.2026-10-06T00:00:01: every data app's resource collection is in the data-apps namespace"
+    (impl/test-migrations ["v65.2026-10-06T00:00:01"] [migrate!]
+      (let [insert-app! (fn [slug collection-id]
+                          (t2/insert-returning-pk! :data_app {:name                   slug
+                                                              :display_name           slug
+                                                              :bundle_path            "dist/index.js"
+                                                              :entity_id              (str slug "Entity0000000000")
+                                                              :resource_collection_id collection-id
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            old-coll    (t2/insert-returning-pk! :collection {:name       "Data App: sales"
+                                                              :slug       "data_app__sales"
+                                                              :location   "/"
+                                                              :entity_id  "salesCollection000001"
+                                                              :created_at :%now})
+            with-coll   (insert-app! "sales" old-coll)
+            without     (insert-app! "ops" nil)]
+        (migrate!)
+        (testing "a collection from before the namespace existed is moved into it"
+          (is (= "data-apps" (t2/select-one-fn :namespace :collection :id old-coll)))
+          (is (= old-coll (t2/select-one-fn :resource_collection_id :data_app :id with-coll))))
+        (testing "an app without a collection gets one, at the root of the namespace"
+          (let [collection-id (t2/select-one-fn :resource_collection_id :data_app :id without)]
+            (is (some? collection-id))
+            (is (=? {:name "Data App: ops" :slug "data_app__ops" :location "/" :namespace "data-apps"}
+                    (t2/select-one :collection :id collection-id)))
+            (is (= 21 (count (t2/select-one-fn :entity_id :collection :id collection-id))))))))))
 
-(deftest ^:mb/old-migrations-test downgrade-leaves-no-orphaned-card-children-test
-  ;; B1 characterization: the migration hand-deletes only the dashcard tables and lets DB-level ON DELETE CASCADE
-  ;; clear report_card's other ~11 children (query_field, query_table, card_bookmark, report_cardfavorite, ...).
-  ;; Its own comment warns that MySQL 9.7 resolves cascades incompletely. This test seeds those children for a
-  ;; sample card and asserts none survive the card's deletion - i.e. it FAILS if the relied-on cascade leaves
-  ;; orphans. It deliberately asserts only on the outcome (no orphans), not on how the cleanup is done.
-  (testing "downgrade leaves no child rows pointing at a deleted sample card"
-    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
-      (binding [custom-migrations/*create-sample-content* true]
-        (migrate!))
-      (let [internal-user 13371338
-            sqlite-db-id  (:id (t2/query-one {:select [:id] :from [:metabase_database]
-                                              :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
-            sample-card   (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
-            ins           (fn [t r] (first (t2/insert-returning-pks! t r)))]
-        ;; children of report_card that the migration leaves to ON DELETE CASCADE (not hand-deleted)
-        (ins :query_field {:card_id sample-card :column "TOTAL" :explicit_reference true})
-        (ins :query_table {:card_id sample-card :table "ORDERS"})
-        (ins :card_bookmark {:user_id internal-user :card_id sample-card})
-        (ins :report_cardfavorite {:card_id sample-card :owner_id internal-user :created_at :%now :updated_at :%now})
-        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
-        (testing "the sample card was deleted"
-          (is (not (t2/exists? :report_card :id sample-card))))
-        (testing "no child table is left with a row pointing at the deleted card"
-          (doseq [table [:query_field :query_table :card_bookmark :report_cardfavorite]]
-            (is (zero? (t2/count table :card_id sample-card))
-                (str table " has an orphaned row referencing the deleted sample card"))))))))
+(deftest delete-data-app-drafts-test
+  (testing "v65.2026-10-07T00:00:00: draft rows go with their assignments and empty collections"
+    (impl/test-migrations ["v65.2026-10-07T00:00:00"] [migrate!]
+      (let [insert-collection! (fn [name]
+                                 (t2/insert-returning-pk! :collection {:name       name
+                                                                       :slug       name
+                                                                       :location   "/"
+                                                                       :namespace  "data-apps"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now}))
+            insert-app!        (fn [slug draft? collection-id]
+                                 (t2/insert-returning-pk! :data_app {:name                   slug
+                                                                     :display_name           slug
+                                                                     :bundle_path            "dist/index.js"
+                                                                     :entity_id              (u/generate-nano-id)
+                                                                     :draft                  draft?
+                                                                     :resource_collection_id collection-id
+                                                                     :created_at             :%now
+                                                                     :updated_at             :%now}))
+            empty-coll   (insert-collection! "empty")
+            used-coll    (insert-collection! "used")
+            kept-coll    (insert-collection! "kept")
+            shared-group (t2/insert-returning-pk! :permissions_group {:name      "App viewers"
+                                                                      :entity_id (u/generate-nano-id)})
+            empty-draft  (insert-app! "empty-draft" true empty-coll)
+            used-draft   (insert-app! "used-draft" true used-coll)
+            real-app     (insert-app! "real" false kept-coll)]
+        (doseq [app-id [empty-draft used-draft real-app]]
+          (t2/insert! :data_app_group_assignment {:data_app_id app-id :permission_group_id shared-group}))
+        (t2/insert! :permissions {:object (str "/collection/" empty-coll "/read/") :group_id 1 :collection_id empty-coll})
+        ;; something was put in the used draft's collection: a child collection here, cards and actions count the same
+        (t2/insert! :collection {:name       "Inside"
+                                 :slug       "inside"
+                                 :location   (str "/" used-coll "/")
+                                 :namespace  "data-apps"
+                                 :entity_id  (u/generate-nano-id)
+                                 :created_at :%now})
+        (migrate!)
+        (testing "every draft row is gone, with its assignments"
+          (is (not (t2/exists? :data_app :id empty-draft)))
+          (is (not (t2/exists? :data_app :id used-draft)))
+          (is (not (t2/exists? :data_app_group_assignment :data_app_id [:in [empty-draft used-draft]]))))
+        (testing "the empty collection went with its draft, grants included"
+          (is (not (t2/exists? :collection :id empty-coll)))
+          (is (not (t2/exists? :permissions :collection_id empty-coll))))
+        (testing "a collection holding content stays"
+          (is (t2/exists? :collection :id used-coll)))
+        (testing "an app that is not a draft is untouched"
+          (is (t2/exists? :data_app :id real-app))
+          (is (t2/exists? :collection :id kept-coll))
+          (is (t2/exists? :data_app_group_assignment :data_app_id real-app :permission_group_id shared-group)))
+        (testing "the shared permission group survives draft deletion"
+          (is (t2/exists? :permissions_group :id shared-group)))))))

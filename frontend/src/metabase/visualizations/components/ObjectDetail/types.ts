@@ -1,11 +1,10 @@
 import type Question from "metabase-lib/v1/Question";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   Card,
+  DashboardCard,
   DatasetData,
-  QuestionDashboardCard,
   RowValue,
 } from "metabase-types/api";
 
@@ -26,9 +25,8 @@ export type OnVisualizationClickType =
 export interface ObjectDetailProps {
   data: DatasetData;
   question?: Question;
-  metadata?: Metadata;
   card?: Card;
-  dashcard?: QuestionDashboardCard;
+  dashcard?: DashboardCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
   zoomedRow?: RowValue[] | undefined;
@@ -43,7 +41,6 @@ export interface ObjectDetailProps {
   canZoomNextRow?: boolean;
   isDataApp?: boolean;
   showControls?: boolean;
-  showRelations?: boolean;
   showHeader?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;

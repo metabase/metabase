@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useListLogsQuery } from "metabase/api/logger";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import type { Log } from "metabase-types/api";
 
 import { maybeMergeLogs } from "./utils";
@@ -24,18 +25,14 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
     if (!queryError) {
       return null;
     }
-    const errorWithData = queryError as {
-      data?: { message?: string };
-      message?: string;
-    };
-    return errorWithData.data?.message ?? errorWithData.message ?? null;
+    return findErrorMessage(queryError) ?? null;
   }, [queryError]);
 
   return { loaded: isSuccess, error, logs };
 }
 
 export function useTailLogs(logs: Log[]) {
-  const scrollRef = useRef<any>();
+  const scrollRef = useRef<any>(undefined);
   const shouldAutoFollow = useRef(true);
 
   function autoFollow() {

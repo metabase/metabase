@@ -1,21 +1,19 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
+import {
+  getDefaultPlaceholder,
+  getExtraFormFieldProps,
+} from "metabase/admin/settings/utils";
 import { FormTextInput } from "metabase/forms";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import { useAdminSetting } from "metabase/settings";
+import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 
 export function LdapUserProvisioning() {
   return (
-    <SettingsSection>
-      <AdminSettingInput
-        name="ldap-user-provisioning-enabled?"
-        title={t`User provisioning`}
-        inputType="radio"
-        options={provisioningOptions("LDAP")}
-      />
-    </SettingsSection>
+    <UserProvisioningSection
+      settingKey="ldap-user-provisioning-enabled?"
+      providerName="LDAP"
+    />
   );
 }
 
@@ -26,8 +24,9 @@ export function LdapGroupMembershipFilter() {
     <FormTextInput
       name="ldap-group-membership-filter"
       label={t`Group membership filter`}
-      description={settingDetails?.description}
+      placeholder={getDefaultPlaceholder(settingDetails)}
       nullable
+      {...getExtraFormFieldProps(settingDetails)}
     />
   );
 }

@@ -1,5 +1,5 @@
 import type { MetabaseDataPointObject } from "metabase/embedding-sdk/types/plugins";
-import type { ClickObject } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { transformSdkQuestion } from "./transform-question";
@@ -14,6 +14,7 @@ export function transformClickedDataPoint(
   question: Question,
 ): MetabaseDataPointObject {
   return {
+    // Unjustified type cast. FIXME
     raw: clicked as Record<string, unknown>,
 
     column: clicked.column

@@ -13,15 +13,14 @@
 
   The var/namespace name (`entity-retrieval`) is retained deliberately — the module is a home for
   information retrieval generally, not 1:1 with this index or tool.
-  Runs in the enterprise pgvector store via [[metabase.entity-retrieval.core]]."
+  Runs in the enterprise pgvector store via [[metabase.search.entity-retrieval.core]]."
   (:require
    [clojure.string :as str]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -85,13 +84,16 @@
                [#{} []])
        second))
 
+;; The one production read of the raw index — hence the lint exemption. Every field of every hit either is
+;; dropped here or survives the hydration below, which keeps only entities the current user can read.
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- build-matches
   "Fetch, dedupe to distinct entities, hydrate each match's entity ref into a full search record, and
   return the top `n` the current user can read.
   Each match: `{:doc_type :matched_text :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
-  (let [raw      (entity-retrieval/search
-                  user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
+  (let [fetch-n  (min over-fetch-cap (* over-fetch-factor n))
+        raw      (entity-retrieval/search-unfiltered user-search-prompt fetch-n)
         deduped  (dedupe-by-entity raw)
         refs     (distinct (map :entity deduped))
         ;; Hydration permission-filters (entity-refs->search-results drops entities the user can't read),
@@ -184,19 +186,10 @@
   top match is flagged low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library
   clearly matches — prefer asking the user to clarify or narrow the request."
   [{:keys [user_search_prompt limit]} :- entity-retrieval-schema]
-  (try
-    (let [n       (min max-limit (or limit default-limit))
-          matches (build-matches user_search_prompt n)]
-      {:output            (format-output matches)
-       :structured-output {:result-type :search
-                           :data        (flatten-data matches)
-                           :total_count (count matches)
-                           :weak_match  (boolean (:weak? (first matches)))}})
-    (catch Exception e
-      ;; A failure here is the search subsystem being down (typically the embedding service), not "the
-      ;; library is empty" — say so in :output (the only channel the agent reads) so it doesn't confidently
-      ;; tell the user nothing matches. No :structured-output: that feeds the FE a result payload, and there's
-      ;; no successful search to render.
-      (log/error e "Error in retrieve_library_entities")
-      {:output (str "The library search is temporarily unavailable (" (or (ex-message e) "unknown error")
-                    "). This does not mean the library is empty; the search could not be run.")})))
+  (let [n       (min max-limit (or limit default-limit))
+        matches (build-matches user_search_prompt n)]
+    {:output            (format-output matches)
+     :structured-output {:result-type :search
+                         :data        (flatten-data matches)
+                         :total_count (count matches)
+                         :weak_match  (boolean (:weak? (first matches)))}}))
