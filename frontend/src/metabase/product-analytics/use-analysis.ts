@@ -88,16 +88,22 @@ export const useAnalysis = <K extends AnalysisKind>({
     () => computeSettings(config.settings, context, stored),
     [config, context, stored],
   );
+  // Only the widgets see the picked colors, so picking one doesn't recompute
+  // the settings or the query.
+  const widgetContext = useMemo<AnalysisContext>(
+    () => ({ ...context, displayColors: colors }),
+    [context, colors],
+  );
   const widgets = useMemo(
     () =>
       getSettingWidgets(
         config.settings,
-        context,
+        widgetContext,
         stored,
         computed,
         onChangeSettings,
       ),
-    [config, context, stored, computed, onChangeSettings],
+    [config, widgetContext, stored, computed, onChangeSettings],
   );
 
   const flags = createFlagAllocator();

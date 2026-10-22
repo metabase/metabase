@@ -153,11 +153,14 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
     getDefault: () => [...STATES],
     isValid: (value) =>
       isUnknownArray(value) && value.every((state) => isOneOf(STATES, state)),
-    getProps: (_context, settings) => ({
+    getProps: (context, settings) => ({
       options: STATES.map((state) => ({
         value: state,
         label: getStateName(state),
-        color: STATE_COLOR_NAMES[state],
+        // The chart's color for the group, picked or from the palette.
+        color:
+          context.displayColors?.[getStateColorKey(state)] ??
+          STATE_COLOR_NAMES[state],
         description: getStateDescription(
           state,
           getPeriod(settings.granularity),

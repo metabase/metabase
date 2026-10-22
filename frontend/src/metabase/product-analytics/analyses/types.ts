@@ -38,6 +38,11 @@ export type AnalysisContext = {
   usersTable: UsersTable | undefined;
   /** The table's pageviews, when its schema is one we recognize. */
   detectedPageviews?: EventDefinition;
+  /**
+   * Colors picked in the display panel, so setup widgets can show the same
+   * colors as the chart. Not settings: they don't change the query.
+   */
+  displayColors?: DisplayColors;
 };
 
 export type ColumnRoleSettings = {
