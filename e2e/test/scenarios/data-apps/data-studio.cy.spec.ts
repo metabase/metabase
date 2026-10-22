@@ -25,6 +25,8 @@ describe("scenarios > data apps > data studio", () => {
       testEnv: TEST_ENV,
     });
 
+    cy.intercept("POST", "/api/dataset").as("dataAppQuery");
+
     cy.visit("/data-studio/apps");
     H.main().findByText(APP_DISPLAY_NAME).click();
 
@@ -32,6 +34,18 @@ describe("scenarios > data apps > data studio", () => {
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
       cy.findByRole("heading", { name: "Orders overview" }).should(
         "be.visible",
+      );
+      cy.findByTestId("orders-count", { timeout: 30000 })
+        .invoke("text")
+        .should("match", /^\d+$/);
+    });
+
+    // The iframe's query requests must be attributed to the data app, so
+    // query_execution analytics record which app ran them (EMB-2088).
+    cy.wait("@dataAppQuery").then(({ request }) => {
+      expect(request.headers["x-metabase-client"]).to.equal("data-app");
+      expect(request.headers["x-metabase-client-identifier"]).to.equal(
+        APP_NAME,
       );
     });
   });
@@ -116,14 +130,20 @@ describe("scenarios > data apps > data studio", () => {
       );
     }
 
-    it("marks an outdated app in the list and refuses to open it", () => {
+    it("marks an outdated app in the list, offers no way to open it there, and refuses to open it", () => {
       markAppOutdated();
 
       cy.visit("/data-studio/apps");
       H.main()
         .findByRole("row", { name: new RegExp(SYNCED_APP_DISPLAY_NAME) })
-        .findByText("Live, outdated")
-        .should("be.visible");
+        .within(() => {
+          cy.findByText("Live, outdated").should("be.visible");
+          cy.findByRole("button", { name: "Data app options" }).click();
+        });
+      H.popover().within(() => {
+        cy.findByRole("menuitem", { name: /Make draft/ }).should("be.visible");
+        cy.findByRole("menuitem", { name: /Open app/ }).should("not.exist");
+      });
 
       H.openDataApp(SYNCED_APP_NAME);
       H.main().findByText("This data app is outdated").should("be.visible");
