@@ -260,7 +260,7 @@
 (deftest export-validation-failures-end-metabot-turn-test
   (with-mp-and-stubs!
     (fn []
-      (let [export-query repr.resolve/export-query]
+      (let [export-query (mt/original-fn #'repr.resolve/export-query)]
         (mt/with-dynamic-fn-redefs [repr.resolve/export-query
                                     (fn [& args]
                                       (assoc-in (apply export-query args) ["stages" 0 "filters"] {"op" ">"}))]
