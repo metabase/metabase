@@ -475,6 +475,50 @@
               (t/before? (t/plus fetched-at local-refresh-floor) (t/instant)))
       (clear-cache!))))
 
+(defonce ^:private refresh-interval
+  ;; 12h less up to 1h, drawn once per instance so a fleet started together does not fetch together
+  (t/minus (t/hours 12) (t/seconds (rand-int 3600))))
+
+(defonce ^:private refresh-requested? (atom false))
+
+(defn request-refresh!
+  "Have the next [[tick!]] refresh the token status, for a caller that should not wait for the fetch itself."
+  []
+  (reset! refresh-requested? true)
+  nil)
+
+(defn- refresh-reason
+  "Why a refresh of `token` is due, or nil when none is."
+  [token requested?]
+  (let [{:keys [token-hash status-hash fetched-at]} @entry]
+    (cond
+      (not= token-hash (hash-token token))
+      "no status is held"
+
+      requested?
+      "a refresh was requested"
+
+      (t/before? (t/plus fetched-at refresh-interval) (t/instant))
+      "the held status is due for its periodic refresh"
+
+      ;; the only app DB read in the module; a missing row carries no news
+      (when-let [shared (:token_status_hash (premium-features.db/token-status-cache token-hash))]
+        (not= shared status-hash))
+      "another instance holds a different status")))
+
+(defn tick!
+  "Refresh the token status if one is due. Never throws, so a scheduler keeps calling it."
+  []
+  (try
+    (let [[requested?] (reset-vals! refresh-requested? false)]
+      (when-let [token (premium-features.settings/premium-embedding-token)]
+        (when-let [reason (refresh-reason token requested?)]
+          (log/infof "Refreshing the premium features token status: %s." reason)
+          (clear-cache!))))
+    (catch Throwable e
+      (log/errorf "Error checking whether the premium features token status is due: %s" (ex-message e))
+      nil)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     READER                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
