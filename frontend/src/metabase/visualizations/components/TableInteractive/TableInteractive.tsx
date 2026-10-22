@@ -86,7 +86,7 @@ import {
   type HeaderCellWithColumnInfoProps,
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
-import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { useSyncColumnWidths } from "./hooks/use-sync-column-widths";
 import { getInfoPopoversDisabled } from "./utils/get-info-popovers-disabled";
 import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
 
@@ -815,12 +815,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [infoPopoversDisabled],
   );
 
-  useResetWidthsOnColumnsChange(
-    onUpdateVisualizationSettings,
-    data,
-    question,
-    columnWidths,
-  );
+  useSyncColumnWidths(onUpdateVisualizationSettings, data, columnWidths);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
