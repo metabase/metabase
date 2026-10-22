@@ -62,6 +62,9 @@
       (testing "Timelines have only un-archived events when `include=events` is passed"
         (is (= #{"event-ba"}
                (event-names (collection-timelines-request coll-b true)))))
+      (testing "GET /api/timeline/:id?include=events without `archived` returns only un-archived events"
+        (is (= #{"event-ba"}
+               (event-names [(mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-b)) :include "events")]))))
       (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
         (is (= '()
                (->> (collection-timelines-request coll-c true) first :events)))))))

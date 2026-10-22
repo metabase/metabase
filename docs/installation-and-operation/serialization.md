@@ -324,7 +324,7 @@ Includes sample values for fields, which Metabase uses to present dropdown menus
 - **CLI:** positional argument (required): `export <dir_name>`
 - **API:** `dirname=<name>`
 
-Type: String.
+Type: String. For the API, the name must be 1 to 255 characters long, use only the letters A-Z and a-z, the digits 0-9, and the characters `_`, `-`, `.`, and `%`, and it can't start with `.` or `-`.
 
 Default (API): `<instance-name>-<YYYY-MM-dd_HH_mm>`. For the CLI, the directory name is required. There's no default.
 

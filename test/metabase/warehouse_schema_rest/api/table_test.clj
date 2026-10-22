@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.core :as collections]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
@@ -1605,3 +1606,22 @@
                             {:ids [t1 t2] :visibility_type nil})
       (is (= [nil nil]
              (map #(user-table-fn :visibility_type %) [t1 t2]))))))
+
+(deftest bulk-update-tables-collection-id-persists-test
+  (testing "PUT /api/table with an ids vector publishes every listed table to the collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
+                   :model/Table      {t1 :id}      {:db_id (mt/id)}
+                   :model/Table      {t2 :id}      {:db_id (mt/id)}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :collection_id coll-id})
+      (is (= [coll-id coll-id]
+             (map #(user-table-fn :collection_id %) [t1 t2]))))))
+
+(deftest bulk-update-tables-field-order-persists-test
+  (testing "PUT /api/table with an ids vector sets field_order on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id)}
+                   :model/Table {t2 :id} {:db_id (mt/id)}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :field_order "alphabetical"})
+      (is (= [:alphabetical :alphabetical]
+             (map #(user-table-fn :field_order %) [t1 t2]))))))

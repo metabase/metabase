@@ -178,10 +178,9 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
-(def ^:private TableUpdateBodySingle
-  "Body of `PUT /api/table/:id`."
-  [:map {:closed true}
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
+(def ^:private table-update-entries
+  "User-settable Table columns, as optional `:map` entries."
+  [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
    [:description             {:optional true} [:maybe :string]]
@@ -196,22 +195,15 @@
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private TableUpdateBodySingle
+  "Body of `PUT /api/table/:id`."
+  (into [:map {:closed true}] table-update-entries))
+
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
-  [:map {:closed true}
-   [:ids                                      [:sequential ms/PositiveInt]]
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-   [:entity_type             {:optional true} [:maybe EntityType]]
-   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-   [:description             {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
-   [:owner_email             {:optional true} [:maybe :string]]
-   [:owner_user_id           {:optional true} [:maybe :int]]])
+  (into [:map {:closed true}
+         [:ids [:sequential ms/PositiveInt]]]
+        table-update-entries))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
