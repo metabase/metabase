@@ -21,6 +21,8 @@ type LazyRouteFn = Extract<
   (...args: never[]) => unknown
 >;
 
+type LazyRouteGuards = WeakMap<LazyRouteFn, LazyRouteFn>;
+
 // A chunk is one request against one instance, so a retry is a fresh pick from
 // whatever is behind the load balancer. During a rolling deploy a pick lands on
 // a instance that still serves this build about as often as that build is still
@@ -141,7 +143,34 @@ function recoverFromChunkError(Fallback: ChunkErrorFallback) {
   };
 }
 
-function guardLazyRoute(load: LazyRouteFn, Fallback: ChunkErrorFallback) {
+/**
+ * One wrapper per loader, so the routes that share a chunk still share one.
+ *
+ * `withChunkFallback` caches the component it stands up against the loader it
+ * is handed, which is this wrapper. A wrapper per route would give the dozen
+ * routes that mount the query builder a component type each, and react-router
+ * renders `route.Component` without a key, so moving between two of them would
+ * remount the page.
+ */
+function guardLazyRoute(
+  load: LazyRouteFn,
+  Fallback: ChunkErrorFallback,
+  guards: LazyRouteGuards,
+): LazyRouteFn {
+  const shared = guards.get(load);
+  if (shared) {
+    return shared;
+  }
+
+  const guard = recoverLazyRoute(load, Fallback);
+  guards.set(load, guard);
+  return guard;
+}
+
+function recoverLazyRoute(
+  load: LazyRouteFn,
+  Fallback: ChunkErrorFallback,
+): LazyRouteFn {
   return async (...args: Parameters<LazyRouteFn>) => {
     try {
       return await retry(() => load(...args), {
@@ -176,6 +205,16 @@ export function withChunkErrorRecovery(
   if (!Fallback) {
     return routes;
   }
+  // One map for the whole tree, so two routes that share a loader share a
+  // wrapper however far apart in it they sit.
+  return guardRoutes(routes, Fallback, new WeakMap());
+}
+
+function guardRoutes(
+  routes: RouteObject[],
+  Fallback: ChunkErrorFallback,
+  guards: LazyRouteGuards,
+): RouteObject[] {
   return routes.map((route): RouteObject => {
     // react-router also accepts an object `lazy`, which splits a route by
     // property rather than by module. Nothing here uses that form, and it has no
@@ -183,7 +222,7 @@ export function withChunkErrorRecovery(
     const { lazy } = route;
     const recovering =
       typeof lazy === "function"
-        ? { lazy: guardLazyRoute(lazy, Fallback) }
+        ? { lazy: guardLazyRoute(lazy, Fallback, guards) }
         : null;
 
     // An index route carries no children, and the two shapes are only
@@ -195,7 +234,7 @@ export function withChunkErrorRecovery(
       ...route,
       ...recovering,
       ...(route.children && {
-        children: withChunkErrorRecovery(route.children, Fallback),
+        children: guardRoutes(route.children, Fallback, guards),
       }),
     };
   });
