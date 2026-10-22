@@ -17,6 +17,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.users.models.user-parameter-value :as user-parameter-value]
    [toucan2.core :as t2]))
 
 (defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
@@ -87,6 +88,29 @@
              clojure.lang.ExceptionInfo
              #"Invalid parameter value type :number/!= for parameter \"_PRICE_\".*"
              (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}])))))))
+
+(deftest unknown-parameters-are-not-stored-test
+  (testing "request parameters the dashboard does not have never reach the last-used-parameter store (their ids are
+            unbounded, and `user_parameter_value.parameter_id` is varchar(36); one rejected row would discard the whole
+            batch of every user's saved parameters)"
+    (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
+                                                     {card-id :id}      :card
+                                                     {dashcard-id :id}  :dashcard}]
+      (let [stored (atom [])]
+        (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [_user-id _dashboard-id params] (swap! stored into params))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "an unknown id is rejected without being stored"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Dashboard does not have a parameter with ID"
+                   (resolve-params-for-query dashboard-id card-id dashcard-id
+                                             [{:id "_PRICE_", :value 4}
+                                              {:id (apply str (repeat 40 "z")), :value 3}])))
+              (is (empty? (filter #(= (apply str (repeat 40 "z")) (:id %)) @stored))))
+            (testing "known ids are still stored"
+              (reset! stored [])
+              (resolve-params-for-query dashboard-id card-id dashcard-id [{:id "_PRICE_", :value 4}])
+              (is (= ["_PRICE_"] (map :id @stored))))))))))
 
 (deftest ^:parallel resolve-parameters-validation-test-2
   (testing "Resolves new operator type arguments without error (#25031)"

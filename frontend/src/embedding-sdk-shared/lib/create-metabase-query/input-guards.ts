@@ -20,7 +20,6 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   source: TableSchema;
   limit?: number;
   enabled?: boolean;
-  savedQuestionEntityId?: string;
 };
 
 /**
@@ -81,7 +80,9 @@ export const isQuestionInput = (input: unknown): input is QuestionQueryInput =>
   isObject(input) && "source" in input && isQuestionReference(input.source);
 
 export const isQuestionReference = (value: unknown): value is QuestionSchema =>
-  isObject(value) && typeof value.id === "number" && value.type === "card";
+  isObject(value) &&
+  value.type === "card" &&
+  (typeof value.id === "number" || typeof value.entityId === "string");
 
 export const isQueryInput = (input: unknown): input is QueryInput =>
   isTableInput(input) || isQuestionInput(input);

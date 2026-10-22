@@ -8,7 +8,7 @@ import * as Urls from "metabase/urls";
 
 import S from "./LegendItem.module.css";
 import { LegendItemDot } from "./LegendItemDot";
-import { LEGEND_SIZES, type LegendSize } from "./layout";
+import { LEGEND_SIZES, type LegendSize } from "./sizes";
 
 // Before the real URL is computed, a non-empty href keeps the title a
 // focusable link, so focusing it can trigger that computation.
@@ -22,6 +22,7 @@ export interface LegendItemData {
 }
 
 interface LegendItemProps {
+  className?: string;
   item: LegendItemData;
   size?: LegendSize;
   index: number;
@@ -38,6 +39,7 @@ interface LegendItemProps {
 }
 
 const LegendItemInner = ({
+  className,
   item,
   size = "sm",
   index,
@@ -86,7 +88,7 @@ const LegendItemInner = ({
 
   return (
     <Flex
-      className={S.root}
+      className={cx(S.root, className)}
       align="center"
       miw={0}
       opacity={isMuted ? 0.4 : 1}

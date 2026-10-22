@@ -252,8 +252,8 @@
               (is (=? {:model_id nil :collection_id app-id}
                       (action/select-action :id (insert! app-id)))))))))))
 
-(deftest action-in-a-data-apps-collection-is-read-only-test
-  (testing "Nobody writes an action in a collection of the data apps namespace, administrators included"
+(deftest action-in-a-data-apps-collection-is-admin-only-test
+  (testing "Only administrators write an action in a collection of the data apps namespace"
     (mt/with-temp [:model/Collection {app-id :id}  {:namespace "data-apps"}
                    :model/Collection {coll-id :id} {:namespace "data-actions"}]
       (mt/with-model-cleanup [:model/Action]
@@ -267,14 +267,15 @@
               action    (action/select-action :id (action/insert! (action-in app-id)))
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
+            (is (true? (mi/can-write? action)))
+            (is (true? (:can_write (t2/hydrate action :can_write))))
+            (is (true? (mi/can-create? :model/Action (action-in app-id))))
+            (is (true? (mi/can-update? elsewhere {:collection_id app-id}))))
+          (mt/with-test-user :rasta
             (is (false? (mi/can-write? action)))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                   (api/write-check :model/Action (:id action))))
-            (is (false? (:can_write (t2/hydrate action :can_write))))
-            (testing "nor creates one there, or moves one in"
-              (is (false? (mi/can-create? :model/Action (action-in app-id))))
-              (is (true? (mi/can-write? elsewhere)))
-              (is (false? (mi/can-update? elsewhere {:collection_id app-id}))))))))))
+            (is (false? (mi/can-create? :model/Action (action-in app-id))))))))))
 
 (deftest implicit-action-requires-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

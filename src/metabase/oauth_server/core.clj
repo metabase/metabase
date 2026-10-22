@@ -9,6 +9,7 @@
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
@@ -166,6 +167,12 @@
                  (subs 0 (dec (count path)))))))
       (catch java.net.URISyntaxException _ nil))))
 
+(defn- mcp-endpoint-paths-by-url
+  "Return the MCP endpoint paths keyed by their [[canonical-resource-uri]] under the Site URL."
+  []
+  (into {} (keep (fn [path] (some-> (canonical-resource-uri (str (system/site-url) path)) (vector path))))
+        (mcp/mcp-endpoint-paths)))
+
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
@@ -201,12 +208,27 @@
         ;; token has to work against each -- so the accepted set is the UNION of what they accept, not the set
         ;; of whichever one is checked first. Taking a single winner would drop the v1-only scopes when a v1
         ;; alias is named alongside v2, silently shrinking a grant the client asked for and the user approved.
-        matched  (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
-                         (mcp/mcp-endpoint-paths))]
+        matched  (keep (mcp-endpoint-paths-by-url) named)]
     (if (or (not scope) (empty? matched))
       scope
       (let [accepted (into #{} (mapcat mcp-resource-scopes) matched)]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
+
+(defn mcp-resource-url
+  "Return the canonical MCP endpoint's RFC 8707 resource indicator under the Site URL.
+
+  Return nil when no Site URL is set."
+  []
+  (some-> (system/site-url) (str (mcp/mcp-canonical-path))))
+
+(defn mcp-endpoint-resource?
+  "Return whether every RFC 8707 indicator in `resources` names the MCP endpoint.
+
+  Return true when `resources` names none. `resources` is a string or a sequence of strings.
+  Compare each string's [[canonical-resource-uri]] with the Site URL joined to each of
+  [[metabase.mcp.core/mcp-endpoint-paths]]."
+  [resources]
+  (every? (comp (mcp-endpoint-paths-by-url) canonical-resource-uri) (cond-> resources (string? resources) vector)))
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
@@ -285,3 +307,11 @@
               (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+
+(defenterprise jwt-bearer-grant-enabled?
+  "Return whether JWT authentication is enabled and configured.
+
+  The JWT bearer grant (RFC 7523) requires this. Always false on OSS."
+  metabase-enterprise.sso.integrations.jwt
+  []
+  false)

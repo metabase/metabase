@@ -552,5 +552,6 @@ function assertActionButtonFitsDashcard() {
         .getBoundingClientRect();
       expect(button.bottom).to.be.at.most(dashcard.bottom + 0.5);
       expect(button.top).to.be.at.least(dashcard.top - 0.5);
+      expect(button.height).to.be.closeTo(dashcard.height, 1);
     });
 }
