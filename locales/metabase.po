@@ -10,7 +10,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-10-21 12:51+0000\n"
+"POT-Creation-Date: 2026-10-22 13:01+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -76,7 +76,7 @@ msgstr ""
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarContainer.tsx
 #: frontend/src/metabase/questions/components/MoveCardModal/MoveCardToast/MoveCardToast.tsx
-#: metabase/server/middleware/exceptions.clj
+#: metabase/agent_api/api.clj metabase/server/middleware/exceptions.clj
 #: metabase_enterprise/transforms_python/execute.clj
 msgid "Something went wrong"
 msgstr ""
@@ -786,6 +786,7 @@ msgid "Read"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/McpToolsAccessPage/components/McpToolsGrid/utils.ts
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
 msgid "Query"
 msgstr ""
@@ -1543,6 +1544,7 @@ msgstr ""
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 #: frontend/src/metabase/viz-core/lib/settings/column.ts
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Off"
 msgstr ""
@@ -2165,6 +2167,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/transforms-inspector/pages/TransformInspectPage/components/LensNavigator/useLensNavigation.ts
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/components/PythonTransformEditor/PythonEditorResults/PythonEditorResults.tsx
@@ -2195,6 +2198,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/dashboards/pages/DashboardContentsPage/use-content-columns.tsx
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/DependencyTable/utils.tsx
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/SortOptionsPicker/utils.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/content-diagnostics/components/common-columns.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsTable/utils.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/MfaUsersPage/columns.tsx
@@ -2336,6 +2340,8 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/EntityTypeFilterSelect.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/content-diagnostics/components/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError.tsx
@@ -4086,6 +4092,8 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/FilterOptionsPicker/TypeFilterPicker/TypeFilterPicker.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/EntityTypeFilterSelect.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/content-diagnostics/components/DiagnosticsFilterPicker/DiagnosticsFilterPicker.tsx
 #: frontend/src/metabase/metadata/components/EntityTypeInput.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskRunDetailsPage/TaskRunDetailsPage.tsx
@@ -4093,6 +4101,7 @@ msgid "Entity type"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/common/components/InfoText/get-info-text.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.ts
@@ -6276,6 +6285,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/cli-analytics/components/CliCallerLivenessTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/cli-analytics/components/CliEventsTable.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpEventsTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationsPage/ConversationsTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionDetailSidebar/SessionDetails.tsx
@@ -6313,6 +6323,7 @@ msgid "Client"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/cli-analytics/components/CliEventsTable.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpEventsTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/api-key-usage/components/ApiKeyUsageEventsTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionDetailSidebar/SessionDetails.tsx
@@ -6439,6 +6450,96 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton/NewQuestionButton.tsx
 msgid "Query this data"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppFilterSelect.tsx
+msgid "All data apps"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppFilterSelect.tsx
+msgid "Installed"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppFilterSelect.tsx
+msgid "Removed"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppFilterSelect.tsx
+msgid "Data app"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+#: frontend/src/metabase/monitor/tools/components/TaskDetailsPage/TaskDetailsPage.tsx
+#: frontend/src/metabase/monitor/tools/components/TaskListPage/TasksTable.tsx
+#: frontend/src/metabase/monitor/tools/components/TaskRunDetailsPage/TaskRunDetailsPage.tsx
+#: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
+#: frontend/src/metabase/monitor/tools/components/TaskRunsPage/TaskRunsTable.tsx
+#: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
+#: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunInfoSection.tsx
+#: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunTable/utils.tsx
+#: frontend/src/metabase/transforms/pages/RunListPage/RunFilterBar/RunFilterBar.tsx
+#: frontend/src/metabase/transforms/pages/RunListPage/RunSidebar/InfoSection/InfoSection.tsx
+#: frontend/src/metabase/transforms/pages/RunListPage/RunTable/utils.tsx
+#: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunFilterBar/TransformGraphRunFilterBar.tsx
+#: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunSidebar/TransformGraphRunInfoSection.tsx
+#: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunTable/utils.tsx
+msgid "Started at"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+msgid "Running time (s)"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+msgid "Result rows"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/EntityTypeFilterSelect.tsx
+#: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
+#: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
+#: frontend/src/metabase/data-studio/actions/pages/ActionListPage/ActionListPage.tsx
+msgid "Action"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+msgid "Identifier"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+msgid "Metabase version"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+#: enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionDetailSidebar/SessionDetails.tsx
+msgid "User agent"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+msgid "Sanitized user agent"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+msgid "Data app activity"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppLogTable.tsx
+msgid "No activity found"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppsAnalyticsPage.tsx
+#, javascript-format
+msgid "The query log is missing the columns this page filters on: {0}."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/DataAppsAnalyticsPage.tsx
+#: frontend/src/metabase/monitor/components/MonitorLayout/MonitorLayout.tsx
+msgid "Data app analytics"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/data-apps-analytics/components/EntityTypeFilterSelect.tsx
+msgid "All entity types"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpAnalyticsSectionLayout.tsx
@@ -7704,10 +7805,6 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionDetailSidebar/SessionDetails.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionsTable/utils.tsx
 msgid "Device"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionDetailSidebar/SessionDetails.tsx
-msgid "User agent"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionDetailSidebar/SessionDetails.tsx
@@ -10808,9 +10905,7 @@ msgstr ""
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] ""
-msgstr[1] ""
+msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -12041,6 +12136,7 @@ msgstr ""
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Auto"
 msgstr ""
@@ -19955,6 +20051,7 @@ msgstr ""
 #: frontend/src/metabase/dashboard/components/DashboardGridSkeleton/DashboardGridSkeleton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopoverContent.tsx
 #: frontend/src/metabase/embedding/components/PublicLinkPopover/PublicLinkCopyPanel.tsx
+#: frontend/src/metabase/metadata/components/FkTargetPicker/FkTargetPicker.tsx
 #: frontend/src/metabase/nav/components/search/SearchResults/SearchResults.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionAlertsMenuItem.tsx
 #: frontend/src/metabase/search/components/UserNameDisplay/UserNameDisplay.tsx
@@ -21051,7 +21148,7 @@ msgstr ""
 #: metabase/lib/temporal_bucket.cljc
 #, fuzzy
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] ""
 "#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#\n"
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
@@ -21776,13 +21873,6 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/common/utils/model-names.ts
-#: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
-#: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
-#: frontend/src/metabase/data-studio/actions/pages/ActionListPage/ActionListPage.tsx
-msgid "Action"
-msgstr ""
-
-#: frontend/src/metabase/common/utils/model-names.ts
 msgid "Indexed record"
 msgstr ""
 
@@ -22059,6 +22149,7 @@ msgstr ""
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart/definition.ts
 #: frontend/src/metabase/viz-core/lib/settings/goal.ts
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
 #: frontend/src/metabase/viz-core/lib/settings/nested.ts
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Display"
@@ -23501,6 +23592,7 @@ msgid "Vertical Alignment"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
 msgid "Top"
 msgstr ""
 
@@ -23511,6 +23603,7 @@ msgid "Middle"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
 msgid "Bottom"
 msgstr ""
 
@@ -23522,6 +23615,7 @@ msgstr ""
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Left"
 msgstr ""
@@ -23534,6 +23628,7 @@ msgstr ""
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Right"
 msgstr ""
@@ -29325,6 +29420,10 @@ msgid "Tip"
 msgstr ""
 
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Choose a field"
+msgstr ""
+
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 #, javascript-format
 msgid "Failed to update display values of {0}"
 msgstr ""
@@ -29337,10 +29436,6 @@ msgstr ""
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/utils.ts
 msgid "Unrecognized mapping type"
-msgstr ""
-
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Choose a field"
 msgstr ""
 
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
@@ -29767,16 +29862,19 @@ msgstr ""
 
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/ChartTypePicker/ChartTypePicker.tsx
 #: frontend/src/metabase/visualizations/visualizations/LineChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Line"
 msgstr ""
 
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/ChartTypePicker/ChartTypePicker.tsx
 #: frontend/src/metabase/visualizations/visualizations/AreaChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Area"
 msgstr ""
 
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/ChartTypePicker/ChartTypePicker.tsx
 #: frontend/src/metabase/visualizations/visualizations/BarChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Bar"
 msgstr ""
 
@@ -30522,23 +30620,6 @@ msgstr ""
 #: frontend/src/metabase/monitor/tools/components/TaskDetailsPage/TaskDetailsPage.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskListPage/TasksTable.tsx
 msgid "DB Engine"
-msgstr ""
-
-#: frontend/src/metabase/monitor/tools/components/TaskDetailsPage/TaskDetailsPage.tsx
-#: frontend/src/metabase/monitor/tools/components/TaskListPage/TasksTable.tsx
-#: frontend/src/metabase/monitor/tools/components/TaskRunDetailsPage/TaskRunDetailsPage.tsx
-#: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
-#: frontend/src/metabase/monitor/tools/components/TaskRunsPage/TaskRunsTable.tsx
-#: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunInfoSection.tsx
-#: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunTable/utils.tsx
-#: frontend/src/metabase/transforms/pages/RunListPage/RunFilterBar/RunFilterBar.tsx
-#: frontend/src/metabase/transforms/pages/RunListPage/RunSidebar/InfoSection/InfoSection.tsx
-#: frontend/src/metabase/transforms/pages/RunListPage/RunTable/utils.tsx
-#: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunFilterBar/TransformGraphRunFilterBar.tsx
-#: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunSidebar/TransformGraphRunInfoSection.tsx
-#: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunTable/utils.tsx
-msgid "Started at"
 msgstr ""
 
 #: frontend/src/metabase/monitor/tools/components/TaskDetailsPage/TaskDetailsPage.tsx
@@ -37377,10 +37458,6 @@ msgstr ""
 msgid "Grid map requires binned longitude/latitude."
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/LegendVertical.tsx
-msgid "more"
-msgstr ""
-
 #: frontend/src/metabase/visualizations/components/ObjectDetail/ExpandableString.tsx
 msgid "View less"
 msgstr ""
@@ -37498,7 +37575,7 @@ msgstr ""
 msgid "Show series"
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/legend/layout.ts
+#: frontend/src/metabase/visualizations/components/legend/measure.ts
 #, javascript-format
 msgctxt "{0} is the number of hidden legend items"
 msgid "+ {0} more"
@@ -38053,10 +38130,6 @@ msgstr ""
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 #: metabase/driver/redshift.clj
 msgid "Style"
-msgstr ""
-
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Show legend"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
@@ -38982,12 +39055,28 @@ msgstr ""
 msgid "Median only"
 msgstr ""
 
+#: frontend/src/metabase/viz-core/lib/settings/legend.ts
+msgid "Legend position"
+msgstr ""
+
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Display type"
 msgstr ""
 
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Line shape"
+msgstr ""
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Straight"
+msgstr ""
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Curved"
+msgstr ""
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Stepped"
 msgstr ""
 
 #: frontend/src/metabase/viz-core/lib/settings/series.ts
@@ -39363,20 +39452,6 @@ msgstr ""
 
 #: metabase/agent_lib/representations/repair.clj
 msgid ""
-"Field {0} is on table {1}, which has no foreign key from the source table "
-"{2}, so it cannot be reached implicitly. To group or filter by a column from "
-"that table, add an explicit `joins:` entry and reference the field using the "
-"join alias. Otherwise use a field from the source table."
-msgstr ""
-
-#: metabase/agent_lib/representations/repair.clj
-msgid ""
-"Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-"
-"field` option on the field clause to disambiguate."
-msgstr ""
-
-#: metabase/agent_lib/representations/repair.clj
-msgid ""
 "Field {0} is reachable from {1} explicit joins via aliases {2}. Specify the "
 "`source-field-join-alias` option on the field clause to pick which join''s "
 "foreign key to use."
@@ -39441,17 +39516,15 @@ msgstr ""
 
 #: metabase/agent_lib/representations/repair.clj
 msgid ""
-"`{0}` does not survive the round trip through the question link the frontend "
-"opens: the question either fails to load, or silently loses the clause and "
-"answers something else. Put the unit on the column instead - a `temporal-"
-"unit` option on the `field` / `expression` reference, compared to the first "
-"day of the period as a plain date string like \"2025-01-01\" - or write the "
-"range out as `>=` its first day and `<` the first day after it, both plain "
-"date strings (not `between`, which drops everything after midnight on its "
-"last day). Use the range for `year` on an `expression` reference, which the "
-"query engine reads as a number, and inside `aggregation:` (`count-where`, "
-"`sum-where`, `share`) and join `conditions:`, where moving the unit onto the "
-"column would change the answer."
+"Move the temporal unit in `{0}` off the literal. Put it on the column - a "
+"`temporal-unit` option on the `field` / `expression` reference, compared to "
+"the first day of the period as a plain date string like \"2025-01-01\" - or "
+"write the range out as `>=` its first day and `<` the first day after it, "
+"both plain date strings (not `between`, which drops everything after "
+"midnight on its last day). Use the range for `year` on an `expression` "
+"reference, which the query engine reads as a number, and inside `aggregation:"
+"` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving "
+"the unit onto the column would change the answer."
 msgstr ""
 
 #: metabase/agent_lib/representations/repair.clj
@@ -39677,7 +39750,7 @@ msgstr ""
 #: metabase/app_db/setup.clj
 msgid ""
 "See: https://www.metabase.com/docs/latest/installation-and-operation/"
-"upgrading-metabase#rolling-back-an-upgrade"
+"upgrading-metabase#rolling-back-an-upgrade-or-to-an-older-version"
 msgstr ""
 
 #: metabase/app_db/setup.clj
@@ -39851,6 +39924,10 @@ msgstr ""
 
 #: metabase/auth_identity/provider.clj
 msgid "Your account is disabled."
+msgstr ""
+
+#: metabase/auth_identity/provider.clj
+msgid "This login is only for personal accounts."
 msgstr ""
 
 #: metabase/auth_identity/provider.clj
@@ -40919,8 +40996,8 @@ msgstr ""
 #: metabase/driver/common.clj
 msgid ""
 "If your database is behind a firewall, you may need to allow connections "
-"from our Metabase [Cloud IP addresses](https://www.metabase.com/cloud/docs/"
-"ip-addresses-to-whitelist.html):"
+"from our Metabase [Cloud IP addresses](https://www.metabase.com/docs/latest/"
+"cloud/ip-addresses-to-whitelist):"
 msgstr ""
 
 #: metabase/driver/common.clj
@@ -41425,6 +41502,18 @@ msgstr ""
 
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
+msgstr ""
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "This query has circular referencing snippets."
+msgstr ""
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "This query uses too many snippets."
+msgstr ""
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "This query is too long."
 msgstr ""
 
 #: metabase/driver/sql/parameters/substitute.clj
@@ -45552,18 +45641,6 @@ msgstr ""
 msgid "Metabot could not complete this step."
 msgstr ""
 
-#: metabase/metabot/tools/metadata.clj
-msgid "Too many {0} IDs provided ({1}). Limit to {2}."
-msgstr ""
-
-#: metabase/metabot/tools/recovery_hints.clj
-msgid ""
-"Metrics are aggregations, not sources. To use metric {0}, put its base table "
-"into `source-table:` — combine the `database_name` and "
-"`base_table_fully_qualified_name` attributes from its search result or "
-"`read_resource metabase://metric/{1}` — and reference the metric as:"
-msgstr ""
-
 #: metabase/metabot/tools/recovery_hints.clj
 msgid ""
 "To reference a saved question or model as a query source, put its "
@@ -45724,6 +45801,10 @@ msgstr ""
 msgid "A `document_id` is required when saving to a document."
 msgstr ""
 
+#: metabase/metabot/tools/sql.clj
+msgid "No active SQL editor was found. Open a SQL editor and try again."
+msgstr ""
+
 #: metabase/metabot/tools/sql/common.clj
 msgid ""
 "You do not have permission to write SQL queries against this database. "
@@ -45735,31 +45816,7 @@ msgid "Unsupported query format"
 msgstr ""
 
 #: metabase/metabot/tools/sql/create.clj
-msgid "Database {0} not found"
-msgstr ""
-
-#: metabase/metabot/tools/sql/create.clj
 msgid "You do not have access to this database."
-msgstr ""
-
-#: metabase/metabot/tools/sql/edit.clj
-msgid "Each edit must include old_string and new_string"
-msgstr ""
-
-#: metabase/metabot/tools/sql/edit.clj
-msgid "Text to replace not found: {0}"
-msgstr ""
-
-#: metabase/metabot/tools/sql/edit.clj
-msgid "Text to replace found multiple times: {0}"
-msgstr ""
-
-#: metabase/metabot/tools/sql/edit.clj metabase/metabot/tools/sql/replace.clj
-msgid "Query {0} not found"
-msgstr ""
-
-#: metabase/metabot/tools/sql/edit.clj
-msgid "Query {0} is not a SQL query"
 msgstr ""
 
 #: metabase/metabot/usage.clj
@@ -50495,6 +50552,14 @@ msgstr ""
 msgid ""
 "Sorry, but you''ll need a {0} account to view this page. Please contact your "
 "administrator."
+msgstr ""
+
+#: metabase_enterprise/sso/providers/jwt.clj
+msgid "The JWT must have exp and iat claims."
+msgstr ""
+
+#: metabase_enterprise/sso/providers/jwt.clj
+msgid "The JWT has an iat claim in the future."
 msgstr ""
 
 #: metabase_enterprise/sso/providers/jwt.clj

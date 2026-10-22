@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { Navigate, generatePath, useLocation, useParams } from "react-router";
 
 function RedirectRoute({ to }: { to: string }): JSX.Element {
