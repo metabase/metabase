@@ -1268,8 +1268,8 @@
 
 (deftest ^:parallel cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
   (testing "cast timestamps to datetimes so we can use DATETIME_ADD() if needed for units like month (#21969)"
-    (is (= ["DATETIME_ADD(CAST(? AS datetime), INTERVAL 3 month)"
-            #t "2022-04-22T18:27-08:00"]
+    (is (= ["TIMESTAMP(DATETIME_ADD(?, INTERVAL 3 month))"
+            #t "2022-04-22T18:27"]
            (let [t         #t "2022-04-22T18:27:00-08:00"
                  hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
              (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
