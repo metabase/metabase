@@ -14,8 +14,10 @@ jobs:
   auto-pass:
     name: Check for a confirmed-flaky re-run
     # PR re-runs from this repo only: never a master or release-branch push, never a fork.
+    # Kill switch: does nothing unless the repo variable ENABLE_AUTO_PASS is 'true'.
     if: >-
-      ${{ github.repository == 'metabase/metabase'
+      ${{ vars.ENABLE_AUTO_PASS == 'true'
+      && github.repository == 'metabase/metabase'
       && github.event.workflow_run.event == 'pull_request'
       && github.event.workflow_run.run_attempt > 1
       && github.event.workflow_run.head_repository.full_name == github.repository }}
