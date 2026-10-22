@@ -194,7 +194,3 @@ export function adminAiSettings() {
 export function adminMcpSettings() {
   return `${adminAiSettings()}/mcp`;
 }
-
-export function adminRemoteSyncSettings() {
-  return "/admin/settings/remote-sync";
-}
