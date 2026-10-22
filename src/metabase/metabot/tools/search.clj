@@ -10,6 +10,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -581,11 +582,6 @@
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
 
-(defn- invalid-entity-types
-  [entity-types allowed]
-  (when (seq entity-types)
-    (seq (remove allowed entity-types))))
-
 (def ^:private default-search-limit 10)
 (def ^:private max-search-limit 50)
 
@@ -623,24 +619,20 @@
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
 (defn- do-search
-  [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
-  (if-let [invalid (invalid-entity-types entity_types allowed-types)]
-    {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
-                  ". Allowed types: " (str/join ", " allowed-types) ".")}
-    (let [results (search (merge {:semantic-queries semantic_queries
-                                  :term-queries    keyword_queries
-                                  :entity-types    (or (seq entity_types) (vec allowed-types))
-                                  :metabot         shared/*metabot*
-                                  :limit           (min max-search-limit
-                                                        (or limit default-search-limit))}
-                                 search-opts))]
-      {:output (format-search-output results)
-       :structured-output {:result-type :search
-                           :data results
-                           :total_count (count results)}
-       :data-parts [(streaming/search-results-part
-                     {:total_count (count results)
-                      :results (mapv search-result->item results)})]})))
+  [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
+  (let [results (search (merge {:semantic-queries semantic_queries
+                                :term-queries    keyword_queries
+                                :entity-types    (or (seq entity_types) (vec default-types))
+                                :limit           (min max-search-limit
+                                                      (or limit default-search-limit))}
+                               search-opts))]
+    {:output (format-search-output results)
+     :structured-output {:result-type :search
+                         :data results
+                         :total_count (count results)}
+     :data-parts [(streaming/search-results-part
+                   {:total_count (count results)
+                    :results (mapv search-result->item results)})]}))
 
 (def ^:private semantic-queries-schema
   [:sequential {:error/message "must be an array of strings"}
@@ -689,13 +681,57 @@
       ;; ("Searching for …" while active, "Searched for …" once finished)
       (str/join ", " queries))))
 
-(mu/defn ^{:tool-name  "search"
-           :scope      scope/agent-search
-           :title-fn   search-display}
-  search-tool
-  "Find tables, models, metrics, measures, segments, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
-  [args :- search-schema]
-  (do-search "search" general-entity-types {} args))
+(tools/defrecoverable missing-query!
+  "A search needs at least one query and no blank entries."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message "Provide at least one query. Every query must be non-blank."
+   :recovery [{:uses #{"search"}
+               :text (str "Remove blank entries from every query list, then call `search` again "
+                          "with non-blank queries in `keyword_queries`.")}]})
+
+(tools/defrecoverable unavailable-database!
+  "The database for this SQL search does not exist or the user cannot read it."
+  {:payload [:map {:closed true} [:database-id :int]]}
+  [{:keys [database-id]}]
+  {:message (str "Database " database-id
+                 " was not found. It may not exist, or you may not have access to it.")
+   :recovery [{:uses #{}
+               :text "Use the database currently selected in the SQL editor."}
+              {:uses #{"read_resource"}
+               :text "Call `read_resource` with `metabase://databases` to find an accessible database ID."}]})
+
+(defn- check-search-database!
+  [database-id]
+  (when-not (and (pos-int? database-id)
+                 (when-let [database (metabot.db/database-summary database-id)]
+                   (mi/can-read? database)))
+    (unavailable-database! {:database-id database-id})))
+
+(defrecord SearchTool [description args default-types search-opts]
+  tools/Tool
+  (declaration [_]
+    {:name "search"
+     :description description
+     :args args
+     :scope scope/agent-search
+     :metabot/title-fn search-display})
+  (handle [_ {:keys [database_id semantic_queries keyword_queries] :as args} {:keys [metabot]}]
+    (let [queries (concat semantic_queries keyword_queries)]
+      (when (or (empty? queries) (some str/blank? queries))
+        (missing-query! {})))
+    (when (contains? args :database_id)
+      (check-search-database! database_id))
+    (do-search default-types
+               (cond-> (assoc search-opts :metabot metabot)
+                 (contains? args :database_id) (assoc :database-id database_id))
+               args)))
+
+(def search-tool
+  "The general `search` tool."
+  (->SearchTool
+   "Find tables, models, metrics, measures, segments, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
+   search-schema general-entity-types {}))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -705,13 +741,11 @@
    [:entity_types {:optional true} (entity-types-schema "table" "model")]
    [:limit {:optional true} limit-schema]])
 
-(mu/defn ^{:tool-name  "search"
-           :scope      scope/agent-search
-           :title-fn   search-display}
-  sql-search-tool
-  "Find SQL-queryable data sources (tables and models) within a specific database by topic."
-  [{:keys [database_id] :as args} :- sql-search-schema]
-  (do-search "SQL search" (sorted-set "model" "table") {:database-id database_id} args))
+(def sql-search-tool
+  "The SQL `search` tool."
+  (->SearchTool
+   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
+   sql-search-schema (sorted-set "model" "table") {}))
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
@@ -720,16 +754,11 @@
    [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
    [:limit {:optional true} limit-schema]])
 
-(mu/defn ^{:tool-name  "search"
-           :scope      scope/agent-search
-           :title-fn   search-display}
-  nlq-search-tool
-  "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
-  [{:keys [entity_types] :as args} :- nlq-search-schema]
-  (let [args (cond-> args
-               (not (seq entity_types))
-               (assoc :entity_types ["metric" "measure" "segment" "model" "question" "table"]))]
-    (do-search "NLQ search" general-entity-types {:profile-id "nlq"} args)))
+(def nlq-search-tool
+  "The NLQ `search` tool."
+  (->SearchTool
+   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
+   nlq-search-schema ["metric" "measure" "segment" "model" "question" "table"] {:profile-id "nlq"}))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
@@ -745,5 +774,5 @@
   transform-search-tool
   "Find transforms, plus the tables and models around them, by topic."
   [{:keys [search_native_query] :as args} :- transform-search-schema]
-  (do-search "transform search" (sorted-set "model" "table" "transform")
-             {:search-native-query search_native_query} args))
+  (do-search (sorted-set "model" "table" "transform")
+             {:search-native-query search_native_query :metabot shared/*metabot*} args))
