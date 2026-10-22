@@ -482,7 +482,7 @@
                                                    :schema-names [nil]
                                                    :details      {:dbname "mydb"})]
       (is (str/starts-with? sql "SELECT NULL AS \"table-schema\","))
-      (is (str/includes? sql "WHERE \"table_schema\" IN ('mydb') ORDER BY")))))
+      (is (str/includes? sql "WHERE (\"table_schema\" IN ('mydb')) ORDER BY")))))
 
 (deftest ^:parallel describe-fields-pre-process-xf-test
   (testing "types are the same as from `DESCRIBE`, and a column name occurs only once in each table"
