@@ -251,12 +251,27 @@
           (comp (filter mi/can-read?) (map (juxt :id identity)))
           (metabot.db/card-source-rows card-ids))))
 
+(defn card-source-table-id
+  "Return the ID of the table that the card with `card-id` reads from, following its source cards.
+
+  Unlike `report_card.table_id`, which is written only when a card is saved, this reads each card's current query, so
+  it reflects an upstream card that has since moved to another table. Return nil when the chain ends in a native query
+  or a missing card."
+  [metadata-providerable card-id]
+  (loop [card-id card-id, seen #{}]
+    (when-let [query (and card-id
+                          (not (seen card-id))
+                          (not-empty (:dataset-query (lib.metadata/card metadata-providerable card-id))))]
+      (or (lib/primary-source-table-id query)
+          (recur (lib/primary-source-card-id query) (conj seen card-id))))))
+
 (defn metric-required-source
   "Return the source required to use metric `card`, or nil when its definition cannot be read.
 
   Return `{:kind :card, :card-id C}` for a single-stage definition on card C. Otherwise return
   `{:kind :table, :table-id T, :bare-table-only? boolean}`. A single-stage table metric also works on a card over T;
-  a multi-stage metric requires a stage directly on T, even when its definition starts from a card.
+  a multi-stage metric requires a stage directly on T, even when its definition starts from a card. For such a
+  definition, T is the table that the card reads from, per [[card-source-table-id]].
   A nil table ID means there is no usable table source.
 
   This follows `splice-compatible-metrics` in [[metabase.query-processor.middleware.metrics]]. The query processor
@@ -274,10 +289,10 @@
       (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
         {:kind :card, :card-id card-id}
         {:kind             :table
-         ;; The definition's own `:source-table` when it has one, which is what the QP compares; `table_id` is
-         ;; derived at save time and only needed for a card-rooted definition.
          :table-id         (or (:source-table (first stages))
-                               (metric-card-shape-get card :table-id :table_id))
+                               (some->> (:source-card (first stages))
+                                        (card-source-table-id (lib-be/application-database-metadata-provider
+                                                               (:database definition)))))
          :bare-table-only? (> (count stages) 1)}))))
 
 (defn metric-compatible-with-stage?

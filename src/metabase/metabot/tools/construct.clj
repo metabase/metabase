@@ -741,7 +741,7 @@
                                                                           stage-card-id (conj stage-card-id)))
             ;; Use `::unresolved` so a missing source card cannot match a metric whose table ID is nil.
             stage-table-id (if stage-card-id
-                             (or (:table-id (lib.metadata/card mp stage-card-id)) ::unresolved)
+                             (or (tools.u/card-source-table-id mp stage-card-id) ::unresolved)
                              (lib.util/source-table-id query))]
         (not-empty
          (into (sorted-map)
