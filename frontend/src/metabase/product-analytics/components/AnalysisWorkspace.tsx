@@ -7,10 +7,14 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { useNavigate } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
-import type { Card, ConcreteTableId } from "metabase-types/api";
+import type {
+  Card,
+  ConcreteTableId,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { pickSettingsForKind } from "../analyses/config";
-import type { AnalysisSettingsByKind } from "../analyses/types";
+import type { AnalysisSettingsByKind, DisplayColors } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
 import { useDrillActions } from "../drills/use-drill-actions";
 import { useDrillQueries } from "../drills/use-drill-queries";
@@ -26,9 +30,10 @@ import { useAnalysis } from "../use-analysis";
 import { useAnalysisState } from "../use-analysis-state";
 import { useSaveAnalysis } from "../use-save-analysis";
 
-import { AnalysisResult } from "./AnalysisResult";
+import { AnalysisResult, getAnalysisRawSeries } from "./AnalysisResult";
 import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { DisplayPanel } from "./DisplayPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
@@ -47,10 +52,10 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
 
 /**
  * The event analysis page: the title and toolbar across the top, then the
- * segments panel, the setup panel and the result side by side. A new analysis
- * opens the toolbar's table picker and shows nothing below until a table is
- * picked. The result fills the rest of the page. A saved analysis opens on
- * its result, with the setup panel collapsed.
+ * segments panel, the setup panel, the result and the display panel side by
+ * side. A new analysis opens the toolbar's table picker and shows nothing
+ * below until a table is picked. The result fills the rest of the page. A
+ * saved analysis opens on its result, with the setup panel collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -70,6 +75,17 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   // Collapsed behind the Filters button until it's clicked; showing an empty
   // row opens its column picker, which a page load shouldn't do on its own.
   const [areFiltersExpanded, setAreFiltersExpanded] = useState(false);
+  const [isDisplayOpen, setIsDisplayOpen] = useState(false);
+  // PROTOTYPE: display changes live in this page's state, not the URL. Saving
+  // keeps them on the card, but a saved analysis reopens without them.
+  const [displayOverrides, setDisplayOverrides] =
+    useState<VisualizationSettings>({});
+  const [displayColors, setDisplayColors] = useState<DisplayColors>({});
+  const handleChangeColor = useCallback(
+    (key: string, color: string) =>
+      setDisplayColors((colors) => ({ ...colors, [key]: color })),
+    [],
+  );
   const {
     stored,
     hasUnsavedChanges,
@@ -90,13 +106,17 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     missing,
     display,
     vizSettings,
+    colorSlots,
     query,
   } = useAnalysis({
     kind,
     tableId,
     stored,
     onChangeSettings,
+    colors: displayColors,
   });
+  const chartSettings = { ...vizSettings, ...displayOverrides };
+  const isDisplayShowing = isDisplayOpen && tableId !== undefined;
   const filterCount = useFilterCount(computed.filters, table);
   const drillQueries = useDrillQueries({
     spec,
@@ -131,7 +151,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           tableId,
           stored: pickSettingsForKind(kind, stored),
           display,
-          vizSettings,
+          vizSettings: chartSettings,
           datasetQuery: query.datasetQuery,
         })
       : undefined;
@@ -248,11 +268,16 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             />
           )}
           {tableId !== undefined && (
-            <Stack flex={1} miw={0} pr="lg" style={{ overflowY: "auto" }}>
+            <Stack
+              flex={1}
+              miw={0}
+              pr={isDisplayShowing ? 0 : "lg"}
+              style={{ overflowY: "auto" }}
+            >
               <AnalysisResult
                 title={config.question}
                 display={display}
-                vizSettings={vizSettings}
+                vizSettings={chartSettings}
                 dataset={query.dataset}
                 datasetQuery={query.datasetQuery}
                 isLoading={query.isLoading}
@@ -263,8 +288,30 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                   panel !== "setup" ? () => setPanel("setup") : undefined
                 }
                 clickActionsMode={drillActions.mode}
+                isDisplayOpen={isDisplayShowing}
+                onToggleDisplay={() => setIsDisplayOpen((isOpen) => !isOpen)}
               />
             </Stack>
+          )}
+          {isDisplayShowing && (
+            <DisplayPanel
+              series={
+                query.isLoading || query.error
+                  ? null
+                  : getAnalysisRawSeries({
+                      title: config.question,
+                      display,
+                      vizSettings: chartSettings,
+                      dataset: query.dataset,
+                      datasetQuery: query.datasetQuery,
+                    })
+              }
+              baseSettings={vizSettings}
+              onChange={setDisplayOverrides}
+              colorSlots={colorSlots}
+              onChangeColor={handleChangeColor}
+              onClose={() => setIsDisplayOpen(false)}
+            />
           )}
         </Group>
       </Stack>

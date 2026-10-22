@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { color } from "metabase/ui/colors";
 import type { VisualizationDefinition } from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
 
@@ -40,6 +41,42 @@ export const COHORT_TABLE_DEFINITION: VisualizationDefinition = {
     },
     "cohort.value_format": {
       getDefault: () => "percent",
+    },
+    "cohort.color": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Base color`;
+      },
+      widget: "color",
+      getDefault: () => color("brand"),
+    },
+    "cohort.color_scale": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Color scale`;
+      },
+      widget: "segmentedControl",
+      getDefault: () => "table",
+      getProps: () => ({
+        options: [
+          { name: t`Whole table`, value: "table" },
+          { name: t`Each column`, value: "column" },
+        ],
+      }),
+    },
+    "cohort.initial_count": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Initial count column`;
+      },
+      widget: "segmentedControl",
+      getDefault: () => "show",
+      getProps: () => ({
+        options: [
+          { name: t`Show`, value: "show" },
+          { name: t`Hide`, value: "hide" },
+        ],
+      }),
     },
   },
 };

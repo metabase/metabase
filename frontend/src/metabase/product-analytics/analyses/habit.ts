@@ -11,8 +11,10 @@ import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
+  SERIES_COLOR_KEY,
   getAxisTitleSettings,
   getConversionColumnSettings,
+  getSeriesColorSlot,
   getSeriesSettings,
 } from "./series-settings";
 import {
@@ -104,7 +106,8 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         return "line";
     }
   },
-  getVizSettings: (settings) => {
+  getVizSettings: (settings, colors) => {
+    const pickedColor = colors[SERIES_COLOR_KEY];
     switch (settings["habit.measure"]) {
       case "histogram": {
         const people = grainLabel(settings.counting);
@@ -112,7 +115,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         return {
           "graph.dimensions": ["periods"],
           "graph.metrics": [people],
-          ...getSeriesSettings(people, peopleTitle),
+          ...getSeriesSettings(people, peopleTitle, pickedColor),
           ...getAxisTitleSettings({
             x:
               toSubPeriod(settings.granularity) === "week"
@@ -128,7 +131,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         return {
           "graph.dimensions": [subPeriod],
           "graph.metrics": ["ratio"],
-          ...getSeriesSettings("ratio", title),
+          ...getSeriesSettings("ratio", title, pickedColor),
           ...getConversionColumnSettings("ratio"),
           ...getAxisTitleSettings({
             x: Lib.describeTemporalUnit(subPeriod),
@@ -138,6 +141,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
       }
     }
   },
+  getColorSlots: (_settings, colors) => [getSeriesColorSlot(colors)],
   describePoint: (settings, point) => {
     switch (settings["habit.measure"]) {
       case "histogram": {

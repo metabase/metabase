@@ -441,6 +441,9 @@ export type VisualizationSettings = {
   /** Draws a bar chart as product analytics funnel steps. Not user-editable. */
   "product_analytics.funnel_steps"?: boolean;
 
+  /** Each funnel step's bar color, by step. Set from the event analysis display panel. */
+  "product_analytics.funnel_step_colors"?: string[];
+
   /** Draws a sankey chart as product analytics paths. Not user-editable. */
   "product_analytics.paths"?: boolean;
 

@@ -1,7 +1,8 @@
+import Color from "color";
 import { c } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
-import { alpha, color } from "metabase/ui/colors";
+import { alpha } from "metabase/ui/colors";
 import * as Lib from "metabase-lib";
 import type { DatasetData, RowValue } from "metabase-types/api";
 
@@ -101,14 +102,18 @@ export const formatCellValue = (
 const MIN_TINT = 0.06;
 const LIGHT_TEXT_THRESHOLD = 0.55;
 
-/** Background and text colors for a cell, by how full it is. */
+/**
+ * Background and text colors for a cell, by how full it is: `baseColor` at an
+ * opacity that grows with the value. Light text only goes on a dark base.
+ */
 export const getCellColors = (
   value: number,
   max: number,
+  baseColor: string,
 ): { background: string; isLightText: boolean } => {
   const share = max > 0 ? Math.min(Math.max(value / max, 0), 1) : 0;
   return {
-    background: alpha(color("brand"), MIN_TINT + share * (1 - MIN_TINT)),
-    isLightText: share > LIGHT_TEXT_THRESHOLD,
+    background: alpha(baseColor, MIN_TINT + share * (1 - MIN_TINT)),
+    isLightText: share > LIGHT_TEXT_THRESHOLD && Color(baseColor).isDark(),
   };
 };

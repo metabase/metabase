@@ -32,6 +32,10 @@
   box-shadow: 0.125rem 0 0 var(--mb-color-background-primary);
 }
 
+.root[data-show-initial-count="false"] .frozen {
+  grid-column: span 1;
+}
+
 .header {
   padding: 0.5rem 0.75rem;
   font-weight: bold;

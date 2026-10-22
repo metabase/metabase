@@ -10,6 +10,7 @@ import { getAnalysisConfig } from "./analyses/config";
 import type {
   AnalysisContext,
   AnalysisSettingsByKind,
+  DisplayColors,
   UsersTable,
 } from "./analyses/types";
 import type { BaseQueryInput } from "./base-query";
@@ -27,6 +28,8 @@ type UseAnalysisArgs<K extends AnalysisKind> = {
   tableId: ConcreteTableId | undefined;
   stored: StoredSettings;
   onChangeSettings: (changes: Partial<AnalysisSettingsByKind[K]>) => void;
+  /** Colors picked in the display panel. */
+  colors: DisplayColors;
 };
 
 /** The table the person column links to, once its metadata is loaded. */
@@ -61,6 +64,7 @@ export const useAnalysis = <K extends AnalysisKind>({
   tableId,
   stored,
   onChangeSettings,
+  colors,
 }: UseAnalysisArgs<K>) => {
   const config = getAnalysisConfig(kind);
   const tableMetadata = useGetTableQueryMetadataQuery(
@@ -121,7 +125,8 @@ export const useAnalysis = <K extends AnalysisKind>({
     spec,
     missing,
     display: config.getDisplay(computed),
-    vizSettings: config.getVizSettings(computed),
+    vizSettings: config.getVizSettings(computed, colors),
+    colorSlots: config.getColorSlots?.(computed, colors) ?? [],
     query,
   };
 };

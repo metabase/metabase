@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
@@ -13,8 +15,10 @@ import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
+  SERIES_COLOR_KEY,
   getAxisTitleSettings,
   getConversionColumnSettings,
+  getSeriesColorSlot,
   getSeriesSettings,
 } from "./series-settings";
 import {
@@ -30,6 +34,8 @@ import {
 import type {
   AnalysisConfig,
   AnalysisSettingDefinitions,
+  ColorSlot,
+  DisplayColors,
   FunnelSettings,
 } from "./types";
 
@@ -45,6 +51,38 @@ const ORDERINGS: readonly FunnelSettings["funnel.ordering"][] = [
   "any",
 ];
 const ANCHORS: readonly FunnelSettings["funnel.anchor"][] = ["first", "each"];
+
+// Over time draws a line per step, so they start in different colors.
+const LINE_COLOR_NAMES: readonly ColorName[] = [
+  "accent0",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "accent7",
+];
+
+const getStepColorKey = (index: number): string => `step.${index}`;
+
+/**
+ * A step's picked color, shared by the views that draw steps. Step by step
+ * defaults every bar to the brand color; over time, each line to its own.
+ */
+const getStepColor = (
+  view: FunnelSettings["funnel.view"],
+  index: number,
+  colors: DisplayColors,
+): string =>
+  colors[getStepColorKey(index)] ??
+  (view === "overTime"
+    ? color(LINE_COLOR_NAMES[index % LINE_COLOR_NAMES.length])
+    : color("brand"));
+
+// Keep in sync with the planner's step labels, which `parseStepLabel` reads.
+const getStepLabel = (index: number, name: string): string =>
+  `${index + 1}. ${name}`;
 
 const common = commonSettings({
   granularity: { units: ["hour", "day", "week", "month"], defaultUnit: "week" },
@@ -177,15 +215,20 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return "bar";
     }
   },
-  getVizSettings: (settings) => {
+  getVizSettings: (settings, colors) => {
     const people = grainLabel(settings.counting);
     const peopleTitle = grainTitle(settings.counting);
-    switch (settings["funnel.view"]) {
+    const view = settings["funnel.view"];
+    const steps = settings["funnel.steps"];
+    switch (view) {
       case "steps":
         return {
           "graph.dimensions": ["label"],
           "graph.metrics": [people],
           "product_analytics.funnel_steps": true,
+          "product_analytics.funnel_step_colors": steps.map((_step, index) =>
+            getStepColor(view, index, colors),
+          ),
           // The step labels are drawn by the chart, so the layout shouldn't reserve x-axis tick space
           "graph.x_axis.axis_enabled": false,
           ...getSeriesSettings(people, peopleTitle),
@@ -195,6 +238,15 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return {
           "graph.dimensions": ["period", "label"],
           "graph.metrics": ["conversion"],
+          // One line per step after the first, keyed by its label.
+          series_settings: Object.fromEntries(
+            steps
+              .map((step, index) => [
+                getStepLabel(index, step.name),
+                { color: getStepColor(view, index, colors) },
+              ])
+              .slice(1),
+          ),
           ...getConversionColumnSettings("conversion"),
           ...getAxisTitleSettings({
             x: Lib.describeTemporalUnit(settings.granularity),
@@ -205,10 +257,23 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return {
           "graph.dimensions": [TIME_TO_CONVERT_COLUMN],
           "graph.metrics": [people],
-          ...getSeriesSettings(people, peopleTitle),
+          ...getSeriesSettings(people, peopleTitle, colors[SERIES_COLOR_KEY]),
           ...getAxisTitleSettings({ x: t`Time to finish`, y: peopleTitle }),
         };
     }
+  },
+  getColorSlots: (settings, colors) => {
+    const view = settings["funnel.view"];
+    if (view === "timeToConvert") {
+      return [getSeriesColorSlot(colors)];
+    }
+    const slots: ColorSlot[] = settings["funnel.steps"].map((step, index) => ({
+      key: getStepColorKey(index),
+      label: getStepLabel(index, step.name),
+      color: getStepColor(view, index, colors),
+    }));
+    // Over time has no line for the first step.
+    return view === "overTime" ? slots.slice(1) : slots;
   },
   describePoint: (settings, point) => {
     switch (settings["funnel.view"]) {

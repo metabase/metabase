@@ -1,0 +1,30 @@
+.root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Grabbing the edge darkens it. */
+.root:has(.handle:is(:hover, :active)) {
+  border-left-color: var(--mb-color-border-strong);
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  left: -4px;
+  z-index: 1;
+  width: 8px;
+  height: 100%;
+  touch-action: none;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}

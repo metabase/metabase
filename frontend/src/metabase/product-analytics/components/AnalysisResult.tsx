@@ -2,14 +2,18 @@ import { t } from "ttag";
 import { noop } from "underscore";
 
 import {
+  ActionIcon,
   Alert,
   Box,
   Button,
+  Group,
+  Icon,
   Loader,
   Paper,
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { ClickActionsMode } from "metabase/visualizations/types";
@@ -26,6 +30,37 @@ import type { MissingSetting } from "../analyses/types";
 const SYNTHETIC_CARD_ID = -1;
 const MIN_HEIGHT_PX = 400;
 
+type AnalysisSeriesInput = {
+  title: string;
+  display: CardDisplayType;
+  vizSettings: VisualizationSettings;
+  dataset: Dataset | undefined;
+  datasetQuery: DatasetQuery | undefined;
+};
+
+/** The chart's series, once there's a result. Also feeds the display panel. */
+export const getAnalysisRawSeries = ({
+  title,
+  display,
+  vizSettings,
+  dataset,
+  datasetQuery,
+}: AnalysisSeriesInput): RawSeries | null =>
+  dataset?.data !== undefined && datasetQuery !== undefined
+    ? [
+        {
+          card: {
+            id: SYNTHETIC_CARD_ID,
+            name: title,
+            display,
+            visualization_settings: vizSettings,
+            dataset_query: datasetQuery,
+          },
+          data: dataset.data,
+        },
+      ]
+    : null;
+
 type AnalysisResultProps = {
   title: string;
   display: CardDisplayType;
@@ -40,6 +75,8 @@ type AnalysisResultProps = {
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
   clickActionsMode: ClickActionsMode;
+  isDisplayOpen: boolean;
+  onToggleDisplay: () => void;
 };
 
 export const AnalysisResult = ({
@@ -54,30 +91,46 @@ export const AnalysisResult = ({
   setupLabel,
   onOpenSetup,
   clickActionsMode,
+  isDisplayOpen,
+  onToggleDisplay,
 }: AnalysisResultProps) => {
-  const rawSeries: RawSeries | null =
-    dataset?.data !== undefined && datasetQuery !== undefined
-      ? [
-          {
-            card: {
-              id: SYNTHETIC_CARD_ID,
-              name: title,
-              display,
-              visualization_settings: vizSettings,
-              dataset_query: datasetQuery,
-            },
-            data: dataset.data,
-          },
-        ]
-      : null;
+  const rawSeries = getAnalysisRawSeries({
+    title,
+    display,
+    vizSettings,
+    dataset,
+    datasetQuery,
+  });
   // Errors and loading come first: settings can't be finished without a table.
   const isIncomplete = missing.length > 0 && !error && !isLoading;
   const isShowingVisualization =
     !isIncomplete && !isLoading && !error && rawSeries !== null;
+  const displayLabel = isDisplayOpen
+    ? t`Hide display options`
+    : t`Show display options`;
+  // Stays clickable while the panel is open, so a rerun can't strand it.
+  const canToggleDisplay = isShowingVisualization || isDisplayOpen;
   return (
     <Paper withBorder radius="md" p="lg" miw={0} mih={MIN_HEIGHT_PX} flex={1}>
       <Stack h="100%">
-        <Title order={4}>{title}</Title>
+        <Group justify="space-between" wrap="nowrap" gap="sm">
+          <Title order={4}>{title}</Title>
+          <Tooltip label={displayLabel}>
+            <ActionIcon
+              // Metabase's theme makes the default variant's border
+              // transparent; this restores Mantine's bordered look.
+              variant="default"
+              size="lg"
+              bd="1px solid var(--mb-color-border)"
+              aria-label={displayLabel}
+              aria-pressed={isDisplayOpen}
+              disabled={!canToggleDisplay}
+              onClick={onToggleDisplay}
+            >
+              <Icon name="palette" />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
         <Stack gap="sm" flex={1} mih={0}>
           {isIncomplete && (
             <IncompleteSettings

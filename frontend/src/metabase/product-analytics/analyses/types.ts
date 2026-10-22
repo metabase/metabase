@@ -123,6 +123,17 @@ export type SpecResult =
   | { status: "ready"; spec: AnalysisSpec }
   | { status: "incomplete"; missing: MissingSetting[] };
 
+/** Colors picked in the display panel, by `ColorSlot` key. */
+export type DisplayColors = Partial<Record<string, string>>;
+
+/** A color the display panel offers a picker for. */
+export type ColorSlot = {
+  key: string;
+  label: string;
+  /** The picked color, or the chart's default. */
+  color: string;
+};
+
 export type AnalysisConfig<K extends AnalysisKind> = {
   kind: K;
   readonly name: string;
@@ -141,7 +152,13 @@ export type AnalysisConfig<K extends AnalysisKind> = {
   getDisplay: (settings: AnalysisSettingsByKind[K]) => CardDisplayType;
   getVizSettings: (
     settings: AnalysisSettingsByKind[K],
+    colors: DisplayColors,
   ) => VisualizationSettings;
+  /** The colors the display panel offers, in the order it shows them. */
+  getColorSlots?: (
+    settings: AnalysisSettingsByKind[K],
+    colors: DisplayColors,
+  ) => ColorSlot[];
   /**
    * Names the actors in a clicked point, e.g. "Reached step 2: Signed up".
    * `null`, or omitted, when the chart's clicks can't be traced to actors.

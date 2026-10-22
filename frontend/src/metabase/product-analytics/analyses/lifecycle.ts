@@ -30,6 +30,7 @@ import {
 import type {
   AnalysisConfig,
   AnalysisSettingDefinitions,
+  DisplayColors,
   LifecycleSettings,
 } from "./types";
 
@@ -47,8 +48,14 @@ const STATE_COLOR_NAMES: Record<LifecycleStateName, ColorName> = {
   dormant: "accent3",
 };
 
-const getStateColor = (state: LifecycleStateName): string =>
-  color(STATE_COLOR_NAMES[state]);
+const getStateColorKey = (state: LifecycleStateName): string =>
+  `state.${state}`;
+
+/** The state's picked color, else its palette color. */
+const getStateColor = (
+  state: LifecycleStateName,
+  colors: DisplayColors,
+): string => colors[getStateColorKey(state)] ?? color(STATE_COLOR_NAMES[state]);
 
 const getStateName = (state: LifecycleStateName): string => {
   switch (state) {
@@ -200,7 +207,7 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       : [];
   },
   getDisplay: () => "bar",
-  getVizSettings: (settings) => ({
+  getVizSettings: (settings, colors) => ({
     "graph.dimensions": ["period", "state"],
     "graph.metrics": ["actors"],
     "stackable.stack_type": "stacked",
@@ -211,8 +218,11 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
         state,
         {
           title: getStateName(state),
-          color: getStateColor(state),
-          color_name: STATE_COLOR_NAMES[state],
+          color: getStateColor(state, colors),
+          // A picked color has no palette name to follow.
+          ...(colors[getStateColorKey(state)] === undefined
+            ? { color_name: STATE_COLOR_NAMES[state] }
+            : {}),
         },
       ]),
     ),
@@ -221,13 +231,19 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       key: state,
       name: getStateName(state),
       enabled: true,
-      color: getStateColor(state),
+      color: getStateColor(state, colors),
     })),
     ...getAxisTitleSettings({
       x: Lib.describeTemporalUnit(settings.granularity),
       y: grainTitle(settings.counting),
     }),
   }),
+  getColorSlots: (_settings, colors) =>
+    STATES.map((state) => ({
+      key: getStateColorKey(state),
+      label: getStateName(state),
+      color: getStateColor(state, colors),
+    })),
   describePoint: (settings, point) => {
     const state = STATES.find((item) => item === pointString(point.state));
     if (state === undefined) {

@@ -1,20 +1,13 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  ActionIcon,
-  Box,
-  Divider,
-  Group,
-  Icon,
-  Paper,
-  Tabs,
-} from "metabase/ui";
+import { Box, Divider, Group, Paper, Tabs } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { SettingWidget } from "../settings/types";
 import type { AnalysisPanel } from "../use-analysis-state";
 
+import { PanelCloseButton } from "./PanelCloseButton";
 import { ResizeHandle } from "./ResizeHandle";
 import S from "./SetupPanel.module.css";
 
@@ -81,11 +74,11 @@ export const SetupPanel = ({
           <Tabs.List px="xl" pt="sm">
             <Tabs.Tab value="setup">{setupLabel}</Tabs.Tab>
             <Tabs.Tab value="advanced">{t`Advanced`}</Tabs.Tab>
-            <CloseButton onClose={onClose} />
+            <PanelCloseButton onClose={onClose} />
           </Tabs.List>
         ) : (
           <Group justify="flex-end" px="md" pt="sm">
-            <CloseButton onClose={onClose} />
+            <PanelCloseButton onClose={onClose} />
           </Group>
         )}
         <Box className={S.scroll} px="xl" pt="xl">
@@ -95,21 +88,6 @@ export const SetupPanel = ({
     </Paper>
   );
 };
-
-type CloseButtonProps = { onClose: () => void };
-
-/** The panel's X, at the end of its tab bar. Shared with the segments panel. */
-export const CloseButton = ({ onClose }: CloseButtonProps) => (
-  <ActionIcon
-    variant="subtle"
-    aria-label={t`Close`}
-    ml="auto"
-    style={{ alignSelf: "center" }}
-    onClick={onClose}
-  >
-    <Icon name="close" />
-  </ActionIcon>
-);
 
 /** Column role settings still pick their defaults; they just aren't shown. */
 const getSectionWidgets = (widgets: SettingWidget[], section: AnalysisPanel) =>

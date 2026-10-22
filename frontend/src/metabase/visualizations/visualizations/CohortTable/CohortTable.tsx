@@ -24,8 +24,11 @@ const CohortTableComponent = ({ rawSeries, settings }: VisualizationProps) => {
   const [{ data }] = rawSeries;
   const period = toPeriod(settings["cohort.period"]);
   const valueFormat = toValueFormat(settings["cohort.value_format"]);
+  const baseColor: string = settings["cohort.color"];
+  const isColumnScale = settings["cohort.color_scale"] === "column";
+  const showInitialCount = settings["cohort.initial_count"] !== "hide";
 
-  const { cohorts, offsets, max, showYear } = useMemo(() => {
+  const { cohorts, offsets, tableMax, columnMaxes, showYear } = useMemo(() => {
     const cohorts = pivotCohorts(data);
     const offsets = [
       ...new Set(cohorts.flatMap((cohort) => [...cohort.values.keys()])),
@@ -39,10 +42,17 @@ const CohortTableComponent = ({ rawSeries, settings }: VisualizationProps) => {
     return {
       cohorts,
       offsets,
-      max: valueFormat === "percent" ? 1 : Math.max(0, ...values),
+      tableMax: valueFormat === "percent" ? 1 : Math.max(0, ...values),
+      // Each period column shaded against its own highest value, so later
+      // periods, where every value is small, still show their differences.
+      columnMaxes: offsets.map((offset) =>
+        Math.max(0, ...cohorts.map((cohort) => cohort.values.get(offset) ?? 0)),
+      ),
       showYear: years.size > 1,
     };
   }, [data, valueFormat]);
+  const maxes = isColumnScale ? columnMaxes : offsets.map(() => tableMax);
+  const leadColumns = showInitialCount ? "auto auto" : "auto";
 
   return (
     // The scroller is absolutely positioned so the grid adds nothing to the
@@ -51,14 +61,17 @@ const CohortTableComponent = ({ rawSeries, settings }: VisualizationProps) => {
       <Box pos="absolute" inset={0} style={{ overflow: "auto" }}>
         <Box
           className={S.root}
+          data-show-initial-count={showInitialCount}
           style={{
-            gridTemplateColumns: `auto auto repeat(${offsets.length}, minmax(4.5rem, 1fr))`,
+            gridTemplateColumns: `${leadColumns} repeat(${offsets.length}, minmax(4.5rem, 1fr))`,
           }}
         >
           <div className={S.headerRow}>
             <div className={S.frozen}>
               <div className={S.headerLabel}>{t`Cohort`}</div>
-              <div className={S.header}>{t`Initial count`}</div>
+              {showInitialCount && (
+                <div className={S.header}>{t`Initial count`}</div>
+              )}
             </div>
             {offsets.map((offset) => (
               <div key={offset} className={S.header}>
@@ -70,14 +83,15 @@ const CohortTableComponent = ({ rawSeries, settings }: VisualizationProps) => {
             <CohortRow
               key={cohort.key}
               label={formatCohortLabel(cohort.key, period, { showYear })}
-              size={cohort.size}
+              size={showInitialCount ? cohort.size : null}
               cells={offsets.map((offset) =>
                 isFuturePeriod(cohort.key, offset, period)
                   ? null
                   : (cohort.values.get(offset) ?? null),
               )}
-              max={max}
+              maxes={maxes}
               valueFormat={valueFormat}
+              baseColor={baseColor}
             />
           ))}
         </Box>
@@ -88,30 +102,40 @@ const CohortTableComponent = ({ rawSeries, settings }: VisualizationProps) => {
 
 type CohortRowProps = {
   label: string;
-  size: number;
+  /** Null when the initial count column is hidden. */
+  size: number | null;
   /** One per period column; null when the period has no data yet. */
   cells: (number | null)[];
-  max: number;
+  /** The value each cell's color is scaled against, one per period column. */
+  maxes: number[];
   valueFormat: "percent" | "counts";
+  baseColor: string;
 };
 
 const CohortRow = ({
   label,
   size,
   cells,
-  max,
+  maxes,
   valueFormat,
+  baseColor,
 }: CohortRowProps) => (
   <>
     <div className={S.frozen}>
       <div className={S.label}>{label}</div>
-      <div className={S.size}>{new Intl.NumberFormat().format(size)}</div>
+      {size !== null && (
+        <div className={S.size}>{new Intl.NumberFormat().format(size)}</div>
+      )}
     </div>
     {cells.map((value, offset) => {
       if (value === null) {
         return <div key={offset} />;
       }
-      const { background, isLightText } = getCellColors(value, max);
+      const { background, isLightText } = getCellColors(
+        value,
+        maxes[offset],
+        baseColor,
+      );
       return (
         <div
           key={offset}

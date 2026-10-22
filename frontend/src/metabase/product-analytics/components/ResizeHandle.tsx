@@ -3,8 +3,10 @@ import { useRef } from "react";
 import S from "./ResizeHandle.module.css";
 
 type ResizeHandleProps = {
-  /** Positions the strip on the right edge it drags. */
+  /** Positions the strip on the edge it drags. */
   className: string;
+  /** The edge the strip sits on. A left edge grows the panel when dragged left. */
+  edge?: "left" | "right";
   /** The width when the drag starts, read then so it can be measured. */
   getSize: () => number;
   min: number;
@@ -13,11 +15,12 @@ type ResizeHandleProps = {
 };
 
 /**
- * A grab strip on a panel's right edge; dragging it sets the panel's width.
+ * A grab strip on a panel's edge; dragging it sets the panel's width.
  * The panel styles the edge it sits on, e.g. darkening it on hover.
  */
 export const ResizeHandle = ({
   className,
+  edge = "right",
   getSize,
   min,
   max,
@@ -39,7 +42,8 @@ export const ResizeHandle = ({
       onPointerMove={(event) => {
         const start = dragStart.current;
         if (start !== null) {
-          const next = start.size + event.clientX - start.position;
+          const delta = event.clientX - start.position;
+          const next = start.size + (edge === "left" ? -delta : delta);
           onResize(Math.max(min, Math.min(max, next)));
         }
       }}

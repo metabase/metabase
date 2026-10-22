@@ -28,8 +28,8 @@ import {
   usePaletteSegments,
 } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
+import { PanelCloseButton } from "../PanelCloseButton";
 import { ResizeHandle } from "../ResizeHandle";
-import { CloseButton } from "../SetupPanel";
 import { EventDefinitionEditor } from "../events/EventDefinitionEditor";
 import { useTableQuery } from "../events/use-table-query";
 
@@ -76,7 +76,7 @@ export const SegmentsPanel = ({
         <Tabs.List px="lg" pt="sm">
           <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
           <Tabs.Tab value="people">{t`Cohorts`}</Tabs.Tab>
-          <CloseButton onClose={onClose} />
+          <PanelCloseButton onClose={onClose} />
         </Tabs.List>
         <Box className={S.scroll}>
           <Tabs.Panel value="event" py="md">

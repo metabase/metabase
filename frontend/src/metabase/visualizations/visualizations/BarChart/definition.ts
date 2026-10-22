@@ -26,6 +26,9 @@ const BarViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
       "product_analytics.funnel_steps": {
         getDefault: () => false,
       },
+      "product_analytics.funnel_step_colors": {
+        getDefault: () => [],
+      },
     },
   };
 
