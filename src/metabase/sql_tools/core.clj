@@ -233,10 +233,28 @@
   (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn is-single-stmt-of-type?
-  "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
+(defn validate-executable-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
+  **execute** the `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or
+  DELETE, `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its
+  tree (see [[read-only-select?]]).
+
+  The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
+  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk a GraalPy
+  OOM) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
+  original one. Only `:verdict :allowed` is permission to proceed.
+
+  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
+  for the same question asked by a caller that only needs a verdict."
   [driver sql stmt-type]
-  (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/validate-executable-stmt (sqlglot/driver->dialect driver) sql stmt-type))
+
+(defn classify-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
+  the verdict and never executes its `:sql`. Cheaper and more permissive about the dialect than
+  [[validate-executable-stmt]]; do not execute the `:sql` it returns."
+  [driver sql stmt-type]
+  (sql-parsing/classify-stmt (sqlglot/driver->dialect driver) sql stmt-type))
 
 (mu/defn read-only-select? :- :boolean
   "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
@@ -249,7 +267,7 @@
   A function this does not name, a user-defined one included, passes: only the database's own permissions stop it."
   [driver :- :keyword
    sql    :- :string]
-  (true? (:allowed-stmt-type? (is-single-stmt-of-type? driver sql "read-only"))))
+  (= :allowed (:verdict (classify-stmt driver sql "read-only"))))
 
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
@@ -260,7 +278,7 @@
   function's name."
   [driver :- :keyword
    sql    :- :string]
-  (let [{:keys [allowed-stmt-type? reason reason-detail]} (is-single-stmt-of-type? driver sql "read-only")]
-    (when-not (true? allowed-stmt-type?)
+  (let [{:keys [verdict reason detail]} (classify-stmt driver sql "read-only")]
+    (when-not (= :allowed verdict)
       {:reason (keyword (or reason "unparseable"))
-       :detail reason-detail})))
+       :detail detail})))
