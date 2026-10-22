@@ -1,5 +1,6 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
@@ -7,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -115,16 +117,31 @@
                             :import (fn [files]
                                       (cache/files->bundle (into {} (filter val) files)))}}})
 
+(defn- case-colliding-identifiers
+  "The lower-cased identifiers that more than one of `identifiers` share: their plugins would be one directory on a
+  case-insensitive filesystem, and an import refuses the second of them anywhere, so none of them is exported."
+  [identifiers]
+  (into #{}
+        (keep (fn [[lowered group]]
+                (when (next group)
+                  (log/warnf "Not exporting custom viz plugins %s: their identifiers differ only in case"
+                             (str/join ", " (map #(str \" % \") (sort group))))
+                  lowered)))
+        (group-by u/lower-case-en identifiers)))
+
 (defmethod serdes/extract-query "CustomVizPlugin"
   [model-name {:keys [filter-column filter-ids] :as opts}]
-  ;; a dev-only plugin has no bundle to export; a plugin whose identifier can't name a directory is left out and
-  ;; named in the log, it is still served on this instance
-  (eduction (remove (fn [{:keys [identifier]}]
-                      (when-let [error (manifest/directory-name-error identifier)]
-                        (log/warnf "Not exporting custom viz plugin: %s" error)
-                        true)))
-            (custom-viz-plugin.db/reducible-plugins-with-bundles filter-column filter-ids
-                                                                 (serdes/extract-order-columns model-name opts))))
+  ;; a dev-only plugin has no bundle to export; a plugin whose identifier can't name a directory, alone or beside
+  ;; another's, is left out and named in the log, it is still served on this instance
+  (let [colliding (case-colliding-identifiers
+                   (custom-viz-plugin.db/plugin-identifiers-with-bundles filter-column filter-ids))]
+    (eduction (remove (fn [{:keys [identifier]}]
+                        (or (contains? colliding (u/lower-case-en identifier))
+                            (when-let [error (manifest/directory-name-error identifier)]
+                              (log/warnf "Not exporting custom viz plugin: %s" error)
+                              true))))
+              (custom-viz-plugin.db/reducible-plugins-with-bundles filter-column filter-ids
+                                                                   (serdes/extract-order-columns model-name opts)))))
 
 (defn- bundle-columns
   "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state

@@ -212,7 +212,19 @@
                                                :status       :active}]
         (is (re-find #"identifier.*already exists"
                      (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
-                                        (cvp.tu/valid-bundle-bytes "dup-viz"))))))))
+                                        (cvp.tu/valid-bundle-bytes "dup-viz"))))))
+    (testing "an identifier that is an existing one in another case is refused, it would share a repository directory"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "Thumbs"
+                                               :display_name "Thumbs"
+                                               :status       :active}]
+        (is (re-find #"\"thumbs\" differs only in case from the existing plugin \"Thumbs\""
+                     (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
+                                        (cvp.tu/valid-bundle-bytes "thumbs"))))
+        (with-dev-mode-enabled
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "THUMBS"})]
+            (is (re-find #"\"THUMBS\" differs only in case from the existing plugin \"Thumbs\""
+                         (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                               {:dev_bundle_url "http://localhost:5174"})))))))))
 
 ;;; ------------------------------------------------ CRUD ------------------------------------------------
 

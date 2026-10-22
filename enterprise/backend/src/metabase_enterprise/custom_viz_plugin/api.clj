@@ -46,6 +46,17 @@
                       {:status-code 413})))
     tempfile))
 
+(defn- check-identifier-free!
+  "Throw a 400 when a plugin already has `identifier`, or has it in another case: a repository names a plugin's
+   directory by its identifier, and case-insensitive filesystems would merge the two."
+  [identifier]
+  (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier)]
+    (throw (ex-info (if (= existing identifier)
+                      (format "A custom visualization with identifier \"%s\" already exists." identifier)
+                      (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
+                              identifier existing))
+                    {:status-code 400}))))
+
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
 (def ^:private BundleUploadParts
@@ -150,9 +161,7 @@
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (cache/validate-bundle! bundle-bytes)
             identifier   (get-in validated [:manifest :name])
-            _            (api/check-400
-                          (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
-                          (format "A custom visualization with identifier \"%s\" already exists." identifier))
+            _            (check-identifier-free! identifier)
             plugin       (cache/insert-bundle! identifier validated)]
         (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
                                                                 :user-id api/*current-user-id*})
@@ -180,9 +189,7 @@
                                          {:status-code 400})))
         _            (when-let [error (manifest/directory-name-error identifier)]
                        (throw (ex-info error {:status-code 400})))
-        _            (api/check-400
-                      (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
-                      (format "A custom visualization with identifier \"%s\" already exists." identifier))
+        _            (check-identifier-free! identifier)
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])

@@ -125,6 +125,19 @@
       (export! dump-dir)
       (is (= ["exported"] (vec (.list (io/file dump-dir "custom_viz_plugins"))))))))
 
+(deftest export-skips-plugins-whose-identifiers-differ-only-in-case-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
+      (doseq [identifier ["exported" "Thumbs" "thumbs"]]
+        (insert-plugin! identifier (cv.tu/valid-bundle-bytes identifier)))
+      (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+        (export! dump-dir)
+        (testing "neither is written: they would be one directory on a case-insensitive filesystem"
+          (is (= ["exported"] (vec (.list (io/file dump-dir "custom_viz_plugins"))))))
+        (testing "the log names them"
+          (is (some #(re-find #"Not exporting custom viz plugins \"Thumbs\", \"thumbs\": their identifiers differ only in case" (:message %))
+                    (messages))))))))
+
 (deftest import-packs-the-files-beside-the-yaml-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
