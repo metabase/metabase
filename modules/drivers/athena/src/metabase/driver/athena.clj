@@ -576,6 +576,50 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
+(defn- describe-fields-per-table
+  "Returns the fields of the tables in `schema-names` with [[driver/describe-table]]. It is slower than the
+  `information_schema` query, but an error for one table does not stop the other tables."
+  [driver database schema-names table-names]
+  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)
+        table-names              (set table-names)
+        tables                   (sql-jdbc.execute/do-with-connection-with-options
+                                  driver
+                                  database
+                                  nil
+                                  (fn [^Connection conn]
+                                    (let [metadata (.getMetaData conn)]
+                                      (vec (for [schema (if (seq dbname) [dbname] (remove nil? schema-names))
+                                                 table  (get-tables metadata schema (not-empty catalog))
+                                                 :when  (or (empty? table-names)
+                                                            (contains? table-names (:table_name table)))]
+                                             {:name   (:table_name table)
+                                              :schema (when-not (seq dbname) schema)})))))]
+    (eduction
+     (mapcat (fn [table]
+               (for [field (:fields (driver/describe-table driver database table))]
+                 (assoc field :table-schema (:schema table), :table-name (:name table)))))
+     (sort-by (juxt :schema :name) tables))))
+
+(defmethod driver/describe-fields :athena
+  [driver database & {:keys [schema-names table-names] :as args}]
+  ;; the `information_schema` query fails for all tables when Athena cannot read the metadata of one table (for
+  ;; example an Iceberg table with no S3 access). In that case, describe each table separately.
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (let [started? (volatile! false)]
+        (try
+          (reduce (fn [acc row]
+                    (vreset! started? true)
+                    (rf acc row))
+                  init
+                  (sql-jdbc.sync/describe-fields driver database args))
+          (catch Exception e
+            (when @started?
+              (throw e))
+            (log/warnf e "Cannot read fields from information_schema for schemas %s, describing each table instead"
+                       (pr-str schema-names))
+            (reduce rf init (describe-fields-per-table driver database schema-names table-names))))))))
+
 ;; one-off REPL script kept for reference; requires test namespaces a driver module can't normally use
 #_{:clj-kondo/ignore [:discouraged-var :metabase/modules]}
 (comment

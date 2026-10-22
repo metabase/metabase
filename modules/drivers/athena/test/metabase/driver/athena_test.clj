@@ -502,6 +502,24 @@
                   {:table-schema "s", :table-name "t2", :name "c", :database-type "string", :database-position 1}
                   {:table-schema "s", :table-name "t3", :name "c", :database-type "string", :database-position 0}])))))
 
+(deftest ^:parallel describe-fields-falls-back-to-describe-table-test
+  (testing "if the information_schema query fails, describe each table separately"
+    (let [called (atom nil)
+          fields [{:table-schema "s", :table-name "t", :name "id", :database-type "int", :base-type :type/Integer, :database-position 0}]]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.execute/reducible-query (fn [_db _sql]
+                                                                     (reify clojure.lang.IReduceInit
+                                                                       (reduce [_ _rf _init]
+                                                                         (throw (ex-info "PERMISSION_DENIED" {})))))
+                                  athena/describe-fields-per-table (fn [_driver _database schema-names table-names]
+                                                                     (reset! called [schema-names table-names])
+                                                                     fields)]
+        (is (= fields
+               (into [] (driver/describe-fields :athena
+                                                (assoc meta/database :engine :athena, :details {})
+                                                :schema-names ["s"]
+                                                :table-names  ["t"]))))
+        (is (= [["s"] ["t"]] @called))))))
+
 (deftest describe-fields-matches-describe-table-test
   (mt/test-driver :athena
     (testing "`describe-fields` returns the same fields as `describe-table`"
