@@ -136,3 +136,28 @@
                (is (t2/exists? :model/DataApp :name "sparrows")))
              (is (thrown? Exception (insert! "finches" collection-id)))
              (is (not (t2/exists? :model/DataApp :name "finches"))))))))))
+
+(deftest a-data-apps-collection-is-a-root-collection-of-its-namespace-test
+  (testing "an app given an existing collection gets it only when it is a plain root collection of the data-apps namespace"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (mt/with-temp [:model/Collection {default-id :id}  {:name "Finance"}
+                       :model/Collection {root-id :id}     {:name "Root" :namespace :data-apps}
+                       :model/Collection {nested-id :id}   {:name     "Nested"
+                                                            :namespace :data-apps
+                                                            :location (str "/" root-id "/")}
+                       :model/Collection {archived-id :id} {:name "Archived" :namespace :data-apps :archived true}]
+          (doseq [[label collection-id] [["a default-namespace collection" default-id]
+                                         ["a collection inside another" nested-id]
+                                         ["an archived collection" archived-id]]]
+            (testing label
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a root collection of the data-apps namespace"
+                                    (t2/insert! :model/DataApp {:name                   "refused"
+                                                                :display_name           "Refused"
+                                                                :bundle_path            "index.js"
+                                                                :resource_collection_id collection-id})))))
+          (testing "a root collection of the namespace is fine"
+            (is (pos-int? (t2/insert-returning-pk! :model/DataApp {:name                   "accepted"
+                                                                   :display_name           "Accepted"
+                                                                   :bundle_path            "index.js"
+                                                                   :resource_collection_id root-id})))))))))

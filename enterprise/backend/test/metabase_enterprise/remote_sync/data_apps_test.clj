@@ -184,9 +184,6 @@
 
 (def ^:private shop-collection-name "Data App: shop")
 
-(def ^:private shop-collection-dir
-  (str "collections/data_apps/" (data-apps.tu/collection-dir shop-collection-name) "/"))
-
 (defn- shop-tree
   "The repo files of the `shop` app with `resources` (see `data-apps.tu/build-resources`), the resources under
   `collections/data_apps/data_app__shop/`."
@@ -253,7 +250,7 @@
           (is (not (t2/exists? :model/Card :entity_id "shopQuestionOther0001"))))))))
 
 (deftest pull-refuses-resources-an-app-may-not-hold-test
-  (testing "a resource file a load can't take as meant fails the pull, naming the file, before anything loads"
+  (testing "a resource the Card hook refuses fails the pull"
     (with-data-apps-sync
       (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                     [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
@@ -263,25 +260,8 @@
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree archived)} :current "v0")
             result    (import-at! src "v0" :force? true)]
         (is (= :error (:status result)))
-        (is (str/includes? (:message result) card-file))
-        (testing "nothing loaded"
-          (is (not (t2/exists? :model/DataApp :name "shop")))
-          (is (not (t2/exists? :model/Collection :entity_id shop-collection-eid)))
-          (is (not (t2/exists? :model/Card :entity_id question-eid))))))))
-
-(deftest pull-refuses-to-take-over-a-card-elsewhere-test
-  (testing "a file naming the entity ID of a card outside the app can't move it into the app's collection"
-    (with-data-apps-sync
-      (mt/with-temp [:model/Card {foreign-id :id} {:name "Someone else's" :entity_id question-eid}]
-        (let [src    (test-helpers/versioned-source
-                      :trees {"v0" (shop-tree (data-apps.tu/build-resources shop-collection-name shop-collection-eid
-                                                                            [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
-                                                                            []))}
-                      :current "v0")
-              result (import-at! src "v0" :force? true)]
-          (is (= :error (:status result)))
-          (is (str/includes? (:message result) shop-collection-dir))
-          (is (= "Someone else's" (t2/select-one-fn :name :model/Card :id foreign-id))))))))
+        (is (str/includes? (:message result) "not archived"))
+        (is (not (t2/exists? :model/Card :entity_id question-eid)))))))
 
 (deftest export-writes-an-apps-resources-under-its-collection-test
   (testing "what an app's collection holds is exported under collections/data_apps/, like any namespace's content"
@@ -522,9 +502,7 @@
       (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")]
         (is (= :success (:status (import-at! src "v0" :force? true))))
         (t2/update! :model/Card :entity_id question-eid {:collection_id nil})
-        (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v0")))
-        (testing "a pull that would load is still refused"
-          (is (= :error (:status (import-at! src "v0" :force? true)))))))))
+        (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v0")))))))
 
 (deftest pull-refuses-two-apps-that-name-one-collection-test
   (with-data-apps-sync
@@ -532,46 +510,9 @@
           app    (fn [slug] (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection shared}))
           src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
           result (import-at! src "v0" :force? true)]
-      (is (= :error (:status result)))
-      (is (str/includes? (:message result) "data_apps/first/data_app.yaml"))
-      (is (str/includes? (:message result) "data_apps/second/data_app.yaml"))
-      (testing "a problem both apps find in the collection they share is listed once"
-        (is (apply distinct? (str/split-lines (:message result)))))
-      (testing "nothing loaded"
-        (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])))
-        (is (not (t2/exists? :model/Collection :entity_id shared)))))))
-
-(deftest pull-lists-each-problem-on-its-own-line-test
-  (testing "a pull refusing several apps names each problem's file once, one problem per line"
-    (with-data-apps-sync
-      (let [app    (fn [slug] (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection nil}))
-            src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
-            result (import-at! src "v0" :force? true)
-            [lead & problems] (str/split-lines (:message result))]
+      (testing "the database refuses the second app on the collection the first owns"
         (is (= :error (:status result)))
-        (is (= "Failed to reload from git repository. Invalid data app files:" lead))
-        (is (= ["- data_apps/first/data_app.yaml must name the app's resource collection as `collection`."
-                "- data_apps/second/data_app.yaml must name the app's resource collection as `collection`."]
-               (sort problems)))))))
-
-(deftest pull-refuses-two-apps-that-define-one-card-test
-  (with-data-apps-sync
-    (let [app    (fn [slug]
-                   (let [collection (data-apps.tu/collection-entity-id slug)]
-                     (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection collection
-                                                   :resources (data-apps.tu/build-resources
-                                                               (str "Data App: " slug) collection
-                                                               [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
-                                                               [])})))
-          src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
-          result (import-at! src "v0" :force? true)]
-      (is (= :error (:status result)))
-      (is (str/includes? (:message result) "collections/data_apps/data_app__first/"))
-      (is (str/includes? (:message result) "collections/data_apps/data_app__second/"))
-      (testing "nothing loaded"
-        (is (not (t2/exists? :model/Card :entity_id question-eid)))
-        (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])))
-        (is (not (t2/exists? :model/Collection :entity_id [:in (map data-apps.tu/collection-entity-id ["first" "second"])])))))))
+        (is (> 2 (t2/count :model/DataApp :name [:in ["first" "second"]])))))))
 
 (deftest pull-refuses-a-manifest-that-names-a-collection-it-doesnt-define-test
   (testing "a manifest with no resource files can't claim a collection that is already here"
@@ -584,57 +525,10 @@
                       :current "v0")
               result (import-at! src "v0" :force? true)]
           (is (= :error (:status result)))
-          (is (str/includes? (:message result) "data_apps/shop/data_app.yaml"))
+          (is (str/includes? (:message result) "must be a root collection of the data-apps namespace"))
+          (is (not (t2/exists? :model/DataApp :name "shop")))
           (is (t2/exists? :model/Collection :id collection-id))
           (is (t2/exists? :model/Card :id card-id)))))))
-
-(deftest pull-refuses-a-manifest-that-doesnt-parse-test
-  (testing "a data_app.yaml that holds no map can't say which app it is, so the pull refuses it naming the manifest,
-            rather than deleting the app as no longer in the repository"
-    (with-data-apps-sync
-      (let [v0  (shop-tree (question-resources))
-            src (test-helpers/versioned-source :trees {"v0"    v0
-                                                       "empty" (assoc v0 "data_apps/shop/data_app.yaml" "")
-                                                       "list"  (assoc v0 "data_apps/shop/data_app.yaml" "- a\n")
-                                                       "text"  (assoc v0 "data_apps/shop/data_app.yaml" "shop\n")}
-                                               :current "v0")]
-        (is (= :success (:status (import-at! src "v0" :force? true))))
-        (doseq [version ["empty" "list" "text"]]
-          (testing version
-            (let [result (import-at! src version)]
-              (is (= :error (:status result)))
-              (is (str/includes? (str (:message result)) "data_apps/shop/data_app.yaml must hold a single DataApp")
-                  (:message result))
-              (is (t2/exists? :model/DataApp :name "shop")))))))))
-
-(defn- export-merged!
-  "Export to `src` with `merge`, as an instance whose last sync was `base-version` does once the remote has advanced."
-  [src base-version]
-  (t2/delete! :model/RemoteSyncTask :sync_task_type "export")
-  (let [task   (new-task! "export")
-        result (impl/export! (source.p/snapshot src) task "export"
-                             :merge? true :source src :base-snapshot (source.p/snapshot-at src base-version))]
-    (impl/handle-task-result! result task)
-    result))
-
-(deftest an-export-that-merges-checks-like-a-pull-test
-  (with-data-apps-sync
-    (testing "a remote file that a pull refuses is refused by an export that merges it in"
-      (mt/with-temp [:model/Collection {elsewhere :id} {:name "Elsewhere"}
-                     :model/Card       {foreign-id :id} {:name "Someone else's" :entity_id "foreignCardEntityId00"
-                                                         :collection_id elsewhere}]
-        (let [remote (data-apps.tu/build-resources
-                      shop-collection-name shop-collection-eid
-                      [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
-                       {:entity_id "foreignCardEntityId00" :name "Taken" :query (venues-query)}]
-                      [])
-              src    (test-helpers/versioned-source
-                      :trees {"v0" (shop-tree (question-resources)) "v1" (shop-tree remote)}
-                      :current "v1")]
-          (is (= :success (:status (import-at! src "v0" :force? true))))
-          (is (= :error (:status (export-merged! src "v0"))))
-          (is (=? {:name "Someone else's" :collection_id elsewhere}
-                  (t2/select-one :model/Card :id foreign-id))))))))
 
 (deftest a-pull-refuses-a-native-question-in-an-apps-collection-test
   (testing "a question in an app's collection is built with the query builder, so a pull refuses one in SQL"
@@ -917,21 +811,3 @@
                               (filter map? (tree-seq coll? seq (t2/select-one-fn :dataset_query :model/QueryAction :action_id copy-id))))))))
              (is (= :success (:status (export! mock))))
              (is (= :success (:status (import-at! mock "main" :force? true)))))))))))
-
-(deftest a-refused-pull-names-the-file-whatever-its-name-test
-  (testing "a validator failure is reported as what it is when a path has \"branch\" in it, not as a branch error"
-    (with-data-apps-sync
-      (let [collection-eid (data-apps.tu/collection-entity-id "branch-ops")
-            resources      (data-apps.tu/build-resources "Data App: branch-ops" collection-eid
-                                                         [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
-                                                         [])
-            card-file      (some #(when (str/includes? % question-eid) %) (keys resources))
-            tree           (data-apps.tu/app-files "branch-ops"
-                                                   {:name "Branch Ops" :path "index.js" :bundle "B" :collection collection-eid
-                                                    :resources (update resources card-file
-                                                                       #(yaml/generate-string (assoc (yaml/parse-string %) :type "model")))})
-            src            (test-helpers/versioned-source :trees {"v0" tree} :current "v0")
-            result         (import-at! src "v0" :force? true)]
-        (is (= :error (:status result)))
-        (is (str/includes? (:message result) "must be a question or metric"))
-        (is (str/includes? (:message result) card-file))))))

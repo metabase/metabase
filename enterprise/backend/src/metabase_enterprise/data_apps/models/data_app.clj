@@ -72,11 +72,25 @@
        (mu/validate-throw schema)
        with-bundle-hash))
 
+(defn- check-resource-collection
+  "Throws unless the Collection with `collection-id` can be a data app's resource collection: a root collection of the
+  data-apps namespace that is not personal, typed, official, archived, remote-synced or the sample."
+  [collection-id]
+  (let [collection (data-apps.db/resource-collection collection-id)]
+    (when-not (and collection
+                   (= "data-apps" (some-> (:namespace collection) name))
+                   (= "/" (:location collection))
+                   (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
+                   (not-any? collection [:archived :is_remote_synced :is_sample]))
+      (throw (ex-info (tru "A data app''s resource collection must be a root collection of the data-apps namespace that is not personal, typed, official, archived, remote-synced or the sample.")
+                      {:status-code 400, :collection-id collection-id})))))
+
 (t2/define-before-insert :model/DataApp
   [data-app]
   ;; Every app owns a resource collection from its first moment: one it is given (an import names the collection
   ;; its manifest references) or one created here, so the column is never null.
   (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
+    (some-> (:resource_collection_id row) check-resource-collection)
     (cond-> row
       (nil? (:resource_collection_id row))
       (assoc :resource_collection_id (:id (data-app.resources/create-resource-collection! row))))))
@@ -90,6 +104,7 @@
                (some? (:resource_collection_id (t2/original data-app))))
       (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
                       {:status-code 400, :data-app-id (:id data-app)})))
+    (some-> (:resource_collection_id changes) check-resource-collection)
     (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
