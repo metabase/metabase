@@ -15,9 +15,5 @@ describe("scenarios > native > table tags", () => {
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(200);
   });
-
-  it("temporary failure", () => {
-    cy.wrap(1).should("eq", 2);
-  });
 });
 // temporary: trigger the docker build
