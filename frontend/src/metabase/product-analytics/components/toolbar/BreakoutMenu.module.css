@@ -1,0 +1,18 @@
+.icon {
+  color: var(--mb-color-text-secondary);
+}
+
+/* Like a Select's picked option. */
+.option[aria-selected="true"] {
+  color: var(--mb-color-text-selected) !important;
+  background-color: var(--mb-color-background_surface-selected) !important;
+
+  .icon {
+    color: inherit;
+  }
+}
+
+/* The filter purple, like a segment's filter pill and the segments panel. */
+.segmentIcon {
+  color: var(--mb-color-core-filter);
+}

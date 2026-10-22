@@ -12,7 +12,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { IconName, TableId } from "metabase-types/api";
 
 import type { Breakout } from "../../analyses/breakout";
 import { toPeopleSegmentRef } from "../../segments/people-segment-ref";
@@ -20,6 +20,8 @@ import type { PaletteSegment, PeopleSegmentRef } from "../../segments/types";
 import { usePaletteSegments } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
 import type { SettingWidgetProps } from "../../settings/types";
+
+import S from "./BreakoutMenu.module.css";
 
 const MAX_DROPDOWN_HEIGHT = "60vh";
 const DROPDOWN_WIDTH = 280;
@@ -33,7 +35,7 @@ const BREAKOUT_SET_VARS = {
   },
 };
 
-type ColumnOption = { value: string; label: string };
+type ColumnOption = { value: string; label: string; icon: IconName };
 
 type BreakoutTab = Breakout["type"];
 
@@ -99,19 +101,8 @@ export const BreakoutMenu = ({
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown w={DROPDOWN_WIDTH}>
-        {isSet && (
-          <>
-            <Menu.Item
-              leftSection={<Icon name="close" />}
-              onClick={() => onChange(null)}
-            >
-              {t`Remove breakout`}
-            </Menu.Item>
-            <Menu.Divider />
-          </>
-        )}
         <Tabs defaultValue={value?.type ?? "property"}>
-          <Tabs.List>
+          <Tabs.List grow>
             <Tabs.Tab value={"property" satisfies BreakoutTab}>
               {t`Properties`}
             </Tabs.Tab>
@@ -148,6 +139,18 @@ export const BreakoutMenu = ({
             </Tabs.Panel>
           </Box>
         </Tabs>
+        {/* Below the options, so it appearing doesn't move them. */}
+        {isSet && (
+          <>
+            <Menu.Divider />
+            <Menu.Item
+              leftSection={<Icon name="close" />}
+              onClick={() => onChange(null)}
+            >
+              {t`Remove breakout`}
+            </Menu.Item>
+          </>
+        )}
       </Menu.Dropdown>
     </Menu>
   );
@@ -165,9 +168,9 @@ const PropertyOptions = ({ columns, value, onChange }: PropertyOptionsProps) =>
       {columns.map((column) => (
         <Menu.Item
           key={column.value}
-          rightSection={
-            column.value === value ? <Icon name="check" /> : undefined
-          }
+          className={S.option}
+          aria-selected={column.value === value}
+          leftSection={<Icon name={column.icon} className={S.icon} />}
           onClick={() => onChange(column.value)}
         >
           {column.label}
@@ -185,7 +188,7 @@ type CohortOptionsProps = {
 };
 
 /**
- * The users table's segments and this session's drafts, as checkboxes that
+ * The users table's segments and this session's drafts, with checkboxes that
  * keep the menu open. Mounted with the dropdown, so drafts made since the
  * last time it opened show up.
  */
@@ -232,7 +235,8 @@ const CohortOptions = ({
         <Menu.Item
           key={segment.key}
           closeMenuOnClick={false}
-          leftSection={
+          leftSection={<Icon name="segment" className={S.segmentIcon} />}
+          rightSection={
             <Checkbox
               checked={value.some((picked) => picked.key === segment.key)}
               readOnly
