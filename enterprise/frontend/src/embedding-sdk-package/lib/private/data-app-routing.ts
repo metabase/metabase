@@ -1,4 +1,4 @@
-import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/lib/data-app-embed";
+import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/lib/embedded-data-app-path";
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as DataAppUrls from "metabase/urls/data-apps";
 

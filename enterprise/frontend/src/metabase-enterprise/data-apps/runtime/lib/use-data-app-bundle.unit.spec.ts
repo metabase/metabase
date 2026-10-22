@@ -176,7 +176,7 @@ describe("useDataAppBundle", () => {
         expect(result.current.data?.component).toBe(LOADED_APP.component),
       );
       expect(mockedFetch).toHaveBeenCalledTimes(1);
-      expect(mockedFetch).toHaveBeenCalledWith("sales");
+      expect(mockedFetch).toHaveBeenCalledWith("sales", { embedded: true });
 
       expect(mockedInstantiate).toHaveBeenCalledWith(
         "BUNDLE",
@@ -204,7 +204,9 @@ describe("useDataAppBundle", () => {
 
       rerender({ name: "inventory" });
       await waitFor(() => expect(mockedInstantiate).toHaveBeenCalledTimes(2));
-      expect(mockedFetch).toHaveBeenNthCalledWith(2, "inventory");
+      expect(mockedFetch).toHaveBeenNthCalledWith(2, "inventory", {
+        embedded: true,
+      });
       expect(getCspMetaTags()).toHaveLength(1);
     });
 
@@ -219,13 +221,25 @@ describe("useDataAppBundle", () => {
 
         await waitFor(() => expect(result.current.failed).toBe(true));
         expect(mockedInstantiate).not.toHaveBeenCalled();
-        expect(mockedReport).toHaveBeenCalledWith(
-          false,
-          expect.objectContaining({
-            message:
-              "Something went wrong while loading this app. Try refreshing the page.",
-          }),
+        expect(result.current.error).toBe(
+          "Something went wrong while loading this app. Try refreshing the page.",
         );
+        expect(mockedReport).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([403, 404, 409])(
+      "reports error for a missing bundle: %s",
+      async (status) => {
+        const { result } = setup({
+          embedded: true,
+          error: new DataAppBundleError("Bundle unavailable", status),
+        });
+
+        await waitFor(() => expect(result.current.failed).toBe(true));
+        expect(mockedInstantiate).not.toHaveBeenCalled();
+        expect(result.current.error).toBe("Bundle unavailable");
+        expect(mockedReport).not.toHaveBeenCalled();
       },
     );
 

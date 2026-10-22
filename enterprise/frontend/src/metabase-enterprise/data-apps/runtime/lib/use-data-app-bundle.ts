@@ -19,9 +19,8 @@ export interface LoadedApp {
 
 /**
  * Loads a data-app bundle in the near-membrane sandbox and watches for crashes.
- *
- * Embedded apps install CSP before creating the sandbox. Errors are
- * reported to the host's `DataAppView` for internal data apps.
+ * Embedded apps install CSP before creating the sandbox and return errors for
+ * display inside the iframe. Internal apps report errors to the host's DataAppView.
  */
 export const useDataAppBundle = (
   name: string,
@@ -29,25 +28,29 @@ export const useDataAppBundle = (
 ): {
   data: LoadedApp | null;
   failed: boolean;
+  error?: string | null;
 } => {
   const [data, setData] = useState<LoadedApp | null>(null);
   const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     setData(null);
     setFailed(false);
+    setError(null);
 
     const load = async () => {
       const { code, allowedHosts, contentSecurityPolicy } =
-        await fetchDataAppBundleCode(name);
+        await fetchDataAppBundleCode(name, { embedded });
 
       if (cancelled) {
         return;
       }
 
-      // Install CSP before creating the sandbox or evaluating any bundle code.
+      // Ensure CSP is installed *before* the bundle code evaluates.
+      // If CSP were to be installed after, it won't apply to already evaluated bundle.
       if (embedded) {
         installContentSecurityPolicy(contentSecurityPolicy);
       }
@@ -74,7 +77,14 @@ export const useDataAppBundle = (
         // any other failure carries the real error so it can be shown.
         const detail = notReady ? undefined : describeError(error);
         setFailed(true);
-        reportErrorToParent(notReady, detail);
+
+        if (embedded) {
+          // Embedded data apps shows their own error screen
+          setError(describeError(error).message);
+        } else {
+          // Internal data apps reports the error to the parent
+          reportErrorToParent(notReady, detail);
+        }
       }
     });
 
@@ -100,16 +110,21 @@ export const useDataAppBundle = (
           detail.stack ?? "",
         );
         setFailed(true);
-        reportErrorToParent(false, detail);
+
+        if (embedded) {
+          setError(detail.message);
+        } else {
+          reportErrorToParent(false, detail);
+        }
       }
     };
 
     window.addEventListener("error", onError);
 
     return () => window.removeEventListener("error", onError);
-  }, []);
+  }, [embedded]);
 
-  return { data, failed };
+  return { data, failed, error };
 };
 
 /**

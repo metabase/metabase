@@ -303,11 +303,10 @@
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (if (some? data-app-connect-hosts)
-                                  ;; Data-app docs get a per-app framing allowlist:
-                                  ;; only `'self'` and the origins the app declared
-                                  ;; in `allowed_hosts` — NOT the instance-wide iframe
-                                  ;; hosts, so a data app can't frame those unless it
-                                  ;; lists them itself.
+                                  ;; Internal data-app docs can frame `'self'` and the app's
+                                  ;; `allowed_hosts`, not the instance-wide iframe hosts. The
+                                  ;; external bootstrap shell allows HTTP(S) until the authorized
+                                  ;; app policy is installed before bundle evaluation.
                                   (into ["'self'"] data-app-connect-hosts)
                                   (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
                   :font-src     (into (cond-> always-allowed-resource-hosts
@@ -317,14 +316,11 @@
                                                                (map-tile-server->hosts))
                                                    config/is-dev? (conj frontend-address))]
                                   (cond-> (cond
-                                            ;; A sandboxed data-app document NEVER gets `*`: an ungated
-                                            ;; `new Image()`/`<img>` under `img-src *` would beacon the viewing
-                                            ;; user's data off-origin (the `img` tag can't be blocked — the SDK
-                                            ;; uses it). Always use the restricted allowlist: `'self'` (the
-                                            ;; instance) + the admin's "Allowed domains for images"
-                                            ;; (`csp-img-allowed-hosts`, so custom viz still renders) + blob:, plus
-                                            ;; the app's own `allowed_hosts` (mirroring connect-src/frame-src —
-                                            ;; the app can already fetch those, so this adds no exfil channel).
+                                            ;; Internal data-app docs avoid `*`: an ungated image could
+                                            ;; send the user's data off-origin. Use `'self'`, the admin's
+                                            ;; "Allowed domains for images", blob:, and the app's
+                                            ;; `allowed_hosts`. The external bootstrap shell allows
+                                            ;; HTTP(S) until the authorized app policy is installed.
                                             data-app-iframe?                  (into restricted data-app-connect-hosts)
                                             (server.settings/csp-img-enabled) restricted
                                             :else                             (into ["*"] always-allowed-resource-hosts))
@@ -349,9 +345,10 @@
                                   ;; CLJS REPL
                                   (when config/is-dev?
                                     (str "ws://*:" cljs-dev-port))]
-                                 ;; Per-app `allowed_hosts` for the data-app iframe document, so its
-                                 ;; sandboxed bundle can fetch/XHR the origins the app declared. Added
-                                 ;; separately from `'self'` (which stays for the host-side SDK calls).
+                                 ;; Internal data-app docs use per-app `allowed_hosts` for
+                                 ;; sandbox fetch/XHR. The external bootstrap shell allows HTTP(S) until
+                                 ;; the authorized app policy is installed. `'self'` remains for
+                                 ;; host-side SDK calls.
                                  (when data-app-iframe? data-app-connect-hosts))
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]
@@ -548,10 +545,10 @@
 
 (defn- data-app-iframe-request?
   [request]
-  (str/starts-with? (:uri request) (str request/data-app-embed-prefix "/")))
+  (boolean (request/data-app? request)))
 
 (def ^:private data-app-slug-regex
-  (re-pattern (str "/(?:embed/)?" request/data-app-url-segment "/([^/]+).*")))
+  (re-pattern (str "(?:/" request/data-app-url-segment "|" request/data-app-embed-prefix "|" request/embedded-data-app-prefix ")/([^/]+).*")))
 
 (defn- data-app-slug
   "Slug of the data-app document being served, parsed from the top-level
@@ -655,24 +652,24 @@
                  ;; than the open embedding `*`. Check it before the broader
                  ;; `embed?`, which `/embed/apps/...` also matches.
                  :frame-ancestors             (cond
+                                                (request/embedded-data-app? request)              :any
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
                  :allow-cache?                (and (request/cacheable? request)
                                                    (cacheable-status? (:status response)))
                  :data-app-iframe?            (data-app-iframe-request? request)
-                 ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
-                 ;; doc) and `frame-src` (both the iframe doc and the top page,
-                 ;; whose `frame-src` gates the iframe's own navigations). The
-                 ;; hosts are looked up only for a signed-in user: the header would
-                 ;; otherwise hand an app's `allowed_hosts` to anyone who can guess
-                 ;; its slug, and let them probe which slugs exist. A signed-out
-                 ;; request still gets the data-app policy with an empty allowlist,
-                 ;; not the broader instance-wide one.
-                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (if (:metabase-user-id request)
-                                                  (drop-instance-origin (data-app-connect-src-hosts slug))
-                                                  []))
+                 ;; The external bootstrap shell uses HTTP(S) scheme sources without
+                 ;; looking up the app. Its authorized app policy is installed before
+                 ;; bundle evaluation. Internal data-app docs use per-app `allowed_hosts`
+                 ;; for `connect-src`, `form-action`, and `frame-src`; signed-out
+                 ;; requests use an empty list so the header reveals no app hosts.
+                 :data-app-connect-hosts      (if (request/embedded-data-app? request)
+                                                ["http:" "https:"]
+                                                (when-let [slug (data-app-slug request)]
+                                                  (if (:metabase-user-id request)
+                                                    (drop-instance-origin (data-app-connect-src-hosts slug))
+                                                    [])))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
                                                   (request/embed-sdk-eajs-entrypoint? request)))

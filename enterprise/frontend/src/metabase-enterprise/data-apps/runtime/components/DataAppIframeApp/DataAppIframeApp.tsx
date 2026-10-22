@@ -15,6 +15,7 @@ import { readNameFromUrl } from "../../lib/read-name-from-url";
 import { reportErrorToParent } from "../../lib/report-error-to-parent";
 import { reportReadyToParent } from "../../lib/report-ready-to-parent";
 import { useDataAppBundle } from "../../lib/use-data-app-bundle";
+import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 import { DataAppProvider } from "../DataAppProvider/DataAppProvider";
 
 /**
@@ -23,8 +24,8 @@ import { DataAppProvider } from "../DataAppProvider/DataAppProvider";
  * Without this, a throw inside the bundle — e.g. an opaque `#<Object>` from the
  * Near-Membrane sandbox — unmounts the whole tree and leaves a blank iframe.
  */
-class BundleErrorBoundary extends Component<
-  { children: ReactNode },
+export class BundleErrorBoundary extends Component<
+  { children: ReactNode; embedded?: boolean },
   { detail: ErrorDetail | null }
 > {
   state: { detail: ErrorDetail | null } = { detail: null };
@@ -41,11 +42,20 @@ class BundleErrorBoundary extends Component<
       detail.stack ?? "",
       info,
     );
-    reportErrorToParent(false, detail);
+
+    if (!this.props.embedded) {
+      reportErrorToParent(false, detail);
+    }
   }
 
   render() {
     if (this.state.detail) {
+      // Show errors inline for embedded data apps.
+      // `reportErrorToParent` reports to Metabase's origin, not embed parent.
+      if (this.props.embedded) {
+        return <DataAppErrorState message={this.state.detail.message} />;
+      }
+
       // `componentDidCatch` already reported the error to the host, which shows
       // the themed failure screen; a neutral loader covers the handoff.
       return (
@@ -54,6 +64,7 @@ class BundleErrorBoundary extends Component<
         </Center>
       );
     }
+
     return this.props.children;
   }
 }
