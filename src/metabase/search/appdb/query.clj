@@ -88,13 +88,7 @@
   "The query returning the distinct `:model`s of the search index `index-table` with at least one visible result for
   `search-ctx`."
   [index-table search-ctx]
-  (->> (specialization/base-query index-table (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
-       (add-collection-join-and-where-clauses search-ctx)
-       (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                               search-ctx
-                               :search_index.model
-                               :search_index.source_type)))
-       (search.filter/with-filters search-ctx)))
+  (base-filtered-query index-table search-ctx (:search-string search-ctx) [[[:distinct :model] :model]]))
 
 (defn- restrict-to-row
   [model id qry]
