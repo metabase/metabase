@@ -44,11 +44,17 @@
 
 (defn- with-recovery-hint
   "`e` rewrapped by [[common/message-ex-info]] with v2's recovery message for its `ex-data` on a line after its
-   message, keeping its data and with `e` as the cause, or unchanged when there is none."
+   message, keeping its data and with `e` as the cause, or unchanged when there is none.
+
+   `e`'s message is quoted, except for a preprocessing rejection. The pipeline writes that message from server text
+   and quotes the query processor's text in it."
   [^clojure.lang.ExceptionInfo e]
   (if-let [hint (v2.recovery-hints/recovery-hint (ex-data e))]
     (common/message-ex-info (if-let [text (common/exception-message e)]
-                              (message/msg ["%s" "%s"] text hint)
+                              (message/msg ["%s" "%s"]
+                                           (cond-> text
+                                             (= :query-preprocessing-failed (:error (ex-data e))) message/raw)
+                                           hint)
                               hint)
                             (ex-data e)
                             e)

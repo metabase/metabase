@@ -140,15 +140,15 @@
           (doseq [[description stage rejection]
                   [["a number column compared to text"
                     {:filters [["=" {} ["field" {} (mt/id :orders :total)] "abc"]]}
-                    (str "\\\"Error filtering against :type/Float Field: unable to parse String \\\\\\\"abc\\\\\\\" "
-                         "to a :type/Float\\\"")]
+                    (str "\"Error filtering against :type/Float Field: unable to parse String \\\"abc\\\" "
+                         "to a :type/Float\"")]
                    ["a metric used in a filter"
                     {:aggregation [["count" {}]]
                      :filters     [[">" {} ["metric" {} metric-id] 100]]}
                     (str "Metabase could not expand a metric reference. Check that it is in an aggregation and "
                          "applies to this stage's source.")]]]
             (testing description
-              (is (= (str "\"Metabase could not prepare this query to run: " rejection "\"\n"
+              (is (= (str "Metabase could not prepare this query to run: " rejection "\n"
                           "Fix that part of the query and retry.")
                      (error-text (call! "visualize_query" (str (random-uuid))
                                         {:query {:lib/type "mbql/query"
