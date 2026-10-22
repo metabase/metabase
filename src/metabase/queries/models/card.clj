@@ -156,15 +156,6 @@
     (:id card)                    (queries.db/card-document-id (:id card))
     :else                         ::not-adjudicable))
 
-(defn- has-actions?
-  "Whether `card` has any Action, archived ones included, read from `::has-actions?` when the `:can_write` hydration
-  computed it for a whole page."
-  [card]
-  (cond
-    (contains? card ::has-actions?) (::has-actions? card)
-    (:id card)                      (queries.db/card-has-actions? (:id card))
-    :else                           false))
-
 (defn- parent-document-permits?
   "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
 
@@ -200,33 +191,49 @@
   ([_ pk]
    (mi/can-read? (queries.db/card pk))))
 
+(defn- collection-permits-write?
+  "Whether the Collection of `card` grants the current user write, which a Card in the audit collection never has."
+  [card]
+  (and
+   (not (and
+         ;; We want to make sure there's an existing audit collection before doing the equality check below.
+         ;; If there is no audit collection, this will be nil:
+         (some? (:id (audit/default-audit-collection)))
+         ;; Is a direct descendant of audit collection
+         (= (:collection_id card) (:id (audit/default-audit-collection)))))
+   (mi/current-user-has-full-permissions? (mi/perms-objects-set card :write))))
+
+(defn- actions-permit-write?
+  "Whether the Actions of `card` let the current user write it: only an admin writes a Card that has any Action."
+  [card]
+  (or (mi/superuser?)
+      (not (some-> (:id card) queries.db/card-has-actions?))))
+
 (defmethod mi/can-write? :model/Card
   ([instance]
-   ;; Cards in audit collection should not be writable.
-   (and
-    (not (and
-          ;; We want to make sure there's an existing audit collection before doing the equality check below.
-          ;; If there is no audit collection, this will be nil:
-          (some? (:id (audit/default-audit-collection)))
-          ;; Is a direct descendant of audit collection
-          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
-    (parent-document-permits? instance :write)
-    (or (mi/superuser?) (not (has-actions? instance)))))
+   (and (collection-permits-write? instance)
+        (parent-document-permits? instance :write)
+        (actions-permit-write? instance)))
   ([_ pk]
    (mi/can-write? (queries.db/card pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
-  "Hydrates `:can_write` like other collection-based models, looking up which `cards` have Actions in one query."
-  [model k cards]
+  "Hydrates `:can_write` like [[mi/can-write?]], looking up which `cards` have Actions in one query."
+  [_model k cards]
   (let [card-ids     (into #{} (keep :id) cards)
         with-actions (if (or (mi/superuser?) (empty? card-ids))
                        #{}
                        (queries.db/card-ids-with-actions card-ids))]
-    (for [card (next-method model k (for [card cards]
-                                      (cond-> card
-                                        (:id card) (assoc ::has-actions? (contains? with-actions (:id card))))))]
-      (some-> card (dissoc ::has-actions?)))))
+    (mi/instances-with-hydrated-data
+     cards k
+     #(into {}
+            (map (juxt :id (fn [card]
+                             (and (collection-permits-write? card)
+                                  (parent-document-permits? card :write)
+                                  (not (contains? with-actions (:id card)))))))
+            (t2/hydrate (remove nil? cards) :collection))
+     :id
+     {:default false})))
 
 (defn model?
   "Returns true if `card` is a model."
