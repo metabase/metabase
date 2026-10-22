@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { JSX, PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";

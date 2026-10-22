@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, JSX } from "react";
 
 import AreaSkeleton from "metabase/visualizations/components/skeletons/AreaSkeleton";
 import BarSkeleton from "metabase/visualizations/components/skeletons/BarSkeleton";
