@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isActionDashCard } from "metabase/actions/utils";
+import { getActionDisplayType, isActionDashCard } from "metabase/actions/utils";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
@@ -636,9 +636,10 @@ export function DashCardVisualization({
   // so clipping it to the card's radius would cut its corners off.
   const isActionButton =
     isActionDashCard(dashcard) &&
-    (dashcard.visualization_settings.actionDisplayType ??
-      dashcard.action?.visualization_settings?.type ??
-      "button") === "button";
+    getActionDisplayType(
+      dashcard.visualization_settings.actionDisplayType,
+      dashcard.action,
+    ) === "button";
 
   return (
     <div
