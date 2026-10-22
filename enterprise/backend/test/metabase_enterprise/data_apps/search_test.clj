@@ -16,12 +16,12 @@
 (def ^:private search-term "sandpiper")
 
 (defn- found-data-apps
-  "The names of the data apps that `user` finds searching for [[search-term]] with `params`, by id."
+  "The name and slug of the data apps that `user` finds searching for [[search-term]] with `params`, by id."
   [user & params]
   (->> (apply mt/user-http-request user :get 200 "search" :q search-term params)
        :data
        (filter (comp #{"data-app"} :model))
-       (into {} (map (juxt :id :name)))))
+       (into {} (map (juxt :id #(select-keys % [:name :data_app_slug]))))))
 
 (defn- with-each-engine
   "Run `check!` with the index engine when the app DB supports it, then with the legacy engine."
@@ -43,13 +43,15 @@
           (testing "an admin finds every app, by its slug or its display name"
             (is (= #{slug-match-id assigned-id}
                    (set (keys (found-data-apps :crowberto :models "data-app"))))))
-          (testing "another user finds the apps assigned to one of their groups, under their display name"
-            (is (= {assigned-id "Sandpiper counts"}
+          (testing "another user finds the apps assigned to one of their groups, under their display name, with their
+                   slug"
+            (is (= {assigned-id {:name "Sandpiper counts" :data_app_slug "plovers"}}
                    (found-data-apps :rasta :models "data-app"))))
           (testing "a user in no assigned group finds none"
             (is (= {} (found-data-apps :lucky :models "data-app"))))
-          (testing "a search that names no models finds none, since global search doesn't show data apps yet"
-            (is (= {} (found-data-apps :crowberto)))))))))
+          (testing "a search that names no models, as global search's, finds them too"
+            (is (= #{slug-match-id assigned-id}
+                   (set (keys (found-data-apps :crowberto)))))))))))
 
 (deftest search-finds-no-data-apps-without-the-feature-test
   (mt/with-premium-features #{}

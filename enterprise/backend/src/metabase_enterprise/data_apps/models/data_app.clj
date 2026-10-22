@@ -155,7 +155,8 @@
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :display_name :description]
-   :render-terms {}})
+   ;; A result's `name` is its display name, and the app's URL needs its slug.
+   :render-terms {:data-app-slug :name}})
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
