@@ -23,6 +23,7 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
+   [oidc-provider.token-endpoint :as oidc.token-endpoint]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
@@ -265,6 +266,7 @@
 
 (def ^:private one-minute-ms (* 60 1000))
 (def ^:private one-hour-ms (* 60 one-minute-ms))
+(def ^:private max-client-id-length 255)
 
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
@@ -301,6 +303,36 @@
          (u.throttle/throttle-response e# {:error             "too_many_requests"
                                            :error_description (ex-message e#)})
          (throw e#)))))
+
+(defn- retry-after-seconds
+  "Return how many seconds `throttle-key` must wait before another attempt."
+  [{:keys [attempts attempts-threshold attempt-ttl-ms]} throttle-key]
+  (if-let [[_ blocking-attempt-ms] (nth (filter (fn [[attempt-key]] (= throttle-key attempt-key)) @attempts)
+                                        (dec attempts-threshold) nil)]
+    (quot (+ 999 (max 0 (- (+ blocking-attempt-ms attempt-ttl-ms) (System/currentTimeMillis)))) 1000)
+    0))
+
+(defn- do-with-token-throttling
+  "Apply the token throttles to `f`.
+   The client limit keys on the stored `client_id` of the client the given ID resolves to, found the same way
+   the token request finds it, so the two agree on which client an ID names however the app DB compares strings.
+   Requests use only the IP limit when the client ID is missing or names no client."
+  [ip-address client-id f]
+  (let [client-id (when (seq client-id)
+                    (:client_id (oauth-server.db/oauth-client client-id)))
+        response  (with-throttling-429 [token-ip-throttler ip-address]
+                    (if client-id
+                      (with-throttling-429 [token-client-throttler client-id]
+                        (f))
+                      (f)))]
+    (if (= 429 (:status response))
+      (let [retry-after (max (retry-after-seconds token-ip-throttler ip-address)
+                             (if client-id (retry-after-seconds token-client-throttler client-id) 0))]
+        (-> response
+            (assoc-in [:headers "Retry-After"] (str retry-after))
+            (assoc-in [:body :error_description]
+                      (format "Too many attempts! You must wait %d seconds before trying again." retry-after))))
+      response)))
 
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------
 
@@ -432,6 +464,19 @@
   (or (:error-description data)
       (:error_description data)
       fallback))
+
+(defn- token-error-response
+  "The token endpoint's response to an exception `e` thrown while handling a token request."
+  [e]
+  (log/warnf "OAuth token request failed: %s" (ex-message e))
+  (let [data  (ex-data e)
+        error (token-error-code data)]
+    {:status  (if (= error "invalid_client") 401 400)
+     :headers {"Content-Type"  "application/json"
+               "Cache-Control" "no-store"
+               "Pragma"        "no-cache"}
+     :body    {:error             error
+               :error_description (error-description data invalid-token-request-description)}}))
 
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
@@ -641,45 +686,43 @@
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
             [:refresh_token {:optional true} [:maybe :string]]
-            [:client_id     {:optional true} [:maybe :string]]
+            [:client_id     {:optional true} [:maybe [:string {:max max-client-id-length}]]]
             [:client_secret {:optional true} [:maybe :string]]
             [:scope         {:optional true} [:maybe :string]]
             [:code_verifier {:optional true} [:maybe :string]]
             [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    request]
-  (let [ip-address (request/ip-address request)
-        ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
-        ;; HTTP Basic auth) to avoid pooling unrelated clients into a shared throttle bucket.
-        client-id  (or (:client_id body) ip-address)]
-    (with-throttling-429 [token-client-throttler client-id
-                          token-ip-throttler     ip-address]
-      (or (when-let [provider (oauth-server/get-provider)]
-            (let [authorization-header (get-in request [:headers "authorization"])]
-              (try
-                (check-resource-indicators! (:resource body))
-                (let [response (if (= jwt-bearer/grant-type (:grant_type body))
-                                 (jwt-bearer/exchange-jwt-for-token! provider request
-                                                                     {:assertion (:assertion body)
-                                                                      :scopes    (when (some? (:scope body))
-                                                                                   (or (scope-tokens (:scope body)) []))
-                                                                      :resource  (:resource body)})
-                                 (oidc/token-request provider body authorization-header))]
-                  {:status  200
-                   :headers {"Content-Type"  "application/json"
-                             "Cache-Control" "no-store"
-                             "Pragma"        "no-cache"}
-                   :body    response})
-                (catch ExceptionInfo e
-                  (log/warnf "OAuth token request failed: %s" (ex-message e))
-                  (let [data  (ex-data e)
-                        error (token-error-code data)]
-                    {:status  (if (= error "invalid_client") 401 400)
-                     :headers {"Content-Type"  "application/json"
-                               "Cache-Control" "no-store"
-                               "Pragma"        "no-cache"}
-                     :body    {:error             error
-                               :error_description (error-description data invalid-token-request-description)}})))))
-          {:status 404 :body {:error "not_found"}}))))
+  (let [ip-address           (request/ip-address request)
+        authorization-header (get-in request [:headers "authorization"])
+        client-id            (or (:client-id (oidc.token-endpoint/parse-basic-auth authorization-header))
+                                 (:client_id body))]
+    (try
+      (do-with-token-throttling ip-address client-id
+                                (fn []
+                                  (try
+                                    (or (when-let [provider (oauth-server/get-provider)]
+                                          (check-resource-indicators! (:resource body))
+                                          (let [response (if (= jwt-bearer/grant-type (:grant_type body))
+                                                           (jwt-bearer/exchange-jwt-for-token!
+                                                            provider request
+                                                            {:assertion (:assertion body)
+                                                             :scopes    (when (some? (:scope body))
+                                                                          (or (scope-tokens (:scope body)) []))
+                                                             :resource  (:resource body)})
+                                                           (oidc/token-request provider body authorization-header))]
+                                            {:status  200
+                                             :headers {"Content-Type"  "application/json"
+                                                       "Cache-Control" "no-store"
+                                                       "Pragma"        "no-cache"}
+                                             :body    response}))
+                                        {:status 404 :body {:error "not_found"}})
+                                    (catch ExceptionInfo e
+                                      ;; A refused JWT that passed verification is no guess, so it returns uncounted
+                                      (if (jwt-bearer/verified-refusal? e)
+                                        (token-error-response e)
+                                        (throw e))))))
+      (catch ExceptionInfo e
+        (token-error-response e)))))
 
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]
