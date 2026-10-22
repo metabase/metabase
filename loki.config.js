@@ -41,6 +41,7 @@ module.exports = {
     "^Components/Data display/Accordion Overview",
     "^Components/Inputs/Select Overview",
     "^Components/Inputs/MultiSelect Overview",
+    "^Components/Inputs/Combobox Dropdown",
     "^Components/Inputs/TagsInput Overview",
     "^App/Palette",
     "^viz/GridMapPdfExport",

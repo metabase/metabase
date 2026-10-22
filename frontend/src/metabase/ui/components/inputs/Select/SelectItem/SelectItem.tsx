@@ -2,8 +2,6 @@ import { type BoxProps, Group, type MantineSize } from "@mantine/core";
 import cx from "classnames";
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
-import SS from "../Select.module.css";
-
 import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
@@ -27,10 +25,9 @@ export const SelectItem = forwardRef(function SelectItem(
   return (
     <Group
       ref={ref}
-      className={cx(S.item, SS.SelectItems_Item, className)}
+      className={cx(S.item, className)}
       fz={getItemFontSize(size)}
       lh={getItemLineHeight(size)}
-      p="sm"
       gap="sm"
       flex={1}
       aria-selected={selected}

@@ -1,26 +1,145 @@
-.options {
-  padding: 0.75rem;
-}
+/*
+ * 1. Menu design styles
+ *
+ * The option row and group label look the same as Menu items and labels.
+ * Once Menu is restyled to the same design (GDGT-2471), move these rules to
+ * Menu.module.css and reference those classes from the Combobox config.
+ */
 
 .option {
-  font-size: 0.875rem;
-  padding: 0.75rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  min-height: rem(32px);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  line-height: var(--mantine-line-height-md);
+}
 
-  &:hover,
-  &[data-combobox-selected="true"] {
-    color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-background_surface-hover);
+/* Keeps neighbouring highlighted rows (e.g. hovered next to selected) apart */
+.option + .option {
+  margin-top: 1px;
+}
+
+.groupLabel {
+  padding: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: normal;
+  line-height: var(--mantine-line-height-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &::after {
+    display: none;
+  }
+}
+
+/*
+ * 2. Combobox styles
+ *
+ * Combobox marks option states with its own data attributes (Menu uses
+ * `:hover`, `[data-hovered]` and `[data-disabled]`), and the list structure,
+ * group dividers and empty state have no Menu counterpart.
+ */
+
+/* `active` on Combobox.Option; Select and MultiSelect set it on the picked option */
+.option[data-combobox-active] {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background_surface-selected);
+}
+
+/* Hover and the keyboard highlight look the same */
+.option:hover,
+.option[data-combobox-selected] {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-background_surface-brand-strong-hover);
+}
+
+/* A checkbox in a hovered or highlighted option switches to its inverse colors,
+   as in the Figma menu item with a checkbox. Once Menu has that variant
+   (GDGT-2471), the colors can come from Menu; the selectors stay here.
+   FieldPicker opts out, since it keeps its own light hover. */
+.option:hover input[type="checkbox"]:not(:checked, :disabled),
+.option[data-combobox-selected]
+  input[type="checkbox"]:not(:checked, :disabled) {
+  border-color: var(--mb-color-border-neutral-inverse-strong);
+  background-color: var(--mb-color-background_surface-secondary-inverse);
+}
+
+.option[data-combobox-disabled] {
+  cursor: not-allowed;
+  opacity: 1;
+  color: var(--mb-color-text-disabled);
+  background-color: var(--mb-color-background_surface-disabled);
+}
+
+.dropdown {
+  /* The list carries the padding, so groups can draw full-width dividers */
+  --combobox-padding: 0;
+}
+
+.options {
+  padding: var(--mantine-spacing-sm);
+
+  /* Groups and the empty state bring their own spacing. Not direct
+     children when the list sits in a scroll area. */
+  &:has(.group),
+  &:has(.empty) {
+    padding: 0;
+  }
+}
+
+.group {
+  padding: var(--mantine-spacing-sm);
+
+  & + & {
+    border-top: 0.5px solid var(--mb-color-border-neutral-strong);
   }
 }
 
 .empty {
-  color: var(--mb-color-text-disabled);
-  font-size: 0.875rem;
-  padding: 1.5rem 0.5rem;
-}
+  --empty-badge-size: rem(24px);
+  --empty-icon-size: rem(12px);
 
-.groupLabel::after {
-  margin-inline-start: var(--mantine-spacing-xxs);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-xxxl) var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
+  text-align: center;
+
+  /* The search badge above the message, so every existing empty message gets
+     it without changes at the call sites */
+  &::before {
+    content: "";
+    width: var(--empty-badge-size);
+    height: var(--empty-badge-size);
+    border-radius: 50%;
+    background-color: var(--mb-color-background_surface-secondary);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: calc(
+      var(--mantine-spacing-xxxl) +
+        (var(--empty-badge-size) - var(--empty-icon-size)) / 2
+    );
+    left: 50%;
+    width: var(--empty-icon-size);
+    height: var(--empty-icon-size);
+    transform: translateX(-50%);
+    background-color: var(--mb-color-icon-disabled);
+    mask: url("../../icons/Icon/icons/search.svg") center / contain no-repeat;
+  }
 }
 
 .chevron {

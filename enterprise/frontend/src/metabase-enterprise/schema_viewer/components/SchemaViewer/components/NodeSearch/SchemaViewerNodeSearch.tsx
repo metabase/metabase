@@ -132,24 +132,18 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
         {filteredItems.length === 0 ? (
           <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
         ) : (
-          <Combobox.Options className={S.options}>
+          <Combobox.Options>
             {filteredItems.map((item) => (
-              <Combobox.Option
-                value={item.id}
-                key={item.id}
-                className={S.listItem}
-              >
+              <Combobox.Option value={item.id} key={item.id}>
                 <Group gap="sm" wrap="nowrap" justify="space-between" w="100%">
-                  <Text className={S.label}>{item.label}</Text>
+                  <Text className={S.label} c="inherit">
+                    {item.label}
+                  </Text>
                   <Group gap="xxs" wrap="nowrap" className={S.fieldCount}>
-                    <Text c="text-disabled" fz="xs">
+                    <Text c="inherit" fz="xs">
                       {item.fkCount}
                     </Text>
-                    <FixedSizeIcon
-                      name="connections"
-                      c="text-disabled"
-                      size={12}
-                    />
+                    <FixedSizeIcon name="connections" size={12} />
                   </Group>
                 </Group>
               </Combobox.Option>

@@ -1,6 +1,18 @@
+/*
+ * Follows the Figma "Menu item with description". Once Menu is restyled
+ * (GDGT-2471), the label and description text styles could come from Menu;
+ * the state colors below react to Combobox attributes and stay here.
+ */
+
 .description {
-  [aria-selected="true"] & {
-    /* override styling from SelectItem.module.css */
-    color: var(--mb-color-text-selected) !important;
+  color: var(--mb-color-text-secondary);
+
+  [data-combobox-option]:hover &,
+  [data-combobox-selected] & {
+    color: var(--mb-color-text-secondary-inverse);
+  }
+
+  [data-combobox-disabled] & {
+    color: var(--mb-color-text-disabled);
   }
 }

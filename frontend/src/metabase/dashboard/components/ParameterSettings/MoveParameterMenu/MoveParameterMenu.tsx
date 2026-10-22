@@ -137,8 +137,6 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     <Select
       classNames={{
         input: !isOpen ? S.CollapsedMoveParameterMenuInput : undefined,
-        option: S.MoveParameterMenuOption,
-
         // Hides the chevron-down icon on the right to make it look like a button
         section: !isOpen ? CS.hidden : undefined,
       }}
@@ -163,18 +161,13 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
 
 function SelectItem({ icon, title }: { icon: IconName; title: string }) {
   return (
-    <Group p="sm" w="100%">
+    <Group w="100%">
       <Flex direction="column" flex={1} justify="center" gap="xxs" miw={0}>
-        <Text
-          className={S.MoveParameterMenuOptionText}
-          fw="400"
-          lh="sm"
-          truncate="end"
-        >
+        <Text c="inherit" fw="400" lh="sm" truncate="end">
           {title}
         </Text>
       </Flex>
-      <Icon className={S.MoveParameterMenuOptionIcon} name={icon} />
+      <Icon name={icon} />
     </Group>
   );
 }

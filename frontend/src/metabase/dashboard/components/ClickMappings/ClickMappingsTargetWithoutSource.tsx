@@ -48,7 +48,6 @@ export function ClickMappingsTargetWithoutSource({
       store={combobox}
       position="bottom-start"
       width={300}
-      classNames={{ groupLabel: S.groupLabel }}
       onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.Target>

@@ -42,6 +42,13 @@
     &[data-combobox-selected="true"] {
       color: inherit;
       background: var(--mb-color-background_page-tertiary);
+
+      /* Opt out of the inverse checkbox of the shared dropdown hover
+         (Combobox.module.css): this list keeps its own light hover */
+      input[type="checkbox"]:not(:checked, :disabled) {
+        border-color: var(--mb-color-border-neutral-strong);
+        background-color: var(--mb-color-background_surface-secondary);
+      }
     }
 
     &[data-combobox-disabled="true"] {
