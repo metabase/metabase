@@ -1,9 +1,7 @@
-import { nanoid } from "@reduxjs/toolkit";
 import yaml from "js-yaml";
 
 import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
-import { NANOID_LENGTH } from "metabase-types/api";
 import type {
   Collection,
   CollectionId,
@@ -12,18 +10,15 @@ import type {
   DataApp,
   Group,
   GroupInfo,
-  RemoteSyncTask,
   WritebackAction,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
-import { createApiKey, createTestNativeQuery, updateSetting } from "./api";
+import { createTestNativeQuery, updateSetting } from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
   LOCAL_GIT_PATH,
   commitToRepo,
-  configureGit,
   configureGitAndPullChanges,
   copySyncedCollectionFixture,
   setupGitSync,
@@ -80,7 +75,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   // the entrypoint checks for app access before serving its HTML
   // we need to have a real app in the database - mocking the endpoint isn't enough
   cy.request({
-    url: `/api/apps/${slug}`,
+    url: `/api/ee/apps/${slug}`,
     failOnStatusCode: false,
   }).then(({ status }) => {
     if (status === 200) {
@@ -90,16 +85,16 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
     expect(status).to.equal(404);
 
     cy.log("register the data app");
-    cy.request("POST", "/api/apps", {
+    cy.request("POST", "/api/ee/apps", {
       name: slug,
       display_name: displayName,
       bundle_path: "dist/index.js",
       allowed_hosts: allowedHosts,
-      bundle: "",
+      enabled: true,
     });
 
     cy.log("assign the data app to all users group");
-    cy.request("POST", `/api/apps/${slug}/groups`, {
+    cy.request("POST", `/api/ee/apps/${slug}/groups`, {
       group_ids: [USER_GROUPS.ALL_USERS_GROUP],
     });
   });
@@ -118,13 +113,13 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       allowed_hosts: allowedHosts,
     });
 
-    cy.intercept("GET", "/api/apps/repo-status", {
+    cy.intercept("GET", "/api/ee/apps/repo-status", {
       configured: true,
     });
-    cy.intercept("GET", "/api/apps", [app]);
-    cy.intercept({ method: "GET", pathname: `/api/apps/${slug}` }, app);
+    cy.intercept("GET", "/api/ee/apps", [app]);
+    cy.intercept({ method: "GET", pathname: `/api/ee/apps/${slug}` }, app);
     cy.intercept(
-      { method: "GET", pathname: `/api/apps/${slug}/bundle` },
+      { method: "GET", pathname: `/api/ee/apps/${slug}/bundle` },
       {
         statusCode: 200,
         headers: {
@@ -325,32 +320,6 @@ export function createDataAppScoreboardAction({
 }
 
 /**
- * The dev host app is a real vite data app with the published SDK installed, so
- * its CLI and build are the ones an author actually runs.
- */
-export const dataAppHostAppRoot = () =>
-  `${Cypress.config("projectRoot")}/${DATA_APP_DEV_HOST_APP_DIR}`;
-
-/**
- * Clears what the resource specs write into the host app. They drive the same
- * checked-in directory, so each has to start from a clean tree.
- */
-export function resetDataAppHostAppSources() {
-  const appRoot = dataAppHostAppRoot();
-
-  return cy.task("removeDataAppPaths", {
-    paths: [
-      `${appRoot}/queries`,
-      `${appRoot}/actions`,
-      `${appRoot}/collections`,
-    ],
-  });
-}
-
-/** A new entity ID, as `representations generate-entity-id` makes one for an author. */
-export const newEntityId = () => nanoid(NANOID_LENGTH);
-
-/**
  * A table as serialized YAML references it: database, schema, and table name.
  * The schema is null for a database without schemas.
  */
@@ -419,60 +388,6 @@ const resourceCard = ({
 });
 
 /**
- * What `POST /api/apps/generate/resources` answers for the actions `copies` name: the
- * file of each copy, by position, for the app collection `collection`.
- */
-export function serializeDataAppActions(
-  copies: Array<{ sourceActionId: number; entityId: string }>,
-  collection: string,
-) {
-  return cy
-    .request<{
-      actions: Array<{ file: string; yaml: string } | { error: string }>;
-    }>("POST", "/api/apps/generate/resources", {
-      actions: copies.map(({ sourceActionId, entityId }) => ({
-        action_id: sourceActionId,
-        entity_id: entityId,
-        collection_id: collection,
-      })),
-    })
-    .then(({ body }) =>
-      body.actions.map((answer) => {
-        if ("error" in answer) {
-          throw new Error(answer.error);
-        }
-
-        return answer;
-      }),
-    );
-}
-
-/**
- * The copies of the actions `copies` name, as an author writes them into the
- * app's collection: what Metabase serializes for each source action, with the
- * copy's entity ID, in the app's `collection`.
- */
-export function serializeDataAppActionCopies(
-  copies: Array<{ sourceActionId: number; entityId: string }>,
-  collection: string,
-) {
-  return serializeDataAppActions(copies, collection).then((files) =>
-    cy.wrap(
-      files.map(({ yaml: text }): ResourceEntity => {
-        const entity = yaml.load(text);
-
-        if (!isObject(entity)) {
-          throw new Error(`Generated an action copy that isn't a map: ${text}`);
-        }
-
-        return entity;
-      }),
-      { log: false },
-    ),
-  );
-}
-
-/**
  * The YAML an author writes for an app's collection, in the Metabase
  * representation format: plain data for `writeDataAppResources`, read from
  * nothing and written nowhere by itself.
@@ -525,80 +440,22 @@ export function writeDataAppResources(
   });
 }
 
-/** Declares one `defineAction` per action, as the generated schema names it, with the ID of its copy. */
+/** Declares one `defineAction` per action, as the app's typed schema does, by the action's entity ID. */
 export function declareDataAppActions(
   appRoot: string,
-  actions: Array<{
-    exportName: string;
-    sourceActionId: number;
-    copiedActionEntityId: string;
-  }>,
+  actions: Array<{ exportName: string; actionEntityId: string }>,
 ) {
   return cy.task("writeDataAppFiles", {
     files: {
       [`${appRoot}/actions/orders.action.ts`]: [
         'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
         ...actions.map(
-          ({ exportName, sourceActionId, copiedActionEntityId }) =>
-            `export const ${exportName} = defineAction({ copiedActionEntityId: "${copiedActionEntityId}", action: { id: ${sourceActionId}, parameters: [] } });`,
+          ({ exportName, actionEntityId }) =>
+            `export const ${exportName} = defineAction({ action: { id: "${actionEntityId}", parameters: [] } });`,
         ),
       ].join("\n"),
     },
   });
-}
-
-/** Declares one `defineQuery` per entry, as an app author would, with the ID of its saved question. */
-export function declareDataAppQueries(
-  appRoot: string,
-  declarations: Array<{
-    name: string;
-    tableId: number;
-    savedQuestionEntityId: string;
-    metricId?: number;
-  }>,
-) {
-  return cy.task("writeDataAppFiles", {
-    files: {
-      [`${appRoot}/queries/orders.query.ts`]: [
-        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
-        ...declarations.map(
-          ({ name, tableId, savedQuestionEntityId, metricId }) => {
-            const clauses =
-              metricId === undefined
-                ? ""
-                : `, aggregations: [{ type: "metric", id: ${metricId} }]`;
-            return `export const ${name} = defineQuery({ savedQuestionEntityId: "${savedQuestionEntityId}", source: { type: "table", id: ${tableId} }${clauses} });`;
-          },
-        ),
-      ].join("\n"),
-    },
-  });
-}
-
-/**
- * Runs the data app CLI the host app has installed, the one an author runs:
- * `embedding-sdk-react data-apps <command>`. `check-resources` never calls Metabase; `write-resources`
- * reaches it through `env` (see `dataAppCliEnv`).
- */
-export function runDataAppCli(command: string, env?: Record<string, string>) {
-  return cy.exec(
-    `cd "${dataAppHostAppRoot()}" && ./node_modules/.bin/embedding-sdk-react data-apps ${command}`,
-    { failOnNonZeroExit: false, timeout: 60_000, env },
-  );
-}
-
-/**
- * The instance and an admin API key a data-app command reaches Metabase with,
- * as the environment variables `.env.local` would otherwise hold.
- */
-export function dataAppCliEnv() {
-  return createApiKey(
-    `data-app-cli-e2e-${Date.now()}`,
-    USER_GROUPS.ADMIN_GROUP,
-  ).then(({ body }) => ({
-    DATA_APP_MB_URL: String(Cypress.config("baseUrl")),
-    DATA_APP_MB_API_KEY: body.unmasked_key,
-  }));
 }
 
 export const copySyncedDataAppsFixture = () =>
@@ -637,20 +494,6 @@ export function pullExampleDataApps({
 export type SyncedDataApp = DataApp & {
   resource_collection_id: number;
 };
-
-/** The host app's checked-in `data_app.yaml`, as serialization reads it. */
-export const DATA_APP_HOST_APP_MANIFEST = `version: 1
-name: Vite 6 Data App
-slug: vite-6-data-app-host-app
-path: ./dist/index.js
-allowed_hosts:
-  - https://allowed.data-app.test
-entity_id: qxpaPkU_WRE2ZQu0cmpqD
-serdes/meta:
-- model: DataApp
-  id: qxpaPkU_WRE2ZQu0cmpqD
-  label: vite-6-data-app-host-app
-`;
 
 const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
   typeof app.resource_collection_id === "number";
@@ -704,7 +547,7 @@ export function publishDataApp(
   commitDataApp(appRoot, slug, options);
   configureGitAndPullChanges("read-write");
 
-  return cy.request<DataApp[]>("/api/apps").then(({ body: apps }) => {
+  return cy.request<DataApp[]>("/api/ee/apps").then(({ body: apps }) => {
     const app = apps.find(({ name }) => name === slug);
 
     if (!app) {
@@ -720,61 +563,6 @@ export function publishDataApp(
   });
 }
 
-const IMPORT_POLL_LIMIT = 120;
-
-/** Yields the error of the import that is running or just ran, once it fails. */
-function waitForImportError(retries = 0): Cypress.Chainable<string> {
-  if (retries > IMPORT_POLL_LIMIT) {
-    throw new Error("The import did not fail in time.");
-  }
-
-  return cy
-    .request<RemoteSyncTask | null>("/api/ee/remote-sync/current-task")
-    .then(({ body }) => {
-      if (body?.sync_task_type === "import" && body.status === "errored") {
-        return cy.wrap(body.error_message ?? "", { log: false });
-      }
-
-      if (body?.sync_task_type === "import" && body.status === "successful") {
-        throw new Error(
-          "The import succeeded, but its resources should have been refused.",
-        );
-      }
-
-      cy.wait(500);
-      return waitForImportError(retries + 1);
-    });
-}
-
-/**
- * Publishes an app whose resource files the pull is expected to refuse, and
- * yields the pull's error. A refused file fails the whole pull, so nothing of
- * the app loads.
- */
-export function publishDataAppExpectingRefusal(
-  appRoot: string,
-  slug: string,
-  options?: { initializeRepo?: boolean },
-) {
-  commitDataApp(appRoot, slug, options);
-  configureGit("read-write");
-  cy.request("POST", "/api/ee/remote-sync/import", { expected_branch: "main" });
-
-  return waitForImportError();
-}
-
-/**
- * Runs the host app's own production build. The SDK's `metabase-resource-check`
- * plugin runs on `buildStart`, so this is what refuses to bundle an app whose
- * collection files don't back its definitions.
- */
-export function buildDataAppHostApp() {
-  return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {
-    failOnNonZeroExit: false,
-    timeout: 180_000,
-  });
-}
-
 /** Create a group and assign it to a data app by slug. */
 export function assignTestGroupToDataApp(slug: string) {
   cy.request<GroupInfo>("POST", "/api/permissions/group", {
@@ -784,7 +572,7 @@ export function assignTestGroupToDataApp(slug: string) {
     .as("dataAppTestGroup");
 
   cy.get<GroupInfo>("@dataAppTestGroup").then(({ id }) =>
-    cy.request("POST", `/api/apps/${slug}/groups`, { group_ids: [id] }),
+    cy.request("POST", `/api/ee/apps/${slug}/groups`, { group_ids: [id] }),
   );
 
   return cy.get<GroupInfo>("@dataAppTestGroup").its("id");
@@ -871,54 +659,4 @@ function waitForDataAppDevServerEnv(
       attempt + 1,
     );
   });
-}
-
-/**
- * The `/* metadata: {...} *\/` block of the generated typed-schema entry that
- * opens with `entry` (its first match): the one at the entry's own depth, not
- * a nested entity's.
- */
-export function typedSchemaMetadata(
-  body: string,
-  entry: string,
-): Record<string, unknown> {
-  const lines = body.split("\n");
-  const start = lines.findIndex((line) => line.trim() === entry);
-  if (start === -1) {
-    throw new Error(`The typed schema has no entry \`${entry}\`.`);
-  }
-  const indent = lines[start].search(/\S/);
-  // The entry's closing brace, so a sibling's block is never mistaken for its own.
-  const end = lines.findIndex(
-    (line, index) =>
-      index > start &&
-      line.search(/\S/) === indent &&
-      line.trimStart().startsWith("}"),
-  );
-  const blockStart = lines.findIndex(
-    (line, index) =>
-      index > start &&
-      index < end &&
-      line.search(/\S/) === indent + 2 &&
-      line.trimStart().startsWith("/* metadata: "),
-  );
-  if (blockStart === -1) {
-    throw new Error(`The typed schema has no metadata for \`${entry}\`.`);
-  }
-  const blockEnd = lines.findIndex(
-    (line, index) => index >= blockStart && line.trimEnd().endsWith(" */"),
-  );
-  const block = lines
-    .slice(blockStart, blockEnd + 1)
-    .join("\n")
-    .trim();
-
-  const metadata: unknown = JSON.parse(
-    block.slice("/* metadata: ".length, block.length - " */".length),
-  );
-  if (!isObject(metadata)) {
-    throw new Error(`The metadata of \`${entry}\` is not an object.`);
-  }
-
-  return metadata;
 }

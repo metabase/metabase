@@ -1,11 +1,21 @@
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_DATA_APPS, reinitialize } from "metabase/plugins";
 import type * as Router from "metabase/router";
-import { Route } from "metabase/router";
+import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { getAiAuditingRoutes, getAiAuditingUpsellRoutes } from "./routes";
+import {
+  getAiAuditingRoutes,
+  getAiAuditingUpsellRoutes,
+  registerAiAuditingPagePrefetch,
+} from "./routes";
+
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual<typeof Router>("metabase/router"),
+  registerPagePrefetch: jest.fn(),
+}));
 
 jest.mock("./metabot-analytics/components/ConversationStatsPage", () => ({
   ConversationStatsPage: () => <div>Usage stats page</div>,
@@ -56,6 +66,9 @@ jest.mock("./cli-analytics/components/CliUsagePage", () => ({
 jest.mock("./cli-analytics/components/CliCallsPage", () => ({
   CliCallsPage: () => <div>CLI calls page</div>,
 }));
+jest.mock("./data-apps-analytics/components/DataAppsAnalyticsPage", () => ({
+  DataAppsAnalyticsPage: () => <div>Data app analytics page</div>,
+}));
 
 type SetupOpts = {
   route: string;
@@ -63,6 +76,7 @@ type SetupOpts = {
   aiFeaturesEnabled?: boolean;
   isConfigured?: boolean;
   mcpEnabled?: boolean;
+  hasDataApps?: boolean;
 };
 
 function setup({
@@ -71,26 +85,34 @@ function setup({
   aiFeaturesEnabled = true,
   isConfigured = true,
   mcpEnabled = true,
+  hasDataApps = false,
 }: SetupOpts) {
+  // The routes read it as they're built, so set it first.
+  PLUGIN_DATA_APPS.isEnabled = hasDataApps;
+  const settings = mockSettings({
+    "ai-features-enabled?": aiFeaturesEnabled,
+    "llm-metabot-configured?": isConfigured,
+    "mcp-enabled?": mcpEnabled,
+  });
+
   return renderWithProviders(
     <Route path="/monitor/ai-auditing">
       {upsell ? getAiAuditingUpsellRoutes() : getAiAuditingRoutes()}
+      <Route path="*" element={<div>Not found</div>} />
     </Route>,
     {
       initialRoute: route,
       withRouter: true,
-      storeInitialState: createMockState({
-        settings: mockSettings({
-          "ai-features-enabled?": aiFeaturesEnabled,
-          "llm-metabot-configured?": isConfigured,
-          "mcp-enabled?": mcpEnabled,
-        }),
-      }),
+      storeInitialState: createMockState({ settings }),
     },
   );
 }
 
 describe("AI Auditing routes", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it.each([false, true])(
     "redirects the section root to Usage stats and preserves the query when upsell is %s",
     async (upsell) => {
@@ -252,6 +274,46 @@ describe("AI Auditing routes", () => {
       );
     },
   );
+
+  describe.each([false, true])("Data app analytics (upsell %s)", (upsell) => {
+    it("renders the page with the data-apps feature, whatever the AI settings", async () => {
+      setup({
+        route: Urls.monitorAiAuditingDataApps(),
+        upsell,
+        hasDataApps: true,
+        aiFeaturesEnabled: false,
+        isConfigured: false,
+      });
+
+      expect(
+        await screen.findByText("Data app analytics page"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not mount the section without the data-apps feature", async () => {
+      setup({
+        route: Urls.monitorAiAuditingDataApps(),
+        upsell,
+        hasDataApps: false,
+      });
+
+      expect(await screen.findByText("Not found")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Data app analytics page"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("registers the Data app analytics prefetch before the data apps plugin sets its flag", () => {
+    PLUGIN_DATA_APPS.isEnabled = false;
+
+    registerAiAuditingPagePrefetch();
+
+    expect(jest.mocked(registerPagePrefetch)).toHaveBeenCalledWith(
+      Urls.monitorAiAuditingDataApps(),
+      expect.any(Function),
+    );
+  });
 
   it("applies MCP availability to the upsell route set", async () => {
     setup({

@@ -20,28 +20,46 @@ import { TEST_SCHEMA } from "./fixtures";
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
 const revenueQuery = defineQuery({
-  savedQuestionEntityId: "revenueQuestionEntity",
   source: TEST_SCHEMA.tables.orders,
   limit: 10,
 });
 
-const _savedQuestionEntityId: "revenueQuestionEntity" =
-  revenueQuery.savedQuestionEntityId;
 const _queryLimit: 10 = revenueQuery.limit;
 
-const CreateOrder = defineAction({
-  copiedActionEntityId: "createOrderCopyEntity",
-  action: TEST_SCHEMA.actions.createOrder,
+const ordersQuestionQuery = defineQuery({
+  source: {
+    type: "card",
+    entityId: "ordersQuestionEntity1",
+    columns: TEST_SCHEMA.questions.ordersQuestion.columns,
+  },
 });
 
-const _copiedActionEntityId: "createOrderCopyEntity" =
-  CreateOrder.copiedActionEntityId;
-const _sourceActionId: 51 = CreateOrder.action.id;
+const _questionEntityId: "ordersQuestionEntity1" =
+  ordersQuestionQuery.source.entityId;
 
-// A definition is valid before its copy is written.
+const CreateOrder = defineAction({
+  action: { ...TEST_SCHEMA.actions.createOrder, id: "createOrderEntity" },
+});
+
+const _actionEntityId: "createOrderEntity" = CreateOrder.action.id;
+
 const UpdateOrder = defineAction({
   action: TEST_SCHEMA.actions.updateOrder,
 });
+
+function CardQueryFixtures() {
+  const { data } = useMetabaseQuery(ordersQuestionQuery);
+  const _status: string | null | undefined = data?.rows[0]?.STATUS;
+  const _amount: number | null | undefined = data?.rows[0]?.AMOUNT;
+
+  const grouped = useMetabaseQuery(ordersQuestionQuery, {
+    aggregations: [count()],
+    breakouts: [{ type: "column", name: "STATUS" }],
+  });
+  const _groupedStatus: string | null | undefined =
+    grouped.data?.rows[0]?.STATUS;
+  const _groupedCount: number | null | undefined = grouped.data?.rows[0]?.count;
+}
 
 // --------
 // Compile-time contracts that must pass type-checking.
@@ -306,10 +324,9 @@ function ValidTypeFixtures() {
     }),
   );
 
-  // A static query published as a card, with dynamic clauses layered on top.
+  // A table query with dynamic clauses layered on top.
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
   const dynamicResult = useMetabaseQuery(staticQuery, {
@@ -436,3 +453,4 @@ for (const numBins of [10, 50, 100] as const) {
     orderBys: [orderBy(binnedAmount, "asc")],
   });
 }
+void CardQueryFixtures;

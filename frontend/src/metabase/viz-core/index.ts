@@ -498,6 +498,7 @@ export type {
   ChartSettingGoalInputProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingOrderedItem,
+  ChartSettingSegmentedControlOption,
   ChartSettingSegmentedControlProps,
   ChartSettingSegmentsEditorProps,
   ChartSettingSeriesOrderItem,
