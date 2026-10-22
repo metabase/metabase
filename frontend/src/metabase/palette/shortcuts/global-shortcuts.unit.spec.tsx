@@ -94,23 +94,19 @@ describe("global keyboard shortcuts", () => {
     it("does not navigate to Data Studio for users without access", async () => {
       const { router } = await setup({ isAdmin: false });
 
-      await userEvent.keyboard("gs");
-      expect(router?.location.pathname).toBe("/");
-      // Prove the keyboard pipeline is live for this user before asserting the
-      // absence — otherwise the assertion passes for the wrong reason.
-      await userEvent.keyboard("gt");
+      await waitForShortcutHandler(router);
 
-      await waitFor(() => expect(router?.location.pathname).toBe("/trash"));
+      await userEvent.keyboard("gs");
+      expect(router?.location.pathname).toBe("/trash");
     });
 
     it("does not navigate to admin settings for non-admins", async () => {
       const { router } = await setup({ isAdmin: false });
 
-      await userEvent.keyboard("ga");
-      expect(router?.location.pathname).toBe("/");
-      await userEvent.keyboard("gt");
+      await waitForShortcutHandler(router);
 
-      await waitFor(() => expect(router?.location.pathname).toBe("/trash"));
+      await userEvent.keyboard("ga");
+      expect(router?.location.pathname).toBe("/trash");
     });
   });
 
@@ -121,9 +117,15 @@ describe("global keyboard shortcuts", () => {
     ])("%s opens the %s modal", async (_name, keys, modalId) => {
       const { store } = await setup();
 
-      await userEvent.keyboard(keys);
-
-      await waitFor(() => expect(store.getState().modal.id).toBe(modalId));
+      // The shortcut handler may not be listening yet when setup resolves, so the
+      // first keystroke can be dropped. Re-send until the modal opens, but never
+      // after it has.
+      await waitFor(async () => {
+        if (store.getState().modal.id !== modalId) {
+          await userEvent.keyboard(keys);
+        }
+        expect(store.getState().modal.id).toBe(modalId);
+      });
     });
   });
 
@@ -131,29 +133,34 @@ describe("global keyboard shortcuts", () => {
     it("ignores shortcuts while a text input holds focus", async () => {
       const { router } = await setup();
 
+      await waitForShortcutHandler(router);
+
       const input = document.createElement("input");
       document.body.appendChild(input);
       input.focus();
 
-      await userEvent.keyboard("gt");
-      expect(router?.location.pathname).toBe("/");
+      await userEvent.keyboard("gu");
+      expect(router?.location.pathname).toBe("/trash");
 
       input.remove();
       document.body.focus();
 
-      await userEvent.keyboard("gt");
-      await waitFor(() => expect(router?.location.pathname).toBe("/trash"));
+      await userEvent.keyboard("gu");
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/account/profile"),
+      );
     });
   });
 
   describe("analytics", () => {
     it("reports the shortcut that was performed", async () => {
       const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
-      await setup();
+      const { router } = await setup();
 
-      await userEvent.keyboard("gt");
-
-      await waitFor(() => {
+      await waitFor(async () => {
+        if (router?.location.pathname !== "/trash") {
+          await userEvent.keyboard("gt");
+        }
         expect(trackSimpleEvent).toHaveBeenCalledWith({
           event: "keyboard_shortcut_performed",
           event_detail: "navigate-trash",
@@ -162,3 +169,19 @@ describe("global keyboard shortcuts", () => {
     });
   });
 });
+
+/**
+ * Waits until the global shortcut handler is listening by pressing `g t` until
+ * it navigates to `/trash`. The handler registers in an effect after `setup`
+ * resolves, so keystrokes sent before then are dropped.
+ */
+async function waitForShortcutHandler(
+  router: Awaited<ReturnType<typeof setup>>["router"],
+) {
+  await waitFor(async () => {
+    if (router?.location.pathname !== "/trash") {
+      await userEvent.keyboard("gt");
+    }
+    expect(router?.location.pathname).toBe("/trash");
+  });
+}
