@@ -38,11 +38,15 @@ export function useSuggestions(
   query: Lib.Query,
   stageIndex: number,
   text: string,
+  { allowOr = true }: { allowOr?: boolean } = {},
 ): Suggestion[] {
   return useMemo(() => {
     const needle = text.trim().toLowerCase();
     const keywordSuggestions: Suggestion[] = KEYWORDS.filter(
-      ({ word }) => needle.length > 0 && word.startsWith(needle),
+      ({ word }) =>
+        needle.length > 0 &&
+        word.startsWith(needle) &&
+        (allowOr || word !== "or"),
     ).map(({ word, token }) => ({ type: "token", token, label: word }));
 
     const columnSuggestions: Suggestion[] = Lib.filterableColumns(
@@ -62,7 +66,7 @@ export function useSuggestions(
       ...columnSuggestions,
       { type: "browse", label: t`Browse all filters…` },
     ];
-  }, [query, stageIndex, text]);
+  }, [query, stageIndex, text, allowOr]);
 }
 
 /** Which pane the dropdown shows: the suggestion list, one column's widget, or the full picker. */
@@ -76,6 +80,8 @@ type FilterSearchDropdownProps = {
   stageIndex: number;
   text: string;
   view: DropdownView;
+  /** `false` hides "or" from the hint; the segment only takes "and". */
+  allowOr?: boolean;
   suggestions: Suggestion[];
   activeIndex: number;
   onViewChange: (view: DropdownView) => void;
@@ -97,6 +103,7 @@ export function FilterSearchDropdown({
   stageIndex,
   text,
   view,
+  allowOr = true,
   suggestions,
   activeIndex,
   onViewChange,
@@ -135,7 +142,9 @@ export function FilterSearchDropdown({
     <Stack gap={0} p="xs" miw={320}>
       {parseTypedToken(text) == null && text.trim().length === 0 && (
         <Text size="xs" c="text-secondary" px="sm" py="xs">
-          {t`Type a column name, or "and", "or", "(", ")"`}
+          {allowOr
+            ? t`Type a column name, or "and", "or", "(", ")"`
+            : t`Type a column name, or "and"`}
         </Text>
       )}
       {suggestions.map((suggestion, index) => (

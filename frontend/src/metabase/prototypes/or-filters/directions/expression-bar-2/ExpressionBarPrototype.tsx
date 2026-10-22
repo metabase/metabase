@@ -3,12 +3,12 @@ import { Group } from "metabase/ui";
 
 import type { FilterUiProps } from "../../types";
 
-import { ExpressionBar } from "./ExpressionBar";
+import { StagedExpressionBar } from "./StagedExpressionBar";
 
 /**
  * Iteration 2 copy of direction B2: one expression bar in place of the pills, with Cancel/Apply
- * inside the bar. The same editor sits in the chill-mode strip and in the
- * notebook step.
+ * inside the bar, plus a trailing segment for filters on the summary. The same
+ * editor sits in the chill-mode strip and in the notebook step.
  */
 export function ExpressionBarInline2Prototype({
   query,
@@ -17,11 +17,10 @@ export function ExpressionBarInline2Prototype({
   onChange,
 }: FilterUiProps) {
   const bar = (
-    <ExpressionBar
+    <StagedExpressionBar
       query={query}
       stageIndex={stageIndex}
       onChange={onChange}
-      hasInlineActions
     />
   );
 

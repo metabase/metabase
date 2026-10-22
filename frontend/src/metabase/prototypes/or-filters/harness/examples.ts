@@ -195,14 +195,16 @@ export function withFourLevelsExample(
   return Lib.filter(clearFilters(query, stageIndex), stageIndex, orClause);
 }
 
+/** Matches the long name, so an implicitly joined column reads `Product → Category`. */
 function findBreakoutColumn(
   query: Lib.Query,
   stageIndex: number,
-  displayName: string,
+  longDisplayName: string,
 ): Lib.ColumnMetadata | undefined {
   return Lib.breakoutableColumns(query, stageIndex).find(
     (column) =>
-      Lib.displayInfo(query, stageIndex, column).displayName === displayName,
+      Lib.displayInfo(query, stageIndex, column).longDisplayName ===
+      longDisplayName,
   );
 }
 
@@ -216,7 +218,11 @@ export function withCountByCategoryByMonth(
   stageIndex: number,
 ): Lib.Query {
   const cleared = clearFilters(query, stageIndex);
-  const category = findBreakoutColumn(cleared, stageIndex, "Category");
+  const category = findBreakoutColumn(
+    cleared,
+    stageIndex,
+    "Product → Category",
+  );
   const createdAt = findBreakoutColumn(cleared, stageIndex, "Created At");
   if (!category || !createdAt) {
     return query;
@@ -235,5 +241,19 @@ export function withCountByCategoryByMonth(
     byCategory,
     stageIndex,
     Lib.withTemporalBucket(createdAt, monthBucket ?? null),
+  );
+}
+
+/**
+ * The aggregated chart with the ticket's OR already applied, so one drill
+ * shows the existing expression being wrapped in parentheses and AND-ed.
+ */
+export function withFilteredCountByCategoryByMonth(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  return withOrExample(
+    withCountByCategoryByMonth(query, stageIndex),
+    stageIndex,
   );
 }

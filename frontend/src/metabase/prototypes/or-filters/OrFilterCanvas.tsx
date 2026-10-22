@@ -23,6 +23,7 @@ import {
   clearFilters,
   withCountByCategoryByMonth,
   withDnfExample,
+  withFilteredCountByCategoryByMonth,
   withFourLevelsExample,
   withNestedExample,
   withOrExample,
@@ -87,6 +88,13 @@ const EXAMPLES: Example[] = [
     load: withCountByCategoryByMonth,
     display: "bar",
   },
+  {
+    get label() {
+      return t`Count by Category by Month, A or B`;
+    },
+    load: withFilteredCountByCategoryByMonth,
+    display: "bar",
+  },
 ];
 
 type OrFilterCanvasProps = {
@@ -135,7 +143,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                   size="sm"
                   variant="default"
                   onClick={() => {
-                    setQuery(load(query, STAGE_INDEX));
+                    setQuery(load(baseQuery ?? query, STAGE_INDEX));
                     setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
                   }}
                 >

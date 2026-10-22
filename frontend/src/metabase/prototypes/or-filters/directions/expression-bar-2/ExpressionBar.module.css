@@ -193,3 +193,11 @@
 .input:not(.inputInline).inputEmpty:focus {
   animation: caret-blink-shadow 1s steps(1) infinite;
 }
+
+/* Between the row expression and the summary segment; sits on the bar's text line. */
+.segmentDivider {
+  min-height: 2.125rem;
+  padding: 0 0.25rem;
+  font-family: var(--mantine-font-family-monospace);
+  cursor: help;
+}

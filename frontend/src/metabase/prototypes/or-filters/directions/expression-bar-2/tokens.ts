@@ -109,11 +109,25 @@ export type ParseResult =
   | { ok: true; tree: Tree | undefined }
   | { ok: false; error: string; position: number };
 
+export type ParseOptions = {
+  /**
+   * `false` for a segment after a summary: its clauses can only be AND-ed,
+   * because an OR with the rows before the summary is not one query.
+   */
+  allowOr?: boolean;
+};
+
+const orAfterSummaryError = () =>
+  t`Filters on the summary can only be combined with "and"`;
+
 /**
  * Recursive descent over the token stream. `and` binds tighter than `or`,
  * as in every query language the bar imitates.
  */
-export function parseTokens(tokens: Token[]): ParseResult {
+export function parseTokens(
+  tokens: Token[],
+  { allowOr = true }: ParseOptions = {},
+): ParseResult {
   if (tokens.length === 0) {
     return { ok: true, tree: undefined };
   }
@@ -135,6 +149,9 @@ export function parseTokens(tokens: Token[]): ParseResult {
   const parseOr = (): Tree => {
     const args = [parseAnd()];
     while (peekIsOp("or")) {
+      if (!allowOr) {
+        return fail(orAfterSummaryError());
+      }
       position++;
       args.push(parseAnd());
     }
@@ -173,6 +190,9 @@ export function parseTokens(tokens: Token[]): ParseResult {
     }
     if (token.type === "paren") {
       return fail(t`Unexpected closing parenthesis`);
+    }
+    if (token.op === "or" && !allowOr) {
+      return fail(orAfterSummaryError());
     }
     return fail(t`Expected a filter before "${token.op}"`);
   };
@@ -215,8 +235,9 @@ export function writeTokens(
   query: Lib.Query,
   stageIndex: number,
   tokens: Token[],
+  options?: ParseOptions,
 ): Lib.Query {
-  const result = parseTokens(tokens);
+  const result = parseTokens(tokens, options);
   if (!result.ok) {
     return query;
   }

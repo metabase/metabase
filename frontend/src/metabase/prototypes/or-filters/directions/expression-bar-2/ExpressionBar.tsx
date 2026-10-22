@@ -57,6 +57,13 @@ type ExpressionBarProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
+  /**
+   * `false` for the segment after a summary: "or" is rejected and the
+   * operator pills do not toggle, since the summary's filters can only be
+   * AND-ed with the rows before it.
+   */
+  allowOr?: boolean;
+  placeholder?: string;
   /** Cancel/Apply live inside the bar instead of a trailing "+" button. */
   hasInlineActions?: boolean;
   /** Renders Cancel/Apply elsewhere, e.g. in a modal footer. */
@@ -76,6 +83,8 @@ export function ExpressionBar({
   query,
   stageIndex,
   onChange,
+  allowOr = true,
+  placeholder = t`Type a column, "and", "or", "("…`,
   hasInlineActions = false,
   renderActions,
 }: ExpressionBarProps) {
@@ -126,9 +135,12 @@ export function ExpressionBar({
   }, [committedTokens]);
 
   const isDirty = tokens !== committedTokens;
-  const parsed = useMemo(() => parseTokens(tokens), [tokens]);
+  const parsed = useMemo(
+    () => parseTokens(tokens, { allowOr }),
+    [tokens, allowOr],
+  );
   const errorPosition = parsed.ok ? undefined : parsed.position;
-  const suggestions = useSuggestions(query, stageIndex, text);
+  const suggestions = useSuggestions(query, stageIndex, text, { allowOr });
 
   // Moving the caret moves the input's DOM node, which blurs it; refocus after render.
   const focusInput = () => {
@@ -189,7 +201,7 @@ export function ExpressionBar({
   const commit = () => {
     if (parsed.ok && isDirty) {
       isOwnCommitRef.current = true;
-      onChange(writeTokens(query, stageIndex, tokens));
+      onChange(writeTokens(query, stageIndex, tokens, { allowOr }));
     }
     closeDropdown();
   };
@@ -320,9 +332,7 @@ export function ExpressionBar({
               : undefined
           }
           value={text}
-          placeholder={
-            tokens.length === 0 ? t`Type a column, "and", "or", "("…` : ""
-          }
+          placeholder={tokens.length === 0 ? placeholder : ""}
           aria-label={t`Filter expression`}
           onChange={(event) => {
             setText(event.target.value);
@@ -339,6 +349,7 @@ export function ExpressionBar({
       <Popover.Dropdown p={0} style={{ overflow: "visible" }}>
         <FilterSearchDropdown
           query={query}
+          allowOr={allowOr}
           stageIndex={stageIndex}
           text={text}
           view={dropdownView}
@@ -384,6 +395,7 @@ export function ExpressionBar({
               token={token}
               hasError={index === errorPosition}
               isFresh={freshIndexes.has(index)}
+              canToggleOperator={allowOr}
               onReplace={(next) =>
                 setTokens(replaceTokenAt(tokens, index, next))
               }
@@ -461,6 +473,7 @@ type TokenViewProps = {
   hasError: boolean;
   /** The token came from outside the bar (a drill, an example) a moment ago. */
   isFresh: boolean;
+  canToggleOperator: boolean;
   onReplace: (token: Token) => void;
   onRemove: () => void;
 };
@@ -471,6 +484,7 @@ function TokenView({
   token,
   hasError,
   isFresh,
+  canToggleOperator,
   onReplace,
   onRemove,
 }: TokenViewProps) {
@@ -484,8 +498,16 @@ function TokenView({
       <Box
         component="span"
         className={cx(S.op, { [S.opOr]: token.op === "or" }, errorClass)}
-        title={t`Click to switch`}
-        onClick={() => onReplace(opToken(toggleOperator(token.op)))}
+        title={
+          canToggleOperator
+            ? t`Click to switch`
+            : t`Filters on the summary can only be combined with "and"`
+        }
+        onClick={
+          canToggleOperator
+            ? () => onReplace(opToken(toggleOperator(token.op)))
+            : undefined
+        }
       >
         {token.op}
       </Box>
