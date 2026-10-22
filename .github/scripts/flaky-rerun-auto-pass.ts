@@ -1,7 +1,8 @@
 // When someone re-runs a PR's "Run tests", asks ci-conductor whether every
 // failure on the PR's head commit is a flake. When it is sure, and a person has
 // confirmed it, cancels the re-run and posts a passing check for each job that
-// failed on the previous attempt, which includes the required `*-result` checks.
+// failed on the previous attempt or was left unpassed by the cancel, which
+// includes the required `*-result` checks.
 // It also records the auto-pass in eng-stats and says so on the PR.
 //
 // Runs from flaky-rerun-auto-pass.yml, so no test suite needs to know about it.
@@ -93,14 +94,35 @@ export function autoPassComment(opts: {
   );
 }
 
-/** The names to post passing checks for: every job that failed on the previous attempt. */
-export function failedJobNames(
-  jobs: { name: string; conclusion: string | null }[],
-): string[] {
+type Job = { name: string; conclusion: string | null };
+
+// Branch protection counts a skipped check as passing.
+const PASSING_CONCLUSIONS = new Set(["success", "skipped", "neutral"]);
+
+/** Every job that failed on an attempt, each named once. */
+export function failedJobNames(jobs: Job[]): string[] {
   return [
     ...new Set(
       jobs.filter((job) => job.conclusion === "failure").map((job) => job.name),
     ),
+  ];
+}
+
+/**
+ * The names to post passing checks for, once the re-run is cancelled: every job
+ * that failed on the previous attempt, plus every job of the cancelled attempt
+ * that isn't passing. The cancel also hits jobs that passed or were skipped
+ * before ("Re-run all jobs" runs them again, and "Re-run failed jobs" runs their
+ * dependents), and their newest check is now a cancelled one.
+ */
+export function jobNamesToPass(previous: Job[], cancelled: Job[]): string[] {
+  return [
+    ...new Set([
+      ...failedJobNames(previous),
+      ...cancelled
+        .filter((job) => !PASSING_CONCLUSIONS.has(job.conclusion ?? ""))
+        .map((job) => job.name),
+    ]),
   ];
 }
 
@@ -245,17 +267,17 @@ async function cancelRun(ctx: Context): Promise<void> {
   throw new Error("the re-run did not finish cancelling in time");
 }
 
-async function previousAttemptFailures(ctx: Context): Promise<string[]> {
-  const jobs: { name: string; conclusion: string | null }[] = [];
+async function attemptJobs(ctx: Context, attempt: number): Promise<Job[]> {
+  const jobs: Job[] = [];
   for (let page = 1; ; page++) {
-    const data: { jobs: typeof jobs } = await (
+    const data: { jobs: Job[] } = await (
       await github(
-        `/actions/runs/${ctx.runId}/attempts/${ctx.runAttempt - 1}/jobs?per_page=100&page=${page}`,
+        `/actions/runs/${ctx.runId}/attempts/${attempt}/jobs?per_page=100&page=${page}`,
       )
     ).json();
     jobs.push(...data.jobs);
     if (data.jobs.length < 100) {
-      return failedJobNames(jobs);
+      return jobs;
     }
   }
 }
@@ -334,8 +356,8 @@ async function main(): Promise<void> {
   }
 
   // Read the failures before cancelling, so a failure here leaves the re-run running.
-  const failed = await previousAttemptFailures(ctx);
-  if (failed.length === 0) {
+  const previous = await attemptJobs(ctx, ctx.runAttempt - 1);
+  if (failedJobNames(previous).length === 0) {
     console.log(
       "The previous attempt has no failed jobs. Re-running as usual.",
     );
@@ -347,12 +369,16 @@ async function main(): Promise<void> {
     `Auto-passing: every failure is likely flaky (${percent}) and confirmed.`,
   );
   await cancelRun(ctx);
+  const toPass = jobNamesToPass(
+    previous,
+    await attemptJobs(ctx, ctx.runAttempt),
+  );
 
   const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${ctx.runId}`;
   const summary =
     `Every failure on \`${ctx.headSha}\` is likely flaky (${percent} flake probability) ` +
-    `and was confirmed in CI Conductor, so [this re-run](${runUrl}) was cancelled and its failed jobs passed.`;
-  for (const name of failed) {
+    `and was confirmed in CI Conductor, so [this re-run](${runUrl}) was cancelled and the jobs it left unpassed were passed.`;
+  for (const name of toPass) {
     await postPassingCheck(ctx, name, summary);
   }
   summarize(`### Auto-passed a confirmed-flaky re-run\n\n${summary}`);

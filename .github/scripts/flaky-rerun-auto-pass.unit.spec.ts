@@ -4,6 +4,7 @@ import {
   failedJobNames,
   fetchFlakeProbability,
   formatPercent,
+  jobNamesToPass,
   readContext,
 } from "./flaky-rerun-auto-pass";
 
@@ -108,6 +109,42 @@ describe("failedJobNames", () => {
     ).toEqual([
       "backend-tests / be-tests (1)",
       "backend-tests / be-tests-result",
+    ]);
+  });
+});
+
+describe("jobNamesToPass", () => {
+  it("passes the previous failures and every job the cancel left unpassed", () => {
+    expect(
+      jobNamesToPass(
+        [
+          { name: "backend-tests / be-tests (1)", conclusion: "failure" },
+          { name: "backend-tests / be-tests-result", conclusion: "failure" },
+          { name: "frontend-tests / fe-tests-result", conclusion: "success" },
+          {
+            name: "sdk-tests / embedding-sdk-tests-result",
+            conclusion: "skipped",
+          },
+        ],
+        [
+          { name: "backend-tests / be-tests (1)", conclusion: "cancelled" },
+          { name: "backend-tests / be-tests-result", conclusion: "skipped" },
+          { name: "frontend-tests / fe-tests-result", conclusion: "cancelled" },
+          {
+            name: "sdk-tests / embedding-sdk-tests-result",
+            conclusion: "cancelled",
+          },
+          { name: "loki-tests / visual-test", conclusion: "success" },
+          { name: "driver-tests / be-tests-oracle", conclusion: "skipped" },
+          { name: "e2e-tests / e2e-tests-result", conclusion: null },
+        ],
+      ),
+    ).toEqual([
+      "backend-tests / be-tests (1)",
+      "backend-tests / be-tests-result",
+      "frontend-tests / fe-tests-result",
+      "sdk-tests / embedding-sdk-tests-result",
+      "e2e-tests / e2e-tests-result",
     ]);
   });
 });
