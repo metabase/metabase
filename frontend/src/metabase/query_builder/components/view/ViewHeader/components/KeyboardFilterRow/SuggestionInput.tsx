@@ -28,6 +28,11 @@ interface SuggestionInputProps {
   placeholder: string;
   /** Options show checkboxes, and the dropdown stays open after a click. */
   isMultiSelect?: boolean;
+  /**
+   * The first option is highlighted before the user types, so that Enter or
+   * Tab picks it at once.
+   */
+  isFirstOptionHighlighted?: boolean;
   /** Options are a grid of tiles instead of a list. */
   isTiles?: boolean;
   /** Number of option columns in the list. */
@@ -64,6 +69,7 @@ export function SuggestionInput({
   text,
   placeholder,
   isMultiSelect = false,
+  isFirstOptionHighlighted = false,
   isTiles = false,
   columns = 1,
   dropdownWidth = DEFAULT_DROPDOWN_WIDTH,
@@ -121,7 +127,11 @@ export function SuggestionInput({
   // with no highlighted option adds the typed text, so nothing is highlighted
   // until the user moves with the arrow keys.
   useEffect(() => {
-    if (hasOptions && !isMultiSelect && text.length > 0) {
+    if (
+      hasOptions &&
+      !isMultiSelect &&
+      (text.length > 0 || isFirstOptionHighlighted)
+    ) {
       selectFirstOption();
     } else {
       resetSelectedOption();
@@ -132,6 +142,7 @@ export function SuggestionInput({
     filteredGroups,
     hasOptions,
     isMultiSelect,
+    isFirstOptionHighlighted,
     text,
   ]);
 

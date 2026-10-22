@@ -385,6 +385,7 @@ export function DraftFilterPill({
           ]}
           text={text}
           placeholder={operator?.label ?? t`Operator`}
+          isFirstOptionHighlighted
           onTextChange={handleTextChange}
           onOptionSubmit={(key) => {
             const operator = column.operators?.find(
