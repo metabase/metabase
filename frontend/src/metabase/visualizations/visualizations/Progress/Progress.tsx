@@ -18,7 +18,6 @@ import {
   calculateProgressMetrics,
   extractProgressValue,
   findProgressColumn,
-  getForeignGoalRefs,
   getGoalValue,
   getProgressColors,
   getProgressMessage,
@@ -43,11 +42,9 @@ function ProgressComponent(props: VisualizationProps) {
   const { rows, cols } = data;
 
   const goalSetting = settings["progress.goal"];
-  const goalData = useResolvedGoalData(
-    card.dataset_query,
-    data,
-    getForeignGoalRefs(goalSetting),
-  );
+  const goalData = useResolvedGoalData(card.dataset_query, data, [
+    goalSetting ?? null,
+  ]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

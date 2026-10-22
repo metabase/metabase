@@ -16,7 +16,6 @@ import {
   calculateProgressMetrics,
   extractProgressValue,
   findProgressColumn,
-  getForeignGoalRefs,
   getGoalValue,
   getProgressColors,
   getProgressMessage,
@@ -139,15 +138,6 @@ describe("getGoalValue", () => {
 
   it("should return 0 for a reference to another entity that is unanswered", () => {
     expect(getGoalValue(GOAL_REF, data)).toBe(0);
-  });
-});
-
-describe("getForeignGoalRefs", () => {
-  it("should only list a reference to another entity", () => {
-    expect(getForeignGoalRefs(GOAL_REF)).toEqual([GOAL_REF]);
-    expect(getForeignGoalRefs("count")).toEqual([]);
-    expect(getForeignGoalRefs(50)).toEqual([]);
-    expect(getForeignGoalRefs(undefined)).toEqual([]);
   });
 });
 

@@ -4,12 +4,7 @@ import _ from "underscore";
 
 import { type GoalData, resolveGoalValue } from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetColumn,
-  GoalForeignColumnRef,
-  GoalValue,
-  RowValues,
-} from "metabase-types/api";
+import type { DatasetColumn, GoalValue, RowValues } from "metabase-types/api";
 import { isGoalForeignColumnRef } from "metabase-types/guards";
 
 export const getValue = (rows: RowValues[]) => {
@@ -25,11 +20,6 @@ export const getValue = (rows: RowValues[]) => {
 
   return rawValue;
 };
-
-export const getForeignGoalRefs = (
-  goalSetting: GoalValue | null | undefined,
-): GoalForeignColumnRef[] =>
-  isGoalForeignColumnRef(goalSetting) ? [goalSetting] : [];
 
 export const getGoalValue = (
   goalSetting: GoalValue | null | undefined,
