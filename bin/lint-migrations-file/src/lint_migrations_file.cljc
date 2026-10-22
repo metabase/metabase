@@ -65,6 +65,7 @@
   [change-log]
   (when-let [bad-ids (seq (remove change-set.strict/valid-version-less-id? (change-set-ids change-log)))]
     (throw (validation-error
+            #_:clj-kondo/ignore
             (format (str "Migration file contains invalid changeset IDs (use a version-less ID: lowercase "
                          "letters/digits/underscores with at least one letter, no leading 'v', and no "
                          "timestamp or version prefix): %s")
@@ -89,11 +90,10 @@
                             (filter (fn [id]
                                       ;; a version-less id has no version, and belongs in no per-release file
                                       (let [id-version (some-> (re-find #"\d+" (str id)) parse-long)]
-                                        (if (or (nil? id-version) (change-set.strict/valid-version-less-id? id))
-                                          true
-                                        (if (= file-version 1)
-                                          (> id-version 55)
-                                          (not= file-version id-version)))))))]
+                                        (cond
+                                          (or (nil? id-version) (change-set.strict/valid-version-less-id? id)) true
+                                          (= file-version 1)                                                  (> id-version 55)
+                                          :else                                                               (not= file-version id-version))))))]
     (when (seq wrong-file-ids)
       (throw (validation-error "Change set IDs are in the wrong file"
                                {:wrong-file-ids wrong-file-ids})))))
@@ -180,6 +180,7 @@
   (doseq [{:keys [changeSet]} change-log
           :when (true? (:runAlways changeSet))]
     (throw (validation-error
+            #_:clj-kondo/ignore
             (format (str "Migration '%s' uses runAlways, which Metabase does not support: every boot would run it as a "
                          "new migration, and with MB_DB_AUTOMIGRATE=false Metabase would never start. See "
                          "require-no-run-always in bin/lint-migrations-file.")
