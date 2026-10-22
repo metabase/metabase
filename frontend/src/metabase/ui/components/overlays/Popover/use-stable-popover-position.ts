@@ -19,7 +19,7 @@ export function useStablePopoverPosition(
   const [isOpen, setIsOpen] = useState(false);
   const [currentPosition, setCurrentPosition] = useState<FloatingPosition>();
   // Mirrors `currentPosition`, but changes straight away rather than on the next render
-  const currentPositionRef = useRef<FloatingPosition>();
+  const currentPositionRef = useRef<FloatingPosition | undefined>(undefined);
   const referenceRef = useRef<Element | null>(null);
 
   const rememberPosition = useCallback((position?: FloatingPosition) => {
