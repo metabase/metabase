@@ -7,7 +7,8 @@ export type FunctionStatus =
   | "excluded"
   | "changed since nightly"
   | "unmapped"
-  | "missing file";
+  | "deleted by this branch"
+  | "not on this branch";
 
 export interface FunctionRow {
   file: string;
@@ -40,6 +41,7 @@ export const OPEN_STATUSES: FunctionStatus[] = [
   "not executed",
   "changed since nightly",
   "unmapped",
+  "deleted by this branch",
 ];
 
 const STATUS_ORDER: FunctionStatus[] = [
@@ -47,15 +49,20 @@ const STATUS_ORDER: FunctionStatus[] = [
   "unmeasured",
   "changed since nightly",
   "unmapped",
-  "missing file",
+  "deleted by this branch",
   "no mutant",
   "caught",
   "not executed",
+  "not on this branch",
   "excluded",
 ];
 
 /** Statuses with no per-function detail, shown as one row per file. */
-const COLLAPSED: FunctionStatus[] = ["not executed", "excluded"];
+const COLLAPSED: FunctionStatus[] = [
+  "not executed",
+  "not on this branch",
+  "excluded",
+];
 
 function countBy(rows: FunctionRow[]) {
   const counts = new Map<FunctionStatus, number>();

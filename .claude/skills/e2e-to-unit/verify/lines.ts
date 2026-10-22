@@ -108,9 +108,9 @@ export function lineMapper(repoRoot: string, sha: string, file: string) {
   return (line: number) => mapLine(hunks, line);
 }
 
-export function fileExistsAtHead(repoRoot: string, file: string) {
+export function fileExistsAt(repoRoot: string, ref: string, file: string) {
   try {
-    execFileSync("git", ["cat-file", "-e", `HEAD:${file}`], {
+    execFileSync("git", ["cat-file", "-e", `${ref}:${file}`], {
       cwd: repoRoot,
       stdio: "ignore",
     });

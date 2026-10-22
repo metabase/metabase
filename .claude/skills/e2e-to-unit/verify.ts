@@ -50,7 +50,7 @@ import {
   changedUnitSpecs,
   deletedTests,
   dirtyFiles,
-  fileExistsAtHead,
+  fileExistsAt,
   lineMapper,
   mergeBase,
   restoreFiles,
@@ -190,6 +190,7 @@ function scopeFunctions(
   index: CoverageIndex,
   tests: Options["tests"],
   exclude: string[],
+  base: string,
 ): { functions: ScopedFunction[]; reports: TestReport[] } {
   const functions = new Map<string, ScopedFunction>();
   const reports: TestReport[] = [];
@@ -233,8 +234,13 @@ function scopeFunctions(
       scoped.status = "excluded";
       continue;
     }
-    if (!fileExistsAtHead(repoRoot, scoped.file)) {
-      scoped.status = "missing file";
+    if (!fileExistsAt(repoRoot, "HEAD", scoped.file)) {
+      // A file the nightly instrumented but this branch does not have is only
+      // a signal when the branch removed it. When it is missing at the merge
+      // base too, master grew it after the branch forked.
+      scoped.status = fileExistsAt(repoRoot, base, scoped.file)
+        ? "deleted by this branch"
+        : "not on this branch";
       continue;
     }
     let mapper = mappers.get(scoped.file);
@@ -592,6 +598,7 @@ async function main() {
     index,
     options.tests,
     options.exclude,
+    options.base,
   );
   const pending = functions.filter((scoped) => scoped.status === "pending");
   log(
