@@ -483,22 +483,6 @@
     (catch Throwable _e
       nil)))
 
-;; the cross-instance hint comes from an untrusted cookie, so forged hints must not turn each request into a store call
-(def ^:private local-refresh-floor (t/seconds 30))
-
-(declare request-refresh!)
-
-(defn clear-local-cache!
-  "Refresh the token status unless it was refreshed within [[local-refresh-floor]]. Before [[start-refresher!]], only
-  request the refresh, since initialization makes its own. Never throws."
-  []
-  (let [{:keys [fetched-at]} @entry]
-    (when (or (nil? fetched-at)
-              (t/before? (t/plus fetched-at local-refresh-floor) (t/instant)))
-      (if @refresher-executor
-        (clear-cache!)
-        (request-refresh!)))))
-
 (defonce ^:private refresh-interval
   ;; jittered per instance so a fleet started together does not fetch together
   (t/minus (t/hours 12) (t/seconds (rand-int 3600))))
@@ -511,9 +495,16 @@
   (reset! refresh-requested? true)
   nil)
 
+(defn- shared-status-differs?
+  "Whether the shared hash row for the held status records a different status, as it does once another instance has
+  refreshed. False when there is no row."
+  [{:keys [token-hash status-hash]}]
+  (when-let [shared (:token_status_hash (premium-features.db/token-status-cache token-hash))]
+    (not= shared status-hash)))
+
 (defn- refresh-reason
   [token requested?]
-  (let [{:keys [token-hash status-hash fetched-at]} @entry]
+  (let [{:keys [token-hash fetched-at] :as held} @entry]
     (cond
       (not= token-hash (hash-token token))
       "no status is held"
@@ -524,8 +515,7 @@
       (t/before? (t/plus fetched-at refresh-interval) (t/instant))
       "the held status is due for its periodic refresh"
 
-      (when-let [shared (:token_status_hash (premium-features.db/token-status-cache token-hash))]
-        (not= shared status-hash))
+      (shared-status-differs? held)
       "another instance holds a different status")))
 
 (defn tick!
@@ -544,6 +534,24 @@
           (reset! refresh-requested? true))
         (log/errorf "Premium features token tick failed: %s" (ex-message e))
         nil))))
+
+(defn clear-local-cache!
+  "Refresh the token status now if no status is held for the configured token, or if the shared hash row records a
+  different status than the one held; otherwise do nothing. Before [[start-refresher!]], only request the refresh,
+  since initialization makes its own. A failure is logged, not thrown."
+  []
+  (try
+    (when-let [token (premium-features.settings/premium-embedding-token)]
+      (let [held @entry]
+        (when (or (not= (:token-hash held) (hash-token token))
+                  (shared-status-differs? held))
+          (if @refresher-executor
+            (clear-cache!)
+            (request-refresh!)))))
+    nil
+    (catch Throwable e
+      (log/errorf "Error checking whether the premium features token status is current: %s" (ex-message e))
+      nil)))
 
 (def ^:private tick-interval-ms (u/minutes->ms 1))
 
@@ -593,12 +601,15 @@
                  (t/before? (t/instant) (t/plus fetched-at grace-period)))
         status))))
 
-(defn- unvalidated-status
-  []
-  {:valid         false
-   :canonical?    false
-   :status        (tru "Unable to validate token")
-   :error-details (tru "No current token status is held. A refresh may be in progress or failing.")})
+(defn unvalidated-status
+  "The status reported for a token whose status could not be validated, with `error-details` saying why."
+  ([]
+   (unvalidated-status (tru "No current token status is held. A refresh may be in progress or failing.")))
+  ([error-details]
+   {:valid         false
+    :canonical?    false
+    :status        (tru "Unable to validate token")
+    :error-details error-details}))
 
 (defn- validated-status
   "The store's status for `token`, a candidate for the premium token. Throws unless the token is valid."

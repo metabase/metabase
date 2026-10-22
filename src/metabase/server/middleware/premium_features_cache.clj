@@ -1,8 +1,9 @@
 (ns metabase.server.middleware.premium-features-cache
   "Ring middleware to propagate premium-features cache invalidation across instances via a cookie.
   When one instance refreshes features (via POST /api/premium-features/token/refresh), it sets a cookie
-  with the current timestamp. Other instances see this cookie and refresh their own token status from the
-  MetaStore, unless they refreshed it moments ago.
+  with the current timestamp. Other instances see this cookie and compare the status they hold with the shared hash
+  row in the app DB, refreshing their own token status from the MetaStore only when no status is held or the hash
+  differs. A cookie therefore costs at most an app DB read unless another instance really has a newer status.
 
   The cookie is client-controlled and arrives on unauthenticated requests, so it is a hint, never an
   authority: it must parse as a timestamp, must not be in the future, must be newer than the last
@@ -57,12 +58,12 @@
     (not= old new)))
 
 (defn- check-and-invalidate-features-cache
-  "If the request cookie carries a valid timestamp newer than the last invalidation this instance knows about, refresh
-  this instance's token status."
+  "If the request cookie carries a valid timestamp newer than the last invalidation this instance knows about, have
+  this instance refresh its token status if it is out of date."
   [request]
   (when-let [cookie-timestamp (parse-cookie-timestamp (get-in request [:cookies cookie-name :value]))]
     (when (advance-last-known-invalidation! cookie-timestamp)
-      (log/info "Premium features cookie indicates the local token status is out of date. Refreshing...")
+      (log/info "Premium features cookie indicates the local token status may be out of date. Checking...")
       (premium-features/clear-local-cache!))))
 
 (defn- maybe-set-premium-features-cookie
@@ -83,7 +84,7 @@
   "Middleware that checks if the local premium features token status needs a refresh based on a cookie.
 
   When premium features are refreshed on one instance, the API sets a cookie with the current timestamp.
-  This middleware checks that cookie on subsequent requests and refreshes the local status if needed,
+  This middleware checks that cookie on subsequent requests and refreshes the local status if it is out of date,
   ensuring consistency in multi-instance deployments."
   [handler]
   (fn [request respond raise]
