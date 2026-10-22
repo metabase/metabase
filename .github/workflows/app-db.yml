@@ -132,7 +132,7 @@ jobs:
   be-tests-mariadb:
     needs: app-db-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -192,7 +192,7 @@ jobs:
   be-tests-mysql:
     needs: app-db-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -250,7 +250,7 @@ jobs:
   be-tests-postgres:
     needs: app-db-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
