@@ -328,28 +328,30 @@
 
 (deftest canceled-while-reading-rows-is-not-invalid-query-test
   (mt/test-driver :sqlite
-    (testing "A cancel while rows are read is a QP error, though SQLite reports it without a SQLState"
-      (let [query       (qp/userland-query
-                         (lib/native-query (mt/metadata-provider) "SELECT 1 AS X UNION ALL SELECT 2 AS X"))
-            row-thunk   (mt/original-fn #'sql-jdbc.execute/row-thunk)
-            interrupted (atom nil)]
-        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement! (constantly nil)
-                                    sql-jdbc.execute/row-thunk
-                                    (fn [driver ^ResultSet rs rsmeta]
-                                      (let [next-row (row-thunk driver rs rsmeta)
-                                            reads    (volatile! 0)]
-                                        (fn []
-                                          (when (= 2 (vswap! reads inc))
-                                            (a/offer! qp.pipeline/*canceled-chan* ::canceled)
-                                            (.cancel (.getStatement rs)))
-                                          (try
-                                            (next-row)
-                                            (catch SQLException e
-                                              (reset! interrupted e)
-                                              (throw e))))))]
-          (is (=? {:status :failed, :error_type :qp} (qp/process-query query)))
-          (is (nil? (.getSQLState ^SQLException @interrupted)))
-          (is (= (.code SQLiteErrorCode/SQLITE_INTERRUPT) (.getErrorCode ^SQLException @interrupted))))))))
+    (let [query     (qp/userland-query
+                     (lib/native-query (mt/metadata-provider) "SELECT 1 AS X UNION ALL SELECT 2 AS X"))
+          row-thunk (mt/original-fn #'sql-jdbc.execute/row-thunk)]
+      (doseq [qp-canceled? [false true]]
+        (testing (str "A SQLite interrupt is a QP error with no SQLState, QP canceled: " qp-canceled?)
+          (let [interrupted (atom nil)]
+            (mt/with-dynamic-fn-redefs [sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement! (constantly nil)
+                                        sql-jdbc.execute/row-thunk
+                                        (fn [driver ^ResultSet rs rsmeta]
+                                          (let [next-row (row-thunk driver rs rsmeta)
+                                                reads    (volatile! 0)]
+                                            (fn []
+                                              (when (= 2 (vswap! reads inc))
+                                                (when qp-canceled?
+                                                  (a/offer! qp.pipeline/*canceled-chan* ::canceled))
+                                                (.cancel (.getStatement rs)))
+                                              (try
+                                                (next-row)
+                                                (catch SQLException e
+                                                  (reset! interrupted e)
+                                                  (throw e))))))]
+              (is (=? {:status :failed, :error_type :qp} (qp/process-query query)))
+              (is (nil? (.getSQLState ^SQLException @interrupted)))
+              (is (= (.code SQLiteErrorCode/SQLITE_INTERRUPT) (.getErrorCode ^SQLException @interrupted))))))))))
 
 (deftest ^:parallel timezone-id-test
   (mt/test-driver :sqlite
