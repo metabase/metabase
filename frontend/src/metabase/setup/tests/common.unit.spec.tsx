@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "../constants";
@@ -46,6 +46,34 @@ describe("setup (OSS)", () => {
 
     await userEvent.click(await screen.findByText("Continue with sample data"));
     expectSectionsToHaveLabelsInOrder({ from: 3 });
+  });
+
+  it("should show a step number in the embedding use case, as it has more than one step", async () => {
+    await setup({ step: "user_info", isEmbeddingUseCase: true });
+
+    expect(screen.getByText("What should we call you?")).toBeInTheDocument();
+    expect(screen.getByTestId("step-number")).toHaveTextContent("1");
+  });
+
+  it("should not offer the sample database when 'has-sample-database?' is false", async () => {
+    await setup({ settings: { "has-sample-database?": false } });
+    await skipWelcomeScreen();
+    await submitUserInfoStep();
+    await clickNextStep(); // Usage question
+
+    const dataSection = getSection("Add your data");
+    const skipButton = await within(dataSection).findByRole("button", {
+      name: "I'll add my data later",
+    });
+    expect(
+      within(dataSection).queryByRole("button", {
+        name: "Continue with sample data",
+      }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(skipButton);
+
+    expect(getSection("I'll add my own data later")).toBeInTheDocument();
   });
 
   describe("Usage question", () => {

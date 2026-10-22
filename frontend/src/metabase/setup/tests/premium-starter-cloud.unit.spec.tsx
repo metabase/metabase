@@ -33,6 +33,13 @@ describe("setup (EE build, only `hosting` feature to simulate starter plan on cl
     expectSectionsToHaveLabelsInOrder();
   });
 
+  it("should not show a step number in the embedding use case, as it has only one step", async () => {
+    await setupPremium({ step: "user_info", isEmbeddingUseCase: true });
+
+    expect(screen.getByText("What should we call you?")).toBeInTheDocument();
+    expect(screen.queryByTestId("step-number")).not.toBeInTheDocument();
+  });
+
   it("should not show the analytics opt out (because of token-feature 'hosting')", async () => {
     await setupPremium();
     await skipWelcomeScreen();
