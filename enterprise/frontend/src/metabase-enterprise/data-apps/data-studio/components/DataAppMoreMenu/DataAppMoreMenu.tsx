@@ -79,15 +79,6 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
           >
             {app.enabled ? t`Make draft` : t`Make live`}
           </Menu.Item>
-          <Menu.Item
-            component="a"
-            href={Urls.getSubpathSafeUrl(Urls.dataAppGroupsSettings(app.name))}
-            target="_blank"
-            rel="noreferrer"
-            leftSection={<Icon name="external" />}
-          >
-            {t`Manage group access`}
-          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
       {modalContent}

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { PillTabNavigation } from "metabase/common/components/PillTabNavigation";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
@@ -20,6 +21,22 @@ export function DataAppHeader({ app }: DataAppHeaderProps) {
     <PaneHeader
       title={<PanelHeaderTitle>{app.display_name}</PanelHeaderTitle>}
       menu={<DataAppMoreMenu app={app} />}
+      tabs={
+        <PillTabNavigation
+          tabs={[
+            { label: t`Overview`, to: Urls.dataStudioDataApp(app.name) },
+            {
+              label: t`Questions`,
+              to: Urls.dataStudioDataAppQuestions(app.name),
+            },
+            { label: t`Actions`, to: Urls.dataStudioDataAppActions(app.name) },
+            {
+              label: t`Permissions`,
+              to: Urls.dataStudioDataAppPermissions(app.name),
+            },
+          ]}
+        />
+      }
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link to={Urls.dataStudioDataApps()}>{t`Data apps`}</Link>
