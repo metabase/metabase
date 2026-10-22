@@ -41,7 +41,7 @@
        (let [{:keys [impersonation routing]} (perms/data-access-token {:database-id db-id :table-ids #{}})]
          (not (or impersonation routing)))))
 
-(defn- query-row-restricted?
+(defn- query-statistics-restricted?
   [query]
   (try
     (if (database-unrestricted? (:database query))
@@ -56,6 +56,7 @@
                                   (vreset! native? true))
                                 nil))
         (or @native?
+            (not= table-ids (metabot.perms/data-accessible-table-ids table-ids))
             (boolean (seq (metabot.perms/row-restricted-table-ids table-ids))))))
     (catch Exception e
       (log/debug e "Could not determine source tables for virtual column statistics")
@@ -68,7 +69,7 @@
   since that would run an unrestricted warehouse sample and persist its result to the shared
   `Field` row. The restriction check uses the persisted Field's owning table rather than the
   caller's column metadata, since saved Card result metadata can be stale or user-edited.
-  Virtual column fingerprints are withheld if a source table is row-restricted. Queries containing
+  Virtual column fingerprints require unrestricted access to every source table. Queries containing
   native SQL require unrestricted database access without sandboxing, impersonation or routing.
   Unrestricted database users keep fingerprints even when source tables cannot be determined."
   [query {:keys [id fingerprint]} limit]
@@ -81,7 +82,7 @@
           fp (when-not restricted?
                (or fingerprint (get-or-create-fingerprint! field)))]
       (build-field-statistics fvs fp limit))
-    (build-field-statistics nil (when (and fingerprint (not (query-row-restricted? query))) fingerprint) limit)))
+    (build-field-statistics nil (when (and fingerprint (not (query-statistics-restricted? query))) fingerprint) limit)))
 
 (defn- field-metadata-output
   "Build the `:field-metadata` tool result for `col` of `query`. Surfaces the column's portable
