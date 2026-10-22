@@ -195,6 +195,7 @@
           (let [result (invoke-metadata profile "list_available_fields"
                                         {:table_ids [(mt/id :orders)] :model_ids [model-id] :metric_ids [metric-id]})]
             (is (= {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed} (:error result)))
+            (is (not (str/includes? (:output result) "private")))
             (doseq [[kind id] [["table" (mt/id :orders)] ["model" model-id] ["metric" metric-id]]]
               (is (str/includes? (:output result) (str "Could not load metadata for " kind " " id "."))))))))))
 
