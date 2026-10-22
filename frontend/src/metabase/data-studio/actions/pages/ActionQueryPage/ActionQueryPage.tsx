@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useUpdateActionMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
@@ -12,7 +11,7 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { hasNativeWritePermissions } from "metabase/common/utils/database";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useLocation, useNavigate } from "metabase/router";
-import { Button, Center } from "metabase/ui";
+import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, WritebackQueryAction } from "metabase-types/api";
 
@@ -90,18 +89,8 @@ function ActionDefinitionPage({
       <ActionDefinitionContent
         action={action}
         databases={databases}
-        topBarInnerContent={
-          canEditQuery && (
-            <Button
-              component={Link}
-              to={Urls.dataStudioActionEdit(action.id)}
-              size="sm"
-              style={{ flexShrink: 0 }}
-            >
-              {t`Edit definition`}
-            </Button>
-          )
-        }
+        canEdit={canEditQuery}
+        editUrl={Urls.dataStudioActionEdit(action.id)}
       />
     </PageContainer>
   );
