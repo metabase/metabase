@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Divider, Group, Paper, Tabs } from "metabase/ui";
+import { Box, Divider, Group, Paper, Tabs, Title } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { SettingWidget } from "../settings/types";
@@ -69,15 +69,16 @@ export const SetupPanel = ({
         }
         className={S.tabs}
       >
-        {/* A lone tab isn't a choice, so there's no tab bar then. */}
+        {/* A lone tab isn't a choice, so a heading stands in for the tab bar. */}
         {hasAdvanced ? (
           <Tabs.List px="xl" pt="sm">
             <Tabs.Tab value="setup">{setupLabel}</Tabs.Tab>
             <Tabs.Tab value="advanced">{t`Advanced`}</Tabs.Tab>
-            <PanelCloseButton onClose={onClose} />
+            <PanelCloseButton onClose={onClose} isInTabBar />
           </Tabs.List>
         ) : (
-          <Group justify="flex-end" px="md" pt="sm">
+          <Group justify="space-between" wrap="nowrap" px="xl" pt="lg">
+            <Title order={4}>{setupLabel}</Title>
             <PanelCloseButton onClose={onClose} />
           </Group>
         )}

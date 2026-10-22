@@ -76,7 +76,7 @@ export const SegmentsPanel = ({
         <Tabs.List px="lg" pt="sm">
           <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
           <Tabs.Tab value="people">{t`Cohorts`}</Tabs.Tab>
-          <PanelCloseButton onClose={onClose} />
+          <PanelCloseButton onClose={onClose} isInTabBar />
         </Tabs.List>
         <Box className={S.scroll}>
           <Tabs.Panel value="event" py="md">
