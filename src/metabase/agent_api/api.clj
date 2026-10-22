@@ -1834,7 +1834,8 @@
 (defn- exception-response
   "The response to an exception raised while handling an Agent API request, never with a stack trace.
   A 4xx exception keeps its message and client-facing ex-data. Any other exception is unexpected: it goes to the
-  server log, and the caller gets a generic 500 whatever `hide-stacktraces` says."
+  server log, as a database failure when [[metabot-construct/database-error?]] says it is one, and the caller gets a
+  generic 500 whatever `hide-stacktraces` says."
   [e]
   (let [{:keys [status-code] :as data} (ex-data e)
         client-data                     (api-error/response-data data)]
@@ -1844,7 +1845,9 @@
                  (ex-message e)
                  (merge {:message (ex-message e)} client-data))}
       (do
-        (log/error e "Unhandled error in Agent API request")
+        (if (metabot-construct/database-error? e)
+          (log/error e "Database failure in Agent API")
+          (log/error e "Unhandled error in Agent API request"))
         (when (nil? status-code)
           (analytics/inc! :metabase-api/unhandled-errors))
         {:status 500
@@ -1886,29 +1889,8 @@
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
-(defn- wrap-database-errors
-  "Return a generic 500 for unhandled database failures, logging the original exception."
-  [handler]
-  (fn [request respond raise]
-    (let [raised? (volatile! false)
-          raise (fn [e]
-                  (vreset! raised? true)
-                  (if (metabot-construct/database-error? e)
-                    (do
-                      (when (nil? (:status-code (ex-data e)))
-                        (analytics/inc! :metabase-api/unhandled-errors))
-                      (log/error e "Database failure in Agent API")
-                      (respond {:status 500 :body {:message (tru "Something went wrong")}}))
-                    (raise e)))]
-      (try
-        (handler request respond raise)
-        (catch Throwable e
-          (if @raised?
-            (throw e)
-            (raise e)))))))
-
 (def ^:private base-routes
-  (api.macros/ns-handler *ns* +auth wrap-database-errors wrap-error-responses))
+  (api.macros/ns-handler *ns* +auth wrap-error-responses))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
