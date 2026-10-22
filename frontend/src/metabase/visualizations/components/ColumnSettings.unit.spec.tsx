@@ -1,5 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { ColumnSettings as ApiColumnSettings } from "metabase-types/api";
 import {
   createMockDatetimeColumn,
   createMockField,
@@ -75,5 +76,51 @@ describe("ColumnSettings", () => {
     );
 
     expect(screen.getByText("Display as")).toBeInTheDocument();
+  });
+});
+
+describe("ColumnSettings disabled", () => {
+  type SetupOpts = {
+    value?: ApiColumnSettings;
+    disabled?: boolean;
+  };
+
+  const setup = ({ value = {}, disabled }: SetupOpts = {}) => {
+    renderWithProviders(
+      <ColumnSettings
+        column={createMockField({
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        })}
+        value={value}
+        disabled={disabled}
+      />,
+    );
+  };
+
+  it("shows the formatting of a column without letting it change when disabled", () => {
+    setup({ disabled: true });
+
+    expect(screen.getByTestId("prefix")).toBeDisabled();
+    expect(screen.getByTestId("suffix")).toBeDisabled();
+    expect(screen.getByRole("switch")).toBeDisabled();
+  });
+
+  it("disables the radio settings of a disabled column", () => {
+    setup({ value: { number_style: "currency" }, disabled: true });
+
+    const radios = screen.getAllByRole("radio");
+    expect(radios.length).toBeGreaterThan(0);
+    radios.forEach((radio) => expect(radio).toBeDisabled());
+  });
+
+  it("keeps the formatting of a column editable by default", () => {
+    setup({ value: { number_style: "currency" } });
+
+    expect(screen.getByTestId("prefix")).toBeEnabled();
+    expect(screen.getByRole("switch")).toBeEnabled();
+    screen
+      .getAllByRole("radio")
+      .forEach((radio) => expect(radio).toBeEnabled());
   });
 });

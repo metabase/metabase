@@ -10,6 +10,8 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
@@ -222,6 +224,15 @@
   (when (malformed-resource? resource)
     (throw (ex-info "resource is not a valid indicator" {:error             "invalid_target"
                                                          :error-description invalid-target-description}))))
+
+(defn- may-consent?
+  "Whether `request` may consent to an authorization request. Only a personal user that a login session authenticated
+  may."
+  [request]
+  (boolean
+   (when-let [user-id (and (:metabase/authed-session-key-hash request)
+                           (:metabase-user-id request))]
+     (oauth-server.db/personal-user? user-id))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -510,7 +521,7 @@
                     [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    _body
    request]
-  (if-not (:metabase-user-id request)
+  (if-not (may-consent? request)
     {:status  302
      :headers {"Location" (login-redirect-url request)}
      :body    ""}
@@ -551,7 +562,7 @@
             [:nonce                 {:optional true} [:maybe :string]]
             [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    request]
-  (if-not (:metabase-user-id request)
+  (if-not (may-consent? request)
     {:status  401
      :headers {"Content-Type" "application/json"}
      :body    {:error "unauthorized"}}
@@ -626,6 +637,7 @@
    _query-params
    body :- [:map {:closed true, :decode/api {:enter (fn [body] (if (map? body) body {}))}}
             [:grant_type    {:optional true} [:maybe :string]]
+            [:assertion     {:optional true} [:maybe :string]]
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
             [:refresh_token {:optional true} [:maybe :string]]
@@ -645,7 +657,13 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider body authorization-header)]
+                (let [response (if (= jwt-bearer/grant-type (:grant_type body))
+                                 (jwt-bearer/exchange-jwt-for-token! provider request
+                                                                     {:assertion (:assertion body)
+                                                                      :scopes    (when (some? (:scope body))
+                                                                                   (or (scope-tokens (:scope body)) []))
+                                                                      :resource  (:resource body)})
+                                 (oidc/token-request provider body authorization-header))]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"
