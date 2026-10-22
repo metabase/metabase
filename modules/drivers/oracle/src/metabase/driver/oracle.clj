@@ -555,8 +555,13 @@
   (h2x/cast-unless-type-in "date" (conj timestamp-types "date") hsql-form))
 
 (defn- add-months [hsql-form amount]
-  (-> [:add_months (cast-to-date-if-needed hsql-form) amount]
-      (h2x/with-database-type-info "date")))
+  ;; `add_months()` returns a `date`, which has no time zone. Convert a timestamp with time zone to the results
+  ;; timezone first, so the months are added in that timezone.
+  (let [hsql-form (cond-> hsql-form
+                    (h2x/is-of-type? hsql-form #"(?i)timestamp(\(\d\))? with time zone")
+                    (h2x/at-time-zone (driver-api/results-timezone-id)))]
+    (-> [:add_months (cast-to-date-if-needed hsql-form) amount]
+        (h2x/with-database-type-info "date"))))
 
 (defmethod sql.qp/add-interval-honeysql-form :oracle
   [driver hsql-form amount unit]

@@ -53,11 +53,12 @@
 
 (defmethod driver/host-carrying-parameters :starburst
   [_driver]
-  ["httpProxy" "socksProxy"])
+  ["httpProxy" "socksProxy" "oauth2TokenEndpoint"])
 
 (defmethod driver/non-host-parameters :starburst
   [_driver]
-  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"
+   "disallowLocalRedirect"])
 
 (defmethod driver/file-path-parameters :starburst
   [_driver]
@@ -226,8 +227,10 @@
         db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these starburst types; if applied to something else (ex: `date`), then
          ;; an error will be thrown by the query analyzer
-         db-type
-         (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+         (if db-type
+           (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+           ;; the database type is lost when `expr` comes from a nested query, e.g. a custom column
+           (isa? (h2x/effective-type expr) :type/DateTimeWithTZ))
          ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
@@ -420,6 +423,7 @@
     [#"(?i)real"                              :type/Float]
     [#"(?i)double"                            :type/Float]
     [#"(?i)decimal.*"                         :type/Decimal]
+    [#"(?i)^number$"                          :type/Decimal]
     [#"(?i)varchar.*"                         :type/Text]
     [#"(?i)char.*"                            :type/Text]
     [#"(?i)json"                              :type/Text]

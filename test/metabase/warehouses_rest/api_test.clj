@@ -994,26 +994,30 @@
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
   (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden"}
     (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type "sensitive"}
-      (testing "GET /api/database/:id/metadata?include_hidden=true"
-        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
-                          :tables)]
-          (is (some (partial = "CATEGORIES") (map :name tables)))
-          (is (->> tables
-                   (filter #(= "VENUES" (:name %)))
-                   first
-                   :fields
-                   (map :name)
-                   (some (partial = "PRICE"))))))
-      (testing "GET /api/database/:id/metadata"
-        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))
-                          :tables)]
-          (is (not (some (partial = "CATEGORIES") (map :name tables))))
-          (is (not (->> tables
-                        (filter #(= "VENUES" (:name %)))
-                        first
-                        :fields
-                        (map :name)
-                        (some (partial = "PRICE"))))))))))
+      (let [metadata           (fn [user & params]
+                                 (apply mt/user-http-request user :get 200 (format "database/%d/metadata" (mt/id)) params))
+            table-names        (fn [{:keys [tables]}]
+                                 (set (map :name tables)))
+            venues-field-names (fn [{:keys [tables]}]
+                                 (->> tables
+                                      (filter #(= "VENUES" (:name %)))
+                                      first
+                                      :fields
+                                      (map :name)
+                                      set))]
+        (testing "GET /api/database/:id/metadata excludes hidden tables and sensitive fields"
+          (let [response (metadata :rasta)]
+            (is (not (contains? (table-names response) "CATEGORIES")))
+            (is (not (contains? (venues-field-names response) "PRICE")))))
+        (testing "GET /api/database/:id/metadata?include_hidden=true includes hidden tables but not sensitive fields"
+          (let [response (metadata :crowberto :include_hidden true)]
+            (is (contains? (table-names response) "CATEGORIES"))
+            (is (not (contains? (venues-field-names response) "PRICE")))))
+        (testing "GET /api/database/:id/metadata?include_sensitive_fields=true"
+          (testing "includes sensitive fields for users who can edit the data model"
+            (is (contains? (venues-field-names (metadata :crowberto :include_sensitive_fields true)) "PRICE")))
+          (testing "does not include sensitive fields for other users"
+            (is (not (contains? (venues-field-names (metadata :rasta :include_sensitive_fields true)) "PRICE")))))))))
 
 (deftest fetch-database-metadata-remove-inactive-test
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -3136,8 +3140,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         can-query filter tests                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;; Note: can-write-metadata tests are in metabase-enterprise.advanced-permissions.common-test since they require
-;; enterprise features (:perms/manage-table-metadata permission)
 
 (deftest list-databases-can-query-filter-test
   (testing "GET /api/database with can-query=true filters to only queryable databases"
