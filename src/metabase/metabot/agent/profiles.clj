@@ -175,7 +175,8 @@
   :max-iterations  15
   :tools           (into []
                          (comp (remove #{#'tools/construct-notebook-query-tool})
-                               (replace {#'tools/run-query-tool #'tools/run-sql-query-tool}))
+                               (replace {#'tools/run-query-tool     #'tools/run-sql-query-tool
+                                         #'tools/analyze-chart-tool #'tools/analyze-chart-sql-tool}))
                          internal-tools)})
 
 ;; SQL responses are rendered from tool results in the native port, so this
