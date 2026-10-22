@@ -111,7 +111,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           </Route>
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSnippetRoutes()}
-          {getDataStudioActionRoutes()}
+          {getDataStudioActionRoutes(IsAdmin)}
           {getDataStudioSettingsRoutes()}
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)

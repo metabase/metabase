@@ -4,7 +4,7 @@ import { getDataStudioActionRoutes } from "./routes";
 
 describe("data studio action routes", () => {
   it("resolves every page", async () => {
-    const loaders = lazyLoaders(getDataStudioActionRoutes());
+    const loaders = lazyLoaders(getDataStudioActionRoutes(() => null));
 
     expect(loaders).toHaveLength(9);
 
