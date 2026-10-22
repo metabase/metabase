@@ -794,10 +794,10 @@ describe("EntityPickerModal", () => {
         "This aren't the objects you're looking for",
       );
 
-      expect(
-        await screen.findByText("We didn't find anything"),
-      ).toBeInTheDocument();
-      expect(screen.getByAltText("Nothing found")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("We didn't find anything")).toBeInTheDocument();
+        expect(screen.getByAltText("Nothing found")).toBeInTheDocument();
+      });
     });
 
     it("should hide search results based on isHiddenItem", async () => {

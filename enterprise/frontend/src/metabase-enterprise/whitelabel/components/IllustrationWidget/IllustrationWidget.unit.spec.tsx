@@ -65,8 +65,7 @@ function mockImageDecoding({ isIntact }: { isIntact: boolean }) {
     .spyOn(HTMLImageElement.prototype, "src", "set")
     .mockImplementation(function (this: HTMLImageElement) {
       setTimeout(() => {
-        const event = new Event(isIntact ? "load" : "error");
-        (isIntact ? this.onload : this.onerror)?.(event);
+        this.dispatchEvent(new Event(isIntact ? "load" : "error"));
       });
     });
 }
