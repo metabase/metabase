@@ -224,6 +224,10 @@
    ;; Needed for Apache Arrow, which is used by the Snowflake driver.
    ;; When we update that driver, check if this is still needed.
    ;; (https://github.com/apache/arrow-java/pull/1334)
+   ;;
+   ;; This is equivalent to --add-opens java.base/java.nio=ALL-UNNAMED
+   ;; The caveat being it only works when the jar is launched directly
+   ;; like `java -jar metabase.jar`
    "Add-Opens"        "java.base/java.nio"})
 
 (defn- manifest ^Manifest []
