@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ComponentType, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -24,7 +24,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 import type { FilterCanvasProps } from "../../types";
 
-import { ExpressionBar } from "./ExpressionBar";
+import { ExpressionBar, type ExpressionBarProps } from "./ExpressionBar";
 
 const STAGE_INDEX = 0;
 
@@ -75,7 +75,16 @@ export function withSumOfTotalByMonth(query: Lib.Query): Lib.Query {
  * filter panel sits, and the chart with the real drill-through popover.
  * Drills write their filters into the same query, so they land in the bar.
  */
-export function QuestionView({ query, onChange }: FilterCanvasProps) {
+type QuestionViewProps = FilterCanvasProps & {
+  /** The bar in the filter panel's slot; other directions swap in their own. */
+  Bar?: ComponentType<ExpressionBarProps>;
+};
+
+export function QuestionView({
+  query,
+  onChange,
+  Bar = ExpressionBar,
+}: QuestionViewProps) {
   const [history, setHistory] = useState<Lib.Query[]>([]);
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
 
@@ -118,11 +127,7 @@ export function QuestionView({ query, onChange }: FilterCanvasProps) {
       </Group>
 
       <Box style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}>
-        <ExpressionBar
-          query={query}
-          stageIndex={STAGE_INDEX}
-          onChange={onChange}
-        />
+        <Bar query={query} stageIndex={STAGE_INDEX} onChange={onChange} />
         <LaterStageFilters query={query} onChange={onChange} />
       </Box>
 

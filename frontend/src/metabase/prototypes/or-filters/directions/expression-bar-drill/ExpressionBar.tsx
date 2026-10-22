@@ -37,7 +37,7 @@ import {
 import S from "./ExpressionBar.module.css";
 import { LogicColumnList, matchLogic } from "./LogicColumnList";
 
-type ExpressionBarProps = {
+export type ExpressionBarProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;

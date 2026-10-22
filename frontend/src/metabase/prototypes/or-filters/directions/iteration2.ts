@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { t } from "ttag";
 
 import type { FilterDirection } from "../types";
@@ -7,6 +8,8 @@ import {
   QuestionView,
   withSumOfTotalByMonth,
 } from "./expression-bar-drill/QuestionView";
+import { SelectSummarizeBar } from "./expression-bar-summarize/ExpressionBar";
+import { withFiltersForMetabot } from "./expression-bar-summarize/summaries";
 
 /**
  * Iteration 2 directions: the next round, built on what iteration 1 taught us. Iteration 1
@@ -35,5 +38,18 @@ export const ITERATION_2_DIRECTIONS: FilterDirection[] = [
     Component: ExpressionBarInline2Prototype,
     Canvas: QuestionView,
     prepareQuery: withSumOfTotalByMonth,
+  },
+  {
+    id: "expression-bar-summarize-selection",
+    get name() {
+      return t`Expression-bar: LLM summaries and generation`;
+    },
+    get description() {
+      return t`The drill-through bar with six filters on the product and customer. Drag across filters like selecting text: a floating Metabot "Summarize" button turns the selection into one pill with a short generated phrase (canned for the prototype). Try the three product filters, or the two customer ones. Click a summary to lay its filters back out in the bar; clicking outside the bar or Apply folds them back, unless you edited them, in which case they stay as plain filters. The Metabot icon on the right opens "Tell Metabot how you want to filter": click the text box to get a canned prompt, ("only orders over $50 that were either discounted or had 3 or more items") and the generated filters land in the bar as normal pills, ready to be selected and summarized.`;
+    },
+    Component: ExpressionBarInline2Prototype,
+    Canvas: (props) =>
+      createElement(QuestionView, { ...props, Bar: SelectSummarizeBar }),
+    prepareQuery: withFiltersForMetabot,
   },
 ];
