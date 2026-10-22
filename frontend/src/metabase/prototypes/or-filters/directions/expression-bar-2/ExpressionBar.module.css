@@ -111,6 +111,24 @@
   border-radius: 0.25rem;
 }
 
+/* A token that just arrived from outside the bar (a drill, an example). */
+.tokenFresh {
+  border-radius: 0.25rem;
+  animation: fresh-token 1.5s ease-out both;
+}
+
+@keyframes fresh-token {
+  from {
+    background-color: var(--mb-color-background_surface-selected);
+    box-shadow: 0 0 0 2px var(--mb-color-core-filter);
+  }
+
+  to {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
 .input {
   flex: 1 0 4rem;
   min-width: 4rem;

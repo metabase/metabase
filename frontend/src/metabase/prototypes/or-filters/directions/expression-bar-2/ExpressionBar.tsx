@@ -28,6 +28,8 @@ import type * as Lib from "metabase-lib";
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 import { Token as TokenPill } from "../or-pills/Token";
 
+const FRESH_TOKEN_FLASH_MS = 1500;
+
 import S from "./ExpressionBar.module.css";
 import {
   type DropdownView,
@@ -93,11 +95,34 @@ export function ExpressionBar({
   const [hasNavigated, setHasNavigated] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const shouldRefocusRef = useRef(false);
+  const previousCommittedRef = useRef(committedTokens);
+  const isOwnCommitRef = useRef(false);
+  const [freshIndexes, setFreshIndexes] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
 
-  // External query changes (examples, other frames) reset the draft.
+  // External query changes (examples, drills, other frames) drop the draft
+  // and briefly highlight what arrived.
   useEffect(() => {
+    const previous = previousCommittedRef.current;
+    previousCommittedRef.current = committedTokens;
     setTokens(committedTokens);
     setCaret(committedTokens.length);
+
+    const isOwnCommit = isOwnCommitRef.current;
+    isOwnCommitRef.current = false;
+    const fresh = isOwnCommit
+      ? new Set<number>()
+      : freshTokenIndexes(previous, committedTokens);
+    setFreshIndexes(fresh);
+    if (fresh.size === 0) {
+      return;
+    }
+    const timeout = setTimeout(
+      () => setFreshIndexes(new Set()),
+      FRESH_TOKEN_FLASH_MS,
+    );
+    return () => clearTimeout(timeout);
   }, [committedTokens]);
 
   const isDirty = tokens !== committedTokens;
@@ -163,6 +188,7 @@ export function ExpressionBar({
 
   const commit = () => {
     if (parsed.ok && isDirty) {
+      isOwnCommitRef.current = true;
       onChange(writeTokens(query, stageIndex, tokens));
     }
     closeDropdown();
@@ -357,6 +383,7 @@ export function ExpressionBar({
               stageIndex={stageIndex}
               token={token}
               hasError={index === errorPosition}
+              isFresh={freshIndexes.has(index)}
               onReplace={(next) =>
                 setTokens(replaceTokenAt(tokens, index, next))
               }
@@ -432,6 +459,8 @@ type TokenViewProps = {
   stageIndex: number;
   token: Token;
   hasError: boolean;
+  /** The token came from outside the bar (a drill, an example) a moment ago. */
+  isFresh: boolean;
   onReplace: (token: Token) => void;
   onRemove: () => void;
 };
@@ -441,10 +470,14 @@ function TokenView({
   stageIndex,
   token,
   hasError,
+  isFresh,
   onReplace,
   onRemove,
 }: TokenViewProps) {
-  const errorClass = hasError ? S.tokenError : undefined;
+  const errorClass = cx({
+    [S.tokenError]: hasError,
+    [S.tokenFresh]: isFresh,
+  });
 
   if (token.type === "op") {
     return (
@@ -536,4 +569,27 @@ function FilterTokenView({
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+/**
+ * Which tokens a longer committed stream gained: the appended tail, plus the
+ * opening parenthesis when a drill wrapped a top-level OR to AND onto it.
+ */
+function freshTokenIndexes(
+  previous: readonly Token[],
+  next: readonly Token[],
+): Set<number> {
+  if (next.length <= previous.length) {
+    return new Set();
+  }
+  const fresh = new Set<number>();
+  for (let index = previous.length; index < next.length; index++) {
+    fresh.add(index);
+  }
+  const opensWithParen = (tokens: readonly Token[]) =>
+    tokens[0]?.type === "paren" && tokens[0].side === "open";
+  if (opensWithParen(next) && !opensWithParen(previous)) {
+    fresh.add(0);
+  }
+  return fresh;
 }

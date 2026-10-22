@@ -194,3 +194,46 @@ export function withFourLevelsExample(
   ]);
   return Lib.filter(clearFilters(query, stageIndex), stageIndex, orClause);
 }
+
+function findBreakoutColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  displayName: string,
+): Lib.ColumnMetadata | undefined {
+  return Lib.breakoutableColumns(query, stageIndex).find(
+    (column) =>
+      Lib.displayInfo(query, stageIndex, column).displayName === displayName,
+  );
+}
+
+/**
+ * An aggregated question: `Count` by `Product → Category` by `Created At: Month`.
+ * This is the shape where the "See these Orders" and "zoom in" drills appear;
+ * a raw table only offers the per-cell quick filters.
+ */
+export function withCountByCategoryByMonth(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const category = findBreakoutColumn(cleared, stageIndex, "Category");
+  const createdAt = findBreakoutColumn(cleared, stageIndex, "Created At");
+  if (!category || !createdAt) {
+    return query;
+  }
+  const monthBucket = Lib.availableTemporalBuckets(
+    cleared,
+    stageIndex,
+    createdAt,
+  ).find(
+    (bucket) =>
+      Lib.displayInfo(cleared, stageIndex, bucket).shortName === "month",
+  );
+  const counted = Lib.aggregateByCount(cleared, stageIndex);
+  const byCategory = Lib.breakout(counted, stageIndex, category);
+  return Lib.breakout(
+    byCategory,
+    stageIndex,
+    Lib.withTemporalBucket(createdAt, monthBucket ?? null),
+  );
+}

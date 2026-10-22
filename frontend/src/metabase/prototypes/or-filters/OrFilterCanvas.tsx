@@ -13,6 +13,7 @@ import {
   Title,
 } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { ChillFrame } from "./frames/ChillFrame";
 import { NotebookFrame } from "./frames/NotebookFrame";
@@ -20,6 +21,7 @@ import { FilterTreeInspector } from "./harness/FilterTreeInspector";
 import { QueryResults } from "./harness/QueryResults";
 import {
   clearFilters,
+  withCountByCategoryByMonth,
   withDnfExample,
   withFourLevelsExample,
   withNestedExample,
@@ -35,7 +37,11 @@ const STAGE_INDEX = 0;
 type Example = {
   label: string;
   load: (query: Lib.Query, stageIndex: number) => Lib.Query;
+  /** How the results render once loaded; defaults to a table. */
+  display?: CardDisplayType;
 };
+
+const DEFAULT_DISPLAY: CardDisplayType = "table";
 
 const EXAMPLES: Example[] = [
   {
@@ -74,6 +80,13 @@ const EXAMPLES: Example[] = [
     },
     load: withFourLevelsExample,
   },
+  {
+    get label() {
+      return t`Count by Category by Month`;
+    },
+    load: withCountByCategoryByMonth,
+    display: "bar",
+  },
 ];
 
 type OrFilterCanvasProps = {
@@ -88,6 +101,7 @@ type OrFilterCanvasProps = {
 export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const { query: baseQuery, isLoading, error } = useOrdersQuery();
   const [query, setQuery] = useState<Lib.Query>();
+  const [display, setDisplay] = useState<CardDisplayType>(DEFAULT_DISPLAY);
   const [areFiltersHidden, setAreFiltersHidden] = useState(false);
 
   useEffect(() => {
@@ -115,12 +129,15 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
 
             <Group gap="sm" align="center">
               <Text fw="bold" c="text-secondary">{t`Examples`}</Text>
-              {EXAMPLES.map(({ label, load }) => (
+              {EXAMPLES.map(({ label, load, display: exampleDisplay }) => (
                 <Button
                   key={label}
                   size="sm"
                   variant="default"
-                  onClick={() => setQuery(load(query, STAGE_INDEX))}
+                  onClick={() => {
+                    setQuery(load(query, STAGE_INDEX));
+                    setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
+                  }}
                 >
                   {label}
                 </Button>
@@ -133,6 +150,20 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                 onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
               >
                 {t`Clear filters`}
+              </Button>
+              <Button
+                size="sm"
+                variant="subtle"
+                leftSection={<Icon name="refresh" />}
+                disabled={!baseQuery}
+                onClick={() => {
+                  if (baseQuery) {
+                    setQuery(baseQuery);
+                    setDisplay(DEFAULT_DISPLAY);
+                  }
+                }}
+              >
+                {t`Reset`}
               </Button>
             </Group>
           </Stack>
@@ -168,7 +199,17 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                   )
                 )
               }
-              results={<QueryResults query={query} stageIndex={STAGE_INDEX} />}
+              results={
+                <QueryResults
+                  query={query}
+                  stageIndex={STAGE_INDEX}
+                  display={display}
+                  onChange={(nextQuery, nextDisplay) => {
+                    setQuery(nextQuery);
+                    setDisplay(nextDisplay);
+                  }}
+                />
+              }
             >
               <direction.Component
                 query={query}

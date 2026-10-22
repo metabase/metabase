@@ -3,21 +3,37 @@ import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { Box, Group, Loader, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import type { RawSeries } from "metabase-types/api";
+import {
+  type CardDisplayType,
+  type RawSeries,
+  isCardDisplayType,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
+
+import { FILTER_DRILLS_CLICK_MODE } from "./drillMode";
 
 type QueryResultsProps = {
   query: Lib.Query;
   stageIndex: number;
+  display: CardDisplayType;
+  /** A drill in the results produced a new query (and possibly a new display). */
+  onChange: (query: Lib.Query, display: CardDisplayType) => void;
 };
 
-export function QueryResults({ query, stageIndex }: QueryResultsProps) {
+export function QueryResults({
+  query,
+  stageIndex,
+  display,
+  onChange,
+}: QueryResultsProps) {
+  const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
   const countJsQuery = useMemo(
-    () => Lib.toJsQuery(Lib.aggregateByCount(query, stageIndex)),
+    () => Lib.toJsQuery(countQuery(query, stageIndex)),
     [query, stageIndex],
   );
 
@@ -32,13 +48,13 @@ export function QueryResults({ query, stageIndex }: QueryResultsProps) {
       {
         card: createMockCard({
           dataset_query: jsQuery,
-          display: "table",
+          display,
           visualization_settings: {},
         }),
         data: rows.data.data,
       },
     ];
-  }, [rows.data, jsQuery]);
+  }, [rows.data, jsQuery, display]);
 
   const rowCount = count.data?.data?.rows?.[0]?.[0];
   const errorMessage =
@@ -72,11 +88,31 @@ export function QueryResults({ query, stageIndex }: QueryResultsProps) {
         }}
       >
         {rawSeries ? (
-          <Visualization queryBuilderMode="dataset" rawSeries={rawSeries} />
+          <Visualization
+            queryBuilderMode="dataset"
+            rawSeries={rawSeries}
+            mode={FILTER_DRILLS_CLICK_MODE}
+            onChangeCardAndRun={({ nextCard }) =>
+              onChange(
+                Lib.fromJsQuery(metadataProvider, nextCard.dataset_query),
+                isCardDisplayType(nextCard.display)
+                  ? nextCard.display
+                  : display,
+              )
+            }
+          />
         ) : (
           rows.isFetching && <Loader />
         )}
       </Box>
     </Box>
   );
+}
+
+/** Counts the rows the query returns; an aggregated query is counted on a stage of its own. */
+function countQuery(query: Lib.Query, stageIndex: number): Lib.Query {
+  const isAggregated = Lib.aggregations(query, stageIndex).length > 0;
+  return isAggregated
+    ? Lib.aggregateByCount(Lib.appendStage(query), -1)
+    : Lib.aggregateByCount(query, stageIndex);
 }
