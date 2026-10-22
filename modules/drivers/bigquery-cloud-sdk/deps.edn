@@ -14,6 +14,7 @@
                                                         com.fasterxml.jackson.core/jackson-core
                                                         com.fasterxml.jackson.core/jackson-databind
                                                         com.google.code.gson/gson
+                                                        com.google.guava/guava
                                                         io.opentelemetry/opentelemetry-api]}
   ;; Required for service account impersonation in workspace isolation
   ;; Version matches what google-cloud-bigquery depends on
