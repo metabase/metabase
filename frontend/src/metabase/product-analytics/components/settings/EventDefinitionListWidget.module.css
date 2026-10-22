@@ -1,3 +1,7 @@
 .handle {
   cursor: grab;
+
+  &[data-disabled="true"] {
+    cursor: default;
+  }
 }
