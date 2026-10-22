@@ -71,9 +71,12 @@ describe("AddDataAppGroupsModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const calls = fetchMock.callHistory.calls("path:/api/apps/sales/groups", {
-      method: "POST",
-    });
+    const calls = fetchMock.callHistory.calls(
+      "path:/api/ee/apps/sales/groups",
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(1);
     expect(JSON.parse(String(calls[0].options.body))).toEqual({
       group_ids: [4],

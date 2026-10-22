@@ -109,7 +109,7 @@ describe("DataAppGroupList", () => {
       within(dialog).getByText("Remove Support from Sales?"),
     ).toBeInTheDocument();
     expect(
-      fetchMock.callHistory.calls("path:/api/apps/sales/groups/3", {
+      fetchMock.callHistory.calls("path:/api/ee/apps/sales/groups/3", {
         method: "DELETE",
       }),
     ).toHaveLength(0);
@@ -119,7 +119,7 @@ describe("DataAppGroupList", () => {
     );
 
     expect(
-      fetchMock.callHistory.calls("path:/api/apps/sales/groups/3", {
+      fetchMock.callHistory.calls("path:/api/ee/apps/sales/groups/3", {
         method: "DELETE",
       }),
     ).toHaveLength(1);

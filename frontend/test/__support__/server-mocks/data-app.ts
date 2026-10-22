@@ -36,26 +36,29 @@ export function setupDataAppGroupsEndpoint(
   name: string,
   groups: DataAppGroup[],
 ) {
-  fetchMock.get(`path:/api/apps/${name}/groups`, groups);
+  fetchMock.get(`path:/api/ee/apps/${name}/groups`, groups);
 }
 
 export function setupDataAppGroupPermissionWarningsEndpoint(
   name: string,
   warnings: DataAppGroupPermissionWarning[],
 ) {
-  fetchMock.get(`path:/api/apps/${name}/group-permission-warnings`, warnings);
+  fetchMock.get(
+    `path:/api/ee/apps/${name}/group-permission-warnings`,
+    warnings,
+  );
 }
 
 export function setupAddDataAppGroupsEndpoint(
   name: string,
   groups: DataAppGroup[],
 ) {
-  fetchMock.post(`path:/api/apps/${name}/groups`, groups);
+  fetchMock.post(`path:/api/ee/apps/${name}/groups`, groups);
 }
 
 export function setupRemoveDataAppGroupEndpoint(
   name: string,
   groupId: GroupId,
 ) {
-  fetchMock.delete(`path:/api/apps/${name}/groups/${groupId}`, 204);
+  fetchMock.delete(`path:/api/ee/apps/${name}/groups/${groupId}`, 204);
 }
