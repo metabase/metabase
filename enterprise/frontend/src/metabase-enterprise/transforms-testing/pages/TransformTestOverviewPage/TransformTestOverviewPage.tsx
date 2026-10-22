@@ -5,6 +5,8 @@ import { Center } from "metabase/ui";
 import { TransformTestHeader } from "../../components/TransformTestHeader";
 import { useRouteTransformTest } from "../../hooks/use-route-transform-test";
 
+import { TransformTestInputsSection } from "./TransformTestInputsSection";
+import { TransformTestOutputSection } from "./TransformTestOutputSection";
 import { TransformTestRunSection } from "./TransformTestRunSection";
 
 export function TransformTestOverviewPage() {
@@ -23,6 +25,11 @@ export function TransformTestOverviewPage() {
     <PageContainer data-testid="transform-test-overview">
       <TransformTestHeader transform={transform} test={test} />
       <TransformTestRunSection test={test} readOnly={readOnly} />
+      <TransformTestInputsSection inputs={test.inputs} />
+      <TransformTestOutputSection
+        transform={transform}
+        expectations={test.expectations}
+      />
     </PageContainer>
   );
 }

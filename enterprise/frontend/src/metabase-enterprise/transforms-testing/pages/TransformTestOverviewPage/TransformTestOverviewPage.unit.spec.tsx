@@ -8,7 +8,13 @@ import {
   setupGetTransformTestEndpoint,
   setupRunTransformTestEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformTest } from "metabase-types/api";
@@ -17,7 +23,11 @@ import {
   createMockDatabase,
   createMockTransform,
   createMockTransformTest,
+  createMockTransformTestEmptyExpectation,
+  createMockTransformTestEqualsExpectation,
+  createMockTransformTestRowsData,
   createMockTransformTestRun,
+  createMockTransformTestSqlData,
 } from "metabase-types/api/mocks";
 
 import { TransformTestOverviewPage } from "./TransformTestOverviewPage";
@@ -35,7 +45,17 @@ function setup({
   }),
   canWrite = true,
 }: SetupOpts = {}) {
-  const transform = createMockTransform({ id: 1, name: "Customer revenue" });
+  mockGetBoundingClientRect({ width: 1000, height: 600 });
+  const transform = createMockTransform({
+    id: 1,
+    name: "Customer revenue",
+    target: {
+      type: "table",
+      schema: "analytics",
+      name: "customer_revenue",
+      database: 1,
+    },
+  });
   setupDatabasesEndpoints([
     createMockDatabase({
       id: 1,
@@ -99,6 +119,24 @@ describe("TransformTestOverviewPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("links to all runs of the test", async () => {
+    setup({
+      test: createMockTransformTest({
+        id: 2,
+        transform_id: 1,
+        last_run: createMockTransformTestRun({ status: "passed" }),
+      }),
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "See all runs" }),
+    ).toHaveAttribute("href", Urls.transformTestRuns(1, 2));
+    expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute(
+      "href",
+      Urls.transformTestRuns(1, 2),
+    );
+  });
+
   it("shows a failed last run as failed", async () => {
     setup({
       test: createMockTransformTest({
@@ -138,5 +176,91 @@ describe("TransformTestOverviewPage", () => {
     expect(
       await screen.findByRole("button", { name: /Run now/ }),
     ).toBeDisabled();
+  });
+
+  it("shows the rows and queries that stand in for the input tables", async () => {
+    setup({
+      test: createMockTransformTest({
+        id: 2,
+        transform_id: 1,
+        inputs: [
+          {
+            table: { schema: "raw", name: "customers" },
+            ...createMockTransformTestRowsData({
+              columns: [
+                { name: "id", cast_type: "int" },
+                { name: "country", cast_type: "text" },
+              ],
+              rows: [
+                { id: 1, country: "US" },
+                { id: 2, country: null },
+              ],
+            }),
+          },
+          {
+            table: { schema: "raw", name: "orders" },
+            ...createMockTransformTestSqlData({
+              sql: "SELECT 10 AS id, 'paid' AS status",
+            }),
+          },
+        ],
+      }),
+    });
+
+    const inputs = await screen.findByRole("region", { name: "Inputs" });
+    const customers = within(inputs).getByLabelText("raw.customers");
+    expect(within(customers).getByText("2 rows")).toBeInTheDocument();
+    expect(within(customers).getByText("country")).toBeInTheDocument();
+    expect(within(customers).getByText("US")).toBeInTheDocument();
+    expect(within(customers).getByText("null")).toBeInTheDocument();
+
+    const orders = within(inputs).getByLabelText("raw.orders");
+    expect(
+      within(orders).getByText("Rows returned by a query"),
+    ).toBeInTheDocument();
+    expect(
+      await within(orders).findByText(/SELECT 10 AS id/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the checks on the transform output", async () => {
+    setup({
+      test: createMockTransformTest({
+        id: 2,
+        transform_id: 1,
+        expectations: [
+          createMockTransformTestEqualsExpectation({
+            name: "revenue per customer",
+            columns: [{ name: "revenue", cast_type: "numeric" }],
+            rows: [{ revenue: 120 }],
+          }),
+          createMockTransformTestEmptyExpectation({
+            name: "no negative revenue",
+            sql: "SELECT * FROM analytics.customer_revenue WHERE revenue < 0",
+          }),
+        ],
+      }),
+    });
+
+    const output = await screen.findByRole("region", { name: "Output" });
+    expect(
+      within(output).getByText(
+        "Checks on analytics.customer_revenue, the table this transform writes.",
+      ),
+    ).toBeInTheDocument();
+
+    const equals = within(output).getByLabelText("revenue per customer");
+    expect(
+      within(equals).getByText("Must hold exactly these rows"),
+    ).toBeInTheDocument();
+    expect(within(equals).getByText("120")).toBeInTheDocument();
+
+    const empty = within(output).getByLabelText("no negative revenue");
+    expect(
+      within(empty).getByText("This query must return no rows"),
+    ).toBeInTheDocument();
+    expect(
+      await within(empty).findByText(/WHERE revenue < 0/),
+    ).toBeInTheDocument();
   });
 });
