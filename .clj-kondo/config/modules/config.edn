@@ -2035,7 +2035,6 @@
            app-db
            dependencies
            settings
-           startup
            task
            tracing
            util

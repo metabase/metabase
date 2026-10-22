@@ -4,8 +4,10 @@
    [clj-http.cookies :as cookies]
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.test-util :as premium-features.tu]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -49,6 +51,24 @@
                                 premium-features/premium-embedding-token (constantly nil)]
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 "premium-features/token/refresh"))))))
+
+(deftest post-token-refresh-returns-fresh-status-test
+  (testing "POST /api/premium-features/token/refresh fetches from the store and returns what it said"
+    (let [entry  (var-get #'token-check/entry)
+          saved  @entry
+          status (atom {:valid true :status "ok" :features ["sandboxes"]})]
+      (try
+        (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+          (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
+            (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 200 :body (json/encode @status)})]
+              (is (=? {:valid true :features ["sandboxes"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (reset! status {:valid true :status "ok" :features ["sandboxes" "audit-app"]})
+              (is (=? {:valid true :features ["sandboxes" "audit-app"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (is (= #{"sandboxes" "audit-app"} (token-check/*token-features*))))))
+        (finally
+          (reset! entry saved))))))
 
 (deftest post-token-refresh-invalidates-llm-proxy-cache-test
   (testing "POST /api/premium-features/token/refresh invalidates the AI service token cache when explicitly configured"

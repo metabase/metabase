@@ -2,8 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.test-util :as premium-features.tu]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.server.middleware.premium-features-cache :as mw.pf-cache]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
   (:import
    (java.time Duration Instant)
    (java.util.concurrent CountDownLatch)))
@@ -110,3 +113,25 @@
            (.countDown start)
            (run! deref futures)
            (is (= 1 @calls))))))))
+
+(deftest newer-cookie-refreshes-token-status-test
+  (testing "a newer cookie makes this instance fetch its token status from the store"
+    (let [entry (var-get #'token-check/entry)
+          saved @entry
+          calls (atom 0)]
+      (reset! entry nil)
+      (try
+        (with-redefs [mw.pf-cache/last-known-invalidation (atom nil)]
+          (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
+            (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                                 (swap! calls inc)
+                                                                 {:status 200
+                                                                  :body   (json/encode {:valid    true
+                                                                                        :status   "ok"
+                                                                                        :features ["sandboxes"]})})]
+              (is (false? (premium-features/has-feature? :sandboxes)))
+              (run-middleware (request-with-cookie (str (Instant/now))) {:status 200})
+              (is (= 1 @calls))
+              (is (true? (premium-features/has-feature? :sandboxes))))))
+        (finally
+          (reset! entry saved))))))
