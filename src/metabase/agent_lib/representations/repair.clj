@@ -1327,10 +1327,17 @@
 
       :else node)))
 
+(defn- whole-day-bound?
+  "Whether `v` is a `day` or `default` bound written as a full date, which a filter reads as the whole day.
+  `yyyy-MM` and `yyyy` name a month or a year, though [[hoistable-bucket]] widens them to their first day."
+  [v]
+  (and (redundant-bucket-literal v)
+       (re-matches date-only-pattern (str/trim (nth v 2)))))
+
 (defn- repair-day-and-default-comparison [node]
   (if (hoistable-comparison-node? node)
     (let [literals (mapv redundant-bucket-literal (subvec node 3))]
-      (if (every? #(and % (re-matches date-only-pattern %)) literals)
+      (if (every? whole-day-bound? (subvec node 3))
         (if (contains? #{"!=" "not-in"} (first node))
           node
           (expand-day-comparison (into (subvec node 0 3) literals)))

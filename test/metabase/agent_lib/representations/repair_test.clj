@@ -1168,6 +1168,21 @@
          clojure.lang.ExceptionInfo #"Move the temporal unit"
          (repair-in-stage {"aggregation" [["count-where" {} predicate]]})))))
 
+(deftest ^:parallel partial-dates-in-conditional-aggregations-stay-refused-test
+  (let [user-id ["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
+    (doseq [unit ["day" "default"]
+            [start end] [["2026-01" "2026-03"] ["2025" "2026"]]
+            predicate [["=" {} created-at (abs-dt start unit)]
+                       ["between" {} created-at (abs-dt start unit) (abs-dt end unit)]]
+            aggregation [["count-where" {} predicate]
+                         ["sum-where" {} user-id predicate]
+                         ["distinct-where" {} user-id predicate]
+                         ["share" {} predicate]]]
+      (testing (pr-str aggregation)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Move the temporal unit"
+             (repair-in-stage {"aggregation" [aggregation]})))))))
+
 (deftest ^:parallel standalone-temporal-literals-keep-their-type-test
   (let [literal (abs-dt "2026-01-01" "day")]
     (is (thrown-with-msg?
