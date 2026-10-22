@@ -50,7 +50,7 @@
   "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none."
   [{:keys [error entity-type entity-id humanized]}]
   (case error
-    (:invalid-representations-query :invalid-external-query)
+    :invalid-representations-query
     (structural-validation-hint humanized)
 
     :uri-in-source-table

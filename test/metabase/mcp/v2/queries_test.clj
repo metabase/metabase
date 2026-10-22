@@ -219,8 +219,7 @@
     (is (nil? (v2.recovery-hints/recovery-hint {:error :no-such-error})))))
 
 (deftest ^:parallel structural-validation-schema-detail-test
-  (doseq [[validate query message] agent-lib.tu/structural-validation-cases]
-    (let [e (try (validate query) (catch clojure.lang.ExceptionInfo e e))]
-      (is (= (str "\"" message "\" Invalid at \"stages\": [0] \"filters\": \"invalid type\". "
-                  "Fix the named paths, or call \"learn\" with \"query-dialect\" for the clause shapes.")
-             (ex-message (#'v2.queries/with-schema-detail e)))))))
+  (is (= (str "\"Representations query has an invalid structure.\" "
+              "Invalid at \"stages\": [0] \"filters\": \"invalid type\". "
+              "Fix the named paths, or call \"learn\" with \"query-dialect\" for the clause shapes.")
+         (ex-message (#'v2.queries/with-schema-detail (agent-lib.tu/structural-validation-error))))))

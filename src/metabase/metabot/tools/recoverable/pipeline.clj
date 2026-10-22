@@ -263,11 +263,9 @@
   [payload]
   {:message (:message payload), :recovery (structural-recovery payload)})
 
-(defrecoverable invalid-external-query!
+(defpipeline-error invalid-external-query!
   "A query supplied from outside the pipeline was not a valid MBQL query."
-  {:payload ::payload}
-  [payload]
-  {:message (:message payload), :recovery (structural-recovery payload)})
+  [])
 
 (defpipeline-error query-not-runnable!
   "The query parsed but would not run — the editor's own run gate rejects it."

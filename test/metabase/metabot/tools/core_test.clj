@@ -373,12 +373,10 @@
     (is (= :fine (tools/with-pipeline-errors :fine)))))
 
 (deftest ^:parallel structural-validation-paths-test
-  (doseq [[validate query message] agent-lib.tu/structural-validation-cases]
-    (testing message
-      (let [e    (try (validate query) (catch clojure.lang.ExceptionInfo e e))
-            data (ex-data e)
-            hint "Invalid at stages[0].filters: invalid type. Fix the named paths."]
-        (is (= hint (recovery-hints/recovery-hint data)))
-        (is (= (str message "\n" hint)
-               (tools.error/recoverable-text
-                (pipeline-failure (ex-message e) (assoc data :agent-error? true)) #{})))))))
+  (let [e    (agent-lib.tu/structural-validation-error)
+        data (ex-data e)
+        hint "Invalid at stages[0].filters: invalid type. Fix the named paths."]
+    (is (= hint (recovery-hints/recovery-hint data)))
+    (is (= (str "Representations query has an invalid structure.\n" hint)
+           (tools.error/recoverable-text
+            (pipeline-failure (ex-message e) (assoc data :agent-error? true)) #{})))))
