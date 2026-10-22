@@ -12,9 +12,11 @@ import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, LifecycleStateName, Period } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
+import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../sql/analyses/lifecycle";
 import { grainTitle } from "../sql/compile/grain";
 
+import { getBreakoutExtraColumns, getBreakoutSpec } from "./breakout";
 import { getDateColumnOptions, isDateColumnInTable } from "./column-roles";
 import { commonSettings } from "./common-settings";
 import { getAxisTitleSettings } from "./series-settings";
@@ -112,6 +114,7 @@ const getPeriod = (granularity: Granularity): Period =>
 const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
   ...commonSettings({
     granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
+    breakout: true,
   }),
   "lifecycle.active": withWidgetProps({
     getTitle: () => t`What action counts as being active?`,
@@ -191,6 +194,7 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     }
     return ready({
       ...getCommonSpec("lifecycle", settings),
+      breakout: getBreakoutSpec(settings.breakout, events),
       lifecycle: {
         // Empty means any event counts as being active.
         active: active === null ? undefined : { flag: events.flagFor(active) },
@@ -200,14 +204,23 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       output: { lifecycleShown: settings["lifecycle.shown"] },
     });
   },
-  getExtraColumns: (settings) => {
+  getExtraColumns: (settings, context) => {
     const column = getFirstSeenColumn(settings);
-    return column !== null
-      ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" }]
-      : [];
+    return [
+      ...(column !== null
+        ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" as const }]
+        : []),
+      ...getBreakoutExtraColumns(settings.breakout, context),
+    ];
   },
-  getDisplay: () => "bar",
+  // The states already stack, so each group gets a chart of its own. Small
+  // multiples draw one chart without a breakout, so the display stays put.
+  getDisplay: () => "small_multiples",
   getVizSettings: (settings, colors) => ({
+    "small_multiples.display": "bar",
+    ...(settings.breakout !== null
+      ? { "small_multiples.column": BREAKOUT_COLUMN }
+      : {}),
     "graph.dimensions": ["period", "state"],
     "graph.metrics": ["actors"],
     "stackable.stack_type": "stacked",

@@ -39,6 +39,7 @@ export const cardDisplayTypes = [
   "treemap",
   "list",
   "cohort",
+  "small_multiples",
 ] as const;
 
 export const isCardDisplayType = (value: unknown): value is CardDisplayType =>

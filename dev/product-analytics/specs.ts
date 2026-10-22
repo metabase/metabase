@@ -111,7 +111,6 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
         kind,
         ...chrome,
         cohorts: {
-          by: "startDate",
           return: { flag: FLAG.active },
           returnRule: "exactly",
         },

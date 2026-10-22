@@ -14,11 +14,12 @@ import type { ProjectedColumn } from "../../frontend/src/metabase/product-analyt
 import type {
   AnalysisKind,
   AnalysisSpec,
+  BreakoutSpec,
   FunnelSpec,
   PathsSpec,
 } from "../../frontend/src/metabase/product-analytics/spec/types";
+import { BREAKOUT_PROPERTY_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/breakout";
 import { activeColumn } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit";
-import { COHORT_ATTRIBUTE_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/cohorts";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
 import {
   IN_RANGE_FLAG,
@@ -148,8 +149,8 @@ const check = (name: string, ok: boolean, detail: string) => {
 };
 
 const cohortColumns = (spec: AnalysisSpec): ProjectedColumn[] =>
-  spec.cohorts?.by === "attribute"
-    ? [{ as: COHORT_ATTRIBUTE_COLUMN, alias: "country" }]
+  spec.breakout?.type === "property"
+    ? [{ as: BREAKOUT_PROPERTY_COLUMN, alias: "country" }]
     : [];
 
 /**
@@ -421,16 +422,28 @@ for (const [label, overrides] of pathsVariants) {
   await run("paths", truth, { ...pathsSpec, paths }, `paths (${label})`);
 }
 
+// A people segment's membership the way Metabase compiles it from the users
+// table: its key and a 0/1 column per segment.
+const PAID_PLANS = "('starter', 'pro', 'business')";
+const paidSegment = (required: string[]): BasePeopleSegments => ({
+  sql: `SELECT person_id, if(plan IN ${PAID_PLANS}, 1, 0) AS seg_1 FROM product_analytics.pa_identities_resolved`,
+  primaryKey: "person_id",
+  flags: ["seg_1"],
+  required,
+});
+const paidBreakout = (withEveryone: boolean): BreakoutSpec => ({
+  type: "segments",
+  groups: [
+    ...(withEveryone ? [{ label: "Everyone" }] : []),
+    { label: "Paid", segment: { flag: "seg_1", isMember: true } },
+    { label: "Not paid", segment: { flag: "seg_1", isMember: false } },
+  ],
+});
+
 const cohortsSpec = defaultSpec("cohorts");
 if (cohortsSpec.cohorts !== undefined) {
   const cohortsVariants: [string, AnalysisSpec][] = [
-    [
-      "by country",
-      {
-        ...cohortsSpec,
-        cohorts: { ...cohortsSpec.cohorts, by: "attribute" },
-      },
-    ],
+    ["by country", { ...cohortsSpec, breakout: { type: "property" } }],
     [
       "average, on or after",
       {
@@ -451,28 +464,12 @@ if (cohortsSpec.cohorts !== undefined) {
     await run("cohorts", truth, spec, `cohorts (${label})`);
   }
 
-  // Cohorts by a people segment, with membership the way Metabase compiles
-  // it from the users table: its key and a 0/1 column per segment. The
-  // segment's members plus the people outside it are everyone, and the
-  // members are the people who match it in the identities table.
-  const PAID_PLANS = "('starter', 'pro', 'business')";
-  const paidSegment = (required: string[]): BasePeopleSegments => ({
-    sql: `SELECT person_id, if(plan IN ${PAID_PLANS}, 1, 0) AS seg_1 FROM product_analytics.pa_identities_resolved`,
-    primaryKey: "person_id",
-    flags: ["seg_1"],
-    required,
-  });
+  // Cohorts by a people segment: the segment's members plus the people
+  // outside it are everyone, and the members are the people who match it in
+  // the identities table.
   const segmentsSpec: AnalysisSpec = {
     ...cohortsSpec,
-    cohorts: {
-      ...cohortsSpec.cohorts,
-      by: "segments",
-      groups: [
-        { label: "Everyone" },
-        { label: "Paid", segment: { flag: "seg_1", isMember: true } },
-        { label: "Not paid", segment: { flag: "seg_1", isMember: false } },
-      ],
-    },
+    breakout: paidBreakout(true),
   };
   const segmentSizes = async (required: string[]) => {
     const rows = await chJson(
@@ -536,6 +533,180 @@ if (cohortsSpec.cohorts !== undefined) {
       .join(", "),
   );
 }
+
+// Breakouts by a people segment, in every analysis. Paid and Not paid split
+// everyone in two, so they add up to the analysis without a breakout, and
+// Everyone, where there is one, is that analysis exactly.
+type BreakoutCase = {
+  label: string;
+  spec: AnalysisSpec;
+  /** The columns that name a row, besides the group. */
+  keys: string[];
+  metric: string;
+  withEveryone: boolean;
+};
+
+const withView = (
+  spec: AnalysisSpec,
+  output: AnalysisSpec["output"],
+): AnalysisSpec => ({ ...spec, output: { ...spec.output, ...output } });
+
+const habitRatioSpec = defaultSpec("habit");
+const breakoutCases: BreakoutCase[] = [
+  {
+    label: "funnel steps",
+    spec: defaultSpec("funnel"),
+    keys: ["label"],
+    metric: "people",
+    withEveryone: true,
+  },
+  {
+    label: "funnel time to finish",
+    spec: withView(defaultSpec("funnel"), { funnelView: "timeToConvert" }),
+    keys: ["time_to_convert"],
+    metric: "people",
+    withEveryone: true,
+  },
+  {
+    label: "habit",
+    spec: defaultSpec("habit"),
+    keys: ["periods"],
+    metric: "people",
+    withEveryone: true,
+  },
+  {
+    label: "habit DAU",
+    spec: {
+      ...habitRatioSpec,
+      habit: habitRatioSpec.habit && {
+        ...habitRatioSpec.habit,
+        measure: "ratio",
+      },
+    },
+    keys: ["day"],
+    metric: "dau",
+    withEveryone: true,
+  },
+  {
+    label: "lifecycle",
+    spec: defaultSpec("lifecycle"),
+    keys: ["period", "state"],
+    metric: "actors",
+    withEveryone: true,
+  },
+  {
+    label: "paths",
+    spec: defaultSpec("paths"),
+    keys: ["source", "target"],
+    metric: "weight",
+    withEveryone: false,
+  },
+];
+
+const sumByKey = (
+  rows: Record<string, unknown>[],
+  { keys, metric }: Pick<BreakoutCase, "keys" | "metric">,
+): Map<string, number> => {
+  const sums = new Map<string, number>();
+  for (const row of rows) {
+    const key = keys.map((name) => String(row[name])).join(" / ");
+    sums.set(key, (sums.get(key) ?? 0) + asNumber(row[metric]));
+  }
+  return sums;
+};
+
+const diffSums = (
+  actual: Map<string, number>,
+  expected: Map<string, number>,
+): string[] =>
+  [...new Set([...actual.keys(), ...expected.keys()])]
+    .filter((key) => (actual.get(key) ?? 0) !== (expected.get(key) ?? 0))
+    .map(
+      (key) => `${key}: ${actual.get(key) ?? 0} vs ${expected.get(key) ?? 0}`,
+    );
+
+for (const breakoutCase of breakoutCases) {
+  const { label, spec, withEveryone } = breakoutCase;
+  console.log(`\n${label} (by a people segment)`);
+  const plain = await chJson(
+    buildSql(spec, eventsBaseSql(truth), baseColumns(spec)).sql,
+  );
+  const brokenOutSpec: AnalysisSpec = {
+    ...spec,
+    breakout: paidBreakout(withEveryone),
+  };
+  const brokenOut = await chJson(
+    buildSql(brokenOutSpec, eventsBaseSql(truth), {
+      ...baseColumns(brokenOutSpec),
+      peopleSegments: paidSegment([]),
+    }).sql,
+  );
+  const inGroup = (group: string) =>
+    sumByKey(
+      brokenOut.filter((row) => row.breakout === group),
+      breakoutCase,
+    );
+  const expected = sumByKey(plain, breakoutCase);
+  const split = sumByKey(
+    brokenOut.filter((row) => row.breakout !== "Everyone"),
+    breakoutCase,
+  );
+  const splitDiffs = diffSums(split, expected);
+  check(
+    "Paid and Not paid add up to the analysis without a breakout",
+    splitDiffs.length === 0 && inGroup("Paid").size > 0,
+    splitDiffs.slice(0, 3).join(", ") || `${expected.size} rows`,
+  );
+  if (withEveryone) {
+    const everyoneDiffs = diffSums(inGroup("Everyone"), expected);
+    check(
+      "Everyone is the analysis without a breakout",
+      everyoneDiffs.length === 0,
+      everyoneDiffs.slice(0, 3).join(", ") || `${expected.size} rows`,
+    );
+  }
+}
+
+// Shares instead of counts: a habit group's shares add up to 100%.
+const sharesSum = (
+  rows: Record<string, unknown>[],
+  keys: string[],
+  include: (row: Record<string, unknown>) => boolean,
+  metric: string,
+): number[] =>
+  [
+    ...sumByKey(rows.filter(include), { keys, metric }).values(),
+  ].map((sum) => Math.round(sum * 100) / 100);
+
+const percentSpec = (spec: AnalysisSpec): AnalysisSpec => ({
+  ...spec,
+  breakout: paidBreakout(true),
+});
+const percentColumns = (spec: AnalysisSpec) => ({
+  ...baseColumns(spec),
+  peopleSegments: paidSegment([]),
+});
+
+console.log("\nhabit as a share of each group");
+const habitDefault = defaultSpec("habit");
+const habitPercent = percentSpec({
+  ...habitDefault,
+  habit: habitDefault.habit && { ...habitDefault.habit, percent: true },
+});
+const habitShares = sharesSum(
+  await chJson(
+    buildSql(habitPercent, eventsBaseSql(truth), percentColumns(habitPercent))
+      .sql,
+  ),
+  ["breakout"],
+  () => true,
+  "people",
+);
+check(
+  "each group's shares add up to 100%",
+  habitShares.length === 3 && habitShares.every((sum) => sum === 1),
+  habitShares.join(", "),
+);
 
 // DAU/MAU and WAU/MAU: the range starts 40 days into the data, so the month
 // before its first period comes from the lookback. Check the first period

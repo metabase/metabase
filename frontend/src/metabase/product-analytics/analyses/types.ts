@@ -63,6 +63,8 @@ export type FunnelSettings = CommonSettings & {
   "funnel.ordering": FunnelSpec["ordering"];
   "funnel.anchor": FunnelSpec["anchor"];
   "funnel.allow_retry": boolean;
+  /** Broken out, a chart per group for the bars, rather than side by side. Over time is a line per group. */
+  "funnel.stack_breakouts": boolean;
 };
 
 export type PathsSettings = CommonSettings & {
@@ -79,9 +81,16 @@ export type PathsSettings = CommonSettings & {
   "paths.edge_metric": NonNullable<OutputSpec["pathsEdgeMetric"]>;
 };
 
+/** Whether a chart shows counts or each count's share of a total. */
+export type ValuesDisplay = "counts" | "percent";
+
 export type HabitSettings = CommonSettings & {
   "habit.active": EventDefinition | null;
   "habit.measure": HabitSpec["measure"];
+  /** The histogram's people as counts, or as a share of their group. */
+  "habit.values": ValuesDisplay;
+  /** Broken out, a histogram per group, rather than side by side. */
+  "habit.stack_breakouts": boolean;
 };
 
 export type LifecycleSettings = CommonSettings & {

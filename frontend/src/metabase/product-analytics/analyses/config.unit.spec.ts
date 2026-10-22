@@ -287,11 +287,11 @@ describe("analysis settings", () => {
   describe("cohorts", () => {
     it("starts and returns on any event by default", () => {
       const { specResult, extraColumns } = setup({ kind: "cohorts" });
-      const cohorts = getReadySpec(specResult).cohorts;
+      const spec = getReadySpec(specResult);
 
-      expect(cohorts?.start).toBeUndefined();
-      expect(cohorts?.return).toBeUndefined();
-      expect(cohorts?.by).toBe("startDate");
+      expect(spec.cohorts?.start).toBeUndefined();
+      expect(spec.cohorts?.return).toBeUndefined();
+      expect(spec.breakout).toBeUndefined();
       expect(extraColumns).toEqual([]);
     });
 
@@ -331,7 +331,7 @@ describe("analysis settings", () => {
         column: "country",
       });
       expect(extraColumns).toEqual([
-        { as: "cohort_attribute", column: "country", from: "users" },
+        { as: "breakout_property", column: "country", from: "users" },
       ]);
     });
 
@@ -353,9 +353,7 @@ describe("analysis settings", () => {
         stored: { breakout: { type: "property", column: "plan" } },
       });
 
-      expect(getReadySpec(specResult).cohorts).toMatchObject({
-        by: "attribute",
-      });
+      expect(getReadySpec(specResult).breakout).toEqual({ type: "property" });
     });
 
     it("defaults to returning in exactly that period, named by the granularity", () => {

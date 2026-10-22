@@ -441,6 +441,12 @@ export type VisualizationSettings = {
   /** Draws a bar chart as product analytics funnel steps. Not user-editable. */
   "product_analytics.funnel_steps"?: boolean;
 
+  /** Small multiples: the column with each row's chart. */
+  "small_multiples.column"?: string;
+
+  /** Small multiples: how each chart draws, e.g. "bar". */
+  "small_multiples.display"?: string;
+
   /** Each funnel step's bar color, by step. Set from the event analysis display panel. */
   "product_analytics.funnel_step_colors"?: string[];
 

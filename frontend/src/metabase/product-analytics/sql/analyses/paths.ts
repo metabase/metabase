@@ -5,6 +5,13 @@ import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
 import { pointString, scopedEvents } from "./base";
 import {
+  BREAKOUT_COLUMN,
+  breakoutDrillCondition,
+  breakoutGroupBy,
+  breakoutSelect,
+  withBreakout,
+} from "./breakout";
+import {
   PATHS_COLUMNS,
   kindSql,
   pathNodeKeySql,
@@ -323,13 +330,14 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
   const members = (point: DrillPoint): string | null => {
     const source = pointString(point.source);
     const target = pointString(point.target);
+    const inGroup = breakoutDrillCondition(spec, point[BREAKOUT_COLUMN]);
     if (source !== null && target !== null) {
-      return `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(source)} AND target = ${lit(target)}`;
+      return `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(source)} AND target = ${lit(target)}${inGroup}`;
     }
     const node = source ?? target;
     return node === null
       ? null
-      : `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(node)} OR target = ${lit(node)}`;
+      : `SELECT DISTINCT actor FROM edges\nWHERE (source = ${lit(node)} OR target = ${lit(node)})${inGroup}`;
   };
 
   return {
@@ -343,9 +351,12 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       `  ${PATHS_COLUMNS.sourceLabel},`,
       `  ${PATHS_COLUMNS.targetLabel},`,
       `  ${PATHS_COLUMNS.targetKind},`,
+      ...breakoutSelect(spec),
       `  ${volume} AS weight`,
-      "FROM edges",
-      `GROUP BY step, source, target, ${PATHS_COLUMNS.sourceLabel}, ${PATHS_COLUMNS.targetLabel}, ${PATHS_COLUMNS.targetKind}`,
+      // The nodes are picked from everyone's steps, so each group's links
+      // share them.
+      `FROM ${withBreakout(spec, "edges")}`,
+      `GROUP BY ${breakoutGroupBy(spec)}step, source, target, ${PATHS_COLUMNS.sourceLabel}, ${PATHS_COLUMNS.targetLabel}, ${PATHS_COLUMNS.targetKind}`,
       "ORDER BY step, weight DESC",
     ].join("\n"),
     warnings: [

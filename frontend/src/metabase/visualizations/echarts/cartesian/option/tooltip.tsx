@@ -38,6 +38,7 @@ const ChartItemTooltip = ({
         chartModel,
         settings,
         dataIndex,
+        seriesId,
         seriesId === FUNNEL_STEPS_GHOST_SERIES_ID,
       )
     : getTooltipModel(chartModel, settings, dataIndex, display, seriesId);

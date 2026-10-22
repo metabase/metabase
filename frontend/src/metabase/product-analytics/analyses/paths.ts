@@ -8,7 +8,13 @@ import { NumberStepperWidget } from "../components/settings/NumberStepperWidget"
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Grain } from "../spec/types";
 import { parseStepLabel } from "../sql/analyses/base";
+import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 
+import {
+  type Breakout,
+  getBreakoutExtraColumns,
+  getBreakoutSpec,
+} from "./breakout";
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
@@ -49,7 +55,7 @@ const getMinVolumeTitle = (grain: Grain): string => {
 };
 
 const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
-  ...commonSettings({ granularity: null }),
+  ...commonSettings({ granularity: null, breakout: true }),
   "paths.direction": {
     getTitle: () => t`View the path that's…`,
     getSection: () => "setup",
@@ -161,6 +167,9 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   },
 };
 
+const isOneCohort = (breakout: Breakout | null) =>
+  breakout?.type === "cohorts" && breakout.segments.length === 1;
+
 export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
   kind: "paths",
   get name() {
@@ -180,6 +189,12 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
     const end = direction !== "from" ? settings["paths.end"] : null;
     return ready({
       ...getCommonSpec("paths", settings),
+      // A Sankey adds a node's flows up, so everyone would count twice, and
+      // flows are crowded enough that only one cohort keeps those outside it.
+      breakout: getBreakoutSpec(settings.breakout, events, {
+        withEveryone: false,
+        withOutside: isOneCohort(settings.breakout),
+      }),
       paths: {
         direction,
         start: start !== null ? { flag: events.flagFor(start) } : null,
@@ -198,12 +213,19 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
       output: { pathsEdgeMetric: settings["paths.edge_metric"] },
     });
   },
+  getExtraColumns: ({ breakout }, context) =>
+    getBreakoutExtraColumns(breakout, context),
   getDisplay: () => "sankey",
-  getVizSettings: () => ({
+  getVizSettings: (settings) => ({
     "sankey.source": "source",
     "sankey.target": "target",
     "sankey.value": "weight",
     "product_analytics.paths": true,
+    // A cohort's lighter shade beside its own is too subtle among flows, so
+    // the groups get the chart's own colors.
+    ...(settings.breakout !== null
+      ? { "sankey.breakout": BREAKOUT_COLUMN }
+      : {}),
   }),
   describePoint: (_settings, point) => {
     const source = parseStepLabel(point.source);

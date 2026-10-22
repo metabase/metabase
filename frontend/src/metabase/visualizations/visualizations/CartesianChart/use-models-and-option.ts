@@ -151,7 +151,9 @@ export function useModelsAndOption(
 
     let baseOption;
 
-    if (isFunnelSteps) {
+    // Broken out, the steps are grouped bars that keep the steps' tooltip.
+    const isOneFunnel = chartModel.seriesModels.length === 1;
+    if (isFunnelSteps && isOneFunnel) {
       baseOption = getFunnelStepsOption(
         chartModel,
         chartLayout,
