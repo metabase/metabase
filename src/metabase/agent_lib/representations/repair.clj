@@ -3053,8 +3053,8 @@
         (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
           (throw (ex-info
                   (tru "No column named {0} is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: {1}."
-                       (pr-str (nth bad 2))
-                       (str/join ", " (map :name cols)))
+                       (quoting/quoted (nth bad 2))
+                       (str/join ", " (map (comp quoting/quoted :name) cols)))
                   {:agent-error? true
                    :error        :unresolved-cross-stage-field
                    :stage        idx

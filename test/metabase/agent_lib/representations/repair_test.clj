@@ -2490,6 +2490,19 @@
       (is (= ["ID" "count"] (:available (ex-data e))))
       (is (re-find #"no_such_column" (ex-message e))))))
 
+(deftest ^:parallel cross-stage-field-type-unknown-column-name-quotes-available-columns-test
+  (testing "the previous stage's column names reach the message quoted"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "fields"       [["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]
+                                          ["field" {} ["Sample" "PUBLIC" "ORDERS" odd-column-name]]]}
+                         {"lib/type" "mbql.stage/mbql"
+                          "filters"  [["not-null" {} ["field" {} "nope"]]]}]}]
+      (is (str/includes? (repair-message mp-odd-column-name q)
+                         (str "Available column names: \"USER_ID\", " quoted-odd-column-name "."))))))
+
 (deftest ^:parallel cross-stage-field-type-strips-surrounding-double-quotes-test
   (testing (str "BOT-1587: when the LLM quotes a cross-stage column name like a SQL identifier\n"
                 "(`\"count\"` instead of `count`), repair strips the surrounding double-quotes so\n"
