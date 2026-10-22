@@ -122,6 +122,17 @@ Reference items using: [name](metabase://type/id)")
        "**If the returned SQL query is correct:**\n\n"
        (delivery-instruction query-id loaded-in-editor?)))
 
+(def sql-dialect-checklist
+  "Dialect differences to check after SQL syntax validation fails."
+  (str
+   "Common issues to check:\n"
+   "- Dialect-specific function names (e.g., DATE_TRUNC vs TRUNC, ILIKE vs LIKE)\n"
+   "- Quote style for identifiers (double quotes vs backticks vs square brackets)\n"
+   "- String concatenation operators (|| vs + vs CONCAT)\n"
+   "- Date/time literal syntax and formatting functions\n"
+   "- NULL handling differences between dialects\n"
+   "- Case sensitivity of identifiers\n"))
+
 (defn sql-validation-error-instructions
   "Generate instructions for failed query validation. Matches Python `format_validation_error_instructions`."
   [dialect error-message]
@@ -130,12 +141,6 @@ Reference items using: [name](metabase://type/id)")
        "Error details:\n"
        (quoting/quoted error-message) "\n"
        "\n"
-       "Common issues to check:\n"
-       "- Dialect-specific function names (e.g., DATE_TRUNC vs TRUNC, ILIKE vs LIKE)\n"
-       "- Quote style for identifiers (double quotes vs backticks vs square brackets)\n"
-       "- String concatenation operators (|| vs + vs CONCAT)\n"
-       "- Date/time literal syntax and formatting functions\n"
-       "- NULL handling differences between dialects\n"
-       "- Case sensitivity of identifiers\n"
+       sql-dialect-checklist
        "\n"
        "Please fix the syntax error and try again with the corrected SQL.\n"))
