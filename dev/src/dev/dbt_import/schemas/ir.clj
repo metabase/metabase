@@ -15,34 +15,34 @@
   "The physical table a semantic model is built on."
   [:map
    [:database [:maybe :string]]
-   [:schema :string]
-   [:table :string]])
+   [:schema   :string]
+   [:table    :string]])
 
 (mr/def ::column
   "A column of the relation, as the source project documents it. `data-type` is the warehouse type string and may be
   missing when the project does not declare it."
   [:map
-   [:name :string]
-   [:data-type [:maybe :string]]
+   [:name        :string]
+   [:data-type   [:maybe :string]]
    [:description [:maybe :string]]])
 
 (mr/def ::entity
   "A join key. `expr` is always set: a bare column name or SQL."
   [:map
-   [:name :string]
-   [:type ::dbt-manifest/entity-type]
-   [:expr :string]
-   [:label [:maybe :string]]
+   [:name        :string]
+   [:type        ::dbt-manifest/entity-type]
+   [:expr        :string]
+   [:label       [:maybe :string]]
    [:description [:maybe :string]]])
 
 (mr/def ::dimension
   "Something a metric can be grouped by. `expr` is always set. `granularity` is only set for time dimensions."
   [:map
-   [:name :string]
-   [:type ::dbt-manifest/dimension-type]
-   [:expr :string]
+   [:name        :string]
+   [:type        ::dbt-manifest/dimension-type]
+   [:expr        :string]
    [:granularity [:maybe ::dbt-manifest/time-granularity]]
-   [:label [:maybe :string]]
+   [:label       [:maybe :string]]
    [:description [:maybe :string]]])
 
 (mr/def ::aggregation
@@ -50,34 +50,34 @@
   Deciding which of those it is, and whether Metabase can express it, happens at emit time. `agg-time-dimension` is
   already defaulted from the semantic model."
   [:map
-   [:agg ::dbt-manifest/aggregation-type]
-   [:expr :string]
-   [:agg-params [:maybe ::dbt-manifest/aggregation-params]]
+   [:agg                    ::dbt-manifest/aggregation-type]
+   [:expr                   :string]
+   [:agg-params             [:maybe ::dbt-manifest/aggregation-params]]
    [:non-additive-dimension [:maybe ::dbt-manifest/non-additive-dimension]]
-   [:agg-time-dimension [:maybe :string]]])
+   [:agg-time-dimension     [:maybe :string]]])
 
 (mr/def ::measure
   "A named, reusable aggregation declared on a semantic model."
   [:merge
    ::aggregation
    [:map
-    [:name :string]
-    [:label [:maybe :string]]
+    [:name        :string]
+    [:label       [:maybe :string]]
     [:description [:maybe :string]]]])
 
 (mr/def ::semantic-model
   "One physical table and everything the semantic layer declares on it. `measures` and `columns` are keyed by name."
   [:map
-   [:name :string]
-   [:unique-id :string]
-   [:label [:maybe :string]]
-   [:description [:maybe :string]]
-   [:relation ::relation]
-   [:columns [:map-of :string ::column]]
+   [:name                       :string]
+   [:unique-id                  :string]
+   [:label                      [:maybe :string]]
+   [:description                [:maybe :string]]
+   [:relation                   ::relation]
+   [:columns                    [:map-of :string ::column]]
    [:default-agg-time-dimension [:maybe :string]]
-   [:entities [:sequential ::entity]]
-   [:dimensions [:sequential ::dimension]]
-   [:measures [:map-of :string ::measure]]])
+   [:entities                   [:sequential ::entity]]
+   [:dimensions                 [:sequential ::dimension]]
+   [:measures                   [:map-of :string ::measure]]])
 
 (mr/def ::metric
   "A simple metric: one aggregation over one semantic model, flattened so the emitter does not have to chase the
@@ -86,33 +86,36 @@
   [:merge
    ::aggregation
    [:map
-    [:name :string]
-    [:unique-id :string]
-    [:label :string]
-    [:description [:maybe :string]]
-    [:semantic-model :string]
-    [:measure [:maybe :string]]
-    [:filters [:sequential :string]]
-    [:fill-nulls-with [:maybe :int]]
+    [:name              :string]
+    [:unique-id         :string]
+    [:label             :string]
+    [:description       [:maybe :string]]
+    [:semantic-model    :string]
+    [:measure           [:maybe :string]]
+    [:filters           [:sequential :string]]
+    [:fill-nulls-with   [:maybe :int]]
     [:join-to-timespine :boolean]
-    [:meta [:maybe :map]]]])
+    [:meta              [:maybe :map]]]])
 
 (mr/def ::unsupported
   "A metric the parser could not turn into a `::metric`, and why. Reported rather than thrown so one bad metric does
   not fail the whole run."
   [:map
-   [:name :string]
+   [:name      :string]
    [:unique-id :string]
-   [:reason :string]])
+   [:reason    :string]])
+
+(mr/def ::manifest.source
+  [:map
+   [:tool :string]
+   [:version [:maybe :string]]
+   [:project [:maybe :string]]])
 
 (mr/def ::manifest
   "Everything parsed from one semantic layer. `semantic-models` is keyed by semantic model name; `metrics` is sorted
   by name."
   [:map
-   [:source [:map
-             [:tool :string]
-             [:version [:maybe :string]]
-             [:project [:maybe :string]]]]
+   [:source          ::manifest.source]
    [:semantic-models [:map-of :string ::semantic-model]]
-   [:metrics [:sequential ::metric]]
-   [:unsupported [:sequential ::unsupported]]])
+   [:metrics         [:sequential ::metric]]
+   [:unsupported     [:sequential ::unsupported]]])
