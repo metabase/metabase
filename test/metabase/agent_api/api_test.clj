@@ -2120,15 +2120,19 @@
 (deftest unexpected-error-is-generic-test
   (testing "An unexpected failure is a generic 500 whatever `hide-stacktraces` says, and the log gets the detail"
     (mt/with-prometheus-system! [_ system]
-      (mt/with-dynamic-fn-redefs [metabot-search/search reject-app-db-lookup]
-        (doseq [hide-stacktraces? [false true]]
+      (doseq [[search log-message detail] [[reject-app-db-lookup "Database failure in Agent API" #"(?i)no_such_column"]
+                                           [(fn [_] (throw (ex-info "Search index is unavailable" {})))
+                                            "Unhandled error in Agent API request"
+                                            #"Search index is unavailable"]]
+              hide-stacktraces?             [false true]]
+        (mt/with-dynamic-fn-redefs [metabot-search/search search]
           (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
             (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
               (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
                 (is (= {:message "Something went wrong"}
                        (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
                 (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))
-                (is (logs-app-db-error? (messages)))))))))))
+                (is (=? [{:message log-message, :e #(re-find detail (ex-message %))}] (messages)))))))))))
 
 (deftest client-disconnect-is-not-an-error-test
   (testing "A client that disconnects before its response is written gets no error response, count or error log"
