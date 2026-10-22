@@ -67,8 +67,19 @@ const CenteredEmptyState = ({
  * The data-app bundle itself knows nothing about either direction —
  * it just uses React Router as if it were the top-level app.
  */
-export function DataAppView() {
-  const { name = "" } = useParams<{ name: string }>();
+type DataAppViewProps = {
+  name?: string;
+  enableUrlMirroring?: boolean;
+  enableDrafts?: boolean;
+};
+
+export function DataAppView({
+  name: nameProp,
+  enableUrlMirroring = false,
+  enableDrafts = false,
+}: DataAppViewProps = {}) {
+  const { name: nameParam = "" } = useParams<{ name: string }>();
+  const name = nameProp ?? nameParam;
   const validName = name.length > 0;
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -108,7 +119,7 @@ export function DataAppView() {
   } = useGetDataAppQuery(name, { skip: !validName });
 
   useEffect(() => {
-    if (!iframeEl || !validName) {
+    if (!iframeEl || !validName || !enableUrlMirroring) {
       return undefined;
     }
 
@@ -149,7 +160,7 @@ export function DataAppView() {
       iframeEl.removeEventListener("load", onLoad);
       detach?.();
     };
-  }, [iframeEl, name, validName]);
+  }, [iframeEl, name, validName, enableUrlMirroring]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -235,6 +246,15 @@ export function DataAppView() {
 
   if (metaLoading || (!meta && !metaError)) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (meta?.enabled === false && !enableDrafts) {
+    return (
+      <NotFound
+        title={t`Data app not found`}
+        message={t`This data app doesn’t exist or has been disabled.`}
+      />
+    );
   }
 
   if (metaError || !meta) {

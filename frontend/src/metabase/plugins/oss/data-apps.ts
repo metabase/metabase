@@ -7,6 +7,7 @@ import { definePluginSlot } from "../slot";
 export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
+  getDataStudioRoutes: (IsAdmin: ComponentType) => ReactNode | null;
   ManageDataAppsPage: ComponentType;
   ManageDataAppGroupsPage: ComponentType;
   MainNavbarSection: ComponentType<{ onItemSelect: () => void }>;
@@ -15,6 +16,7 @@ export type DataAppsPlugin = {
 const getDefaultPluginDataApps = (): DataAppsPlugin => ({
   isEnabled: false,
   getRoutes: () => null,
+  getDataStudioRoutes: () => null,
   ManageDataAppsPage: PluginPlaceholder,
   ManageDataAppGroupsPage: PluginPlaceholder,
   MainNavbarSection: PluginPlaceholder,
