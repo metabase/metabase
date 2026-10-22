@@ -192,7 +192,7 @@ describe("route-guards", () => {
         },
       );
 
-    it("lets a non-admin open /getting-started", async () => {
+    it("should let non-admins access this page", async () => {
       const { router } = setup();
 
       expect(await screen.findByText("protected")).toBeInTheDocument();

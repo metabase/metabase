@@ -104,7 +104,7 @@ describe("Onboarding", () => {
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 
-  it("should let a non-admin open the 'dashboard' item, which hides the 'query' item", async () => {
+  it("should let non-admins access this page", async () => {
     setup({ isAdmin: false });
 
     expect(
