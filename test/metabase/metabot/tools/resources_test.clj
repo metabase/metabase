@@ -275,13 +275,13 @@
    ["metabase://model/4/fields"                            :card-fields                ["model" "4"]]
    ["metabase://model/4/fields/99"                         :card-field                 ["model" "4" "99"]]
    ["metabase://model/4/fields/c75/17"                     :card-field                 ["model" "4" "c75/17"]]
-   ["metabase://model/4/sources"                           :card-sources               ["4" nil]]
-   ["metabase://model/4/sources?page=2"                    :card-sources               ["4" {:page "2"}]]
+   ["metabase://model/4/sources"                           :card-sources               ["model" "4" nil]]
+   ["metabase://model/4/sources?page=2"                    :card-sources               ["model" "4" {:page "2"}]]
    ;; ----- Question (a card type) -----
    ["metabase://question/5"                                :card                       ["question" "5"]]
    ["metabase://question/5/fields"                         :card-fields                ["question" "5"]]
    ["metabase://question/5/fields/99"                      :card-field                 ["question" "5" "99"]]
-   ["metabase://question/5/sources"                        :card-sources               ["5" nil]]
+   ["metabase://question/5/sources"                        :card-sources               ["question" "5" nil]]
    ;; ----- Metric -----
    ["metabase://metric/6"                                  :metric                     ["6"]]
    ["metabase://metric/6/dimensions"                       :metric-dimensions          ["6"]]

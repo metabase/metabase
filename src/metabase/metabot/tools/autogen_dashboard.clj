@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.util :as tools.u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -62,9 +63,9 @@
   "The `kind` entity with `id` and its X-ray path, if the current user can read it and it is still in use."
   [kind id]
   (let [entity (tools/with-entity {:kind kind :id id}
-                 (api/read-check (if (= :table kind)
-                                   (metabot.db/table id)
-                                   (metabot.db/card-of-type id kind))))]
+                 (if (= :table kind)
+                   (api/read-check (metabot.db/table id))
+                   (tools.u/get-card id kind)))]
     (when (or (:archived entity) (false? (:active entity)))
       (unavailable-source! {:kind kind :id id}))
     {:entity entity
