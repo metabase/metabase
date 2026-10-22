@@ -338,7 +338,7 @@ jobs:
           retention-days: 1 # gets merged immediately by parent workflow
 
       - name: Publish Summary
-        if: failure()
+        if: ${{ !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure') }}
         uses: actions/github-script@v9
         with:
           script: | #js
