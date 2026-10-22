@@ -6,9 +6,10 @@ import { UNSAFE_NavigationContext, useNavigation } from "react-router";
  *
  * A `route.lazy` route resolves its module before committing the location, which
  * opens a window where the old page is still mounted at the old URL while the
- * router is already on its way somewhere else. Anything that navigates in that
- * window replaces the pending navigation rather than queueing behind it, and the
- * destination the user asked for is lost.
+ * router is already on its way somewhere else. The window is capped at
+ * `CHUNK_WAIT_MS`, but a slow connection reaches that cap. Anything that
+ * navigates in that window replaces the pending navigation rather than queueing
+ * behind it, and the destination the user asked for is lost.
  *
  * Effects that keep a URL in sync with state have to sit that window out. See
  * `useDashboardUrlQuery`, which already does the same for a navigation held by a

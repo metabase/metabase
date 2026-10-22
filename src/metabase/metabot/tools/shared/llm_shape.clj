@@ -920,10 +920,10 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation exactly, plus a note on how many values the
-   field has when only some of them are listed.
-   Note: Tables are used with |safe in the template, so values must be escaped."
-  [{:keys [field_values field_values_total has_more_values statistics]}]
+   Matches Python FieldValuesMetadata.llm_representation, with notes when only some values are listed
+   or when the database couldn't be sampled for statistics.
+   Tables use |safe in the template, so values must be escaped."
+  [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
   (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
@@ -946,7 +946,8 @@
       :sample_values_shown shown
       :sample_values_total (when partial? field_values_total)
       :sample_values_more  has_more_values
-      :stats_table         stats-table})))
+      :stats_table         stats-table
+      :stats_unavailable   statistics_unavailable})))
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
@@ -1083,7 +1084,7 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Fetch " next-page-uri " for the next page — copy it exactly, do not "
+                         "Fetch " (escape-xml next-page-uri) " for the next page. Copy it exactly; do not "
                          "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)

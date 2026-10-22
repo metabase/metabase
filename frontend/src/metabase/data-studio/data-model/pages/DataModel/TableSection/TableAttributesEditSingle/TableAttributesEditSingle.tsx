@@ -166,7 +166,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           email={table.owner_email}
           label={t`Owner`}
           userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
-          readOnly={readOnly}
+          disabled={readOnly}
           onEmailChange={handleOwnerEmailChange}
           onUserIdChange={handleOwnerUserIdChange}
           className={S.gridLabelInput}
@@ -179,7 +179,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
 
         <LayerInput
           value={table.data_layer ?? "hidden"}
-          readOnly={readOnly}
+          disabled={readOnly}
           onChange={handleLayerChange}
           classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}
@@ -187,15 +187,14 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
 
         <EntityTypeInput
           value={table.entity_type ?? "entity/GenericTable"}
-          readOnly={readOnly}
+          disabled={readOnly}
           onChange={handleEntityTypeChange}
           classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}
         />
 
         <DataSourceInput
-          disabled={table.data_source === "metabase-transform"}
-          readOnly={readOnly}
+          disabled={readOnly || table.data_source === "metabase-transform"}
           value={table.data_source ?? "unknown"}
           onChange={handleDataSourceChange}
           classNames={{ input: S.input, label: S.label }}
