@@ -27,6 +27,8 @@ import {
   type SupportAccessGrant,
   type TableDependencyNode,
   type TransformDependencyNode,
+  type TransformTest,
+  type TransformTestRun,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -55,6 +57,8 @@ export const ENTERPRISE_TAG_TYPES = [
   "data-complexity-scores",
   "security-advisory",
   "session",
+  "transform-test",
+  "transform-test-run",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -285,5 +289,35 @@ export function provideSourceReplacementRunListTags(
   return [
     listTag("source-replacement-run"),
     ...runs.flatMap(provideSourceReplacementRunTags),
+  ];
+}
+
+export function provideTransformTestTags(
+  test: TransformTest,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-test", test.id)];
+}
+
+export function provideTransformTestListTags(
+  tests: TransformTest[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("transform-test"),
+    ...tests.flatMap(provideTransformTestTags),
+  ];
+}
+
+export function provideTransformTestRunTags(
+  run: TransformTestRun,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-test-run", run.id)];
+}
+
+export function provideTransformTestRunListTags(
+  runs: TransformTestRun[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("transform-test-run"),
+    ...runs.flatMap(provideTransformTestRunTags),
   ];
 }
