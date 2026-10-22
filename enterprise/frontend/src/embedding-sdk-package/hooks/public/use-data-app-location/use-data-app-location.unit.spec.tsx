@@ -6,7 +6,10 @@ import { useDataAppLocation } from "./use-data-app-location";
 // `pushState` fires no event: `navigate` has to notify subscribers itself, and
 // every consumer must hear about it.
 describe("useDataAppLocation", () => {
-  afterEach(() => window.history.replaceState(null, "", "/"));
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
   it("navigate() updates the sub-path and the iframe URL", () => {
     const { result } = renderHook(() => useDataAppLocation());
 
@@ -25,6 +28,7 @@ describe("useDataAppLocation", () => {
     "/mb/embed/apps/sales",
   ])("keeps navigation inside the runtime at %s", (prefix) => {
     window.history.replaceState(null, "", `${prefix}/orders?active=true`);
+
     const { result } = renderHook(() => useDataAppLocation());
     expect(result.current.pathname).toBe("/orders");
 

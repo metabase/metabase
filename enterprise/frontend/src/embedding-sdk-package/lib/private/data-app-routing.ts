@@ -15,6 +15,10 @@ const matchIframePath = () =>
     ? null
     : window.location.pathname.match(DATA_APP_IFRAME_PATH_RE);
 
+/** Whether navigation runs inside an externally embedded Data App. */
+export const isEmbeddedDataApp = (): boolean =>
+  matchIframePath()?.[2] === EMBEDDED_DATA_APP_PREFIX;
+
 /**
  * The iframe URL's data-app prefix, including any Metabase subpath install root.
  * `""` outside the iframe (the dev preview), where the sub-path is the raw pathname.
